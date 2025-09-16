@@ -1,0 +1,281 @@
+# CSP実装リファクタリング計画書
+# 医療機関向けSaaS - Phase 3B CSP強化リファクタリング
+# 作成日: 2025-08-27
+
+project:
+  name: "整骨院管理SaaS CSPリファクタリング"
+  version: "Phase 3B Enhancement"
+  target_completion: "2025-09-03"
+  priority_level: "High - Security Critical"
+
+overview:
+  description: |
+    現在のCSP実装は基本的に堅牢だが、セキュリティクリティカルな改善点と
+    運用効率の向上のため段階的リファクタリングを実施する。
+    医療データの機密性を最優先に、既存機能への影響を最小化しつつ
+    エンタープライズレベルのセキュリティ体制を完成させる。
+  
+  current_status:
+    security_level: "堅牢（基本要件満足）"
+    technical_debt: "中程度"
+    maintenance_risk: "低"
+    performance_impact: "軽微"
+
+phases:
+  phase_1:
+    name: "セキュリティクリティカル修正"
+    priority: "最高"
+    duration: "1日"
+    risk_level: "低"
+    description: "即座に対応すべきセキュリティ脆弱性の修正"
+    
+    tasks:
+      - id: "P1-T1"
+        name: "CSPレポートAPIレート制限実装"
+        priority: "クリティカル"
+        effort: "4時間"
+        risk: "低"
+        files:
+          - "src/app/api/security/csp-report/route.ts"
+          - "src/lib/rate-limiting/csp-rate-limiter.ts" # 新規作成
+        description: |
+          DDoS攻撃やログ汚染攻撃を防ぐため、同一IPからの
+          CSPレポートAPIへのリクエスト数を制限する
+        acceptance_criteria:
+          - "同一IPから1分間に100リクエストまでに制限"
+          - "Redis/Upstash統合でスケーラブルな制限"
+          - "制限超過時は429ステータス返却"
+          - "既存のレポート処理機能に影響なし"
+      
+      - id: "P1-T2"
+        name: "高重要度CSP違反の通知機能実装"
+        priority: "クリティカル"
+        effort: "4時間"
+        risk: "低"
+        files:
+          - "src/app/api/security/csp-report/route.ts"
+          - "src/lib/notifications/security-alerts.ts" # 新規作成
+        description: |
+          critical/high重要度の違反発生時に管理者への
+          リアルタイム通知機能を実装
+        acceptance_criteria:
+          - "console.warnからSlack/メール通知への変更"
+          - "Supabase Functions連携実装"
+          - "通知テンプレートの標準化"
+          - "通知頻度制限（スパム防止）"
+
+  phase_2:
+    name: "セキュリティ強化・Nonce統合"
+    priority: "高"
+    duration: "2-3日"
+    risk_level: "中"
+    description: "CSPのnonce統合とセキュリティ機能の完全実装"
+    depends_on: ["phase_1"]
+    
+    tasks:
+      - id: "P2-T1"
+        name: "Nonceミドルウェア統合実装"
+        priority: "高"
+        effort: "6時間"
+        risk: "中"
+        files:
+          - "middleware.ts"
+          - "src/lib/security/csp-config.ts"
+          - "next.config.js"
+        description: |
+          リクエストごとのnonce生成とCSPヘッダー統合により
+          unsafe-inlineを排除し動的スクリプト実行を安全化
+        acceptance_criteria:
+          - "リクエストごとに暗号学的に安全なnonce生成"
+          - "Next.jsのScriptコンポーネントとの連携"
+          - "本番環境でunsafe-inline完全排除"
+          - "既存のインラインスクリプトの動作保証"
+        
+      - id: "P2-T2"
+        name: "CSPハッシュ値の動的生成"
+        priority: "中"
+        effort: "4時間"
+        risk: "中"
+        files:
+          - "src/lib/security/csp-hash-generator.ts" # 新規作成
+          - "src/lib/security/csp-config.ts"
+        description: |
+          ハードコードされたハッシュ値を動的生成に変更し
+          UIコンポーネント変更への脆弱性を解消
+        acceptance_criteria:
+          - "ビルド時のスタイルハッシュ自動生成"
+          - "Tailwind CSS等のスタイルシート対応"
+          - "ハッシュ不一致時の適切なエラーハンドリング"
+      
+      - id: "P2-T3"
+        name: "データベーストリガーとアラート強化"
+        priority: "中"
+        effort: "4時間"
+        risk: "低"
+        files:
+          - "src/lib/database/csp-violations-schema.sql"
+          - "src/lib/database/csp-alert-functions.sql" # 新規作成
+        description: |
+          データベースレベルでの脅威検知トリガーを強化し
+          Supabase Functions経由でリアルタイム通知を実現
+        acceptance_criteria:
+          - "閾値超過時のSupabase Functions呼び出し"
+          - "IPベース攻撃パターンの自動検知"
+          - "管理者ダッシュボードへのリアルタイム反映"
+
+  phase_3:
+    name: "運用効率・保守性向上"
+    priority: "中"
+    duration: "2日"
+    risk_level: "低"
+    description: "長期運用に向けた保守性と運用効率の改善"
+    depends_on: ["phase_2"]
+    
+    tasks:
+      - id: "P3-T1"
+        name: "CSPダッシュボードのページネーション実装"
+        priority: "中"
+        effort: "4時間"
+        risk: "低"
+        files:
+          - "src/components/admin/CSPDashboard.tsx"
+          - "src/app/api/admin/security/csp-violations/route.ts"
+        description: |
+          大量のCSP違反ログに対するページネーション・
+          フィルタリング機能で運用効率を向上
+        acceptance_criteria:
+          - "1ページあたり50件表示でページネーション"
+          - "重要度・ディレクティブ・IP別フィルタリング"
+          - "日時範囲での絞り込み機能"
+          - "検索・ソート機能の実装"
+      
+      - id: "P3-T2"
+        name: "設定管理の一元化"
+        priority: "低"
+        effort: "3時間"
+        risk: "低"
+        files:
+          - "src/lib/config/security-config.ts" # 新規作成
+          - "next.config.js"
+          - "src/lib/security/csp-config.ts"
+        description: |
+          CSP関連設定を一元管理し運用時の設定ミスを防止
+        acceptance_criteria:
+          - "環境変数の統合と検証機能"
+          - "設定値の型安全性保証"
+          - "開発・本番環境設定の明確な分離"
+          - "設定変更時の自動検証機能"
+      
+      - id: "P3-T3"
+        name: "CSP違反ログの自動保持期間管理"
+        priority: "低"
+        effort: "3時間"
+        risk: "低"
+        files:
+          - "src/lib/database/csp-cleanup-job.sql" # 新規作成
+          - "supabase/migrations/add_csp_cleanup_job.sql" # 新規作成
+        description: |
+          CSP違反ログの自動削除・アーカイブによるDB容量管理
+        acceptance_criteria:
+          - "90日経過データの自動削除ジョブ"
+          - "重要度critical/highの長期保存"
+          - "統計データの集約保存機能"
+
+testing_strategy:
+  unit_tests:
+    - "CSPレート制限ロジック"
+    - "Nonce生成・検証機能"
+    - "違反重要度判定アルゴリズム"
+    - "通知機能のモック実装"
+  
+  integration_tests:
+    - "CSPヘッダーとNext.js統合"
+    - "Supabase Functionsとの連携"
+    - "ダッシュボードのAPIデータ取得"
+  
+  security_tests:
+    - "CSPポリシー違反のシミュレーション"
+    - "レート制限の動作確認"
+    - "XSS攻撃耐性テスト"
+    - "DDoS攻撃耐性テスト"
+
+deployment_strategy:
+  rollback_plan:
+    description: "各Phaseで問題発生時は即座に前バージョンに戻す"
+    procedures:
+      - "データベースマイグレーションの巻き戻し"
+      - "環境変数の設定復元"
+      - "CSPポリシーの段階的緩和"
+  
+  monitoring:
+    - "CSP違反レポート数の監視"
+    - "API応答時間の監視"
+    - "エラーレート監視"
+    - "セキュリティアラート通知の確認"
+
+risk_mitigation:
+  high_risks:
+    - risk: "Nonce統合による既存スクリプトの動作不良"
+      mitigation: "段階的導入とreport-onlyモードでの事前テスト"
+    - risk: "レート制限による正当なリクエストの阻害"
+      mitigation: "緩い制限値から開始し段階的に厳格化"
+  
+  medium_risks:
+    - risk: "通知機能の過剰アラート"
+      mitigation: "通知頻度制限とアラート閾値の調整"
+    - risk: "データベースマイグレーションの失敗"
+      mitigation: "バックアップ取得と段階的マイグレーション"
+
+success_criteria:
+  security_improvements:
+    - "XSS攻撃対策の完全性: unsafe-inline完全排除"
+    - "DDoS耐性: 毎分100リクエスト制限実装"
+    - "リアルタイム監視: 高重要度違反の即時通知"
+  
+  operational_improvements:
+    - "ダッシュボード操作性: ページネーション・フィルタリング"
+    - "保守性向上: 設定の一元管理と型安全性"
+    - "運用コスト削減: 自動化された監視・通知"
+
+timeline:
+  day_1:
+    - "Phase 1: セキュリティクリティカル修正"
+    - "レート制限実装 (4h)"
+    - "通知機能実装 (4h)"
+  
+  day_2:
+    - "Phase 2開始: Nonce統合実装 (6h)"
+    - "テスト・デバッグ (2h)"
+  
+  day_3:
+    - "Phase 2完了: ハッシュ動的生成・DB強化 (6h)"
+    - "統合テスト (2h)"
+  
+  day_4:
+    - "Phase 3: ダッシュボード改善 (4h)"
+    - "設定一元化 (3h)"
+    - "最終テスト (1h)"
+  
+  day_5:
+    - "ログ管理機能実装 (3h)"
+    - "総合テスト・ドキュメント更新 (3h)"
+    - "デプロイ・監視設定 (2h)"
+
+completion_checklist:
+  security:
+    - "[ ] CSPレポートAPIレート制限動作確認"
+    - "[ ] 高重要度違反の通知機能テスト"
+    - "[ ] Nonce統合によるunsafe-inline排除確認"
+    - "[ ] XSS攻撃シミュレーションテスト"
+  
+  functionality:
+    - "[ ] ダッシュボードのページネーション動作"
+    - "[ ] フィルタリング・検索機能の動作"
+    - "[ ] 自動ログ削除ジョブの動作確認"
+    - "[ ] 設定変更時の自動検証機能"
+  
+  documentation:
+    - "[ ] リファクタリング結果の記録"
+    - "[ ] 新機能の運用手順書更新"
+    - "[ ] セキュリティ設定ガイドの更新"
+    - "[ ] CLAUDE.mdへの完了報告記載"

@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "Context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "timeout": 60,
+      "autoApprove": [],
+      "disabled": false,
+      "transportType": "stdio"
+    },
+    "serena": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"],
+      "timeout": 120,
+      "autoApprove": [],
+      "disabled": false,
+      "transportType": "stdio"
+    },
+    "gemini-cli": {
+      "command": "npx",
+      "args": ["-y", "gemini-mcp-tool"],
+      "timeout": 60,
+      "autoApprove": [],
+      "disabled": false,
+      "transportType": "stdio"
+    }
+  }
+}
