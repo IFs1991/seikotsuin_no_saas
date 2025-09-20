@@ -46,7 +46,7 @@ export const useMasterData = () => {
   const addToHistory = (newData: MasterData[]) => {
     const newHistory = {
       data: JSON.parse(JSON.stringify(newData)),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
     setHistory(prev => [...prev.slice(0, historyIndex + 1), newHistory]);
     setHistoryIndex(prev => prev + 1);
@@ -92,8 +92,8 @@ export const useMasterData = () => {
         .single();
 
       if (error) throw error;
-      setData(prev => prev.map(item => item.id === id ? updated : item));
-      addToHistory(data.map(item => item.id === id ? updated : item));
+      setData(prev => prev.map(item => (item.id === id ? updated : item)));
+      addToHistory(data.map(item => (item.id === id ? updated : item)));
     } catch (err) {
       setError(err instanceof Error ? err.message : '更新エラー');
     }
@@ -132,13 +132,11 @@ export const useMasterData = () => {
 
     const updates = newData.map((item, index) => ({
       id: item.id,
-      order: index
+      order: index,
     }));
 
     try {
-      const { error } = await supabase
-        .from('master_data')
-        .upsert(updates);
+      const { error } = await supabase.from('master_data').upsert(updates);
 
       if (error) throw error;
       setData(newData);
@@ -152,9 +150,10 @@ export const useMasterData = () => {
   };
 
   const filterData = useCallback(() => {
-    return data.filter(item =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
+    return data.filter(
+      item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [data, searchQuery]);
 
@@ -173,14 +172,14 @@ export const useMasterData = () => {
     try {
       const content = await file.text();
       const importedData = JSON.parse(content);
-      
-      const { error } = await supabase
-        .from('master_data')
-        .upsert(importedData.map((item: MasterData, index: number) => ({
+
+      const { error } = await supabase.from('master_data').upsert(
+        importedData.map((item: MasterData, index: number) => ({
           ...item,
           order: index,
-          updatedAt: new Date().toISOString()
-        })));
+          updatedAt: new Date().toISOString(),
+        }))
+      );
 
       if (error) throw error;
       await fetchData();
@@ -207,6 +206,6 @@ export const useMasterData = () => {
     canUndo: historyIndex > 0,
     canRedo: historyIndex < history.length - 1,
     exportData,
-    importData
+    importData,
   };
 };

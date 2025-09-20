@@ -1,0 +1,243 @@
+issues:
+  - id: BE-001
+    title: API認証ガードとサービスロール利用の是正
+    description: "複数のAPIルートがSupabaseサービスロールキーで直接データへアクセスし、認証を一切行っていない。匿名リクエストで全店舗データの読み書きが可能。"
+    status: pending
+    severity: critical
+    resolution:
+      - step: "Vercel Edge Middlewareでの認証実装"
+        implementation:
+          - "middleware.tsでSupabase Session検証を実装"
+          - "matcher設定で/api/*を保護対象に追加"
+          - "createServerComponentClientを使用してRLS適用"
+        code: |
+          // middleware.ts
+          import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+          export async function middleware(req: NextRequest) {
+            const res = NextResponse.next()
+            const supabase = createMiddlewareClient({ req, res })
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session && req.nextUrl.pathname.startsWith('/api/')) {
+              return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            }
+            return res
+          }
+        owner: backend
+
+      - step: "APIハンドラーでのRLS適用クライアント使用"
+        implementation:
+          - "createRouteHandlerClientでRLS適用"
+          - "サービスロールキーは環境変数から削除"
+          - "管理者専用操作のみ別途認可チェック後にcreateAdminClient使用"
+        code: |
+          // api/[resource]/route.ts
+          import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+          export async function GET(request: Request) {
+            const supabase = createRouteHandlerClient({ cookies })
+            // RLSが自動的に適用される
+            const { data, error } = await supabase.from('table').select()
+          }
+        owner: backend
+
+      - step: "監査ログ実装"
+        implementation:
+          - "Supabase Edge FunctionsでAuditLogger実装"
+          - "全APIアクセスをaudit_logsテーブルに記録"
+        owner: backend
+
+    dependencies:
+      - SECURITY-001
+      - Supabase RLS有効化
+
+  - id: BE-002
+    title: createApiErrorの誤用と未定義変数の修正
+    description: "患者分析APIでcreateApiErrorの引数順が逆になっており、未定義のsearchParamsを参照して例外が発生する。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "エラーハンドリング標準化"
+        implementation:
+          - "NextResponseベースの統一エラー形式実装"
+          - "型安全なエラーレスポンス生成"
+        code: |
+          // lib/api-errors.ts
+          export class ApiError extends Error {
+            constructor(
+              public statusCode: number,
+              message: string,
+              public code?: string,
+              public details?: any
+            ) {
+              super(message)
+            }
+
+            toResponse() {
+              return NextResponse.json(
+                {
+                  error: this.message,
+                  code: this.code,
+                  details: this.details
+                },
+                { status: this.statusCode }
+              )
+            }
+          }
+        owner: backend
+
+      - step: "URLSearchParams型安全処理"
+        implementation:
+          - "zodでクエリパラメータ検証"
+          - "型定義による実行時チェック"
+        owner: backend
+
+  - id: BE-003
+    title: スタッフ登録APIの仮実装解消
+    description: "`/api/staff`のPOSTが固定文字列`temporary_hash`を保存しており、実運用の資格情報管理が欠落している。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "Supabase Auth統合"
+        implementation:
+          - "auth.admin.createUserでスタッフユーザー作成"
+          - "user_metadataにclinic_idとroleを保存"
+          - "パスワードはSupabase Authが管理"
+        code: |
+          // api/staff/route.ts
+          const { data: authUser, error } = await supabase.auth.admin.createUser({
+            email: staffData.email,
+            password: generateSecurePassword(),
+            email_confirm: true,
+            user_metadata: {
+              clinic_id: staffData.clinic_id,
+              role: staffData.role,
+              name: staffData.name
+            }
+          })
+
+          // staffテーブルにプロファイル作成
+          const { data: staff } = await supabase
+            .from('staff')
+            .insert({
+              id: authUser.user.id,
+              ...staffData
+            })
+        owner: backend
+
+      - step: "メール通知実装"
+        implementation:
+          - "Vercel Email APIでパスワード設定リンク送信"
+          - "Supabase Auth Hookでアカウント作成通知"
+        owner: backend
+
+  - id: BE-004
+    title: AIチャットおよびAIコメントのスタブ実装整理
+    description: "チャットAPIがモック応答のみを返し、Gemini連携やエラーハンドリングが未実装のまま露出している。"
+    status: pending
+    severity: medium
+    resolution:
+      - step: "Vercel AI SDK統合"
+        implementation:
+          - "Vercel AI SDKでGemini API統合"
+          - "ストリーミングレスポンス対応"
+          - "Edge Runtimeで低レイテンシー実現"
+        code: |
+          // api/ai/chat/route.ts
+          import { GoogleGenerativeAI } from '@google/generative-ai'
+          import { GoogleGenerativeAIStream, StreamingTextResponse } from 'ai'
+
+          export const runtime = 'edge'
+
+          const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
+          export async function POST(req: Request) {
+            const { messages } = await req.json()
+
+            const model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+            const stream = await model.generateContentStream(prompt)
+
+            return new StreamingTextResponse(
+              GoogleGenerativeAIStream(stream)
+            )
+          }
+        owner: backend
+
+      - step: "レート制限とコスト管理"
+        implementation:
+          - "Upstash Redisでレート制限実装"
+          - "Vercel KVでAPIコール数追跡"
+          - "月次コスト上限設定"
+        owner: infrastructure
+
+      - step: "フォールバック実装"
+        implementation:
+          - "Gemini API障害時のフォールバック処理"
+          - "キャッシュされた応答の活用"
+        owner: backend
+
+  - id: BE-005
+    title: "データベースセキュリティ強化"
+    description: "RLSポリシーは定義されているが、実際に有効化されていないテーブルが存在する可能性"
+    status: new
+    severity: critical
+    resolution:
+      - step: "RLS完全有効化"
+        implementation:
+          - "全テーブルでRLS有効化確認"
+          - "ポリシーテストスイート実装"
+        code: |
+          -- 全テーブルRLS有効化確認
+          SELECT tablename, rowsecurity
+          FROM pg_tables
+          WHERE schemaname = 'public'
+          AND rowsecurity = false;
+        owner: database
+
+      - step: "Supabase Vault統合"
+        implementation:
+          - "機密情報をSupabase Vaultで暗号化"
+          - "患者個人情報の暗号化実装"
+        owner: security
+
+  - id: BE-006
+    title: "パフォーマンス最適化"
+    description: "複雑なSQL関数がパフォーマンスボトルネックになる可能性"
+    status: new
+    severity: medium
+    resolution:
+      - step: "Vercel Edge Functions活用"
+        implementation:
+          - "重い処理をEdge Functionsに移行"
+          - "Supabase Realtimeでキャッシュ更新"
+        owner: backend
+
+      - step: "インデックス最適化"
+        implementation:
+          - "クエリ分析に基づくインデックス追加"
+          - "パーティショニング検討"
+        owner: database
+
+monitoring:
+  - type: "Vercel Analytics統合"
+    metrics:
+      - "API応答時間"
+      - "エラー率"
+      - "認証成功率"
+
+  - type: "Supabase Dashboard活用"
+    metrics:
+      - "RLS違反検知"
+      - "クエリパフォーマンス"
+      - "ストレージ使用量"
+
+deployment:
+  strategy: "段階的ロールアウト"
+  phases:
+    - phase: 1
+      description: "開発環境での検証"
+      duration: "1週間"
+    - phase: 2
+      description: "ステージング環境でのテスト"
+      duration: "1週間"
+    - phase: 3
+      description: "本番環境への適用（カナリアリリース）"
+      duration: "2週間"

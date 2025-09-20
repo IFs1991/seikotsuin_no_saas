@@ -7,12 +7,13 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { SessionManager } from '@/lib/session-manager';
 import { SecurityMonitor } from '@/lib/security-monitor';
+import { logger } from '@/lib/logger';
 
 export interface OptimizedAuthData {
-  user: any;
-  profile: any;
-  customSessionValidation?: any;
-  securityThreats?: any[];
+  user: unknown;
+  profile: unknown;
+  customSessionValidation?: unknown;
+  securityThreats?: Array<{ severity?: string }>;
 }
 
 /**
@@ -49,9 +50,7 @@ export class MiddlewareOptimizer {
 
       // 2. カスタムセッション検証（トークンがある場合）
       if (customSessionToken) {
-        promises.push(
-          this.sessionManager.validateSession(customSessionToken)
-        );
+        promises.push(this.sessionManager.validateSession(customSessionToken));
       } else {
         promises.push(Promise.resolve(null));
       }
@@ -59,7 +58,10 @@ export class MiddlewareOptimizer {
       // 基本チェックを並列実行
       const [userResult, customSessionValidation] = await Promise.all(promises);
 
-      const { data: { user }, error: userError } = userResult;
+      const {
+        data: { user },
+        error: userError,
+      } = userResult;
 
       // 未認証の場合は早期リターン
       if (userError || !user) {
@@ -89,7 +91,8 @@ export class MiddlewareOptimizer {
       }
 
       // 追加チェックを並列実行
-      const [profileResult, securityThreats] = await Promise.all(additionalPromises);
+      const [profileResult, securityThreats] =
+        await Promise.all(additionalPromises);
 
       return {
         user,
@@ -97,9 +100,8 @@ export class MiddlewareOptimizer {
         customSessionValidation,
         securityThreats: securityThreats || [],
       };
-
     } catch (error) {
-      console.error('最適化認証チェックエラー:', error);
+      logger.error('最適化認証チェックエラー:', error);
       throw error;
     }
   }
@@ -108,9 +110,11 @@ export class MiddlewareOptimizer {
    * セキュリティ脅威の批判的評価
    * 高リスクの脅威のみをフィルタリング
    */
-  evaluateCriticalThreats(threats: any[]): any[] {
-    return threats.filter(threat => 
-      threat.severity === 'high' || threat.severity === 'critical'
+  evaluateCriticalThreats(
+    threats: Array<{ severity?: string }>
+  ): Array<{ severity?: string }> {
+    return threats.filter(
+      threat => threat.severity === 'high' || threat.severity === 'critical'
     );
   }
 
@@ -128,7 +132,7 @@ export class MiddlewareOptimizer {
     setImmediate(async () => {
       try {
         await this.sessionManager.refreshSession(sessionToken, ipAddress);
-        
+
         // セキュリティイベントの記録も非同期
         await this.securityMonitor.logSecurityEvent({
           eventType: 'session_activity',
@@ -142,7 +146,7 @@ export class MiddlewareOptimizer {
           },
         });
       } catch (error) {
-        console.error('Background session update failed:', error);
+        logger.error('Background session update failed:', error);
       }
     });
   }
@@ -150,7 +154,10 @@ export class MiddlewareOptimizer {
   /**
    * 管理者権限チェックの最適化
    */
-  validateAdminAccess(profile: any, requestPath: string): {
+  validateAdminAccess(
+    profile: any,
+    requestPath: string
+  ): {
     isAuthorized: boolean;
     reason?: string;
   } {
@@ -203,21 +210,24 @@ export class MiddlewareOptimizer {
  * 短期間のキャッシュでDB問い合わせを削減
  */
 export class SessionCache {
-  private static cache = new Map<string, {
-    data: any;
-    expires: number;
-  }>();
+  private static cache = new Map<
+    string,
+    {
+      data: any;
+      expires: number;
+    }
+  >();
 
-  static set(key: string, data: any, ttlSeconds: number = 60): void {
+  static set(key: string, data: unknown, ttlSeconds: number = 60): void {
     this.cache.set(key, {
       data,
-      expires: Date.now() + (ttlSeconds * 1000),
+      expires: Date.now() + ttlSeconds * 1000,
     });
   }
 
-  static get(key: string): any | null {
+  static get(key: string): unknown | null {
     const cached = this.cache.get(key);
-    
+
     if (!cached) {
       return null;
     }
@@ -238,13 +248,16 @@ export class SessionCache {
    * 定期的なキャッシュクリーンアップ
    */
   static startPeriodicCleanup(): void {
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, value] of this.cache.entries()) {
-        if (now > value.expires) {
-          this.cache.delete(key);
+    setInterval(
+      () => {
+        const now = Date.now();
+        for (const [key, value] of this.cache.entries()) {
+          if (now > value.expires) {
+            this.cache.delete(key);
+          }
         }
-      }
-    }, 5 * 60 * 1000); // 5分ごと
+      },
+      5 * 60 * 1000
+    ); // 5分ごと
   }
 }

@@ -37,7 +37,12 @@ const useDailyReports = () => {
 
   // バリデーション
   const validateForm = (): boolean => {
-    if (!formState.staff_id || !formState.date || !formState.treatment_count || !formState.revenue) {
+    if (
+      !formState.staff_id ||
+      !formState.date ||
+      !formState.treatment_count ||
+      !formState.revenue
+    ) {
       setError('すべてのフィールドを入力してください。');
       return false;
     }
@@ -103,7 +108,11 @@ const useDailyReports = () => {
         throw error;
       }
 
-      setReports(reports.map(report => (report.id === id ? { ...report, ...data } : report)));
+      setReports(
+        reports.map(report =>
+          report.id === id ? { ...report, ...data } : report
+        )
+      );
     } catch (err: any) {
       setError(err.message);
     }

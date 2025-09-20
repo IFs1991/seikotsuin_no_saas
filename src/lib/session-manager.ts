@@ -74,7 +74,12 @@ export interface CreateSessionOptions {
 export interface SessionValidationResult {
   isValid: boolean;
   session?: UserSession;
-  reason?: 'expired' | 'revoked' | 'inactive' | 'not_found' | 'policy_violation';
+  reason?:
+    | 'expired'
+    | 'revoked'
+    | 'inactive'
+    | 'not_found'
+    | 'policy_violation';
   requiresRefresh?: boolean;
 }
 
@@ -100,20 +105,24 @@ export class SessionManager {
     try {
       // セッションポリシーを取得
       const policy = await this.getSessionPolicy(clinicId);
-      
+
       // 既存アクティブセッション数をチェック
       await this.enforceSessionLimits(userId, clinicId, policy);
-      
+
       // セッショントークン生成
       const sessionToken = this.generateSecureToken();
-      
+
       // タイムアウト計算
       const now = new Date();
-      const idleMinutes = options.customTimeout?.idleMinutes || policy.max_idle_minutes;
-      const sessionHours = options.customTimeout?.sessionHours || policy.max_session_hours;
-      
+      const idleMinutes =
+        options.customTimeout?.idleMinutes || policy.max_idle_minutes;
+      const sessionHours =
+        options.customTimeout?.sessionHours || policy.max_session_hours;
+
       const idleTimeoutAt = new Date(now.getTime() + idleMinutes * 60 * 1000);
-      const absoluteTimeoutAt = new Date(now.getTime() + sessionHours * 60 * 60 * 1000);
+      const absoluteTimeoutAt = new Date(
+        now.getTime() + sessionHours * 60 * 60 * 1000
+      );
       const expiresAt = absoluteTimeoutAt;
 
       // セッションデータベース挿入
@@ -157,13 +166,19 @@ export class SessionManager {
         created_at: (session && session.created_at) || nowIso,
         last_activity: (session && session.last_activity) || nowIso,
         expires_at: (session && session.expires_at) || expiresAt.toISOString(),
-        idle_timeout_at: (session && session.idle_timeout_at) || idleTimeoutAt.toISOString(),
-        absolute_timeout_at: (session && session.absolute_timeout_at) || absoluteTimeoutAt.toISOString(),
+        idle_timeout_at:
+          (session && session.idle_timeout_at) || idleTimeoutAt.toISOString(),
+        absolute_timeout_at:
+          (session && session.absolute_timeout_at) ||
+          absoluteTimeoutAt.toISOString(),
         is_active: (session && session.is_active) ?? true,
         is_revoked: (session && session.is_revoked) ?? false,
         max_idle_minutes: (session && session.max_idle_minutes) ?? idleMinutes,
-        max_session_hours: (session && session.max_session_hours) ?? sessionHours,
-        remember_device: (session && session.remember_device) ?? (options.rememberDevice || false),
+        max_session_hours:
+          (session && session.max_session_hours) ?? sessionHours,
+        remember_device:
+          (session && session.remember_device) ??
+          (options.rememberDevice || false),
       };
 
       // セキュリティイベント記録
@@ -201,9 +216,15 @@ export class SessionManager {
         user_agent: options.userAgent,
         created_at: now.toISOString(),
         last_activity: now.toISOString(),
-        expires_at: new Date(now.getTime() + sessionHours * 60 * 60 * 1000).toISOString(),
-        idle_timeout_at: new Date(now.getTime() + idleMinutes * 60 * 1000).toISOString(),
-        absolute_timeout_at: new Date(now.getTime() + sessionHours * 60 * 60 * 1000).toISOString(),
+        expires_at: new Date(
+          now.getTime() + sessionHours * 60 * 60 * 1000
+        ).toISOString(),
+        idle_timeout_at: new Date(
+          now.getTime() + idleMinutes * 60 * 1000
+        ).toISOString(),
+        absolute_timeout_at: new Date(
+          now.getTime() + sessionHours * 60 * 60 * 1000
+        ).toISOString(),
         is_active: true,
         is_revoked: false,
         max_idle_minutes: idleMinutes,
@@ -217,7 +238,9 @@ export class SessionManager {
   /**
    * セッション検証
    */
-  async validateSession(sessionToken: string): Promise<SessionValidationResult> {
+  async validateSession(
+    sessionToken: string
+  ): Promise<SessionValidationResult> {
     if (!sessionToken) {
       return { isValid: false, reason: 'not_found' };
     }
@@ -236,7 +259,7 @@ export class SessionManager {
       }
 
       const now = new Date();
-      
+
       // 絶対タイムアウトチェック
       if (new Date(session.absolute_timeout_at) < now) {
         await this.revokeSession(session.id, 'timeout');
@@ -257,10 +280,11 @@ export class SessionManager {
 
       // テスト環境では監視のフォールバック通知を出す（期待整合のため）
       if (process.env.JEST_WORKER_ID) {
-        console.warn('セキュリティ監視はテスト環境でスキップ/モックされています');
+        console.warn(
+          'セキュリティ監視はテスト環境でスキップ/モックされています'
+        );
       }
       return { isValid: true, session };
-
     } catch (error) {
       console.warn('セッション検証フォールバック:', error);
       console.error('セッション検証エラー:', error);
@@ -271,7 +295,10 @@ export class SessionManager {
   /**
    * セッション更新（最終アクティビティ時刻の更新）
    */
-  async refreshSession(sessionToken: string, ipAddress?: string): Promise<boolean> {
+  async refreshSession(
+    sessionToken: string,
+    ipAddress?: string
+  ): Promise<boolean> {
     try {
       const validation = await this.validateSession(sessionToken);
       if (!validation.isValid || !validation.session) {
@@ -279,7 +306,9 @@ export class SessionManager {
       }
 
       const now = new Date();
-      const newIdleTimeoutAt = new Date(now.getTime() + validation.session.max_idle_minutes * 60 * 1000);
+      const newIdleTimeoutAt = new Date(
+        now.getTime() + validation.session.max_idle_minutes * 60 * 1000
+      );
 
       const { error } = await this.supabase
         .from('user_sessions')
@@ -301,8 +330,12 @@ export class SessionManager {
    * セッション無効化
    */
   async revokeSession(
-    sessionId: string, 
-    reason: 'manual_logout' | 'timeout' | 'security_violation' | 'max_sessions_exceeded',
+    sessionId: string,
+    reason:
+      | 'manual_logout'
+      | 'timeout'
+      | 'security_violation'
+      | 'max_sessions_exceeded',
     revokedBy?: string
   ): Promise<boolean> {
     try {
@@ -352,7 +385,10 @@ export class SessionManager {
   /**
    * ユーザーの全セッション取得
    */
-  async getUserSessions(userId: string, clinicId: string): Promise<UserSession[]> {
+  async getUserSessions(
+    userId: string,
+    clinicId: string
+  ): Promise<UserSession[]> {
     const { data: sessions, error } = await this.supabase
       .from('user_sessions')
       .select('*')
@@ -371,7 +407,10 @@ export class SessionManager {
   /**
    * アクティブセッション数の取得
    */
-  async getActiveSessionCount(userId: string, clinicId: string): Promise<number> {
+  async getActiveSessionCount(
+    userId: string,
+    clinicId: string
+  ): Promise<number> {
     const { count, error } = await this.supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
@@ -391,7 +430,11 @@ export class SessionManager {
   /**
    * 他のデバイスからログアウト
    */
-  async revokeOtherSessions(currentSessionToken: string, userId: string, clinicId: string): Promise<number> {
+  async revokeOtherSessions(
+    currentSessionToken: string,
+    userId: string,
+    clinicId: string
+  ): Promise<number> {
     try {
       const { data: sessions, error: fetchError } = await this.supabase
         .from('user_sessions')
@@ -408,7 +451,11 @@ export class SessionManager {
 
       let revokedCount = 0;
       for (const session of sessions) {
-        const success = await this.revokeSession(session.id, 'manual_logout', userId);
+        const success = await this.revokeSession(
+          session.id,
+          'manual_logout',
+          userId
+        );
         if (success) revokedCount++;
       }
 
@@ -426,7 +473,10 @@ export class SessionManager {
   /**
    * セッションポリシー取得
    */
-  private async getSessionPolicy(clinicId: string, role?: string): Promise<SessionPolicy> {
+  private async getSessionPolicy(
+    clinicId: string,
+    role?: string
+  ): Promise<SessionPolicy> {
     const { data: policy, error } = await this.supabase
       .from('session_policies')
       .select('*')
@@ -456,9 +506,13 @@ export class SessionManager {
   /**
    * セッション制限の強制
    */
-  private async enforceSessionLimits(userId: string, clinicId: string, policy: SessionPolicy): Promise<void> {
+  private async enforceSessionLimits(
+    userId: string,
+    clinicId: string,
+    policy: SessionPolicy
+  ): Promise<void> {
     const activeCount = await this.getActiveSessionCount(userId, clinicId);
-    
+
     if (activeCount >= policy.max_concurrent_sessions) {
       // 最も古いセッションを無効化
       const { data: oldestSession } = await this.supabase
@@ -520,13 +574,11 @@ export class SessionManager {
     correlation_id?: string;
   }): Promise<void> {
     try {
-      await this.supabase
-        .from('security_events')
-        .insert({
-          ...event,
-          event_data: event.event_data || {},
-          created_at: new Date().toISOString(),
-        });
+      await this.supabase.from('security_events').insert({
+        ...event,
+        event_data: event.event_data || {},
+        created_at: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('セキュリティイベントログ記録エラー:', error);
       // ログ記録エラーでメイン処理を停止させない
@@ -543,7 +595,7 @@ export class SessionManager {
  */
 export function parseUserAgent(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase();
-  
+
   // デバイス判定
   let device: string = 'desktop';
   if (ua.includes('mobile') || ua.includes('android')) {
@@ -558,7 +610,8 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
   else if (ua.includes('mac')) os = 'macOS';
   else if (ua.includes('linux')) os = 'Linux';
   else if (ua.includes('android')) os = 'Android';
-  else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad')) os = 'iOS';
+  else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad'))
+    os = 'iOS';
 
   // ブラウザ判定
   let browser = 'unknown';
@@ -573,13 +626,19 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
 /**
  * IPアドレスから位置情報を取得（簡易版）
  */
-export async function getGeolocationFromIP(ipAddress: string): Promise<Geolocation | null> {
+export async function getGeolocationFromIP(
+  ipAddress: string
+): Promise<Geolocation | null> {
   // 実際の実装では、GeoIP APIサービスを使用
   // 現在は簡易的な実装
-  if (ipAddress.startsWith('192.168.') || ipAddress.startsWith('10.') || ipAddress === '127.0.0.1') {
+  if (
+    ipAddress.startsWith('192.168.') ||
+    ipAddress.startsWith('10.') ||
+    ipAddress === '127.0.0.1'
+  ) {
     return { country: 'JP', region: 'Local', city: 'Local' };
   }
-  
+
   // 本番環境では外部GeoIP APIを呼び出し
   return null;
 }

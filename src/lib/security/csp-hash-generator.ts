@@ -4,6 +4,7 @@
  */
 
 import crypto from 'crypto';
+import { logger } from '@/lib/logger';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -30,7 +31,10 @@ export class CSPHashGenerator {
   /**
    * 文字列のSHA256ハッシュ生成
    */
-  static generateHash(content: string, algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256'): string {
+  static generateHash(
+    content: string,
+    algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256'
+  ): string {
     const hash = crypto.createHash(algorithm);
     hash.update(content, 'utf8');
     return hash.digest('base64');
@@ -39,13 +43,16 @@ export class CSPHashGenerator {
   /**
    * ファイルからハッシュを生成
    */
-  async generateFileHash(filePath: string, algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256'): Promise<StylesheetHash> {
+  async generateFileHash(
+    filePath: string,
+    algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256'
+  ): Promise<StylesheetHash> {
     const cacheKey = `${filePath}:${algorithm}`;
-    
+
     // キャッシュされたハッシュをチェック
     if (this.cachedHashes.has(cacheKey)) {
       const cached = this.cachedHashes.get(cacheKey)!;
-      
+
       // ファイルの更新時間をチェック（開発時の自動更新用）
       if (process.env.NODE_ENV === 'development') {
         try {
@@ -69,7 +76,7 @@ export class CSPHashGenerator {
     try {
       const content = await fs.readFile(filePath, 'utf8');
       const hash = CSPHashGenerator.generateHash(content, algorithm);
-      
+
       const styleHash: StylesheetHash = {
         file: filePath,
         content,
@@ -83,9 +90,8 @@ export class CSPHashGenerator {
       }
 
       return styleHash;
-
     } catch (error) {
-      console.error(`Failed to generate hash for file ${filePath}:`, error);
+      logger.error(`Failed to generate hash for file ${filePath}:`, error);
       throw new Error(`Hash generation failed for ${filePath}`);
     }
   }
@@ -96,8 +102,8 @@ export class CSPHashGenerator {
   async generateTailwindHashes(): Promise<string[]> {
     const possiblePaths = [
       '.next/static/css', // Next.jsビルド出力
-      'public/css',       // 静的CSS
-      'src/styles',       // ソースCSS
+      'public/css', // 静的CSS
+      'src/styles', // ソースCSS
     ];
 
     const hashes: string[] = [];
@@ -106,7 +112,7 @@ export class CSPHashGenerator {
       try {
         const fullPath = path.resolve(basePath);
         const files = await fs.readdir(fullPath);
-        
+
         for (const file of files) {
           if (file.endsWith('.css')) {
             const filePath = path.join(fullPath, file);
@@ -128,7 +134,7 @@ export class CSPHashGenerator {
    */
   registerInlineStyle(content: string, context: string): string {
     const hash = CSPHashGenerator.generateHash(content);
-    
+
     // 既存のハッシュをチェック（重複防止）
     const existing = this.inlineStyleHashes.find(h => h.hash === hash);
     if (existing) {
@@ -159,13 +165,13 @@ export class CSPHashGenerator {
     const commonStyles = [
       // リセットCSS系
       '*,::before,::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}',
-      
+
       // フォント系
       'html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji"}',
-      
+
       // Next.js特有
       '__next{--color-scheme:normal;--background:0 0% 100%;--foreground:222.2 84% 4.9%}',
-      
+
       // シャドウ/UI系
       ':root{--background:0 0% 100%;--foreground:222.2 84% 4.9%;--card:0 0% 100%;--card-foreground:222.2 84% 4.9%;--popover:0 0% 100%}',
     ];
@@ -180,18 +186,18 @@ export class CSPHashGenerator {
    */
   async generateStyleSrcDirective(): Promise<string[]> {
     const directives = ["'self'"];
-    
+
     // 外部スタイルソース
     directives.push('https://fonts.googleapis.com');
-    
+
     // ビルド済みスタイルシートのハッシュ
     try {
       const tailwindHashes = await this.generateTailwindHashes();
       directives.push(...tailwindHashes);
     } catch (error) {
-      console.warn('Failed to generate Tailwind CSS hashes:', error);
+      logger.warn('Failed to generate Tailwind CSS hashes:', error);
     }
-    
+
     // インラインスタイルのハッシュ
     const inlineHashes = this.getInlineStyleHashes();
     directives.push(...inlineHashes);
@@ -207,27 +213,27 @@ export class CSPHashGenerator {
       return;
     }
 
-    console.log('🔧 CSP Hash Generator Test');
-    
+    logger.log('🔧 CSP Hash Generator Test');
+
     // 共通スタイルを事前登録
     await this.preregisterCommonStyles();
-    
+
     // テスト用インラインスタイル
     const testStyles = [
       'color: red;',
       'background-color: #f0f0f0; margin: 10px;',
       '.test { display: none; }',
     ];
-    
+
     for (const style of testStyles) {
       const hash = this.registerInlineStyle(style, 'test');
-      console.log(`Style: ${style.substring(0, 50)}... => sha256-${hash}`);
+      logger.log(`Style: ${style.substring(0, 50)}... => sha256-${hash}`);
     }
-    
+
     // スタイルディレクティブ生成
     const styleDirectives = await this.generateStyleSrcDirective();
-    console.log('Generated style-src directives:', styleDirectives.length);
-    console.log('Sample directives:', styleDirectives.slice(0, 5));
+    logger.log('Generated style-src directives:', styleDirectives.length);
+    logger.log('Sample directives:', styleDirectives.slice(0, 5));
   }
 
   /**
@@ -272,16 +278,16 @@ export async function generateBuildTimeHashes(): Promise<{
   scriptSrc: string[];
 }> {
   const generator = new CSPHashGenerator();
-  
+
   // 共通スタイルの事前登録
   await generator.preregisterCommonStyles();
-  
+
   // スタイルディレクティブ生成
   const styleSrc = await generator.generateStyleSrcDirective();
-  
+
   // 将来的にスクリプトハッシュも対応予定
   const scriptSrc = ["'self'"];
-  
+
   return {
     styleSrc,
     scriptSrc,

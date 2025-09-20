@@ -2,7 +2,12 @@
 // API Client Tests - APIクライアントのテスト
 // =================================================================
 
-import { ApiClient, isSuccessResponse, isErrorResponse, handleApiError } from '../../lib/api-client';
+import {
+  ApiClient,
+  isSuccessResponse,
+  isErrorResponse,
+  handleApiError,
+} from '../../lib/api-client';
 import { ApiResponse, ApiError } from '../../types/api';
 
 // Mock fetch for testing
@@ -25,22 +30,25 @@ describe('ApiClient', () => {
     it('should make successful GET request', async () => {
       const mockResponse = {
         success: true,
-        data: { id: '1', name: 'test' }
+        data: { id: '1', name: 'test' },
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(JSON.stringify(mockResponse))
+        text: () => Promise.resolve(JSON.stringify(mockResponse)),
       } as Response);
 
       const result = await apiClient.get('/api/test');
 
-      expect(mockFetch).toHaveBeenCalledWith('https://test.example.com/api/test', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: expect.any(AbortSignal)
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://test.example.com/api/test',
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          signal: expect.any(AbortSignal),
+        }
+      );
 
       expect(result).toEqual(mockResponse);
     });
@@ -51,10 +59,14 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(JSON.stringify(mockResponse))
+        text: () => Promise.resolve(JSON.stringify(mockResponse)),
       } as Response);
 
-      await apiClient.get('/api/test', { clinic_id: '123', limit: 10, active: true });
+      await apiClient.get('/api/test', {
+        clinic_id: '123',
+        limit: 10,
+        active: true,
+      });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://test.example.com/api/test?clinic_id=123&limit=10&active=true',
@@ -91,9 +103,9 @@ describe('ApiClient', () => {
       mockFetch.mockImplementationOnce(() => timeoutPromise as any);
 
       const resultPromise = apiClient.get('/api/test');
-      
+
       jest.advanceTimersByTime(31000); // Advance past timeout
-      
+
       const result = await resultPromise;
 
       expect(result.success).toBe(false);
@@ -111,17 +123,20 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 201,
-        text: () => Promise.resolve(JSON.stringify(mockResponse))
+        text: () => Promise.resolve(JSON.stringify(mockResponse)),
       } as Response);
 
       const result = await apiClient.post('/api/test', postData);
 
-      expect(mockFetch).toHaveBeenCalledWith('https://test.example.com/api/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(postData),
-        signal: expect.any(AbortSignal)
-      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://test.example.com/api/test',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(postData),
+          signal: expect.any(AbortSignal),
+        }
+      );
 
       expect(result).toEqual(mockResponse);
     });
@@ -132,14 +147,14 @@ describe('ApiClient', () => {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Validation failed',
-          details: { validationErrors: [] }
-        }
+          details: { validationErrors: [] },
+        },
       };
 
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
-        text: () => Promise.resolve(JSON.stringify(errorResponse))
+        text: () => Promise.resolve(JSON.stringify(errorResponse)),
       } as Response);
 
       const result = await apiClient.post('/api/test', {});
@@ -155,7 +170,7 @@ describe('ApiClient', () => {
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
-        text: () => Promise.resolve('')
+        text: () => Promise.resolve(''),
       } as Response);
 
       const result = await apiClient.get('/api/test');
@@ -169,7 +184,7 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: () => Promise.resolve('invalid json')
+        text: () => Promise.resolve('invalid json'),
       } as Response);
 
       const result = await apiClient.get('/api/test');
@@ -182,7 +197,7 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 204,
-        text: () => Promise.resolve('')
+        text: () => Promise.resolve(''),
       } as Response);
 
       const result = await apiClient.delete('/api/test/1');
@@ -196,7 +211,7 @@ describe('ApiClient', () => {
     it('should identify success response', () => {
       const successResponse: ApiResponse<string> = {
         success: true,
-        data: 'test data'
+        data: 'test data',
       };
 
       expect(isSuccessResponse(successResponse)).toBe(true);
@@ -214,8 +229,8 @@ describe('ApiClient', () => {
         error: {
           code: 'TEST_ERROR',
           message: 'Test error',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
 
       expect(isErrorResponse(errorResponse)).toBe(true);
@@ -233,7 +248,7 @@ describe('ApiClient', () => {
       const apiError: ApiError = {
         code: 'TEST_ERROR',
         message: 'Custom error message',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       const message = handleApiError(apiError);
@@ -244,7 +259,7 @@ describe('ApiClient', () => {
       const apiError: ApiError = {
         code: 'TEST_ERROR',
         message: '',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       const defaultMessage = 'Something went wrong';
@@ -258,8 +273,8 @@ describe('ApiClient', () => {
       const customClient = new ApiClient({
         baseUrl: 'https://custom.example.com',
         timeout: 60000,
-        headers: { 'Authorization': 'Bearer token' },
-        retryCount: 5
+        headers: { Authorization: 'Bearer token' },
+        retryCount: 5,
       });
 
       // Test that custom config is applied by checking internal state

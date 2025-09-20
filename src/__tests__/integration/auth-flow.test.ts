@@ -3,7 +3,14 @@
  * Server Actionsとセキュリティ強化機能を統合的にテスト
  */
 
-import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+  describe,
+  test,
+  expect,
+  jest,
+  beforeEach,
+  afterEach,
+} from '@jest/globals';
 
 // Mock Supabase client
 const mockSupabaseClient = {
@@ -59,12 +66,16 @@ describe('Authentication Integration Tests', () => {
       // Mock successful authentication
       mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
         error: null,
-        data: { user: { id: 'user-123', email: 'user@example.com' } }
+        data: { user: { id: 'user-123', email: 'user@example.com' } },
       });
 
-      mockSupabaseClient.from().select().eq().single.mockResolvedValue({
-        data: { role: 'staff', is_active: true }
-      });
+      mockSupabaseClient
+        .from()
+        .select()
+        .eq()
+        .single.mockResolvedValue({
+          data: { role: 'staff', is_active: true },
+        });
 
       const { login } = require('@/app/admin/actions');
 
@@ -73,7 +84,7 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', '  USER@EXAMPLE.COM  '); // Test trimming and lowercase
       formData.append('password', 'ValidPassword123!');
 
-      const result = await login(null, formData);
+      await login(null, formData);
 
       // Should redirect (throws redirect error in test environment)
       expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalledWith({
@@ -116,12 +127,16 @@ describe('Authentication Integration Tests', () => {
       // Mock successful auth but inactive user
       mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
         error: null,
-        data: { user: { id: 'user-123', email: 'user@example.com' } }
+        data: { user: { id: 'user-123', email: 'user@example.com' } },
       });
 
-      mockSupabaseClient.from().select().eq().single.mockResolvedValue({
-        data: { role: 'staff', is_active: false }
-      });
+      mockSupabaseClient
+        .from()
+        .select()
+        .eq()
+        .single.mockResolvedValue({
+          data: { role: 'staff', is_active: false },
+        });
 
       mockSupabaseClient.auth.signOut.mockResolvedValue({ error: null });
 
@@ -134,7 +149,9 @@ describe('Authentication Integration Tests', () => {
       const result = await login(null, formData);
 
       expect(result.success).toBe(false);
-      expect(result.errors._form).toContain('アカウントが無効化されています。管理者にお問い合わせください');
+      expect(result.errors._form).toContain(
+        'アカウントが無効化されています。管理者にお問い合わせください'
+      );
       expect(mockSupabaseClient.auth.signOut).toHaveBeenCalled();
     });
   });
@@ -143,7 +160,7 @@ describe('Authentication Integration Tests', () => {
     test('logs security events appropriately', async () => {
       mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
         error: { message: 'Invalid credentials' },
-        data: null
+        data: null,
       });
 
       const { login } = require('@/app/admin/actions');
@@ -159,7 +176,7 @@ describe('Authentication Integration Tests', () => {
         '[Security] Login attempt failed:',
         expect.objectContaining({
           email: 'user@example.com',
-          error: 'Invalid credentials'
+          error: 'Invalid credentials',
         })
       );
     });
@@ -188,13 +205,15 @@ describe('Authentication Integration Tests', () => {
       // This would require more complex mocking of Next.js Request/Response
       // For now, we test the URL validation logic directly
       const { getSafeRedirectUrl } = require('@/lib/url-validator');
-      
+
       const origin = 'http://localhost:3000';
-      
+
       // Safe redirects
       expect(getSafeRedirectUrl('/dashboard', origin)).toBeTruthy();
-      expect(getSafeRedirectUrl('http://localhost:3000/admin', origin)).toBeTruthy();
-      
+      expect(
+        getSafeRedirectUrl('http://localhost:3000/admin', origin)
+      ).toBeTruthy();
+
       // Unsafe redirects
       expect(getSafeRedirectUrl('http://evil.com', origin)).toBeNull();
       expect(getSafeRedirectUrl('//evil.com', origin)).toBeNull();
@@ -204,20 +223,24 @@ describe('Authentication Integration Tests', () => {
   describe('Client-Side Validation Integration', () => {
     test('password strength calculation works as expected', () => {
       const { getPasswordStrength } = require('@/lib/schemas/auth');
-      
+
       // Test various password strengths
       const testCases = [
         { password: 'weak', expectedScore: 1, shouldHaveFeedback: true },
         { password: 'Medium1', expectedScore: 3, shouldHaveFeedback: true },
         { password: 'Strong1!', expectedScore: 4, shouldHaveFeedback: false },
-        { password: 'VeryStrong123!', expectedScore: 4, shouldHaveFeedback: false },
+        {
+          password: 'VeryStrong123!',
+          expectedScore: 4,
+          shouldHaveFeedback: false,
+        },
       ];
 
       testCases.forEach(({ password, expectedScore, shouldHaveFeedback }) => {
         const result = getPasswordStrength(password);
         expect(result.score).toBeGreaterThanOrEqual(expectedScore - 1);
         expect(result.score).toBeLessThanOrEqual(expectedScore + 1);
-        
+
         if (shouldHaveFeedback) {
           expect(result.feedback.length).toBeGreaterThan(0);
         } else {

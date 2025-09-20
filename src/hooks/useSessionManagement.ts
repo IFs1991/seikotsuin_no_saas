@@ -8,7 +8,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { SessionManager, parseUserAgent, getGeolocationFromIP } from '@/lib/session-manager';
+import {
+  SessionManager,
+  parseUserAgent,
+  getGeolocationFromIP,
+} from '@/lib/session-manager';
 import { useSessionTimeout } from '@/lib/session-timeout';
 
 interface SessionManagementConfig {
@@ -26,12 +30,14 @@ interface SessionInfo {
   supabaseSession?: any;
 }
 
-export function useSessionManagement(config: SessionManagementConfig = {
-  enableCustomSession: true,
-  enableTimeout: true,
-  enableDeviceTracking: true,
-  timeoutMinutes: 30,
-}) {
+export function useSessionManagement(
+  config: SessionManagementConfig = {
+    enableCustomSession: true,
+    enableTimeout: true,
+    enableDeviceTracking: true,
+    timeoutMinutes: 30,
+  }
+) {
   const router = useRouter();
   const [sessionInfo, setSessionInfo] = useState<SessionInfo>({
     isAuthenticated: false,
@@ -67,7 +73,7 @@ export function useSessionManagement(config: SessionManagementConfig = {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id);
-      
+
       if (event === 'SIGNED_IN' && session) {
         await handleLogin(session);
       } else if (event === 'SIGNED_OUT') {
@@ -87,8 +93,11 @@ export function useSessionManagement(config: SessionManagementConfig = {
 
     try {
       // Supabaseセッションの確認
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
       if (error) {
         console.error('Session check error:', error);
         setError('セッションの確認に失敗しました');
@@ -100,7 +109,6 @@ export function useSessionManagement(config: SessionManagementConfig = {
       } else {
         setSessionInfo({ isAuthenticated: false });
       }
-
     } catch (err) {
       console.error('Session initialization error:', err);
       setError('セッションの初期化に失敗しました');
@@ -146,7 +154,6 @@ export function useSessionManagement(config: SessionManagementConfig = {
       if (config.enableTimeout) {
         sessionTimeout.manager.start();
       }
-
     } catch (err) {
       console.error('Login handling error:', err);
       setError(err instanceof Error ? err.message : 'ログイン処理エラー');
@@ -165,15 +172,18 @@ export function useSessionManagement(config: SessionManagementConfig = {
 
       // カスタムセッションの無効化
       if (sessionInfo.customSessionId) {
-        await sessionManager.revokeSession(sessionInfo.customSessionId, 'manual_logout');
+        await sessionManager.revokeSession(
+          sessionInfo.customSessionId,
+          'manual_logout'
+        );
       }
 
       // カスタムセッションクッキーのクリア
-      document.cookie = 'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie =
+        'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
 
       // セッション情報のリセット
       setSessionInfo({ isAuthenticated: false });
-
     } catch (err) {
       console.error('Logout handling error:', err);
     }
@@ -182,29 +192,35 @@ export function useSessionManagement(config: SessionManagementConfig = {
   /**
    * カスタムセッション作成
    */
-  const createCustomSession = async (userId: string, clinicId: string): Promise<string> => {
+  const createCustomSession = async (
+    userId: string,
+    clinicId: string
+  ): Promise<string> => {
     try {
       // デバイス情報の取得
       const userAgent = navigator.userAgent;
       const deviceInfo = parseUserAgent(userAgent);
-      
+
       // IP情報の取得（簡易版）
       const ipAddress = await getCurrentUserIP();
 
       // セッション作成
-      const { session, token } = await sessionManager.createSession(userId, clinicId, {
-        deviceInfo,
-        ipAddress,
-        userAgent,
-        rememberDevice: false, // 必要に応じて設定
-      });
+      const { session, token } = await sessionManager.createSession(
+        userId,
+        clinicId,
+        {
+          deviceInfo,
+          ipAddress,
+          userAgent,
+          rememberDevice: false, // 必要に応じて設定
+        }
+      );
 
       // セッショントークンをクッキーに保存
       const expires = new Date(session.expires_at);
       document.cookie = `session-token=${token}; expires=${expires.toUTCString()}; path=/; secure; samesite=strict`;
 
       return session.id;
-
     } catch (error) {
       console.error('Custom session creation error:', error);
       throw new Error('カスタムセッションの作成に失敗しました');
@@ -242,7 +258,6 @@ export function useSessionManagement(config: SessionManagementConfig = {
         // カスタムセッション延長のロジックを実装
         console.log('Extending custom session:', minutes);
       }
-
     } catch (err) {
       console.error('Session extension error:', err);
       setError('セッション延長に失敗しました');
@@ -266,15 +281,15 @@ export function useSessionManagement(config: SessionManagementConfig = {
     sessionInfo,
     isLoading,
     error,
-    
+
     // タイムアウト情報
     timeoutState: config.enableTimeout ? sessionTimeout.state : null,
-    
+
     // アクション
     logout,
     extendSession,
     refreshSession,
-    
+
     // ユーティリティ
     clearError: () => setError(null),
   };
@@ -316,7 +331,7 @@ export function useSessionProtection(requiredRole?: string) {
     sessionManagement.isLoading,
     sessionManagement.sessionInfo.isAuthenticated,
     requiredRole,
-    router
+    router,
   ]);
 
   return sessionManagement;

@@ -16,7 +16,7 @@ describe('usePatientAnalysis', () => {
       segmentData: expect.any(Object),
       reservations: expect.any(Array),
       satisfactionCorrelation: expect.any(Object),
-      followUpList: expect.any(Array)
+      followUpList: expect.any(Array),
     });
   });
 

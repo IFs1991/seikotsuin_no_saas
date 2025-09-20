@@ -1,11 +1,19 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Save, Plus, Edit, FileText, CreditCard, Building2, Settings } from 'lucide-react';
+import {
+  Save,
+  Plus,
+  Edit,
+  FileText,
+  CreditCard,
+  Building2,
+  Settings,
+} from 'lucide-react';
 
 interface InsuranceType {
   id: string;
@@ -33,7 +41,7 @@ export function InsuranceBillingSettings() {
       code: 'SHAKAI',
       isEnabled: true,
       coPaymentRate: 30,
-      maxAmount: undefined
+      maxAmount: undefined,
     },
     {
       id: '2',
@@ -41,7 +49,7 @@ export function InsuranceBillingSettings() {
       code: 'KOKUHO',
       isEnabled: true,
       coPaymentRate: 30,
-      maxAmount: undefined
+      maxAmount: undefined,
     },
     {
       id: '3',
@@ -49,7 +57,7 @@ export function InsuranceBillingSettings() {
       code: 'ROUSAI',
       isEnabled: true,
       coPaymentRate: 0,
-      maxAmount: undefined
+      maxAmount: undefined,
     },
     {
       id: '4',
@@ -57,7 +65,7 @@ export function InsuranceBillingSettings() {
       code: 'JIBAI',
       isEnabled: true,
       coPaymentRate: 0,
-      maxAmount: 120000
+      maxAmount: 120000,
     },
     {
       id: '5',
@@ -65,8 +73,8 @@ export function InsuranceBillingSettings() {
       code: 'KOUKI',
       isEnabled: true,
       coPaymentRate: 10,
-      maxAmount: undefined
-    }
+      maxAmount: undefined,
+    },
   ]);
 
   const [billingConfig, setBillingConfig] = useState<BillingConfig>({
@@ -75,7 +83,7 @@ export function InsuranceBillingSettings() {
     taxRate: 10,
     paymentMethods: ['cash', 'card', 'transfer', 'qr'],
     autoReceiptGeneration: true,
-    reminderDays: 7
+    reminderDays: 7,
   });
 
   const [clinicInfo, setClinicInfo] = useState({
@@ -84,7 +92,7 @@ export function InsuranceBillingSettings() {
     receiptPhone: '03-1234-5678',
     medicallicense: '東京都知事許可第12345号',
     directorName: '田中 太郎',
-    licenseNumber: '柔道整復師免許 第67890号'
+    licenseNumber: '柔道整復師免許 第67890号',
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -94,19 +102,29 @@ export function InsuranceBillingSettings() {
     cash: '現金',
     card: 'クレジットカード',
     transfer: '銀行振込',
-    qr: 'QRコード決済'
+    qr: 'QRコード決済',
   };
 
   const toggleInsuranceType = (id: string) => {
-    setInsuranceTypes(prev => prev.map(insurance =>
-      insurance.id === id ? { ...insurance, isEnabled: !insurance.isEnabled } : insurance
-    ));
+    setInsuranceTypes(prev =>
+      prev.map(insurance =>
+        insurance.id === id
+          ? { ...insurance, isEnabled: !insurance.isEnabled }
+          : insurance
+      )
+    );
   };
 
-  const updateInsuranceType = (id: string, field: keyof InsuranceType, value: any) => {
-    setInsuranceTypes(prev => prev.map(insurance =>
-      insurance.id === id ? { ...insurance, [field]: value } : insurance
-    ));
+  const updateInsuranceType = (
+    id: string,
+    field: keyof InsuranceType,
+    value: any
+  ) => {
+    setInsuranceTypes(prev =>
+      prev.map(insurance =>
+        insurance.id === id ? { ...insurance, [field]: value } : insurance
+      )
+    );
   };
 
   const togglePaymentMethod = (method: string) => {
@@ -114,7 +132,7 @@ export function InsuranceBillingSettings() {
       ...prev,
       paymentMethods: prev.paymentMethods.includes(method)
         ? prev.paymentMethods.filter(m => m !== method)
-        : [...prev.paymentMethods, method]
+        : [...prev.paymentMethods, method],
     }));
   };
 
@@ -134,60 +152,84 @@ export function InsuranceBillingSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {savedMessage && (
-        <div className={`p-4 rounded-md ${
-          savedMessage.includes('失敗') 
-            ? 'bg-red-50 border border-red-200 text-red-700'
-            : 'bg-green-50 border border-green-200 text-green-700'
-        }`}>
+        <div
+          className={`p-4 rounded-md ${
+            savedMessage.includes('失敗')
+              ? 'bg-red-50 border border-red-200 text-red-700'
+              : 'bg-green-50 border border-green-200 text-green-700'
+          }`}
+        >
           {savedMessage}
         </div>
       )}
 
       {/* 取扱保険種別 */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">取扱保険種別</h3>
-        
-        <div className="space-y-4">
-          {insuranceTypes.map((insurance) => (
-            <div key={insurance.id} className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3">
+      <Card className='p-6'>
+        <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+          取扱保険種別
+        </h3>
+
+        <div className='space-y-4'>
+          {insuranceTypes.map(insurance => (
+            <div key={insurance.id} className='p-4 bg-gray-50 rounded-lg'>
+              <div className='flex items-start justify-between mb-3'>
+                <div className='flex items-center space-x-3'>
                   <input
-                    type="checkbox"
+                    type='checkbox'
                     checked={insurance.isEnabled}
                     onChange={() => toggleInsuranceType(insurance.id)}
-                    className="rounded border-gray-300"
+                    className='rounded border-gray-300'
                   />
                   <div>
-                    <h4 className="font-medium text-gray-900">{insurance.name}</h4>
-                    <p className="text-sm text-gray-500">保険コード: {insurance.code}</p>
+                    <h4 className='font-medium text-gray-900'>
+                      {insurance.name}
+                    </h4>
+                    <p className='text-sm text-gray-500'>
+                      保険コード: {insurance.code}
+                    </p>
                   </div>
                 </div>
-                
+
                 {insurance.isEnabled && (
-                  <div className="flex items-center space-x-4">
+                  <div className='flex items-center space-x-4'>
                     <div>
-                      <Label className="block text-sm text-gray-700 mb-1">自己負担率（%）</Label>
+                      <Label className='block text-sm text-gray-700 mb-1'>
+                        自己負担率（%）
+                      </Label>
                       <Input
-                        type="number"
+                        type='number'
                         value={insurance.coPaymentRate}
-                        onChange={(e) => updateInsuranceType(insurance.id, 'coPaymentRate', parseInt(e.target.value))}
-                        className="w-20"
-                        min="0"
-                        max="100"
+                        onChange={e =>
+                          updateInsuranceType(
+                            insurance.id,
+                            'coPaymentRate',
+                            parseInt(e.target.value)
+                          )
+                        }
+                        className='w-20'
+                        min='0'
+                        max='100'
                       />
                     </div>
                     {insurance.maxAmount !== undefined && (
                       <div>
-                        <Label className="block text-sm text-gray-700 mb-1">上限額（円）</Label>
+                        <Label className='block text-sm text-gray-700 mb-1'>
+                          上限額（円）
+                        </Label>
                         <Input
-                          type="number"
+                          type='number'
                           value={insurance.maxAmount}
-                          onChange={(e) => updateInsuranceType(insurance.id, 'maxAmount', parseInt(e.target.value))}
-                          className="w-32"
-                          min="0"
+                          onChange={e =>
+                            updateInsuranceType(
+                              insurance.id,
+                              'maxAmount',
+                              parseInt(e.target.value)
+                            )
+                          }
+                          className='w-32'
+                          min='0'
                         />
                       </div>
                     )}
@@ -200,98 +242,165 @@ export function InsuranceBillingSettings() {
       </Card>
 
       {/* レセプト設定 */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">レセプト・領収書設定</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card className='p-6'>
+        <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+          レセプト・領収書設定
+        </h3>
+
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">院名（レセプト用）</Label>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              院名（レセプト用）
+            </Label>
             <Input
               value={clinicInfo.receiptClinicName}
-              onChange={(e) => setClinicInfo(prev => ({...prev, receiptClinicName: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  receiptClinicName: e.target.value,
+                }))
+              }
             />
           </div>
 
           <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">管理者名</Label>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              管理者名
+            </Label>
             <Input
               value={clinicInfo.directorName}
-              onChange={(e) => setClinicInfo(prev => ({...prev, directorName: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  directorName: e.target.value,
+                }))
+              }
             />
           </div>
 
-          <div className="md:col-span-2">
-            <Label className="block text-sm font-medium text-gray-700 mb-1">住所（レセプト用）</Label>
+          <div className='md:col-span-2'>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              住所（レセプト用）
+            </Label>
             <Input
               value={clinicInfo.receiptAddress}
-              onChange={(e) => setClinicInfo(prev => ({...prev, receiptAddress: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  receiptAddress: e.target.value,
+                }))
+              }
             />
           </div>
 
           <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">電話番号</Label>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              電話番号
+            </Label>
             <Input
               value={clinicInfo.receiptPhone}
-              onChange={(e) => setClinicInfo(prev => ({...prev, receiptPhone: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  receiptPhone: e.target.value,
+                }))
+              }
             />
           </div>
 
           <div>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">開設許可番号</Label>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              開設許可番号
+            </Label>
             <Input
               value={clinicInfo.medicallicense}
-              onChange={(e) => setClinicInfo(prev => ({...prev, medicallicense: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  medicallicense: e.target.value,
+                }))
+              }
             />
           </div>
 
-          <div className="md:col-span-2">
-            <Label className="block text-sm font-medium text-gray-700 mb-1">柔道整復師免許番号</Label>
+          <div className='md:col-span-2'>
+            <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              柔道整復師免許番号
+            </Label>
             <Input
               value={clinicInfo.licenseNumber}
-              onChange={(e) => setClinicInfo(prev => ({...prev, licenseNumber: e.target.value}))}
+              onChange={e =>
+                setClinicInfo(prev => ({
+                  ...prev,
+                  licenseNumber: e.target.value,
+                }))
+              }
             />
           </div>
         </div>
       </Card>
 
       {/* 請求・支払設定 */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">請求・支払設定</h3>
-        
-        <div className="space-y-6">
+      <Card className='p-6'>
+        <h3 className='text-lg font-semibold text-gray-900 mb-4'>
+          請求・支払設定
+        </h3>
+
+        <div className='space-y-6'>
           {/* 領収書設定 */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-              <FileText className="w-5 h-5 mr-2" />
+            <h4 className='font-medium text-gray-900 mb-3 flex items-center'>
+              <FileText className='w-5 h-5 mr-2' />
               領収書設定
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
-                <Label className="block text-sm text-gray-700 mb-1">領収書番号プレフィックス</Label>
+                <Label className='block text-sm text-gray-700 mb-1'>
+                  領収書番号プレフィックス
+                </Label>
                 <Input
                   value={billingConfig.receiptPrefix}
-                  onChange={(e) => setBillingConfig(prev => ({...prev, receiptPrefix: e.target.value}))}
-                  placeholder="RC"
+                  onChange={e =>
+                    setBillingConfig(prev => ({
+                      ...prev,
+                      receiptPrefix: e.target.value,
+                    }))
+                  }
+                  placeholder='RC'
                 />
               </div>
               <div>
-                <Label className="block text-sm text-gray-700 mb-1">開始番号</Label>
+                <Label className='block text-sm text-gray-700 mb-1'>
+                  開始番号
+                </Label>
                 <Input
-                  type="number"
+                  type='number'
                   value={billingConfig.receiptStartNumber}
-                  onChange={(e) => setBillingConfig(prev => ({...prev, receiptStartNumber: parseInt(e.target.value)}))}
-                  min="1"
+                  onChange={e =>
+                    setBillingConfig(prev => ({
+                      ...prev,
+                      receiptStartNumber: parseInt(e.target.value),
+                    }))
+                  }
+                  min='1'
                 />
               </div>
               <div>
-                <Label className="block text-sm text-gray-700 mb-1">消費税率（%）</Label>
+                <Label className='block text-sm text-gray-700 mb-1'>
+                  消費税率（%）
+                </Label>
                 <Input
-                  type="number"
+                  type='number'
                   value={billingConfig.taxRate}
-                  onChange={(e) => setBillingConfig(prev => ({...prev, taxRate: parseFloat(e.target.value)}))}
-                  min="0"
-                  max="100"
-                  step="0.1"
+                  onChange={e =>
+                    setBillingConfig(prev => ({
+                      ...prev,
+                      taxRate: parseFloat(e.target.value),
+                    }))
+                  }
+                  min='0'
+                  max='100'
+                  step='0.1'
                 />
               </div>
             </div>
@@ -299,20 +408,20 @@ export function InsuranceBillingSettings() {
 
           {/* 支払方法 */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-              <CreditCard className="w-5 h-5 mr-2" />
+            <h4 className='font-medium text-gray-900 mb-3 flex items-center'>
+              <CreditCard className='w-5 h-5 mr-2' />
               利用可能な支払方法
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
               {Object.entries(paymentMethodNames).map(([key, name]) => (
-                <label key={key} className="flex items-center space-x-2">
+                <label key={key} className='flex items-center space-x-2'>
                   <input
-                    type="checkbox"
+                    type='checkbox'
                     checked={billingConfig.paymentMethods.includes(key)}
                     onChange={() => togglePaymentMethod(key)}
-                    className="rounded border-gray-300"
+                    className='rounded border-gray-300'
                   />
-                  <span className="text-sm text-gray-700">{name}</span>
+                  <span className='text-sm text-gray-700'>{name}</span>
                 </label>
               ))}
             </div>
@@ -320,30 +429,44 @@ export function InsuranceBillingSettings() {
 
           {/* 自動処理設定 */}
           <div>
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-              <Settings className="w-5 h-5 mr-2" />
+            <h4 className='font-medium text-gray-900 mb-3 flex items-center'>
+              <Settings className='w-5 h-5 mr-2' />
               自動処理設定
             </h4>
-            <div className="space-y-4">
-              <label className="flex items-center space-x-2">
+            <div className='space-y-4'>
+              <label className='flex items-center space-x-2'>
                 <input
-                  type="checkbox"
+                  type='checkbox'
                   checked={billingConfig.autoReceiptGeneration}
-                  onChange={(e) => setBillingConfig(prev => ({...prev, autoReceiptGeneration: e.target.checked}))}
-                  className="rounded border-gray-300"
+                  onChange={e =>
+                    setBillingConfig(prev => ({
+                      ...prev,
+                      autoReceiptGeneration: e.target.checked,
+                    }))
+                  }
+                  className='rounded border-gray-300'
                 />
-                <span className="text-sm text-gray-700">レセプト自動生成を有効にする</span>
+                <span className='text-sm text-gray-700'>
+                  レセプト自動生成を有効にする
+                </span>
               </label>
-              
-              <div className="flex items-center space-x-4">
-                <Label className="text-sm text-gray-700">支払いリマインダー（日前）</Label>
+
+              <div className='flex items-center space-x-4'>
+                <Label className='text-sm text-gray-700'>
+                  支払いリマインダー（日前）
+                </Label>
                 <Input
-                  type="number"
+                  type='number'
                   value={billingConfig.reminderDays}
-                  onChange={(e) => setBillingConfig(prev => ({...prev, reminderDays: parseInt(e.target.value)}))}
-                  className="w-20"
-                  min="1"
-                  max="30"
+                  onChange={e =>
+                    setBillingConfig(prev => ({
+                      ...prev,
+                      reminderDays: parseInt(e.target.value),
+                    }))
+                  }
+                  className='w-20'
+                  min='1'
+                  max='30'
                 />
               </div>
             </div>
@@ -352,16 +475,14 @@ export function InsuranceBillingSettings() {
       </Card>
 
       {/* 保存ボタン */}
-      <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-        <Button variant="outline">
-          キャンセル
-        </Button>
-        <Button 
+      <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
+        <Button variant='outline'>キャンセル</Button>
+        <Button
           onClick={handleSave}
           disabled={isLoading}
-          className="flex items-center space-x-2"
+          className='flex items-center space-x-2'
         >
-          <Save className="w-4 h-4" />
+          <Save className='w-4 h-4' />
           <span>{isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>

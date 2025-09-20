@@ -3,7 +3,7 @@
  * Security Monitor の包括的テストスイート
  */
 
-import { SecurityMonitor, ThreatType, ThreatSeverity } from '@/lib/security-monitor';
+import { SecurityMonitor } from '@/lib/security-monitor';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase モック
@@ -31,7 +31,7 @@ describe('SecurityMonitor', () => {
   beforeEach(() => {
     securityMonitor = new SecurityMonitor();
     jest.clearAllMocks();
-    
+
     // デフォルトのモックレスポンス設定
     mockSupabase.single.mockResolvedValue({
       data: [],
@@ -68,8 +68,14 @@ describe('SecurityMonitor', () => {
       });
 
       // UAにデバイスブラウザ名を含め、誤検知を避ける
-      const benignContext = { ...mockContext, userAgent: mockContext.userAgent + ' Chrome' } as any;
-      const threats = await securityMonitor.analyzeSessionActivity(mockSession as any, benignContext);
+      const benignContext = {
+        ...mockContext,
+        userAgent: mockContext.userAgent + ' Chrome',
+      } as any;
+      const threats = await securityMonitor.analyzeSessionActivity(
+        mockSession as any,
+        benignContext
+      );
 
       expect(threats).toHaveLength(0);
     });
@@ -79,7 +85,7 @@ describe('SecurityMonitor', () => {
       const recentFailures = Array.from({ length: 5 }, (_, i) => ({
         event_type: 'login_failed',
         ip_address: mockContext.ipAddress,
-        created_at: new Date(Date.now() - (i * 60 * 1000)).toISOString(), // 1分間隔
+        created_at: new Date(Date.now() - i * 60 * 1000).toISOString(), // 1分間隔
       }));
 
       mockSupabase.single.mockResolvedValue({
@@ -87,12 +93,14 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      jest.spyOn(SecurityMonitor.prototype as any, 'detectBruteForce').mockResolvedValue({
-        isAnomalous: true,
-        confidence: 0.9,
-        reasons: ['連続失敗'],
-        recommendedActions: [],
-      });
+      jest
+        .spyOn(SecurityMonitor.prototype as any, 'detectBruteForce')
+        .mockResolvedValue({
+          isAnomalous: true,
+          confidence: 0.9,
+          reasons: ['連続失敗'],
+          recommendedActions: [],
+        });
 
       const threats = await securityMonitor.analyzeLoginAttempt({
         userId: mockSession.user_id,
@@ -145,7 +153,8 @@ describe('SecurityMonitor', () => {
     it('User-Agent変更によるセッション乗っ取りを検知する', async () => {
       const suspiciousContext = {
         ...mockContext,
-        userAgent: 'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36', // 全く違うUA
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 12; SM-G998B) AppleWebKit/537.36', // 全く違うUA
       };
 
       // 最近のセッション履歴（同じUser-Agent）
@@ -161,9 +170,14 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      const threats = await securityMonitor.analyzeSessionActivity(mockSession as any, suspiciousContext as any);
+      const threats = await securityMonitor.analyzeSessionActivity(
+        mockSession as any,
+        suspiciousContext as any
+      );
 
-      const hijackingThreat = threats.find(t => t.threatType === 'session_hijack');
+      const hijackingThreat = threats.find(
+        t => t.threatType === 'session_hijack'
+      );
       expect(hijackingThreat).toBeDefined();
     });
 
@@ -185,12 +199,14 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      jest.spyOn(SecurityMonitor.prototype as any, 'detectMultipleDeviceLogins').mockResolvedValue({
-        isAnomalous: true,
-        confidence: 0.8,
-        reasons: ['短時間に複数デバイス'],
-        recommendedActions: [],
-      });
+      jest
+        .spyOn(SecurityMonitor.prototype as any, 'detectMultipleDeviceLogins')
+        .mockResolvedValue({
+          isAnomalous: true,
+          confidence: 0.8,
+          reasons: ['短時間に複数デバイス'],
+          recommendedActions: [],
+        });
 
       const threats = await securityMonitor.analyzeLoginAttempt({
         userId: mockSession.user_id,
@@ -202,7 +218,9 @@ describe('SecurityMonitor', () => {
         clinicId: mockSession.clinic_id,
       });
 
-      const multiDeviceThreat = threats.find(t => t.threatType === 'multiple_devices');
+      const multiDeviceThreat = threats.find(
+        t => t.threatType === 'multiple_devices'
+      );
       expect(multiDeviceThreat).toBeDefined();
     });
   });
@@ -251,7 +269,7 @@ describe('SecurityMonitor', () => {
 
   describe('getThreatStatistics', () => {
     const mockClinicId = 'clinic-456';
-    const mockTimeRange = {
+    const _mockTimeRange = {
       from: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24時間前
       to: new Date(),
     };
@@ -275,7 +293,10 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      const statistics = await securityMonitor.getSecurityStatistics(mockClinicId, 1);
+      const statistics = await securityMonitor.getSecurityStatistics(
+        mockClinicId,
+        1
+      );
 
       expect(statistics).toHaveProperty('totalEvents');
       expect(statistics).toHaveProperty('eventsByType');
@@ -288,7 +309,10 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      const statistics = await securityMonitor.getSecurityStatistics(mockClinicId, 1);
+      const statistics = await securityMonitor.getSecurityStatistics(
+        mockClinicId,
+        1
+      );
 
       expect(statistics.totalEvents).toBe(0);
       expect(statistics.eventsByType).toEqual({});
@@ -300,18 +324,11 @@ describe('SecurityMonitor', () => {
 
   describe('alerting system', () => {
     it('高脅威レベルで適切なアラートを生成する', async () => {
-      const highThreatSession = {
-        id: 'session-123',
-        user_id: 'user-123',
-        clinic_id: 'clinic-456',
-        ip_address: '192.168.1.1',
-      };
-
       // 高脅威を引き起こすデータ
       const highThreatData = Array.from({ length: 6 }, (_, i) => ({
         event_type: 'login_failed',
         ip_address: '192.168.1.1',
-        created_at: new Date(Date.now() - (i * 60 * 1000)).toISOString(),
+        created_at: new Date(Date.now() - i * 60 * 1000).toISOString(),
       }));
 
       mockSupabase.single.mockResolvedValue({
@@ -319,28 +336,35 @@ describe('SecurityMonitor', () => {
         error: null,
       });
 
-      jest.spyOn(SecurityMonitor.prototype as any, 'detectBruteForce').mockResolvedValue({
-        isAnomalous: true,
-        confidence: 0.95,
-        reasons: ['多数の失敗'],
-        recommendedActions: [],
+      jest
+        .spyOn(SecurityMonitor.prototype as any, 'detectBruteForce')
+        .mockResolvedValue({
+          isAnomalous: true,
+          confidence: 0.95,
+          reasons: ['多数の失敗'],
+          recommendedActions: [],
+        });
+
+      const threats = await securityMonitor.analyzeLoginAttempt({
+        userId: 'user-123',
+        email: 'user@example.com',
+        ipAddress: '192.168.1.1',
+        userAgent: 'test',
+        success: false,
+        timestamp: new Date(),
+        clinicId: 'clinic-456',
       });
 
-      const threats = await securityMonitor.analyzeLoginAttempt(
-        { userId: 'user-123', email: 'user@example.com', ipAddress: '192.168.1.1', userAgent: 'test', success: false, timestamp: new Date(), clinicId: 'clinic-456' }
+      const highSeverityThreats = threats.filter(
+        t => t.severity === 'high' || t.severity === 'critical'
       );
-
-      const highSeverityThreats = threats.filter(t => t.severity === 'high' || t.severity === 'critical');
       expect(highSeverityThreats.length).toBeGreaterThan(0);
     });
   });
 });
 
 describe('脅威検知アルゴリズム', () => {
-  let securityMonitor: SecurityMonitor;
-
   beforeEach(() => {
-    securityMonitor = new SecurityMonitor();
     jest.clearAllMocks();
   });
 
@@ -366,7 +390,7 @@ describe('脅威検知アルゴリズム', () => {
   it('地理的異常の検出精度をテストする', async () => {
     const baseIP = '192.168.1.1'; // 日本のIP（仮定）
     const suspiciousIP = '203.0.113.1'; // 異なる地域のIP（仮定）
-    
+
     // 地理的距離の計算テスト（実装に応じて）
     // この部分は実際のgeolocation APIの実装に依存
     expect(baseIP).not.toBe(suspiciousIP);
@@ -388,7 +412,10 @@ describe('脅威検知アルゴリズム', () => {
     };
 
     // デバイス特徴の類似度計算
-    const similarity = calculateDeviceSimilarity(deviceFingerprint1, deviceFingerprint2);
+    const similarity = calculateDeviceSimilarity(
+      deviceFingerprint1,
+      deviceFingerprint2
+    );
     expect(similarity).toBeLessThan(0.5); // 異なるデバイス
   });
 });
@@ -397,12 +424,12 @@ describe('脅威検知アルゴリズム', () => {
 function calculateDeviceSimilarity(device1: any, device2: any): number {
   let matches = 0;
   const totalFields = Object.keys(device1).length;
-  
+
   for (const key in device1) {
     if (device1[key] === device2[key]) {
       matches++;
     }
   }
-  
+
   return matches / totalFields;
 }

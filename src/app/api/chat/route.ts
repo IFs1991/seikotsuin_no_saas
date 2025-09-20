@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let query = supabase
-      .from('chat_sessions')
-      .select(`
+    let query = supabase.from('chat_sessions').select(`
         *,
         chat_messages(*)
       `);
@@ -43,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: sessions
+      data: sessions,
     });
   } catch (error) {
     console.error('Chat GET error:', error);
@@ -75,7 +73,7 @@ export async function POST(request: NextRequest) {
         .insert({
           user_id,
           clinic_id,
-          is_admin_session: !clinic_id
+          is_admin_session: !clinic_id,
         })
         .select()
         .single();
@@ -93,7 +91,7 @@ export async function POST(request: NextRequest) {
       .insert({
         session_id: currentSessionId,
         sender: 'user',
-        message_text: message
+        message_text: message,
       })
       .select()
       .single();
@@ -114,7 +112,7 @@ export async function POST(request: NextRequest) {
 
       contextData = {
         recentRevenue: recentData || [],
-        clinicId: clinic_id
+        clinicId: clinic_id,
       };
     }
 
@@ -128,7 +126,7 @@ export async function POST(request: NextRequest) {
         session_id: currentSessionId,
         sender: 'ai',
         message_text: aiResponse.message,
-        response_data: aiResponse.data
+        response_data: aiResponse.data,
       })
       .select()
       .single();
@@ -142,8 +140,8 @@ export async function POST(request: NextRequest) {
       data: {
         session_id: currentSessionId,
         user_message: userMessage,
-        ai_message: aiMessage
-      }
+        ai_message: aiMessage,
+      },
     });
   } catch (error) {
     console.error('Chat POST error:', error);
@@ -160,49 +158,56 @@ async function generateAIResponse(message: string, contextData: any) {
 
   if (lowerMessage.includes('売上') || lowerMessage.includes('収益')) {
     const recentRevenue = contextData.recentRevenue || [];
-    const totalRevenue = recentRevenue.reduce((sum: number, item: any) => sum + (item.total_revenue || 0), 0);
-    
+    const totalRevenue = recentRevenue.reduce(
+      (sum: number, item: any) => sum + (item.total_revenue || 0),
+      0
+    );
+
     return {
       message: `最近7日間の売上状況をお答えします。総売上は${totalRevenue.toLocaleString()}円です。詳細な分析が必要でしたら、具体的にお聞かせください。`,
       data: {
         chart_data: recentRevenue,
-        analysis_type: 'revenue'
-      }
+        analysis_type: 'revenue',
+      },
     };
   }
 
   if (lowerMessage.includes('患者') || lowerMessage.includes('来院')) {
     return {
-      message: '患者動向について分析いたします。具体的にどの期間の患者データを確認されたいですか？新患数、リピート率、離脱リスクなど、詳細な項目もお聞かせください。',
+      message:
+        '患者動向について分析いたします。具体的にどの期間の患者データを確認されたいですか？新患数、リピート率、離脱リスクなど、詳細な項目もお聞かせください。',
       data: {
-        analysis_type: 'patients'
-      }
+        analysis_type: 'patients',
+      },
     };
   }
 
   if (lowerMessage.includes('スタッフ') || lowerMessage.includes('施術者')) {
     return {
-      message: 'スタッフのパフォーマンス分析をご提供します。収益貢献度、患者満足度、勤務実績など、どの観点から分析をご希望でしょうか？',
+      message:
+        'スタッフのパフォーマンス分析をご提供します。収益貢献度、患者満足度、勤務実績など、どの観点から分析をご希望でしょうか？',
       data: {
-        analysis_type: 'staff'
-      }
+        analysis_type: 'staff',
+      },
     };
   }
 
   if (lowerMessage.includes('アドバイス') || lowerMessage.includes('改善')) {
     return {
-      message: '経営改善のアドバイスをさせていただきます。現在のデータを基に、以下の点が改善ポイントとして考えられます：\n\n1. 新患獲得の強化\n2. リピート率の向上\n3. 自費診療メニューの充実\n\n具体的にどの分野のアドバイスをお求めでしょうか？',
+      message:
+        '経営改善のアドバイスをさせていただきます。現在のデータを基に、以下の点が改善ポイントとして考えられます：\n\n1. 新患獲得の強化\n2. リピート率の向上\n3. 自費診療メニューの充実\n\n具体的にどの分野のアドバイスをお求めでしょうか？',
       data: {
-        analysis_type: 'advice'
-      }
+        analysis_type: 'advice',
+      },
     };
   }
 
   // デフォルト応答
   return {
-    message: 'こんにちは！経営分析についてお手伝いします。売上分析、患者動向、スタッフ評価、経営アドバイスなど、どのような情報をお求めでしょうか？',
+    message:
+      'こんにちは！経営分析についてお手伝いします。売上分析、患者動向、スタッフ評価、経営アドバイスなど、どのような情報をお求めでしょうか？',
     data: {
-      analysis_type: 'general'
-    }
+      analysis_type: 'general',
+    },
   };
 }

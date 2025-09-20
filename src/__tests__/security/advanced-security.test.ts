@@ -40,7 +40,7 @@ describe('高度セキュリティ機能テスト', () => {
     securityMonitor = new SecurityMonitor();
     sessionManager = new SessionManager();
     multiDeviceManager = new MultiDeviceManager();
-    
+
     jest.clearAllMocks();
     mockSupabase.single.mockResolvedValue({
       data: null,
@@ -52,7 +52,7 @@ describe('高度セキュリティ機能テスト', () => {
     it('Defense-in-Depth アーキテクチャが正常に機能する（実装挙動に整合）', async () => {
       const testUser = 'security-test-user';
       const testClinic = 'security-test-clinic';
-      
+
       // Layer 1: URL バリデーション
       const maliciousUrls = [
         'http://evil.com/steal-data',
@@ -77,7 +77,7 @@ describe('高度セキュリティ機能テスト', () => {
 
       for (const token of invalidTokens) {
         if (token === null || token === undefined) continue;
-        
+
         const result = await sessionManager.validateSession(token);
         expect(result.isValid).toBe(false);
       }
@@ -99,15 +99,18 @@ describe('高度セキュリティ機能テスト', () => {
         data: Array.from({ length: 10 }, (_, i) => ({
           event_type: 'login_failed',
           ip_address: '203.0.113.1',
-          created_at: new Date(Date.now() - (i * 30 * 1000)).toISOString(),
+          created_at: new Date(Date.now() - i * 30 * 1000).toISOString(),
         })),
         error: null,
       });
 
-      const threats = await securityMonitor.analyzeSessionActivity(suspiciousActivity, {
-        ipAddress: '198.51.100.10', // 異なるIPで異常検知を誘発
-        userAgent: 'DifferentAgent/2.0', // UAも変更
-      });
+      const threats = await securityMonitor.analyzeSessionActivity(
+        suspiciousActivity,
+        {
+          ipAddress: '198.51.100.10', // 異なるIPで異常検知を誘発
+          userAgent: 'DifferentAgent/2.0', // UAも変更
+        }
+      );
 
       // セッション乗っ取りの疑いが検知される
       expect(Array.isArray(threats)).toBe(true);
@@ -143,11 +146,11 @@ describe('高度セキュリティ機能テスト', () => {
       const targetUser = 'brute-force-target';
 
       // 15分間で5回の失敗ログインを生成
-      const bruteForceEvents = Array.from({ length: 5 }, (_, i) => ({
+      const _bruteForceEvents = Array.from({ length: 5 }, (_, i) => ({
         event_type: 'login_failed',
         ip_address: attackerIP,
         user_id: targetUser,
-        created_at: new Date(Date.now() - (i * 2 * 60 * 1000)).toISOString(), // 2分間隔
+        created_at: new Date(Date.now() - i * 2 * 60 * 1000).toISOString(), // 2分間隔
         event_details: {
           reason: 'invalid_password',
           attempt_number: i + 1,
@@ -201,10 +204,13 @@ describe('高度セキュリティ機能テスト', () => {
         last_activity: new Date().toISOString(),
       };
 
-      const threats = await securityMonitor.analyzeSessionActivity(suspiciousSession, {
-        ipAddress: suspiciousIP,
-        userAgent: 'Mozilla/5.0 (compatible)',
-      });
+      const threats = await securityMonitor.analyzeSessionActivity(
+        suspiciousSession,
+        {
+          ipAddress: suspiciousIP,
+          userAgent: 'Mozilla/5.0 (compatible)',
+        }
+      );
 
       // 実装では session_hijack として検出される（IP/UA変化）
       const hijack = threats.find(t => t.threatType === 'session_hijack');
@@ -214,7 +220,7 @@ describe('高度セキュリティ機能テスト', () => {
 
     it('ユーザーエージェント変化の異常検知（実装に整合）', async () => {
       const userId = 'device-test-user';
-      
+
       // 通常使用デバイス
       const normalDevice = {
         browser: 'Chrome',
@@ -246,16 +252,21 @@ describe('高度セキュリティ機能テスト', () => {
         data: [
           {
             device_info: normalDevice,
-            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date(
+              Date.now() - 24 * 60 * 60 * 1000
+            ).toISOString(),
           },
         ],
         error: null,
       });
 
-      const threats = await securityMonitor.analyzeSessionActivity(mockSession, {
-        ipAddress: '192.168.1.100',
-        userAgent: 'Automated Tool/1.0',
-      });
+      const threats = await securityMonitor.analyzeSessionActivity(
+        mockSession,
+        {
+          ipAddress: '192.168.1.100',
+          userAgent: 'Automated Tool/1.0',
+        }
+      );
 
       // デバイス異常または自動化ツール検知
       const deviceThreat = threats.find(t => t.threatType === 'session_hijack');
@@ -282,26 +293,34 @@ describe('高度セキュリティ機能テスト', () => {
       ];
 
       // 最大セッション数の制限をテスト
-      const maxAllowedSessions = 2; // 設定値
+      const _maxAllowedSessions = 2; // 設定値
 
       // 既存セッションをモック
       mockSupabase.single
         .mockResolvedValueOnce({ data: null, error: null }) // 1台目
-        .mockResolvedValueOnce({ 
-          data: { id: 'existing-session-1' }, 
-          error: null 
+        .mockResolvedValueOnce({
+          data: { id: 'existing-session-1' },
+          error: null,
         }) // 2台目（既存1台あり）
-        .mockResolvedValueOnce({ 
-          data: { id: 'existing-session-2' }, 
-          error: null 
+        .mockResolvedValueOnce({
+          data: { id: 'existing-session-2' },
+          error: null,
         }); // 3台目（既存2台あり、制限超過）
 
-      const revokeSpy = jest.spyOn(sessionManager, 'revokeSession').mockResolvedValue(true);
+      const revokeSpy = jest
+        .spyOn(sessionManager, 'revokeSession')
+        .mockResolvedValue(true);
 
       // 1台目/2台目/3台目 いずれも成功し、3台目時に最古がrevokeされる想定
-      await expect(sessionManager.createSession(userId, 'test-clinic', devices[0])).resolves.not.toThrow();
-      await expect(sessionManager.createSession(userId, 'test-clinic', devices[1])).resolves.not.toThrow();
-      await expect(sessionManager.createSession(userId, 'test-clinic', devices[2])).resolves.not.toThrow();
+      await expect(
+        sessionManager.createSession(userId, 'test-clinic', devices[0])
+      ).resolves.not.toThrow();
+      await expect(
+        sessionManager.createSession(userId, 'test-clinic', devices[1])
+      ).resolves.not.toThrow();
+      await expect(
+        sessionManager.createSession(userId, 'test-clinic', devices[2])
+      ).resolves.not.toThrow();
 
       expect(revokeSpy).toHaveBeenCalled();
     });
@@ -321,12 +340,16 @@ describe('高度セキュリティ機能テスト', () => {
 
       // 信頼済みデバイス履歴
       mockSupabase.single.mockResolvedValue({
-        data: [{
-          device_fingerprint: JSON.stringify(trustedDevice),
-          is_trusted: true,
-          trust_score: 85,
-          last_used: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7日前
-        }],
+        data: [
+          {
+            device_fingerprint: JSON.stringify(trustedDevice),
+            is_trusted: true,
+            trust_score: 85,
+            last_used: new Date(
+              Date.now() - 7 * 24 * 60 * 60 * 1000
+            ).toISOString(), // 7日前
+          },
+        ],
         error: null,
       });
 
@@ -362,13 +385,15 @@ describe('高度セキュリティ機能テスト', () => {
           ...sessionData,
           idle_timeout_at: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
           max_idle_minutes: 30,
-          absolute_timeout_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          absolute_timeout_at: new Date(
+            Date.now() + 60 * 60 * 1000
+          ).toISOString(),
         },
         error: null,
       });
 
       const result = await sessionManager.validateSession('idle-test-token');
-      
+
       // アイドルタイムアウトにより無効になるべき
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('idle_timeout');
@@ -392,7 +417,7 @@ describe('高度セキュリティ機能テスト', () => {
       });
 
       const result = await sessionManager.validateSession('expired-test-token');
-      
+
       // 絶対タイムアウトにより無効になるべき
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('session_expired');
@@ -411,13 +436,16 @@ describe('高度セキュリティ機能テスト', () => {
           user_id: `user-${setting.role}`,
           role: setting.role,
           created_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + setting.expectedMinutes * 60 * 1000).toISOString(),
+          expires_at: new Date(
+            Date.now() + setting.expectedMinutes * 60 * 1000
+          ).toISOString(),
         };
 
         // 権限別のタイムアウト設定が適用されているかテスト
         const timeoutMinutes = Math.floor(
-          (new Date(sessionData.expires_at).getTime() - new Date(sessionData.created_at).getTime()) 
-          / (60 * 1000)
+          (new Date(sessionData.expires_at).getTime() -
+            new Date(sessionData.created_at).getTime()) /
+            (60 * 1000)
         );
 
         expect(timeoutMinutes).toBe(setting.expectedMinutes);
@@ -502,7 +530,10 @@ describe('高度セキュリティ機能テスト', () => {
         error: null,
       });
 
-      const statistics = await securityMonitor.getSecurityStatistics('test-clinic', 1);
+      const statistics = await securityMonitor.getSecurityStatistics(
+        'test-clinic',
+        1
+      );
 
       expect(statistics).toHaveProperty('totalEvents');
       expect(statistics).toHaveProperty('eventsByType');
@@ -516,12 +547,15 @@ describe('高度セキュリティ機能テスト', () => {
       const performanceThreshold = 50; // ms
 
       // 大量データのモック
-      const mockSessions = Array.from({ length: largeSessionCount }, (_, i) => ({
-        id: `perf-session-${i}`,
-        user_id: `user-${i % 100}`, // 100ユーザーで分散
-        is_active: true,
-        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      }));
+      const mockSessions = Array.from(
+        { length: largeSessionCount },
+        (_, i) => ({
+          id: `perf-session-${i}`,
+          user_id: `user-${i % 100}`, // 100ユーザーで分散
+          is_active: true,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        })
+      );
 
       mockSupabase.single.mockResolvedValue({
         data: mockSessions[0], // 代表的なセッション
@@ -529,7 +563,7 @@ describe('高度セキュリティ機能テスト', () => {
       });
 
       const startTime = performance.now();
-      
+
       // バッチセッション検証のテスト
       const validationPromises = Array.from({ length: 100 }, (_, i) =>
         sessionManager.validateSession(`perf-token-${i}`)
@@ -579,7 +613,9 @@ describe('高度セキュリティ機能テスト', () => {
   describe('エラーハンドリング・回復性', () => {
     it('部分的システム障害時の適切な対応', async () => {
       // データベース接続エラーのシミュレート
-      mockSupabase.single.mockRejectedValueOnce(new Error('Database connection failed'));
+      mockSupabase.single.mockRejectedValueOnce(
+        new Error('Database connection failed')
+      );
 
       // セキュリティシステムは適切にエラーハンドリングする
       await expect(async () => {
@@ -594,7 +630,8 @@ describe('高度セキュリティ機能テスト', () => {
 
     it('セキュリティサービス障害時のフォールバック', async () => {
       // セキュリティモニター障害のシミュレート
-      jest.spyOn(securityMonitor, 'analyzeSessionActivity')
+      jest
+        .spyOn(securityMonitor, 'analyzeSessionActivity')
         .mockRejectedValue(new Error('Security service unavailable'));
 
       const mockSession = {

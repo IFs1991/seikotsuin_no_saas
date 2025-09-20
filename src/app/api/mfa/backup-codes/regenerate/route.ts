@@ -20,30 +20,35 @@ export async function POST(request: NextRequest) {
     const { userId, adminUserId } = RegenerateBackupCodesSchema.parse(body);
 
     // バックアップコード再生成
-    const newBackupCodes = await backupCodeManager.regenerateBackupCodes(userId, adminUserId);
+    const newBackupCodes = await backupCodeManager.regenerateBackupCodes(
+      userId,
+      adminUserId
+    );
 
     return NextResponse.json({
       success: true,
       backupCodes: newBackupCodes,
       count: newBackupCodes.length,
     });
-
   } catch (error) {
     console.error('バックアップコード再生成エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'バックアップコード再生成に失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'バックアップコード再生成に失敗しました',
       },
       { status: 500 }
     );

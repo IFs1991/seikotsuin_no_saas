@@ -4,15 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
-  DialogFooter 
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,7 +32,7 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
   loading,
   onSubmit,
   onClose,
-  onFieldChange
+  onFieldChange,
 }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -54,7 +54,9 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
         label: columnConfig.label || key,
         required: columnConfig.required || false,
         readonly: columnConfig.readonly || false,
-        value: formData[key] || getDefaultValue(columnConfig.type, columnConfig.default),
+        value:
+          formData[key] ||
+          getDefaultValue(columnConfig.type, columnConfig.default),
         maxLength: columnConfig.maxLength,
         min: columnConfig.min,
         max: columnConfig.max,
@@ -64,7 +66,7 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
   // デフォルト値の取得
   function getDefaultValue(type: string, defaultValue?: any) {
     if (defaultValue !== undefined) return defaultValue;
-    
+
     switch (type) {
       case 'boolean':
         return false;
@@ -107,7 +109,8 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
         }
         break;
       case 'uuid':
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         if (typeof value === 'string' && value && !uuidRegex.test(value)) {
           return `${field.label}は正しいUUID形式で入力してください`;
         }
@@ -133,7 +136,7 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
   // フィールド値変更処理
   const handleFieldChange = (name: string, value: any) => {
     onFieldChange(name, value);
-    
+
     // エラーをクリア
     if (errors[name]) {
       setErrors(prev => {
@@ -172,13 +175,15 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
 
     if (readonly && mode === 'edit') {
       return (
-        <div key={name} className="space-y-2">
-          <Label htmlFor={name}>{label} {required && <span className="text-red-500">*</span>}</Label>
+        <div key={name} className='space-y-2'>
+          <Label htmlFor={name}>
+            {label} {required && <span className='text-red-500'>*</span>}
+          </Label>
           <Input
             id={name}
             value={String(value || '')}
             readOnly
-            className="bg-muted"
+            className='bg-muted'
           />
         </div>
       );
@@ -187,44 +192,53 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
     switch (type) {
       case 'boolean':
         return (
-          <div key={name} className="flex items-center space-x-2">
+          <div key={name} className='flex items-center space-x-2'>
             <Switch
               id={name}
               checked={Boolean(value)}
-              onCheckedChange={(checked) => handleFieldChange(name, checked)}
+              onCheckedChange={checked => handleFieldChange(name, checked)}
               disabled={readonly}
             />
-            <Label htmlFor={name}>{label} {required && <span className="text-red-500">*</span>}</Label>
+            <Label htmlFor={name}>
+              {label} {required && <span className='text-red-500'>*</span>}
+            </Label>
           </div>
         );
 
       case 'text':
         return (
-          <div key={name} className="space-y-2">
-            <Label htmlFor={name}>{label} {required && <span className="text-red-500">*</span>}</Label>
+          <div key={name} className='space-y-2'>
+            <Label htmlFor={name}>
+              {label} {required && <span className='text-red-500'>*</span>}
+            </Label>
             <Textarea
               id={name}
               value={String(value || '')}
-              onChange={(e) => handleFieldChange(name, e.target.value)}
+              onChange={e => handleFieldChange(name, e.target.value)}
               maxLength={field.maxLength}
               disabled={readonly}
               className={error ? 'border-red-500' : ''}
             />
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className='text-sm text-red-500'>{error}</p>}
           </div>
         );
 
       case 'integer':
       case 'decimal':
         return (
-          <div key={name} className="space-y-2">
-            <Label htmlFor={name}>{label} {required && <span className="text-red-500">*</span>}</Label>
+          <div key={name} className='space-y-2'>
+            <Label htmlFor={name}>
+              {label} {required && <span className='text-red-500'>*</span>}
+            </Label>
             <Input
               id={name}
-              type="number"
+              type='number'
               value={String(value || '')}
-              onChange={(e) => {
-                const val = type === 'integer' ? parseInt(e.target.value) || 0 : parseFloat(e.target.value) || 0;
+              onChange={e => {
+                const val =
+                  type === 'integer'
+                    ? parseInt(e.target.value) || 0
+                    : parseFloat(e.target.value) || 0;
                 handleFieldChange(name, val);
               }}
               min={field.min}
@@ -233,24 +247,26 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
               disabled={readonly}
               className={error ? 'border-red-500' : ''}
             />
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className='text-sm text-red-500'>{error}</p>}
           </div>
         );
 
       default:
         return (
-          <div key={name} className="space-y-2">
-            <Label htmlFor={name}>{label} {required && <span className="text-red-500">*</span>}</Label>
+          <div key={name} className='space-y-2'>
+            <Label htmlFor={name}>
+              {label} {required && <span className='text-red-500'>*</span>}
+            </Label>
             <Input
               id={name}
               type={type === 'timestamp' ? 'datetime-local' : 'text'}
               value={String(value || '')}
-              onChange={(e) => handleFieldChange(name, e.target.value)}
+              onChange={e => handleFieldChange(name, e.target.value)}
               maxLength={field.maxLength}
               disabled={readonly}
               className={error ? 'border-red-500' : ''}
             />
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className='text-sm text-red-500'>{error}</p>}
           </div>
         );
     }
@@ -265,30 +281,27 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className='max-w-2xl max-h-[80vh] overflow-y-auto'>
         <DialogHeader>
           <DialogTitle>
             {mode === 'create' ? '新規作成' : '編集'} - {config?.name}
           </DialogTitle>
           <DialogDescription>
-            {mode === 'create' 
+            {mode === 'create'
               ? '新しいレコードを作成します。必須項目は必ず入力してください。'
-              : '選択したレコードを編集します。変更したい項目を修正してください。'
-            }
+              : '選択したレコードを編集します。変更したい項目を修正してください。'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          {formFields.map(renderField)}
-        </div>
+        <div className='grid gap-4 py-4'>{formFields.map(renderField)}</div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            <X className="h-4 w-4 mr-2" />
+          <Button variant='outline' onClick={onClose} disabled={loading}>
+            <X className='h-4 w-4 mr-2' />
             キャンセル
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className='h-4 w-4 mr-2' />
             {loading ? '保存中...' : '保存'}
           </Button>
         </DialogFooter>

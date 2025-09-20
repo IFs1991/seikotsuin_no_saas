@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import DOMPurify from 'isomorphic-dompurify';
 import type { Database } from '@/types/supabase';
+import { logger } from '@/lib/logger';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -39,7 +40,9 @@ export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
  * 管理者認証・認可チェック
  * admin または clinic_manager ロールを持つユーザーのみ許可
  */
-export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult> {
+export async function verifyAdminAuth(
+  request: NextRequest
+): Promise<AuthResult> {
   try {
     // Cookieからセッション情報を取得
     const supabase = createServerClient<Database>(
@@ -60,12 +63,15 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
     );
 
     // ユーザー認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
     if (authError || !user) {
       return {
         success: false,
-        error: '認証が必要です'
+        error: '認証が必要です',
       };
     }
 
@@ -79,7 +85,7 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
     if (profileError || !profile) {
       return {
         success: false,
-        error: 'ユーザープロファイルが見つかりません'
+        error: 'ユーザープロファイルが見つかりません',
       };
     }
 
@@ -87,7 +93,7 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
     if (!['admin', 'clinic_manager'].includes(profile.role)) {
       return {
         success: false,
-        error: '管理者権限が必要です'
+        error: '管理者権限が必要です',
       };
     }
 
@@ -96,15 +102,14 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
       user: {
         id: user.id,
         email: user.email || '',
-        role: profile.role
-      }
+        role: profile.role,
+      },
     };
-
   } catch (error) {
-    console.error('認証エラー:', error);
+    logger.error('認証エラー:', error);
     return {
       success: false,
-      error: '認証処理中にエラーが発生しました'
+      error: '認証処理中にエラーが発生しました',
     };
   }
 }
@@ -117,11 +122,11 @@ export function sanitizeInput(value: unknown): unknown {
   if (typeof value === 'string') {
     return DOMPurify.sanitize(value);
   }
-  
+
   if (Array.isArray(value)) {
     return value.map(sanitizeInput);
   }
-  
+
   if (value && typeof value === 'object') {
     const sanitized: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
@@ -129,7 +134,7 @@ export function sanitizeInput(value: unknown): unknown {
     }
     return sanitized;
   }
-  
+
   return value;
 }
 
@@ -144,12 +149,12 @@ export function createErrorResponse(
 ): NextResponse<ApiErrorResponse> {
   const response: ApiErrorResponse = {
     success: false,
-    error
+    error,
   };
-  
+
   if (details !== undefined) response.details = details;
   if (code !== undefined) response.code = code;
-  
+
   return NextResponse.json(response, { status });
 }
 
@@ -163,11 +168,11 @@ export function createSuccessResponse<T>(
 ): NextResponse<ApiSuccessResponse<T>> {
   const response: ApiSuccessResponse<T> = {
     success: true,
-    data
+    data,
   };
-  
+
   if (message !== undefined) response.message = message;
-  
+
   return NextResponse.json(response, { status });
 }
 
@@ -186,11 +191,11 @@ export async function processApiRequest(
 }> {
   // 認証チェック
   const authResult = await verifyAdminAuth(request);
-  
+
   if (!authResult.success) {
     return {
       success: false,
-      error: createErrorResponse(authResult.error!, 401)
+      error: createErrorResponse(authResult.error!, 401),
     };
   }
 
@@ -203,7 +208,7 @@ export async function processApiRequest(
     } catch (error) {
       return {
         success: false,
-        error: createErrorResponse('無効なJSONデータです', 400)
+        error: createErrorResponse('無効なJSONデータです', 400),
       };
     }
   }
@@ -211,7 +216,7 @@ export async function processApiRequest(
   return {
     success: true,
     auth: authResult.user,
-    body
+    body,
   };
 }
 
@@ -234,17 +239,18 @@ export function logError(
     userId: context.userId,
     method: context.method,
     params: context.params,
-    error: error instanceof Error 
-      ? { name: error.name, message: error.message, stack: error.stack }
-      : error
+    error:
+      error instanceof Error
+        ? { name: error.name, message: error.message, stack: error.stack }
+        : error,
   };
 
   // 本番環境では構造化ログを外部サービスに送信
   if (process.env.NODE_ENV === 'production') {
     // TODO: Datadog, Sentry等の外部サービスへの送信
-    console.error(JSON.stringify(logData));
+    logger.error(JSON.stringify(logData));
   } else {
-    console.error('API Error:', logData);
+    logger.error('API Error:', logData);
   }
 }
 
@@ -286,13 +292,16 @@ export function createAuditLog(context: {
     user_id: context.userId,
     user_email: context.userEmail,
     resource_type: context.resource,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
   };
-  
-  if (context.resourceId !== undefined) auditLog.resource_id = context.resourceId;
-  if (context.beforeValue !== undefined) auditLog.before_value = context.beforeValue as object;
-  if (context.afterValue !== undefined) auditLog.after_value = context.afterValue as object;
+
+  if (context.resourceId !== undefined)
+    auditLog.resource_id = context.resourceId;
+  if (context.beforeValue !== undefined)
+    auditLog.before_value = context.beforeValue as object;
+  if (context.afterValue !== undefined)
+    auditLog.after_value = context.afterValue as object;
   if (context.ipAddress !== undefined) auditLog.ip_address = context.ipAddress;
-  
+
   return auditLog;
 }

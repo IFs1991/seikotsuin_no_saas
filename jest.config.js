@@ -25,10 +25,7 @@ const customJestConfig = {
   },
 
   // テストファイルのパターン
-  testMatch: [
-    '**/__tests__/**/*.(ts|tsx|js)',
-    '**/*.(test|spec).(ts|tsx|js)',
-  ],
+  testMatch: ['**/__tests__/**/*.(ts|tsx|js)', '**/*.(test|spec).(ts|tsx|js)'],
 
   // 除外するファイル
   testPathIgnorePatterns: [
@@ -66,7 +63,7 @@ const customJestConfig = {
 
   // テスト結果の表示設定
   verbose: true,
-  
+
   // モック設定
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 

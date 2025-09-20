@@ -9,17 +9,17 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Smartphone, 
-  Monitor, 
-  Tablet, 
-  MapPin, 
-  Clock, 
+import {
+  Smartphone,
+  Monitor,
+  Tablet,
+  MapPin,
+  Clock,
   CheckCircle,
   AlertTriangle,
   Shield,
   X,
-  MoreVertical
+  MoreVertical,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -39,11 +39,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-import type { DeviceSession, DeviceManagementAction } from '@/lib/multi-device-manager';
+import type {
+  DeviceSession,
+  DeviceManagementAction,
+} from '@/lib/multi-device-manager';
 
 interface DeviceCardProps {
   device: DeviceSession;
-  onAction: (action: DeviceManagementAction) => Promise<{ success: boolean; message: string }>;
+  onAction: (
+    action: DeviceManagementAction
+  ) => Promise<{ success: boolean; message: string }>;
 }
 
 export function DeviceCard({ device, onAction }: DeviceCardProps) {
@@ -54,11 +59,11 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
   const getDeviceIcon = () => {
     switch (device.deviceInfo.device?.toLowerCase()) {
       case 'mobile':
-        return <Smartphone className="h-5 w-5 text-blue-600" />;
+        return <Smartphone className='h-5 w-5 text-blue-600' />;
       case 'tablet':
-        return <Tablet className="h-5 w-5 text-purple-600" />;
+        return <Tablet className='h-5 w-5 text-purple-600' />;
       default:
-        return <Monitor className="h-5 w-5 text-green-600" />;
+        return <Monitor className='h-5 w-5 text-green-600' />;
     }
   };
 
@@ -128,59 +133,62 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
 
   return (
     <>
-      <Card className={`transition-all duration-200 ${
-        device.isCurrentDevice 
-          ? 'ring-2 ring-blue-500 ring-opacity-50 bg-blue-50/30' 
-          : 'hover:shadow-md'
-      }`}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3">
+      <Card
+        className={`transition-all duration-200 ${
+          device.isCurrentDevice
+            ? 'ring-2 ring-blue-500 ring-opacity-50 bg-blue-50/30'
+            : 'hover:shadow-md'
+        }`}
+      >
+        <CardContent className='p-4'>
+          <div className='flex items-start justify-between'>
+            <div className='flex items-start space-x-3'>
               {/* デバイスアイコン */}
-              <div className="flex-shrink-0 p-2 bg-gray-100 rounded-lg">
+              <div className='flex-shrink-0 p-2 bg-gray-100 rounded-lg'>
                 {getDeviceIcon()}
               </div>
 
               {/* デバイス情報 */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h4 className="font-medium text-gray-900 truncate">
+              <div className='flex-1 min-w-0'>
+                <div className='flex items-center space-x-2 mb-2'>
+                  <h4 className='font-medium text-gray-900 truncate'>
                     {getDeviceName()}
                   </h4>
                   {device.isCurrentDevice && (
-                    <Badge variant="default" className="text-xs">
+                    <Badge variant='default' className='text-xs'>
                       現在のデバイス
                     </Badge>
                   )}
                   {device.isTrusted && (
-                    <Badge variant="outline" className="text-xs text-green-600">
-                      <Shield className="h-3 w-3 mr-1" />
+                    <Badge variant='outline' className='text-xs text-green-600'>
+                      <Shield className='h-3 w-3 mr-1' />
                       信頼済み
                     </Badge>
                   )}
                 </div>
 
                 {/* 接続情報 */}
-                <div className="space-y-1 text-sm text-gray-600">
+                <div className='space-y-1 text-sm text-gray-600'>
                   {device.ipAddress && (
-                    <div className="flex items-center space-x-1">
-                      <MapPin className="h-3 w-3" />
+                    <div className='flex items-center space-x-1'>
+                      <MapPin className='h-3 w-3' />
                       <span>IP: {device.ipAddress}</span>
                       {device.location && (
-                        <span className="text-gray-500">
+                        <span className='text-gray-500'>
                           ({device.location.country}, {device.location.region})
                         </span>
                       )}
                     </div>
                   )}
-                  
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
+
+                  <div className='flex items-center space-x-1'>
+                    <Clock className='h-3 w-3' />
                     <span>最終アクティビティ: {getLastActivityText()}</span>
                   </div>
-                  
-                  <div className="text-xs text-gray-500">
-                    セッション開始: {device.createdAt.toLocaleDateString()} {device.createdAt.toLocaleTimeString()}
+
+                  <div className='text-xs text-gray-500'>
+                    セッション開始: {device.createdAt.toLocaleDateString()}{' '}
+                    {device.createdAt.toLocaleTimeString()}
                   </div>
                 </div>
               </div>
@@ -189,41 +197,41 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
             {/* アクションメニュー */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-8 w-8 p-0"
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-8 w-8 p-0'
                   disabled={isLoading}
                 >
-                  <MoreVertical className="h-4 w-4" />
+                  <MoreVertical className='h-4 w-4' />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align='end'>
                 {!device.isCurrentDevice && (
                   <>
                     <DropdownMenuItem
                       onClick={() => setShowRevokeDialog(true)}
-                      className="text-red-600 focus:text-red-600"
+                      className='text-red-600 focus:text-red-600'
                     >
-                      <X className="h-4 w-4 mr-2" />
+                      <X className='h-4 w-4 mr-2' />
                       セッションを終了
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
-                
+
                 {!device.isTrusted && (
                   <DropdownMenuItem onClick={handleTrustDevice}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
+                    <CheckCircle className='h-4 w-4 mr-2' />
                     デバイスを信頼
                   </DropdownMenuItem>
                 )}
-                
-                <DropdownMenuItem 
+
+                <DropdownMenuItem
                   onClick={handleBlockDevice}
-                  className="text-orange-600 focus:text-orange-600"
+                  className='text-orange-600 focus:text-orange-600'
                 >
-                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  <AlertTriangle className='h-4 w-4 mr-2' />
                   デバイスをブロック
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -232,10 +240,10 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
 
           {/* セキュリティ警告 */}
           {!device.isTrusted && (
-            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-yellow-800">
+            <div className='mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg'>
+              <div className='flex items-center space-x-2'>
+                <AlertTriangle className='h-4 w-4 text-yellow-600' />
+                <span className='text-sm text-yellow-800'>
                   このデバイスは信頼済みリストに登録されていません
                 </span>
               </div>
@@ -265,7 +273,7 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
             <AlertDialogCancel>キャンセル</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRevokeSession}
-              className="bg-red-600 hover:bg-red-700"
+              className='bg-red-600 hover:bg-red-700'
             >
               セッションを終了
             </AlertDialogAction>

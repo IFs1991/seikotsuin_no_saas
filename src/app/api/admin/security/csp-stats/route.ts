@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
-    
+
     // 過去24時間の統計を取得
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
@@ -19,34 +19,34 @@ export async function GET(request: NextRequest) {
       totalViolationsResult,
       criticalViolationsResult,
       uniqueClientsResult,
-      topDirectivesResult
+      topDirectivesResult,
     ] = await Promise.all([
       // 総違反数
       supabase
         .from('csp_violations')
         .select('id', { count: 'exact' })
         .gte('created_at', twentyFourHoursAgo.toISOString()),
-      
+
       // 重大違反数（critical + high）
       supabase
         .from('csp_violations')
         .select('id', { count: 'exact' })
         .gte('created_at', twentyFourHoursAgo.toISOString())
         .in('severity', ['critical', 'high']),
-      
+
       // ユニーククライアント数
       supabase
         .from('csp_violations')
         .select('client_ip')
         .gte('created_at', twentyFourHoursAgo.toISOString()),
-      
+
       // よく違反されるディレクティブ
       supabase
         .from('csp_violations')
         .select('violated_directive')
         .gte('created_at', twentyFourHoursAgo.toISOString())
         .order('created_at', { ascending: false })
-        .limit(1000)
+        .limit(1000),
     ]);
 
     // エラーチェック
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     });
 
     const topDirectives = Object.entries(directiveCount)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([directive, count]) => ({ directive, count }));
 
@@ -87,18 +87,17 @@ export async function GET(request: NextRequest) {
       top_directives: topDirectives,
       recent_threats: recentThreatsResult.data || [],
       generated_at: new Date().toISOString(),
-      period: '24h'
+      period: '24h',
     };
 
     return NextResponse.json(stats);
-
   } catch (error) {
     console.error('CSP統計取得エラー:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'CSP統計の取得に失敗しました',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

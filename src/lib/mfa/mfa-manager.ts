@@ -61,7 +61,10 @@ export class MFAManager {
    * MFAセットアップ開始
    * 秘密鍵とQRコード、バックアップコードを生成
    */
-  async initiateMFASetup(userId: string, clinicId: string): Promise<MFASetupResult> {
+  async initiateMFASetup(
+    userId: string,
+    clinicId: string
+  ): Promise<MFASetupResult> {
     try {
       // 入力値検証
       const validatedData = MFAConfigSchema.parse({ userId, clinicId });
@@ -90,16 +93,14 @@ export class MFAManager {
       const backupCodes = this.generateBackupCodes();
 
       // データベースに一時保存（セットアップ完了まで）
-      await this.supabase
-        .from('mfa_setup_sessions')
-        .insert({
-          user_id: validatedData.userId,
-          clinic_id: validatedData.clinicId,
-          secret_key: secret.base32,
-          backup_codes: backupCodes,
-          expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15分有効
-          created_at: new Date().toISOString(),
-        });
+      await this.supabase.from('mfa_setup_sessions').insert({
+        user_id: validatedData.userId,
+        clinic_id: validatedData.clinicId,
+        secret_key: secret.base32,
+        backup_codes: backupCodes,
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15分有効
+        created_at: new Date().toISOString(),
+      });
 
       return {
         secretKey: secret.base32,
@@ -107,9 +108,10 @@ export class MFAManager {
         backupCodes,
         manualEntryKey: this.formatSecretForManualEntry(secret.base32),
       };
-
     } catch (error) {
-      throw new Error(`MFAセットアップ開始エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `MFAセットアップ開始エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -120,7 +122,10 @@ export class MFAManager {
   async completeMFASetup(userId: string, token: string): Promise<boolean> {
     try {
       // 入力値検証
-      const validatedVerification = MFAVerificationSchema.parse({ userId, token });
+      const validatedVerification = MFAVerificationSchema.parse({
+        userId,
+        token,
+      });
 
       // セットアップセッション取得
       const { data: setupSession, error } = await this.supabase
@@ -133,7 +138,9 @@ export class MFAManager {
         .single();
 
       if (error || !setupSession) {
-        throw new Error('MFAセットアップセッションが見つからないか期限切れです');
+        throw new Error(
+          'MFAセットアップセッションが見つからないか期限切れです'
+        );
       }
 
       // TOTPトークン検証
@@ -149,18 +156,16 @@ export class MFAManager {
       }
 
       // MFA設定を正式に有効化
-      await this.supabase
-        .from('user_mfa_settings')
-        .upsert({
-          user_id: validatedVerification.userId,
-          clinic_id: setupSession.clinic_id,
-          secret_key: setupSession.secret_key,
-          backup_codes: setupSession.backup_codes,
-          is_enabled: true,
-          setup_completed_at: new Date().toISOString(),
-          last_used_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        });
+      await this.supabase.from('user_mfa_settings').upsert({
+        user_id: validatedVerification.userId,
+        clinic_id: setupSession.clinic_id,
+        secret_key: setupSession.secret_key,
+        backup_codes: setupSession.backup_codes,
+        is_enabled: true,
+        setup_completed_at: new Date().toISOString(),
+        last_used_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      });
 
       // セットアップセッション削除
       await this.supabase
@@ -169,9 +174,10 @@ export class MFAManager {
         .eq('id', setupSession.id);
 
       return true;
-
     } catch (error) {
-      throw new Error(`MFAセットアップ完了エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `MFAセットアップ完了エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -179,10 +185,18 @@ export class MFAManager {
    * TOTP認証検証
    * ログイン時やセンシティブな操作時の認証
    */
-  async verifyTOTP(userId: string, token: string, window: number = 1): Promise<boolean> {
+  async verifyTOTP(
+    userId: string,
+    token: string,
+    window: number = 1
+  ): Promise<boolean> {
     try {
       // 入力値検証
-      const validatedVerification = MFAVerificationSchema.parse({ userId, token, window });
+      const validatedVerification = MFAVerificationSchema.parse({
+        userId,
+        token,
+        window,
+      });
 
       // MFA設定取得
       const { data: mfaSettings, error } = await this.supabase
@@ -229,9 +243,10 @@ export class MFAManager {
 
         return false;
       }
-
     } catch (error) {
-      throw new Error(`TOTP検証エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `TOTP検証エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -242,7 +257,10 @@ export class MFAManager {
   async verifyBackupCode(userId: string, code: string): Promise<boolean> {
     try {
       // 入力値検証
-      const validatedCode = BackupCodeSchema.parse({ userId, code: code.toUpperCase() });
+      const validatedCode = BackupCodeSchema.parse({
+        userId,
+        code: code.toUpperCase(),
+      });
 
       // MFA設定取得
       const { data: mfaSettings, error } = await this.supabase
@@ -301,9 +319,10 @@ export class MFAManager {
       }
 
       return true;
-
     } catch (error) {
-      throw new Error(`バックアップコード検証エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `バックアップコード検証エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -328,12 +347,17 @@ export class MFAManager {
       return {
         isEnabled: mfaSettings.is_enabled,
         hasBackupCodes: (mfaSettings.backup_codes || []).length > 0,
-        lastUsed: mfaSettings.last_used_at ? new Date(mfaSettings.last_used_at) : undefined,
-        setupCompletedAt: mfaSettings.setup_completed_at ? new Date(mfaSettings.setup_completed_at) : undefined,
+        lastUsed: mfaSettings.last_used_at
+          ? new Date(mfaSettings.last_used_at)
+          : undefined,
+        setupCompletedAt: mfaSettings.setup_completed_at
+          ? new Date(mfaSettings.setup_completed_at)
+          : undefined,
       };
-
     } catch (error) {
-      throw new Error(`MFA状態取得エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `MFA状態取得エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -368,9 +392,10 @@ export class MFAManager {
       });
 
       return true;
-
     } catch (error) {
-      throw new Error(`MFA無効化エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `MFA無効化エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -404,9 +429,10 @@ export class MFAManager {
       });
 
       return newBackupCodes;
-
     } catch (error) {
-      throw new Error(`バックアップコード再生成エラー: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `バックアップコード再生成エラー: ${error instanceof Error ? error.message : error}`
+      );
     }
   }
 
@@ -437,7 +463,7 @@ export class MFAManager {
   private generateBackupCodes(): string[] {
     const codes: string[] = [];
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    
+
     for (let i = 0; i < 10; i++) {
       let code = '';
       for (let j = 0; j < 8; j++) {
@@ -445,7 +471,7 @@ export class MFAManager {
       }
       codes.push(code);
     }
-    
+
     return codes;
   }
 
@@ -465,16 +491,14 @@ export class MFAManager {
     details?: Record<string, any>;
   }): Promise<void> {
     try {
-      await this.supabase
-        .from('security_events')
-        .insert({
-          event_type: `mfa_${event.eventType}`,
-          user_id: event.userId,
-          event_details: event.details || {},
-          ip_address: '', // ミドルウェアで設定される
-          user_agent: '', // ミドルウェアで設定される
-          created_at: new Date().toISOString(),
-        });
+      await this.supabase.from('security_events').insert({
+        event_type: `mfa_${event.eventType}`,
+        user_id: event.userId,
+        event_details: event.details || {},
+        ip_address: '', // ミドルウェアで設定される
+        user_agent: '', // ミドルウェアで設定される
+        created_at: new Date().toISOString(),
+      });
     } catch (error) {
       // ログ記録エラーは主機能を妨げない
       console.error('MFAイベントログ記録エラー:', error);

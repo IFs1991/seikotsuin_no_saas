@@ -36,9 +36,9 @@ describe('セッション管理パフォーマンステスト', () => {
   describe('セッション検証パフォーマンス', () => {
     const performanceThreshold = {
       sessionValidation: 50, // ms
-      sessionCreation: 100,  // ms
-      threatAnalysis: 200,   // ms
-      bulkOperations: 500,   // ms
+      sessionCreation: 100, // ms
+      threatAnalysis: 200, // ms
+      bulkOperations: 500, // ms
     };
 
     it('単一セッション検証が50ms以内で完了する', async () => {
@@ -57,18 +57,19 @@ describe('セッション管理パフォーマンステスト', () => {
       });
 
       const measurements = [];
-      
+
       // 10回測定して平均を取る
       for (let i = 0; i < 10; i++) {
         const startTime = performance.now();
-        
+
         await sessionManager.validateSession(`test-token-${i}`);
-        
+
         const endTime = performance.now();
         measurements.push(endTime - startTime);
       }
 
-      const averageTime = measurements.reduce((a, b) => a + b, 0) / measurements.length;
+      const averageTime =
+        measurements.reduce((a, b) => a + b, 0) / measurements.length;
       const maxTime = Math.max(...measurements);
 
       expect(averageTime).toBeLessThan(performanceThreshold.sessionValidation);
@@ -89,7 +90,7 @@ describe('セッション管理パフォーマンステスト', () => {
         .mockResolvedValue({ data: mockCreatedSession, error: null }); // セッション作成
 
       const startTime = performance.now();
-      
+
       await sessionManager.createSession('user-123', 'clinic-456', {
         deviceInfo: {
           browser: 'Chrome',
@@ -101,7 +102,7 @@ describe('セッション管理パフォーマンステスト', () => {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         rememberDevice: false,
       });
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -131,12 +132,12 @@ describe('セッション管理パフォーマンステスト', () => {
       });
 
       const startTime = performance.now();
-      
+
       await securityMonitor.analyzeSessionActivity(mockSession, {
         ipAddress: '192.168.1.100',
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
       });
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -155,7 +156,10 @@ describe('セッション管理パフォーマンステスト', () => {
       }));
 
       mockSupabase.single.mockImplementation((index = 0) =>
-        Promise.resolve({ data: mockSessions[index % concurrentCount], error: null })
+        Promise.resolve({
+          data: mockSessions[index % concurrentCount],
+          error: null,
+        })
       );
 
       const startTime = performance.now();
@@ -180,7 +184,7 @@ describe('セッション管理パフォーマンステスト', () => {
       const largeDataset = Array.from({ length: 1000 }, (_, i) => ({
         event_type: i % 2 === 0 ? 'login_failed' : 'suspicious_activity',
         ip_address: `192.168.1.${i % 255}`,
-        created_at: new Date(Date.now() - (i * 60 * 1000)).toISOString(),
+        created_at: new Date(Date.now() - i * 60 * 1000).toISOString(),
         event_details: {
           attempt: i,
           userAgent: `TestAgent/${i}`,
@@ -203,12 +207,12 @@ describe('セッション管理パフォーマンステスト', () => {
       };
 
       const startTime = performance.now();
-      
+
       await securityMonitor.analyzeSessionActivity(mockSession, {
         ipAddress: '192.168.1.100',
         userAgent: 'Mozilla/5.0',
       });
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -220,7 +224,7 @@ describe('セッション管理パフォーマンステスト', () => {
   describe('メモリ使用量テスト', () => {
     it('大量セッション処理でのメモリリーク検証', async () => {
       const initialMemory = process.memoryUsage().heapUsed;
-      
+
       // 1000回のセッション操作実行
       for (let i = 0; i < 1000; i++) {
         const mockSession = {
@@ -236,19 +240,19 @@ describe('セッション管理パフォーマンステスト', () => {
         });
 
         await sessionManager.validateSession(`memory-test-token-${i}`);
-        
+
         // 100回ごとにガベージコレクション実行
         if (i % 100 === 0) {
-          global.gc && global.gc();
+          if (global.gc) global.gc();
         }
       }
 
       // ガベージコレクション実行
-      global.gc && global.gc();
-      
+      if (global.gc) global.gc();
+
       const finalMemory = process.memoryUsage().heapUsed;
       const memoryIncrease = finalMemory - initialMemory;
-      
+
       // メモリ増加は50MB以内に抑制
       expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024);
     });
@@ -261,7 +265,7 @@ describe('セッション管理パフォーマンステスト', () => {
         id: `active-session-${i}`,
         user_id: userId,
         is_active: true,
-        last_activity: new Date(Date.now() - (i * 60 * 1000)).toISOString(),
+        last_activity: new Date(Date.now() - i * 60 * 1000).toISOString(),
       }));
 
       mockSupabase.single.mockResolvedValue({
@@ -270,9 +274,9 @@ describe('セッション管理パフォーマンステスト', () => {
       });
 
       const startTime = performance.now();
-      
+
       await sessionManager.getUserSessions(userId, 'clinic-efficiency');
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -282,7 +286,7 @@ describe('セッション管理パフォーマンステスト', () => {
 
     it('セキュリティイベント集計クエリの最適化', async () => {
       const clinicId = 'clinic-efficiency-test';
-      const timeRange = {
+      const _timeRange = {
         from: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24時間前
         to: new Date(),
       };
@@ -290,9 +294,13 @@ describe('セッション管理パフォーマンステスト', () => {
       const mockSecurityEvents = Array.from({ length: 500 }, (_, i) => ({
         id: `event-${i}`,
         clinic_id: clinicId,
-        event_type: ['login_failed', 'suspicious_activity', 'brute_force_detected'][i % 3],
+        event_type: [
+          'login_failed',
+          'suspicious_activity',
+          'brute_force_detected',
+        ][i % 3],
         severity: ['low', 'medium', 'high', 'critical'][i % 4],
-        created_at: new Date(Date.now() - (i * 60 * 1000)).toISOString(),
+        created_at: new Date(Date.now() - i * 60 * 1000).toISOString(),
       }));
 
       mockSupabase.single.mockResolvedValue({
@@ -301,9 +309,9 @@ describe('セッション管理パフォーマンステスト', () => {
       });
 
       const startTime = performance.now();
-      
+
       await securityMonitor.getSecurityStatistics(clinicId, 1);
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -318,9 +326,9 @@ describe('セッション管理パフォーマンステスト', () => {
       mockSupabase.single.mockRejectedValue(new Error('Connection timeout'));
 
       const startTime = performance.now();
-      
+
       const res = await sessionManager.validateSession('error-test-token');
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -331,18 +339,19 @@ describe('セッション管理パフォーマンステスト', () => {
 
     it('タイムアウト処理の適切な実装', async () => {
       // 遅延レスポンスをシミュレート
-      mockSupabase.single.mockImplementation(() => 
-        new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({ data: null, error: null });
-          }, 100); // 100ms の遅延
-        })
+      mockSupabase.single.mockImplementation(
+        () =>
+          new Promise(resolve => {
+            setTimeout(() => {
+              resolve({ data: null, error: null });
+            }, 100); // 100ms の遅延
+          })
       );
 
       const startTime = performance.now();
-      
+
       await sessionManager.validateSession('timeout-test-token');
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
@@ -368,7 +377,7 @@ describe('セッション管理パフォーマンステスト', () => {
       const criticalThreatData = Array.from({ length: 10 }, (_, i) => ({
         event_type: 'login_failed',
         ip_address: '192.168.1.100',
-        created_at: new Date(Date.now() - (i * 30 * 1000)).toISOString(), // 30秒間隔
+        created_at: new Date(Date.now() - i * 30 * 1000).toISOString(), // 30秒間隔
       }));
 
       mockSupabase.single.mockResolvedValue({
@@ -379,15 +388,21 @@ describe('セッション管理パフォーマンステスト', () => {
       const startTime = performance.now();
 
       // 脅威分析実行
-      const threats = await securityMonitor.analyzeSessionActivity(suspiciousSession, {
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0',
-      });
+      const threats = await securityMonitor.analyzeSessionActivity(
+        suspiciousSession,
+        {
+          ipAddress: '192.168.1.100',
+          userAgent: 'Mozilla/5.0',
+        }
+      );
 
       // 自動対応実行（高脅威の場合）
       const criticalThreats = threats.filter(t => t.severity === 'critical');
       if (criticalThreats.length > 0) {
-        await sessionManager.revokeSession(suspiciousSession.id, 'security_violation');
+        await sessionManager.revokeSession(
+          suspiciousSession.id,
+          'security_violation'
+        );
       }
 
       const endTime = performance.now();
@@ -420,14 +435,14 @@ export class PerformanceMonitor {
 
     const startTime = measurements.pop()!;
     const duration = performance.now() - startTime;
-    
+
     return duration;
   }
 
   getAverageTime(name: string, sampleCount: number = 10): Promise<number> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const times: number[] = [];
-      
+
       const runMeasurement = async (count: number) => {
         if (count <= 0) {
           const average = times.reduce((a, b) => a + b, 0) / times.length;
@@ -440,7 +455,7 @@ export class PerformanceMonitor {
         await new Promise(r => setTimeout(r, 1)); // ダミー処理
         const duration = this.endMeasurement(name);
         times.push(duration);
-        
+
         await runMeasurement(count - 1);
       };
 

@@ -1,12 +1,17 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardData } from '../types/api';
-import { api, isSuccessResponse, isErrorResponse, handleApiError } from '../lib/api-client';
+import {
+  api,
+  isSuccessResponse,
+  isErrorResponse,
+  handleApiError,
+} from '../lib/api-client';
 
 // デフォルトのクリニックID（実際の実装では認証システムから取得）
-const DEFAULT_CLINIC_ID = process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
-
+const DEFAULT_CLINIC_ID =
+  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
 
 interface UseDashboardReturn {
   dashboardData: DashboardData | null;
@@ -16,11 +21,14 @@ interface UseDashboardReturn {
   refetch: () => Promise<void>;
 }
 
-const useDashboard = (clinicId: string = DEFAULT_CLINIC_ID): UseDashboardReturn => {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+const useDashboard = (
+  clinicId: string = DEFAULT_CLINIC_ID
+): UseDashboardReturn => {
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
 
   const fetchData = useCallback(async (): Promise<void> => {
     if (!clinicId) {
@@ -31,10 +39,10 @@ const useDashboard = (clinicId: string = DEFAULT_CLINIC_ID): UseDashboardReturn 
 
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.dashboard.get(clinicId);
-      
+
       if (isSuccessResponse(response)) {
         setDashboardData(response.data as DashboardData);
         setError(null);
@@ -46,27 +54,28 @@ const useDashboard = (clinicId: string = DEFAULT_CLINIC_ID): UseDashboardReturn 
             revenue: 125000,
             patients: 23,
             insuranceRevenue: 85000,
-            privateRevenue: 40000
+            privateRevenue: 40000,
           },
           aiComment: {
             id: 'sample-id',
-            summary: '本日の業績は順調です。患者数、売上ともに前日比で安定しています。保険診療が主体となっており、健全な運営が継続されています。',
+            summary:
+              '本日の業績は順調です。患者数、売上ともに前日比で安定しています。保険診療が主体となっており、健全な運営が継続されています。',
             highlights: ['患者数が安定している', '保険診療の比率が適正'],
             improvements: ['自費診療の促進余地がある'],
             suggestions: ['午後の時間帯の予約枠を増やすことを検討'],
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           },
           revenueChartData: [
-            { name: '月', '総売上': 120000, '保険診療': 80000, '自費診療': 40000 },
-            { name: '火', '総売上': 110000, '保険診療': 75000, '自費診療': 35000 },
-            { name: '水', '総売上': 130000, '保険診療': 90000, '自費診療': 40000 },
-            { name: '木', '総売上': 125000, '保険診療': 85000, '自費診療': 40000 },
-            { name: '金', '総売上': 140000, '保険診療': 95000, '自費診療': 45000 },
-            { name: '土', '総売上': 135000, '保険診療': 90000, '自費診療': 45000 },
-            { name: '日', '総売上': 125000, '保険診療': 85000, '自費診療': 40000 }
+            { name: '月', 総売上: 120000, 保険診療: 80000, 自費診療: 40000 },
+            { name: '火', 総売上: 110000, 保険診療: 75000, 自費診療: 35000 },
+            { name: '水', 総売上: 130000, 保険診療: 90000, 自費診療: 40000 },
+            { name: '木', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
+            { name: '金', 総売上: 140000, 保険診療: 95000, 自費診療: 45000 },
+            { name: '土', 総売上: 135000, 保険診療: 90000, 自費診療: 45000 },
+            { name: '日', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
           ],
           heatmapData: [],
-          alerts: []
+          alerts: [],
         };
         setDashboardData(sampleData);
         setError(null);
@@ -79,27 +88,28 @@ const useDashboard = (clinicId: string = DEFAULT_CLINIC_ID): UseDashboardReturn 
           revenue: 125000,
           patients: 23,
           insuranceRevenue: 85000,
-          privateRevenue: 40000
+          privateRevenue: 40000,
         },
         aiComment: {
           id: 'sample-id',
-          summary: '本日の業績は順調です。患者数、売上ともに前日比で安定しています。（サンプルデータ）',
+          summary:
+            '本日の業績は順調です。患者数、売上ともに前日比で安定しています。（サンプルデータ）',
           highlights: ['患者数が安定している', '保険診療の比率が適正'],
           improvements: ['自費診療の促進余地がある'],
           suggestions: ['午後の時間帯の予約枠を増やすことを検討'],
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
         },
         revenueChartData: [
-          { name: '月', '総売上': 120000, '保険診療': 80000, '自費診療': 40000 },
-          { name: '火', '総売上': 110000, '保険診療': 75000, '自費診療': 35000 },
-          { name: '水', '総売上': 130000, '保険診療': 90000, '自費診療': 40000 },
-          { name: '木', '総売上': 125000, '保険診療': 85000, '自費診療': 40000 },
-          { name: '金', '総売上': 140000, '保険診療': 95000, '自費診療': 45000 },
-          { name: '土', '総売上': 135000, '保険診療': 90000, '自費診療': 45000 },
-          { name: '日', '総売上': 125000, '保険診療': 85000, '自費診療': 40000 }
+          { name: '月', 総売上: 120000, 保険診療: 80000, 自費診療: 40000 },
+          { name: '火', 総売上: 110000, 保険診療: 75000, 自費診療: 35000 },
+          { name: '水', 総売上: 130000, 保険診療: 90000, 自費診療: 40000 },
+          { name: '木', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
+          { name: '金', 総売上: 140000, 保険診療: 95000, 自費診療: 45000 },
+          { name: '土', 総売上: 135000, 保険診療: 90000, 自費診療: 45000 },
+          { name: '日', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
         ],
         heatmapData: [],
-        alerts: []
+        alerts: [],
       };
       setDashboardData(sampleData);
       setError(null);
@@ -128,7 +138,6 @@ const useDashboard = (clinicId: string = DEFAULT_CLINIC_ID): UseDashboardReturn 
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchData]);
-
 
   const handleQuickAction = useCallback((action: string): void => {
     // クイックアクションの処理を実装

@@ -17,11 +17,9 @@ interface LayoutProps {
 
 export default function RootLayout({ children }: LayoutProps) {
   return (
-    <html lang="ja">
-      <body className="min-h-screen">
-        <ClientLayout>
-          {children}
-        </ClientLayout>
+    <html lang='ja'>
+      <body className='min-h-screen'>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

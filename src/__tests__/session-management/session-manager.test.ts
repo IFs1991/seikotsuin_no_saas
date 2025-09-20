@@ -3,7 +3,11 @@
  * Session Manager の包括的テストスイート
  */
 
-import { SessionManager, parseUserAgent, getGeolocationFromIP } from '@/lib/session-manager';
+import {
+  SessionManager,
+  parseUserAgent,
+  getGeolocationFromIP,
+} from '@/lib/session-manager';
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase モック
@@ -30,7 +34,7 @@ describe('SessionManager', () => {
   beforeEach(() => {
     sessionManager = new SessionManager();
     jest.clearAllMocks();
-    
+
     // デフォルトのモックレスポンス設定
     mockSupabase.single.mockResolvedValue({
       data: null,
@@ -70,7 +74,11 @@ describe('SessionManager', () => {
         .mockResolvedValueOnce({ data: null, error: null }) // 既存セッション確認
         .mockResolvedValueOnce({ data: mockSession, error: null }); // セッション作成
 
-      const result = await sessionManager.createSession(mockUserId, mockClinicId, mockOptions);
+      const result = await sessionManager.createSession(
+        mockUserId,
+        mockClinicId,
+        mockOptions
+      );
 
       expect(result.session).toBeDefined();
       expect(result.session.user_id).toBe(mockUserId);
@@ -95,7 +103,9 @@ describe('SessionManager', () => {
 
       await expect(
         sessionManager.createSession(mockUserId, mockClinicId, mockOptions)
-      ).rejects.toThrow('同一デバイスで複数のアクティブセッションは許可されていません');
+      ).rejects.toThrow(
+        '同一デバイスで複数のアクティブセッションは許可されていません'
+      );
     });
 
     it('無効なユーザーIDでエラーになる', async () => {
@@ -111,14 +121,18 @@ describe('SessionManager', () => {
       };
 
       await expect(
-        sessionManager.createSession(mockUserId, mockClinicId, invalidOptions as any)
+        sessionManager.createSession(
+          mockUserId,
+          mockClinicId,
+          invalidOptions as any
+        )
       ).rejects.toThrow('デバイス情報は必須です');
     });
   });
 
   describe('validateSession', () => {
     const mockToken = 'valid-session-token-123';
-    
+
     it('有効なセッションの検証が成功する', async () => {
       const mockValidSession = {
         id: 'session-123',
@@ -195,9 +209,9 @@ describe('SessionManager', () => {
     });
 
     it('無効なトークンでエラーになる', async () => {
-      await expect(
-        sessionManager.validateSession('')
-      ).rejects.toThrow('セッショントークンが無効です');
+      await expect(sessionManager.validateSession('')).rejects.toThrow(
+        'セッショントークンが無効です'
+      );
 
       await expect(
         sessionManager.validateSession('invalid-token')
@@ -271,19 +285,20 @@ describe('SessionManager', () => {
     });
 
     it('無効なユーザーIDでエラーになる', async () => {
-      await expect(
-        sessionManager.getUserActiveSessions('')
-      ).rejects.toThrow('ユーザーIDが無効です');
+      await expect(sessionManager.getUserActiveSessions('')).rejects.toThrow(
+        'ユーザーIDが無効です'
+      );
     });
   });
 });
 
 describe('parseUserAgent', () => {
   it('Chrome User Agentを正しく解析する', () => {
-    const chromeUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
-    
+    const chromeUA =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36';
+
     const result = parseUserAgent(chromeUA);
-    
+
     expect(result.browser).toBe('Chrome');
     expect(result.os).toBe('Windows');
     expect(result.device).toBe('desktop');
@@ -291,10 +306,11 @@ describe('parseUserAgent', () => {
   });
 
   it('iPhone User Agentを正しく解析する', () => {
-    const iPhoneUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
-    
+    const iPhoneUA =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
     const result = parseUserAgent(iPhoneUA);
-    
+
     expect(result.browser).toBe('Safari');
     expect(result.os).toBe('iOS');
     expect(result.device).toBe('mobile');
@@ -303,9 +319,9 @@ describe('parseUserAgent', () => {
 
   it('不明なUser Agentを処理する', () => {
     const unknownUA = 'Unknown/1.0';
-    
+
     const result = parseUserAgent(unknownUA);
-    
+
     expect(result.browser).toBe('Unknown');
     expect(result.os).toBe('Unknown');
     expect(result.device).toBe('Unknown');
@@ -316,9 +332,9 @@ describe('parseUserAgent', () => {
 describe('getGeolocationFromIP', () => {
   it('有効なIPアドレスの地理情報を取得する', async () => {
     const mockIP = '8.8.8.8';
-    
+
     const result = await getGeolocationFromIP(mockIP);
-    
+
     expect(result).toHaveProperty('country');
     expect(result).toHaveProperty('city');
     expect(result).toHaveProperty('region');
@@ -326,9 +342,9 @@ describe('getGeolocationFromIP', () => {
 
   it('無効なIPアドレスで適切にエラーハンドリングする', async () => {
     const invalidIP = 'invalid-ip';
-    
+
     const result = await getGeolocationFromIP(invalidIP);
-    
+
     expect(result).toEqual({
       country: 'Unknown',
       city: 'Unknown',

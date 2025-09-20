@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 /**
  * Content Security Policy (CSP) 設定
  * Phase 3B: XSS攻撃対策の強化
@@ -44,16 +46,8 @@ export class CSPConfig {
         "'unsafe-inline'", // Tailwind CSS等で必要
         'https://fonts.googleapis.com',
       ],
-      'img-src': [
-        "'self'",
-        'data:',
-        'blob:',
-        'https:',
-      ],
-      'font-src': [
-        "'self'",
-        'https://fonts.gstatic.com',
-      ],
+      'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
       'connect-src': [
         "'self'",
         'https://*.supabase.co',
@@ -79,7 +73,7 @@ export class CSPConfig {
    */
   static getProductionCSP(nonce?: string): string {
     const scriptSrcDirectives = ["'self'"];
-    
+
     // nonceが提供された場合は追加
     if (nonce) {
       scriptSrcDirectives.push(`'nonce-${nonce}'`);
@@ -99,10 +93,7 @@ export class CSPConfig {
         'data:', // Base64画像用
         'https://*.supabase.co', // Supabase Storage
       ],
-      'font-src': [
-        "'self'",
-        'https://fonts.gstatic.com',
-      ],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
       'connect-src': [
         "'self'",
         'https://*.supabase.co',
@@ -142,16 +133,8 @@ export class CSPConfig {
         "'unsafe-inline'",
         'https://fonts.googleapis.com',
       ],
-      'img-src': [
-        "'self'",
-        'data:',
-        'blob:',
-        'https:',
-      ],
-      'font-src': [
-        "'self'",
-        'https://fonts.gstatic.com',
-      ],
+      'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
       'connect-src': [
         "'self'",
         'https://*.supabase.co',
@@ -173,12 +156,12 @@ export class CSPConfig {
    */
   static getMedicalGradeCSP(nonce?: string): string {
     const scriptSrcDirectives = ["'self'"];
-    
+
     // nonceが提供された場合は追加
     if (nonce) {
       scriptSrcDirectives.push(`'nonce-${nonce}'`);
     }
-    
+
     // 医療データ処理で必要なライブラリのみ
     scriptSrcDirectives.push('https://cdn.jsdelivr.net'); // Chart.js等の医療統計ライブラリ
 
@@ -196,10 +179,7 @@ export class CSPConfig {
         'data:', // 医療画像のBase64表示
         'https://*.supabase.co', // セキュアな医療画像ストレージ
       ],
-      'font-src': [
-        "'self'",
-        'https://fonts.gstatic.com',
-      ],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
       'connect-src': [
         "'self'",
         'https://*.supabase.co', // セキュアなデータベース接続
@@ -243,18 +223,20 @@ export class CSPConfig {
   static generateNonce(): string {
     // 暗号学的に安全な乱数でnonce生成
     const array = new Uint8Array(16);
-    
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      crypto.getRandomValues(array);
-    } else if (typeof require !== 'undefined') {
-      // Node.js環境
-      const nodeCrypto = require('crypto');
-      const randomBytes = nodeCrypto.randomBytes(16);
+
+    if (
+      typeof globalThis !== 'undefined' &&
+      globalThis.crypto &&
+      globalThis.crypto.getRandomValues
+    ) {
+      globalThis.crypto.getRandomValues(array);
+    } else {
+      // フォールバック（Web Crypto非対応環境）
       for (let i = 0; i < 16; i++) {
-        array[i] = randomBytes[i];
+        array[i] = Math.floor(Math.random() * 256);
       }
     }
-    
+
     return Buffer.from(array).toString('base64');
   }
 
@@ -265,7 +247,7 @@ export class CSPConfig {
     try {
       // 違反レベルの判定
       const severity = this.assessViolationSeverity(report);
-      
+
       // セキュリティログに記録
       const logEntry = {
         type: 'csp_violation',
@@ -279,32 +261,39 @@ export class CSPConfig {
       };
 
       // データベースまたはログシステムに記録
-      console.warn('CSP Violation:', logEntry);
+      logger.warn('CSP Violation:', logEntry);
 
       // 重大な違反の場合は管理者に通知
       if (severity === 'high' || severity === 'critical') {
         await this.notifyAdminsOfCSPViolation(logEntry);
       }
-
     } catch (error) {
-      console.error('CSP違反レポート処理エラー:', error);
+      logger.error('CSP違反レポート処理エラー:', error);
     }
   }
 
   /**
    * 違反の重要度判定
    */
-  private static assessViolationSeverity(report: CSPViolationReport): 'low' | 'medium' | 'high' | 'critical' {
+  private static assessViolationSeverity(
+    report: CSPViolationReport
+  ): 'low' | 'medium' | 'high' | 'critical' {
     const violatedDirective = report['violated-directive'];
     const blockedUri = report['blocked-uri'];
 
     // クリティカル: script-src違反でjavascript:スキーム
-    if (violatedDirective.includes('script-src') && blockedUri.startsWith('javascript:')) {
+    if (
+      violatedDirective.includes('script-src') &&
+      blockedUri.startsWith('javascript:')
+    ) {
       return 'critical';
     }
 
     // 高: script-src違反で外部ドメイン
-    if (violatedDirective.includes('script-src') && blockedUri.startsWith('http')) {
+    if (
+      violatedDirective.includes('script-src') &&
+      blockedUri.startsWith('http')
+    ) {
       return 'high';
     }
 
@@ -320,10 +309,15 @@ export class CSPConfig {
   /**
    * 管理者通知（重大な違反時）
    */
-  private static async notifyAdminsOfCSPViolation(logEntry: any): Promise<void> {
+  private static async notifyAdminsOfCSPViolation(
+    logEntry: any
+  ): Promise<void> {
     // 実装: 管理者へのアラート送信
     // メール、Slack、ダッシュボード通知等
-    console.error('Critical CSP Violation - Admin notification required:', logEntry);
+    logger.error(
+      'Critical CSP Violation - Admin notification required:',
+      logEntry
+    );
   }
 
   /**
@@ -356,7 +350,7 @@ export class CSPConfig {
       }
       return [];
     } catch (error) {
-      console.warn('Failed to get build-time style hashes:', error);
+      logger.warn('Failed to get build-time style hashes:', error);
       return this.getFallbackStyleHashes();
     }
   }
@@ -388,7 +382,10 @@ export class CSPConfig {
   /**
    * CSPポリシーの段階的導入支援
    */
-  static getGradualRolloutCSP(phase: 'report-only' | 'partial-enforce' | 'full-enforce', nonce?: string): {
+  static getGradualRolloutCSP(
+    phase: 'report-only' | 'partial-enforce' | 'full-enforce',
+    nonce?: string
+  ): {
     csp: string;
     cspReportOnly?: string;
   } {

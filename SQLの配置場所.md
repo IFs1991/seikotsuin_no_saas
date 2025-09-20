@@ -51,6 +51,7 @@
 5. （RLS導入時の確認）`validate_rls.sql`
 
 補足:
+
 - 暗号化ヘルパーは `current_setting('app.encryption_key', true)` を参照します。必要に応じてDB側で設定してください。
 - RLS適用時は、JWTクレームや`user_permissions`の整合が前提です。
 

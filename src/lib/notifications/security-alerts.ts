@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export interface SecurityAlert {
   type: 'csp_violation' | 'rate_limit' | 'authentication' | 'data_breach';
@@ -159,9 +160,8 @@ export class SecurityNotificationManager {
         channels,
         errors: errors.length > 0 ? errors : undefined,
       };
-
     } catch (error) {
-      console.error('Security notification failed:', error);
+      logger.error('Security notification failed:', error);
       return {
         success: false,
         channels: [],
@@ -175,7 +175,7 @@ export class SecurityNotificationManager {
    */
   private getNotificationChannels(severity: string): string[] {
     const baseChannels = ['console', 'database'];
-    
+
     switch (severity) {
       case 'critical':
         return [...baseChannels, 'external', 'realtime'];
@@ -194,9 +194,13 @@ export class SecurityNotificationManager {
    * コンソールログ出力
    */
   private logToConsole(alert: SecurityAlert): void {
-    const logLevel = alert.severity === 'critical' || alert.severity === 'high' 
-      ? 'error' : alert.severity === 'medium' ? 'warn' : 'info';
-    
+    const logLevel =
+      alert.severity === 'critical' || alert.severity === 'high'
+        ? 'error'
+        : alert.severity === 'medium'
+          ? 'warn'
+          : 'info';
+
     const logMessage = {
       separatorTop: '='.repeat(60),
       title: `${alert.severity.toUpperCase()}: ${alert.title}`,
@@ -207,26 +211,25 @@ export class SecurityNotificationManager {
       separatorBottom: '='.repeat(60),
     };
 
-    console[logLevel]('Security Alert:', logMessage);
+    // @ts-expect-error: index access for log level mapping
+    logger[logLevel]('Security Alert:', logMessage);
   }
 
   /**
    * データベース記録
    */
   private async saveToDatabase(alert: SecurityAlert): Promise<void> {
-    await this.supabase
-      .from('security_alerts')
-      .insert({
-        type: alert.type,
-        severity: alert.severity,
-        title: alert.title,
-        message: alert.message,
-        details: alert.details,
-        client_ip: alert.clientIP,
-        user_agent: alert.userAgent,
-        source: alert.source,
-        created_at: alert.timestamp,
-      });
+    await this.supabase.from('security_alerts').insert({
+      type: alert.type,
+      severity: alert.severity,
+      title: alert.title,
+      message: alert.message,
+      details: alert.details,
+      client_ip: alert.clientIP,
+      user_agent: alert.userAgent,
+      source: alert.source,
+      created_at: alert.timestamp,
+    });
   }
 
   /**
@@ -255,7 +258,7 @@ export class SecurityNotificationManager {
   private async sendRealtimeUpdate(alert: SecurityAlert): Promise<void> {
     // Supabase Realtimeで管理者ダッシュボードに通知
     const channel = this.supabase.channel('security-alerts');
-    
+
     await channel.send({
       type: 'broadcast',
       event: 'new-alert',
@@ -291,14 +294,16 @@ export class SecurityNotificationManager {
     client_ip: string;
   }): string {
     const messages = {
-      critical: '🚨 極めて危険なCSP違反が検出されました。即座の対応が必要です。',
+      critical:
+        '🚨 極めて危険なCSP違反が検出されました。即座の対応が必要です。',
       high: '⚠️ 高リスクなCSP違反が発生しました。調査・対応をお願いします。',
       medium: '📋 CSP違反が記録されました。定期確認時にご確認ください。',
       low: 'ℹ️ 軽微なCSP違反が記録されました。',
     };
 
-    const baseMessage = messages[violation.severity as keyof typeof messages] || messages.low;
-    
+    const baseMessage =
+      messages[violation.severity as keyof typeof messages] || messages.low;
+
     return `${baseMessage}
 
 【違反詳細】
@@ -328,14 +333,14 @@ ${this.getRecommendedAction(violation)}`;
 3. 同様のパターンの違反が継続していないか監視
 4. セキュリティインシデント対応手順の実行を検討`;
     }
-    
+
     if (violation.severity === 'high' || violation.threat_score >= 50) {
       return `
 1. CSPダッシュボードで違反パターンを確認
 2. 正当なリクエストか攻撃かの判別
 3. 必要に応じてCSPポリシーの調整を検討`;
     }
-    
+
     return `
 1. 定期メンテナンス時にCSPダッシュボードで確認
 2. 違反パターンが継続する場合は調査を検討`;
@@ -344,7 +349,11 @@ ${this.getRecommendedAction(violation)}`;
   /**
    * 通知頻度制限チェック（スパム防止）
    */
-  async shouldNotify(alertType: string, clientIP: string, timeWindowMinutes: number = 5): Promise<boolean> {
+  async shouldNotify(
+    alertType: string,
+    clientIP: string,
+    timeWindowMinutes: number = 5
+  ): Promise<boolean> {
     const windowStart = new Date();
     windowStart.setMinutes(windowStart.getMinutes() - timeWindowMinutes);
 

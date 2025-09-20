@@ -1,13 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ApiResponse, PatientAnalysisData, PatientForm } from '../../../types/api';
-import { normalizeSupabaseError, createApiError, ERROR_CODES, AppError, logError, validation, ValidationErrorCollector } from '../../../lib/error-handler';
-import { createClient, getCurrentUser, getUserPermissions } from '@/lib/supabase/server';
+import {
+  ApiResponse,
+  PatientAnalysisData,
+  PatientForm,
+} from '../../../types/api';
+import {
+  normalizeSupabaseError,
+  createApiError,
+  ERROR_CODES,
+  AppError,
+  logError,
+  validation,
+  ValidationErrorCollector,
+} from '../../../lib/error-handler';
+import {
+  createClient,
+  getCurrentUser,
+  getUserPermissions,
+} from '@/lib/supabase/server';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 
-export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<PatientAnalysisData>>> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<ApiResponse<PatientAnalysisData>>> {
   const path = '/api/patients';
   const { ipAddress, userAgent } = getRequestInfo(request);
-  
+
   try {
     // 認証チェック
     const user = await getCurrentUser();
@@ -21,7 +39,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         userAgent
       );
       return NextResponse.json(
-        createApiError('認証が必要です', ERROR_CODES.AUTHENTICATION_REQUIRED, path),
+        createApiError(
+          '認証が必要です',
+          ERROR_CODES.AUTHENTICATION_REQUIRED,
+          path
+        ),
         { status: 401 }
       );
     }
@@ -38,7 +60,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         userAgent
       );
       return NextResponse.json(
-        createApiError('権限情報が見つかりません', ERROR_CODES.AUTHORIZATION_ERROR, path),
+        createApiError(
+          '権限情報が見つかりません',
+          ERROR_CODES.AUTHORIZATION_ERROR,
+          path
+        ),
         { status: 403 }
       );
     }
@@ -49,12 +75,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     // バリデーション
     const validator = new ValidationErrorCollector();
-    
+
     const clinicIdError = validation.required(clinicId, 'clinic_id');
     if (clinicIdError) {
       validator.add(clinicIdError.field, clinicIdError.message);
     }
-    
+
     const uuidError = clinicId ? validation.uuid(clinicId, 'clinic_id') : null;
     if (uuidError) {
       validator.add(uuidError.field, uuidError.message);
@@ -71,7 +97,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         userAgent
       );
       return NextResponse.json(
-        createApiError('指定されたクリニックへのアクセス権限がありません', ERROR_CODES.AUTHORIZATION_ERROR, path),
+        createApiError(
+          '指定されたクリニックへのアクセス権限がありません',
+          ERROR_CODES.AUTHORIZATION_ERROR,
+          path
+        ),
         { status: 403 }
       );
     }
@@ -84,12 +114,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       clinicId || '',
       clinicId || undefined,
       ipAddress,
-      { 
+      {
         analysis_type: analysis,
-        request_params: Object.fromEntries(searchParams.entries())
+        request_params: Object.fromEntries(searchParams.entries()),
       }
     );
-    
+
     if (validator.hasErrors()) {
       return NextResponse.json(
         { success: false, error: validator.getApiError() },
@@ -99,7 +129,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     // 認証済みユーザーのクライアントを使用（RLS適用）
     const supabase = await createClient();
-    
+
     // 患者基本データ取得
     const { data: patients, error: patientsError } = await supabase
       .from('patient_visit_summary')
@@ -114,48 +144,62 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
     const conversionAnalysis = () => {
       const newPatients = patients?.filter(p => p.visit_count === 1) || [];
       const returnPatients = patients?.filter(p => p.visit_count > 1) || [];
-      const conversionRate = newPatients.length > 0 ? (returnPatients.length / (newPatients.length + returnPatients.length)) * 100 : 0;
+      const conversionRate =
+        newPatients.length > 0
+          ? (returnPatients.length /
+              (newPatients.length + returnPatients.length)) *
+            100
+          : 0;
 
       return {
         newPatients: newPatients.length,
         returnPatients: returnPatients.length,
         conversionRate: Math.round(conversionRate * 100) / 100,
         stages: [
-          { name: '初回来院', value: newPatients.length + returnPatients.length },
+          {
+            name: '初回来院',
+            value: newPatients.length + returnPatients.length,
+          },
           { name: '2回目来院', value: returnPatients.length },
-          { name: '継続通院', value: patients?.filter(p => p.visit_count >= 5).length || 0 }
-        ]
+          {
+            name: '継続通院',
+            value: patients?.filter(p => p.visit_count >= 5).length || 0,
+          },
+        ],
       };
     };
 
     // LTVランキング
     const ltvRanking = await Promise.all(
-      (patients || []).slice(0, 20).map(async (patient) => {
-        const { data: ltv } = await supabase
-          .rpc('calculate_patient_ltv', { patient_uuid: patient.patient_id });
-        
+      (patients || []).slice(0, 20).map(async patient => {
+        const { data: ltv } = await supabase.rpc('calculate_patient_ltv', {
+          patient_uuid: patient.patient_id,
+        });
+
         return {
           patient_id: patient.patient_id,
           name: patient.patient_name,
           ltv: ltv || 0,
           visit_count: patient.visit_count,
-          total_revenue: patient.total_revenue
+          total_revenue: patient.total_revenue,
         };
       })
     );
 
     // 離脱リスクスコア
     const riskScores = await Promise.all(
-      (patients || []).map(async (patient) => {
-        const { data: riskScore } = await supabase
-          .rpc('calculate_churn_risk_score', { patient_uuid: patient.patient_id });
-        
+      (patients || []).map(async patient => {
+        const { data: riskScore } = await supabase.rpc(
+          'calculate_churn_risk_score',
+          { patient_uuid: patient.patient_id }
+        );
+
         return {
           patient_id: patient.patient_id,
           name: patient.patient_name,
           riskScore: riskScore || 0,
           lastVisit: patient.last_visit_date,
-          category: riskScore > 75 ? 'high' : riskScore > 50 ? 'medium' : 'low'
+          category: riskScore > 75 ? 'high' : riskScore > 50 ? 'medium' : 'low',
         };
       })
     );
@@ -166,29 +210,42 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       if (totalPatients === 0) return {};
 
       const ageSegments = {
-        '20代以下': Math.round((totalPatients * 0.15) * 100) / 100,
-        '30代': Math.round((totalPatients * 0.25) * 100) / 100,
-        '40代': Math.round((totalPatients * 0.30) * 100) / 100,
-        '50代': Math.round((totalPatients * 0.20) * 100) / 100,
-        '60代以上': Math.round((totalPatients * 0.10) * 100) / 100
+        '20代以下': Math.round(totalPatients * 0.15 * 100) / 100,
+        '30代': Math.round(totalPatients * 0.25 * 100) / 100,
+        '40代': Math.round(totalPatients * 0.3 * 100) / 100,
+        '50代': Math.round(totalPatients * 0.2 * 100) / 100,
+        '60代以上': Math.round(totalPatients * 0.1 * 100) / 100,
       };
 
       const visitSegments = {
-        '初診のみ': patients?.filter(p => p.visit_category === '初診のみ').length || 0,
-        '軽度リピート': patients?.filter(p => p.visit_category === '軽度リピート').length || 0,
-        '中度リピート': patients?.filter(p => p.visit_category === '中度リピート').length || 0,
-        '高度リピート': patients?.filter(p => p.visit_category === '高度リピート').length || 0
+        初診のみ:
+          patients?.filter(p => p.visit_category === '初診のみ').length || 0,
+        軽度リピート:
+          patients?.filter(p => p.visit_category === '軽度リピート').length ||
+          0,
+        中度リピート:
+          patients?.filter(p => p.visit_category === '中度リピート').length ||
+          0,
+        高度リピート:
+          patients?.filter(p => p.visit_category === '高度リピート').length ||
+          0,
       };
 
       return {
-        age: Object.entries(ageSegments).map(([label, value]) => ({ label, value })),
-        visit: Object.entries(visitSegments).map(([label, value]) => ({ label, value })),
+        age: Object.entries(ageSegments).map(([label, value]) => ({
+          label,
+          value,
+        })),
+        visit: Object.entries(visitSegments).map(([label, value]) => ({
+          label,
+          value,
+        })),
         symptom: [
           { label: '肩こり・首痛', value: 35 },
           { label: '腰痛', value: 28 },
           { label: '膝痛', value: 15 },
-          { label: 'その他', value: 22 }
-        ]
+          { label: 'その他', value: 22 },
+        ],
       };
     };
 
@@ -202,30 +259,37 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         name: patient.name,
         reason: `${patient.riskScore}%の離脱リスク`,
         lastVisit: patient.lastVisit,
-        action: '電話フォロー推奨'
+        action: '電話フォロー推奨',
       }));
 
     const visitCounts = {
-      average: patients?.length > 0 
-        ? Math.round((patients.reduce((sum, p) => sum + p.visit_count, 0) / patients.length) * 100) / 100
-        : 0,
-      monthlyChange: 5.2 // 固定値（実際は前月比計算）
+      average:
+        patients?.length > 0
+          ? Math.round(
+              (patients.reduce((sum, p) => sum + p.visit_count, 0) /
+                patients.length) *
+                100
+            ) / 100
+          : 0,
+      monthlyChange: 5.2, // 固定値（実際は前月比計算）
     };
 
     const patientAnalysisData: PatientAnalysisData = {
       conversionData: conversionAnalysis(),
       visitCounts,
-      riskScores: riskScores.sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
+      riskScores: riskScores
+        .sort((a, b) => b.riskScore - a.riskScore)
+        .slice(0, 20),
       ltvRanking: ltvRanking.sort((a, b) => b.ltv - a.ltv),
       segmentData: segmentAnalysis(),
       followUpList,
       totalPatients: patients?.length || 0,
-      activePatients: patients?.filter(p => p.visit_count > 1).length || 0
+      activePatients: patients?.filter(p => p.visit_count > 1).length || 0,
     };
 
     const response: ApiResponse<PatientAnalysisData> = {
       success: true,
-      data: patientAnalysisData
+      data: patientAnalysisData,
     };
 
     return NextResponse.json(response);
@@ -247,49 +311,64 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       );
     }
 
-    logError(error instanceof Error ? error : new Error(String(error)), { path, clinicId: request.nextUrl.searchParams.get('clinic_id') });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path,
+      clinicId: request.nextUrl.searchParams.get('clinic_id'),
+    });
 
     const response: ApiResponse<PatientAnalysisData> = {
       success: false,
-      error: apiError
+      error: apiError,
     };
 
     return NextResponse.json(response, { status: statusCode });
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<any>>> {
+export async function POST(
+  request: NextRequest
+): Promise<NextResponse<ApiResponse<any>>> {
   const path = '/api/patients';
-  
+
   try {
     const body = await request.json();
     const patientForm = body as PatientForm;
 
     // バリデーション
     const validator = new ValidationErrorCollector();
-    
-    const clinicIdError = validation.required(patientForm.clinic_id, 'clinic_id');
+
+    const clinicIdError = validation.required(
+      patientForm.clinic_id,
+      'clinic_id'
+    );
     if (clinicIdError) {
       validator.add(clinicIdError.field, clinicIdError.message);
     }
-    
+
     const nameError = validation.required(patientForm.name, 'name');
     if (nameError) {
       validator.add(nameError.field, nameError.message);
     }
-    
-    const nameMaxLengthError = validation.maxLength(patientForm.name, 255, 'name');
+
+    const nameMaxLengthError = validation.maxLength(
+      patientForm.name,
+      255,
+      'name'
+    );
     if (nameMaxLengthError) {
       validator.add(nameMaxLengthError.field, nameMaxLengthError.message);
     }
-    
+
     if (patientForm.date_of_birth) {
-      const dateError = validation.dateFormat(patientForm.date_of_birth, 'date_of_birth');
+      const dateError = validation.dateFormat(
+        patientForm.date_of_birth,
+        'date_of_birth'
+      );
       if (dateError) {
         validator.add(dateError.field, dateError.message);
       }
     }
-    
+
     if (validator.hasErrors()) {
       return NextResponse.json(
         { success: false, error: validator.getApiError() },
@@ -307,7 +386,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         date_of_birth: patientForm.date_of_birth || null,
         phone_number: patientForm.phone_number || null,
         address: patientForm.address || null,
-        registration_date: new Date().toISOString().split('T')[0]
+        registration_date: new Date().toISOString().split('T')[0],
       })
       .select()
       .single();
@@ -318,7 +397,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
     const response: ApiResponse<any> = {
       success: true,
-      data
+      data,
     };
 
     return NextResponse.json(response);
@@ -340,11 +419,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       );
     }
 
-    logError(error instanceof Error ? error : new Error(String(error)), { path, body: request.body });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path,
+      body: request.body,
+    });
 
     const response: ApiResponse<any> = {
       success: false,
-      error: apiError
+      error: apiError,
     };
 
     return NextResponse.json(response, { status: statusCode });

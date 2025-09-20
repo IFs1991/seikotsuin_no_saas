@@ -6,17 +6,19 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const nextParam = searchParams.get('next');
-  
+
   // セキュアなリダイレクト先を検証
   const safeRedirectUrl = getSafeRedirectUrl(nextParam, origin);
-  const redirectPath = safeRedirectUrl ? new URL(safeRedirectUrl).pathname : getDefaultRedirect();
-  
+  const redirectPath = safeRedirectUrl
+    ? new URL(safeRedirectUrl).pathname
+    : getDefaultRedirect();
+
   if (code) {
     const supabase = await createClient();
-    
+
     try {
       const { error, data } = await supabase.auth.exchangeCodeForSession(code);
-      
+
       if (!error && data.user) {
         // ユーザー情報を取得して適切なリダイレクト先を決定
         const { data: profile } = await supabase
@@ -26,13 +28,15 @@ export async function GET(request: Request) {
           .single();
 
         const userRole = profile?.role || 'staff';
-        const finalRedirectPath = safeRedirectUrl ? 
-          new URL(safeRedirectUrl).pathname : 
-          getDefaultRedirect(userRole);
+        const finalRedirectPath = safeRedirectUrl
+          ? new URL(safeRedirectUrl).pathname
+          : getDefaultRedirect(userRole);
 
         // 成功ログ
-        console.info(`[Auth] Successful login: ${data.user.email} -> ${finalRedirectPath}`);
-        
+        console.info(
+          `[Auth] Successful login: ${data.user.email} -> ${finalRedirectPath}`
+        );
+
         return NextResponse.redirect(`${origin}${finalRedirectPath}`);
       } else {
         // 認証エラーをログに記録
@@ -52,7 +56,7 @@ export async function GET(request: Request) {
 
   // 認証失敗時は安全なエラーメッセージでリダイレクト
   const errorUrl = `${origin}/admin/login?error=auth_failed`;
-  
+
   // セキュリティログ
   console.warn('[Security] Authentication callback failed:', {
     hasCode: !!code,
@@ -61,6 +65,6 @@ export async function GET(request: Request) {
     userAgent: request.headers.get('user-agent')?.substring(0, 100),
     timestamp: new Date().toISOString(),
   });
-  
+
   return NextResponse.redirect(errorUrl);
 }

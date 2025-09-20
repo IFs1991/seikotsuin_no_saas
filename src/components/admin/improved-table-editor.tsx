@@ -14,8 +14,8 @@ interface ImprovedTableEditorProps {
   onTableChange?: (tableName: string) => void;
 }
 
-export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({ 
-  onTableChange 
+export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
+  onTableChange,
 }) => {
   const {
     tableData,
@@ -51,15 +51,18 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
   }>({
     open: false,
     id: '',
-    name: ''
+    name: '',
   });
 
   // テーブル選択処理
-  const handleTableSelect = useCallback(async (tableName: string) => {
-    setCurrentTable(tableName);
-    await fetchTableData(tableName);
-    onTableChange?.(tableName);
-  }, [setCurrentTable, fetchTableData, onTableChange]);
+  const handleTableSelect = useCallback(
+    async (tableName: string) => {
+      setCurrentTable(tableName);
+      await fetchTableData(tableName);
+      onTableChange?.(tableName);
+    },
+    [setCurrentTable, fetchTableData, onTableChange]
+  );
 
   // 新規作成処理
   const handleCreate = useCallback(() => {
@@ -82,7 +85,7 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
     setDeleteDialog({
       open: true,
       id,
-      name
+      name,
     });
   }, []);
 
@@ -99,25 +102,28 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
   }, [deleteTableData, deleteDialog.id]);
 
   // フォーム送信処理
-  const handleFormSubmit = useCallback(async (data: Record<string, unknown>) => {
-    try {
-      let success = false;
-      
-      if (formMode === 'create') {
-        success = await createTableData(data);
-      } else if (editingItem) {
-        success = await updateTableData(editingItem.id, data);
-      }
+  const handleFormSubmit = useCallback(
+    async (data: Record<string, unknown>) => {
+      try {
+        let success = false;
 
-      if (success) {
-        setShowForm(false);
-        setFormData({});
-        setEditingItem(null);
+        if (formMode === 'create') {
+          success = await createTableData(data);
+        } else if (editingItem) {
+          success = await updateTableData(editingItem.id, data);
+        }
+
+        if (success) {
+          setShowForm(false);
+          setFormData({});
+          setEditingItem(null);
+        }
+      } catch (error) {
+        console.error('フォーム送信エラー:', error);
       }
-    } catch (error) {
-      console.error('フォーム送信エラー:', error);
-    }
-  }, [formMode, editingItem, createTableData, updateTableData]);
+    },
+    [formMode, editingItem, createTableData, updateTableData]
+  );
 
   // フォームフィールド変更処理
   const handleFieldChange = useCallback((name: string, value: unknown) => {
@@ -132,27 +138,39 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
   }, []);
 
   // 検索処理
-  const handleSearch = useCallback((term: string) => {
-    setSearch(term);
-  }, [setSearch]);
+  const handleSearch = useCallback(
+    (term: string) => {
+      setSearch(term);
+    },
+    [setSearch]
+  );
 
   // ソート処理
-  const handleSort = useCallback((column: string) => {
-    const newOrder = sortState.sortBy === column && sortState.sortOrder === 'asc' ? 'desc' : 'asc';
-    setSortState(column, newOrder);
-  }, [sortState, setSortState]);
+  const handleSort = useCallback(
+    (column: string) => {
+      const newOrder =
+        sortState.sortBy === column && sortState.sortOrder === 'asc'
+          ? 'desc'
+          : 'asc';
+      setSortState(column, newOrder);
+    },
+    [sortState, setSortState]
+  );
 
   // ページ変更処理
-  const handlePageChange = useCallback((page: number) => {
-    setPage(page);
-  }, [setPage]);
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setPage(page);
+    },
+    [setPage]
+  );
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       {/* エラー表示 */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800 text-sm">{error}</p>
+        <div className='bg-red-50 border border-red-200 rounded-md p-4'>
+          <p className='text-red-800 text-sm'>{error}</p>
         </div>
       )}
 
@@ -167,12 +185,12 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
       {/* データテーブル */}
       {currentTable && (
         <>
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">
+          <div className='flex justify-between items-center'>
+            <h2 className='text-lg font-semibold'>
               {tableConfig?.name || currentTable}の管理
             </h2>
             <Button onClick={handleCreate} disabled={loading}>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className='h-4 w-4 mr-2' />
               新規作成
             </Button>
           </div>
@@ -207,7 +225,7 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
       {/* 削除確認ダイアログ */}
       <DeleteConfirmationDialog
         open={deleteDialog.open}
-        title="レコード"
+        title='レコード'
         itemName={deleteDialog.name}
         loading={loading}
         onConfirm={handleDeleteConfirm}

@@ -1,4 +1,7 @@
 import type { Config } from 'tailwindcss';
+import forms from '@tailwindcss/forms';
+import typography from '@tailwindcss/typography';
+import aspectRatio from '@tailwindcss/aspect-ratio';
 
 const config: Config = {
   content: [
@@ -9,39 +12,39 @@ const config: Config = {
   darkMode: ['class'],
   theme: {
     screens: {
-      'xs': '475px',
-      'sm': '640px',
-      'md': '768px',
-      'lg': '1024px',
-      'xl': '1280px',
+      xs: '475px',
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
       '2xl': '1536px',
       // カスタムブレークポイント
       'mobile-sm': '320px',
       'mobile-lg': '414px',
-      'tablet': '768px',
-      'desktop': '1024px',
+      tablet: '768px',
+      desktop: '1024px',
     },
     container: {
       center: true,
       padding: {
-        DEFAULT: "1rem",
-        sm: "1.5rem",
-        lg: "2rem",
+        DEFAULT: '1rem',
+        sm: '1.5rem',
+        lg: '2rem',
       },
       screens: {
-        "2xl": "1400px",
+        '2xl': '1400px',
       },
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
@@ -55,20 +58,20 @@ const config: Config = {
           950: '#172554',
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
           50: '#f0fdf4',
           100: '#dcfce7',
           200: '#bbf7d0',
@@ -82,12 +85,12 @@ const config: Config = {
           950: '#021c14',
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
         admin: {
           50: '#faf5ff',
@@ -102,19 +105,19 @@ const config: Config = {
           900: '#581c87',
           950: '#3b0764',
         },
-        "medical-blue": {
-          50: "#EFF6FF",
-          100: "#DBEAFE",
-          500: "#3B82F6",
-          600: "#2563EB",
-          700: "#1D4ED8",
+        'medical-blue': {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
         },
-        "medical-green": {
-          50: "#ECFDF5",
-          100: "#D1FAE5",
-          500: "#10B981",
-          600: "#059669",
-          700: "#047857",
+        'medical-green': {
+          50: '#ECFDF5',
+          100: '#D1FAE5',
+          500: '#10B981',
+          600: '#059669',
+          700: '#047857',
         },
         text: {
           primary: '#111827',
@@ -133,17 +136,17 @@ const config: Config = {
         'touch-comfortable': '2.75rem', // 44px
         // 医療系レイアウト用
         'medical-xs': '0.25rem', // 4px
-        'medical-sm': '0.5rem',  // 8px
+        'medical-sm': '0.5rem', // 8px
         'medical-md': '0.75rem', // 12px
-        'medical-lg': '1rem',    // 16px
+        'medical-lg': '1rem', // 16px
         'medical-xl': '1.25rem', // 20px
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
         'pulse-soft': 'pulseSoft 2s infinite',
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -158,32 +161,30 @@ const config: Config = {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.8' },
         },
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
         },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
         },
       },
       boxShadow: {
-        'medical': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'medical-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        medical:
+          '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+        'medical-lg':
+          '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        'medical': '0.5rem',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        medical: '0.5rem',
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-    require('@tailwindcss/aspect-ratio'),
-  ],
+  plugins: [forms, typography, aspectRatio],
 };
 
 export default config;

@@ -1,12 +1,15 @@
 import { NextRequest } from 'next/server';
 import { supabase } from '@/api/database/supabase-client';
-import { safeValidateTableData, SupportedTableName } from '@/lib/validation/table-schemas';
+import {
+  safeValidateTableData,
+  SupportedTableName,
+} from '@/lib/validation/table-schemas';
 import { SUCCESS_MESSAGES } from '@/lib/constants';
-import { 
-  processApiRequest, 
-  createErrorResponse, 
+import {
+  processApiRequest,
+  createErrorResponse,
   createSuccessResponse,
-  logError
+  logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
@@ -22,24 +25,23 @@ export async function GET(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth } = processResult;
     const { searchParams } = new URL(request.url);
     const tableName = searchParams.get('table');
-    
+
     // 特定テーブルのデータ取得
     if (tableName) {
       return await getTableData(tableName, searchParams, auth?.id);
     }
-    
+
     // テーブル一覧取得
     return await getTablesConfig(auth?.id);
-    
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'GET',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -49,38 +51,43 @@ export async function GET(request: NextRequest) {
 async function getTablesConfig(userId?: string) {
   try {
     const tableNames = await getManageableTables();
-    
+
     const tablesConfig = await Promise.all(
-      tableNames.map(async (tableName) => {
+      tableNames.map(async tableName => {
         const config = await getTableConfig(tableName);
-        return config ? {
-          name: tableName,
-          displayName: config.displayName || tableName,
-          columns: Object.keys(config.columns).length
-        } : null;
+        return config
+          ? {
+              name: tableName,
+              displayName: config.displayName || tableName,
+              columns: Object.keys(config.columns).length,
+            }
+          : null;
       })
     );
-    
+
     // nullを除外
     const validTables = tablesConfig.filter(Boolean);
-    
+
     return createSuccessResponse({
       tables: validTables,
-      total: validTables.length
+      total: validTables.length,
     });
-    
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'GET',
-      userId: userId || 'unknown'
+      userId: userId || 'unknown',
     });
     return createErrorResponse('テーブル設定の取得に失敗しました', 500);
   }
 }
 
 // 特定テーブルのデータを取得
-async function getTableData(tableName: string, searchParams: URLSearchParams, userId?: string) {
+async function getTableData(
+  tableName: string,
+  searchParams: URLSearchParams,
+  userId?: string
+) {
   try {
     // テーブル設定を取得
     const tableConfig = await getTableConfig(tableName);
@@ -94,13 +101,11 @@ async function getTableData(tableName: string, searchParams: URLSearchParams, us
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sort_by') || 'created_at';
     const sortOrder = searchParams.get('sort_order') || 'desc';
-    
+
     const offset = (page - 1) * limit;
 
     // クエリ構築
-    let query = supabase
-      .from(tableName)
-      .select('*', { count: 'exact' });
+    let query = supabase.from(tableName).select('*', { count: 'exact' });
 
     // 検索条件
     if (search) {
@@ -112,7 +117,7 @@ async function getTableData(tableName: string, searchParams: URLSearchParams, us
 
     // ソート
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
-    
+
     // ページネーション
     query = query.range(offset, offset + limit - 1);
 
@@ -123,7 +128,7 @@ async function getTableData(tableName: string, searchParams: URLSearchParams, us
         endpoint: '/api/admin/tables',
         method: 'GET',
         userId: userId || 'unknown',
-        params: { tableName, page, limit, search }
+        params: { tableName, page, limit, search },
       });
       return createErrorResponse('データの取得に失敗しました', 500);
     }
@@ -144,16 +149,15 @@ async function getTableData(tableName: string, searchParams: URLSearchParams, us
         page,
         limit,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit)
-      }
+        totalPages: Math.ceil((count || 0) / limit),
+      },
     });
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'GET',
       userId: userId || 'unknown',
-      params: { tableName }
+      params: { tableName },
     });
     return createErrorResponse('データの取得に失敗しました', 500);
   }
@@ -167,15 +171,23 @@ export async function POST(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth, body } = processResult;
-    
-    if (!body || typeof body !== 'object' || !('table_name' in body) || !('data' in body)) {
+
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      !('table_name' in body) ||
+      !('data' in body)
+    ) {
       return createErrorResponse('テーブル名とデータが必要です', 400);
     }
 
-    const { table_name, data } = body as { table_name: string; data: Record<string, unknown> };
-    
+    const { table_name, data } = body as {
+      table_name: string;
+      data: Record<string, unknown>;
+    };
+
     // テーブル設定を取得して検証
     const tableConfig = await getTableConfig(table_name);
     if (!tableConfig) {
@@ -183,7 +195,10 @@ export async function POST(request: NextRequest) {
     }
 
     // バリデーション
-    const validationResult = safeValidateTableData(table_name as SupportedTableName, data);
+    const validationResult = safeValidateTableData(
+      table_name as SupportedTableName,
+      data
+    );
     if (!validationResult.success) {
       return createErrorResponse(
         'バリデーションエラー',
@@ -204,7 +219,7 @@ export async function POST(request: NextRequest) {
         endpoint: '/api/admin/tables',
         method: 'POST',
         userId: auth?.id || 'unknown',
-        params: { table_name, data }
+        params: { table_name, data },
       });
       return createErrorResponse('データの作成に失敗しました', 500);
     }
@@ -219,12 +234,11 @@ export async function POST(request: NextRequest) {
     );
 
     return createSuccessResponse(newRecord, 201, SUCCESS_MESSAGES.CREATED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'POST',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -238,19 +252,25 @@ export async function PUT(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth, body } = processResult;
-    
-    if (!body || typeof body !== 'object' || !('table_name' in body) || !('id' in body) || !('data' in body)) {
+
+    if (
+      !body ||
+      typeof body !== 'object' ||
+      !('table_name' in body) ||
+      !('id' in body) ||
+      !('data' in body)
+    ) {
       return createErrorResponse('テーブル名、ID、データが必要です', 400);
     }
 
-    const { table_name, id, data } = body as { 
-      table_name: string; 
-      id: string; 
-      data: Record<string, unknown> 
+    const { table_name, id, data } = body as {
+      table_name: string;
+      id: string;
+      data: Record<string, unknown>;
     };
-    
+
     // テーブル設定を取得して検証
     const tableConfig = await getTableConfig(table_name);
     if (!tableConfig) {
@@ -258,7 +278,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // バリデーション（部分更新対応）
-    const validationResult = safeValidateTableData(table_name as SupportedTableName, data, true);
+    const validationResult = safeValidateTableData(
+      table_name as SupportedTableName,
+      data,
+      true
+    );
     if (!validationResult.success) {
       return createErrorResponse(
         'バリデーションエラー',
@@ -280,7 +304,7 @@ export async function PUT(request: NextRequest) {
         endpoint: '/api/admin/tables',
         method: 'PUT',
         userId: auth?.id || 'unknown',
-        params: { table_name, id, data }
+        params: { table_name, id, data },
       });
       return createErrorResponse('データの更新に失敗しました', 500);
     }
@@ -295,12 +319,11 @@ export async function PUT(request: NextRequest) {
     );
 
     return createSuccessResponse(updatedRecord, 200, SUCCESS_MESSAGES.UPDATED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'PUT',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -314,7 +337,7 @@ export async function DELETE(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth } = processResult;
     const { searchParams } = new URL(request.url);
     const tableName = searchParams.get('table');
@@ -331,17 +354,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // データベースから削除
-    const { error } = await supabase
-      .from(tableName)
-      .delete()
-      .eq('id', id);
+    const { error } = await supabase.from(tableName).delete().eq('id', id);
 
     if (error) {
       logError(error, {
         endpoint: '/api/admin/tables',
         method: 'DELETE',
         userId: auth?.id || 'unknown',
-        params: { tableName, id }
+        params: { tableName, id },
       });
       return createErrorResponse('データの削除に失敗しました', 500);
     }
@@ -355,12 +375,11 @@ export async function DELETE(request: NextRequest) {
     );
 
     return createSuccessResponse(null, 200, SUCCESS_MESSAGES.DELETED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/tables',
       method: 'DELETE',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }

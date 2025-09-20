@@ -41,12 +41,12 @@ export function createAdminClient() {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
-        detectSessionInUrl: false
+        detectSessionInUrl: false,
       },
       cookies: {
         getAll: () => [],
-        setAll: () => {}
-      }
+        setAll: () => {},
+      },
     }
   );
 }
@@ -54,12 +54,15 @@ export function createAdminClient() {
 // ユーザー認証・認可チェック用のヘルパー関数
 export async function getCurrentUser() {
   const supabase = createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
   if (error || !user) {
     return null;
   }
-  
+
   return user;
 }
 
@@ -70,11 +73,11 @@ export async function getUserPermissions(userId: string) {
     .select('role, clinic_id')
     .eq('staff_id', userId)
     .single();
-    
+
   if (error) {
     return null;
   }
-  
+
   return permissions;
 }
 
@@ -89,10 +92,10 @@ export async function requireAuth() {
 export async function requireAdminAuth() {
   const user = await requireAuth();
   const permissions = await getUserPermissions(user.id);
-  
+
   if (!permissions || !['admin', 'clinic_manager'].includes(permissions.role)) {
     throw new Error('管理者権限が必要です');
   }
-  
+
   return { user, permissions };
 }

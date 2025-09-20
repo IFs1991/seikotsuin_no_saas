@@ -5,253 +5,248 @@
 # Phase: 1 - UI統合・改善
 
 project:
-  name: "整骨院管理SaaS"
-  phase: "Phase 1 - UI統合・改善"
-  version: "1.0"
-  created_date: "2025-08-23"
-  status: "Draft"
+  name: '整骨院管理SaaS'
+  phase: 'Phase 1 - UI統合・改善'
+  version: '1.0'
+  created_date: '2025-08-23'
+  status: 'Draft'
 
 # プロジェクト概要
 overview:
-  description: "現在のPhase 0完了状態から、UI/UXの統合・改善を行いPhase 1を完成させる"
-  current_status: "Phase 0 完了 (7ページすべて実装・動作確認済み)"
-  target_status: "Phase 1 完了 (UI統合・レスポンシブ最適化・UX改善)"
-  business_value: "整骨院スタッフの業務効率向上、ユーザビリティの大幅改善"
+  description: '現在のPhase 0完了状態から、UI/UXの統合・改善を行いPhase 1を完成させる'
+  current_status: 'Phase 0 完了 (7ページすべて実装・動作確認済み)'
+  target_status: 'Phase 1 完了 (UI統合・レスポンシブ最適化・UX改善)'
+  business_value: '整骨院スタッフの業務効率向上、ユーザビリティの大幅改善'
 
 # 技術スタック確認
 tech_stack:
   frontend:
-    framework: "Next.js 15 (App Router)"
-    language: "TypeScript"
-    ui_library: "React 19"
-    styling: "Tailwind CSS"
-    components: "shadcn/ui + Radix UI"
-    state_management: "Zustand + React Query"
-    icons: "Lucide React"
-  
+    framework: 'Next.js 15 (App Router)'
+    language: 'TypeScript'
+    ui_library: 'React 19'
+    styling: 'Tailwind CSS'
+    components: 'shadcn/ui + Radix UI'
+    state_management: 'Zustand + React Query'
+    icons: 'Lucide React'
+
   current_strengths:
-    - "App Routerによるモダンなルーティング"
-    - "TypeScript型安全性"
-    - "コンポーネント分離設計"
-    - "カスタムフックによる状態管理"
-    - "レスポンシブ基盤"
+    - 'App Routerによるモダンなルーティング'
+    - 'TypeScript型安全性'
+    - 'コンポーネント分離設計'
+    - 'カスタムフックによる状態管理'
+    - 'レスポンシブ基盤'
 
 # 改善対象領域
 improvement_areas:
-  
   # 1. UI統合・一貫性改善
   ui_consistency:
-    priority: "HIGH"
-    description: "shadcn/uiコンポーネントの一貫性向上とデザインシステム強化"
+    priority: 'HIGH'
+    description: 'shadcn/uiコンポーネントの一貫性向上とデザインシステム強化'
     current_issues:
-      - "コンポーネント間でのスタイル不整合"
-      - "カラーパレット・タイポグラフィの統一性不足"
-      - "UI要素のサイズ・間隔の不統一"
-    
+      - 'コンポーネント間でのスタイル不整合'
+      - 'カラーパレット・タイポグラフィの統一性不足'
+      - 'UI要素のサイズ・間隔の不統一'
+
     requirements:
       design_system:
-        - "統一されたカラーパレット定義"
-        - "一貫したタイポグラフィスケール"
-        - "標準的なスペーシングシステム"
-        - "ブランドガイドライン準拠"
-      
+        - '統一されたカラーパレット定義'
+        - '一貫したタイポグラフィスケール'
+        - '標準的なスペーシングシステム'
+        - 'ブランドガイドライン準拠'
+
       components:
-        - "Button コンポーネントのバリアント統一"
-        - "Input/Form 要素の一貫性向上"
-        - "Card コンポーネントの標準化"
-        - "Table コンポーネントの改善"
-        - "Dialog/Modal の統一"
+        - 'Button コンポーネントのバリアント統一'
+        - 'Input/Form 要素の一貫性向上'
+        - 'Card コンポーネントの標準化'
+        - 'Table コンポーネントの改善'
+        - 'Dialog/Modal の統一'
 
   # 2. レスポンシブデザイン最適化
   responsive_optimization:
-    priority: "HIGH"
-    description: "モバイル・タブレット対応の最適化"
+    priority: 'HIGH'
+    description: 'モバイル・タブレット対応の最適化'
     current_issues:
-      - "モバイルでの表示崩れ"
-      - "タッチインターフェイス最適化不足"
-      - "大きなテーブルのモバイル表示"
-    
+      - 'モバイルでの表示崩れ'
+      - 'タッチインターフェイス最適化不足'
+      - '大きなテーブルのモバイル表示'
+
     requirements:
       breakpoints:
-        mobile: "< 768px"
-        tablet: "768px - 1024px"
-        desktop: "> 1024px"
-      
+        mobile: '< 768px'
+        tablet: '768px - 1024px'
+        desktop: '> 1024px'
+
       mobile_optimization:
-        - "タッチフレンドリーなボタンサイズ (44px以上)"
-        - "スワイプジェスチャー対応"
-        - "モバイル専用ナビゲーション"
-        - "縦向き・横向き両対応"
-      
+        - 'タッチフレンドリーなボタンサイズ (44px以上)'
+        - 'スワイプジェスチャー対応'
+        - 'モバイル専用ナビゲーション'
+        - '縦向き・横向き両対応'
+
       tablet_optimization:
-        - "タブレット専用レイアウト"
-        - "サイドバーの適応的表示"
-        - "データテーブルの最適化"
+        - 'タブレット専用レイアウト'
+        - 'サイドバーの適応的表示'
+        - 'データテーブルの最適化'
 
   # 3. UX/ユーザビリティ改善
   ux_improvements:
-    priority: "HIGH"
-    description: "整骨院業務フローに最適化されたUX改善"
-    
+    priority: 'HIGH'
+    description: '整骨院業務フローに最適化されたUX改善'
+
     requirements:
       navigation:
-        - "直感的なナビゲーション構造"
-        - "パンくずリスト導入"
-        - "ショートカットキー対応"
-        - "検索機能強化"
-      
+        - '直感的なナビゲーション構造'
+        - 'パンくずリスト導入'
+        - 'ショートカットキー対応'
+        - '検索機能強化'
+
       forms:
-        - "リアルタイムバリデーション"
-        - "自動保存機能"
-        - "エラーメッセージ改善"
-        - "入力補助機能"
-      
+        - 'リアルタイムバリデーション'
+        - '自動保存機能'
+        - 'エラーメッセージ改善'
+        - '入力補助機能'
+
       data_visualization:
-        - "チャート・グラフの見やすさ向上"
-        - "データエクスポート機能"
-        - "フィルタリング機能強化"
-        - "ソート機能改善"
+        - 'チャート・グラフの見やすさ向上'
+        - 'データエクスポート機能'
+        - 'フィルタリング機能強化'
+        - 'ソート機能改善'
 
   # 4. パフォーマンス最適化
   performance:
-    priority: "MEDIUM"
-    description: "表示速度・操作レスポンス向上"
-    
+    priority: 'MEDIUM'
+    description: '表示速度・操作レスポンス向上'
+
     requirements:
       loading:
-        - "スケルトンローディング導入"
-        - "Suspense境界の最適化"
-        - "画像最適化 (next/image)"
-        - "フォント読み込み最適化"
-      
+        - 'スケルトンローディング導入'
+        - 'Suspense境界の最適化'
+        - '画像最適化 (next/image)'
+        - 'フォント読み込み最適化'
+
       bundle:
-        - "コード分割最適化"
-        - "不要ライブラリ削除"
-        - "Tree shaking効果確認"
-        - "Bundle analyzer導入"
+        - 'コード分割最適化'
+        - '不要ライブラリ削除'
+        - 'Tree shaking効果確認'
+        - 'Bundle analyzer導入'
 
   # 5. アクセシビリティ向上
   accessibility:
-    priority: "MEDIUM"
-    description: "WCAG 2.1 AA準拠を目指したアクセシビリティ向上"
-    
+    priority: 'MEDIUM'
+    description: 'WCAG 2.1 AA準拠を目指したアクセシビリティ向上'
+
     requirements:
       keyboard:
-        - "キーボードナビゲーション完全対応"
-        - "フォーカス管理改善"
-        - "ショートカット実装"
-      
+        - 'キーボードナビゲーション完全対応'
+        - 'フォーカス管理改善'
+        - 'ショートカット実装'
+
       screen_reader:
-        - "適切なaria属性設定"
-        - "alt属性完備"
-        - "見出し構造最適化"
-      
+        - '適切なaria属性設定'
+        - 'alt属性完備'
+        - '見出し構造最適化'
+
       visual:
-        - "カラーコントラスト比4.5:1以上"
-        - "フォントサイズ拡張対応"
-        - "動的コンテンツ配慮"
+        - 'カラーコントラスト比4.5:1以上'
+        - 'フォントサイズ拡張対応'
+        - '動的コンテンツ配慮'
 
 # 作業工程・スケジュール
 work_phases:
-  
   phase1_1:
-    name: "デザインシステム構築"
-    duration: "3-4日"
+    name: 'デザインシステム構築'
+    duration: '3-4日'
     tasks:
-      - "カラーパレット・タイポグラフィ定義"
-      - "Tailwind設定ファイル整備"
-      - "shadcn/uiカスタマイズ"
-      - "デザイントークン定義"
-  
+      - 'カラーパレット・タイポグラフィ定義'
+      - 'Tailwind設定ファイル整備'
+      - 'shadcn/uiカスタマイズ'
+      - 'デザイントークン定義'
+
   phase1_2:
-    name: "コンポーネント統合"
-    duration: "4-5日"
+    name: 'コンポーネント統合'
+    duration: '4-5日'
     tasks:
-      - "Button/Input/Card統一"
-      - "Table/Form改善"
-      - "Dialog/Modal統合"
-      - "アイコン統一"
-  
+      - 'Button/Input/Card統一'
+      - 'Table/Form改善'
+      - 'Dialog/Modal統合'
+      - 'アイコン統一'
+
   phase1_3:
-    name: "レスポンシブ最適化"
-    duration: "4-5日"
+    name: 'レスポンシブ最適化'
+    duration: '4-5日'
     tasks:
-      - "モバイルレイアウト調整"
-      - "タブレット対応"
-      - "ナビゲーション改善"
-      - "テーブル最適化"
-  
+      - 'モバイルレイアウト調整'
+      - 'タブレット対応'
+      - 'ナビゲーション改善'
+      - 'テーブル最適化'
+
   phase1_4:
-    name: "UX改善・最適化"
-    duration: "3-4日"
+    name: 'UX改善・最適化'
+    duration: '3-4日'
     tasks:
-      - "フォーム改善"
-      - "ローディング状態改善"
-      - "エラーハンドリング"
-      - "パフォーマンス最適化"
+      - 'フォーム改善'
+      - 'ローディング状態改善'
+      - 'エラーハンドリング'
+      - 'パフォーマンス最適化'
 
 # 成功指標
 success_metrics:
-  
   technical:
-    - "Lighthouse Performance Score: 90+"
-    - "Lighthouse Accessibility Score: 90+"
-    - "バンドルサイズ: 10%削減"
-    - "First Contentful Paint: 1.5s以下"
-  
+    - 'Lighthouse Performance Score: 90+'
+    - 'Lighthouse Accessibility Score: 90+'
+    - 'バンドルサイズ: 10%削減'
+    - 'First Contentful Paint: 1.5s以下'
+
   user_experience:
-    - "モバイル表示崩れ: 0件"
-    - "フォーム入力エラー: 50%削減"
-    - "ページ遷移時間: 200ms以下"
-    - "タッチターゲットサイズ: 44px以上"
-  
+    - 'モバイル表示崩れ: 0件'
+    - 'フォーム入力エラー: 50%削減'
+    - 'ページ遷移時間: 200ms以下'
+    - 'タッチターゲットサイズ: 44px以上'
+
   business:
-    - "ユーザビリティテスト評価: 4.5/5.0以上"
-    - "整骨院スタッフ満足度向上"
-    - "業務効率化時間: 20%短縮"
+    - 'ユーザビリティテスト評価: 4.5/5.0以上'
+    - '整骨院スタッフ満足度向上'
+    - '業務効率化時間: 20%短縮'
 
 # リスクと対策
 risks_and_mitigations:
-  
   technical_risks:
-    - risk: "既存機能の破壊"
-      mitigation: "段階的改善・十分なテスト"
-    - risk: "パフォーマンス劣化" 
-      mitigation: "継続的な性能監視"
-    - risk: "デザインシステム適用の複雑化"
-      mitigation: "段階的導入・文書化"
-  
+    - risk: '既存機能の破壊'
+      mitigation: '段階的改善・十分なテスト'
+    - risk: 'パフォーマンス劣化'
+      mitigation: '継続的な性能監視'
+    - risk: 'デザインシステム適用の複雑化'
+      mitigation: '段階的導入・文書化'
+
   timeline_risks:
-    - risk: "作業量過小評価"
-      mitigation: "バッファ期間確保"
-    - risk: "要求仕様変更"
-      mitigation: "段階的デリバリ"
+    - risk: '作業量過小評価'
+      mitigation: 'バッファ期間確保'
+    - risk: '要求仕様変更'
+      mitigation: '段階的デリバリ'
 
 # 品質保証
 quality_assurance:
-  
   testing:
-    - "コンポーネント単体テスト"
-    - "ビジュアルリグレッションテスト"
-    - "レスポンシブテスト"
-    - "アクセシビリティテスト"
-  
+    - 'コンポーネント単体テスト'
+    - 'ビジュアルリグレッションテスト'
+    - 'レスポンシブテスト'
+    - 'アクセシビリティテスト'
+
   review:
-    - "コードレビュー実施"
-    - "デザインレビュー"
-    - "UXレビュー"
-    - "性能レビュー"
+    - 'コードレビュー実施'
+    - 'デザインレビュー'
+    - 'UXレビュー'
+    - '性能レビュー'
 
 # 今後の展開
 future_considerations:
-  - "Phase 2: バックエンド連携準備"
-  - "Storybook導入検討"
-  - "E2Eテスト導入"
-  - "CI/CDパイプライン強化"
+  - 'Phase 2: バックエンド連携準備'
+  - 'Storybook導入検討'
+  - 'E2Eテスト導入'
+  - 'CI/CDパイプライン強化'
 
 # 備考
 notes:
-  - "整骨院業務フローを最優先に考慮"
-  - "段階的改善で既存機能への影響を最小化"
-  - "ユーザーフィードバックを重視"
-  - "将来の拡張性を考慮した設計"
+  - '整骨院業務フローを最優先に考慮'
+  - '段階的改善で既存機能への影響を最小化'
+  - 'ユーザーフィードバックを重視'
+  - '将来の拡張性を考慮した設計'

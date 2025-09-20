@@ -16,78 +16,77 @@ export interface FormFieldProps {
 }
 
 export const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
-  ({ 
-    label, 
-    required = false, 
-    error, 
-    help, 
-    className, 
-    labelClassName,
-    inputClassName,
-    children, 
-    inputProps,
-    ...props 
-  }, ref) => {
+  (
+    {
+      label,
+      required = false,
+      error,
+      help,
+      className,
+      labelClassName,
+      inputClassName,
+      children,
+      inputProps,
+      ...props
+    },
+    ref
+  ) => {
     const fieldId = React.useId();
     const errorId = React.useId();
     const helpId = React.useId();
 
     return (
-      <div
-        ref={ref}
-        className={cn("space-y-2", className)}
-        {...props}
-      >
+      <div ref={ref} className={cn('space-y-2', className)} {...props}>
         <Label
           htmlFor={fieldId}
           variant={required ? 'required' : 'medical'}
-          className={cn("block", labelClassName)}
+          className={cn('block', labelClassName)}
         >
           {label}
         </Label>
-        
+
         {children ? (
           React.cloneElement(children as React.ReactElement, {
             id: fieldId,
-            'aria-describedby': cn(
-              error ? errorId : undefined,
-              help ? helpId : undefined
-            ).trim() || undefined,
+            'aria-describedby':
+              cn(
+                error ? errorId : undefined,
+                help ? helpId : undefined
+              ).trim() || undefined,
             'aria-invalid': error ? 'true' : undefined,
           })
         ) : (
           <Input
             id={fieldId}
-            variant="medical"
-            inputSize="touch"
-            aria-describedby={cn(
-              error ? errorId : undefined,
-              help ? helpId : undefined
-            ).trim() || undefined}
+            variant='medical'
+            inputSize='touch'
+            aria-describedby={
+              cn(
+                error ? errorId : undefined,
+                help ? helpId : undefined
+              ).trim() || undefined
+            }
             aria-invalid={error ? 'true' : undefined}
             className={cn(
-              error && "border-red-500 focus:border-red-500 focus:ring-red-500",
+              error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
               inputClassName
             )}
             {...inputProps}
           />
         )}
-        
+
         {help && !error && (
-          <p 
-            id={helpId}
-            className="text-sm text-gray-600"
-          >
+          <p id={helpId} className='text-sm text-gray-600'>
             {help}
           </p>
         )}
-        
+
         {error && (
-          <p 
+          <p
             id={errorId}
-            className="text-sm text-red-600 font-medium"
-            role="alert"
-            aria-live="polite"
+            className='text-sm text-red-600 font-medium'
+            role='alert'
+            aria-live='polite'
           >
             ⚠ {error}
           </p>
@@ -97,4 +96,4 @@ export const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
   }
 );
 
-FormField.displayName = "FormField";
+FormField.displayName = 'FormField';

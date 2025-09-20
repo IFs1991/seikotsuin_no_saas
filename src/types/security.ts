@@ -9,7 +9,7 @@
 
 export type ThreatSeverity = 'low' | 'medium' | 'high' | 'critical';
 
-export type ThreatType = 
+export type ThreatType =
   | 'brute_force_attack'
   | 'session_hijacking'
   | 'location_anomaly'
@@ -21,7 +21,7 @@ export type ThreatType =
   | 'privilege_escalation'
   | 'data_breach_attempt';
 
-export type SecurityEventType = 
+export type SecurityEventType =
   | 'login_success'
   | 'login_failed'
   | 'session_created'
@@ -34,7 +34,7 @@ export type SecurityEventType =
   | 'security_violation'
   | 'system_error';
 
-export type UserRole = 
+export type UserRole =
   | 'admin'
   | 'clinic_admin'
   | 'manager'
@@ -96,7 +96,7 @@ export interface SessionMetadata {
   trustScore: number; // 0-100
 }
 
-export type SessionRevocationReason = 
+export type SessionRevocationReason =
   | 'manual_logout'
   | 'idle_timeout'
   | 'absolute_timeout'
@@ -121,7 +121,7 @@ export interface SessionValidationResult {
   warnings?: SessionWarning[];
 }
 
-export type SessionInvalidReason = 
+export type SessionInvalidReason =
   | 'session_not_found'
   | 'session_expired'
   | 'session_revoked'
@@ -132,7 +132,11 @@ export type SessionInvalidReason =
   | 'policy_violation';
 
 export interface SessionWarning {
-  type: 'location_change' | 'device_change' | 'suspicious_activity' | 'policy_update';
+  type:
+    | 'location_change'
+    | 'device_change'
+    | 'suspicious_activity'
+    | 'policy_update';
   message: string;
   severity: ThreatSeverity;
   action?: 'reauthenticate' | 'verify_device' | 'contact_admin' | 'none';
@@ -148,7 +152,7 @@ export interface SecurityThreat {
   severity: ThreatSeverity;
   title: string;
   description: string;
-  evidence: Record<string, any>;
+  evidence: Record<string, unknown>;
   userId?: string;
   clinicId?: string;
   sessionId?: string;
@@ -166,7 +170,7 @@ export interface SecurityThreat {
   resolutionNotes?: string;
 }
 
-export type DetectionMethod = 
+export type DetectionMethod =
   | 'rule_based'
   | 'anomaly_detection'
   | 'machine_learning'
@@ -182,7 +186,7 @@ export interface RecommendedAction {
   requiresApproval: boolean;
 }
 
-export type SecurityAction = 
+export type SecurityAction =
   | 'terminate_session'
   | 'block_ip'
   | 'require_mfa'
@@ -192,7 +196,7 @@ export type SecurityAction =
   | 'quarantine_account'
   | 'escalate_investigation';
 
-export type ThreatStatus = 
+export type ThreatStatus =
   | 'active'
   | 'investigating'
   | 'mitigated'
@@ -213,12 +217,12 @@ export interface SecurityEvent {
   ipAddress: string;
   userAgent: string;
   geolocation?: GeolocationInfo;
-  eventDetails: Record<string, any>;
+  eventDetails: Record<string, unknown>;
   severity: ThreatSeverity;
   success: boolean;
   timestamp: Date;
   relatedThreatId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ================================================================
@@ -253,7 +257,11 @@ export interface ThreatStatistics {
 
 export interface SecurityRecommendation {
   id: string;
-  type: 'security_policy' | 'system_configuration' | 'user_training' | 'technical_control';
+  type:
+    | 'security_policy'
+    | 'system_configuration'
+    | 'user_training'
+    | 'technical_control';
   priority: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   description: string;
@@ -270,7 +278,7 @@ export interface SecurityRecommendation {
 // 多要素認証（MFA）型定義（Phase 3B準備）
 // ================================================================
 
-export type MFAMethod = 
+export type MFAMethod =
   | 'totp'
   | 'sms'
   | 'email'

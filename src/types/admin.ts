@@ -11,7 +11,7 @@ export interface BaseSettings {
 export interface SaveResult {
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 export interface LoadingState {
@@ -40,8 +40,16 @@ export interface Role {
 }
 
 // サービス関連
-export type ServiceCategory = 'treatment' | 'massage' | 'rehabilitation' | 'other';
-export type ProductCategory = 'supplement' | 'equipment' | 'accessory' | 'other';
+export type ServiceCategory =
+  | 'treatment'
+  | 'massage'
+  | 'rehabilitation'
+  | 'other';
+export type ProductCategory =
+  | 'supplement'
+  | 'equipment'
+  | 'accessory'
+  | 'other';
 
 export interface Service extends BaseSettings {
   description: string;
@@ -101,7 +109,11 @@ export interface BookingSettings {
 }
 
 // 通信関連
-export type EmailTemplateType = 'booking_confirmation' | 'reminder' | 'cancellation' | 'followup';
+export type EmailTemplateType =
+  | 'booking_confirmation'
+  | 'reminder'
+  | 'cancellation'
+  | 'followup';
 
 export interface EmailTemplate {
   id: string;
@@ -183,7 +195,15 @@ export interface PaginationState {
 
 // テーブル設定型
 export interface TableColumn {
-  type: 'string' | 'integer' | 'decimal' | 'boolean' | 'text' | 'timestamp' | 'uuid' | 'json';
+  type:
+    | 'string'
+    | 'integer'
+    | 'decimal'
+    | 'boolean'
+    | 'text'
+    | 'timestamp'
+    | 'uuid'
+    | 'json';
   label?: string;
   required?: boolean;
   readonly?: boolean;
@@ -192,7 +212,7 @@ export interface TableColumn {
   max?: number;
   precision?: number;
   foreign_key?: string;
-  default?: any;
+  default?: unknown;
   nullable?: boolean;
 }
 
@@ -339,27 +359,30 @@ export interface UseTableManagerReturn {
   tableList: TableListItem[];
   tableConfig: TableConfig | null;
   currentTable: string;
-  
+
   // UI状態
   loading: boolean;
   error: string | null;
   pagination: PaginationState;
   sortState: SortState;
   filterState: FilterState;
-  
+
   // アクション
   setCurrentTable: (tableName: string) => void;
   fetchTableList: () => Promise<void>;
   fetchTableData: (tableName?: string) => Promise<void>;
   createTableData: (data: Record<string, unknown>) => Promise<boolean>;
-  updateTableData: (id: string, data: Record<string, unknown>) => Promise<boolean>;
+  updateTableData: (
+    id: string,
+    data: Record<string, unknown>
+  ) => Promise<boolean>;
   deleteTableData: (id: string) => Promise<boolean>;
-  
+
   // フィルター・ソート
   setSearch: (term: string) => void;
   setSortState: (sortBy: string, sortOrder: SortOrder) => void;
   setPage: (page: number) => void;
-  
+
   // リセット
   resetState: () => void;
 }
@@ -368,18 +391,21 @@ export interface UseSystemSettingsReturn {
   // データ状態
   masterData: MasterDataDetail[];
   categories: string[];
-  
+
   // UI状態
   loading: boolean;
   error: string | null;
   filterState: FilterState;
-  
+
   // アクション
   fetchMasterData: (filters?: Partial<FilterState>) => Promise<void>;
   createMasterData: (data: Partial<MasterDataDetail>) => Promise<boolean>;
-  updateMasterData: (id: string, data: Partial<MasterDataDetail>) => Promise<boolean>;
+  updateMasterData: (
+    id: string,
+    data: Partial<MasterDataDetail>
+  ) => Promise<boolean>;
   deleteMasterData: (id: string) => Promise<boolean>;
-  
+
   // フィルター
   setFilter: (filter: Partial<FilterState>) => void;
   resetFilter: () => void;
@@ -392,7 +418,10 @@ export type DeepPartial<T> = {
 
 export type RequireOnly<T, K extends keyof T> = Partial<T> & Pick<T, K>;
 
-export type TableDataWithoutMeta<T extends TableData> = Omit<T, 'id' | 'created_at' | 'updated_at'>;
+export type TableDataWithoutMeta<T extends TableData> = Omit<
+  T,
+  'id' | 'created_at' | 'updated_at'
+>;
 
 // イベント型
 export interface TableEvent<T = unknown> {

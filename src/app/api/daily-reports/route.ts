@@ -22,10 +22,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('daily_reports')
-      .select(`
+      .select(
+        `
         *,
         staff(name, role)
-      `)
+      `
+      )
       .eq('clinic_id', clinicId);
 
     if (startDate) {
@@ -46,50 +48,65 @@ export async function GET(request: NextRequest) {
     // レポートサマリー計算
     const summary = {
       totalReports: reports?.length || 0,
-      averagePatients: reports?.length > 0
-        ? reports.reduce((sum, r) => sum + (r.total_patients || 0), 0) / reports.length
-        : 0,
-      averageRevenue: reports?.length > 0
-        ? reports.reduce((sum, r) => sum + parseFloat(r.total_revenue || '0'), 0) / reports.length
-        : 0,
-      totalRevenue: reports?.reduce((sum, r) => sum + parseFloat(r.total_revenue || '0'), 0) || 0
+      averagePatients:
+        reports?.length > 0
+          ? reports.reduce((sum, r) => sum + (r.total_patients || 0), 0) /
+            reports.length
+          : 0,
+      averageRevenue:
+        reports?.length > 0
+          ? reports.reduce(
+              (sum, r) => sum + parseFloat(r.total_revenue || '0'),
+              0
+            ) / reports.length
+          : 0,
+      totalRevenue:
+        reports?.reduce(
+          (sum, r) => sum + parseFloat(r.total_revenue || '0'),
+          0
+        ) || 0,
     };
 
     // 月別トレンド
-    const monthlyTrends = reports?.reduce((acc, report) => {
-      const month = report.report_date.slice(0, 7); // YYYY-MM
-      if (!acc[month]) {
-        acc[month] = {
-          month,
-          reports: 0,
-          totalPatients: 0,
-          totalRevenue: 0
-        };
-      }
-      acc[month].reports += 1;
-      acc[month].totalPatients += report.total_patients || 0;
-      acc[month].totalRevenue += parseFloat(report.total_revenue || '0');
-      return acc;
-    }, {} as Record<string, any>) || {};
+    const monthlyTrends =
+      reports?.reduce(
+        (acc, report) => {
+          const month = report.report_date.slice(0, 7); // YYYY-MM
+          if (!acc[month]) {
+            acc[month] = {
+              month,
+              reports: 0,
+              totalPatients: 0,
+              totalRevenue: 0,
+            };
+          }
+          acc[month].reports += 1;
+          acc[month].totalPatients += report.total_patients || 0;
+          acc[month].totalRevenue += parseFloat(report.total_revenue || '0');
+          return acc;
+        },
+        {} as Record<string, any>
+      ) || {};
 
     return NextResponse.json({
       success: true,
       data: {
-        reports: reports?.map(report => ({
-          id: report.id,
-          reportDate: report.report_date,
-          staffName: report.staff?.name || '未設定',
-          totalPatients: report.total_patients,
-          newPatients: report.new_patients,
-          totalRevenue: parseFloat(report.total_revenue || '0'),
-          insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
-          privateRevenue: parseFloat(report.private_revenue || '0'),
-          reportText: report.report_text,
-          createdAt: report.created_at
-        })) || [],
+        reports:
+          reports?.map(report => ({
+            id: report.id,
+            reportDate: report.report_date,
+            staffName: report.staff?.name || '未設定',
+            totalPatients: report.total_patients,
+            newPatients: report.new_patients,
+            totalRevenue: parseFloat(report.total_revenue || '0'),
+            insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
+            privateRevenue: parseFloat(report.private_revenue || '0'),
+            reportText: report.report_text,
+            createdAt: report.created_at,
+          })) || [],
         summary,
-        monthlyTrends: Object.values(monthlyTrends)
-      }
+        monthlyTrends: Object.values(monthlyTrends),
+      },
     });
   } catch (error) {
     console.error('Daily Reports API error:', error);
@@ -112,7 +129,7 @@ export async function POST(request: NextRequest) {
       total_revenue,
       insurance_revenue,
       private_revenue,
-      report_text
+      report_text,
     } = body;
 
     if (!clinic_id || !report_date) {
@@ -124,19 +141,22 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('daily_reports')
-      .upsert({
-        clinic_id,
-        staff_id,
-        report_date,
-        total_patients: total_patients || 0,
-        new_patients: new_patients || 0,
-        total_revenue: total_revenue || 0,
-        insurance_revenue: insurance_revenue || 0,
-        private_revenue: private_revenue || 0,
-        report_text
-      }, {
-        onConflict: 'clinic_id,report_date'
-      })
+      .upsert(
+        {
+          clinic_id,
+          staff_id,
+          report_date,
+          total_patients: total_patients || 0,
+          new_patients: new_patients || 0,
+          total_revenue: total_revenue || 0,
+          insurance_revenue: insurance_revenue || 0,
+          private_revenue: private_revenue || 0,
+          report_text,
+        },
+        {
+          onConflict: 'clinic_id,report_date',
+        }
+      )
       .select()
       .single();
 
@@ -146,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data
+      data,
     });
   } catch (error) {
     console.error('Daily Reports POST error:', error);
@@ -180,7 +200,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Report deleted successfully'
+      message: 'Report deleted successfully',
     });
   } catch (error) {
     console.error('Daily Reports DELETE error:', error);

@@ -3,14 +3,17 @@
 ## Project: 整骨院管理SaaS
 
 ### MCP Server Setup
+
 **重要**: 開発作業開始前に必ずMCPサーバーを起動してください。
 
 #### MCPサーバー起動コマンド
+
 ```bash
 ./start_serena_mcp.sh
 ```
 
 #### 手動起動の場合
+
 ```bash
 # 標準的なstdioモード（推奨）
 npx -y @upstash/context7-mcp
@@ -20,6 +23,7 @@ npx -y @upstash/context7-mcp --transport http --port 3001
 ```
 
 ### Serena Memory Updates
+
 - MCPサーバー（Context7）が統合されました
 - 最新のドキュメンテーションアクセスが可能
 - プロンプトで "use context7" と言及することで最新ライブラリ情報を取得
@@ -32,6 +36,7 @@ npx -y @upstash/context7-mcp --transport http --port 3001
 - 医療機関向けセキュリティ要件完全準拠・エンタープライズレベルセキュリティ達成
 
 ### 技術スタック
+
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: Tailwind CSS
 - **Backend**: Supabase
@@ -42,6 +47,7 @@ npx -y @upstash/context7-mcp --transport http --port 3001
 - **MCP Server**: Context7 (Upstash)
 
 ### 開発フロー
+
 1. MCPサーバー起動（Context7）
 2. 開発環境起動: `npm run dev`
 3. Context7を使用した最新ドキュメンテーション参照
@@ -50,6 +56,7 @@ npx -y @upstash/context7-mcp --transport http --port 3001
 6. リント実行: `npm run lint`
 
 ### プロジェクト構造
+
 ```
 src/
 ├── app/           # Next.js App Router
@@ -66,6 +73,7 @@ src/
 ```
 
 ### MCPサーバー設定ファイル
+
 - `claude_desktop_config.json` - Claude Desktop用
 - `cursor_mcp_config.json` - Cursor用
 - `start_serena_mcp.sh` - 起動スクリプト

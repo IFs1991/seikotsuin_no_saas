@@ -1,8 +1,16 @@
-"use client";
+'use client';
 
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 
 const RevenueTrendChart: React.FC = () => {
   const [timeFrame, setTimeFrame] = useState('daily'); // 'daily', 'weekly', 'monthly'
@@ -22,9 +30,7 @@ const RevenueTrendChart: React.FC = () => {
       { week: '2024-W28', insurance: 90000, selfPay: 45000 },
       { week: '2024-W29', insurance: 95000, selfPay: 48000 },
     ],
-    monthly: [
-      { month: '2024-07', insurance: 380000, selfPay: 190000 },
-    ],
+    monthly: [{ month: '2024-07', insurance: 380000, selfPay: 190000 }],
   };
 
   const previousPeriodData = {
@@ -39,14 +45,12 @@ const RevenueTrendChart: React.FC = () => {
       { week: '2024-W25', insurance: 85000, selfPay: 42000 },
       { week: '2024-W26', insurance: 92000, selfPay: 46000 },
     ],
-    monthly: [
-      { month: '2024-06', insurance: 360000, selfPay: 180000 },
-    ],
+    monthly: [{ month: '2024-06', insurance: 360000, selfPay: 180000 }],
   };
 
   const renderChart = () => {
-    let data = chartData[timeFrame];
-    let previousData = previousPeriodData[timeFrame];
+    const data = chartData[timeFrame];
+    const previousData = previousPeriodData[timeFrame];
 
     if (!showInsurance && !showSelfPay) {
       return <p>No data to display.</p>;
@@ -56,42 +60,85 @@ const RevenueTrendChart: React.FC = () => {
       <div style={{ width: '100%', height: '300px', position: 'relative' }}>
         {/* Placeholder for chart library integration (e.g., Chart.js, Recharts) */}
         <p>Chart Placeholder ({timeFrame})</p>
-        {showInsurance && <p>Insurance Data: {JSON.stringify(data.map(item => item.insurance))}</p>}
-        {showSelfPay && <p>Self-Pay Data: {JSON.stringify(data.map(item => item.selfPay))}</p>}
-        {showPreviousPeriod && <p>Previous Period Data: {JSON.stringify(previousData)}</p>}
+        {showInsurance && (
+          <p>
+            Insurance Data: {JSON.stringify(data.map(item => item.insurance))}
+          </p>
+        )}
+        {showSelfPay && (
+          <p>Self-Pay Data: {JSON.stringify(data.map(item => item.selfPay))}</p>
+        )}
+        {showPreviousPeriod && (
+          <p>Previous Period Data: {JSON.stringify(previousData)}</p>
+        )}
       </div>
     );
   };
 
   return (
-    <Card className="w-full bg-card">
-      <CardHeader className="bg-card">
-        <CardTitle className="bg-card">収益トレンド</CardTitle>
-        <CardDescription className="bg-card">日次、週次、月次の収益推移を表示します。</CardDescription>
+    <Card className='w-full bg-card'>
+      <CardHeader className='bg-card'>
+        <CardTitle className='bg-card'>収益トレンド</CardTitle>
+        <CardDescription className='bg-card'>
+          日次、週次、月次の収益推移を表示します。
+        </CardDescription>
       </CardHeader>
-      <CardContent className="bg-card">
-        <div className="flex space-x-4 mb-4 bg-card">
-          <Button variant="outline" onClick={() => setTimeFrame('daily')} className="bg-card">日次</Button>
-          <Button variant="outline" onClick={() => setTimeFrame('weekly')} className="bg-card">週次</Button>
-          <Button variant="outline" onClick={() => setTimeFrame('monthly')} className="bg-card">月次</Button>
+      <CardContent className='bg-card'>
+        <div className='flex space-x-4 mb-4 bg-card'>
+          <Button
+            variant='outline'
+            onClick={() => setTimeFrame('daily')}
+            className='bg-card'
+          >
+            日次
+          </Button>
+          <Button
+            variant='outline'
+            onClick={() => setTimeFrame('weekly')}
+            className='bg-card'
+          >
+            週次
+          </Button>
+          <Button
+            variant='outline'
+            onClick={() => setTimeFrame('monthly')}
+            className='bg-card'
+          >
+            月次
+          </Button>
         </div>
-        <div className="flex space-x-4 mb-4 bg-card">
-          <Label className="bg-card">
-            <Input type="checkbox" checked={showInsurance} onChange={(e) => setShowInsurance(e.target.checked)} className="mr-2 bg-card" />
+        <div className='flex space-x-4 mb-4 bg-card'>
+          <Label className='bg-card'>
+            <Input
+              type='checkbox'
+              checked={showInsurance}
+              onChange={e => setShowInsurance(e.target.checked)}
+              className='mr-2 bg-card'
+            />
             保険診療
           </Label>
-          <Label className="bg-card">
-            <Input type="checkbox" checked={showSelfPay} onChange={(e) => setShowSelfPay(e.target.checked)} className="mr-2 bg-card" />
+          <Label className='bg-card'>
+            <Input
+              type='checkbox'
+              checked={showSelfPay}
+              onChange={e => setShowSelfPay(e.target.checked)}
+              className='mr-2 bg-card'
+            />
             自費診療
           </Label>
-          <Label className="bg-card">
-            <Input type="checkbox" checked={showPreviousPeriod} onChange={(e) => setShowPreviousPeriod(e.target.checked)} className="mr-2 bg-card" />
+          <Label className='bg-card'>
+            <Input
+              type='checkbox'
+              checked={showPreviousPeriod}
+              onChange={e => setShowPreviousPeriod(e.target.checked)}
+              className='mr-2 bg-card'
+            />
             前期比較
           </Label>
         </div>
         {renderChart()}
-        <div className="flex justify-end bg-card">
-          <Button className="bg-card">エクスポート</Button>
+        <div className='flex justify-end bg-card'>
+          <Button className='bg-card'>エクスポート</Button>
         </div>
       </CardContent>
     </Card>

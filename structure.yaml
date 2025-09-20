@@ -16,7 +16,7 @@ src:
     api選定理由: |-
       特定のAPIは必要ないため選択していません。
     dependency: []
-    agent: "claude-3-5-sonnet-20241022"
+    agent: 'claude-3-5-sonnet-20241022'
     api: []
 
   api:
@@ -44,9 +44,9 @@ src:
           複雑なリレーショナルデータベースの設計を効率的に行えます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
-      
+
       supabase-client.ts:
         content: |-
           Supabaseクライアント設定とリアルタイム接続
@@ -62,7 +62,7 @@ src:
         dependency:
           - src/api/database/schema.sql
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     gemini:
@@ -83,8 +83,8 @@ src:
         dependency:
           - src/api/database/supabase-client.ts
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
-        api: "gemini-2.0-flash-exp"
+        agent: 'claude-3-5-sonnet-20241022'
+        api: 'gemini-2.0-flash-exp'
 
   app:
     layout.tsx:
@@ -132,7 +132,7 @@ src:
             - src/api/gemini/ai-analysis.ts
             - src/components/chat/admin-chat-interface.tsx
             - src/hooks/useAdminChat.ts
-          agent: "claude-3-5-sonnet-20241022"
+          agent: 'claude-3-5-sonnet-20241022'
           api: []
 
       master:
@@ -153,7 +153,7 @@ src:
             - src/structure.yaml
             - src/components/master/admin-master-form.tsx
             - src/hooks/useAdminMaster.ts
-          agent: "gemini-2.0-flash-exp"
+          agent: 'gemini-2.0-flash-exp'
           api: []
 
       page.tsx:
@@ -174,7 +174,7 @@ src:
           - src/structure.yaml
           - src/components/dashboard/admin-dashboard.tsx
           - src/hooks/useAdminDashboard.ts
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
     ai-insights:
@@ -196,7 +196,7 @@ src:
           - src/structure.yaml
           - src/api/gemini/ai-analysis.ts
           - src/components/insights/recommendation-card.tsx
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     chat:
@@ -219,7 +219,7 @@ src:
           - src/api/gemini/ai-analysis.ts
           - src/components/chat/chat-interface.tsx
           - src/hooks/useChat.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     daily-reports:
@@ -243,7 +243,7 @@ src:
           - src/components/reports/daily-report-form.tsx
           - src/components/reports/report-summary.tsx
           - src/hooks/useDailyReports.ts
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
     dashboard:
@@ -267,7 +267,7 @@ src:
           - src/components/dashboard/patient-flow-heatmap.tsx
           - src/components/dashboard/ai-comment-card.tsx
           - src/hooks/useDashboard.ts
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
     master-data:
@@ -289,7 +289,7 @@ src:
           - src/structure.yaml
           - src/components/master/master-data-form.tsx
           - src/hooks/useMasterData.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     multi-store:
@@ -312,7 +312,7 @@ src:
           - src/components/multi-store/store-comparison-chart.tsx
           - src/components/multi-store/best-practice-card.tsx
           - src/hooks/useMultiStore.ts
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
     patients:
@@ -335,7 +335,7 @@ src:
           - src/components/patients/conversion-funnel.tsx
           - src/components/patients/risk-score-list.tsx
           - src/hooks/usePatientAnalysis.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     revenue:
@@ -358,7 +358,7 @@ src:
           - src/components/revenue/revenue-trend-chart.tsx
           - src/components/revenue/menu-ranking.tsx
           - src/hooks/useRevenue.ts
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
     staff:
@@ -381,7 +381,7 @@ src:
           - src/components/staff/performance-metrics.tsx
           - src/components/staff/shift-optimizer.tsx
           - src/hooks/useStaffAnalysis.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
   components:
@@ -403,7 +403,7 @@ src:
         dependency:
           - src/structure.yaml
           - src/api/gemini/ai-analysis.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
       chat-interface.tsx:
@@ -423,7 +423,7 @@ src:
         dependency:
           - src/structure.yaml
           - src/api/gemini/ai-analysis.ts
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     dashboard:
@@ -443,7 +443,7 @@ src:
           設計に適しており、情報を効果的に表示できます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
       admin-dashboard.tsx:
@@ -462,7 +462,7 @@ src:
           コンポーネントの設計に優れています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
       patient-flow-heatmap.tsx:
@@ -481,7 +481,7 @@ src:
           コンポーネントの実装に優れています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
       revenue-chart.tsx:
@@ -500,7 +500,7 @@ src:
           複雑なデータを分かりやすく表示できます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
     insights:
@@ -520,7 +520,7 @@ src:
           UIコンポーネントの設計に優れています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     master:
@@ -540,7 +540,7 @@ src:
           実装に精通しています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
       master-data-form.tsx:
@@ -559,7 +559,7 @@ src:
           UX設計に適しています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
     multi-store:
@@ -579,7 +579,7 @@ src:
           実用的なコンポーネントを構築できます。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
       store-comparison-chart.tsx:
@@ -598,7 +598,7 @@ src:
           ビジュアライゼーションに優れています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
     navigation:
@@ -618,7 +618,7 @@ src:
           ベストプラクティスを理解しています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
       sidebar.tsx:
@@ -637,7 +637,7 @@ src:
           実装に精通しています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     patients:
@@ -657,7 +657,7 @@ src:
           可視化に優れています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
       risk-score-list.tsx:
@@ -676,7 +676,7 @@ src:
           実装に精通しています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
     reports:
@@ -698,7 +698,7 @@ src:
           使いやすい入力インターフェースを構築できます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
       report-summary.tsx:
@@ -717,7 +717,7 @@ src:
           適しています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-exp"
+        agent: 'gemini-2.0-flash-exp'
         api: []
 
     revenue:
@@ -737,7 +737,7 @@ src:
           効果的なUIを設計できます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
       revenue-trend-chart.tsx:
@@ -756,7 +756,7 @@ src:
           コンポーネントの実装に優れています。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
     staff:
@@ -776,7 +776,7 @@ src:
           可視化に精通しています。
         dependency:
           - src/structure.yaml
-        agent: "claude-3-5-sonnet-20241022"
+        agent: 'claude-3-5-sonnet-20241022'
         api: []
 
       shift-optimizer.tsx:
@@ -795,7 +795,7 @@ src:
           複雑な要件を実装できます。
         dependency:
           - src/structure.yaml
-        agent: "gemini-2.0-flash-thinking-exp-1219"
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
         api: []
 
   hooks:
@@ -817,7 +817,7 @@ src:
         - src/structure.yaml
         - src/api/gemini/ai-analysis.ts
         - src/api/database/supabase-client.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     useAdminDashboard.ts:
@@ -837,7 +837,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
-      agent: "gemini-2.0-flash-thinking-exp-1219"
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
       api: []
 
     useAdminMaster.ts:
@@ -857,7 +857,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     useChat.ts:
@@ -878,7 +878,7 @@ src:
         - src/structure.yaml
         - src/api/gemini/ai-analysis.ts
         - src/api/database/supabase-client.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     useDailyReports.ts:
@@ -898,7 +898,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
-      agent: "gemini-2.0-flash-exp"
+      agent: 'gemini-2.0-flash-exp'
       api: []
 
     useDashboard.ts:
@@ -919,7 +919,7 @@ src:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
         - src/api/gemini/ai-analysis.ts
-      agent: "gemini-2.0-flash-thinking-exp-1219"
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
       api: []
 
     useMasterData.ts:
@@ -939,7 +939,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     useMultiStore.ts:
@@ -960,7 +960,7 @@ src:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
         - src/api/gemini/ai-analysis.ts
-      agent: "gemini-2.0-flash-thinking-exp-1219"
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
       api: []
 
     usePatientAnalysis.ts:
@@ -981,7 +981,7 @@ src:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
         - src/api/gemini/ai-analysis.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     useRevenue.ts:
@@ -1001,7 +1001,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
-      agent: "gemini-2.0-flash-exp"
+      agent: 'gemini-2.0-flash-exp'
       api: []
 
     useStaffAnalysis.ts:
@@ -1022,7 +1022,7 @@ src:
         - src/structure.yaml
         - src/api/database/supabase-client.ts
         - src/api/gemini/ai-analysis.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
   images:
@@ -1036,7 +1036,7 @@ src:
         - プロフェッショナルな雰囲気
         - 1920x1080の高解像度
       dependency: []
-      agent: "t2i-imagen3"
+      agent: 't2i-imagen3'
       api: []
 
     patient-flow-visualization.png:
@@ -1049,7 +1049,7 @@ src:
         - 医療系の落ち着いた配色
         - インフォグラフィック風
       dependency: []
-      agent: "t2i-flux-pro"
+      agent: 't2i-flux-pro'
       api: []
 
     system-architecture.png:
@@ -1062,7 +1062,7 @@ src:
         - テクニカルで詳細な図解
         - エンタープライズ向けの表現
       dependency: []
-      agent: "t2i-luma-photon"
+      agent: 't2i-luma-photon'
       api: []
 
   lib:
@@ -1082,7 +1082,7 @@ src:
         ベストプラクティスを理解しています。
       dependency:
         - src/structure.yaml
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
     utils.ts:
@@ -1102,7 +1102,7 @@ src:
       dependency:
         - src/structure.yaml
         - src/lib/constants.ts
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []
 
   types:
@@ -1122,5 +1122,5 @@ src:
         厳密で使いやすい型定義を作成できます。
       dependency:
         - src/structure.yaml
-      agent: "claude-3-5-sonnet-20241022"
+      agent: 'claude-3-5-sonnet-20241022'
       api: []

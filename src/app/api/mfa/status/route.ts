@@ -22,13 +22,13 @@ export async function GET(request: NextRequest) {
     const mfaStatus = await mfaManager.getMFAStatus(userId);
 
     return NextResponse.json(mfaStatus);
-
   } catch (error) {
     console.error('MFA状態取得エラー:', error);
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'MFA状態取得に失敗しました' 
+      {
+        error:
+          error instanceof Error ? error.message : 'MFA状態取得に失敗しました',
       },
       { status: 500 }
     );

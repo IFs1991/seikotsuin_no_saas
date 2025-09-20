@@ -1,15 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import { API_ENDPOINTS, ERROR_MESSAGES, PAGINATION } from '@/lib/constants';
-import { 
-  TableData, 
-  TableListItem, 
-  TableConfig, 
-  PaginationState, 
-  SortState, 
-  FilterState, 
+import {
+  TableData,
+  TableListItem,
+  TableConfig,
+  PaginationState,
+  SortState,
+  FilterState,
   SortOrder,
   UseTableManagerReturn,
-  ApiResponse
+  ApiResponse,
 } from '@/types/admin';
 
 export const useTableManager = (): UseTableManagerReturn => {
@@ -26,11 +27,11 @@ export const useTableManager = (): UseTableManagerReturn => {
     page: 1,
     limit: PAGINATION.DEFAULT_PAGE_SIZE,
     total: 0,
-    total_pages: 0
+    total_pages: 0,
   });
   const [sortState, setSortState] = useState<SortState>({
     sortBy: 'created_at',
-    sortOrder: 'desc'
+    sortOrder: 'desc',
   });
   const [filterState, setFilterState] = useState<FilterState>({
     search: '',
@@ -40,13 +41,17 @@ export const useTableManager = (): UseTableManagerReturn => {
   });
 
   // エラーメッセージのフォーマット
-  const formatErrorMessage = (error: any): string => {
-    if (error.details && Array.isArray(error.details)) {
-      return error.details.map((detail: any) => 
-        `${detail.path?.join('.')}: ${detail.message}`
-      ).join(', ');
+  const formatErrorMessage = (error: unknown): string => {
+    const err = error as {
+      details?: Array<{ path?: string[]; message?: string }>;
+      message?: string;
+    };
+    if (err.details && Array.isArray(err.details)) {
+      return err.details
+        .map(detail => `${(detail.path || []).join('.')}: ${detail.message}`)
+        .join(', ');
     }
-    return error.message || ERROR_MESSAGES.SERVER_ERROR;
+    return err.message || ERROR_MESSAGES.SERVER_ERROR;
   };
 
   // テーブル一覧の取得
@@ -54,7 +59,7 @@ export const useTableManager = (): UseTableManagerReturn => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(API_ENDPOINTS.ADMIN.TABLES);
       const result: ApiResponse<TableListItem[]> = await response.json();
 
@@ -64,170 +69,199 @@ export const useTableManager = (): UseTableManagerReturn => {
 
       setTableList(result.data || []);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+      const errorMessage =
+        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(errorMessage);
-      console.error('テーブル一覧取得エラー:', err);
+      logger.error('テーブル一覧取得エラー:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   // テーブルデータの取得
-  const fetchTableData = useCallback(async (tableName?: string) => {
-    const targetTable = tableName || currentTable;
-    if (!targetTable) return;
+  const fetchTableData = useCallback(
+    async (tableName?: string) => {
+      const targetTable = tableName || currentTable;
+      if (!targetTable) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const params = new URLSearchParams({
-        table: targetTable,
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-        sort_by: sortState.sortBy,
-        sort_order: sortState.sortOrder
-      });
-      
-      if (filterState.search) {
-        params.append('search', filterState.search);
+      try {
+        setLoading(true);
+        setError(null);
+
+        const params = new URLSearchParams({
+          table: targetTable,
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+          sort_by: sortState.sortBy,
+          sort_order: sortState.sortOrder,
+        });
+
+        if (filterState.search) {
+          params.append('search', filterState.search);
+        }
+
+        const response = await fetch(
+          `${API_ENDPOINTS.ADMIN.TABLES}?${params.toString()}`
+        );
+        const result: ApiResponse<{
+          data: TableData[];
+          table_config: TableConfig;
+          pagination: PaginationState;
+        }> = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        if (result.data) {
+          setTableData(result.data.data || []);
+          setTableConfig(result.data.table_config || null);
+          setPagination(result.data.pagination || pagination);
+        }
+
+        if (tableName) {
+          setCurrentTableState(tableName);
+        }
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(errorMessage);
+        console.error('テーブルデータ取得エラー:', err);
+      } finally {
+        setLoading(false);
       }
-
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.TABLES}?${params.toString()}`);
-      const result: ApiResponse<{
-        data: TableData[];
-        table_config: TableConfig;
-        pagination: PaginationState;
-      }> = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-      }
-
-      if (result.data) {
-        setTableData(result.data.data || []);
-        setTableConfig(result.data.table_config || null);
-        setPagination(result.data.pagination || pagination);
-      }
-
-      if (tableName) {
-        setCurrentTableState(tableName);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-      setError(errorMessage);
-      console.error('テーブルデータ取得エラー:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTable, pagination.page, pagination.limit, sortState, filterState.search]);
+    },
+    [
+      currentTable,
+      pagination.page,
+      pagination.limit,
+      sortState,
+      filterState.search,
+    ]
+  );
 
   // テーブルデータの作成
-  const createTableData = useCallback(async (data: Record<string, unknown>): Promise<boolean> => {
-    if (!currentTable) return false;
+  const createTableData = useCallback(
+    async (data: Record<string, unknown>): Promise<boolean> => {
+      if (!currentTable) return false;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await fetch(API_ENDPOINTS.ADMIN.TABLES, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table_name: currentTable, data })
-      });
+        const response = await fetch(API_ENDPOINTS.ADMIN.TABLES, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table_name: currentTable, data }),
+        });
 
-      const result: ApiResponse<TableData> = await response.json();
+        const result: ApiResponse<TableData> = await response.json();
 
-      if (!result.success) {
-        throw { message: result.error, details: result.details };
+        if (!result.success) {
+          throw { message: result.error, details: result.details };
+        }
+
+        if (result.data) {
+          setTableData(prev => [result.data!, ...prev]);
+          // ページネーション情報を更新
+          setPagination(prev => ({ ...prev, total: prev.total + 1 }));
+        }
+
+        return true;
+      } catch (err: unknown) {
+        const errorMessage = formatErrorMessage(err);
+        setError(errorMessage);
+        logger.error('テーブルデータ作成エラー:', err);
+        return false;
+      } finally {
+        setLoading(false);
       }
-
-      if (result.data) {
-        setTableData(prev => [result.data!, ...prev]);
-        // ページネーション情報を更新
-        setPagination(prev => ({ ...prev, total: prev.total + 1 }));
-      }
-
-      return true;
-    } catch (err: any) {
-      const errorMessage = formatErrorMessage(err);
-      setError(errorMessage);
-      console.error('テーブルデータ作成エラー:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTable]);
+    },
+    [currentTable]
+  );
 
   // テーブルデータの更新
-  const updateTableData = useCallback(async (id: string, data: Record<string, unknown>): Promise<boolean> => {
-    if (!currentTable) return false;
+  const updateTableData = useCallback(
+    async (id: string, data: Record<string, unknown>): Promise<boolean> => {
+      if (!currentTable) return false;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await fetch(API_ENDPOINTS.ADMIN.TABLES, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table_name: currentTable, id, data })
-      });
+        const response = await fetch(API_ENDPOINTS.ADMIN.TABLES, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ table_name: currentTable, id, data }),
+        });
 
-      const result: ApiResponse<TableData> = await response.json();
+        const result: ApiResponse<TableData> = await response.json();
 
-      if (!result.success) {
-        throw { message: result.error, details: result.details };
+        if (!result.success) {
+          throw { message: result.error, details: result.details };
+        }
+
+        if (result.data) {
+          setTableData(prev =>
+            prev.map(item => (item.id === id ? result.data! : item))
+          );
+        }
+
+        return true;
+      } catch (err: unknown) {
+        const errorMessage = formatErrorMessage(err);
+        setError(errorMessage);
+        logger.error('テーブルデータ更新エラー:', err);
+        return false;
+      } finally {
+        setLoading(false);
       }
-
-      if (result.data) {
-        setTableData(prev => 
-          prev.map(item => item.id === id ? result.data! : item)
-        );
-      }
-
-      return true;
-    } catch (err: any) {
-      const errorMessage = formatErrorMessage(err);
-      setError(errorMessage);
-      console.error('テーブルデータ更新エラー:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTable]);
+    },
+    [currentTable]
+  );
 
   // テーブルデータの削除
-  const deleteTableData = useCallback(async (id: string): Promise<boolean> => {
-    if (!currentTable) return false;
+  const deleteTableData = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (!currentTable) return false;
 
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.TABLES}?table=${currentTable}&id=${id}`, {
-        method: 'DELETE'
-      });
+        const response = await fetch(
+          `${API_ENDPOINTS.ADMIN.TABLES}?table=${currentTable}&id=${id}`,
+          {
+            method: 'DELETE',
+          }
+        );
 
-      const result: ApiResponse = await response.json();
+        const result: ApiResponse = await response.json();
 
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        setTableData(prev => prev.filter(item => item.id !== id));
+        // ページネーション情報を更新
+        setPagination(prev => ({
+          ...prev,
+          total: Math.max(0, prev.total - 1),
+        }));
+
+        return true;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(errorMessage);
+        logger.error('テーブルデータ削除エラー:', err);
+        return false;
+      } finally {
+        setLoading(false);
       }
-
-      setTableData(prev => prev.filter(item => item.id !== id));
-      // ページネーション情報を更新
-      setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }));
-
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-      setError(errorMessage);
-      console.error('テーブルデータ削除エラー:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [currentTable]);
+    },
+    [currentTable]
+  );
 
   // テーブル選択
   const setCurrentTable = useCallback((tableName: string) => {
@@ -245,10 +279,13 @@ export const useTableManager = (): UseTableManagerReturn => {
   }, []);
 
   // ソート設定
-  const setSortStateValue = useCallback((sortBy: string, sortOrder: SortOrder) => {
-    setSortState({ sortBy, sortOrder });
-    setPagination(prev => ({ ...prev, page: 1 })); // ソート時はページをリセット
-  }, []);
+  const setSortStateValue = useCallback(
+    (sortBy: string, sortOrder: SortOrder) => {
+      setSortState({ sortBy, sortOrder });
+      setPagination(prev => ({ ...prev, page: 1 })); // ソート時はページをリセット
+    },
+    []
+  );
 
   // ページ設定
   const setPage = useCallback((page: number) => {
@@ -265,11 +302,11 @@ export const useTableManager = (): UseTableManagerReturn => {
       page: 1,
       limit: PAGINATION.DEFAULT_PAGE_SIZE,
       total: 0,
-      total_pages: 0
+      total_pages: 0,
     });
     setSortState({
       sortBy: 'created_at',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
     });
     setFilterState({
       search: '',
@@ -297,14 +334,14 @@ export const useTableManager = (): UseTableManagerReturn => {
     tableList,
     tableConfig,
     currentTable,
-    
+
     // UI状態
     loading,
     error,
     pagination,
     sortState,
     filterState,
-    
+
     // アクション
     setCurrentTable,
     fetchTableList,
@@ -312,12 +349,12 @@ export const useTableManager = (): UseTableManagerReturn => {
     createTableData,
     updateTableData,
     deleteTableData,
-    
+
     // フィルター・ソート
     setSearch,
     setSortState: setSortStateValue,
     setPage,
-    
+
     // リセット
     resetState,
   };

@@ -4,6 +4,7 @@
  */
 
 import { SecurityMonitor } from '@/lib/security-monitor';
+import { logger } from '@/lib/logger';
 
 export interface ErrorContext {
   userId?: string;
@@ -45,10 +46,10 @@ export class SecurityErrorHandler {
     logLevel: 'info' | 'warn' | 'error' | 'critical';
   }> {
     const errorData = await this.analyzeError(error, context);
-    
+
     // セキュリティイベントとして記録
     await this.logSecurityEvent(error, context, errorData);
-    
+
     return this.determineResponseAction(errorData);
   }
 
@@ -70,18 +71,52 @@ export class SecurityErrorHandler {
 
     // セキュリティ関連エラーパターンの検出
     const securityPatterns = [
-      { pattern: /invalid.*(token|session)/i, category: 'authentication', severity: 'medium' as const },
-      { pattern: /unauthorized|forbidden/i, category: 'authorization', severity: 'high' as const },
-      { pattern: /sql.*injection/i, category: 'injection', severity: 'critical' as const },
-      { pattern: /xss|script.*injection/i, category: 'xss', severity: 'high' as const },
-      { pattern: /csrf|cross.*site/i, category: 'csrf', severity: 'high' as const },
-      { pattern: /brute.*force|too.*many.*attempts/i, category: 'brute_force', severity: 'high' as const },
-      { pattern: /session.*hijack/i, category: 'session_hijacking', severity: 'critical' as const },
-      { pattern: /rate.*limit/i, category: 'rate_limiting', severity: 'medium' as const },
+      {
+        pattern: /invalid.*(token|session)/i,
+        category: 'authentication',
+        severity: 'medium' as const,
+      },
+      {
+        pattern: /unauthorized|forbidden/i,
+        category: 'authorization',
+        severity: 'high' as const,
+      },
+      {
+        pattern: /sql.*injection/i,
+        category: 'injection',
+        severity: 'critical' as const,
+      },
+      {
+        pattern: /xss|script.*injection/i,
+        category: 'xss',
+        severity: 'high' as const,
+      },
+      {
+        pattern: /csrf|cross.*site/i,
+        category: 'csrf',
+        severity: 'high' as const,
+      },
+      {
+        pattern: /brute.*force|too.*many.*attempts/i,
+        category: 'brute_force',
+        severity: 'high' as const,
+      },
+      {
+        pattern: /session.*hijack/i,
+        category: 'session_hijacking',
+        severity: 'critical' as const,
+      },
+      {
+        pattern: /rate.*limit/i,
+        category: 'rate_limiting',
+        severity: 'medium' as const,
+      },
     ];
 
-    let detectedPattern = securityPatterns.find(p => p.pattern.test(errorMessage));
-    
+    const detectedPattern = securityPatterns.find(p =>
+      p.pattern.test(errorMessage)
+    );
+
     // デフォルト値
     let category = 'general';
     let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
@@ -100,8 +135,12 @@ export class SecurityErrorHandler {
     }
 
     // リスクスコア計算
-    const riskScore = this.calculateRiskScore(severity, context, isSecurityThreat);
-    
+    const riskScore = this.calculateRiskScore(
+      severity,
+      context,
+      isSecurityThreat
+    );
+
     return {
       category,
       severity,
@@ -177,7 +216,7 @@ export class SecurityErrorHandler {
         },
       });
     } catch (logError) {
-      console.error('セキュリティイベントログ記録失敗:', logError);
+      logger.error('セキュリティイベントログ記録失敗:', logError);
     }
   }
 
@@ -193,18 +232,26 @@ export class SecurityErrorHandler {
 
     // カテゴリ別メッセージ
     const categoryMessages = {
-      authentication: 'セッションの認証に問題が発生しました。再ログインしてください。',
+      authentication:
+        'セッションの認証に問題が発生しました。再ログインしてください。',
       authorization: '権限が不足しているか、アクセス権限に問題があります。',
-      injection: 'セキュリティ上の問題が検出されました。管理者に連絡してください。',
+      injection:
+        'セキュリティ上の問題が検出されました。管理者に連絡してください。',
       xss: 'スクリプトの実行が検出されました。セキュリティのためセッションを終了します。',
       csrf: 'リクエストの検証に失敗しました。ページを再読み込みしてください。',
-      brute_force: '不正なアクセス試行が検出されました。一時的にアクセスを制限します。',
-      session_hijacking: 'セッションに異常が検出されました。セキュリティのため強制ログアウトします。',
-      rate_limiting: 'アクセス頻度が高すぎます。しばらく待ってから再試行してください。',
-      general: 'システムエラーが発生しました。しばらく待ってから再試行してください。',
+      brute_force:
+        '不正なアクセス試行が検出されました。一時的にアクセスを制限します。',
+      session_hijacking:
+        'セッションに異常が検出されました。セキュリティのため強制ログアウトします。',
+      rate_limiting:
+        'アクセス頻度が高すぎます。しばらく待ってから再試行してください。',
+      general:
+        'システムエラーが発生しました。しばらく待ってから再試行してください。',
     };
 
-    const userMessage = categoryMessages[category as keyof typeof categoryMessages] || categoryMessages.general;
+    const userMessage =
+      categoryMessages[category as keyof typeof categoryMessages] ||
+      categoryMessages.general;
 
     // ログレベル決定
     let logLevel: 'info' | 'warn' | 'error' | 'critical' = 'error';
@@ -228,7 +275,10 @@ export class SecurityErrorHandler {
   /**
    * 開発環境用の詳細エラー表示
    */
-  getDevelopmentErrorDetails(error: Error, context: ErrorContext): {
+  getDevelopmentErrorDetails(
+    error: Error,
+    context: ErrorContext
+  ): {
     error: string;
     stack: string;
     context: ErrorContext;
@@ -253,12 +303,16 @@ export class SecurityErrorHandler {
 
     if (message.includes('database') || message.includes('supabase')) {
       suggestions.push('データベース接続を確認してください');
-      suggestions.push('Supabase環境変数が正しく設定されているか確認してください');
+      suggestions.push(
+        'Supabase環境変数が正しく設定されているか確認してください'
+      );
     }
 
     if (message.includes('session') || message.includes('token')) {
       suggestions.push('セッション管理システムのログを確認してください');
-      suggestions.push('カスタムセッションテーブルが正しく作成されているか確認してください');
+      suggestions.push(
+        'カスタムセッションテーブルが正しく作成されているか確認してください'
+      );
     }
 
     if (message.includes('permission') || message.includes('unauthorized')) {
@@ -268,7 +322,9 @@ export class SecurityErrorHandler {
 
     if (suggestions.length === 0) {
       suggestions.push('ログファイルで詳細なエラー情報を確認してください');
-      suggestions.push('開発ツールのネットワークタブでAPIレスポンスを確認してください');
+      suggestions.push(
+        '開発ツールのネットワークタブでAPIレスポンスを確認してください'
+      );
     }
 
     return suggestions;
@@ -301,7 +357,7 @@ export class GlobalErrorHandler {
     // 未処理のPromise拒否をキャッチ
     process.on('unhandledRejection', (reason, promise) => {
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-      
+
       if (reason instanceof Error) {
         this.handleError(reason, {
           timestamp: new Date(),
@@ -311,9 +367,9 @@ export class GlobalErrorHandler {
     });
 
     // 未処理の例外をキャッチ
-    process.on('uncaughtException', (error) => {
+    process.on('uncaughtException', error => {
       console.error('Uncaught Exception:', error);
-      
+
       this.handleError(error, {
         timestamp: new Date(),
         requestPath: 'uncaught_exception',
@@ -326,8 +382,11 @@ export class GlobalErrorHandler {
    */
   async handleError(error: Error, context: ErrorContext): Promise<void> {
     try {
-      const result = await this.securityErrorHandler.handleSecurityError(error, context);
-      
+      const result = await this.securityErrorHandler.handleSecurityError(
+        error,
+        context
+      );
+
       // ログレベルに応じたログ出力
       switch (result.logLevel) {
         case 'critical':
@@ -349,7 +408,6 @@ export class GlobalErrorHandler {
         // TODO: Slack, Email, SMS等でのアラート通知
         console.log('📧 Critical error alert would be sent here');
       }
-
     } catch (handlingError) {
       console.error('Error in error handler:', handlingError);
     }

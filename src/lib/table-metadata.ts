@@ -3,6 +3,7 @@
 // =================================================================
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { TableConfig, TableColumn } from '@/types/admin';
 
 // テーブル設定キャッシュ
@@ -20,22 +21,22 @@ interface CachedTableConfig {
  */
 export async function getManageableTables(): Promise<string[]> {
   const supabase = createAdminClient();
-  
+
   // public スキーマの中で管理対象となるテーブルを取得
   const { data, error } = await supabase.rpc('get_manageable_tables');
-  
+
   if (error) {
-    console.error('管理可能テーブルの取得エラー:', error);
+    logger.error('管理可能テーブルの取得エラー:', error);
     // フォールバック: 基本的なテーブル一覧
     return [
       'treatment_menus',
-      'menu_categories', 
+      'menu_categories',
       'staff_members',
       'patient_profiles',
-      'clinic_settings'
+      'clinic_settings',
     ];
   }
-  
+
   return data?.map((row: any) => row.table_name) || [];
 }
 
@@ -43,7 +44,9 @@ export async function getManageableTables(): Promise<string[]> {
  * テーブル設定を動的に生成
  * PostgreSQLのinformation_schemaを参照してカラム情報を取得
  */
-export async function getTableConfig(tableName: string): Promise<TableConfig | null> {
+export async function getTableConfig(
+  tableName: string
+): Promise<TableConfig | null> {
   // キャッシュチェック
   const cached = tableConfigCache.get(tableName);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -51,20 +54,20 @@ export async function getTableConfig(tableName: string): Promise<TableConfig | n
   }
 
   const supabase = createAdminClient();
-  
+
   try {
     // カラム情報を取得
     const { data: columns, error } = await supabase.rpc('get_table_columns', {
-      table_name_param: tableName
+      table_name_param: tableName,
     });
-    
+
     if (error) {
-      console.error(`テーブル設定取得エラー (${tableName}):`, error);
+      logger.error(`テーブル設定取得エラー (${tableName}):`, error);
       return null;
     }
 
     if (!columns || columns.length === 0) {
-      console.warn(`テーブル ${tableName} のカラム情報が見つかりません`);
+      logger.warn(`テーブル ${tableName} のカラム情報が見つかりません`);
       return null;
     }
 
@@ -103,13 +106,12 @@ export async function getTableConfig(tableName: string): Promise<TableConfig | n
     // キャッシュに保存
     tableConfigCache.set(tableName, {
       config,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     return config;
-
   } catch (error) {
-    console.error(`テーブル設定取得中のエラー (${tableName}):`, error);
+    logger.error(`テーブル設定取得中のエラー (${tableName}):`, error);
     return null;
   }
 }
@@ -117,26 +119,28 @@ export async function getTableConfig(tableName: string): Promise<TableConfig | n
 /**
  * PostgreSQLのデータ型をTableColumnTypeにマッピング
  */
-function mapPostgreSQLTypeToTableColumnType(pgType: string): TableColumn['type'] {
+function mapPostgreSQLTypeToTableColumnType(
+  pgType: string
+): TableColumn['type'] {
   const typeMapping: Record<string, TableColumn['type']> = {
     'character varying': 'string',
-    'varchar': 'string',
-    'text': 'text',
-    'char': 'string',
-    'integer': 'integer',
-    'bigint': 'integer',
-    'smallint': 'integer',
-    'decimal': 'decimal',
-    'numeric': 'decimal',
-    'real': 'decimal',
+    varchar: 'string',
+    text: 'text',
+    char: 'string',
+    integer: 'integer',
+    bigint: 'integer',
+    smallint: 'integer',
+    decimal: 'decimal',
+    numeric: 'decimal',
+    real: 'decimal',
     'double precision': 'decimal',
-    'boolean': 'boolean',
+    boolean: 'boolean',
     'timestamp with time zone': 'timestamp',
     'timestamp without time zone': 'timestamp',
-    'date': 'timestamp',
-    'uuid': 'uuid',
-    'json': 'json',
-    'jsonb': 'json',
+    date: 'timestamp',
+    uuid: 'uuid',
+    json: 'json',
+    jsonb: 'json',
   };
 
   return typeMapping[pgType.toLowerCase()] || 'string';
@@ -147,15 +151,15 @@ function mapPostgreSQLTypeToTableColumnType(pgType: string): TableColumn['type']
  */
 function generateDisplayName(tableName: string): string {
   const displayNames: Record<string, string> = {
-    'treatment_menus': '施術メニュー',
-    'menu_categories': 'メニューカテゴリ',
-    'staff_members': 'スタッフ',
-    'patient_profiles': '患者情報',
-    'clinic_settings': 'クリニック設定',
-    'appointment_slots': '予約枠',
-    'medical_records': '診療記録',
-    'payment_records': '支払い記録',
-    'insurance_claims': '保険請求',
+    treatment_menus: '施術メニュー',
+    menu_categories: 'メニューカテゴリ',
+    staff_members: 'スタッフ',
+    patient_profiles: '患者情報',
+    clinic_settings: 'クリニック設定',
+    appointment_slots: '予約枠',
+    medical_records: '診療記録',
+    payment_records: '支払い記録',
+    insurance_claims: '保険請求',
   };
 
   return displayNames[tableName] || tableName;
@@ -166,22 +170,22 @@ function generateDisplayName(tableName: string): string {
  */
 function generateColumnLabel(columnName: string): string {
   const labelMapping: Record<string, string> = {
-    'id': 'ID',
-    'name': '名前',
-    'email': 'メールアドレス',
-    'phone': '電話番号',
-    'address': '住所',
-    'description': '説明',
-    'price': '料金',
-    'duration_minutes': '所要時間（分）',
-    'is_active': '有効',
-    'created_at': '作成日時',
-    'updated_at': '更新日時',
-    'clinic_id': 'クリニックID',
-    'category_id': 'カテゴリID',
-    'display_order': '表示順',
-    'is_insurance_applicable': '保険適用',
-    'insurance_points': '保険点数',
+    id: 'ID',
+    name: '名前',
+    email: 'メールアドレス',
+    phone: '電話番号',
+    address: '住所',
+    description: '説明',
+    price: '料金',
+    duration_minutes: '所要時間（分）',
+    is_active: '有効',
+    created_at: '作成日時',
+    updated_at: '更新日時',
+    clinic_id: 'クリニックID',
+    category_id: 'カテゴリID',
+    display_order: '表示順',
+    is_insurance_applicable: '保険適用',
+    insurance_points: '保険点数',
   };
 
   return labelMapping[columnName] || columnName.replace(/_/g, ' ');
@@ -196,7 +200,7 @@ function isReadOnlyColumn(columnName: string): boolean {
     'created_at',
     'updated_at',
     'created_by',
-    'updated_by'
+    'updated_by',
   ];
 
   return readOnlyColumns.includes(columnName);

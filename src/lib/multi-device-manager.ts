@@ -5,8 +5,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createBrowserClient } from '@supabase/ssr';
-import { SessionManager, type UserSession, type DeviceInfo } from './session-manager';
+import {
+  SessionManager,
+  type UserSession,
+  type DeviceInfo,
+} from './session-manager';
 import { SecurityMonitor } from './security-monitor';
+import { logger } from '@/lib/logger';
 
 // ================================================================
 // 型定義
@@ -45,7 +50,11 @@ export interface DeviceManagementAction {
 }
 
 export interface DeviceSecurityAlert {
-  type: 'new_device' | 'suspicious_activity' | 'concurrent_limit' | 'location_change';
+  type:
+    | 'new_device'
+    | 'suspicious_activity'
+    | 'concurrent_limit'
+    | 'location_change';
   severity: 'low' | 'medium' | 'high';
   message: string;
   deviceInfo: DeviceInfo;
@@ -72,7 +81,10 @@ export class MultiDeviceManager {
    * デバイス信頼判定（公開API）
    * 指紋(JSON文字列)で登録済みかつ信頼済みかを判定
    */
-  async isDeviceTrusted(userId: string, deviceFingerprint: string): Promise<boolean> {
+  async isDeviceTrusted(
+    userId: string,
+    deviceFingerprint: string
+  ): Promise<boolean> {
     try {
       const query = this.supabase
         .from('registered_devices')
@@ -87,7 +99,7 @@ export class MultiDeviceManager {
       if (error || !data) {
         try {
           const res = await query;
-          // @ts-ignore
+          // @ts-expect-error: Supabase builder may return thenable without strict typing
           data = res && res.data ? res.data : null;
         } catch (_) {
           // ignore
@@ -96,18 +108,21 @@ export class MultiDeviceManager {
 
       if (!data) return false;
 
-      const record = Array.isArray(data) ? (data[0] || null) : data;
+      const record = Array.isArray(data) ? data[0] || null : data;
       if (!record) return false;
 
       // 一致検証（クエリ結果が他指紋の可能性に備える）
-      if (typeof record.device_fingerprint === 'string' && record.device_fingerprint !== deviceFingerprint) {
+      if (
+        typeof record.device_fingerprint === 'string' &&
+        record.device_fingerprint !== deviceFingerprint
+      ) {
         return false;
       }
 
       return Boolean(
         record.is_trusted === true ||
-        record.trust_level === 'trusted' ||
-        (typeof record.trust_score === 'number' && record.trust_score >= 80)
+          record.trust_level === 'trusted' ||
+          (typeof record.trust_score === 'number' && record.trust_score >= 80)
       );
     } catch (_) {
       return false;
@@ -117,11 +132,15 @@ export class MultiDeviceManager {
   /**
    * ユーザーのアクティブデバイス一覧取得
    */
-  async getUserDevices(userId: string, clinicId: string): Promise<DeviceSession[]> {
+  async getUserDevices(
+    userId: string,
+    clinicId: string
+  ): Promise<DeviceSession[]> {
     try {
       const { data: sessions, error } = await this.supabase
         .from('user_sessions')
-        .select(`
+        .select(
+          `
           id,
           device_info,
           ip_address,
@@ -130,7 +149,8 @@ export class MultiDeviceManager {
           created_at,
           is_active,
           geolocation
-        `)
+        `
+        )
         .eq('user_id', userId)
         .eq('clinic_id', clinicId)
         .eq('is_active', true)
@@ -138,7 +158,7 @@ export class MultiDeviceManager {
         .order('last_activity', { ascending: false });
 
       if (error || !sessions) {
-        console.error('デバイス一覧取得エラー:', error);
+        logger.error('デバイス一覧取得エラー:', error);
         return [];
       }
 
@@ -147,18 +167,24 @@ export class MultiDeviceManager {
 
       return sessions.map(session => ({
         sessionId: session.id,
-        deviceInfo: session.device_info || { device: 'unknown', os: 'unknown', browser: 'unknown' },
+        deviceInfo: session.device_info || {
+          device: 'unknown',
+          os: 'unknown',
+          browser: 'unknown',
+        },
         ipAddress: session.ip_address,
         userAgent: session.user_agent,
         lastActivity: new Date(session.last_activity),
         createdAt: new Date(session.created_at),
         isCurrentDevice: session.session_token === currentSessionToken,
-        isTrusted: this.isDeviceTrustedByAge(session.device_info, session.created_at),
+        isTrusted: this.isDeviceTrustedByAge(
+          session.device_info,
+          session.created_at
+        ),
         location: session.geolocation || undefined,
       }));
-
     } catch (error) {
-      console.error('getUserDevices エラー:', error);
+      logger.error('getUserDevices エラー:', error);
       return [];
     }
   }
@@ -180,8 +206,11 @@ export class MultiDeviceManager {
     const alerts: DeviceSecurityAlert[] = [];
 
     // 既存のアクティブデバイス数をチェック
-    const activeDeviceCount = await this.sessionManager.getActiveSessionCount(userId, clinicId);
-    
+    const activeDeviceCount = await this.sessionManager.getActiveSessionCount(
+      userId,
+      clinicId
+    );
+
     if (activeDeviceCount >= config.maxConcurrentDevices) {
       alerts.push({
         type: 'concurrent_limit',
@@ -242,27 +271,45 @@ export class MultiDeviceManager {
           return await this.trustDevice(action.deviceId!, userId, clinicId);
 
         case 'block':
-          return await this.blockDevice(action.deviceId!, userId, clinicId, action.reason);
+          return await this.blockDevice(
+            action.deviceId!,
+            userId,
+            clinicId,
+            action.reason
+          );
 
         case 'revoke_session':
-          return await this.revokeDeviceSession(action.sessionId!, action.reason || 'manual');
+          return await this.revokeDeviceSession(
+            action.sessionId!,
+            action.reason || 'manual'
+          );
 
         case 'revoke_all_other':
-          return await this.revokeAllOtherSessions(userId, clinicId, action.sessionId);
+          return await this.revokeAllOtherSessions(
+            userId,
+            clinicId,
+            action.sessionId
+          );
 
         default:
           return { success: false, message: '不明なアクションです' };
       }
     } catch (error) {
-      console.error('Device action execution error:', error);
-      return { success: false, message: 'アクション実行中にエラーが発生しました' };
+      logger.error('Device action execution error:', error);
+      return {
+        success: false,
+        message: 'アクション実行中にエラーが発生しました',
+      };
     }
   }
 
   /**
    * デバイス同期状態の確認
    */
-  async checkDeviceSyncStatus(userId: string, clinicId: string): Promise<{
+  async checkDeviceSyncStatus(
+    userId: string,
+    clinicId: string
+  ): Promise<{
     totalDevices: number;
     activeDevices: number;
     trustedDevices: number;
@@ -270,10 +317,14 @@ export class MultiDeviceManager {
     lastSyncAt?: Date;
   }> {
     const devices = await this.getUserDevices(userId, clinicId);
-    
-    const activeDevices = devices.filter(d => d.lastActivity > new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+    const activeDevices = devices.filter(
+      d => d.lastActivity > new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
     const trustedDevices = devices.filter(d => d.isTrusted);
-    const suspiciousDevices = devices.filter(d => !d.isTrusted && activeDevices.includes(d));
+    const suspiciousDevices = devices.filter(
+      d => !d.isTrusted && activeDevices.includes(d)
+    );
 
     return {
       totalDevices: devices.length,
@@ -290,20 +341,22 @@ export class MultiDeviceManager {
   async generateSecurityRecommendations(
     userId: string,
     clinicId: string
-  ): Promise<Array<{
-    type: 'action' | 'warning' | 'info';
-    title: string;
-    description: string;
-    actionLabel?: string;
-    actionData?: any;
-  }>> {
+  ): Promise<
+    Array<{
+      type: 'action' | 'warning' | 'info';
+      title: string;
+      description: string;
+      actionLabel?: string;
+      actionData?: any;
+    }>
+  > {
     const devices = await this.getUserDevices(userId, clinicId);
     const config = await this.getMultiDeviceConfig(clinicId);
     const recommendations = [];
 
     // 古いセッションの検出
-    const oldSessions = devices.filter(d => 
-      d.lastActivity < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const oldSessions = devices.filter(
+      d => d.lastActivity < new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     );
 
     if (oldSessions.length > 0) {
@@ -312,7 +365,10 @@ export class MultiDeviceManager {
         title: '古いセッションの整理',
         description: `${oldSessions.length}個の古いセッションがあります`,
         actionLabel: '古いセッションを削除',
-        actionData: { action: 'revoke_old_sessions', sessionIds: oldSessions.map(s => s.sessionId) },
+        actionData: {
+          action: 'revoke_old_sessions',
+          sessionIds: oldSessions.map(s => s.sessionId),
+        },
       });
     }
 
@@ -345,7 +401,9 @@ export class MultiDeviceManager {
   /**
    * 複数デバイス設定取得
    */
-  private async getMultiDeviceConfig(clinicId: string): Promise<MultiDeviceConfig> {
+  private async getMultiDeviceConfig(
+    clinicId: string
+  ): Promise<MultiDeviceConfig> {
     const { data: policy } = await this.supabase
       .from('session_policies')
       .select('*')
@@ -378,12 +436,18 @@ export class MultiDeviceManager {
   /**
    * 新デバイス判定
    */
-  private async isNewDevice(userId: string, deviceInfo: DeviceInfo): Promise<boolean> {
+  private async isNewDevice(
+    userId: string,
+    deviceInfo: DeviceInfo
+  ): Promise<boolean> {
     const { count } = await this.supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
-      .contains('device_info', { device: deviceInfo.device, os: deviceInfo.os });
+      .contains('device_info', {
+        device: deviceInfo.device,
+        os: deviceInfo.os,
+      });
 
     return (count || 0) === 0;
   }
@@ -391,7 +455,10 @@ export class MultiDeviceManager {
   /**
    * 位置変更の検出
    */
-  private async detectLocationChange(userId: string, currentIP: string): Promise<boolean> {
+  private async detectLocationChange(
+    userId: string,
+    currentIP: string
+  ): Promise<boolean> {
     const { data: recentSessions } = await this.supabase
       .from('user_sessions')
       .select('ip_address, geolocation')
@@ -414,23 +481,27 @@ export class MultiDeviceManager {
    */
   private isSimilarIP(ip1: string, ip2: string): boolean {
     if (!ip1 || !ip2) return false;
-    
+
     // 同じサブネット（/24）かチェック
     const parts1 = ip1.split('.');
     const parts2 = ip2.split('.');
-    
+
     if (parts1.length !== 4 || parts2.length !== 4) return false;
-    
+
     return parts1.slice(0, 3).join('.') === parts2.slice(0, 3).join('.');
   }
 
   /**
    * デバイス信頼性判定
    */
-  private isDeviceTrustedByAge(deviceInfo: DeviceInfo, createdAt: string): boolean {
+  private isDeviceTrustedByAge(
+    deviceInfo: DeviceInfo,
+    createdAt: string
+  ): boolean {
     const createdDate = new Date(createdAt);
-    const daysSinceCreated = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceCreated =
+      (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+
     // 7日以上使用されているデバイスは信頼済みとみなす
     return daysSinceCreated >= 7;
   }
@@ -438,20 +509,22 @@ export class MultiDeviceManager {
   /**
    * デバイス信頼設定
    */
-  private async trustDevice(deviceId: string, userId: string, clinicId: string): Promise<{
+  private async trustDevice(
+    deviceId: string,
+    userId: string,
+    clinicId: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
     // registered_devicesテーブルに登録
-    const { error } = await this.supabase
-      .from('registered_devices')
-      .upsert({
-        user_id: userId,
-        clinic_id: clinicId,
-        device_fingerprint: deviceId,
-        trust_level: 'trusted',
-        trusted_at: new Date().toISOString(),
-      });
+    const { error } = await this.supabase.from('registered_devices').upsert({
+      user_id: userId,
+      clinic_id: clinicId,
+      device_fingerprint: deviceId,
+      trust_level: 'trusted',
+      trusted_at: new Date().toISOString(),
+    });
 
     if (error) {
       return { success: false, message: 'デバイスの信頼設定に失敗しました' };
@@ -469,19 +542,20 @@ export class MultiDeviceManager {
     clinicId: string,
     reason?: string
   ): Promise<{ success: boolean; message: string }> {
-    const { error } = await this.supabase
-      .from('registered_devices')
-      .upsert({
-        user_id: userId,
-        clinic_id: clinicId,
-        device_fingerprint: deviceId,
-        trust_level: 'blocked',
-        blocked_at: new Date().toISOString(),
-        blocked_reason: reason,
-      });
+    const { error } = await this.supabase.from('registered_devices').upsert({
+      user_id: userId,
+      clinic_id: clinicId,
+      device_fingerprint: deviceId,
+      trust_level: 'blocked',
+      blocked_at: new Date().toISOString(),
+      blocked_reason: reason,
+    });
 
     if (error) {
-      return { success: false, message: 'デバイスのブロック設定に失敗しました' };
+      return {
+        success: false,
+        message: 'デバイスのブロック設定に失敗しました',
+      };
     }
 
     // 該当デバイスのセッションを無効化
@@ -503,15 +577,23 @@ export class MultiDeviceManager {
   /**
    * セッション無効化
    */
-  private async revokeDeviceSession(sessionId: string, reason: string): Promise<{
+  private async revokeDeviceSession(
+    sessionId: string,
+    reason: string
+  ): Promise<{
     success: boolean;
     message: string;
   }> {
-    const success = await this.sessionManager.revokeSession(sessionId, reason as any);
-    
+    const success = await this.sessionManager.revokeSession(
+      sessionId,
+      reason as any
+    );
+
     return {
       success,
-      message: success ? 'セッションを無効化しました' : 'セッション無効化に失敗しました',
+      message: success
+        ? 'セッションを無効化しました'
+        : 'セッション無効化に失敗しました',
     };
   }
 
@@ -534,12 +616,18 @@ export class MultiDeviceManager {
         .neq('id', keepSessionId || '');
 
       if (!sessions || sessions.length === 0) {
-        return { success: true, message: '無効化するセッションがありませんでした' };
+        return {
+          success: true,
+          message: '無効化するセッションがありませんでした',
+        };
       }
 
       let revokedCount = 0;
       for (const session of sessions) {
-        const success = await this.sessionManager.revokeSession(session.id, 'manual_logout');
+        const success = await this.sessionManager.revokeSession(
+          session.id,
+          'manual_logout'
+        );
         if (success) revokedCount++;
       }
 
@@ -560,12 +648,12 @@ export class MultiDeviceManager {
     if (typeof document === 'undefined') {
       return null;
     }
-    
+
     const cookies = document.cookie.split(';');
-    const sessionCookie = cookies.find(cookie => 
+    const sessionCookie = cookies.find(cookie =>
       cookie.trim().startsWith('session-token=')
     );
-    
+
     return sessionCookie ? sessionCookie.split('=')[1] : null;
   }
 }
@@ -584,10 +672,10 @@ export function useMultiDeviceManager(userId?: string, clinicId?: string) {
 
   const refreshDevices = async () => {
     if (!userId || !clinicId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const deviceList = await manager.getUserDevices(userId, clinicId);
       setDevices(deviceList);
@@ -600,14 +688,15 @@ export function useMultiDeviceManager(userId?: string, clinicId?: string) {
   };
 
   const executeAction = async (action: DeviceManagementAction) => {
-    if (!userId || !clinicId) return { success: false, message: 'ユーザー情報が不足しています' };
-    
+    if (!userId || !clinicId)
+      return { success: false, message: 'ユーザー情報が不足しています' };
+
     const result = await manager.executeDeviceAction(action, userId, clinicId);
-    
+
     if (result.success) {
       await refreshDevices();
     }
-    
+
     return result;
   };
 

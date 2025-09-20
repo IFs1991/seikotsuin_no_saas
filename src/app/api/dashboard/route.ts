@@ -1,34 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { ApiResponse, DashboardData, ApiError } from '../../../types/api';
-import { normalizeSupabaseError, createApiError, ERROR_CODES, AppError, logError, validation, ValidationErrorCollector } from '../../../lib/error-handler';
+import {
+  normalizeSupabaseError,
+  createApiError,
+  ERROR_CODES,
+  AppError,
+  logError,
+  validation,
+  ValidationErrorCollector,
+} from '../../../lib/error-handler';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<DashboardData>>> {
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<ApiResponse<DashboardData>>> {
   const path = '/api/dashboard';
-  
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
     const period = searchParams.get('period') || 'day';
-    
+
     // バリデーション
     const validator = new ValidationErrorCollector();
-    
+
     const clinicIdError = validation.required(clinicId, 'clinic_id');
     if (clinicIdError) {
       validator.add(clinicIdError.field, clinicIdError.message);
     }
-    
+
     const uuidError = clinicId ? validation.uuid(clinicId, 'clinic_id') : null;
     if (uuidError) {
       validator.add(uuidError.field, uuidError.message);
     }
-    
+
     if (validator.hasErrors()) {
       return NextResponse.json(
         { success: false, error: validator.getApiError() },
@@ -38,7 +48,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
 
     // 基本的なダッシュボードデータを取得
     const today = new Date().toISOString().split('T')[0];
-    
+
     // 日次収益データ
     const { data: dailyRevenue, error: revenueError } = await supabase
       .from('daily_revenue_summary')
@@ -57,7 +67,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       .select('patient_id')
       .eq('clinic_id', clinicId!)
       .gte('visit_date', today)
-      .lt('visit_date', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+      .lt(
+        'visit_date',
+        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      );
 
     if (patientError) {
       throw normalizeSupabaseError(patientError, path);
@@ -76,7 +89,9 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
     }
 
     // 収益トレンドデータ（過去7日）
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
     const { data: revenueChartData, error: chartError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
@@ -89,11 +104,16 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
     }
 
     // ヒートマップデータ（時間別来院パターン）
-    const { data: heatmapData, error: heatmapError } = await supabase
-      .rpc('get_hourly_visit_pattern', { clinic_uuid: clinicId! });
-      
+    const { data: heatmapData, error: heatmapError } = await supabase.rpc(
+      'get_hourly_visit_pattern',
+      { clinic_uuid: clinicId! }
+    );
+
     if (heatmapError) {
-      logError(new Error('Failed to fetch heatmap data'), { clinicId, heatmapError });
+      logError(new Error('Failed to fetch heatmap data'), {
+        clinicId,
+        heatmapError,
+      });
       // ヒートマップエラーは致命的でないため、空配列で継続
     }
 
@@ -103,29 +123,36 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
         revenue: dailyRevenue?.total_revenue || 0,
         patients: patientCount?.length || 0,
         insuranceRevenue: dailyRevenue?.insurance_revenue || 0,
-        privateRevenue: dailyRevenue?.private_revenue || 0
+        privateRevenue: dailyRevenue?.private_revenue || 0,
       },
-      aiComment: aiComment ? {
-        id: aiComment.id,
-        summary: aiComment.summary || '',
-        highlights: aiComment.good_points ? [aiComment.good_points] : [],
-        improvements: aiComment.improvement_points ? [aiComment.improvement_points] : [],
-        suggestions: aiComment.suggestion_for_tomorrow ? [aiComment.suggestion_for_tomorrow] : [],
-        created_at: aiComment.created_at
-      } : null,
-      revenueChartData: revenueChartData?.map(item => ({
-        name: item.revenue_date,
-        '総売上': Number(item.total_revenue) || 0,
-        '保険診療': Number(item.insurance_revenue) || 0,
-        '自費診療': Number(item.private_revenue) || 0,
-      })) || [],
+      aiComment: aiComment
+        ? {
+            id: aiComment.id,
+            summary: aiComment.summary || '',
+            highlights: aiComment.good_points ? [aiComment.good_points] : [],
+            improvements: aiComment.improvement_points
+              ? [aiComment.improvement_points]
+              : [],
+            suggestions: aiComment.suggestion_for_tomorrow
+              ? [aiComment.suggestion_for_tomorrow]
+              : [],
+            created_at: aiComment.created_at,
+          }
+        : null,
+      revenueChartData:
+        revenueChartData?.map(item => ({
+          name: item.revenue_date,
+          総売上: Number(item.total_revenue) || 0,
+          保険診療: Number(item.insurance_revenue) || 0,
+          自費診療: Number(item.private_revenue) || 0,
+        })) || [],
       heatmapData: heatmapData || [],
-      alerts: []
+      alerts: [],
     };
 
     const response: ApiResponse<DashboardData> = {
       success: true,
-      data: dashboardData
+      data: dashboardData,
     };
 
     return NextResponse.json(response);
@@ -148,11 +175,14 @@ export async function GET(request: NextRequest): Promise<NextResponse<ApiRespons
       );
     }
 
-    logError(error instanceof Error ? error : new Error(String(error)), { path, clinicId: request.nextUrl.searchParams.get('clinic_id') });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path,
+      clinicId: request.nextUrl.searchParams.get('clinic_id'),
+    });
 
     const response: ApiResponse<DashboardData> = {
       success: false,
-      error: apiError
+      error: apiError,
     };
 
     return NextResponse.json(response, { status: statusCode });

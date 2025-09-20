@@ -19,21 +19,21 @@ export function AdminSaveButton({
   loadingText = '保存中...',
   saveText = '設定を保存',
   showCancel = true,
-  onCancel
+  onCancel,
 }: AdminSaveButtonProps) {
   return (
-    <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+    <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
       {showCancel && (
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant='outline' onClick={onCancel}>
           キャンセル
         </Button>
       )}
-      <Button 
+      <Button
         onClick={onSave}
         disabled={isLoading || disabled}
-        className="flex items-center space-x-2"
+        className='flex items-center space-x-2'
       >
-        <Save className="w-4 h-4" />
+        <Save className='w-4 h-4' />
         <span>{isLoading ? loadingText : saveText}</span>
       </Button>
     </div>

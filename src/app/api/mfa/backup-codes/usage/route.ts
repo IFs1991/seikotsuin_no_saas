@@ -22,13 +22,15 @@ export async function GET(request: NextRequest) {
     const usage = await backupCodeManager.getBackupCodeUsage(userId);
 
     return NextResponse.json(usage);
-
   } catch (error) {
     console.error('バックアップコード使用状況取得エラー:', error);
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'バックアップコード使用状況取得に失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'バックアップコード使用状況取得に失敗しました',
       },
       { status: 500 }
     );

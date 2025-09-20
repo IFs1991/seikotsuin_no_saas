@@ -11,13 +11,12 @@ export const ALLOWED_REDIRECT_ORIGINS = [
   // 本番環境のドメイン（実際の値に置き換える）
   'https://your-clinic-app.com',
   'https://seikotsuin-saas.com',
-  
+
   // 開発・ステージング環境
-  ...(process.env.NODE_ENV === 'development' ? [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-  ] : []),
-  
+  ...(process.env.NODE_ENV === 'development'
+    ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+    : []),
+
   // 必要に応じて追加のドメインを指定
   // 'https://partner-domain.com',
 ];
@@ -41,14 +40,14 @@ export const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'X-XSS-Protection': '1; mode=block',
-  
+
   // CSRF対策（Supabase認証と併用）
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  
+
   // セッション管理
   'Cache-Control': 'no-cache, no-store, must-revalidate',
-  'Pragma': 'no-cache',
-  'Expires': '0',
+  Pragma: 'no-cache',
+  Expires: '0',
 } as const;
 
 /**
@@ -73,7 +72,7 @@ export const RATE_LIMIT = {
     windowMs: 15 * 60 * 1000, // 15分
     blockDurationMs: 60 * 60 * 1000, // 1時間
   },
-  
+
   // API呼び出し制限
   apiCalls: {
     maxRequests: 100,
@@ -87,10 +86,10 @@ export const RATE_LIMIT = {
 export const SESSION_CONFIG = {
   // セッションタイムアウト（8時間）
   timeoutMs: 8 * 60 * 60 * 1000,
-  
+
   // リフレッシュトークンの有効期限（7日）
   refreshTokenExpiryMs: 7 * 24 * 60 * 60 * 1000,
-  
+
   // セッション延長の閾値（残り1時間以下で延長）
   renewalThresholdMs: 60 * 60 * 1000,
 } as const;
@@ -101,7 +100,7 @@ export const SESSION_CONFIG = {
 export const FILE_UPLOAD = {
   // 最大ファイルサイズ（10MB）
   maxSizeBytes: 10 * 1024 * 1024,
-  
+
   // 許可されるMIMEタイプ
   allowedTypes: [
     'image/jpeg',
@@ -110,12 +109,9 @@ export const FILE_UPLOAD = {
     'application/pdf',
     'text/plain',
   ],
-  
+
   // 許可されるファイル拡張子
-  allowedExtensions: [
-    '.jpg', '.jpeg', '.png', '.gif',
-    '.pdf', '.txt'
-  ],
+  allowedExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.txt'],
 } as const;
 
 /**
@@ -124,7 +120,7 @@ export const FILE_UPLOAD = {
 export const AUDIT_LOG = {
   // ログ保持期間（90日）
   retentionDays: 90,
-  
+
   // 記録対象イベント
   events: [
     'user_login',
@@ -144,8 +140,8 @@ export const CONTENT_SECURITY_POLICY = {
   'default-src': ["'self'"],
   'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
   'style-src': ["'self'", "'unsafe-inline'"],
-  'img-src': ["'self'", "data:", "https:"],
+  'img-src': ["'self'", 'data:', 'https:'],
   'font-src': ["'self'"],
-  'connect-src': ["'self'", "https://api.supabase.io", "https://*.supabase.co"],
+  'connect-src': ["'self'", 'https://api.supabase.io', 'https://*.supabase.co'],
   'frame-ancestors': ["'none'"],
 } as const;

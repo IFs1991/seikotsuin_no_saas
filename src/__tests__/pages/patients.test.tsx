@@ -6,7 +6,9 @@ import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
 
 // Mock the custom hook
 jest.mock('@/hooks/usePatientAnalysis');
-const mockUsePatientAnalysis = usePatientAnalysis as jest.MockedFunction<typeof usePatientAnalysis>;
+const mockUsePatientAnalysis = usePatientAnalysis as jest.MockedFunction<
+  typeof usePatientAnalysis
+>;
 
 // Mock data
 const mockPatientData = {
@@ -15,12 +17,12 @@ const mockPatientData = {
       { name: '新患', value: 100, percentage: 100 },
       { name: '2回目来院', value: 80, percentage: 80 },
       { name: '継続治療', value: 60, percentage: 60 },
-      { name: 'リピーター', value: 40, percentage: 40 }
-    ]
+      { name: 'リピーター', value: 40, percentage: 40 },
+    ],
   },
   visitCounts: {
     average: 5.2,
-    monthlyChange: 12
+    monthlyChange: 12,
   },
   riskScores: [
     {
@@ -28,37 +30,37 @@ const mockPatientData = {
       name: '田中太郎',
       lastVisit: '2024-08-01',
       riskLevel: 'high' as const,
-      score: 85
+      score: 85,
     },
     {
       id: 2,
       name: '山田花子',
       lastVisit: '2024-08-05',
       riskLevel: 'medium' as const,
-      score: 65
-    }
+      score: 65,
+    },
   ],
   ltvRanking: [
     { name: '佐藤次郎', ltv: 150000 },
     { name: '鈴木三郎', ltv: 120000 },
-    { name: '高橋四郎', ltv: 95000 }
+    { name: '高橋四郎', ltv: 95000 },
   ],
   segmentData: {
     age: [
       { label: '20-30代', value: 35 },
       { label: '31-50代', value: 45 },
-      { label: '51歳以上', value: 20 }
+      { label: '51歳以上', value: 20 },
     ],
     symptom: [
       { label: '腰痛', value: 40 },
       { label: '肩こり', value: 30 },
-      { label: 'その他', value: 30 }
+      { label: 'その他', value: 30 },
     ],
     area: [
       { label: '地域A', value: 50 },
       { label: '地域B', value: 30 },
-      { label: '地域C', value: 20 }
-    ]
+      { label: '地域C', value: 20 },
+    ],
   },
   reservations: [],
   satisfactionCorrelation: {},
@@ -66,14 +68,14 @@ const mockPatientData = {
     {
       id: 1,
       name: '田中太郎',
-      reason: '最終来院から2週間経過'
+      reason: '最終来院から2週間経過',
     },
     {
       id: 2,
       name: '山田花子',
-      reason: '治療完了後のフォローアップ'
-    }
-  ]
+      reason: '治療完了後のフォローアップ',
+    },
+  ],
 };
 
 describe('PatientsPage', () => {

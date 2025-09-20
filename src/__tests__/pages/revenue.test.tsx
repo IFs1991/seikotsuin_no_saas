@@ -18,7 +18,7 @@ const mockRevenueData = {
   menuRanking: [
     { menu: '整体', revenue: 1200000, count: 120 },
     { menu: 'マッサージ', revenue: 800000, count: 160 },
-    { menu: '鍼灸', revenue: 600000, count: 60 }
+    { menu: '鍼灸', revenue: 600000, count: 60 },
   ],
   hourlyRevenue: 'ピーク: 14:00-16:00',
   dailyRevenueByDayOfWeek: 'ピーク: 金曜日',
@@ -26,7 +26,7 @@ const mockRevenueData = {
   growthRate: '+10.5%',
   revenueForecast: 4500000,
   costAnalysis: '35%',
-  staffRevenueContribution: '田中: 28%, 佐藤: 25%'
+  staffRevenueContribution: '田中: 28%, 佐藤: 25%',
 };
 
 describe('RevenuePage', () => {
@@ -43,8 +43,12 @@ describe('RevenuePage', () => {
 
     expect(screen.getByText('収益トレンド')).toBeInTheDocument();
     expect(screen.getByText('保険診療 vs 自費診療')).toBeInTheDocument();
-    expect(screen.getByText('施術メニュー別収益ランキング')).toBeInTheDocument();
-    expect(screen.getByText('時間帯別・曜日別収益パターン')).toBeInTheDocument();
+    expect(
+      screen.getByText('施術メニュー別収益ランキング')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('時間帯別・曜日別収益パターン')
+    ).toBeInTheDocument();
     expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
     expect(screen.getByText('収益予測とシミュレーション')).toBeInTheDocument();
     expect(screen.getByText('コスト分析')).toBeInTheDocument();

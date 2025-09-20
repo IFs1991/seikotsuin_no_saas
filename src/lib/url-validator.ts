@@ -4,6 +4,7 @@
  */
 
 import { ALLOWED_REDIRECT_ORIGINS } from './constants/security';
+import { logger } from './logger';
 
 /**
  * リダイレクトURLが安全かどうかを検証する
@@ -12,7 +13,7 @@ import { ALLOWED_REDIRECT_ORIGINS } from './constants/security';
  * @returns 安全なURLまたはnull
  */
 export function getSafeRedirectUrl(
-  url: string | null | undefined, 
+  url: string | null | undefined,
   requestOrigin: string
 ): string | null {
   // URLが指定されていない場合
@@ -24,7 +25,7 @@ export function getSafeRedirectUrl(
 
   // 明らかに無効なURLパターンを事前にチェック
   if (!isSecureUrl(trimmedUrl)) {
-    console.warn(`[Security] Invalid URL format rejected: ${trimmedUrl}`);
+    logger.warn(`[Security] Invalid URL format rejected: ${trimmedUrl}`);
     return null;
   }
 
@@ -33,15 +34,22 @@ export function getSafeRedirectUrl(
     const redirectUrl = new URL(trimmedUrl, requestOrigin);
 
     // HTTPSプロトコル以外は拒否（本番環境）
-    if (process.env.NODE_ENV === 'production' && redirectUrl.protocol !== 'https:') {
-      console.warn(`[Security] Non-HTTPS redirect rejected: ${trimmedUrl}`);
+    if (
+      process.env.NODE_ENV === 'production' &&
+      redirectUrl.protocol !== 'https:'
+    ) {
+      logger.warn(`[Security] Non-HTTPS redirect rejected: ${trimmedUrl}`);
       return null;
     }
 
     // 開発環境ではHTTPも許可
-    if (process.env.NODE_ENV === 'development' && 
-        !['http:', 'https:'].includes(redirectUrl.protocol)) {
-      console.warn(`[Security] Invalid protocol redirect rejected: ${trimmedUrl}`);
+    if (
+      process.env.NODE_ENV === 'development' &&
+      !['http:', 'https:'].includes(redirectUrl.protocol)
+    ) {
+      logger.warn(
+        `[Security] Invalid protocol redirect rejected: ${trimmedUrl}`
+      );
       return null;
     }
 
@@ -56,12 +64,16 @@ export function getSafeRedirectUrl(
     }
 
     // 許可されていないオリジン
-    console.warn(`[Security] Unauthorized redirect origin rejected: ${redirectUrl.origin}`);
+    logger.warn(
+      `[Security] Unauthorized redirect origin rejected: ${redirectUrl.origin}`
+    );
     return null;
-
   } catch (error) {
     // 不正なURL形式
-    console.warn(`[Security] Malformed redirect URL rejected: ${trimmedUrl}`, error);
+    logger.warn(
+      `[Security] Malformed redirect URL rejected: ${trimmedUrl}`,
+      error
+    );
     return null;
   }
 }
@@ -108,9 +120,9 @@ export function isSecureUrl(url: string): boolean {
 
   // 明らかに無効な形式
   const invalidPatterns = [
-    /^not-a-url$/i,   // テスト用の無効URL
-    /^https?:\/\/$$/,  // プロトコルのみ
-    /^https?:\/\/$/,   // プロトコルのみ（別パターン）
+    /^not-a-url$/i, // テスト用の無効URL
+    /^https?:\/\/$$/, // プロトコルのみ
+    /^https?:\/\/$/, // プロトコルのみ（別パターン）
   ];
 
   if (invalidPatterns.some(pattern => pattern.test(url))) {
@@ -119,10 +131,10 @@ export function isSecureUrl(url: string): boolean {
 
   // パストラバーサル攻撃のパターンをチェック
   const dangerousPatterns = [
-    /\.\./,           // パストラバーサル
-    /javascript:/i,   // JavaScriptスキーム
-    /data:/i,         // データスキーム
-    /vbscript:/i,     // VBScriptスキーム
+    /\.\./, // パストラバーサル
+    /javascript:/i, // JavaScriptスキーム
+    /data:/i, // データスキーム
+    /vbscript:/i, // VBScriptスキーム
   ];
 
   return !dangerousPatterns.some(pattern => pattern.test(url));

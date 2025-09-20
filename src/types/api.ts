@@ -159,7 +159,11 @@ export type StaffRole = 'manager' | 'practitioner' | 'receptionist' | 'admin';
 export type UserRole = 'admin' | 'manager' | 'staff' | 'practitioner';
 export type DataAccessLevel = 'full' | 'limited' | 'readonly';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
-export type TreatmentStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type TreatmentStatus =
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
 
 // =================================================================
 // API Request/Response Data Types - API固有のデータ型
@@ -198,9 +202,9 @@ export interface AICommentResponse {
  */
 export interface RevenueChartPoint {
   name: string; // 日付
-  '総売上': number;
-  '保険診療': number;
-  '自費診療': number;
+  総売上: number;
+  保険診療: number;
+  自費診療: number;
 }
 
 /**

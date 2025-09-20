@@ -31,7 +31,7 @@
     --chart-3: 45.4 93.4% 47.5%;
     --chart-4: 0 84.2% 60.2%;
     --chart-5: 262.1 83.3% 57.8%;
-    
+
     /* 医療系システム用カスタム変数 (WCAG 2.2 AA準拠) */
     --primary-color: #1e3a8a;
     --accent-color: #059669; /* より高コントラスト */
@@ -44,7 +44,7 @@
     --medical-success: #059669; /* 成功状態 */
     --medical-warning: #d97706; /* 警告カラー */
     --medical-info: #2563eb; /* 情報カラー */
-    
+
     /* タッチターゲットサイズ（24px以上） */
     --touch-target-min: 1.5rem; /* 24px */
     --touch-target-comfortable: 2.75rem; /* 44px */
@@ -63,7 +63,9 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   /* 日本語フォントの最適化 */
@@ -251,7 +253,7 @@
   }
 
   .status-urgent::before {
-    content: "⚠ ";
+    content: '⚠ ';
     font-weight: bold;
   }
 
@@ -261,7 +263,7 @@
   }
 
   .status-success::before {
-    content: "✓ ";
+    content: '✓ ';
     font-weight: bold;
   }
 
@@ -271,7 +273,7 @@
   }
 
   .status-warning::before {
-    content: "⚡ ";
+    content: '⚡ ';
     font-weight: bold;
   }
 
@@ -280,7 +282,7 @@
     .no-print {
       display: none !important;
     }
-    
+
     .print-friendly {
       @apply text-black bg-white;
     }
@@ -310,7 +312,7 @@
       background-color: inherit !important;
       color: inherit !important;
     }
-    
+
     .touch-device-spacing {
       @apply p-6; /* タッチデバイスでは余白を大きく */
     }
@@ -328,21 +330,21 @@
     .mobile-only {
       display: block;
     }
-    
+
     .desktop-only {
       display: none;
     }
-    
+
     /* モバイルでのカード間隔調整 */
     .mobile-card-spacing {
       @apply space-y-3;
     }
-    
+
     /* モバイルフォーム最適化 */
     .mobile-form-field {
       @apply mb-4; /* フィールド間隔を広く */
     }
-    
+
     .mobile-form-input {
       @apply text-base; /* ズーム防止のため16px以上 */
       min-height: var(--touch-target-comfortable);
@@ -354,7 +356,7 @@
     .mobile-only {
       display: none;
     }
-    
+
     .desktop-only {
       display: block;
     }
@@ -372,7 +374,7 @@
     .medical-card {
       @apply border-2 border-gray-900;
     }
-    
+
     .touch-target,
     .touch-target-comfortable {
       @apply border border-gray-600;
@@ -385,7 +387,7 @@
     .slide-up {
       animation: none;
     }
-    
+
     /* スワイプアニメーション無効化 */
     .swipe-transition {
       transition: none !important;

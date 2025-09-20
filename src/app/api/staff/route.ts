@@ -32,10 +32,12 @@ export async function GET(request: NextRequest) {
     const currentMonth = new Date().toISOString().slice(0, 7);
     const { data: monthlyPerformance, error: monthlyError } = await supabase
       .from('staff_performance')
-      .select(`
+      .select(
+        `
         *,
         staff(name, role)
-      `)
+      `
+      )
       .eq('clinic_id', clinicId)
       .gte('performance_date', `${currentMonth}-01`)
       .order('performance_date', { ascending: false });
@@ -46,64 +48,80 @@ export async function GET(request: NextRequest) {
 
     // スタッフメトリクス計算
     const staffMetrics = {
-      dailyPatients: staffPerformance?.reduce((sum, staff) => {
-        const avgDaily = staff.total_visits / Math.max(staff.working_days, 1);
-        return sum + avgDaily;
-      }, 0) / Math.max(staffPerformance?.length || 1, 1),
-      
-      totalRevenue: staffPerformance?.reduce((sum, staff) => sum + (staff.total_revenue_generated || 0), 0) || 0,
-      
-      averageSatisfaction: staffPerformance?.reduce((sum, staff) => {
-        return sum + (staff.average_satisfaction_score || 0);
-      }, 0) / Math.max(staffPerformance?.length || 1, 1)
+      dailyPatients:
+        staffPerformance?.reduce((sum, staff) => {
+          const avgDaily = staff.total_visits / Math.max(staff.working_days, 1);
+          return sum + avgDaily;
+        }, 0) / Math.max(staffPerformance?.length || 1, 1),
+
+      totalRevenue:
+        staffPerformance?.reduce(
+          (sum, staff) => sum + (staff.total_revenue_generated || 0),
+          0
+        ) || 0,
+
+      averageSatisfaction:
+        staffPerformance?.reduce((sum, staff) => {
+          return sum + (staff.average_satisfaction_score || 0);
+        }, 0) / Math.max(staffPerformance?.length || 1, 1),
     };
 
     // 収益ランキング
-    const revenueRanking = staffPerformance
-      ?.sort((a, b) => (b.total_revenue_generated || 0) - (a.total_revenue_generated || 0))
-      .slice(0, 10)
-      .map(staff => ({
-        staff_id: staff.staff_id,
-        name: staff.staff_name,
-        revenue: staff.total_revenue_generated || 0,
-        patients: staff.unique_patients || 0,
-        satisfaction: staff.average_satisfaction_score || 0
-      })) || [];
+    const revenueRanking =
+      staffPerformance
+        ?.sort(
+          (a, b) =>
+            (b.total_revenue_generated || 0) - (a.total_revenue_generated || 0)
+        )
+        .slice(0, 10)
+        .map(staff => ({
+          staff_id: staff.staff_id,
+          name: staff.staff_name,
+          revenue: staff.total_revenue_generated || 0,
+          patients: staff.unique_patients || 0,
+          satisfaction: staff.average_satisfaction_score || 0,
+        })) || [];
 
     // 満足度相関データ
-    const satisfactionCorrelation = staffPerformance?.map(staff => ({
-      name: staff.staff_name,
-      satisfaction: staff.average_satisfaction_score || 0,
-      revenue: staff.total_revenue_generated || 0,
-      patients: staff.unique_patients || 0
-    })) || [];
+    const satisfactionCorrelation =
+      staffPerformance?.map(staff => ({
+        name: staff.staff_name,
+        satisfaction: staff.average_satisfaction_score || 0,
+        revenue: staff.total_revenue_generated || 0,
+        patients: staff.unique_patients || 0,
+      })) || [];
 
     // パフォーマンストレンド（過去3ヶ月）
-    const performanceTrends = monthlyPerformance?.reduce((acc, record) => {
-      const staffName = record.staff?.name || 'Unknown';
-      if (!acc[staffName]) {
-        acc[staffName] = [];
-      }
-      acc[staffName].push({
-        date: record.performance_date,
-        revenue: record.revenue_generated || 0,
-        patients: record.patient_count || 0,
-        satisfaction: record.satisfaction_score || 0
-      });
-      return acc;
-    }, {} as Record<string, any[]>) || {};
+    const performanceTrends =
+      monthlyPerformance?.reduce(
+        (acc, record) => {
+          const staffName = record.staff?.name || 'Unknown';
+          if (!acc[staffName]) {
+            acc[staffName] = [];
+          }
+          acc[staffName].push({
+            date: record.performance_date,
+            revenue: record.revenue_generated || 0,
+            patients: record.patient_count || 0,
+            satisfaction: record.satisfaction_score || 0,
+          });
+          return acc;
+        },
+        {} as Record<string, any[]>
+      ) || {};
 
     // スキルマトリックス（ダミーデータ）
-    const skillMatrix = staffPerformance?.map(staff => ({
-      id: staff.staff_id,
-      name: staff.staff_name,
-      skills: [
-        { name: '基本施術', level: Math.floor(Math.random() * 5) + 1 },
-        { name: 'カウンセリング', level: Math.floor(Math.random() * 5) + 1 },
-        { name: '専門技術', level: Math.floor(Math.random() * 5) + 1 },
-        { name: '接客', level: Math.floor(Math.random() * 5) + 1 }
-      ]
-    })) || [];
+    const skillMatrix =
+      staffPerformance?.map(staff => ({
+        id: staff.staff_id,
+        name: staff.staff_name,
+        skills: [
+          { name: '基本施術', level: Math.floor(Math.random() * 5) + 1 },
+          { name: 'カウンセリング', level: Math.floor(Math.random() * 5) + 1 },
+          { name: '専門技術', level: Math.floor(Math.random() * 5) + 1 },
+          { name: '接客', level: Math.floor(Math.random() * 5) + 1 },
+        ],
+      })) || [];
 
     // 研修履歴（ダミーデータ）
     const trainingHistory = [
@@ -112,15 +130,15 @@ export async function GET(request: NextRequest) {
         staff_id: staffPerformance?.[0]?.staff_id,
         title: '基礎施術研修',
         date: '2024-01-15',
-        completed: true
+        completed: true,
       },
       {
         id: 2,
         staff_id: staffPerformance?.[0]?.staff_id,
         title: 'コミュニケーション研修',
         date: '2024-02-20',
-        completed: true
-      }
+        completed: true,
+      },
     ];
 
     return NextResponse.json({
@@ -133,8 +151,9 @@ export async function GET(request: NextRequest) {
         skillMatrix,
         trainingHistory,
         totalStaff: staffPerformance?.length || 0,
-        activeStaff: staffPerformance?.filter(s => s.working_days > 0).length || 0
-      }
+        activeStaff:
+          staffPerformance?.filter(s => s.working_days > 0).length || 0,
+      },
     });
   } catch (error) {
     console.error('Staff API error:', error);
@@ -169,7 +188,7 @@ export async function POST(request: NextRequest) {
         email,
         password_hash,
         hire_date,
-        is_therapist: is_therapist || false
+        is_therapist: is_therapist || false,
       })
       .select()
       .single();
@@ -180,7 +199,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data
+      data,
     });
   } catch (error) {
     console.error('Staff POST error:', error);

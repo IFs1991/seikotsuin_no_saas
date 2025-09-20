@@ -23,23 +23,23 @@ export async function POST(request: NextRequest) {
     const setupResult = await mfaManager.initiateMFASetup(userId, clinicId);
 
     return NextResponse.json(setupResult);
-
   } catch (error) {
     console.error('MFA設定開始エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'MFA設定開始に失敗しました' 
+      {
+        error:
+          error instanceof Error ? error.message : 'MFA設定開始に失敗しました',
       },
       { status: 500 }
     );

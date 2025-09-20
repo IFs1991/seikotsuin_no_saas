@@ -26,19 +26,21 @@ const emptyComment: AIComment = {
 
 export function AICommentCardDemo() {
   return (
-    <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold text-gray-900">
+    <div className='p-6 space-y-6 bg-gray-100 min-h-screen'>
+      <h1 className='text-2xl font-bold text-gray-900'>
         AIコメントカード デモ
       </h1>
-      
-      <div className="space-y-6">
+
+      <div className='space-y-6'>
         <div>
-          <h2 className="text-lg font-semibold mb-4">通常データ</h2>
+          <h2 className='text-lg font-semibold mb-4'>通常データ</h2>
           <AICommentCard comment={mockComment} />
         </div>
-        
+
         <div>
-          <h2 className="text-lg font-semibold mb-4">空データ（配列が空の場合）</h2>
+          <h2 className='text-lg font-semibold mb-4'>
+            空データ（配列が空の場合）
+          </h2>
           <AICommentCard comment={emptyComment} />
         </div>
       </div>

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (startDate && endDate) {
       dateFilter = {
         gte: startDate,
-        lte: endDate
+        lte: endDate,
       };
     } else {
       const now = new Date();
@@ -44,12 +44,14 @@ export async function GET(request: NextRequest) {
     // 収益データ取得
     const { data: revenueData, error: revenueError } = await supabase
       .from('revenues')
-      .select(`
+      .select(
+        `
         *,
         master_treatment_menus(name),
         master_categories(name),
         patients(name)
-      `)
+      `
+      )
       .eq('clinic_id', clinicId)
       .gte('revenue_date', dateFilter.gte)
       .order('revenue_date', { ascending: false });
@@ -59,50 +61,60 @@ export async function GET(request: NextRequest) {
     }
 
     // メニュー別収益ランキング
-    const menuRevenue = revenueData?.reduce((acc, item) => {
-      const menuName = item.master_treatment_menus?.name || 'その他';
-      if (!acc[menuName]) {
-        acc[menuName] = {
-          menu_id: item.treatment_menu_id,
-          menu_name: menuName,
-          total_revenue: 0,
-          transaction_count: 0
-        };
-      }
-      acc[menuName].total_revenue += parseFloat(item.amount);
-      acc[menuName].transaction_count += 1;
-      return acc;
-    }, {} as Record<string, any>);
+    const menuRevenue = revenueData?.reduce(
+      (acc, item) => {
+        const menuName = item.master_treatment_menus?.name || 'その他';
+        if (!acc[menuName]) {
+          acc[menuName] = {
+            menu_id: item.treatment_menu_id,
+            menu_name: menuName,
+            total_revenue: 0,
+            transaction_count: 0,
+          };
+        }
+        acc[menuName].total_revenue += parseFloat(item.amount);
+        acc[menuName].transaction_count += 1;
+        return acc;
+      },
+      {} as Record<string, any>
+    );
 
     const menuRanking = Object.values(menuRevenue || {})
       .sort((a: any, b: any) => b.total_revenue - a.total_revenue)
       .slice(0, 10);
 
     // 日次トレンド
-    const dailyTrends = revenueData?.reduce((acc, item) => {
-      const date = item.revenue_date;
-      if (!acc[date]) {
-        acc[date] = {
-          date,
-          total_revenue: 0,
-          insurance_revenue: 0,
-          private_revenue: 0,
-          transaction_count: 0
-        };
-      }
-      acc[date].total_revenue += parseFloat(item.amount);
-      acc[date].insurance_revenue += parseFloat(item.insurance_revenue || 0);
-      acc[date].private_revenue += parseFloat(item.private_revenue || 0);
-      acc[date].transaction_count += 1;
-      return acc;
-    }, {} as Record<string, any>);
+    const dailyTrends = revenueData?.reduce(
+      (acc, item) => {
+        const date = item.revenue_date;
+        if (!acc[date]) {
+          acc[date] = {
+            date,
+            total_revenue: 0,
+            insurance_revenue: 0,
+            private_revenue: 0,
+            transaction_count: 0,
+          };
+        }
+        acc[date].total_revenue += parseFloat(item.amount);
+        acc[date].insurance_revenue += parseFloat(item.insurance_revenue || 0);
+        acc[date].private_revenue += parseFloat(item.private_revenue || 0);
+        acc[date].transaction_count += 1;
+        return acc;
+      },
+      {} as Record<string, any>
+    );
 
-    const revenueTrends = Object.values(dailyTrends || {})
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const revenueTrends = Object.values(dailyTrends || {}).sort(
+      (a: any, b: any) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
 
     // 時間帯別収益（SQLクエリで取得）
-    const { data: hourlyRevenue, error: hourlyError } = await supabase
-      .rpc('get_hourly_revenue_pattern', { clinic_uuid: clinicId });
+    const { data: hourlyRevenue, error: hourlyError } = await supabase.rpc(
+      'get_hourly_revenue_pattern',
+      { clinic_uuid: clinicId }
+    );
 
     // 前年同期比較
     const lastYear = new Date();
@@ -112,28 +124,55 @@ export async function GET(request: NextRequest) {
       .select('amount')
       .eq('clinic_id', clinicId)
       .gte('revenue_date', lastYear.toISOString().split('T')[0])
-      .lte('revenue_date', new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0).toISOString().split('T')[0]);
+      .lte(
+        'revenue_date',
+        new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0)
+          .toISOString()
+          .split('T')[0]
+      );
 
-    const currentTotal = revenueData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;
-    const lastYearTotal = lastYearData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;
-    const growthRate = lastYearTotal > 0 ? ((currentTotal - lastYearTotal) / lastYearTotal * 100).toFixed(1) : '0';
+    const currentTotal =
+      revenueData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;
+    const lastYearTotal =
+      lastYearData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) ||
+      0;
+    const growthRate =
+      lastYearTotal > 0
+        ? (((currentTotal - lastYearTotal) / lastYearTotal) * 100).toFixed(1)
+        : '0';
 
     return NextResponse.json({
       success: true,
       data: {
         dailyRevenue: currentTotal,
-        weeklyRevenue: revenueTrends?.slice(-7).reduce((sum: number, item: any) => sum + item.total_revenue, 0) || 0,
-        monthlyRevenue: revenueTrends?.reduce((sum: number, item: any) => sum + item.total_revenue, 0) || 0,
-        insuranceRevenue: revenueData?.reduce((sum, item) => sum + parseFloat(item.insurance_revenue || 0), 0) || 0,
-        selfPayRevenue: revenueData?.reduce((sum, item) => sum + parseFloat(item.private_revenue || 0), 0) || 0,
+        weeklyRevenue:
+          revenueTrends
+            ?.slice(-7)
+            .reduce((sum: number, item: any) => sum + item.total_revenue, 0) ||
+          0,
+        monthlyRevenue:
+          revenueTrends?.reduce(
+            (sum: number, item: any) => sum + item.total_revenue,
+            0
+          ) || 0,
+        insuranceRevenue:
+          revenueData?.reduce(
+            (sum, item) => sum + parseFloat(item.insurance_revenue || 0),
+            0
+          ) || 0,
+        selfPayRevenue:
+          revenueData?.reduce(
+            (sum, item) => sum + parseFloat(item.private_revenue || 0),
+            0
+          ) || 0,
         menuRanking,
         hourlyRevenue: hourlyRevenue || [],
         revenueForecast: currentTotal * 1.1, // 簡易予測（10%増）
         growthRate: `${growthRate}%`,
         revenueTrends,
         costAnalysis: '32.5%', // 固定値（実際は計算）
-        staffRevenueContribution: [] // スタッフ別データは別途実装
-      }
+        staffRevenueContribution: [], // スタッフ別データは別途実装
+      },
     });
   } catch (error) {
     console.error('Revenue API error:', error);
@@ -147,7 +186,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { clinic_id, patient_id, visit_id, amount, insurance_revenue, private_revenue, treatment_menu_id, payment_method_id } = body;
+    const {
+      clinic_id,
+      patient_id,
+      visit_id,
+      amount,
+      insurance_revenue,
+      private_revenue,
+      treatment_menu_id,
+      payment_method_id,
+    } = body;
 
     if (!clinic_id || !amount) {
       return NextResponse.json(
@@ -167,7 +215,7 @@ export async function POST(request: NextRequest) {
         insurance_revenue: insurance_revenue || 0,
         private_revenue: private_revenue || 0,
         treatment_menu_id,
-        payment_method_id
+        payment_method_id,
       })
       .select()
       .single();
@@ -178,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data
+      data,
     });
   } catch (error) {
     console.error('Revenue POST error:', error);

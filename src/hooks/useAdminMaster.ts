@@ -17,9 +17,9 @@ export const useAdminMaster = () => {
   };
 
   const fetchTableData = async (
-    tableName: string, 
-    page = 1, 
-    limit = 20, 
+    tableName: string,
+    page = 1,
+    limit = 20,
     search?: string,
     sortBy?: string,
     sortOrder?: 'asc' | 'desc'
@@ -31,8 +31,12 @@ export const useAdminMaster = () => {
     if (search !== tableManager.filterState.search) {
       tableManager.setSearch(search || '');
     }
-    if (sortBy && sortOrder && 
-        (sortBy !== tableManager.sortState.sortBy || sortOrder !== tableManager.sortState.sortOrder)) {
+    if (
+      sortBy &&
+      sortOrder &&
+      (sortBy !== tableManager.sortState.sortBy ||
+        sortOrder !== tableManager.sortState.sortOrder)
+    ) {
       tableManager.setSortState(sortBy, sortOrder);
     }
     await tableManager.fetchTableData(tableName);
@@ -62,22 +66,34 @@ export const useAdminMaster = () => {
     return true;
   };
 
-  const createTableData = async (tableName: string, data: Partial<TableData>) => {
+  const createTableData = async (
+    tableName: string,
+    data: Partial<TableData>
+  ) => {
     if (tableName !== tableManager.currentTable) {
       tableManager.setCurrentTable(tableName);
     }
-    const success = await tableManager.createTableData(data as Record<string, unknown>);
+    const success = await tableManager.createTableData(
+      data as Record<string, unknown>
+    );
     if (!success) {
       throw new Error(tableManager.error || 'データの作成に失敗しました');
     }
     return data;
   };
 
-  const updateTableData = async (tableName: string, id: string, updates: Partial<TableData>) => {
+  const updateTableData = async (
+    tableName: string,
+    id: string,
+    updates: Partial<TableData>
+  ) => {
     if (tableName !== tableManager.currentTable) {
       tableManager.setCurrentTable(tableName);
     }
-    const success = await tableManager.updateTableData(id, updates as Record<string, unknown>);
+    const success = await tableManager.updateTableData(
+      id,
+      updates as Record<string, unknown>
+    );
     if (!success) {
       throw new Error(tableManager.error || 'データの更新に失敗しました');
     }
@@ -102,7 +118,7 @@ export const useAdminMaster = () => {
     createMasterData,
     updateMasterData,
     deleteMasterData,
-    
+
     // テーブルデータ関連
     tableData: tableManager.tableData,
     tableList: tableManager.tableList,
@@ -113,12 +129,12 @@ export const useAdminMaster = () => {
     createTableData,
     updateTableData,
     deleteTableData,
-    
+
     // 共通
     loading: systemSettings.loading || tableManager.loading,
     error: systemSettings.error || tableManager.error,
     pagination: tableManager.pagination,
-    
+
     // 旧関数（後方互換性のため）
     handleCreate: createTableData,
     handleUpdate: updateTableData,

@@ -17,11 +17,14 @@ try {
 async function getSecurityHeaders() {
   // 環境に応じたCSP取得
   const environment = process.env.NODE_ENV;
-  const cspPolicy = CSPConfig?.getCSPForEnvironment?.(environment) || "default-src 'self'";
-  
+  const cspPolicy =
+    CSPConfig?.getCSPForEnvironment?.(environment) || "default-src 'self'";
+
   // CSP段階的導入設定
   const rolloutPhase = process.env.CSP_ROLLOUT_PHASE || 'report-only';
-  const cspConfig = CSPConfig?.getGradualRolloutCSP?.(rolloutPhase) || { csp: cspPolicy };
+  const cspConfig = CSPConfig?.getGradualRolloutCSP?.(rolloutPhase) || {
+    csp: cspPolicy,
+  };
 
   const securityHeaders = [
     // フレーミング防止
@@ -45,14 +48,19 @@ async function getSecurityHeaders() {
       value: 'strict-origin-when-cross-origin',
     },
     // HTTPS強制（本番環境）
-    ...(environment === 'production' ? [{
-      key: 'Strict-Transport-Security',
-      value: 'max-age=63072000; includeSubDomains; preload',
-    }] : []),
+    ...(environment === 'production'
+      ? [
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+        ]
+      : []),
     // Permissions Policy
     {
       key: 'Permissions-Policy',
-      value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+      value:
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
     },
     // Content Security Policy（動的nonce対応）
     {
@@ -60,10 +68,14 @@ async function getSecurityHeaders() {
       value: cspConfig.csp,
     },
     // CSP Report-Only（段階的導入時）
-    ...(cspConfig.cspReportOnly ? [{
-      key: 'Content-Security-Policy-Report-Only',
-      value: cspConfig.cspReportOnly,
-    }] : []),
+    ...(cspConfig.cspReportOnly
+      ? [
+          {
+            key: 'Content-Security-Policy-Report-Only',
+            value: cspConfig.cspReportOnly,
+          },
+        ]
+      : []),
   ];
 
   return securityHeaders;
@@ -74,7 +86,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
-  
+
   // バンドル分析と最適化
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {
@@ -98,7 +110,7 @@ const nextConfig = {
     }
     return config;
   },
-  
+
   // 画像最適化設定
   images: {
     unoptimized: false,

@@ -51,21 +51,24 @@ interface UsePatientAnalysisReturn {
   followUpList: FollowUpItem[];
 }
 
-const DEFAULT_CLINIC_ID = process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
+const DEFAULT_CLINIC_ID =
+  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
 
-export const usePatientAnalysis = (clinicId: string = DEFAULT_CLINIC_ID): UsePatientAnalysisReturn => {
+export const usePatientAnalysis = (
+  clinicId: string = DEFAULT_CLINIC_ID
+): UsePatientAnalysisReturn => {
   const [data, setData] = useState<UsePatientAnalysisReturn>({
     conversionData: {
       stages: [
         { name: '新患', value: 100, percentage: 100 },
         { name: '2回目来院', value: 80, percentage: 80 },
         { name: '継続治療', value: 60, percentage: 60 },
-        { name: 'リピーター', value: 40, percentage: 40 }
-      ]
+        { name: 'リピーター', value: 40, percentage: 40 },
+      ],
     },
     visitCounts: {
       average: 5.2,
-      monthlyChange: 12
+      monthlyChange: 12,
     },
     riskScores: [
       {
@@ -73,37 +76,37 @@ export const usePatientAnalysis = (clinicId: string = DEFAULT_CLINIC_ID): UsePat
         name: '田中太郎',
         lastVisit: '2024-08-01',
         riskLevel: 'high',
-        score: 85
+        score: 85,
       },
       {
         id: 2,
         name: '山田花子',
         lastVisit: '2024-08-05',
         riskLevel: 'medium',
-        score: 65
-      }
+        score: 65,
+      },
     ],
     ltvRanking: [
       { name: '佐藤次郎', ltv: 150000 },
       { name: '鈴木三郎', ltv: 120000 },
-      { name: '高橋四郎', ltv: 95000 }
+      { name: '高橋四郎', ltv: 95000 },
     ],
     segmentData: {
       age: [
         { label: '20-30代', value: 35 },
         { label: '31-50代', value: 45 },
-        { label: '51歳以上', value: 20 }
+        { label: '51歳以上', value: 20 },
       ],
       symptom: [
         { label: '腰痛', value: 40 },
         { label: '肩こり', value: 30 },
-        { label: 'その他', value: 30 }
+        { label: 'その他', value: 30 },
       ],
       area: [
         { label: '地域A', value: 50 },
         { label: '地域B', value: 30 },
-        { label: '地域C', value: 20 }
-      ]
+        { label: '地域C', value: 20 },
+      ],
     },
     reservations: [],
     satisfactionCorrelation: {},
@@ -111,14 +114,14 @@ export const usePatientAnalysis = (clinicId: string = DEFAULT_CLINIC_ID): UsePat
       {
         id: 1,
         name: '田中太郎',
-        reason: '最終来院から2週間経過'
+        reason: '最終来院から2週間経過',
       },
       {
         id: 2,
         name: '山田花子',
-        reason: '治療完了後のフォローアップ'
-      }
-    ]
+        reason: '治療完了後のフォローアップ',
+      },
+    ],
   });
 
   useEffect(() => {
@@ -130,40 +133,56 @@ export const usePatientAnalysis = (clinicId: string = DEFAULT_CLINIC_ID): UsePat
 
           // 転換率ステージ（%は先頭段階を100%として相対算出）
           const stagesBase = d.conversionData.stages?.[0]?.value || 0;
-          const stages = (d.conversionData.stages || []).map((s) => ({
+          const stages = (d.conversionData.stages || []).map(s => ({
             name: s.name,
             value: s.value,
-            percentage: stagesBase > 0 ? Math.round((s.value / stagesBase) * 100) : 0,
+            percentage:
+              stagesBase > 0 ? Math.round((s.value / stagesBase) * 100) : 0,
           }));
 
           // リスクスコア整形
-          const riskScores: RiskScore[] = (d.riskScores || []).map((r, idx) => ({
-            id: idx + 1,
-            name: r.name,
-            lastVisit: r.lastVisit || '-',
-            riskLevel: (r.category as any) === 'high' ? 'high' : (r.category as any) === 'medium' ? 'medium' : 'low',
-            score: Number((r as any).riskScore || (r as any).score || 0),
-          }));
+          const riskScores: RiskScore[] = (d.riskScores || []).map(
+            (r, idx) => ({
+              id: idx + 1,
+              name: r.name,
+              lastVisit: r.lastVisit || '-',
+              riskLevel:
+                (r.category as any) === 'high'
+                  ? 'high'
+                  : (r.category as any) === 'medium'
+                    ? 'medium'
+                    : 'low',
+              score: Number((r as any).riskScore || (r as any).score || 0),
+            })
+          );
 
           // LTVランキング
-          const ltvRanking: LtvRanking[] = (d.ltvRanking || []).map((x) => ({
+          const ltvRanking: LtvRanking[] = (d.ltvRanking || []).map(x => ({
             name: x.name,
             ltv: Number(x.ltv || 0),
           }));
 
           // セグメント
           const segmentData: SegmentData = {
-            age: (d.segmentData?.age || []).map((x) => ({ label: x.label, value: Number(x.value || 0) })),
-            symptom: (d.segmentData?.symptom || []).map((x) => ({ label: x.label, value: Number(x.value || 0) })),
+            age: (d.segmentData?.age || []).map(x => ({
+              label: x.label,
+              value: Number(x.value || 0),
+            })),
+            symptom: (d.segmentData?.symptom || []).map(x => ({
+              label: x.label,
+              value: Number(x.value || 0),
+            })),
             area: [],
           };
 
           // フォローアップ
-          const followUpList: FollowUpItem[] = (d.followUpList || []).map((f, i) => ({
-            id: i + 1,
-            name: f.name,
-            reason: f.reason,
-          }));
+          const followUpList: FollowUpItem[] = (d.followUpList || []).map(
+            (f, i) => ({
+              id: i + 1,
+              name: f.name,
+              reason: f.reason,
+            })
+          );
 
           setData({
             conversionData: { stages },

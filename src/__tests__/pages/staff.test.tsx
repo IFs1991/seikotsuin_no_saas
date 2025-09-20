@@ -6,38 +6,40 @@ import { useStaffAnalysis } from '@/hooks/useStaffAnalysis';
 
 // Mock the custom hook
 jest.mock('@/hooks/useStaffAnalysis');
-const mockUseStaffAnalysis = useStaffAnalysis as jest.MockedFunction<typeof useStaffAnalysis>;
+const mockUseStaffAnalysis = useStaffAnalysis as jest.MockedFunction<
+  typeof useStaffAnalysis
+>;
 
 // Mock data
 const mockStaffData = {
   staffMetrics: {
-    dailyPatients: 12
+    dailyPatients: 12,
   },
   revenueRanking: [
     { name: '田中', revenue: 120000, percentage: 28 },
     { name: '佐藤', revenue: 110000, percentage: 25 },
-    { name: '山田', revenue: 95000, percentage: 22 }
+    { name: '山田', revenue: 95000, percentage: 22 },
   ],
   satisfactionCorrelation: {
-    overall: 4.2
+    overall: 4.2,
   },
   skillMatrix: [
     { id: 1, name: '整体技術', level: 5 },
     { id: 2, name: 'コミュニケーション', level: 4 },
-    { id: 3, name: '鍼灸技術', level: 3 }
+    { id: 3, name: '鍼灸技術', level: 3 },
   ],
   trainingHistory: [
     { id: 1, title: '整体認定研修', date: '2024-07-15' },
     { id: 2, title: '接客マナー講習', date: '2024-06-20' },
-    { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' }
+    { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' },
   ],
   performanceTrends: {
     monthly: [
       { month: '7月', patients: 280, revenue: 350000 },
-      { month: '6月', patients: 260, revenue: 330000 }
-    ]
+      { month: '6月', patients: 260, revenue: 330000 },
+    ],
   },
-  isLoading: false
+  isLoading: false,
 };
 
 describe('StaffManagementPage', () => {
@@ -53,7 +55,9 @@ describe('StaffManagementPage', () => {
     render(<StaffManagementPage />);
 
     expect(screen.getByText('スタッフ生産性管理')).toBeInTheDocument();
-    expect(screen.getByText('施術者のパフォーマンスと成長を追跡・管理')).toBeInTheDocument();
+    expect(
+      screen.getByText('施術者のパフォーマンスと成長を追跡・管理')
+    ).toBeInTheDocument();
   });
 
   test('should display tab navigation', () => {
@@ -66,7 +70,7 @@ describe('StaffManagementPage', () => {
 
   test('should display skill matrix when skills tab is clicked', () => {
     render(<StaffManagementPage />);
-    
+
     const skillsTab = screen.getByText('スキル管理');
     fireEvent.click(skillsTab);
 
@@ -78,7 +82,7 @@ describe('StaffManagementPage', () => {
 
   test('should display training history when skills tab is clicked', () => {
     render(<StaffManagementPage />);
-    
+
     const skillsTab = screen.getByText('スキル管理');
     fireEvent.click(skillsTab);
 
@@ -92,7 +96,7 @@ describe('StaffManagementPage', () => {
   test('should display loading state', () => {
     mockUseStaffAnalysis.mockReturnValue({
       ...mockStaffData,
-      isLoading: true
+      isLoading: true,
     });
 
     render(<StaffManagementPage />);

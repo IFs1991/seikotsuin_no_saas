@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 
@@ -12,11 +12,21 @@ interface RadioGroupProps {
 export const RadioGroup: React.FC<RadioGroupProps> = ({
   value,
   onValueChange,
-  className = "",
-  children
+  className = '',
+  children,
 }) => {
   return (
-    <div className={className} role="radiogroup">
+    <div
+      className={className}
+      role='radiogroup'
+      data-value={value}
+      onChange={e => {
+        const target = e.target as HTMLInputElement;
+        if (target && target.type === 'radio') {
+          onValueChange(target.value);
+        }
+      }}
+    >
       {children}
     </div>
   );
@@ -31,11 +41,11 @@ interface RadioGroupItemProps {
 export const RadioGroupItem: React.FC<RadioGroupItemProps> = ({
   value,
   id,
-  className = ""
+  className = '',
 }) => {
   return (
     <input
-      type="radio"
+      type='radio'
       value={value}
       id={id}
       className={`w-4 h-4 ${className}`}

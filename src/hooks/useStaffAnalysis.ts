@@ -44,38 +44,41 @@ interface UseStaffAnalysisReturn {
   isLoading: boolean;
 }
 
-const DEFAULT_CLINIC_ID = process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
+const DEFAULT_CLINIC_ID =
+  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
 
-export const useStaffAnalysis = (clinicId: string = DEFAULT_CLINIC_ID): UseStaffAnalysisReturn => {
+export const useStaffAnalysis = (
+  clinicId: string = DEFAULT_CLINIC_ID
+): UseStaffAnalysisReturn => {
   const [data, setData] = useState<UseStaffAnalysisReturn>({
     staffMetrics: {
-      dailyPatients: 12
+      dailyPatients: 12,
     },
     revenueRanking: [
       { name: '田中', revenue: 120000, percentage: 28 },
       { name: '佐藤', revenue: 110000, percentage: 25 },
-      { name: '山田', revenue: 95000, percentage: 22 }
+      { name: '山田', revenue: 95000, percentage: 22 },
     ],
     satisfactionCorrelation: {
-      overall: 4.2
+      overall: 4.2,
     },
     skillMatrix: [
       { id: 1, name: '整体技術', level: 5 },
       { id: 2, name: 'コミュニケーション', level: 4 },
-      { id: 3, name: '鍼灸技術', level: 3 }
+      { id: 3, name: '鍼灸技術', level: 3 },
     ],
     trainingHistory: [
       { id: 1, title: '整体認定研修', date: '2024-07-15' },
       { id: 2, title: '接客マナー講習', date: '2024-06-20' },
-      { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' }
+      { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' },
     ],
     performanceTrends: {
       monthly: [
         { month: '7月', patients: 280, revenue: 350000 },
-        { month: '6月', patients: 260, revenue: 330000 }
-      ]
+        { month: '6月', patients: 260, revenue: 330000 },
+      ],
     },
-    isLoading: false
+    isLoading: false,
   });
 
   useEffect(() => {

@@ -30,14 +30,23 @@ export const passwordSchema = z
     required_error: 'パスワードは必須です',
     invalid_type_error: 'パスワードの形式が正しくありません',
   })
-  .min(PASSWORD_POLICY.minLength, `パスワードは${PASSWORD_POLICY.minLength}文字以上で入力してください`)
-  .max(PASSWORD_POLICY.maxLength, `パスワードは${PASSWORD_POLICY.maxLength}文字以内で入力してください`)
+  .min(
+    PASSWORD_POLICY.minLength,
+    `パスワードは${PASSWORD_POLICY.minLength}文字以上で入力してください`
+  )
+  .max(
+    PASSWORD_POLICY.maxLength,
+    `パスワードは${PASSWORD_POLICY.maxLength}文字以内で入力してください`
+  )
   .regex(/[a-z]/, 'パスワードには小文字を1文字以上含める必要があります')
-  .regex(/[A-Z]/, 'パスワードには大文字を1文字以上含める必要があります') 
+  .regex(/[A-Z]/, 'パスワードには大文字を1文字以上含める必要があります')
   .regex(/[0-9]/, 'パスワードには数字を1文字以上含める必要があります')
-  .regex(/[^a-zA-Z0-9]/, 'パスワードには特殊文字（記号）を1文字以上含める必要があります')
+  .regex(
+    /[^a-zA-Z0-9]/,
+    'パスワードには特殊文字（記号）を1文字以上含める必要があります'
+  )
   .refine(
-    (password) => {
+    password => {
       // よくある弱いパスワードパターンをチェック
       const weakPatterns = [
         /password/i,
@@ -49,7 +58,8 @@ export const passwordSchema = z
       return !weakPatterns.some(pattern => pattern.test(password));
     },
     {
-      message: 'より安全なパスワードを設定してください（一般的な文字列は避けてください）',
+      message:
+        'より安全なパスワードを設定してください（一般的な文字列は避けてください）',
     }
   );
 
@@ -73,25 +83,33 @@ export const signupSchema = z.object({
  * FormData用ログインスキーマ
  * サーバーアクションで使用
  */
-export const loginFormDataSchema = zfd.formData({
-  email: zfd.text(),
-  password: zfd.text(),
-}).pipe(z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'パスワードを入力してください'),
-}));
+export const loginFormDataSchema = zfd
+  .formData({
+    email: zfd.text(),
+    password: zfd.text(),
+  })
+  .pipe(
+    z.object({
+      email: emailSchema,
+      password: z.string().min(1, 'パスワードを入力してください'),
+    })
+  );
 
 /**
  * FormData用サインアップスキーマ
  * サーバーアクションで使用
  */
-export const signupFormDataSchema = zfd.formData({
-  email: zfd.text(),
-  password: zfd.text(),
-}).pipe(z.object({
-  email: emailSchema,
-  password: passwordSchema,
-}));
+export const signupFormDataSchema = zfd
+  .formData({
+    email: zfd.text(),
+    password: zfd.text(),
+  })
+  .pipe(
+    z.object({
+      email: emailSchema,
+      password: passwordSchema,
+    })
+  );
 
 /**
  * パスワードリセット用スキーマ
@@ -103,23 +121,20 @@ export const passwordResetSchema = z.object({
 /**
  * パスワード変更用スキーマ
  */
-export const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1, '現在のパスワードを入力してください'),
-  newPassword: passwordSchema,
-  confirmPassword: z.string(),
-}).refine(
-  (data) => data.newPassword === data.confirmPassword,
-  {
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, '現在のパスワードを入力してください'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.newPassword === data.confirmPassword, {
     message: 'パスワードが一致しません',
     path: ['confirmPassword'],
-  }
-).refine(
-  (data) => data.currentPassword !== data.newPassword,
-  {
+  })
+  .refine(data => data.currentPassword !== data.newPassword, {
     message: '新しいパスワードは現在のパスワードと異なる必要があります',
     path: ['newPassword'],
-  }
-);
+  });
 
 /**
  * 認証エラーレスポンス用型定義

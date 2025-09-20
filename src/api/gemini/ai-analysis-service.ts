@@ -34,28 +34,29 @@ interface AnalysisResult {
  */
 export async function fetchAnalysisData(): Promise<AnalysisData> {
   try {
-    const [salesResponse, patientResponse, therapistResponse] = await Promise.all([
-      supabase
-        .from('revenues')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(30),
-      
-      supabase
-        .from('patients')
-        .select('*')
-        .order('created_at', { ascending: false }),
-        
-      supabase
-        .from('staff_performance')
-        .select('*')
-        .order('performance_score', { ascending: false })
-    ]);
+    const [salesResponse, patientResponse, therapistResponse] =
+      await Promise.all([
+        supabase
+          .from('revenues')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(30),
+
+        supabase
+          .from('patients')
+          .select('*')
+          .order('created_at', { ascending: false }),
+
+        supabase
+          .from('staff_performance')
+          .select('*')
+          .order('performance_score', { ascending: false }),
+      ]);
 
     return {
       salesData: salesResponse.data || [],
       patientData: patientResponse.data || [],
-      therapistData: therapistResponse.data || []
+      therapistData: therapistResponse.data || [],
     };
   } catch (error) {
     console.error('Failed to fetch analysis data:', error);
@@ -73,34 +74,39 @@ export function generateAnalysisReport(data: AnalysisData): AnalysisResult {
     salesAnalysis: {
       total: salesData.reduce((acc, curr) => acc + (curr.amount || 0), 0),
       trend: calculateTrend(salesData),
-      anomalies: detectAnomalies(salesData)
+      anomalies: detectAnomalies(salesData),
     },
     patientMetrics: {
       total: patientData.length,
       newPatients: patientData.filter(p => p.is_new).length,
-      returnRate: calculateReturnRate(patientData)
+      returnRate: calculateReturnRate(patientData),
     },
     therapistPerformance: {
       topPerformer: therapistData[0]?.staff_name || '',
-      metrics: therapistData.reduce((acc, curr) => ({
-        ...acc,
-        [curr.staff_name]: curr.performance_score
-      }), {})
+      metrics: therapistData.reduce(
+        (acc, curr) => ({
+          ...acc,
+          [curr.staff_name]: curr.performance_score,
+        }),
+        {}
+      ),
     },
     aiInsights: {
       summary: generateSummary(salesData, patientData, therapistData),
       recommendations: generateRecommendations(salesData, patientData),
-      nextDayPlan: generateNextDayPlan(salesData, patientData, therapistData)
-    }
+      nextDayPlan: generateNextDayPlan(salesData, patientData, therapistData),
+    },
   };
 }
 
 /**
  * Gemini AI APIを使用してAIコメントを生成
  */
-export async function generateAIComment(analysisResult: AnalysisResult): Promise<AIComment> {
+export async function generateAIComment(
+  analysisResult: AnalysisResult
+): Promise<AIComment> {
   const apiKey = process.env.GEMINI_API_KEY;
-  
+
   if (!apiKey) {
     // 開発中はモックデータを返す
     return generateMockAIComment(analysisResult);
@@ -108,7 +114,7 @@ export async function generateAIComment(analysisResult: AnalysisResult): Promise
 
   try {
     // const prompt = createAnalysisPrompt(analysisResult);
-    
+
     // TODO: Gemini API実装
     // const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
     //   method: 'POST',
@@ -132,62 +138,85 @@ export async function generateAIComment(analysisResult: AnalysisResult): Promise
 // ヘルパー関数
 function calculateTrend(salesData: any[]): string {
   if (salesData.length < 2) return '不明';
-  
-  const recent = salesData.slice(0, 7).reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const previous = salesData.slice(7, 14).reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  
-  return recent > previous ? '上昇傾向' : recent < previous ? '下降傾向' : '横ばい';
+
+  const recent = salesData
+    .slice(0, 7)
+    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const previous = salesData
+    .slice(7, 14)
+    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+  return recent > previous
+    ? '上昇傾向'
+    : recent < previous
+      ? '下降傾向'
+      : '横ばい';
 }
 
 function detectAnomalies(salesData: any[]): string[] {
   // 簡単な異常値検知
   const amounts = salesData.map(d => d.amount || 0);
   const avg = amounts.reduce((acc, curr) => acc + curr, 0) / amounts.length;
-  
+
   const anomalies: string[] = [];
   amounts.forEach((amount, index) => {
     if (amount > avg * 1.5) {
-      const date = new Date(salesData[index].created_at).toLocaleDateString('ja-JP');
+      const date = new Date(salesData[index].created_at).toLocaleDateString(
+        'ja-JP'
+      );
       anomalies.push(`${date}の売上が平均を大きく上回っています`);
     }
   });
-  
+
   return anomalies;
 }
 
 function calculateReturnRate(patientData: any[]): number {
   const totalPatients = patientData.length;
   const returningPatients = patientData.filter(p => !p.is_new).length;
-  
-  return totalPatients > 0 ? Math.round((returningPatients / totalPatients) * 100 * 10) / 10 : 0;
+
+  return totalPatients > 0
+    ? Math.round((returningPatients / totalPatients) * 100 * 10) / 10
+    : 0;
 }
 
-function generateSummary(salesData: any[], _patientData: any[], _therapistData: any[]): string {
+function generateSummary(
+  salesData: any[],
+  _patientData: any[],
+  _therapistData: any[]
+): string {
   const trend = calculateTrend(salesData);
   return `全体的に${trend}で推移しており、患者満足度も良好です。`;
 }
 
-function generateRecommendations(salesData: any[], patientData: any[]): string[] {
+function generateRecommendations(
+  salesData: any[],
+  patientData: any[]
+): string[] {
   const recommendations = [];
-  
+
   if (patientData.filter(p => p.is_new).length > patientData.length * 0.3) {
     recommendations.push('新規患者の受入れ体制を強化することをお勧めします');
   }
-  
+
   if (calculateTrend(salesData) === '下降傾向') {
     recommendations.push('売上向上のための施策を検討してください');
   } else {
     recommendations.push('現在の良好な傾向を維持しましょう');
   }
-  
+
   return recommendations;
 }
 
-function generateNextDayPlan(_salesData: any[], _patientData: any[], _therapistData: any[]): string[] {
+function generateNextDayPlan(
+  _salesData: any[],
+  _patientData: any[],
+  _therapistData: any[]
+): string[] {
   return [
     'スタッフミーティングで本日の振り返りを実施',
     '新規患者のフォローアップを優先的に行う',
-    '人気施術の予約枠を調整する'
+    '人気施術の予約枠を調整する',
   ];
 }
 
@@ -216,14 +245,14 @@ function generateMockAIComment(analysisResult: AnalysisResult): AIComment {
     highlights: [
       '患者満足度が高水準を維持',
       '新規患者の獲得が順調',
-      'スタッフのパフォーマンスが向上'
+      'スタッフのパフォーマンスが向上',
     ],
     improvements: [
       '待ち時間の短縮が必要',
       '予約システムの最適化',
-      '設備のメンテナンス'
+      '設備のメンテナンス',
     ],
     suggestions: analysisResult.aiInsights.nextDayPlan,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
   };
 }

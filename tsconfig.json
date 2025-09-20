@@ -47,13 +47,7 @@
     ".next/types/**/*.ts",
     "jest.config.js"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    "out",
-    "dist",
-    "build"
-  ],
+  "exclude": ["node_modules", ".next", "out", "dist", "build"],
   "ts-node": {
     "esm": true
   }

@@ -12,13 +12,13 @@ export const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
   },
   realtime: {
     params: {
-      eventsPerSecond: 10
-    }
-  }
+      eventsPerSecond: 10,
+    },
+  },
 });
 
 export const subscribeToTable = async (
@@ -101,16 +101,21 @@ export const dbHelpers = {
       if (error) throw error;
       return result;
     });
-  }
+  },
 };
 
-export const handleAuthStateChange = (callback: (event: string, session: any) => void) => {
+export const handleAuthStateChange = (
+  callback: (event: string, session: any) => void
+) => {
   return supabase.auth.onAuthStateChange(callback);
 };
 
 export const getCurrentSession = async () => {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
     if (error) throw error;
     return session;
   } catch (error) {

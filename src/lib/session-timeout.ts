@@ -4,6 +4,7 @@
  */
 
 import { createBrowserClient } from '@supabase/ssr';
+import { logger } from '@/lib/logger';
 
 // ================================================================
 // 型定義
@@ -40,7 +41,7 @@ export class SessionTimeoutManager {
   private intervalId: number | null = null;
   private warningTimeoutId: number | null = null;
   private logoutTimeoutId: number | null = null;
-  
+
   // コールバック
   private onStateChange?: SessionTimeoutCallback;
   private onWarning?: TimeoutWarningCallback;
@@ -48,7 +49,12 @@ export class SessionTimeoutManager {
 
   // イベントリスナー
   private activityEventTypes = [
-    'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'
+    'mousedown',
+    'mousemove',
+    'keypress',
+    'scroll',
+    'touchstart',
+    'click',
   ];
 
   constructor(config: Partial<SessionTimeoutConfig> = {}) {
@@ -91,7 +97,7 @@ export class SessionTimeoutManager {
       this.checkTimeout();
     }, this.config.checkIntervalSeconds * 1000);
 
-    console.log('Session timeout monitoring started');
+    logger.log('Session timeout monitoring started');
   }
 
   /**
@@ -111,7 +117,7 @@ export class SessionTimeoutManager {
       this.intervalId = null;
     }
 
-    console.log('Session timeout monitoring stopped');
+    logger.log('Session timeout monitoring stopped');
   }
 
   /**
@@ -141,8 +147,8 @@ export class SessionTimeoutManager {
     this.recordActivity();
     this.config.idleMinutes += additionalMinutes;
     this.state.timeUntilTimeout = this.config.idleMinutes;
-    
-    console.log(`Session extended by ${additionalMinutes} minutes`);
+
+    logger.log(`Session extended by ${additionalMinutes} minutes`);
     this.notifyStateChange();
   }
 
@@ -152,24 +158,24 @@ export class SessionTimeoutManager {
   async logout(): Promise<void> {
     this.stop();
     this.state.isTimedOut = true;
-    
+
     try {
       // Supabaseからログアウト
       const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
-      
+
       await supabase.auth.signOut();
-      
+
       // セッションクッキーをクリア
       this.clearSessionCookies();
-      
+
       // ログアウトページにリダイレクト
-      window.location.href = '/admin/login?message=セッションがタイムアウトしました';
-      
+      window.location.href =
+        '/admin/login?message=セッションがタイムアウトしました';
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
       // エラーでもリダイレクト
       window.location.href = '/admin/login?error=logout_failed';
     }
@@ -202,7 +208,7 @@ export class SessionTimeoutManager {
    */
   updateConfig(newConfig: Partial<SessionTimeoutConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    
+
     // アクティブな場合は監視を再開
     if (this.state.isActive) {
       this.stop();
@@ -219,14 +225,22 @@ export class SessionTimeoutManager {
    */
   private checkTimeout(): void {
     const now = new Date();
-    const timeSinceLastActivity = (now.getTime() - this.state.lastActivity.getTime()) / 1000 / 60; // minutes
-    
+    const timeSinceLastActivity =
+      (now.getTime() - this.state.lastActivity.getTime()) / 1000 / 60; // minutes
+
     this.state.idleTime = timeSinceLastActivity;
-    this.state.timeUntilTimeout = Math.max(0, this.config.idleMinutes - timeSinceLastActivity);
+    this.state.timeUntilTimeout = Math.max(
+      0,
+      this.config.idleMinutes - timeSinceLastActivity
+    );
 
     // 警告表示のタイミング
-    const warningThreshold = this.config.idleMinutes - this.config.warningMinutes;
-    if (timeSinceLastActivity >= warningThreshold && !this.state.isWarningShown) {
+    const warningThreshold =
+      this.config.idleMinutes - this.config.warningMinutes;
+    if (
+      timeSinceLastActivity >= warningThreshold &&
+      !this.state.isWarningShown
+    ) {
       this.showWarning();
     }
 
@@ -259,7 +273,9 @@ export class SessionTimeoutManager {
       this.showWarningDialog(remainingMinutes);
     }
 
-    console.log(`Session timeout warning: ${remainingMinutes} minutes remaining`);
+    console.log(
+      `Session timeout warning: ${remainingMinutes} minutes remaining`
+    );
     this.notifyStateChange();
   }
 
@@ -286,7 +302,7 @@ export class SessionTimeoutManager {
    */
   private showWarningDialog(remainingMinutes: number): void {
     const message = `セッションがあと${remainingMinutes}分でタイムアウトします。\n\n続行しますか？`;
-    
+
     if (confirm(message)) {
       this.extendSession();
     } else {
@@ -310,7 +326,7 @@ export class SessionTimeoutManager {
       clearTimeout(this.warningTimeoutId);
       this.warningTimeoutId = null;
     }
-    
+
     if (this.logoutTimeoutId) {
       clearTimeout(this.logoutTimeoutId);
       this.logoutTimeoutId = null;
@@ -356,15 +372,16 @@ export class SessionTimeoutManager {
    */
   private clearSessionCookies(): void {
     // カスタムセッションクッキーをクリア
-    document.cookie = 'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
+    document.cookie =
+      'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
     // Supabaseセッションクッキーをクリア
     const supabaseCookies = [
       'supabase-auth-token',
       'supabase.auth.token',
-      'sb-auth-token'
+      'sb-auth-token',
     ];
-    
+
     supabaseCookies.forEach(cookieName => {
       document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     });
@@ -379,12 +396,14 @@ import { useEffect, useState } from 'react';
 
 export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   const [timeoutManager] = useState(() => new SessionTimeoutManager(config));
-  const [state, setState] = useState<SessionTimeoutState>(timeoutManager.getState());
+  const [state, setState] = useState<SessionTimeoutState>(
+    timeoutManager.getState()
+  );
 
   useEffect(() => {
     // コールバック設定
     timeoutManager.onStateChange(setState);
-    
+
     // タイムアウト監視開始
     timeoutManager.start();
 
@@ -426,25 +445,27 @@ export function formatTimeRemaining(minutes: number): string {
   if (minutes < 1) {
     return '1分未満';
   }
-  
+
   if (minutes < 60) {
     return `${Math.ceil(minutes)}分`;
   }
-  
+
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = Math.ceil(minutes % 60);
-  
+
   if (remainingMinutes === 0) {
     return `${hours}時間`;
   }
-  
+
   return `${hours}時間${remainingMinutes}分`;
 }
 
 /**
  * デフォルト設定取得
  */
-export function getDefaultSessionTimeoutConfig(userRole?: string): SessionTimeoutConfig {
+export function getDefaultSessionTimeoutConfig(
+  userRole?: string
+): SessionTimeoutConfig {
   // 管理者は長めのタイムアウト
   if (userRole === 'admin' || userRole === 'clinic_admin') {
     return {
@@ -455,7 +476,7 @@ export function getDefaultSessionTimeoutConfig(userRole?: string): SessionTimeou
       autoLogout: true,
     };
   }
-  
+
   // 一般スタッフは標準的なタイムアウト
   return {
     idleMinutes: 30,

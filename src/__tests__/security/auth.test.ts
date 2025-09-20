@@ -3,13 +3,13 @@
  * Open Redirect脆弱性修正と入力値検証のテストを実施
  */
 
-import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import { describe, test, expect, beforeEach } from '@jest/globals';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
-import { 
-  loginSchema, 
-  signupSchema, 
+import {
+  loginSchema,
+  signupSchema,
   sanitizeAuthInput,
-  getPasswordStrength 
+  getPasswordStrength,
 } from '@/lib/schemas/auth';
 
 // Mock environment variables for testing
@@ -19,7 +19,6 @@ beforeEach(() => {
 });
 
 describe('Security Enhancement Tests', () => {
-  
   describe('Open Redirect Prevention', () => {
     const origin = 'http://localhost:3000';
 
@@ -28,7 +27,7 @@ describe('Security Enhancement Tests', () => {
         '/dashboard',
         '/admin/settings',
         'http://localhost:3000/dashboard',
-        'http://localhost:3000/admin'
+        'http://localhost:3000/admin',
       ];
 
       validUrls.forEach(url => {
@@ -45,7 +44,7 @@ describe('Security Enhancement Tests', () => {
         'javascript:alert("xss")',
         '//evil.com/redirect',
         'http://localhost:3000.evil.com',
-        'ftp://malware.com/payload'
+        'ftp://malware.com/payload',
       ];
 
       maliciousUrls.forEach(url => {
@@ -62,7 +61,7 @@ describe('Security Enhancement Tests', () => {
         '   ',
         'not-a-url',
         'http://',
-        'https://'
+        'https://',
       ];
 
       edgeCases.forEach(url => {
@@ -80,14 +79,13 @@ describe('Security Enhancement Tests', () => {
   });
 
   describe('Input Validation Security', () => {
-    
     describe('Email Validation', () => {
       test('accepts valid email formats', () => {
         const validEmails = [
           'user@example.com',
           'admin@clinic.co.jp',
           'test.email+tag@domain.org',
-          'user123@sub.domain.com'
+          'user123@sub.domain.com',
         ];
 
         validEmails.forEach(email => {
@@ -104,7 +102,7 @@ describe('Security Enhancement Tests', () => {
           'user..double@domain.com',
           'user@domain',
           'user name@domain.com',
-          'a'.repeat(250) + '@domain.com' // too long
+          'a'.repeat(250) + '@domain.com', // too long
         ];
 
         invalidEmails.forEach(email => {
@@ -120,7 +118,7 @@ describe('Security Enhancement Tests', () => {
           'StrongP@ss123',
           'MySecure#Key2024',
           'C0mpl3x!Auth99',
-          'Clinic@Safe2024!'
+          'Clinic@Safe2024!',
         ];
 
         strongPasswords.forEach(password => {
@@ -137,9 +135,9 @@ describe('Security Enhancement Tests', () => {
           '12345678', // no letters
           'password', // no uppercase, numbers, symbols
           'PASSWORD', // no lowercase, numbers, symbols
-          'Pass123',  // no symbols, too short
+          'Pass123', // no symbols, too short
           'admin123', // contains common word
-          'qwerty123' // common pattern
+          'qwerty123', // common pattern
         ];
 
         weakPasswords.forEach(password => {
@@ -198,7 +196,7 @@ describe('Security Enhancement Tests', () => {
   describe('Security Headers and Constants', () => {
     test('security constants include production domains', () => {
       const { ALLOWED_REDIRECT_ORIGINS } = require('@/lib/constants/security');
-      
+
       expect(ALLOWED_REDIRECT_ORIGINS).toContain('https://your-clinic-app.com');
       expect(ALLOWED_REDIRECT_ORIGINS).toContain('https://seikotsuin-saas.com');
       expect(Array.isArray(ALLOWED_REDIRECT_ORIGINS)).toBe(true);

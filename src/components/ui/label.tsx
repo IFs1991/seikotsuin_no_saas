@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/label-has-associated-control */
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -9,14 +10,15 @@ export interface LabelProps
 
 const labelVariants = {
   variant: {
-    default: "text-gray-700",
-    medical: "text-gray-900 font-semibold",
-    required: "text-gray-900 font-semibold after:content-['*'] after:text-red-500 after:ml-1",
+    default: 'text-gray-700',
+    medical: 'text-gray-900 font-semibold',
+    required:
+      "text-gray-900 font-semibold after:content-['*'] after:text-red-500 after:ml-1",
   },
   size: {
-    default: "text-sm",
-    sm: "text-xs",
-    lg: "text-base",
+    default: 'text-sm',
+    sm: 'text-xs',
+    lg: 'text-base',
   },
 };
 
@@ -26,9 +28,9 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
       ref={ref}
       className={cn(
         // 基本スタイル
-        "font-medium leading-none select-none",
+        'font-medium leading-none select-none',
         // 無効化状態対応
-        "peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+        'peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
         // バリアント適用
         labelVariants.variant[variant],
         labelVariants.size[size],
@@ -38,4 +40,4 @@ export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
     />
   )
 );
-Label.displayName = "Label";
+Label.displayName = 'Label';

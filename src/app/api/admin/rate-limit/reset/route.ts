@@ -9,7 +9,12 @@ import { z } from 'zod';
 
 // リクエストスキーマ
 const ResetRateLimitSchema = z.object({
-  type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
+  type: z.enum([
+    'login_attempts',
+    'api_calls',
+    'session_creation',
+    'mfa_attempts',
+  ]),
   identifier: z.string().min(1, '識別子が必要です'),
   reason: z.string().optional(),
 });
@@ -36,23 +41,25 @@ export async function POST(request: NextRequest) {
       identifier,
       resetTime: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('レート制限リセットエラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'レート制限リセットに失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'レート制限リセットに失敗しました',
       },
       { status: 500 }
     );

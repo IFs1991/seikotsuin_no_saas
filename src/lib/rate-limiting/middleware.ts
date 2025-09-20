@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter, RateLimitType } from './rate-limiter';
+import { logger } from '@/lib/logger';
 
 // レート制限設定
 interface RateLimitConfig {
@@ -26,9 +27,12 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       }
 
       const identifier = config.keyGenerator(request);
-      
+
       // ホワイトリストチェック
-      const isWhitelisted = await rateLimiter.isWhitelisted(config.type, identifier);
+      const isWhitelisted = await rateLimiter.isWhitelisted(
+        config.type,
+        identifier
+      );
       if (isWhitelisted) {
         return null; // ホワイトリストは制限しない
       }
@@ -71,9 +75,8 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
           'X-RateLimit-Reset': result.resetTime.toString(),
         },
       });
-
     } catch (error) {
-      console.error('レート制限ミドルウェアエラー:', error);
+      logger.error('レート制限ミドルウェアエラー:', error);
       // エラー時は制限しない（フェイルオープン）
       return null;
     }
@@ -85,14 +88,15 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
  */
 export const loginRateLimit = createRateLimitMiddleware({
   type: 'login_attempts',
-  keyGenerator: (request) => {
+  keyGenerator: request => {
     const ip = getClientIP(request);
     return `login:${ip}`;
   },
   onLimitExceeded: (request, result) => {
-    const message = result.blockLevel && result.blockLevel > 0
-      ? `ログイン試行が多すぎます。${Math.floor((result.retryAfter || 0) / 60)}分後に再試行してください。`
-      : 'ログイン試行が多すぎます。しばらく時間をおいて再試行してください。';
+    const message =
+      result.blockLevel && result.blockLevel > 0
+        ? `ログイン試行が多すぎます。${Math.floor((result.retryAfter || 0) / 60)}分後に再試行してください。`
+        : 'ログイン試行が多すぎます。しばらく時間をおいて再試行してください。';
 
     return new NextResponse(
       JSON.stringify({
@@ -114,23 +118,25 @@ export const loginRateLimit = createRateLimitMiddleware({
 
 export const apiRateLimit = createRateLimitMiddleware({
   type: 'api_calls',
-  keyGenerator: (request) => {
+  keyGenerator: request => {
     const ip = getClientIP(request);
     // ユーザー認証がある場合はユーザーIDも含める
     return `api:${ip}`;
   },
-  skipIf: (request) => {
+  skipIf: request => {
     // 静的アセット、health check等はスキップ
     const pathname = request.nextUrl.pathname;
-    return pathname.startsWith('/_next/') || 
-           pathname.startsWith('/favicon.ico') ||
-           pathname === '/api/health';
+    return (
+      pathname.startsWith('/_next/') ||
+      pathname.startsWith('/favicon.ico') ||
+      pathname === '/api/health'
+    );
   },
 });
 
 export const sessionCreationRateLimit = createRateLimitMiddleware({
   type: 'session_creation',
-  keyGenerator: (request) => {
+  keyGenerator: request => {
     const ip = getClientIP(request);
     return `session:${ip}`;
   },
@@ -138,7 +144,8 @@ export const sessionCreationRateLimit = createRateLimitMiddleware({
     return new NextResponse(
       JSON.stringify({
         error: 'Session creation rate limit exceeded',
-        message: 'セッション作成が多すぎます。しばらく時間をおいて再試行してください。',
+        message:
+          'セッション作成が多すぎます。しばらく時間をおいて再試行してください。',
         retryAfter: result.retryAfter,
       }),
       {
@@ -154,7 +161,7 @@ export const sessionCreationRateLimit = createRateLimitMiddleware({
 
 export const mfaRateLimit = createRateLimitMiddleware({
   type: 'mfa_attempts',
-  keyGenerator: (request) => {
+  keyGenerator: request => {
     const ip = getClientIP(request);
     return `mfa:${ip}`;
   },
@@ -180,7 +187,7 @@ export const mfaRateLimit = createRateLimitMiddleware({
  * 複数ミドルウェアの組み合わせ
  */
 export async function applyRateLimits(
-  request: NextRequest, 
+  request: NextRequest,
   middlewares: Array<(request: NextRequest) => Promise<NextResponse | null>>
 ): Promise<NextResponse | null> {
   for (const middleware of middlewares) {
@@ -195,8 +202,12 @@ export async function applyRateLimits(
 /**
  * パス別レート制限設定
  */
-export function getPathRateLimit(pathname: string): Array<(request: NextRequest) => Promise<NextResponse | null>> {
-  const middlewares: Array<(request: NextRequest) => Promise<NextResponse | null>> = [];
+export function getPathRateLimit(
+  pathname: string
+): Array<(request: NextRequest) => Promise<NextResponse | null>> {
+  const middlewares: Array<
+    (request: NextRequest) => Promise<NextResponse | null>
+  > = [];
 
   // 共通のAPI制限
   if (pathname.startsWith('/api/')) {
@@ -227,15 +238,15 @@ function getClientIP(request: NextRequest): string {
   const xForwardedFor = request.headers.get('x-forwarded-for');
   const xRealIP = request.headers.get('x-real-ip');
   const cfConnectingIP = request.headers.get('cf-connecting-ip');
-  
+
   if (cfConnectingIP) {
     return cfConnectingIP;
   }
-  
+
   if (xRealIP) {
     return xRealIP;
   }
-  
+
   if (xForwardedFor) {
     return xForwardedFor.split(',')[0].trim();
   }

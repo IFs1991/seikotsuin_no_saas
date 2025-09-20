@@ -23,13 +23,15 @@ export async function GET(request: NextRequest) {
     const stats = await rateLimiter.getRateLimitStats(type, identifier);
 
     return NextResponse.json(stats);
-
   } catch (error) {
     console.error('レート制限統計取得エラー:', error);
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'レート制限統計取得に失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'レート制限統計取得に失敗しました',
       },
       { status: 500 }
     );

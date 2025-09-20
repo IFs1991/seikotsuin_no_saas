@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 // 監査ログの種類
 export enum AuditEventType {
@@ -12,7 +13,7 @@ export enum AuditEventType {
   SYSTEM_CONFIG = 'system_config',
   EXPORT_DATA = 'export_data',
   FAILED_LOGIN = 'failed_login',
-  UNAUTHORIZED_ACCESS = 'unauthorized_access'
+  UNAUTHORIZED_ACCESS = 'unauthorized_access',
 }
 
 // 監査ログエントリの型定義
@@ -25,7 +26,7 @@ export interface AuditLogEntry {
   clinic_id?: string;
   ip_address?: string;
   user_agent?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   success: boolean;
   error_message?: string;
 }
@@ -35,7 +36,7 @@ export class AuditLogger {
   private static async createLogEntry(entry: AuditLogEntry) {
     try {
       const supabase = createAdminClient();
-      
+
       const logData = {
         event_type: entry.event_type,
         user_id: entry.user_id,
@@ -48,74 +49,86 @@ export class AuditLogger {
         details: entry.details,
         success: entry.success,
         error_message: entry.error_message,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('audit_logs')
-        .insert([logData]);
+      const { error } = await supabase.from('audit_logs').insert([logData]);
 
       if (error) {
-        console.error('監査ログの記録に失敗しました:', error);
+        logger.error('監査ログの記録に失敗しました:', error);
       }
     } catch (error) {
-      console.error('監査ログシステムエラー:', error);
+      logger.error('監査ログシステムエラー:', error);
     }
   }
 
   // ログイン成功
-  static async logLogin(userId: string, userEmail: string, ipAddress?: string, userAgent?: string) {
+  static async logLogin(
+    userId: string,
+    userEmail: string,
+    ipAddress?: string,
+    userAgent?: string
+  ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.LOGIN,
       user_id: userId,
       user_email: userEmail,
-      success: true
+      success: true,
     };
-    
+
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
     if (userAgent !== undefined) entry.user_agent = userAgent;
-    
+
     await this.createLogEntry(entry);
   }
 
   // ログイン失敗
-  static async logFailedLogin(email: string, ipAddress?: string, userAgent?: string, errorMessage?: string) {
+  static async logFailedLogin(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+    errorMessage?: string
+  ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.FAILED_LOGIN,
       user_email: email,
-      success: false
+      success: false,
     };
-    
+
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
     if (userAgent !== undefined) entry.user_agent = userAgent;
     if (errorMessage !== undefined) entry.error_message = errorMessage;
-    
+
     await this.createLogEntry(entry);
   }
 
   // ログアウト
-  static async logLogout(userId: string, userEmail: string, ipAddress?: string) {
+  static async logLogout(
+    userId: string,
+    userEmail: string,
+    ipAddress?: string
+  ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.LOGOUT,
       user_id: userId,
       user_email: userEmail,
-      success: true
+      success: true,
     };
-    
+
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
-    
+
     await this.createLogEntry(entry);
   }
 
   // データアクセス（患者情報参照など）
   static async logDataAccess(
-    userId: string, 
-    userEmail: string, 
-    targetTable: string, 
-    targetId: string, 
+    userId: string,
+    userEmail: string,
+    targetTable: string,
+    targetId: string,
     clinicId?: string,
     ipAddress?: string,
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.DATA_ACCESS,
@@ -123,13 +136,13 @@ export class AuditLogger {
       user_email: userEmail,
       target_table: targetTable,
       target_id: targetId,
-      success: true
+      success: true,
     };
-    
+
     if (clinicId !== undefined) entry.clinic_id = clinicId;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
     if (details !== undefined) entry.details = details;
-    
+
     await this.createLogEntry(entry);
   }
 
@@ -139,7 +152,7 @@ export class AuditLogger {
     userEmail: string,
     targetTable: string,
     targetId: string,
-    changes: Record<string, any>,
+    changes: Record<string, unknown>,
     clinicId?: string,
     ipAddress?: string
   ) {
@@ -150,12 +163,12 @@ export class AuditLogger {
       target_table: targetTable,
       target_id: targetId,
       details: { changes },
-      success: true
+      success: true,
     };
-    
+
     if (clinicId !== undefined) entry.clinic_id = clinicId;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
-    
+
     await this.createLogEntry(entry);
   }
 
@@ -167,7 +180,7 @@ export class AuditLogger {
     targetId: string,
     clinicId?: string,
     ipAddress?: string,
-    deletedData?: Record<string, any>
+    deletedData?: Record<string, unknown>
   ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.DATA_DELETE,
@@ -176,13 +189,13 @@ export class AuditLogger {
       target_table: targetTable,
       target_id: targetId,
       details: { deleted_data: deletedData },
-      success: true
+      success: true,
     };
-    
+
     // オプショナルプロパティは値がある場合のみ設定
     if (clinicId !== undefined) entry.clinic_id = clinicId;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
-    
+
     await this.createLogEntry(entry);
   }
 
@@ -199,15 +212,15 @@ export class AuditLogger {
       event_type: AuditEventType.UNAUTHORIZED_ACCESS,
       details: { attempted_resource: attemptedResource },
       success: false,
-      error_message: errorMessage
+      error_message: errorMessage,
     };
-    
+
     // オプショナルプロパティは値がある場合のみ設定
     if (userId) entry.user_id = userId;
     if (userEmail) entry.user_email = userEmail;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
     if (userAgent !== undefined) entry.user_agent = userAgent;
-    
+
     await this.createLogEntry(entry);
   }
 
@@ -217,7 +230,7 @@ export class AuditLogger {
     userEmail: string,
     action: string,
     targetId?: string,
-    details?: Record<string, any>,
+    details?: Record<string, unknown>,
     ipAddress?: string
   ) {
     const entry: AuditLogEntry = {
@@ -225,13 +238,13 @@ export class AuditLogger {
       user_id: userId,
       user_email: userEmail,
       details: { action, ...details },
-      success: true
+      success: true,
     };
-    
+
     // オプショナルプロパティは値がある場合のみ設定
     if (targetId !== undefined) entry.target_id = targetId;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
-    
+
     await this.createLogEntry(entry);
   }
 
@@ -248,28 +261,29 @@ export class AuditLogger {
       event_type: AuditEventType.EXPORT_DATA,
       user_id: userId,
       user_email: userEmail,
-      details: { 
-        export_type: exportType, 
+      details: {
+        export_type: exportType,
         record_count: recordCount,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
-      success: true
+      success: true,
     };
-    
+
     // オプショナルプロパティは値がある場合のみ設定
     if (clinicId !== undefined) entry.clinic_id = clinicId;
     if (ipAddress !== undefined) entry.ip_address = ipAddress;
-    
+
     await this.createLogEntry(entry);
   }
 }
 
 // リクエストから IP アドレスとUser-Agentを取得するヘルパー
 export function getRequestInfo(request: Request) {
-  const ipAddress = request.headers.get('x-forwarded-for') || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown';
+  const ipAddress =
+    request.headers.get('x-forwarded-for') ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
-  
+
   return { ipAddress, userAgent };
 }

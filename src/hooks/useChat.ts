@@ -24,7 +24,7 @@ export const useChat = (storeId: string) => {
     messages: [],
     isLoading: false,
     error: null,
-    isEnabled: true
+    isEnabled: true,
   });
 
   const [messageCount, setMessageCount] = useState(0);
@@ -35,14 +35,20 @@ export const useChat = (storeId: string) => {
     if (savedMessages) {
       setState(prev => ({
         ...prev,
-        messages: JSON.parse(savedMessages)
+        messages: JSON.parse(savedMessages),
       }));
     }
   }, [storeId]);
 
-  const saveToLocalStorage = useCallback((messages: Message[]) => {
-    localStorage.setItem(`chat_messages_${storeId}`, JSON.stringify(messages));
-  }, [storeId]);
+  const saveToLocalStorage = useCallback(
+    (messages: Message[]) => {
+      localStorage.setItem(
+        `chat_messages_${storeId}`,
+        JSON.stringify(messages)
+      );
+    },
+    [storeId]
+  );
 
   const checkRateLimit = useCallback(() => {
     const now = Date.now();
@@ -58,63 +64,71 @@ export const useChat = (storeId: string) => {
     return true;
   }, [lastMessageTime, messageCount]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!state.isEnabled) return;
-    if (!checkRateLimit()) {
-      setState(prev => ({
-        ...prev,
-        error: 'メッセージの送信頻度が高すぎます。しばらくお待ちください。'
-      }));
-      return;
-    }
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!state.isEnabled) return;
+      if (!checkRateLimit()) {
+        setState(prev => ({
+          ...prev,
+          error: 'メッセージの送信頻度が高すぎます。しばらくお待ちください。',
+        }));
+        return;
+      }
 
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      try {
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        content,
-        role: 'user',
-        timestamp: Date.now()
-      };
+        const newMessage: Message = {
+          id: Date.now().toString(),
+          content,
+          role: 'user',
+          timestamp: Date.now(),
+        };
 
-      const updatedMessages = [...state.messages, newMessage];
-      setState(prev => ({
-        ...prev,
-        messages: updatedMessages
-      }));
-      saveToLocalStorage(updatedMessages);
+        const updatedMessages = [...state.messages, newMessage];
+        setState(prev => ({
+          ...prev,
+          messages: updatedMessages,
+        }));
+        saveToLocalStorage(updatedMessages);
 
-      const response = await analyzeMessage(content, storeId);
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        role: 'assistant',
-        timestamp: Date.now()
-      };
+        const response = await analyzeMessage(content, storeId);
 
-      const finalMessages = [...updatedMessages, assistantMessage];
-      setState(prev => ({
-        ...prev,
-        messages: finalMessages,
-        isLoading: false
-      }));
-      saveToLocalStorage(finalMessages);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: response,
+          role: 'assistant',
+          timestamp: Date.now(),
+        };
 
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: '申し訳ありません。メッセージの送信に失敗しました。'
-      }));
-    }
-  }, [state.isEnabled, state.messages, checkRateLimit, saveToLocalStorage, storeId]);
+        const finalMessages = [...updatedMessages, assistantMessage];
+        setState(prev => ({
+          ...prev,
+          messages: finalMessages,
+          isLoading: false,
+        }));
+        saveToLocalStorage(finalMessages);
+      } catch (error) {
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: '申し訳ありません。メッセージの送信に失敗しました。',
+        }));
+      }
+    },
+    [
+      state.isEnabled,
+      state.messages,
+      checkRateLimit,
+      saveToLocalStorage,
+      storeId,
+    ]
+  );
 
   const toggleChat = useCallback(() => {
     setState(prev => ({
       ...prev,
-      isEnabled: !prev.isEnabled
+      isEnabled: !prev.isEnabled,
     }));
   }, []);
 
@@ -122,7 +136,7 @@ export const useChat = (storeId: string) => {
     setState(prev => ({
       ...prev,
       messages: [],
-      error: null
+      error: null,
     }));
     localStorage.removeItem(`chat_messages_${storeId}`);
   }, [storeId]);
@@ -131,18 +145,19 @@ export const useChat = (storeId: string) => {
     if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
       setState(prev => ({
         ...prev,
-        error: '音声入力はこのブラウザでサポートされていません。'
+        error: '音声入力はこのブラウザでサポートされていません。',
       }));
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'ja-JP';
     recognition.continuous = false;
     recognition.interimResults = false;
 
-    recognition.onresult = (event) => {
+    recognition.onresult = event => {
       const transcript = event.results[0][0].transcript;
       sendMessage(transcript);
     };
@@ -150,7 +165,7 @@ export const useChat = (storeId: string) => {
     recognition.onerror = () => {
       setState(prev => ({
         ...prev,
-        error: '音声入力に失敗しました。'
+        error: '音声入力に失敗しました。',
       }));
     };
 
@@ -165,7 +180,7 @@ export const useChat = (storeId: string) => {
     sendMessage,
     toggleChat,
     clearMessages,
-    startVoiceInput
+    startVoiceInput,
   };
 };
 

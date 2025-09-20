@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CSPConfig, CSPViolationReport } from '@/lib/security/csp-config';
 import { cspRateLimiter } from '@/lib/rate-limiting/csp-rate-limiter';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       };
 
       // レート制限超過をログに記録（攻撃パターン分析用）
-      console.warn('CSP Report API: Rate limit exceeded', {
+      logger.warn('CSP Report API: Rate limit exceeded', {
         clientIP,
         reason: rateLimitResult.reason,
         retryAfter: rateLimitResult.retryAfter,
@@ -30,10 +31,10 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
       });
 
-      return new NextResponse(null, { 
+      return new NextResponse(null, {
         status: 429,
         statusText: 'Too Many Requests',
-        headers 
+        headers,
       });
     }
     // CSP違反レポートを解析
@@ -50,7 +51,6 @@ export async function POST(request: NextRequest) {
     }
 
     // リクエスト情報の追加
-    const clientIP = getClientIP(request);
     const userAgent = request.headers.get('user-agent') || '';
     const referer = request.headers.get('referer') || '';
 
@@ -76,14 +76,13 @@ export async function POST(request: NextRequest) {
       'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
     };
 
-    return new NextResponse(null, { 
+    return new NextResponse(null, {
       status: 204,
-      headers: successHeaders 
+      headers: successHeaders,
     });
-
   } catch (error) {
-    console.error('CSP違反レポート処理エラー:', error);
-    
+    logger.error('CSP違反レポート処理エラー:', error);
+
     // エラーでもCSPレポート送信は成功扱い
     return new NextResponse(null, { status: 204 });
   }
@@ -92,16 +91,18 @@ export async function POST(request: NextRequest) {
 /**
  * CSP違反をデータベースに保存
  */
-async function saveCSPViolationToDB(report: any): Promise<void> {
+async function saveCSPViolationToDB(
+  report: Record<string, unknown>
+): Promise<void> {
   try {
     // Supabaseクライアントのインポート
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = createClient();
-    
+
     // 違反の重要度を計算
     const severity = calculateViolationSeverity(report);
     const threatScore = calculateThreatScore(report);
-    
+
     const violationData = {
       document_uri: report['document-uri'],
       violated_directive: report['violated-directive'],
@@ -128,47 +129,55 @@ async function saveCSPViolationToDB(report: any): Promise<void> {
       .select();
 
     if (error) {
-      console.error('CSP違反DB保存エラー:', error);
+      logger.error('CSP違反DB保存エラー:', error);
     } else {
-      console.log('CSP違反がデータベースに保存されました:', data?.[0]?.id);
-      
+      logger.log('CSP違反がデータベースに保存されました:', data?.[0]?.id);
+
       // 高脅威レベルの場合は即座に管理者に通知
       if (severity === 'critical' || severity === 'high') {
         await notifyHighSeverityViolation(data?.[0]);
       }
     }
-
   } catch (error) {
-    console.error('CSP違反データベース保存エラー:', error);
+    logger.error('CSP違反データベース保存エラー:', error);
   }
 }
 
 /**
  * 違反の重要度計算
  */
-function calculateViolationSeverity(report: any): 'low' | 'medium' | 'high' | 'critical' {
+function calculateViolationSeverity(
+  report: Record<string, any>
+): 'low' | 'medium' | 'high' | 'critical' {
   const violatedDirective = report['violated-directive'] || '';
   const blockedUri = report['blocked-uri'] || '';
   const scriptSample = report['script-sample'] || '';
 
   // クリティカル: inline javascript実行試行
-  if (violatedDirective.includes('script-src') && blockedUri.startsWith('javascript:')) {
+  if (
+    violatedDirective.includes('script-src') &&
+    blockedUri.startsWith('javascript:')
+  ) {
     return 'critical';
   }
 
   // クリティカル: 悪意のあるスクリプトパターン
-  if (scriptSample && (
-    scriptSample.includes('eval(') ||
-    scriptSample.includes('document.write') ||
-    scriptSample.includes('innerHTML') ||
-    scriptSample.includes('location.href') ||
-    scriptSample.includes('window.open')
-  )) {
+  if (
+    scriptSample &&
+    (scriptSample.includes('eval(') ||
+      scriptSample.includes('document.write') ||
+      scriptSample.includes('innerHTML') ||
+      scriptSample.includes('location.href') ||
+      scriptSample.includes('window.open'))
+  ) {
     return 'critical';
   }
 
   // 高: 外部スクリプト読み込み試行
-  if (violatedDirective.includes('script-src') && blockedUri.match(/^https?:\/\/(?!.*\.(supabase\.co|upstash\.io))/)) {
+  if (
+    violatedDirective.includes('script-src') &&
+    blockedUri.match(/^https?:\/\/(?!.*\.(supabase\.co|upstash\.io))/)
+  ) {
     return 'high';
   }
 
@@ -178,7 +187,10 @@ function calculateViolationSeverity(report: any): 'low' | 'medium' | 'high' | 'c
   }
 
   // 中: style-src違反（CSS injection可能性）
-  if (violatedDirective.includes('style-src') && blockedUri.startsWith('data:')) {
+  if (
+    violatedDirective.includes('style-src') &&
+    blockedUri.startsWith('data:')
+  ) {
     return 'medium';
   }
 
@@ -188,7 +200,7 @@ function calculateViolationSeverity(report: any): 'low' | 'medium' | 'high' | 'c
 /**
  * 脅威スコア計算（0-100）
  */
-function calculateThreatScore(report: any): number {
+function calculateThreatScore(report: Record<string, any>): number {
   let score = 0;
   const violatedDirective = report['violated-directive'] || '';
   const blockedUri = report['blocked-uri'] || '';
@@ -223,19 +235,21 @@ function calculateThreatScore(report: any): number {
 async function notifyHighSeverityViolation(violation: any): Promise<void> {
   try {
     // 通知システムをインポート（動的インポートでエラー回避）
-    const { securityNotificationManager } = await import('@/lib/notifications/security-alerts');
-    
+    const { securityNotificationManager } = await import(
+      '@/lib/notifications/security-alerts'
+    );
+
     // 通知頻度制限チェック（スパム防止）
     const shouldNotify = await securityNotificationManager.shouldNotify(
-      'csp_violation', 
-      violation.client_ip, 
+      'csp_violation',
+      violation.client_ip,
       5 // 5分間の制限窓
     );
 
     if (!shouldNotify) {
-      console.log('CSP violation notification skipped due to rate limit', {
+      logger.log('CSP violation notification skipped due to rate limit', {
         ip: violation.client_ip,
-        severity: violation.severity
+        severity: violation.severity,
       });
       return;
     }
@@ -254,23 +268,22 @@ async function notifyHighSeverityViolation(violation: any): Promise<void> {
     });
 
     if (result.success) {
-      console.log('CSP violation notification sent successfully', {
+      logger.log('CSP violation notification sent successfully', {
         violationId: violation.id,
         channels: result.channels,
         severity: violation.severity,
       });
     } else {
-      console.error('CSP violation notification failed', {
+      logger.error('CSP violation notification failed', {
         violationId: violation.id,
         errors: result.errors,
       });
     }
-
   } catch (error) {
-    console.error('高重要度違反通知エラー:', error);
-    
+    logger.error('高重要度違反通知エラー:', error);
+
     // フォールバック: 最低限のコンソール警告
-    console.warn('🚨 高重要度CSP違反検出（通知システム障害時）:', {
+    logger.warn('🚨 高重要度CSP違反検出（通知システム障害時）:', {
       id: violation.id,
       severity: violation.severity,
       directive: violation.violated_directive,
@@ -288,10 +301,10 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const cfConnectingIP = request.headers.get('cf-connecting-ip');
-  
+
   if (cfConnectingIP) return cfConnectingIP;
   if (realIP) return realIP;
   if (forwarded) return forwarded.split(',')[0].trim();
-  
+
   return request.ip || 'unknown';
 }

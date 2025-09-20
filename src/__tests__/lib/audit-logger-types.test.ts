@@ -1,12 +1,6 @@
-import { AuditLogger, AuditEventType } from '@/lib/audit-logger';
-import type { AuditLogEntry } from '@/lib/audit-logger';
+import { AuditLogger } from '@/lib/audit-logger';
 
 describe('AuditLogger - Type Safety Tests', () => {
-  let auditLogger: AuditLogger;
-  
-  beforeEach(() => {
-    auditLogger = new AuditLogger();
-  });
 
   it('should handle optional clinic_id correctly', async () => {
     // このテストは現在失敗するはず（型エラーのため）
@@ -31,7 +25,7 @@ describe('AuditLogger - Type Safety Tests', () => {
         'test-action',
         undefined, // target_id
         undefined, // details
-        undefined  // ip_address
+        undefined // ip_address
       );
     }).not.toThrow();
   });
@@ -44,7 +38,7 @@ describe('AuditLogger - Type Safety Tests', () => {
         undefined, // user_id
         undefined, // user_email
         undefined, // ip_address
-        undefined  // user_agent
+        undefined // user_agent
       );
     }).not.toThrow();
   });

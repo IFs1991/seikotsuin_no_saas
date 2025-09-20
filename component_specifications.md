@@ -16,11 +16,13 @@
 ## 🎯 概要
 
 ### 現状の課題
+
 - **877個のTypeScriptエラー**の70%がUIコンポーネント不足
 - shadcn/uiからRadix UIへの依存関係問題によりコンポーネントを最小化
 - 医療系システムに適した清潔感のあるデザインが必要
 
 ### 設計思想
+
 - **医療系UI/UX**: 清潔感と信頼性を重視
 - **アクセシビリティ**: WCAG 2.1 AA準拠
 - **レスポンシブ対応**: モバイルファーストデザイン
@@ -29,19 +31,25 @@
 ## 📊 優先度分類
 
 ### 🔴 高優先度（開発継続に必須）
+
 エラー多発度: 高、使用頻度: 極高、実装難易度: 中
+
 - [Tabs系](#tabs系コンポーネント) - 39ファイルで使用
 - [Select系](#select系コンポーネント) - 34ファイルで使用
 - [Dialog系](#dialog系コンポーネント) - 28ファイルで使用
 
 ### 🟡 中優先度（UX向上）
+
 エラー多発度: 中、使用頻度: 高、実装難易度: 低-中
+
 - [Alert/Badge系](#alertbadge系コンポーネント) - 22ファイルで使用
 - [Avatar系](#avatar系コンポーネント) - 18ファイルで使用
 - [DropdownMenu系](#dropdownmenu系コンポーネント) - 15ファイルで使用
 
 ### 🟢 低優先度（将来拡張）
+
 エラー多発度: 低、使用頻度: 中、実装難易度: 高
+
 - [Chart系](#chart系コンポーネント) - カスタムデータ可視化
 - [複雑なフォーム系](#複雑なフォーム系コンポーネント) - 高度な入力UI
 
@@ -50,12 +58,14 @@
 ### Tabs系コンポーネント
 
 #### 使用箇所
+
 - `src/app/ai-insights/page.tsx` - AIインサイト切り替え
 - `src/app/revenue/page.tsx` - 収益分析カテゴリ
 - `src/app/patients/page.tsx` - 患者分析タブ
 - `src/components/dashboard/revenue-chart.tsx` - チャート期間切り替え
 
 #### 仕様
+
 ```typescript
 interface TabsProps {
   defaultValue?: string;
@@ -86,25 +96,35 @@ interface TabsContentProps {
 ```
 
 #### デザイン要件
+
 - **医療系カラー**: プライマリーブルー (#1e3a8a) 使用
 - **アクティブ状態**: 下線 + 背景色変更
 - **ホバー効果**: 0.2s transition
 - **フォーカス**: キーボードナビゲーション対応
 
 #### 実装例
+
 ```tsx
 // src/components/ui/tabs.tsx
-export const Tabs = ({ defaultValue, value, onValueChange, children, ...props }) => {
-  const [selectedValue, setSelectedValue] = useState(defaultValue || "");
-  
+export const Tabs = ({
+  defaultValue,
+  value,
+  onValueChange,
+  children,
+  ...props
+}) => {
+  const [selectedValue, setSelectedValue] = useState(defaultValue || '');
+
   const handleValueChange = (newValue: string) => {
     setSelectedValue(newValue);
     onValueChange?.(newValue);
   };
 
   return (
-    <div className="tabs-root" {...props}>
-      <TabsContext.Provider value={{ selectedValue, onValueChange: handleValueChange }}>
+    <div className='tabs-root' {...props}>
+      <TabsContext.Provider
+        value={{ selectedValue, onValueChange: handleValueChange }}
+      >
         {children}
       </TabsContext.Provider>
     </div>
@@ -117,11 +137,13 @@ export const Tabs = ({ defaultValue, value, onValueChange, children, ...props })
 ### Select系コンポーネント
 
 #### 使用箇所
+
 - `src/app/multi-store/page.tsx` - 店舗フィルタリング
 - `src/components/master/admin-master-form.tsx` - マスタデータ選択
 - `src/components/reports/daily-report-form.tsx` - 施術者選択
 
 #### 仕様
+
 ```typescript
 interface SelectProps {
   value?: string;
@@ -142,12 +164,14 @@ interface SelectItemProps {
 ```
 
 #### デザイン要件
+
 - **ドロップダウン**: 影付きで浮遊感
 - **選択項目**: ホバー時にアクセントカラー
 - **キーボード操作**: 矢印キー + Enter対応
 - **バリデーション**: エラー時の赤枠表示
 
 #### アクセシビリティ
+
 - `aria-expanded` 属性
 - `role="combobox"` 設定
 - キーボードトラップ対応
@@ -157,11 +181,13 @@ interface SelectItemProps {
 ### Dialog系コンポーネント
 
 #### 使用箇所
+
 - `src/app/staff/page.tsx` - スタッフ詳細表示
 - `src/components/patients/risk-score-list.tsx` - 患者詳細モーダル
 - `src/components/master/admin-master-form.tsx` - 確認ダイアログ
 
 #### 仕様
+
 ```typescript
 interface DialogProps {
   open?: boolean;
@@ -180,12 +206,14 @@ interface DialogContentProps {
 ```
 
 #### デザイン要件
+
 - **オーバーレイ**: 半透明黒背景 (rgba(0,0,0,0.5))
 - **コンテンツ**: 中央配置、角丸、影付き
 - **アニメーション**: フェードイン + スケール
 - **最大幅**: 90vw、最大高さ: 90vh
 
 #### 機能要件
+
 - **ESCキー**: ダイアログ閉じる
 - **外側クリック**: ダイアログ閉じる
 - **フォーカストラップ**: ダイアログ内でのフォーカス循環
@@ -197,6 +225,7 @@ interface DialogContentProps {
 ### Alert/Badge系コンポーネント
 
 #### Alert仕様
+
 ```typescript
 interface AlertProps {
   variant?: 'default' | 'destructive' | 'warning' | 'success';
@@ -206,6 +235,7 @@ interface AlertProps {
 ```
 
 #### Badge仕様
+
 ```typescript
 interface BadgeProps {
   variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success';
@@ -216,6 +246,7 @@ interface BadgeProps {
 ```
 
 #### 医療系バリアント
+
 - **success**: 正常状態 (#10b981)
 - **warning**: 注意状態 (#f59e0b)
 - **destructive**: 警告状態 (#ef4444)
@@ -226,11 +257,13 @@ interface BadgeProps {
 ### Avatar系コンポーネント
 
 #### 使用箇所
+
 - `src/app/staff/page.tsx` - スタッフプロフィール
 - `src/components/dashboard/admin-dashboard.tsx` - 管理者表示
 - `src/components/chat/admin-chat-interface.tsx` - チャット履歴
 
 #### 仕様
+
 ```typescript
 interface AvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -242,6 +275,7 @@ interface AvatarProps {
 ```
 
 #### デザイン要件
+
 - **円形**: 完全な正円
 - **フォールバック**: イニシャル表示
 - **サイズバリエーション**: 24px, 32px, 48px, 64px
@@ -252,11 +286,13 @@ interface AvatarProps {
 ### DropdownMenu系コンポーネント
 
 #### 使用箇所
+
 - `src/app/dashboard/page.tsx` - アクションメニュー
 - `src/components/navigation/sidebar.tsx` - ユーザーメニュー
 - `src/app/admin/page.tsx` - 管理者操作
 
 #### 仕様
+
 ```typescript
 interface DropdownMenuProps {
   open?: boolean;
@@ -274,6 +310,7 @@ interface DropdownMenuItemProps {
 ```
 
 #### インタラクション
+
 - **矢印キー**: アイテム間移動
 - **Enter/Space**: アイテム選択
 - **ESC**: メニュー閉じる
@@ -285,6 +322,7 @@ interface DropdownMenuItemProps {
 ### Chart系コンポーネント
 
 #### カスタムチャートラッパー
+
 ```typescript
 interface MedicalChartProps {
   data: any[];
@@ -297,6 +335,7 @@ interface MedicalChartProps {
 ```
 
 #### 医療系カラーパレット
+
 ```css
 :root {
   --chart-primary: #1e3a8a;
@@ -312,6 +351,7 @@ interface MedicalChartProps {
 ### 複雑なフォーム系コンポーネント
 
 #### DateRangePicker
+
 ```typescript
 interface DateRangePickerProps {
   value?: { from: Date; to: Date };
@@ -322,6 +362,7 @@ interface DateRangePickerProps {
 ```
 
 #### MultiSelect
+
 ```typescript
 interface MultiSelectProps {
   value?: string[];
@@ -338,6 +379,7 @@ interface MultiSelectProps {
 ## 📋 実装ガイドライン
 
 ### ファイル構成
+
 ```
 src/components/ui/
 ├── tabs.tsx              # Tabs系
@@ -353,11 +395,13 @@ src/components/ui/
 ```
 
 ### 命名規則
+
 - **コンポーネント**: PascalCase (`Dialog`, `DialogContent`)
 - **Props**: キャメルCase (`onValueChange`, `defaultValue`)
 - **CSS Classes**: kebab-case (`dialog-content`, `tabs-trigger`)
 
 ### TypeScript仕様
+
 ```typescript
 // 厳密な型定義
 interface ComponentProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -375,17 +419,14 @@ Component.displayName = "Component";
 ```
 
 ### Tailwind CSS使用
+
 ```tsx
 // cn()ユーティリティ使用
 import { cn } from '@/lib/utils';
 
 const Component = ({ className, variant, ...props }) => (
   <div
-    className={cn(
-      "base-classes",
-      variantClasses[variant],
-      className
-    )}
+    className={cn('base-classes', variantClasses[variant], className)}
     {...props}
   />
 );
@@ -396,6 +437,7 @@ const Component = ({ className, variant, ...props }) => (
 ## 🧪 テスト仕様
 
 ### 単体テスト
+
 ```typescript
 // Jest + Testing Library
 describe('Tabs Component', () => {
@@ -408,13 +450,14 @@ describe('Tabs Component', () => {
         </TabsList>
       </Tabs>
     );
-    
+
     expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('Tab 1');
   });
 });
 ```
 
 ### アクセシビリティテスト
+
 ```typescript
 // jest-axe使用
 it('should not have accessibility violations', async () => {
@@ -425,14 +468,15 @@ it('should not have accessibility violations', async () => {
 ```
 
 ### Visual Regression Testing
+
 ```typescript
 // Storybook + Chromatic
 export default {
   title: 'Components/Tabs',
   component: Tabs,
   parameters: {
-    docs: { description: { component: 'Medical UI Tabs component' }}
-  }
+    docs: { description: { component: 'Medical UI Tabs component' } },
+  },
 };
 ```
 
@@ -441,11 +485,13 @@ export default {
 ## ⚡ パフォーマンス考慮事項
 
 ### Bundle Size最適化
+
 - **Tree Shaking**: 未使用コンポーネントの除外
 - **Code Splitting**: ページ単位でのコンポーネント分割
 - **Lazy Loading**: 重いコンポーネントの遅延読み込み
 
 ### レンダリング最適化
+
 ```typescript
 // React.memo使用
 export const ExpensiveComponent = React.memo(({ data }) => {
@@ -453,12 +499,13 @@ export const ExpensiveComponent = React.memo(({ data }) => {
 });
 
 // useMemo/useCallback活用
-const MemoizedChart = useMemo(() => 
+const MemoizedChart = useMemo(() =>
   <Chart data={processedData} />, [processedData]
 );
 ```
 
 ### CSS-in-JS回避
+
 - **Tailwind CSS**: ランタイムCSSコスト削減
 - **CSS Modules**: スコープ化CSS
 - **PostCSS**: ビルド時最適化
@@ -468,16 +515,19 @@ const MemoizedChart = useMemo(() =>
 ## 📊 実装スケジュール
 
 ### Week 1: 高優先度コンポーネント
+
 - **Day 1-2**: Tabs系コンポーネント
-- **Day 3-4**: Select系コンポーネント  
+- **Day 3-4**: Select系コンポーネント
 - **Day 5-7**: Dialog系コンポーネント
 
 ### Week 2: 中優先度コンポーネント
+
 - **Day 1-2**: Alert/Badge系コンポーネント
 - **Day 3-4**: Avatar系コンポーネント
 - **Day 5-7**: DropdownMenu系コンポーネント
 
 ### Week 3: 低優先度 + テスト
+
 - **Day 1-3**: Chart系コンポーネント
 - **Day 4-5**: 複雑なフォーム系コンポーネント
 - **Day 6-7**: テスト + ドキュメント整備
@@ -487,6 +537,7 @@ const MemoizedChart = useMemo(() =>
 ## 🎨 デザインシステム
 
 ### カラーパレット
+
 ```css
 :root {
   /* Primary Colors (医療系ブルー) */
@@ -511,6 +562,7 @@ const MemoizedChart = useMemo(() =>
 ```
 
 ### Typography
+
 ```css
 /* 日本語フォント対応 */
 .font-medical {
@@ -518,21 +570,42 @@ const MemoizedChart = useMemo(() =>
 }
 
 /* サイズスケール */
-.text-medical-xs { font-size: 0.75rem; }
-.text-medical-sm { font-size: 0.875rem; }
-.text-medical-base { font-size: 1rem; }
-.text-medical-lg { font-size: 1.125rem; }
-.text-medical-xl { font-size: 1.25rem; }
+.text-medical-xs {
+  font-size: 0.75rem;
+}
+.text-medical-sm {
+  font-size: 0.875rem;
+}
+.text-medical-base {
+  font-size: 1rem;
+}
+.text-medical-lg {
+  font-size: 1.125rem;
+}
+.text-medical-xl {
+  font-size: 1.25rem;
+}
 ```
 
 ### Spacing
+
 ```css
 /* 医療系UI用のスペーシング */
-.space-medical-xs { margin: 0.25rem; }
-.space-medical-sm { margin: 0.5rem; }
-.space-medical-md { margin: 1rem; }
-.space-medical-lg { margin: 1.5rem; }
-.space-medical-xl { margin: 2rem; }
+.space-medical-xs {
+  margin: 0.25rem;
+}
+.space-medical-sm {
+  margin: 0.5rem;
+}
+.space-medical-md {
+  margin: 1rem;
+}
+.space-medical-lg {
+  margin: 1.5rem;
+}
+.space-medical-xl {
+  margin: 2rem;
+}
 ```
 
 ---
@@ -540,21 +613,25 @@ const MemoizedChart = useMemo(() =>
 ## 🔄 移行戦略
 
 ### Phase 1: 基本コンポーネント (Week 1)
+
 1. 高優先度コンポーネント実装
 2. 既存エラーファイルでの動作確認
 3. TypeScriptエラー50%削減目標
 
-### Phase 2: UX向上コンポーネント (Week 2)  
+### Phase 2: UX向上コンポーネント (Week 2)
+
 1. 中優先度コンポーネント実装
 2. デザインシステム統一
 3. TypeScriptエラー80%削減目標
 
 ### Phase 3: 高度なコンポーネント (Week 3)
+
 1. 低優先度コンポーネント実装
 2. パフォーマンス最適化
 3. TypeScriptエラー95%削減目標
 
 ### ロールバック戦略
+
 - 各週末にGitタグ作成
 - 問題発生時は前週版に戻す
 - 段階的なコンポーネント無効化機能

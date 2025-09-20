@@ -2,19 +2,15 @@
 // System Settings React Query Hooks - システム設定データ管理
 // =================================================================
 
-import { 
-  useQuery, 
-  useMutation, 
+import {
+  useQuery,
+  useMutation,
   useQueryClient,
   type UseQueryOptions,
-  type UseMutationOptions
+  type UseMutationOptions,
 } from '@tanstack/react-query';
 import { queryKeys } from '@/providers/query-provider';
-import type { 
-  MasterDataDetail, 
-  FilterState, 
-  ApiResponse 
-} from '@/types/admin';
+import type { MasterDataDetail, FilterState, ApiResponse } from '@/types/admin';
 
 // APIクライアント関数
 const systemSettingsApi = {
@@ -24,27 +20,28 @@ const systemSettingsApi = {
     total: number;
   }> {
     const params = new URLSearchParams();
-    
+
     if (filters.search) params.append('search', filters.search);
     if (filters.category) params.append('category', filters.category);
     if (filters.clinicId) params.append('clinic_id', filters.clinicId);
-    if (filters.isPublic !== undefined) params.append('is_public', String(filters.isPublic));
+    if (filters.isPublic !== undefined)
+      params.append('is_public', String(filters.isPublic));
 
     const response = await fetch(`/api/admin/master-data?${params.toString()}`);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const data: ApiResponse<{
       items: MasterDataDetail[];
       total: number;
     }> = await response.json();
-    
+
     if (!data.success) {
       throw new Error(data.error || 'データの取得に失敗しました');
     }
-    
+
     return data.data;
   },
 
@@ -57,22 +54,25 @@ const systemSettingsApi = {
       },
       body: JSON.stringify(data),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const result: ApiResponse<MasterDataDetail> = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'データの作成に失敗しました');
     }
-    
+
     return result.data;
   },
 
   // 更新
-  async update(id: string, data: Partial<MasterDataDetail>): Promise<MasterDataDetail> {
+  async update(
+    id: string,
+    data: Partial<MasterDataDetail>
+  ): Promise<MasterDataDetail> {
     const response = await fetch('/api/admin/master-data', {
       method: 'PUT',
       headers: {
@@ -80,17 +80,17 @@ const systemSettingsApi = {
       },
       body: JSON.stringify({ id, ...data }),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const result: ApiResponse<MasterDataDetail> = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'データの更新に失敗しました');
     }
-    
+
     return result.data;
   },
 
@@ -99,13 +99,13 @@ const systemSettingsApi = {
     const response = await fetch(`/api/admin/master-data?id=${id}`, {
       method: 'DELETE',
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-    
+
     const result: ApiResponse<null> = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || 'データの削除に失敗しました');
     }
@@ -119,10 +119,13 @@ const systemSettingsApi = {
  */
 export function useSystemSettingsQuery(
   filters: FilterState,
-  options?: Omit<UseQueryOptions<{
-    items: MasterDataDetail[];
-    total: number;
-  }>, 'queryKey' | 'queryFn'>
+  options?: Omit<
+    UseQueryOptions<{
+      items: MasterDataDetail[];
+      total: number;
+    }>,
+    'queryKey' | 'queryFn'
+  >
 ) {
   return useQuery({
     queryKey: queryKeys.systemSettings.list(filters),
@@ -145,10 +148,10 @@ export function useCreateSystemSettingMutation(
 
   return useMutation({
     mutationFn: systemSettingsApi.create,
-    onSuccess: (newData) => {
+    onSuccess: newData => {
       // 一覧キャッシュを無効化
       queryClient.invalidateQueries({
-        queryKey: queryKeys.systemSettings.lists()
+        queryKey: queryKeys.systemSettings.lists(),
       });
 
       // 楽観的更新: 新しいデータをキャッシュに追加
@@ -182,7 +185,7 @@ export function useUpdateSystemSettingMutation(
 
   return useMutation({
     mutationFn: ({ id, data }) => systemSettingsApi.update(id, data),
-    onSuccess: (updatedData) => {
+    onSuccess: updatedData => {
       // 詳細キャッシュを更新
       queryClient.setQueryData(
         queryKeys.systemSettings.detail(updatedData.id),
@@ -191,7 +194,7 @@ export function useUpdateSystemSettingMutation(
 
       // 一覧キャッシュを無効化
       queryClient.invalidateQueries({
-        queryKey: queryKeys.systemSettings.lists()
+        queryKey: queryKeys.systemSettings.lists(),
       });
 
       // 楽観的更新: 一覧内の該当データを更新
@@ -225,12 +228,12 @@ export function useDeleteSystemSettingMutation(
     onSuccess: (_, deletedId) => {
       // 詳細キャッシュを削除
       queryClient.removeQueries({
-        queryKey: queryKeys.systemSettings.detail(deletedId)
+        queryKey: queryKeys.systemSettings.detail(deletedId),
       });
 
       // 一覧キャッシュを無効化
       queryClient.invalidateQueries({
-        queryKey: queryKeys.systemSettings.lists()
+        queryKey: queryKeys.systemSettings.lists(),
       });
 
       // 楽観的更新: 一覧から該当データを削除
@@ -240,8 +243,8 @@ export function useDeleteSystemSettingMutation(
           if (!oldData) return oldData;
           return {
             ...oldData,
-            items: oldData.items.filter((item: MasterDataDetail) => 
-              item.id !== deletedId
+            items: oldData.items.filter(
+              (item: MasterDataDetail) => item.id !== deletedId
             ),
             total: oldData.total - 1,
           };
@@ -260,7 +263,7 @@ export function useRefreshSystemSettings() {
 
   return () => {
     queryClient.invalidateQueries({
-      queryKey: queryKeys.systemSettings.all
+      queryKey: queryKeys.systemSettings.all,
     });
   };
 }

@@ -159,13 +159,13 @@ export interface ChartDataset {
 }
 
 export interface ChartScales {
-  x?: any;
-  y?: any;
+  x?: unknown;
+  y?: unknown;
 }
 
 export interface ChartPlugins {
-  legend?: any;
-  tooltip?: any;
+  legend?: unknown;
+  tooltip?: unknown;
 }
 
 export interface ChartOptions {
@@ -206,7 +206,11 @@ export type StaffRole = 'manager' | 'practitioner' | 'receptionist' | 'admin';
 
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
-export type TreatmentStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type TreatmentStatus =
+  | 'scheduled'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
 
 // AI Comment Types
 export interface AIComment {
@@ -239,7 +243,7 @@ export interface MasterData {
   name: string;
   category: string;
   value: unknown;
-  data_type: "string" | "number" | "boolean" | "json" | "array";
+  data_type: 'string' | 'number' | 'boolean' | 'json' | 'array';
   description?: string;
   is_editable: boolean;
   is_public: boolean;

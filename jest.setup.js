@@ -1,5 +1,6 @@
 // Testing Library のカスタムマッチャーをインポート
 import '@testing-library/jest-dom/jest-globals';
+import * as supa from '@supabase/supabase-js';
 
 // 簡易インメモリDB（一部のモックで参照）
 const __MOCK_DB = {
@@ -41,7 +42,7 @@ jest.mock('@supabase/supabase-js', () => ({
         limit: jest.fn().mockReturnThis(),
         range: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
-        then: (resolve) => Promise.resolve(resolve(result)),
+        then: resolve => Promise.resolve(resolve(result)),
       };
       return builder;
     }),
@@ -55,62 +56,63 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // テストが独自に createClient().mockReturnValue(mock) を呼ぶ場合でも、
 // 欠落したチェーン関数（or/gte/lt/order/limit/range）を補完する
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const supa = require('@supabase/supabase-js');
-  const createClientMock = supa.createClient;
-  if (createClientMock && createClientMock.mock) {
-    const originalMockReturnValue = createClientMock.mockReturnValue.bind(createClientMock);
-    createClientMock.mockReturnValue = (clientObj) => {
-      if (clientObj && typeof clientObj === 'object') {
-        const ensureChain = (builder) => {
-          const noop = () => builder;
-          builder.select = builder.select || noop;
-          builder.insert = builder.insert || noop;
-          builder.upsert = builder.upsert || noop;
-          builder.update = builder.update || noop;
-          builder.delete = builder.delete || noop;
-          builder.eq = builder.eq || noop;
-          builder.neq = builder.neq || noop;
-          builder.in = builder.in || noop;
-          builder.contains = builder.contains || noop;
-          builder.or = builder.or || noop;
-          builder.gte = builder.gte || noop;
-          builder.lt = builder.lt || noop;
-          builder.order = builder.order || noop;
-          builder.limit = builder.limit || noop;
-          builder.range = builder.range || noop;
-          builder.single = builder.single || jest.fn();
-          builder.then = builder.then || ((resolve) => Promise.resolve(resolve({ data: null, count: 0, error: null })));
-          return builder;
+const createClientMock = supa.createClient;
+if (createClientMock && createClientMock.mock) {
+  const originalMockReturnValue =
+    createClientMock.mockReturnValue.bind(createClientMock);
+  createClientMock.mockReturnValue = clientObj => {
+    if (clientObj && typeof clientObj === 'object') {
+      const ensureChain = builder => {
+        const noop = () => builder;
+        builder.select = builder.select || noop;
+        builder.insert = builder.insert || noop;
+        builder.upsert = builder.upsert || noop;
+        builder.update = builder.update || noop;
+        builder.delete = builder.delete || noop;
+        builder.eq = builder.eq || noop;
+        builder.neq = builder.neq || noop;
+        builder.in = builder.in || noop;
+        builder.contains = builder.contains || noop;
+        builder.or = builder.or || noop;
+        builder.gte = builder.gte || noop;
+        builder.lt = builder.lt || noop;
+        builder.order = builder.order || noop;
+        builder.limit = builder.limit || noop;
+        builder.range = builder.range || noop;
+        builder.single = builder.single || jest.fn();
+        builder.then =
+          builder.then ||
+          (resolve =>
+            Promise.resolve(resolve({ data: null, count: 0, error: null })));
+        return builder;
+      };
+      if (typeof clientObj.from === 'function') {
+        const originalFrom = clientObj.from;
+        clientObj.from = (...args) => {
+          const builder = originalFrom.apply(clientObj, args) || clientObj;
+          return ensureChain(builder);
         };
-        if (typeof clientObj.from === 'function') {
-          const originalFrom = clientObj.from;
-          clientObj.from = (...args) => {
-            const builder = originalFrom.apply(clientObj, args) || clientObj;
-            return ensureChain(builder);
-          };
-        } else {
-          clientObj.from = () => ensureChain(clientObj);
-        }
+      } else {
+        clientObj.from = () => ensureChain(clientObj);
       }
-      return originalMockReturnValue(clientObj);
-    };
-  }
-} catch (_) {
-  // ignore
+    }
+    return originalMockReturnValue(clientObj);
+  };
 }
 
 // アプリ内のサーバークライアントラッパを、テストでは supabase-js のモックに委譲
 jest.mock('@/lib/supabase/server', () => {
-  const { createClient } = require('@supabase/supabase-js');
+  const { createClient } = supa;
   return {
     createClient: () => createClient(),
     createAdminClient: () => createClient(),
     getCurrentUser: async () => null,
     getUserPermissions: async () => null,
     requireAuth: async () => ({ id: 'test-user' }),
-    requireAdminAuth: async () => ({ user: { id: 'test-admin' }, permissions: { role: 'admin' } }),
+    requireAdminAuth: async () => ({
+      user: { id: 'test-admin' },
+      permissions: { role: 'admin' },
+    }),
   };
 });
 
@@ -141,48 +143,75 @@ jest.mock('next/headers', () => ({
 // @supabase/ssr のモック（Server Client をテスト環境で安全に利用）
 jest.mock('@supabase/ssr', () => ({
   createServerClient: jest.fn(() => {
-    const makeBuilder = (table) => {
-      const state = { table, where: [], opts: {}, result: { data: null, count: 0, error: null } };
-      const applyWhere = (rows) => state.where.reduce((acc, cond) => {
-        const [op, key, val] = cond;
-        switch (op) {
-          case 'eq':
-            return acc.filter(r => String(r?.[key]) === String(val));
-          case 'neq':
-            return acc.filter(r => String(r?.[key]) !== String(val));
-          case 'contains':
-            return acc.filter(r => {
-              try {
-                const obj = r?.[key];
-                const allMatch = Object.entries(val || {}).every(([k, v]) => String(obj?.[k]) === String(v));
-                return allMatch;
-              } catch { return false; }
-            });
-          case 'in':
-            return acc.filter(r => Array.isArray(val) && val.includes(r?.[key]));
-          default:
-            return acc;
-        }
-      }, rows);
+    const makeBuilder = table => {
+      const state = {
+        table,
+        where: [],
+        opts: {},
+        result: { data: null, count: 0, error: null },
+      };
+      const applyWhere = rows =>
+        state.where.reduce((acc, cond) => {
+          const [op, key, val] = cond;
+          switch (op) {
+            case 'eq':
+              return acc.filter(r => String(r?.[key]) === String(val));
+            case 'neq':
+              return acc.filter(r => String(r?.[key]) !== String(val));
+            case 'contains':
+              return acc.filter(r => {
+                try {
+                  const obj = r?.[key];
+                  const allMatch = Object.entries(val || {}).every(
+                    ([k, v]) => String(obj?.[k]) === String(v)
+                  );
+                  return allMatch;
+                } catch {
+                  return false;
+                }
+              });
+            case 'in':
+              return acc.filter(
+                r => Array.isArray(val) && val.includes(r?.[key])
+              );
+            default:
+              return acc;
+          }
+        }, rows);
 
       const builder = {
-        select: jest.fn().mockImplementation((_, opts) => { state.opts = opts || {}; return builder; }),
-        insert: jest.fn().mockImplementation((payload) => {
+        select: jest.fn().mockImplementation((_, opts) => {
+          state.opts = opts || {};
+          return builder;
+        }),
+        insert: jest.fn().mockImplementation(payload => {
           const arr = Array.isArray(payload) ? payload : [payload];
           __MOCK_DB[state.table] = (__MOCK_DB[state.table] || []).concat(arr);
           return builder;
         }),
-        upsert: jest.fn().mockImplementation((payload) => {
+        upsert: jest.fn().mockImplementation(payload => {
           const arr = Array.isArray(payload) ? payload : [payload];
           __MOCK_DB[state.table] = (__MOCK_DB[state.table] || []).concat(arr);
           return builder;
         }),
         update: jest.fn().mockReturnThis(),
         delete: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockImplementation((k, v) => { state.where.push(['eq', k, v]); return builder; }),
-        neq: jest.fn().mockImplementation((k, v) => { state.where.push(['neq', k, v]); return builder; }),
-        in: jest.fn().mockImplementation((k, v) => { state.where.push(['in', k, v]); return builder; }),
-        contains: jest.fn().mockImplementation((k, v) => { state.where.push(['contains', k, v]); return builder; }),
+        eq: jest.fn().mockImplementation((k, v) => {
+          state.where.push(['eq', k, v]);
+          return builder;
+        }),
+        neq: jest.fn().mockImplementation((k, v) => {
+          state.where.push(['neq', k, v]);
+          return builder;
+        }),
+        in: jest.fn().mockImplementation((k, v) => {
+          state.where.push(['in', k, v]);
+          return builder;
+        }),
+        contains: jest.fn().mockImplementation((k, v) => {
+          state.where.push(['contains', k, v]);
+          return builder;
+        }),
         or: jest.fn().mockReturnThis(),
         gte: jest.fn().mockReturnThis(),
         lt: jest.fn().mockReturnThis(),
@@ -190,14 +219,22 @@ jest.mock('@supabase/ssr', () => ({
         limit: jest.fn().mockReturnThis(),
         range: jest.fn().mockReturnThis(),
         single: jest.fn().mockImplementation(async () => {
-          const rows = Array.isArray(__MOCK_DB[state.table]) ? __MOCK_DB[state.table] : [];
+          const rows = Array.isArray(__MOCK_DB[state.table])
+            ? __MOCK_DB[state.table]
+            : [];
           const filtered = applyWhere(rows);
           return { data: filtered[0] || null, error: null };
         }),
-        then: (resolve) => {
-          const rows = Array.isArray(__MOCK_DB[state.table]) ? __MOCK_DB[state.table] : [];
+        then: resolve => {
+          const rows = Array.isArray(__MOCK_DB[state.table])
+            ? __MOCK_DB[state.table]
+            : [];
           const filtered = applyWhere(rows);
-          const out = { data: filtered, count: state.opts?.count === 'exact' ? filtered.length : 0, error: null };
+          const out = {
+            data: filtered,
+            count: state.opts?.count === 'exact' ? filtered.length : 0,
+            error: null,
+          };
           return Promise.resolve(resolve(out));
         },
       };
@@ -206,17 +243,23 @@ jest.mock('@supabase/ssr', () => ({
 
     return {
       auth: {
-        getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
-        getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+        getUser: jest
+          .fn()
+          .mockResolvedValue({ data: { user: null }, error: null }),
+        getSession: jest
+          .fn()
+          .mockResolvedValue({ data: { session: null }, error: null }),
       },
-      from: jest.fn((table) => makeBuilder(table)),
+      from: jest.fn(table => makeBuilder(table)),
       channel: jest.fn(() => ({
         on: jest.fn().mockReturnThis(),
         subscribe: jest.fn(),
         send: jest.fn().mockResolvedValue({}),
       })),
       rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
-      functions: { invoke: jest.fn().mockResolvedValue({ data: null, error: null }) },
+      functions: {
+        invoke: jest.fn().mockResolvedValue({ data: null, error: null }),
+      },
     };
   }),
 }));
@@ -302,20 +345,23 @@ global.fetch = jest.fn();
 
 // console.warn をモック（警告発生の検証用）
 // 一部テストで toHaveBeenCalled を用いるため関数化
-// eslint-disable-next-line no-console
 console.warn = jest.fn();
 
 // Request の軽量ポリフィル（middleware等のテストで必要になる場合）
 if (typeof global.Request === 'undefined') {
   class SimpleRequest {
-    url; method; headers; body; constructor(input, init = {}) {
+    url;
+    method;
+    headers;
+    body;
+    constructor(input, init = {}) {
       this.url = typeof input === 'string' ? input : input.url;
       this.method = init.method || 'GET';
       this.headers = init.headers || {};
       this.body = init.body;
     }
   }
-  // @ts-ignore
+  // @ts-expect-error: Simple Request polyfill for test environment
   global.Request = SimpleRequest;
 }
 

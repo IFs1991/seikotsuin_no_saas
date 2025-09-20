@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useCallback } from 'react';
 import { LoadingState, SaveResult } from '@/types/admin';
@@ -8,7 +8,7 @@ export function useAdminSettings<T>(initialData: T) {
   const [loadingState, setLoadingState] = useState<LoadingState>({
     isLoading: false,
     error: null,
-    savedMessage: ''
+    savedMessage: '',
   });
 
   const updateData = useCallback((updater: Partial<T> | ((prev: T) => T)) => {
@@ -19,71 +19,89 @@ export function useAdminSettings<T>(initialData: T) {
     }
   }, []);
 
-  const handleSave = useCallback(async (
-    saveFunction?: (data: T) => Promise<SaveResult>
-  ): Promise<SaveResult> => {
-    setLoadingState(prev => ({ ...prev, isLoading: true, error: null, savedMessage: '' }));
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 模擬的な保存処理
-      
-      const result: SaveResult = saveFunction 
-        ? await saveFunction(data)
-        : { success: true, message: '設定を保存しました' };
-
-      setLoadingState({
-        isLoading: false,
+  const handleSave = useCallback(
+    async (
+      saveFunction?: (data: T) => Promise<SaveResult>
+    ): Promise<SaveResult> => {
+      setLoadingState(prev => ({
+        ...prev,
+        isLoading: true,
         error: null,
-        savedMessage: result.message
-      });
+        savedMessage: '',
+      }));
 
-      // 3秒後にメッセージをクリア
-      setTimeout(() => {
-        setLoadingState(prev => ({ ...prev, savedMessage: '' }));
-      }, 3000);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 模擬的な保存処理
 
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '保存に失敗しました';
-      setLoadingState({
-        isLoading: false,
-        error: errorMessage,
-        savedMessage: errorMessage
-      });
-      return { success: false, message: errorMessage };
-    }
-  }, [data]);
+        const result: SaveResult = saveFunction
+          ? await saveFunction(data)
+          : { success: true, message: '設定を保存しました' };
 
-  const handleAction = useCallback(async (
-    actionFunction: () => Promise<SaveResult>,
-    successMessage: string = 'アクションが完了しました'
-  ): Promise<SaveResult> => {
-    setLoadingState(prev => ({ ...prev, isLoading: true, error: null, savedMessage: '' }));
-    
-    try {
-      const result = await actionFunction();
-      
-      setLoadingState({
-        isLoading: false,
+        setLoadingState({
+          isLoading: false,
+          error: null,
+          savedMessage: result.message,
+        });
+
+        // 3秒後にメッセージをクリア
+        setTimeout(() => {
+          setLoadingState(prev => ({ ...prev, savedMessage: '' }));
+        }, 3000);
+
+        return result;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : '保存に失敗しました';
+        setLoadingState({
+          isLoading: false,
+          error: errorMessage,
+          savedMessage: errorMessage,
+        });
+        return { success: false, message: errorMessage };
+      }
+    },
+    [data]
+  );
+
+  const handleAction = useCallback(
+    async (
+      actionFunction: () => Promise<SaveResult>,
+      successMessage: string = 'アクションが完了しました'
+    ): Promise<SaveResult> => {
+      setLoadingState(prev => ({
+        ...prev,
+        isLoading: true,
         error: null,
-        savedMessage: result.success ? successMessage : result.message
-      });
+        savedMessage: '',
+      }));
 
-      setTimeout(() => {
-        setLoadingState(prev => ({ ...prev, savedMessage: '' }));
-      }, 3000);
+      try {
+        const result = await actionFunction();
 
-      return result;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'アクションに失敗しました';
-      setLoadingState({
-        isLoading: false,
-        error: errorMessage,
-        savedMessage: errorMessage
-      });
-      return { success: false, message: errorMessage };
-    }
-  }, []);
+        setLoadingState({
+          isLoading: false,
+          error: null,
+          savedMessage: result.success ? successMessage : result.message,
+        });
+
+        setTimeout(() => {
+          setLoadingState(prev => ({ ...prev, savedMessage: '' }));
+        }, 3000);
+
+        return result;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'アクションに失敗しました';
+        setLoadingState({
+          isLoading: false,
+          error: errorMessage,
+          savedMessage: errorMessage,
+        });
+        return { success: false, message: errorMessage };
+      }
+    },
+    []
+  );
 
   const clearMessages = useCallback(() => {
     setLoadingState(prev => ({ ...prev, error: null, savedMessage: '' }));
@@ -96,6 +114,6 @@ export function useAdminSettings<T>(initialData: T) {
     loadingState,
     handleSave,
     handleAction,
-    clearMessages
+    clearMessages,
   };
 }

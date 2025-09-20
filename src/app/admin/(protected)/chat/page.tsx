@@ -1,7 +1,13 @@
 import React from 'react';
 import AdminChatInterface from '@/components/chat/admin-chat-interface';
 import { useAdminChat } from '@/hooks/useAdminChat';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +21,12 @@ const AdminChatPage: React.FC = () => {
     exportChat,
     searchHistory,
     selectedStores,
-    setSelectedStores
+    setSelectedStores,
   } = useAdminChat();
 
   return (
-    <div className="min-h-screen p-6" style={{ backgroundColor: '#F3F4F6' }}>
-      <div className="max-w-4xl mx-auto">
+    <div className='min-h-screen p-6' style={{ backgroundColor: '#F3F4F6' }}>
+      <div className='max-w-4xl mx-auto'>
         <Card style={{ backgroundColor: '#ffffff' }}>
           <CardHeader>
             <CardTitle style={{ color: '#4C1D95' }}>
@@ -30,27 +36,35 @@ const AdminChatPage: React.FC = () => {
               46店舗の統合データに基づく経営支援システム
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
-            <div className="mb-4">
+            <div className='mb-4'>
               <Label>分析対象店舗</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <Button 
-                  variant="outline"
+              <div className='flex flex-wrap gap-2 mt-2'>
+                <Button
+                  variant='outline'
                   onClick={() => setSelectedStores(['all'])}
-                  style={{ 
-                    backgroundColor: selectedStores.includes('all') ? '#4C1D95' : '#ffffff',
-                    color: selectedStores.includes('all') ? '#ffffff' : '#4C1D95'
+                  style={{
+                    backgroundColor: selectedStores.includes('all')
+                      ? '#4C1D95'
+                      : '#ffffff',
+                    color: selectedStores.includes('all')
+                      ? '#ffffff'
+                      : '#4C1D95',
                   }}
                 >
                   全店舗
                 </Button>
-                <Button 
-                  variant="outline"
+                <Button
+                  variant='outline'
                   onClick={() => setSelectedStores(['area'])}
-                  style={{ 
-                    backgroundColor: selectedStores.includes('area') ? '#4C1D95' : '#ffffff',
-                    color: selectedStores.includes('area') ? '#ffffff' : '#4C1D95'
+                  style={{
+                    backgroundColor: selectedStores.includes('area')
+                      ? '#4C1D95'
+                      : '#ffffff',
+                    color: selectedStores.includes('area')
+                      ? '#ffffff'
+                      : '#4C1D95',
                   }}
                 >
                   エリア別
@@ -58,7 +72,7 @@ const AdminChatPage: React.FC = () => {
               </div>
             </div>
 
-            <Separator className="my-4" />
+            <Separator className='my-4' />
 
             <AdminChatInterface
               messages={messages}
@@ -66,15 +80,15 @@ const AdminChatPage: React.FC = () => {
               isLoading={isLoading}
             />
 
-            <div className="flex justify-between mt-4">
-              <div className="flex gap-2">
-                <Button 
+            <div className='flex justify-between mt-4'>
+              <div className='flex gap-2'>
+                <Button
                   onClick={exportChat}
                   style={{ backgroundColor: '#4C1D95', color: '#ffffff' }}
                 >
                   PDFエクスポート
                 </Button>
-                <Button 
+                <Button
                   onClick={exportChat}
                   style={{ backgroundColor: '#4C1D95', color: '#ffffff' }}
                 >
@@ -82,9 +96,9 @@ const AdminChatPage: React.FC = () => {
                 </Button>
               </div>
               <Input
-                placeholder="チャット履歴を検索"
+                placeholder='チャット履歴を検索'
                 onChange={() => searchHistory()}
-                className="w-64"
+                className='w-64'
                 style={{ borderColor: '#4C1D95' }}
               />
             </div>

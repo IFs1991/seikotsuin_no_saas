@@ -1,0 +1,138 @@
+project: アドミン画面実装計画
+context:
+  overview: |
+    既存コードベースでは管理者向けのページが複数実装済みだが、
+    サイドバーやヘッダーなどのナビゲーション導線が整備されておらずアクセスできない。
+    また、管理者専用ページのUI/UXが仮データ前提のままで、本番連携や認証との統合が未完了である。
+  goal: |
+    管理者がログイン後に必要な画面へシームレスに遷移でき、
+    主要機能（マスタ管理、セキュリティ監視、セッション管理、設定、チャット等）が
+    安全かつ一貫したUIで利用できる状態を作る。
+  scope:
+    - ナビゲーション再設計（サイドバー、ヘッダー）
+    - 管理者ページのアクセス制御と表示整理
+    - 認可と実データ連携（ダミーデータ排除）
+    - 主要管理者フローのUI改善
+    - QA/ドキュメント整備
+
+requirements:
+  navigation:
+    - id: NAV-001
+      description: サイドバーに管理者専用セクションを追加し、既存管理ページへのリンクを掲載する
+      details:
+        - メイン利用者向けメニューと管理セクションを視覚的に区分する
+        - サイドバー内のメニュー構成を役割別に整理（一般/管理）
+        - 必要リンク: /admin, /admin/master, /admin/security-dashboard, /admin/session-management, /admin/settings, /admin/chat, /multi-store
+        - 現在のユーザーロールに応じた表示制御（管理者のみ表示）
+    - id: NAV-002
+      description: ヘッダーの「設定」ボタンを管理者ハブへ誘導し、メニューを展開可能にする
+      details:
+        - `/admin/login` ではなく `/admin` への遷移
+        - ドロップダウンで管理者用ショートカットを表示
+        - レスポンシブ時のメニュー遷移も統一
+    - id: NAV-003
+      description: ダッシュボードトップ（`src/app/page.tsx`）に管理者エントリの説明とアクセス条件を明記
+
+  access_control:
+    - id: AC-001
+      description: 管理者ページにアクセスガードを追加し、非管理者の場合は明確なエラー導線を表示
+      details:
+        - サーバーコンポーネントまたはミドルウェアでロールチェック
+        - 未権限の場合 `/unauthorized` へリダイレクトし、サポート連絡方法を記載
+    - id: AC-002
+      description: サイドバー/ヘッダーの管理セクション表示をロールに応じて制御
+      details:
+        - useEffectなどのクライアント実装だけに頼らず、サーバー側でロールを判定し初期状態を制御
+
+  page_updates:
+    - id: PAGE-001
+      description: 各管理者ページの仮データを削除し、Supabase APIと連携する
+      targets:
+        - `src/components/dashboard/admin-dashboard.tsx`
+        - `src/app/admin/chat/page.tsx`
+        - `src/app/multi-store/page.tsx`
+      notes:
+        - フロント側のモック生成ロジックをAPI呼び出しに置き換える
+        - BE側で必要なAPI（例: `/api/admin/*`）の実装状況を確認し、不足があれば補う
+    - id: PAGE-002
+      description: マスター管理・セキュリティダッシュボード・セッション管理・設定ページのUX調整
+      actions:
+        - タブ/フォームの初期表示やローディングUIを整える
+        - TODOコメントの機能（インポート/エクスポート等）の仕様確認と優先度付け
+    - id: PAGE-003
+      description: 管理者用チャット・AI機能に認証付きAPI導線を適用
+      actions:
+        - `useAdminChat` と `/api/chat` の権限チェックを統一
+        - ファイルエクスポート機能は実装済みか確認し、必要ならバックエンド整備
+
+  design_system:
+    - id: UI-001
+      description: 管理者セクションの配色・アイコン・タイポグラフィを統一
+      details:
+        - 現在ランダムに使われている色コード（例: `#4C1D95`等）を統一テーマへ集約
+        - 管理者用カード/ボタンのコンポーネント化
+    - id: UI-002
+      description: レスポンシブ対応とアクセシビリティを見直し
+      details:
+        - サイドバー縮小時のツールチップ/アイコン表示を改善
+        - フォーカススタイル、キーボード操作確認
+
+  documentation:
+    - id: DOC-001
+      description: 管理者向け操作マニュアルと画面一覧を更新
+      details:
+        - Docs配下に管理者機能概要・アクセス経路・スクリーンショットを格納
+        - ロール毎のアクセス可能範囲を記載
+    - id: DOC-002
+      description: テスト計画と運用フローを整理
+      details:
+        - テストケース: 管理者/一般ユーザーのナビ表示、直接URLアクセス、APIレスポンス
+        - 運用: 新店舗追加時のメニュー更新手順など
+
+milestones:
+  - name: ナビゲーション再設計完了
+    target_days: 7
+    exit_criteria:
+      - サイドバー/ヘッダーに管理者メニューが表示され、ロールで制御される
+      - 主要管理画面にUI経由で遷移できる
+  - name: 管理者ページ実データ対応
+    target_days: 20
+    exit_criteria:
+      - ダミーデータが排除され、API連携が機能する
+      - アクセス制御・監査ログが有効
+  - name: QA & ドキュメント
+    target_days: 10
+    exit_criteria:
+      - 管理者E2Eシナリオがパス
+      - マニュアル・チケットが更新済み
+
+dependencies:
+  - ref: T-BE-001
+    description: API認証強化とサービスロール排除が完了していること
+  - ref: T-SC-001
+    description: ミドルウェアでのAPI保護が有効であること
+  - ref: T-FE-003
+    description: セッション情報からのロール判定が利用可能であること
+
+risks:
+  - id: RISK-001
+    description: メニュー追加に伴うUX複雑化
+    mitigation:
+      - ユーザーテストを実施し、頻度の高い導線を優先
+      - 管理者向けと一般向けUIを視覚的に分離
+  - id: RISK-002
+    description: 管理ページのAPI未整備箇所により、ダミーデータ撤廃が遅延する
+    mitigation:
+      - バックエンドの不足機能を早期に洗い出し、別チケットで対応
+      - 暫定的なFeature Flagで段階導入
+  - id: RISK-003
+    description: 権限チェック実装漏れによる情報漏洩
+    mitigation:
+      - ルートハンドラ単位のユニットテストとE2Eテストを必須化
+      - セキュリティチームのレビューを通す
+
+acceptance:
+  - 管理者ロールでログインしたユーザーが、UI上から全ての管理画面へアクセスできる
+  - 一般ユーザーには管理者メニューが表示されず、直接URLアクセスも拒否される
+  - 主要管理ページが実データと連動し、ダミーデータに戻らない
+  - ドキュメントとテストケースが更新され、CI/CDで検証されている

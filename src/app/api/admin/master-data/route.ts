@@ -2,11 +2,11 @@ import { NextRequest } from 'next/server';
 import { supabase } from '@/api/database/supabase-client';
 import { z } from 'zod';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '@/lib/constants';
-import { 
-  processApiRequest, 
-  createErrorResponse, 
+import {
+  processApiRequest,
+  createErrorResponse,
   createSuccessResponse,
-  logError
+  logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 
@@ -18,13 +18,24 @@ import { AuditLogger } from '@/lib/audit-logger';
 const masterDataSchema = z.object({
   id: z.string().uuid().optional(),
   clinic_id: z.string().uuid().nullable().optional(),
-  name: z.string().min(1, '名前は必須です').max(255, '名前は255文字以内で入力してください'),
-  category: z.string().min(1, 'カテゴリは必須です').max(100, 'カテゴリは100文字以内で入力してください'),
+  name: z
+    .string()
+    .min(1, '名前は必須です')
+    .max(255, '名前は255文字以内で入力してください'),
+  category: z
+    .string()
+    .min(1, 'カテゴリは必須です')
+    .max(100, 'カテゴリは100文字以内で入力してください'),
   value: z.unknown(),
-  data_type: z.enum(['string', 'number', 'boolean', 'json', 'array'], {
-    errorMap: () => ({ message: '正しいデータ型を選択してください' })
-  }).default('string'),
-  description: z.string().max(500, '説明は500文字以内で入力してください').optional(),
+  data_type: z
+    .enum(['string', 'number', 'boolean', 'json', 'array'], {
+      errorMap: () => ({ message: '正しいデータ型を選択してください' }),
+    })
+    .default('string'),
+  description: z
+    .string()
+    .max(500, '説明は500文字以内で入力してください')
+    .optional(),
   is_editable: z.boolean().default(true),
   is_public: z.boolean().default(false),
   display_order: z.number().int().default(0),
@@ -42,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth } = processResult;
 
     const { searchParams } = new URL(request.url);
@@ -78,37 +89,37 @@ export async function GET(request: NextRequest) {
         endpoint: '/api/admin/master-data',
         method: 'GET',
         userId: auth?.id || 'unknown',
-        params: { category, clinicId, isPublic }
+        params: { category, clinicId, isPublic },
       });
       return createErrorResponse('データの取得に失敗しました', 500);
     }
 
     // データを整形してフロントエンド用の形式に変換
-    const formattedData = data?.map(item => ({
-      id: item.id,
-      clinic_id: item.clinic_id,
-      name: item.key,
-      category: item.key.split('_')[0], // キーの最初の部分をカテゴリとして使用
-      value: item.value,
-      data_type: item.data_type || 'string',
-      description: item.description,
-      is_editable: item.is_editable,
-      is_public: item.is_public,
-      display_order: 0,
-      updated_at: item.updated_at,
-      updated_by: item.updated_by
-    })) || [];
+    const formattedData =
+      data?.map(item => ({
+        id: item.id,
+        clinic_id: item.clinic_id,
+        name: item.key,
+        category: item.key.split('_')[0], // キーの最初の部分をカテゴリとして使用
+        value: item.value,
+        data_type: item.data_type || 'string',
+        description: item.description,
+        is_editable: item.is_editable,
+        is_public: item.is_public,
+        display_order: 0,
+        updated_at: item.updated_at,
+        updated_by: item.updated_by,
+      })) || [];
 
     return createSuccessResponse({
       items: formattedData,
-      total: formattedData.length
+      total: formattedData.length,
     });
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/master-data',
       method: 'GET',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -122,7 +133,7 @@ export async function POST(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth, body } = processResult;
 
     // Zodバリデーション
@@ -135,21 +146,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { clinic_id, name, value, data_type, description, is_editable, is_public } = validationResult.data;
+    const {
+      clinic_id,
+      name,
+      value,
+      data_type,
+      description,
+      is_editable,
+      is_public,
+    } = validationResult.data;
 
     // system_settingsテーブルに挿入
     const { data, error } = await supabase
       .from('system_settings')
-      .insert([{
-        clinic_id: clinic_id || null,
-        key: name,
-        value: JSON.stringify(value),
-        data_type: data_type || 'string',
-        description,
-        is_editable: is_editable !== false,
-        is_public: is_public === true,
-        updated_by: auth?.id
-      }])
+      .insert([
+        {
+          clinic_id: clinic_id || null,
+          key: name,
+          value: JSON.stringify(value),
+          data_type: data_type || 'string',
+          description,
+          is_editable: is_editable !== false,
+          is_public: is_public === true,
+          updated_by: auth?.id,
+        },
+      ])
       .select()
       .single();
 
@@ -158,7 +179,7 @@ export async function POST(request: NextRequest) {
         endpoint: '/api/admin/master-data',
         method: 'POST',
         userId: auth?.id || 'unknown',
-        params: { name }
+        params: { name },
       });
       return createErrorResponse('データの作成に失敗しました', 500);
     }
@@ -175,7 +196,7 @@ export async function POST(request: NextRequest) {
       is_editable: data.is_editable,
       is_public: data.is_public,
       updated_at: data.updated_at,
-      updated_by: data.updated_by
+      updated_by: data.updated_by,
     };
 
     // 監査ログ記録
@@ -188,12 +209,11 @@ export async function POST(request: NextRequest) {
     );
 
     return createSuccessResponse(formattedData, 201, SUCCESS_MESSAGES.CREATED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/master-data',
       method: 'POST',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -207,7 +227,7 @@ export async function PUT(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth, body } = processResult;
 
     if (!body || typeof body !== 'object' || !('id' in body) || !body.id) {
@@ -224,12 +244,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { id, clinic_id, name, category, value, data_type, description, is_editable, is_public } = validationResult.data;
+    const {
+      id,
+      clinic_id,
+      name,
+      category,
+      value,
+      data_type,
+      description,
+      is_editable,
+      is_public,
+    } = validationResult.data;
 
     // 更新データを準備
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
-      updated_by: auth?.id
+      updated_by: auth?.id,
     };
 
     if (name !== undefined) updateData.key = name;
@@ -252,7 +282,7 @@ export async function PUT(request: NextRequest) {
         endpoint: '/api/admin/master-data',
         method: 'PUT',
         userId: auth?.id || 'unknown',
-        params: { id, name }
+        params: { id, name },
       });
       return createErrorResponse('データの更新に失敗しました', 500);
     }
@@ -269,7 +299,7 @@ export async function PUT(request: NextRequest) {
       is_editable: data.is_editable,
       is_public: data.is_public,
       updated_at: data.updated_at,
-      updated_by: data.updated_by
+      updated_by: data.updated_by,
     };
 
     // 監査ログ記録
@@ -283,12 +313,11 @@ export async function PUT(request: NextRequest) {
     );
 
     return createSuccessResponse(formattedData, 200, SUCCESS_MESSAGES.UPDATED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/master-data',
       method: 'PUT',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -302,7 +331,7 @@ export async function DELETE(request: NextRequest) {
     if (!processResult.success) {
       return processResult.error!;
     }
-    
+
     const { auth } = processResult;
 
     const { searchParams } = new URL(request.url);
@@ -337,7 +366,7 @@ export async function DELETE(request: NextRequest) {
         endpoint: '/api/admin/master-data',
         method: 'DELETE',
         userId: auth?.id || 'unknown',
-        params: { id }
+        params: { id },
       });
       return createErrorResponse('データの削除に失敗しました', 500);
     }
@@ -351,12 +380,11 @@ export async function DELETE(request: NextRequest) {
     );
 
     return createSuccessResponse(null, 200, SUCCESS_MESSAGES.DELETED);
-
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/master-data',
       method: 'DELETE',
-      userId: 'unknown'
+      userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }

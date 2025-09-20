@@ -9,12 +9,21 @@ import { z } from 'zod';
 
 // クエリパラメータのスキーマ
 const QuerySchema = z.object({
-  limit: z.string().optional().transform(val => val ? parseInt(val) : 50),
-  offset: z.string().optional().transform(val => val ? parseInt(val) : 0),
+  limit: z
+    .string()
+    .optional()
+    .transform(val => (val ? parseInt(val) : 50)),
+  offset: z
+    .string()
+    .optional()
+    .transform(val => (val ? parseInt(val) : 0)),
   severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   directive: z.string().optional(),
   client_ip: z.string().optional(),
-  hours: z.string().optional().transform(val => val ? parseInt(val) : 24),
+  hours: z
+    .string()
+    .optional()
+    .transform(val => (val ? parseInt(val) : 24)),
 });
 
 export async function GET(request: NextRequest) {
@@ -30,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
 
     const supabase = createClient();
-    
+
     // 期間設定
     const sinceTime = new Date();
     sinceTime.setHours(sinceTime.getHours() - params.hours);
@@ -38,7 +47,8 @@ export async function GET(request: NextRequest) {
     // クエリ構築
     let query = supabase
       .from('csp_violations')
-      .select(`
+      .select(
+        `
         id,
         document_uri,
         violated_directive,
@@ -57,7 +67,8 @@ export async function GET(request: NextRequest) {
         threat_score,
         is_false_positive,
         created_at
-      `)
+      `
+      )
       .gte('created_at', sinceTime.toISOString())
       .order('created_at', { ascending: false });
 
@@ -95,10 +106,14 @@ export async function GET(request: NextRequest) {
       .select('severity', { count: 'exact' })
       .gte('created_at', sinceTime.toISOString());
 
-    const severityStats = violations?.reduce((acc, v) => {
-      acc[v.severity] = (acc[v.severity] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>) || {};
+    const severityStats =
+      violations?.reduce(
+        (acc, v) => {
+          acc[v.severity] = (acc[v.severity] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      ) || {};
 
     const response = {
       violations: violations || [],
@@ -111,34 +126,33 @@ export async function GET(request: NextRequest) {
           severity: params.severity,
           directive: params.directive,
           client_ip: params.client_ip,
-        }
+        },
       },
       statistics: {
         severity_breakdown: severityStats,
         period_hours: params.hours,
-        generated_at: new Date().toISOString()
-      }
+        generated_at: new Date().toISOString(),
+      },
     };
 
     return NextResponse.json(response);
-
   } catch (error) {
     console.error('CSP違反一覧取得エラー:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: 'クエリパラメータが無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
+      {
         error: 'CSP違反一覧の取得に失敗しました',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );
@@ -183,14 +197,13 @@ export async function PATCH(request: NextRequest) {
       message: 'CSP違反レビューが更新されました',
       violation: data?.[0],
     });
-
   } catch (error) {
     console.error('CSP違反レビュー更新エラー:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'CSP違反レビューの更新に失敗しました',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

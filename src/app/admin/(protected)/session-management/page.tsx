@@ -10,10 +10,13 @@ import { SessionManager } from '@/components/session/SessionManager';
 
 export default async function SessionManagementPage() {
   const supabase = await createClient();
-  
+
   // ユーザー認証確認
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
   if (error || !user) {
     redirect('/admin/login?redirectTo=/admin/session-management');
   }
@@ -30,20 +33,18 @@ export default async function SessionManagementPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className='container mx-auto px-4 py-8 max-w-6xl'>
       {/* ページヘッダー */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
+      <div className='mb-8'>
+        <div className='flex items-center justify-between'>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              セッション管理
-            </h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className='text-3xl font-bold text-gray-900'>セッション管理</h1>
+            <p className='text-gray-600 mt-2'>
               アクティブなセッションとセキュリティ設定を管理します
             </p>
           </div>
-          
-          <div className="text-right text-sm text-gray-500">
+
+          <div className='text-right text-sm text-gray-500'>
             <p>ログインユーザー: {profile.full_name}</p>
             <p>権限: {profile.role}</p>
           </div>
@@ -51,7 +52,7 @@ export default async function SessionManagementPage() {
       </div>
 
       {/* セッションマネージャーコンポーネント */}
-      <SessionManager 
+      <SessionManager
         userId={user.id}
         clinicId={profile.clinic_id}
         userRole={profile.role}

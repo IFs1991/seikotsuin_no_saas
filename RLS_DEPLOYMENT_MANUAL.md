@@ -11,11 +11,13 @@
 ## 📋 事前準備チェックリスト
 
 ### 1. Supabase プロジェクト確認
+
 - [ ] Supabaseプロジェクトが作成済み
 - [ ] データベース接続情報を確認済み
 - [ ] SQL Editor へのアクセス権限確認済み
 
 ### 2. 環境変数更新
+
 `.env.local` ファイルを実際のSupabase情報で更新:
 
 ```bash
@@ -29,6 +31,7 @@ SUPABASE_DB_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:54
 ```
 
 ### 3. バックアップ実行
+
 ```sql
 -- 重要: 本番データがある場合は必ずバックアップを取得
 pg_dump "postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres" > backup_before_rls.sql
@@ -45,13 +48,13 @@ Supabase SQL Editor で以下を実行:
 ```sql
 -- 1. 現在のテーブル構成を確認
 SELECT schemaname, tablename, rowsecurity as rls_enabled
-FROM pg_tables 
-WHERE schemaname = 'public' 
+FROM pg_tables
+WHERE schemaname = 'public'
 ORDER BY tablename;
 
 -- 2. 既存のポリシー確認
 SELECT schemaname, tablename, policyname, cmd, roles
-FROM pg_policies 
+FROM pg_policies
 WHERE schemaname = 'public'
 ORDER BY tablename, policyname;
 ```
@@ -79,8 +82,9 @@ ORDER BY tablename, policyname;
 ```
 
 **実行順序**:
+
 1. **セキュリティ関数作成** (行 1-120)
-2. **RLS有効化** (行 121-140) 
+2. **RLS有効化** (行 121-140)
 3. **基本ポリシー適用** (行 141-350)
 4. **監査ログトリガー** (行 351-400)
 5. **パフォーマンス最適化** (行 401-450)
@@ -89,14 +93,14 @@ ORDER BY tablename, policyname;
 
 ```sql
 -- 1. RLS有効化確認
-SELECT * FROM security_policy_status 
+SELECT * FROM security_policy_status
 WHERE tablename IN ('patients', 'staff', 'visits', 'revenues', 'clinics', 'audit_logs')
 ORDER BY tablename;
 
 -- 2. セキュリティ関数確認
 SELECT routine_name, routine_type
 FROM information_schema.routines
-WHERE routine_schema = 'auth' 
+WHERE routine_schema = 'auth'
   AND routine_name LIKE '%current%'
 ORDER BY routine_name;
 
@@ -126,7 +130,7 @@ ORDER BY event_object_table;
 SELECT * FROM debug_current_user_info();
 
 -- 現在のユーザー情報確認
-SELECT 
+SELECT
     auth.uid() as current_user_id,
     auth.email() as current_email,
     auth.get_current_role() as current_role,
@@ -147,13 +151,13 @@ SELECT * FROM test_rls_access('revenues');
 
 ```sql
 -- テストデータ作成（監査ログが生成されるか確認）
-INSERT INTO clinics (name, address) 
+INSERT INTO clinics (name, address)
 VALUES ('テスト整骨院', 'テスト住所');
 
 -- 監査ログ確認
-SELECT user_id, user_role, clinic_id, operation_type, table_name, timestamp 
-FROM audit_logs 
-ORDER BY timestamp DESC 
+SELECT user_id, user_role, clinic_id, operation_type, table_name, timestamp
+FROM audit_logs
+ORDER BY timestamp DESC
 LIMIT 10;
 ```
 
@@ -162,27 +166,35 @@ LIMIT 10;
 ## 🔧 トラブルシューティング
 
 ### エラー1: 関数作成失敗
+
 ```
 ERROR: function auth.get_current_clinic_id() does not exist
 ```
+
 **解決策**: Supabaseのauth.uid()関数が利用可能か確認。必要に応じてauth schema権限を確認。
 
 ### エラー2: RLS適用失敗
+
 ```
 ERROR: table "patients" does not exist
 ```
+
 **解決策**: 先にschema.sqlを実行してテーブルを作成。
 
 ### エラー3: インデックス作成失敗
+
 ```
 ERROR: relation "patients" already has index
 ```
+
 **解決策**: `CREATE INDEX IF NOT EXISTS`を使用。既存インデックスとの競合を確認。
 
 ### エラー4: トリガー作成失敗
+
 ```
 ERROR: trigger "audit_patients_trigger" already exists
 ```
+
 **解決策**: `DROP TRIGGER IF EXISTS`を先に実行してから作成。
 
 ---
@@ -206,13 +218,13 @@ ERROR: trigger "audit_patients_trigger" already exists
 
 ```sql
 -- 最終確認用クエリ
-SELECT 
+SELECT
     'RLS実装完了' as status,
     COUNT(*) as total_policies
-FROM pg_policies 
+FROM pg_policies
 WHERE schemaname = 'public';
 
-SELECT 
+SELECT
     'セキュリティレベル' as metric,
     'B+評価 (エンタープライズ準拠)' as achievement;
 ```
@@ -235,7 +247,7 @@ SELECT
 
 ---
 
-**🔐 RLS実装により達成されるセキュリティレベル**: 
+**🔐 RLS実装により達成されるセキュリティレベル**:
 **D評価 → B+評価 (エンタープライズレベル)**
 
 **推定実行時間**: 30-45分  

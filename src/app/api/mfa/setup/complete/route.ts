@@ -30,23 +30,23 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-
   } catch (error) {
     console.error('MFA設定完了エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'MFA設定完了に失敗しました' 
+      {
+        error:
+          error instanceof Error ? error.message : 'MFA設定完了に失敗しました',
       },
       { status: 500 }
     );

@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { 
-  loginFormDataSchema, 
+import {
+  loginFormDataSchema,
   signupFormDataSchema,
   sanitizeAuthInput,
-  type AuthResponse
+  type AuthResponse,
 } from '@/lib/schemas/auth';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 
@@ -20,9 +20,12 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
   try {
     // 1. 入力値の検証とサニタイゼーション
     const result = loginFormDataSchema.safeParse(formData);
-    
+
     if (!result.success) {
-      console.warn('[Auth] Login validation failed:', result.error.flatten().fieldErrors);
+      console.warn(
+        '[Auth] Login validation failed:',
+        result.error.flatten().fieldErrors
+      );
       return {
         success: false,
         errors: result.error.flatten().fieldErrors,
@@ -30,7 +33,7 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     }
 
     const { email, password } = result.data;
-    
+
     // 2. 追加のサニタイゼーション
     const sanitizedEmail = sanitizeAuthInput(String(email));
     const sanitizedPassword = sanitizeAuthInput(String(password));
@@ -82,7 +85,9 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
       return {
         success: false,
         errors: {
-          _form: ['アカウントが無効化されています。管理者にお問い合わせください'],
+          _form: [
+            'アカウントが無効化されています。管理者にお問い合わせください',
+          ],
         },
       };
     }
@@ -98,13 +103,14 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     revalidatePath('/', 'layout');
     const redirectPath = getDefaultRedirect(profile.role);
     redirect(redirectPath);
-
   } catch (error) {
     console.error('[Auth] Login error:', error);
     return {
       success: false,
       errors: {
-        _form: ['システムエラーが発生しました。しばらく経ってから再度お試しください'],
+        _form: [
+          'システムエラーが発生しました。しばらく経ってから再度お試しください',
+        ],
       },
     };
   }
@@ -113,15 +119,21 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
 /**
  * サインアップ処理（入力値検証強化版）
  */
-export async function signup(_: any, formData: FormData): Promise<AuthResponse> {
+export async function signup(
+  _: any,
+  formData: FormData
+): Promise<AuthResponse> {
   const supabase = await createClient();
 
   try {
     // 1. 入力値の検証
     const result = signupFormDataSchema.safeParse(formData);
-    
+
     if (!result.success) {
-      console.warn('[Auth] Signup validation failed:', result.error.flatten().fieldErrors);
+      console.warn(
+        '[Auth] Signup validation failed:',
+        result.error.flatten().fieldErrors
+      );
       return {
         success: false,
         errors: result.error.flatten().fieldErrors,
@@ -129,7 +141,7 @@ export async function signup(_: any, formData: FormData): Promise<AuthResponse> 
     }
 
     const { email, password } = result.data;
-    
+
     // 2. 追加のサニタイゼーション
     const sanitizedEmail = sanitizeAuthInput(String(email));
     const sanitizedPassword = sanitizeAuthInput(String(password));
@@ -154,7 +166,7 @@ export async function signup(_: any, formData: FormData): Promise<AuthResponse> 
       });
 
       // ユーザーには汎用的なエラーメッセージを返す
-      const errorMessage = error.message.includes('already registered') 
+      const errorMessage = error.message.includes('already registered')
         ? 'このメールアドレスは既に登録されています'
         : 'アカウントの作成に失敗しました。入力内容を確認してください';
 
@@ -175,18 +187,20 @@ export async function signup(_: any, formData: FormData): Promise<AuthResponse> 
 
     // 6. パス再検証
     revalidatePath('/', 'layout');
-    
+
     return {
       success: true,
-      message: '確認メールを送信しました。メールを確認してアカウントを有効化してください。',
+      message:
+        '確認メールを送信しました。メールを確認してアカウントを有効化してください。',
     };
-
   } catch (error) {
     console.error('[Auth] Signup error:', error);
     return {
       success: false,
       errors: {
-        _form: ['システムエラーが発生しました。しばらく経ってから再度お試しください'],
+        _form: [
+          'システムエラーが発生しました。しばらく経ってから再度お試しください',
+        ],
       },
     };
   }
@@ -200,8 +214,10 @@ export async function logout(): Promise<void> {
 
   try {
     // 現在のユーザー情報を取得（ログ用）
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -219,7 +235,6 @@ export async function logout(): Promise<void> {
 
     revalidatePath('/', 'layout');
     redirect('/admin/login?message=ログアウトしました');
-
   } catch (error) {
     console.error('[Auth] Logout error:', error);
     redirect('/admin/login?error=logout_failed');
@@ -231,10 +246,13 @@ export async function logout(): Promise<void> {
  */
 export async function logoutWithRedirect(redirectTo?: string): Promise<void> {
   await logout();
-  
+
   // 安全なリダイレクト先を検証
-  const safeUrl = getSafeRedirectUrl(redirectTo, process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+  const safeUrl = getSafeRedirectUrl(
+    redirectTo,
+    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  );
   const finalRedirect = safeUrl || '/admin/login';
-  
+
   redirect(finalRedirect);
 }

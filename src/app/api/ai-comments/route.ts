@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
-    const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const date =
+      searchParams.get('date') || new Date().toISOString().split('T')[0];
 
     if (!clinicId) {
       return NextResponse.json(
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       const generatedComment = await generateDailyComment(clinicId, date);
       return NextResponse.json({
         success: true,
-        data: generatedComment
+        data: generatedComment,
       });
     }
 
@@ -46,9 +47,11 @@ export async function GET(request: NextRequest) {
         summary: data.summary,
         highlights: data.good_points ? [data.good_points] : [],
         improvements: data.improvement_points ? [data.improvement_points] : [],
-        suggestions: data.suggestion_for_tomorrow ? [data.suggestion_for_tomorrow] : [],
-        created_at: data.created_at
-      }
+        suggestions: data.suggestion_for_tomorrow
+          ? [data.suggestion_for_tomorrow]
+          : [],
+        created_at: data.created_at,
+      },
     });
   } catch (error) {
     console.error('AI Comments GET error:', error);
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: generatedComment
+      data: generatedComment,
     });
   } catch (error) {
     console.error('AI Comments POST error:', error);
@@ -118,22 +121,29 @@ async function generateDailyComment(clinicId: string, date: string) {
       .lt('revenue_date', date);
 
     // AI分析コメント生成
-    const analysis = analyzePerformance(dailyData, previousData, weeklyData || []);
+    const analysis = analyzePerformance(
+      dailyData,
+      previousData,
+      weeklyData || []
+    );
 
     // データベースに保存
     const { data: savedComment, error } = await supabase
       .from('daily_ai_comments')
-      .upsert({
-        clinic_id: clinicId,
-        comment_date: date,
-        summary: analysis.summary,
-        good_points: analysis.highlights.join('\n'),
-        improvement_points: analysis.improvements.join('\n'),
-        suggestion_for_tomorrow: analysis.suggestions.join('\n'),
-        raw_ai_response: analysis
-      }, {
-        onConflict: 'clinic_id,comment_date'
-      })
+      .upsert(
+        {
+          clinic_id: clinicId,
+          comment_date: date,
+          summary: analysis.summary,
+          good_points: analysis.highlights.join('\n'),
+          improvement_points: analysis.improvements.join('\n'),
+          suggestion_for_tomorrow: analysis.suggestions.join('\n'),
+          raw_ai_response: analysis,
+        },
+        {
+          onConflict: 'clinic_id,comment_date',
+        }
+      )
       .select()
       .single();
 
@@ -147,7 +157,7 @@ async function generateDailyComment(clinicId: string, date: string) {
       highlights: analysis.highlights,
       improvements: analysis.improvements,
       suggestions: analysis.suggestions,
-      created_at: savedComment.created_at
+      created_at: savedComment.created_at,
     };
   } catch (error) {
     console.error('Generate daily comment error:', error);
@@ -155,38 +165,56 @@ async function generateDailyComment(clinicId: string, date: string) {
   }
 }
 
-function analyzePerformance(dailyData: any, previousData: any, weeklyData: any[]) {
+function analyzePerformance(
+  dailyData: any,
+  previousData: any,
+  weeklyData: any[]
+) {
   const todayRevenue = dailyData?.total_revenue || 0;
   const todayPatients = dailyData?.unique_patients || 0;
   const yesterdayRevenue = previousData?.total_revenue || 0;
   const yesterdayPatients = previousData?.unique_patients || 0;
-  
-  const weeklyAvgRevenue = weeklyData.length > 0 
-    ? weeklyData.reduce((sum, day) => sum + (day.total_revenue || 0), 0) / weeklyData.length
-    : 0;
-  const weeklyAvgPatients = weeklyData.length > 0
-    ? weeklyData.reduce((sum, day) => sum + (day.unique_patients || 0), 0) / weeklyData.length
-    : 0;
+
+  const weeklyAvgRevenue =
+    weeklyData.length > 0
+      ? weeklyData.reduce((sum, day) => sum + (day.total_revenue || 0), 0) /
+        weeklyData.length
+      : 0;
+  const weeklyAvgPatients =
+    weeklyData.length > 0
+      ? weeklyData.reduce((sum, day) => sum + (day.unique_patients || 0), 0) /
+        weeklyData.length
+      : 0;
 
   let summary = '';
-  let highlights: string[] = [];
-  let improvements: string[] = [];
-  let suggestions: string[] = [];
+  const highlights: string[] = [];
+  const improvements: string[] = [];
+  const suggestions: string[] = [];
 
   // 売上分析
   if (todayRevenue > yesterdayRevenue) {
-    const increase = ((todayRevenue - yesterdayRevenue) / Math.max(yesterdayRevenue, 1) * 100).toFixed(1);
+    const increase = (
+      ((todayRevenue - yesterdayRevenue) / Math.max(yesterdayRevenue, 1)) *
+      100
+    ).toFixed(1);
     highlights.push(`前日比売上が${increase}%向上しました`);
   } else if (todayRevenue < yesterdayRevenue) {
-    const decrease = ((yesterdayRevenue - todayRevenue) / Math.max(yesterdayRevenue, 1) * 100).toFixed(1);
+    const decrease = (
+      ((yesterdayRevenue - todayRevenue) / Math.max(yesterdayRevenue, 1)) *
+      100
+    ).toFixed(1);
     improvements.push(`前日比売上が${decrease}%減少しています`);
   }
 
   // 患者数分析
   if (todayPatients > yesterdayPatients) {
-    highlights.push(`来院患者数が前日より${todayPatients - yesterdayPatients}名増加しました`);
+    highlights.push(
+      `来院患者数が前日より${todayPatients - yesterdayPatients}名増加しました`
+    );
   } else if (todayPatients < yesterdayPatients) {
-    improvements.push(`来院患者数が前日より${yesterdayPatients - todayPatients}名減少しました`);
+    improvements.push(
+      `来院患者数が前日より${yesterdayPatients - todayPatients}名減少しました`
+    );
   }
 
   // 週平均との比較
@@ -207,7 +235,10 @@ function analyzePerformance(dailyData: any, previousData: any, weeklyData: any[]
   }
 
   if (dailyData?.insurance_revenue && dailyData?.private_revenue) {
-    const privateRatio = dailyData.private_revenue / (dailyData.insurance_revenue + dailyData.private_revenue) * 100;
+    const privateRatio =
+      (dailyData.private_revenue /
+        (dailyData.insurance_revenue + dailyData.private_revenue)) *
+      100;
     if (privateRatio < 30) {
       suggestions.push('自費診療メニューの提案を積極的に行いましょう');
     }
@@ -225,8 +256,12 @@ function analyzePerformance(dailyData: any, previousData: any, weeklyData: any[]
 
   return {
     summary,
-    highlights: highlights.length > 0 ? highlights : ['安定した運営を継続されています'],
+    highlights:
+      highlights.length > 0 ? highlights : ['安定した運営を継続されています'],
     improvements: improvements.length > 0 ? improvements : [],
-    suggestions: suggestions.length > 0 ? suggestions : ['現在の運営方針を継続してください']
+    suggestions:
+      suggestions.length > 0
+        ? suggestions
+        : ['現在の運営方針を継続してください'],
   };
 }

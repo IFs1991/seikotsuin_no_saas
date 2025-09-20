@@ -4,17 +4,27 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
-import { SessionManager, type UserSession, type DeviceInfo } from './session-manager';
+import { logger } from '@/lib/logger';
+import {
+  SessionManager,
+  type UserSession,
+  type DeviceInfo,
+} from './session-manager';
 
 // ================================================================
 // 型定義
 // ================================================================
 
 export interface SecurityThreat {
-  threatType: 'suspicious_login' | 'multiple_devices' | 'location_anomaly' | 'session_hijack' | 'brute_force';
+  threatType:
+    | 'suspicious_login'
+    | 'multiple_devices'
+    | 'location_anomaly'
+    | 'session_hijack'
+    | 'brute_force';
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
-  evidence: any;
+  evidence: unknown;
   userId?: string;
   clinicId?: string;
   ipAddress?: string;
@@ -93,7 +103,10 @@ export class SecurityMonitor {
 
     // 2. 異常な位置からのアクセス検出
     if (attempt.userId) {
-      const locationCheck = await this.detectLocationAnomaly(attempt.userId, attempt.ipAddress);
+      const locationCheck = await this.detectLocationAnomaly(
+        attempt.userId,
+        attempt.ipAddress
+      );
       if (locationCheck.isAnomalous) {
         threats.push({
           threatType: 'location_anomaly',
@@ -114,7 +127,10 @@ export class SecurityMonitor {
 
     // 3. 短時間での複数デバイスログイン検出
     if (attempt.success && attempt.userId) {
-      const multiDeviceCheck = await this.detectMultipleDeviceLogins(attempt.userId, attempt.userAgent);
+      const multiDeviceCheck = await this.detectMultipleDeviceLogins(
+        attempt.userId,
+        attempt.userAgent
+      );
       if (multiDeviceCheck.isAnomalous) {
         threats.push({
           threatType: 'multiple_devices',
@@ -140,14 +156,20 @@ export class SecurityMonitor {
   /**
    * セッション異常検知
    */
-  async analyzeSessionActivity(session: UserSession, currentActivity: {
-    ipAddress?: string;
-    userAgent?: string;
-  }): Promise<SecurityThreat[]> {
+  async analyzeSessionActivity(
+    session: UserSession,
+    currentActivity: {
+      ipAddress?: string;
+      userAgent?: string;
+    }
+  ): Promise<SecurityThreat[]> {
     const threats: SecurityThreat[] = [];
 
     // セッション乗っ取りの検出
-    const hijackCheck = await this.detectSessionHijack(session, currentActivity);
+    const hijackCheck = await this.detectSessionHijack(
+      session,
+      currentActivity
+    );
     if (hijackCheck.isAnomalous) {
       threats.push({
         threatType: 'session_hijack',
@@ -181,8 +203,12 @@ export class SecurityMonitor {
         clinic_id: threat.clinicId,
         event_type: `threat_detected_${threat.threatType}`,
         event_category: 'security_violation',
-        severity_level: threat.severity === 'critical' ? 'critical' : 
-                        threat.severity === 'high' ? 'error' : 'warning',
+        severity_level:
+          threat.severity === 'critical'
+            ? 'critical'
+            : threat.severity === 'high'
+              ? 'error'
+              : 'warning',
         event_description: threat.description,
         event_data: {
           threat_type: threat.threatType,
@@ -199,16 +225,18 @@ export class SecurityMonitor {
       if (threat.severity === 'critical' || threat.severity === 'high') {
         await this.notifyAdministrators(threat);
       }
-
     } catch (error) {
-      console.error('セキュリティ脅威処理エラー:', error);
+      logger.error('セキュリティ脅威処理エラー:', error);
     }
   }
 
   /**
    * セキュリティアラート取得
    */
-  async getSecurityAlerts(clinicId: string, limit: number = 50): Promise<SecurityAlert[]> {
+  async getSecurityAlerts(
+    clinicId: string,
+    limit: number = 50
+  ): Promise<SecurityAlert[]> {
     const { data: events, error } = await this.supabase
       .from('security_events')
       .select('*')
@@ -218,7 +246,7 @@ export class SecurityMonitor {
       .limit(limit);
 
     if (error || !events) {
-      console.error('セキュリティアラート取得エラー:', error);
+      logger.error('セキュリティアラート取得エラー:', error);
       return [];
     }
 
@@ -239,7 +267,10 @@ export class SecurityMonitor {
   /**
    * セキュリティダッシュボード用統計データ取得
    */
-  async getSecurityStatistics(clinicId: string, days: number = 30): Promise<{
+  async getSecurityStatistics(
+    clinicId: string,
+    days: number = 30
+  ): Promise<{
     totalEvents: number;
     criticalThreats: number;
     blockedIps: number;
@@ -257,7 +288,7 @@ export class SecurityMonitor {
       .gte('created_at', startDate.toISOString());
 
     if (error || !events) {
-      console.error('セキュリティ統計取得エラー:', error);
+      logger.error('セキュリティ統計取得エラー:', error);
       return {
         totalEvents: 0,
         criticalThreats: 0,
@@ -276,24 +307,33 @@ export class SecurityMonitor {
 
     events.forEach(event => {
       // タイプ別集計
-      eventsByType[event.event_type] = (eventsByType[event.event_type] || 0) + 1;
+      eventsByType[event.event_type] =
+        (eventsByType[event.event_type] || 0) + 1;
 
       // 日別集計
       const date = new Date(event.created_at).toISOString().split('T')[0];
       eventsByDay[date] = (eventsByDay[date] || 0) + 1;
 
       // 重要度別集計
-      if (event.severity_level === 'critical' || event.severity_level === 'error') {
+      if (
+        event.severity_level === 'critical' ||
+        event.severity_level === 'error'
+      ) {
         criticalThreats++;
       }
 
-      if (event.event_type.includes('suspicious_login') || event.event_type.includes('brute_force')) {
+      if (
+        event.event_type.includes('suspicious_login') ||
+        event.event_type.includes('brute_force')
+      ) {
         suspiciousLogins++;
       }
     });
 
     // 日別データを配列に変換
-    const eventsByDayArray = Object.entries(eventsByDay).map(([date, count]) => ({ date, count }));
+    const eventsByDayArray = Object.entries(eventsByDay).map(
+      ([date, count]) => ({ date, count })
+    );
 
     return {
       totalEvents: events.length,
@@ -312,7 +352,9 @@ export class SecurityMonitor {
   /**
    * ブルートフォース攻撃検出
    */
-  private async detectBruteForce(attempt: LoginAttempt): Promise<AnomalyDetectionResult> {
+  private async detectBruteForce(
+    attempt: LoginAttempt
+  ): Promise<AnomalyDetectionResult> {
     const timeWindow = 15 * 60 * 1000; // 15分
     const maxAttempts = 5;
 
@@ -321,10 +363,18 @@ export class SecurityMonitor {
       .select('*', { count: 'exact' })
       .eq('ip_address', attempt.ipAddress)
       .in('event_type', ['login_failed', 'authentication_failed'])
-      .gte('created_at', new Date(attempt.timestamp.getTime() - timeWindow).toISOString());
+      .gte(
+        'created_at',
+        new Date(attempt.timestamp.getTime() - timeWindow).toISOString()
+      );
 
     if (error) {
-      return { isAnomalous: false, confidence: 0, reasons: [], recommendedActions: [] };
+      return {
+        isAnomalous: false,
+        confidence: 0,
+        reasons: [],
+        recommendedActions: [],
+      };
     }
 
     const attemptCount = (count || 0) + (!attempt.success ? 1 : 0);
@@ -345,17 +395,28 @@ export class SecurityMonitor {
   /**
    * 位置異常検出
    */
-  private async detectLocationAnomaly(userId: string, ipAddress: string): Promise<AnomalyDetectionResult> {
+  private async detectLocationAnomaly(
+    userId: string,
+    ipAddress: string
+  ): Promise<AnomalyDetectionResult> {
     // 過去30日間の正常なログイン場所を取得
     const { data: recentSessions, error } = await this.supabase
       .from('user_sessions')
       .select('ip_address, geolocation')
       .eq('user_id', userId)
       .eq('is_active', true)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      .gte(
+        'created_at',
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      );
 
     if (error || !recentSessions || recentSessions.length === 0) {
-      return { isAnomalous: false, confidence: 0, reasons: [], recommendedActions: [] };
+      return {
+        isAnomalous: false,
+        confidence: 0,
+        reasons: [],
+        recommendedActions: [],
+      };
     }
 
     // 簡易的な位置判定（実際の実装では地理的距離を計算）
@@ -367,20 +428,25 @@ export class SecurityMonitor {
         isAnomalous: true,
         confidence: 0.6,
         reasons: ['過去30日間に使用されていないIPアドレス'],
-        recommendedActions: [
-          'ユーザーへの確認',
-          'セッションの追加監視',
-        ],
+        recommendedActions: ['ユーザーへの確認', 'セッションの追加監視'],
       };
     }
 
-    return { isAnomalous: false, confidence: 0, reasons: [], recommendedActions: [] };
+    return {
+      isAnomalous: false,
+      confidence: 0,
+      reasons: [],
+      recommendedActions: [],
+    };
   }
 
   /**
    * 複数デバイスログイン検出
    */
-  private async detectMultipleDeviceLogins(userId: string, userAgent: string): Promise<AnomalyDetectionResult> {
+  private async detectMultipleDeviceLogins(
+    userId: string,
+    userAgent: string
+  ): Promise<AnomalyDetectionResult> {
     const timeWindow = 30 * 60 * 1000; // 30分
     const startTime = new Date(Date.now() - timeWindow);
 
@@ -392,7 +458,12 @@ export class SecurityMonitor {
       .gte('created_at', startTime.toISOString());
 
     if (error || !recentSessions) {
-      return { isAnomalous: false, confidence: 0, reasons: [], recommendedActions: [] };
+      return {
+        isAnomalous: false,
+        confidence: 0,
+        reasons: [],
+        recommendedActions: [],
+      };
     }
 
     // 異なるデバイスタイプの数を計算
@@ -405,29 +476,34 @@ export class SecurityMonitor {
         isAnomalous: true,
         confidence: 0.7,
         reasons: [`30分以内に${deviceTypes.size}種類のデバイスからログイン`],
-        recommendedActions: [
-          'ユーザーへの確認通知',
-          'セッションレビュー',
-        ],
+        recommendedActions: ['ユーザーへの確認通知', 'セッションレビュー'],
       };
     }
 
-    return { isAnomalous: false, confidence: 0, reasons: [], recommendedActions: [] };
+    return {
+      isAnomalous: false,
+      confidence: 0,
+      reasons: [],
+      recommendedActions: [],
+    };
   }
 
   /**
    * セッション乗っ取り検出
    */
   private async detectSessionHijack(
-    session: UserSession, 
+    session: UserSession,
     currentActivity: { ipAddress?: string; userAgent?: string }
   ): Promise<AnomalyDetectionResult> {
     const reasons: string[] = [];
     let confidence = 0;
 
     // IPアドレス変更の検出（単独でも検知に到達する重み）
-    if (session.ip_address && currentActivity.ipAddress && 
-        session.ip_address !== currentActivity.ipAddress) {
+    if (
+      session.ip_address &&
+      currentActivity.ipAddress &&
+      session.ip_address !== currentActivity.ipAddress
+    ) {
       reasons.push('IPアドレスの変更');
       confidence += 0.6;
     }
@@ -435,7 +511,11 @@ export class SecurityMonitor {
     // User-Agent変更の検出
     if (currentActivity.userAgent) {
       // 明らかに怪しいUAの検出
-      if (/(automated|headless|bot|crawler|spider)/i.test(currentActivity.userAgent)) {
+      if (
+        /(automated|headless|bot|crawler|spider)/i.test(
+          currentActivity.userAgent
+        )
+      ) {
         reasons.push('疑わしいUser-Agent（自動化/ボットの可能性）');
         confidence += 0.6;
       }
@@ -447,7 +527,9 @@ export class SecurityMonitor {
       } else if (session.device_info?.browser) {
         // UA未保存の場合はデバイス情報と大まかに比較
         const uaLower = currentActivity.userAgent.toLowerCase();
-        const browserLower = String(session.device_info.browser || '').toLowerCase();
+        const browserLower = String(
+          session.device_info.browser || ''
+        ).toLowerCase();
         if (browserLower && !uaLower.includes(browserLower)) {
           reasons.push('User-Agentの不一致（保存ブラウザと異なる）');
           confidence += 0.6;
@@ -467,14 +549,10 @@ export class SecurityMonitor {
       isAnomalous: confidence > 0.5,
       confidence,
       reasons,
-      recommendedActions: confidence > 0.7 ? [
-        'セッションの強制終了',
-        'ユーザーへの緊急通知',
-        '再認証の要求',
-      ] : [
-        'セッションの監視強化',
-        'ログの詳細記録',
-      ],
+      recommendedActions:
+        confidence > 0.7
+          ? ['セッションの強制終了', 'ユーザーへの緊急通知', '再認証の要求']
+          : ['セッションの監視強化', 'ログの詳細記録'],
     };
   }
 
@@ -485,7 +563,9 @@ export class SecurityMonitor {
   /**
    * 自動対応の実行
    */
-  private async executeAutomaticResponse(threat: SecurityThreat): Promise<void> {
+  private async executeAutomaticResponse(
+    threat: SecurityThreat
+  ): Promise<void> {
     switch (threat.threatType) {
       case 'brute_force':
         if (threat.severity === 'high' || threat.severity === 'critical') {
@@ -497,10 +577,16 @@ export class SecurityMonitor {
       case 'session_hijack':
         if (threat.userId && threat.severity === 'high') {
           // 疑わしいセッションを強制終了
-          const sessions = await this.sessionManager.getUserSessions(threat.userId, threat.clinicId!);
+          const sessions = await this.sessionManager.getUserSessions(
+            threat.userId,
+            threat.clinicId!
+          );
           for (const session of sessions) {
             if (session.ip_address === threat.ipAddress) {
-              await this.sessionManager.revokeSession(session.id, 'security_violation');
+              await this.sessionManager.revokeSession(
+                session.id,
+                'security_violation'
+              );
             }
           }
         }
@@ -542,13 +628,11 @@ export class SecurityMonitor {
     source_component: string;
   }): Promise<void> {
     try {
-      await this.supabase
-        .from('security_events')
-        .insert({
-          ...event,
-          event_data: event.event_data || {},
-          created_at: new Date().toISOString(),
-        });
+      await this.supabase.from('security_events').insert({
+        ...event,
+        event_data: event.event_data || {},
+        created_at: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('セキュリティイベントログエラー:', error);
     }
@@ -557,12 +641,18 @@ export class SecurityMonitor {
   /**
    * 重要度マッピング
    */
-  private mapSeverityLevel(level: string): 'low' | 'medium' | 'high' | 'critical' {
+  private mapSeverityLevel(
+    level: string
+  ): 'low' | 'medium' | 'high' | 'critical' {
     switch (level) {
-      case 'critical': return 'critical';
-      case 'error': return 'high';
-      case 'warning': return 'medium';
-      default: return 'low';
+      case 'critical':
+        return 'critical';
+      case 'error':
+        return 'high';
+      case 'warning':
+        return 'medium';
+      default:
+        return 'low';
     }
   }
 
@@ -571,11 +661,11 @@ export class SecurityMonitor {
    */
   private generateAlertTitle(eventType: string): string {
     const titleMap: Record<string, string> = {
-      'threat_detected_brute_force': 'ブルートフォース攻撃の検出',
-      'threat_detected_session_hijack': 'セッション乗っ取りの疑い',
-      'threat_detected_location_anomaly': '異常な位置からのアクセス',
-      'threat_detected_multiple_devices': '複数デバイスからの同時ログイン',
-      'threat_detected_suspicious_login': '疑わしいログイン試行',
+      threat_detected_brute_force: 'ブルートフォース攻撃の検出',
+      threat_detected_session_hijack: 'セッション乗っ取りの疑い',
+      threat_detected_location_anomaly: '異常な位置からのアクセス',
+      threat_detected_multiple_devices: '複数デバイスからの同時ログイン',
+      threat_detected_suspicious_login: '疑わしいログイン試行',
     };
 
     return titleMap[eventType] || 'セキュリティイベント';

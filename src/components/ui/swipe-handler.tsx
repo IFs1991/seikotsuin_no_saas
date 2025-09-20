@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useRef, useCallback } from 'react';
 
@@ -39,7 +39,7 @@ export const SwipeHandler: React.FC<SwipeHandlerProps> = ({
 
     const deltaX = touchEndRef.current.x - touchStartRef.current.x;
     const deltaY = touchEndRef.current.y - touchStartRef.current.y;
-    
+
     const absDeltaX = Math.abs(deltaX);
     const absDeltaY = Math.abs(deltaY);
 
@@ -110,13 +110,13 @@ export const SwipeTabs: React.FC<SwipeTabsProps> = ({
       onSwipeRight={handleSwipeRight}
       className={className}
     >
-      <div className="relative overflow-hidden">
-        <div 
-          className="flex transition-transform duration-300 ease-out"
+      <div className='relative overflow-hidden'>
+        <div
+          className='flex transition-transform duration-300 ease-out'
           style={{ transform: `translateX(-${activeTab * 100}%)` }}
         >
           {children.map((child, index) => (
-            <div key={index} className="w-full flex-shrink-0">
+            <div key={index} className='w-full flex-shrink-0'>
               {child}
             </div>
           ))}
@@ -149,16 +149,19 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     touchStartY.current = e.touches[0].clientY;
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const touchY = e.touches[0].clientY;
-    const distance = touchY - touchStartY.current;
-    
-    if (distance > 0 && window.scrollY === 0) {
-      setIsPulling(true);
-      setPullDistance(Math.min(distance, threshold * 1.5));
-      e.preventDefault();
-    }
-  }, [threshold]);
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      const touchY = e.touches[0].clientY;
+      const distance = touchY - touchStartY.current;
+
+      if (distance > 0 && window.scrollY === 0) {
+        setIsPulling(true);
+        setPullDistance(Math.min(distance, threshold * 1.5));
+        e.preventDefault();
+      }
+    },
+    [threshold]
+  );
 
   const handleTouchEnd = useCallback(async () => {
     if (pullDistance > threshold && !isRefreshing) {
@@ -181,21 +184,21 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
       onTouchEnd={handleTouchEnd}
     >
       <div
-        className="transition-transform duration-200"
+        className='transition-transform duration-200'
         style={{
           transform: isPulling ? `translateY(${pullDistance * 0.5}px)` : 'none',
         }}
       >
         {/* プルインジケーター */}
         {(isPulling || isRefreshing) && (
-          <div className="flex justify-center items-center py-4 text-primary-600">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600" />
-            <span className="ml-2 text-sm">
+          <div className='flex justify-center items-center py-4 text-primary-600'>
+            <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600' />
+            <span className='ml-2 text-sm'>
               {isRefreshing ? '更新中...' : '離してリフレッシュ'}
             </span>
           </div>
         )}
-        
+
         {children}
       </div>
     </div>

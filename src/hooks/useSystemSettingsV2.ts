@@ -3,22 +3,22 @@
 // =================================================================
 
 import { useState, useCallback } from 'react';
-import { 
+import {
   useSystemSettingsQuery,
   useCreateSystemSettingMutation,
   useUpdateSystemSettingMutation,
   useDeleteSystemSettingMutation,
-  useRefreshSystemSettings
+  useRefreshSystemSettings,
 } from './queries/useSystemSettingsQuery';
-import type { 
-  MasterDataDetail, 
-  FilterState, 
-  UseSystemSettingsReturn 
+import type {
+  MasterDataDetail,
+  FilterState,
+  UseSystemSettingsReturn,
 } from '@/types/admin';
 
 /**
  * システム設定管理フック v2 (React Query版)
- * 
+ *
  * 旧版(useSystemSettings)との違い:
  * - React Queryによる自動キャッシング
  * - 楽観的更新でUX向上
@@ -35,44 +35,40 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
   });
 
   // React Query フック
-  const {
-    data,
-    isLoading,
-    error,
-    isFetching,
-    isRefetching
-  } = useSystemSettingsQuery(filters, {
-    // フィルターが空の場合は自動実行しない
-    enabled: Object.values(filters).some(value => 
-      value !== '' && value !== undefined
-    ) || true // 開発時は常に有効
-  });
+  const { data, isLoading, error, isFetching, isRefetching } =
+    useSystemSettingsQuery(filters, {
+      // フィルターが空の場合は自動実行しない
+      enabled:
+        Object.values(filters).some(
+          value => value !== '' && value !== undefined
+        ) || true, // 開発時は常に有効
+    });
 
   const createMutation = useCreateSystemSettingMutation({
     onSuccess: () => {
       // 成功時の追加処理があれば記述
     },
-    onError: (error) => {
+    onError: error => {
       console.error('作成エラー:', error.message);
-    }
+    },
   });
 
   const updateMutation = useUpdateSystemSettingMutation({
     onSuccess: () => {
       // 成功時の追加処理があれば記述
     },
-    onError: (error) => {
+    onError: error => {
       console.error('更新エラー:', error.message);
-    }
+    },
   });
 
   const deleteMutation = useDeleteSystemSettingMutation({
     onSuccess: () => {
       // 成功時の追加処理があれば記述
     },
-    onError: (error) => {
+    onError: error => {
       console.error('削除エラー:', error.message);
-    }
+    },
   });
 
   const refreshData = useRefreshSystemSettings();
@@ -91,35 +87,41 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
     });
   }, []);
 
-  const createMasterData = useCallback(async (
-    data: Partial<MasterDataDetail>
-  ): Promise<Partial<MasterDataDetail>> => {
-    try {
-      const result = await createMutation.mutateAsync(data);
-      return result;
-    } catch (error) {
-      throw error;
-    }
-  }, [createMutation]);
+  const createMasterData = useCallback(
+    async (
+      data: Partial<MasterDataDetail>
+    ): Promise<Partial<MasterDataDetail>> => {
+      try {
+        const result = await createMutation.mutateAsync(data);
+        return result;
+      } catch (error) {
+        throw error;
+      }
+    },
+    [createMutation]
+  );
 
-  const updateMasterData = useCallback(async (
-    id: string, 
-    updates: Partial<MasterDataDetail>
-  ): Promise<void> => {
-    try {
-      await updateMutation.mutateAsync({ id, data: updates });
-    } catch (error) {
-      throw error;
-    }
-  }, [updateMutation]);
+  const updateMasterData = useCallback(
+    async (id: string, updates: Partial<MasterDataDetail>): Promise<void> => {
+      try {
+        await updateMutation.mutateAsync({ id, data: updates });
+      } catch (error) {
+        throw error;
+      }
+    },
+    [updateMutation]
+  );
 
-  const deleteMasterData = useCallback(async (id: string): Promise<void> => {
-    try {
-      await deleteMutation.mutateAsync(id);
-    } catch (error) {
-      throw error;
-    }
-  }, [deleteMutation]);
+  const deleteMasterData = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        await deleteMutation.mutateAsync(id);
+      } catch (error) {
+        throw error;
+      }
+    },
+    [deleteMutation]
+  );
 
   // エラーメッセージのフォーマット
   const formatErrorMessage = useCallback((error: unknown): string => {
@@ -136,14 +138,14 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
   return {
     // データ
     masterData: data?.items || [],
-    
+
     // 状態
     loading: isLoading,
     error: error ? formatErrorMessage(error) : null,
-    
+
     // フィルター
     filters,
-    
+
     // アクション
     fetchMasterData: refreshData,
     createMasterData,
@@ -151,16 +153,16 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
     deleteMasterData,
     updateFilters,
     resetFilters,
-    
+
     // 追加状態（React Query特有）
     isFetching, // バックグラウンドフェッチ中
     isRefetching, // 手動リフレッシュ中
-    
+
     // ミューテーション状態
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    
+
     // データ統計
     total: data?.total || 0,
   };

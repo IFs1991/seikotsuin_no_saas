@@ -1,6 +1,5 @@
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
-import nextConfig from 'eslint-config-next';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -15,17 +14,16 @@ const compat = new FlatCompat({
 const eslintConfig = [
   // Base JavaScript recommended rules
   js.configs.recommended,
-  
+
   // Next.js configuration with TypeScript support
   ...compat.config({
     extends: [
-      'next/core-web-vitals',
-      'next/typescript',
-      '@typescript-eslint/recommended',
+      'plugin:@next/next/core-web-vitals',
+      'plugin:@typescript-eslint/recommended',
       'plugin:react/recommended',
       'plugin:react-hooks/recommended',
       'plugin:jsx-a11y/recommended',
-      'prettier'
+      'prettier',
     ],
     parser: '@typescript-eslint/parser',
     plugins: [
@@ -33,30 +31,32 @@ const eslintConfig = [
       'react',
       'react-hooks',
       'jsx-a11y',
-      'prettier'
+      'prettier',
     ],
     rules: {
       'prettier/prettier': 'error',
-      
+
       // TypeScript特有のルール
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/prefer-const': 'error',
       '@typescript-eslint/no-var-requires': 'error',
-      
+
       // React特有のルール
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
       'react/display-name': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      
+
       // Next.js特有のルール
       '@next/next/no-img-element': 'error',
       '@next/next/no-html-link-for-pages': 'error',
-      
+
       // アクセシビリティルール（医療系システムのため重要）
       'jsx-a11y/alt-text': 'error',
       'jsx-a11y/aria-props': 'error',
@@ -64,34 +64,34 @@ const eslintConfig = [
       'jsx-a11y/aria-unsupported-elements': 'error',
       'jsx-a11y/role-has-required-aria-props': 'error',
       'jsx-a11y/role-supports-aria-props': 'error',
-      
+
       // セキュリティ関連（医療系システムのため厳格に）
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
       'no-script-url': 'error',
-      
+
       // コード品質
       'prefer-const': 'error',
       'no-var': 'error',
       'no-console': 'warn',
       'no-debugger': 'error',
       'no-duplicate-imports': 'error',
-      'no-unused-expressions': 'error'
+      'no-unused-expressions': 'error',
     },
     env: {
       browser: true,
       es2021: true,
       node: true,
-      jest: true
+      jest: true,
     },
     settings: {
       react: {
-        version: 'detect'
-      }
-    }
+        version: 'detect',
+      },
+    },
   }),
-  
+
   // ファイル固有の設定
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -100,12 +100,59 @@ const eslintConfig = [
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
-          jsx: true
-        }
-      }
-    }
+          jsx: true,
+        },
+      },
+    },
   },
-  
+
+  // テストファイル向けのルール緩和
+  {
+    files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**', 'src/**/e2e/**'],
+    rules: {
+      '@typescript-eslint/no-var-requires': 'off',
+      'no-console': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-script-url': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+    },
+  },
+
+  // Next.js の自動生成ファイルは対象外/緩和
+  {
+    files: ['next-env.d.ts'],
+    rules: {
+      '@typescript-eslint/triple-slash-reference': 'off',
+    },
+  },
+
+  // サーバーコード/APIでは console と any を許容（ログ出力と疎通優先）
+  {
+    files: ['src/app/api/**/*.{ts,tsx}', 'src/lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  // Hooks/Componentsでは any 警告を抑制（段階的改善対象）
+  {
+    files: ['src/hooks/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  // Jest セットアップは console を許容
+  {
+    files: ['jest.setup.js'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
   // 除外設定
   {
     ignores: [
@@ -116,9 +163,9 @@ const eslintConfig = [
       'build/',
       'coverage/',
       '*.config.js',
-      '*.config.mjs'
-    ]
-  }
+      '*.config.mjs',
+    ],
+  },
 ];
 
 export default eslintConfig;

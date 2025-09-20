@@ -12,15 +12,17 @@ jest.mock('../../lib/api-client');
 const mockApi = apiClient as jest.Mocked<typeof apiClient>;
 
 // Mock関数の型定義を修正
-const mockFetchDashboardData = jest.fn() as jest.MockedFunction<typeof apiClient.fetchDashboardData>;
+const mockFetchDashboardData = jest.fn() as jest.MockedFunction<
+  typeof apiClient.fetchDashboardData
+>;
 
 // Mock window.location
 const mockLocation = {
-  href: ''
+  href: '',
 };
 Object.defineProperty(window, 'location', {
   value: mockLocation,
-  writable: true
+  writable: true,
 });
 
 describe('useDashboard', () => {
@@ -30,7 +32,7 @@ describe('useDashboard', () => {
       revenue: 50000,
       patients: 25,
       insuranceRevenue: 30000,
-      privateRevenue: 20000
+      privateRevenue: 20000,
     },
     aiComment: {
       id: 'comment-1',
@@ -38,17 +40,17 @@ describe('useDashboard', () => {
       highlights: ['Good performance'],
       improvements: ['可以改进'],
       suggestions: ['Continue current strategy'],
-      created_at: '2024-01-15T10:00:00Z'
+      created_at: '2024-01-15T10:00:00Z',
     },
     revenueChartData: [
-      { name: '2024-01-14', '総売上': 45000, '保険診療': 27000, '自費診療': 18000 },
-      { name: '2024-01-15', '総売上': 50000, '保険診療': 30000, '自費診療': 20000 }
+      { name: '2024-01-14', 総売上: 45000, 保険診療: 27000, 自費診療: 18000 },
+      { name: '2024-01-15', 総売上: 50000, 保険診療: 30000, 自費診療: 20000 },
     ],
     heatmapData: [
       { hour_of_day: 9, day_of_week: 1, visit_count: 5, avg_revenue: 2000 },
-      { hour_of_day: 10, day_of_week: 1, visit_count: 8, avg_revenue: 2500 }
+      { hour_of_day: 10, day_of_week: 1, visit_count: 8, avg_revenue: 2500 },
     ],
-    alerts: ['高い収益を記録しました']
+    alerts: ['高い収益を記録しました'],
   };
 
   beforeEach(() => {
@@ -61,7 +63,7 @@ describe('useDashboard', () => {
   it('should fetch dashboard data successfully', async () => {
     mockFetchDashboardData.mockResolvedValueOnce({
       success: true,
-      data: mockDashboardData
+      data: mockDashboardData,
     });
 
     const { result } = renderHook(() => useDashboard(mockClinicId));
@@ -82,12 +84,12 @@ describe('useDashboard', () => {
     const mockError = {
       code: 'CLINIC_NOT_FOUND',
       message: '店舗が見つかりません',
-      timestamp: '2024-01-15T10:00:00Z'
+      timestamp: '2024-01-15T10:00:00Z',
     };
 
     mockFetchDashboardData.mockResolvedValueOnce({
       success: false,
-      error: mockError
+      error: mockError,
     });
 
     mockApi.isErrorResponse.mockReturnValueOnce(true);
@@ -112,7 +114,9 @@ describe('useDashboard', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.error).toBe('ダッシュボードデータの取得に失敗しました');
+    expect(result.current.error).toBe(
+      'ダッシュボードデータの取得に失敗しました'
+    );
   });
 
   it('should handle missing clinic ID', async () => {
@@ -129,7 +133,7 @@ describe('useDashboard', () => {
   it('should refetch data when refetch is called', async () => {
     mockFetchDashboardData.mockResolvedValue({
       success: true,
-      data: mockDashboardData
+      data: mockDashboardData,
     });
 
     const { result } = renderHook(() => useDashboard(mockClinicId));
@@ -151,7 +155,7 @@ describe('useDashboard', () => {
     it('should navigate to daily reports', async () => {
       mockFetchDashboardData.mockResolvedValueOnce({
         success: true,
-        data: mockDashboardData
+        data: mockDashboardData,
       });
 
       const { result } = renderHook(() => useDashboard(mockClinicId));
@@ -170,7 +174,7 @@ describe('useDashboard', () => {
     it('should navigate to patients page', async () => {
       mockFetchDashboardData.mockResolvedValueOnce({
         success: true,
-        data: mockDashboardData
+        data: mockDashboardData,
       });
 
       const { result } = renderHook(() => useDashboard(mockClinicId));
@@ -189,7 +193,7 @@ describe('useDashboard', () => {
     it('should navigate to chat page', async () => {
       mockFetchDashboardData.mockResolvedValueOnce({
         success: true,
-        data: mockDashboardData
+        data: mockDashboardData,
       });
 
       const { result } = renderHook(() => useDashboard(mockClinicId));
@@ -208,7 +212,7 @@ describe('useDashboard', () => {
     it('should handle unknown action', async () => {
       mockFetchDashboardData.mockResolvedValueOnce({
         success: true,
-        data: mockDashboardData
+        data: mockDashboardData,
       });
 
       const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -223,7 +227,10 @@ describe('useDashboard', () => {
         result.current.handleQuickAction('unknown-action');
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Unknown quick action:', 'unknown-action');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Unknown quick action:',
+        'unknown-action'
+      );
       expect(mockLocation.href).toBe('');
 
       consoleSpy.mockRestore();
@@ -237,7 +244,7 @@ describe('useDashboard', () => {
 
     mockFetchDashboardData.mockResolvedValueOnce({
       success: true,
-      data: mockDashboardData
+      data: mockDashboardData,
     });
 
     const { result } = renderHook(() => useDashboard());

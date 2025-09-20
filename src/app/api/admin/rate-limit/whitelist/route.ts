@@ -9,7 +9,12 @@ import { z } from 'zod';
 
 // ホワイトリスト追加スキーマ
 const WhitelistAddSchema = z.object({
-  type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
+  type: z.enum([
+    'login_attempts',
+    'api_calls',
+    'session_creation',
+    'mfa_attempts',
+  ]),
   identifier: z.string().min(1, '識別子が必要です'),
   ttl: z.number().positive().optional(),
   reason: z.string().optional(),
@@ -17,7 +22,12 @@ const WhitelistAddSchema = z.object({
 
 // ホワイトリストチェックスキーマ
 const WhitelistCheckSchema = z.object({
-  type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
+  type: z.enum([
+    'login_attempts',
+    'api_calls',
+    'session_creation',
+    'mfa_attempts',
+  ]),
   identifier: z.string().min(1, '識別子が必要です'),
 });
 
@@ -45,23 +55,25 @@ export async function POST(request: NextRequest) {
       ttl,
       addedAt: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('ホワイトリスト追加エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'ホワイトリスト追加に失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'ホワイトリスト追加に失敗しました',
       },
       { status: 500 }
     );
@@ -90,13 +102,15 @@ export async function GET(request: NextRequest) {
       isWhitelisted,
       checkedAt: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('ホワイトリストチェックエラー:', error);
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'ホワイトリストチェックに失敗しました' 
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'ホワイトリストチェックに失敗しました',
       },
       { status: 500 }
     );

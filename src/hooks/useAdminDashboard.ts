@@ -57,7 +57,11 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
   const [overallKpis, setOverallKpis] = useState<OverallKpis | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<{ sortBy?: string; order?: 'asc' | 'desc'; clinicId?: string | null }>({});
+  const [filter, setFilter] = useState<{
+    sortBy?: string;
+    order?: 'asc' | 'desc';
+    clinicId?: string | null;
+  }>({});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -110,8 +114,15 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
       staffPerformance.forEach(perf => {
         const clinicAgg = aggregatedMap.get(perf.clinic_id);
         if (clinicAgg) {
-          clinicStaffCounts.set(perf.clinic_id, (clinicStaffCounts.get(perf.clinic_id) || 0) + 1);
-          clinicPerformanceSums.set(perf.clinic_id, (clinicPerformanceSums.get(perf.clinic_id) || 0) + perf.performance_score);
+          clinicStaffCounts.set(
+            perf.clinic_id,
+            (clinicStaffCounts.get(perf.clinic_id) || 0) + 1
+          );
+          clinicPerformanceSums.set(
+            perf.clinic_id,
+            (clinicPerformanceSums.get(perf.clinic_id) || 0) +
+              perf.performance_score
+          );
         }
       });
 
@@ -127,7 +138,9 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
 
       // 5. フィルタリングとソート
       if (filter.clinicId) {
-        currentAggregatedClinics = currentAggregatedClinics.filter(c => c.id === filter.clinicId);
+        currentAggregatedClinics = currentAggregatedClinics.filter(
+          c => c.id === filter.clinicId
+        );
       }
 
       if (filter.sortBy) {
@@ -138,7 +151,9 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
             return filter.order === 'asc' ? valA - valB : valB - valA;
           }
           if (typeof valA === 'string' && typeof valB === 'string') {
-            return filter.order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            return filter.order === 'asc'
+              ? valA.localeCompare(valB)
+              : valB.localeCompare(valA);
           }
           return 0;
         });
@@ -146,18 +161,27 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
 
       // 6. 全体KPIの計算
       const calculatedOverallKpis: OverallKpis = {
-        totalGroupRevenue: currentAggregatedClinics.reduce((sum, c) => sum + c.totalRevenue, 0),
-        totalGroupPatientCount: currentAggregatedClinics.reduce((sum, c) => sum + c.totalPatientCount, 0),
-        averageGroupPerformance: currentAggregatedClinics.length > 0
-          ? currentAggregatedClinics.reduce((sum, c) => sum + c.averagePerformanceScore, 0) / currentAggregatedClinics.length
-          : 0,
+        totalGroupRevenue: currentAggregatedClinics.reduce(
+          (sum, c) => sum + c.totalRevenue,
+          0
+        ),
+        totalGroupPatientCount: currentAggregatedClinics.reduce(
+          (sum, c) => sum + c.totalPatientCount,
+          0
+        ),
+        averageGroupPerformance:
+          currentAggregatedClinics.length > 0
+            ? currentAggregatedClinics.reduce(
+                (sum, c) => sum + c.averagePerformanceScore,
+                0
+              ) / currentAggregatedClinics.length
+            : 0,
       };
 
       setClinicsData(currentAggregatedClinics);
       setOverallKpis(calculatedOverallKpis);
-
     } catch (err: any) {
-      console.error("Adminダッシュボードデータの取得に失敗しました:", err);
+      console.error('Adminダッシュボードデータの取得に失敗しました:', err);
       setError(err.message || 'データの取得中に不明なエラーが発生しました。');
     } finally {
       setLoading(false);
@@ -171,26 +195,38 @@ const useAdminDashboard = (): AdminDashboardHookReturn => {
     // clinics, daily_reports, staff_performance テーブルの変更を監視
     const clinicsChannel = supabase
       .channel('admin_dashboard_clinics')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clinics' }, payload => {
-        console.log('Clinics change received:', payload);
-        fetchData(); // 変更があったらデータを再取得
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clinics' },
+        payload => {
+          console.log('Clinics change received:', payload);
+          fetchData(); // 変更があったらデータを再取得
+        }
+      )
       .subscribe();
 
     const dailyReportsChannel = supabase
       .channel('admin_dashboard_daily_reports')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_reports' }, payload => {
-        console.log('Daily reports change received:', payload);
-        fetchData(); // 変更があったらデータを再取得
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'daily_reports' },
+        payload => {
+          console.log('Daily reports change received:', payload);
+          fetchData(); // 変更があったらデータを再取得
+        }
+      )
       .subscribe();
 
     const staffPerformanceChannel = supabase
       .channel('admin_dashboard_staff_performance')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_performance' }, payload => {
-        console.log('Staff performance change received:', payload);
-        fetchData(); // 変更があったらデータを再取得
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'staff_performance' },
+        payload => {
+          console.log('Staff performance change received:', payload);
+          fetchData(); // 変更があったらデータを再取得
+        }
+      )
       .subscribe();
 
     return () => {

@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
       }
 
       isValid = await mfaManager.verifyTOTP(userId, code, window);
-
     } else if (type === 'backup') {
       // バックアップコード検証
       if (code.length !== 8) {
@@ -45,7 +44,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const backupResult = await backupCodeManager.verifyAndMarkBackupCode(userId, code);
+      const backupResult = await backupCodeManager.verifyAndMarkBackupCode(
+        userId,
+        code
+      );
       isValid = backupResult.isValid;
       additionalInfo = {
         remainingCodes: backupResult.remainingCodes,
@@ -57,23 +59,23 @@ export async function POST(request: NextRequest) {
       isValid,
       ...additionalInfo,
     });
-
   } catch (error) {
     console.error('MFA認証検証エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'MFA認証検証に失敗しました' 
+      {
+        error:
+          error instanceof Error ? error.message : 'MFA認証検証に失敗しました',
       },
       { status: 500 }
     );

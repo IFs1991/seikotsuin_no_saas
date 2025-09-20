@@ -34,23 +34,23 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'MFAが無効化されました',
     });
-
   } catch (error) {
     console.error('MFA無効化エラー:', error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
+        {
           error: '入力値が無効です',
-          details: error.errors 
+          details: error.errors,
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'MFA無効化に失敗しました' 
+      {
+        error:
+          error instanceof Error ? error.message : 'MFA無効化に失敗しました',
       },
       { status: 500 }
     );

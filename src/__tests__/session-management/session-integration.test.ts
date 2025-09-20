@@ -34,9 +34,9 @@ describe('セッション管理統合テスト', () => {
     sessionManager = new SessionManager();
     securityMonitor = new SecurityMonitor();
     multiDeviceManager = new MultiDeviceManager();
-    
+
     jest.clearAllMocks();
-    
+
     // デフォルトモック設定
     mockSupabase.single.mockResolvedValue({
       data: null,
@@ -95,15 +95,23 @@ describe('セッション管理統合テスト', () => {
         error: null,
       });
 
-      const validationResult = await sessionManager.validateSession(createResult.token);
+      const validationResult = await sessionManager.validateSession(
+        createResult.token
+      );
 
       expect(validationResult.isValid).toBe(true);
       expect(validationResult.session?.id).toBe(mockCreatedSession.id);
 
       // 3. セッション無効化
       // revoke 前のセッション取得に応答
-      mockSupabase.single.mockResolvedValueOnce({ data: mockCreatedSession, error: null });
-      await sessionManager.revokeSession(mockCreatedSession.id, 'manual_logout');
+      mockSupabase.single.mockResolvedValueOnce({
+        data: mockCreatedSession,
+        error: null,
+      });
+      await sessionManager.revokeSession(
+        mockCreatedSession.id,
+        'manual_logout'
+      );
 
       // 実装の更新フィールド（revoked_reason 等）に整合
       expect(mockSupabase.update).toHaveBeenCalledWith(
@@ -131,7 +139,7 @@ describe('セッション管理統合テスト', () => {
       const threatData = Array.from({ length: 6 }, (_, i) => ({
         event_type: 'login_failed',
         ip_address: suspiciousSession.ip_address,
-        created_at: new Date(Date.now() - (i * 60 * 1000)).toISOString(),
+        created_at: new Date(Date.now() - i * 60 * 1000).toISOString(),
       }));
 
       mockSupabase.single
@@ -147,8 +155,14 @@ describe('セッション管理統合テスト', () => {
       // 実装では session_hijack 等を検出。脅威があれば無効化を実行
       if (Array.isArray(threats) && threats.length > 0) {
         // revoke 前のセッション取得に応答
-        mockSupabase.single.mockResolvedValueOnce({ data: suspiciousSession, error: null });
-        await sessionManager.revokeSession(suspiciousSession.id, 'security_violation');
+        mockSupabase.single.mockResolvedValueOnce({
+          data: suspiciousSession,
+          error: null,
+        });
+        await sessionManager.revokeSession(
+          suspiciousSession.id,
+          'security_violation'
+        );
         expect(mockSupabase.update).toHaveBeenCalledWith(
           expect.objectContaining({
             is_active: false,
@@ -167,12 +181,22 @@ describe('セッション管理統合テスト', () => {
 
     const devices = [
       {
-        deviceInfo: { browser: 'Chrome', os: 'Windows', device: 'desktop', isMobile: false },
+        deviceInfo: {
+          browser: 'Chrome',
+          os: 'Windows',
+          device: 'desktop',
+          isMobile: false,
+        },
         ipAddress: '192.168.1.100',
         userAgent: 'Mozilla/5.0 (Windows...',
       },
       {
-        deviceInfo: { browser: 'Safari', os: 'iOS', device: 'mobile', isMobile: true },
+        deviceInfo: {
+          browser: 'Safari',
+          os: 'iOS',
+          device: 'mobile',
+          isMobile: true,
+        },
         ipAddress: '192.168.1.101',
         userAgent: 'Mozilla/5.0 (iPhone...',
       },
@@ -208,7 +232,12 @@ describe('セッション管理統合テスト', () => {
 
     it('デバイス信頼管理と新規デバイス検証', async () => {
       const newDevice = {
-        deviceInfo: { browser: 'Firefox', os: 'Linux', device: 'desktop', isMobile: false },
+        deviceInfo: {
+          browser: 'Firefox',
+          os: 'Linux',
+          device: 'desktop',
+          isMobile: false,
+        },
         ipAddress: '10.0.0.1',
         userAgent: 'Mozilla/5.0 (X11; Linux...',
       };
@@ -253,12 +282,16 @@ describe('セッション管理統合テスト', () => {
       });
 
       // セッション延長前のセキュリティチェック
-      const validationResult = await sessionManager.validateSession('test-token');
-      
+      const validationResult =
+        await sessionManager.validateSession('test-token');
+
       if (validationResult.isValid && validationResult.session) {
         // 実装の延長APIに整合（refreshSession を使用）
         // refreshSession 内部の validate 用に再度セッションを返す
-        mockSupabase.single.mockResolvedValueOnce({ data: validationResult.session, error: null });
+        mockSupabase.single.mockResolvedValueOnce({
+          data: validationResult.session,
+          error: null,
+        });
         const refreshed = await sessionManager.refreshSession('test-token');
         expect(refreshed).toBe(true);
       }
@@ -268,11 +301,18 @@ describe('セッション管理統合テスト', () => {
   describe('エラーハンドリング統合', () => {
     it('データベース接続エラー時の適切な処理', async () => {
       // データベースエラーのモック
-      mockSupabase.single.mockRejectedValue(new Error('Database connection failed'));
+      mockSupabase.single.mockRejectedValue(
+        new Error('Database connection failed')
+      );
 
       await expect(
         sessionManager.createSession('user-123', 'clinic-456', {
-          deviceInfo: { browser: 'Chrome', os: 'Windows', device: 'desktop', isMobile: false },
+          deviceInfo: {
+            browser: 'Chrome',
+            os: 'Windows',
+            device: 'desktop',
+            isMobile: false,
+          },
           ipAddress: '192.168.1.100',
           userAgent: 'test',
           rememberDevice: false,
@@ -282,7 +322,8 @@ describe('セッション管理統合テスト', () => {
 
     it('部分的システム障害時の graceful degradation', async () => {
       // セキュリティモニターのエラー
-      jest.spyOn(securityMonitor, 'analyzeSessionActivity')
+      jest
+        .spyOn(securityMonitor, 'analyzeSessionActivity')
         .mockRejectedValue(new Error('Security monitor unavailable'));
 
       // セッション検証は継続される（セキュリティチェックなし）
@@ -299,7 +340,7 @@ describe('セッション管理統合テスト', () => {
       });
 
       const result = await sessionManager.validateSession('test-token');
-      
+
       // 基本的な検証は成功
       expect(result.isValid).toBe(true);
       // セキュリティ警告がログに記録される（実装メッセージに整合）
@@ -322,9 +363,9 @@ describe('セッション管理統合テスト', () => {
       });
 
       const startTime = performance.now();
-      
+
       await sessionManager.validateSession('performance-test-token');
-      
+
       const endTime = performance.now();
       const duration = endTime - startTime;
 
