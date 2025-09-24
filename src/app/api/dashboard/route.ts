@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { ApiResponse, DashboardData, ApiError } from '../../../types/api';
 import {
   normalizeSupabaseError,
@@ -10,11 +9,7 @@ import {
   validation,
   ValidationErrorCollector,
 } from '../../../lib/error-handler';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { ensureClinicAccess } from '@/lib/supabase/guards';
 
 export async function GET(
   request: NextRequest
@@ -46,6 +41,14 @@ export async function GET(
       );
     }
 
+    const { supabase } = await ensureClinicAccess(
+      request,
+      path,
+      clinicId
+    );
+
+    const resolvedClinicId = clinicId!;
+
     // 基本的なダッシュボードデータを取得
     const today = new Date().toISOString().split('T')[0];
 
@@ -53,7 +56,7 @@ export async function GET(
     const { data: dailyRevenue, error: revenueError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
-      .eq('clinic_id', clinicId!)
+      .eq('clinic_id', resolvedClinicId)
       .eq('revenue_date', today)
       .single();
 
@@ -65,7 +68,7 @@ export async function GET(
     const { data: patientCount, error: patientError } = await supabase
       .from('visits')
       .select('patient_id')
-      .eq('clinic_id', clinicId!)
+      .eq('clinic_id', resolvedClinicId)
       .gte('visit_date', today)
       .lt(
         'visit_date',
@@ -80,7 +83,7 @@ export async function GET(
     const { data: aiComment, error: aiError } = await supabase
       .from('daily_ai_comments')
       .select('*')
-      .eq('clinic_id', clinicId!)
+      .eq('clinic_id', resolvedClinicId)
       .eq('comment_date', today)
       .single();
 
@@ -95,7 +98,7 @@ export async function GET(
     const { data: revenueChartData, error: chartError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
-      .eq('clinic_id', clinicId!)
+      .eq('clinic_id', resolvedClinicId)
       .gte('revenue_date', sevenDaysAgo)
       .order('revenue_date', { ascending: true });
 
@@ -106,7 +109,7 @@ export async function GET(
     // ヒートマップデータ（時間別来院パターン）
     const { data: heatmapData, error: heatmapError } = await supabase.rpc(
       'get_hourly_visit_pattern',
-      { clinic_uuid: clinicId! }
+      { clinic_uuid: resolvedClinicId }
     );
 
     if (heatmapError) {

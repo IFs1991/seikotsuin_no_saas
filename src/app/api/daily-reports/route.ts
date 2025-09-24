@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { AppError } from '../../../lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const PATH = '/api/daily-reports';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +17,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
 
     let query = supabase
       .from('daily_reports')
@@ -109,6 +109,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Daily Reports API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -138,6 +144,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
+      allowedRoles: ['manager'],
+    });
 
     const { data, error } = await supabase
       .from('daily_reports')
@@ -169,6 +179,12 @@ export async function POST(request: NextRequest) {
       data,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Daily Reports POST error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -189,6 +205,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    const { supabase } = await ensureClinicAccess(request, PATH, null, {
+      allowedRoles: ['manager'],
+      requireClinicMatch: false,
+    });
+
     const { error } = await supabase
       .from('daily_reports')
       .delete()
@@ -203,6 +224,12 @@ export async function DELETE(request: NextRequest) {
       message: 'Report deleted successfully',
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Daily Reports DELETE error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

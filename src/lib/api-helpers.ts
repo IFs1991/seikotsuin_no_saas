@@ -3,10 +3,17 @@
 // =================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import DOMPurify from 'isomorphic-dompurify';
-import type { Database } from '@/types/supabase';
 import { logger } from '@/lib/logger';
+import { AppError } from '@/lib/error-handler';
+import {
+  ensureClinicAccess,
+  type ClinicAccessOptions,
+} from '@/lib/supabase/guards';
+import type {
+  SupabaseServerClient,
+  UserPermissions,
+} from '@/lib/supabase/server';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -43,69 +50,35 @@ export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 export async function verifyAdminAuth(
   request: NextRequest
 ): Promise<AuthResult> {
+  const path = new URL(request.url).pathname;
+
   try {
-    // Cookieからセッション情報を取得
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    const { user, permissions } = await ensureClinicAccess(
+      request,
+      path,
+      null,
       {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            );
-          },
-        },
+        allowedRoles: ['admin', 'clinic_manager'],
+        requireClinicMatch: false,
       }
     );
-
-    // ユーザー認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return {
-        success: false,
-        error: '認証が必要です',
-      };
-    }
-
-    // ユーザーのプロファイル（権限）チェック
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return {
-        success: false,
-        error: 'ユーザープロファイルが見つかりません',
-      };
-    }
-
-    // 管理者権限チェック
-    if (!['admin', 'clinic_manager'].includes(profile.role)) {
-      return {
-        success: false,
-        error: '管理者権限が必要です',
-      };
-    }
 
     return {
       success: true,
       user: {
         id: user.id,
         email: user.email || '',
-        role: profile.role,
+        role: permissions.role,
       },
     };
   } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+
     logger.error('認証エラー:', error);
     return {
       success: false,
@@ -180,44 +153,96 @@ export function createSuccessResponse<T>(
  * APIリクエストの共通前処理
  * 認証チェック + 入力サニタイゼーション
  */
+export interface ProcessApiOptions {
+  requireBody?: boolean;
+  allowedRoles?: string[];
+  clinicId?: string | null;
+  requireClinicMatch?: boolean;
+  sanitizeInputValues?: boolean;
+}
+
+export interface ProcessApiSuccess {
+  success: true;
+  auth: AuthResult['user'];
+  permissions: UserPermissions;
+  supabase: SupabaseServerClient;
+  body?: unknown;
+}
+
+export interface ProcessApiFailure {
+  success: false;
+  error: NextResponse<ApiErrorResponse>;
+}
+
+export type ProcessApiResult = ProcessApiSuccess | ProcessApiFailure;
+
 export async function processApiRequest(
   request: NextRequest,
-  requireBody: boolean = false
-): Promise<{
-  success: boolean;
-  auth?: AuthResult['user'];
-  body?: unknown;
-  error?: NextResponse<ApiErrorResponse>;
-}> {
-  // 認証チェック
-  const authResult = await verifyAdminAuth(request);
+  options: ProcessApiOptions = {}
+): Promise<ProcessApiResult> {
+  const path = new URL(request.url).pathname;
 
-  if (!authResult.success) {
+  try {
+    const guardOptions: ClinicAccessOptions = {};
+    if (options.allowedRoles) {
+      guardOptions.allowedRoles = options.allowedRoles;
+    }
+    if (options.requireClinicMatch !== undefined) {
+      guardOptions.requireClinicMatch = options.requireClinicMatch;
+    }
+
+    const { supabase, user, permissions } = await ensureClinicAccess(
+      request,
+      path,
+      options.clinicId ?? null,
+      guardOptions
+    );
+
+    let body: unknown;
+    if (options.requireBody) {
+      try {
+        const rawBody = await request.json();
+        body = options.sanitizeInputValues === false
+          ? rawBody
+          : sanitizeInput(rawBody);
+      } catch {
+        return {
+          success: false,
+          error: createErrorResponse('無効なJSONデータです', 400),
+        };
+      }
+    }
+
     return {
-      success: false,
-      error: createErrorResponse(authResult.error!, 401),
+      success: true,
+      auth: {
+        id: user.id,
+        email: user.email || '',
+        role: permissions.role,
+      },
+      permissions,
+      supabase,
+      body,
     };
-  }
-
-  // リクエストボディの処理（必要な場合）
-  let body: unknown;
-  if (requireBody) {
-    try {
-      const rawBody = await request.json();
-      body = sanitizeInput(rawBody);
-    } catch (error) {
+  } catch (error) {
+    if (error instanceof AppError) {
       return {
         success: false,
-        error: createErrorResponse('無効なJSONデータです', 400),
+        error: createErrorResponse(
+          error.message,
+          error.statusCode,
+          undefined,
+          error.code
+        ),
       };
     }
-  }
 
-  return {
-    success: true,
-    auth: authResult.user,
-    body,
-  };
+    logger.error('processApiRequest error', error);
+    return {
+      success: false,
+      error: createErrorResponse('サーバーエラーが発生しました', 500),
+    };
+  }
 }
 
 /**

@@ -113,22 +113,65 @@ export async function generateAIComment(
   }
 
   try {
-    // const prompt = createAnalysisPrompt(analysisResult);
+    const prompt = createAnalysisPrompt(analysisResult);
 
-    // TODO: Gemini API実装
-    // const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'x-goog-api-key': apiKey,
-    //   },
-    //   body: JSON.stringify({
-    //     contents: [{ parts: [{ text: prompt }] }]
-    //   })
-    // });
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent`;
 
-    // 現在はモックデータを返す
-    return generateMockAIComment(analysisResult);
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 512,
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    const text =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p?.text ?? '')
+        .join('\n') ?? '';
+
+    // 応答はJSONで返すようプロンプトを設定しているが、安全のため抽出ロジックを用意
+    const parsed = parseAIResponseTextToObject(text);
+
+    // 型をAICommentに整形
+    const aiComment: AIComment = {
+      id: `ai-comment-${Date.now()}`,
+      clinic_id: 'default-clinic',
+      date: new Date().toISOString().split('T')[0],
+      summary: parsed.summary || analysisResult.aiInsights?.summary || '',
+      highlights: parsed.highlights?.length
+        ? parsed.highlights
+        : analysisResult.aiInsights?.recommendations || [],
+      improvements: parsed.improvements || [
+        '待ち時間の短縮が必要',
+        '予約システムの最適化',
+      ],
+      suggestions: parsed.suggestions?.length
+        ? parsed.suggestions
+        : analysisResult.aiInsights?.nextDayPlan || [],
+      created_at: new Date().toISOString(),
+    };
+
+    return aiComment;
   } catch (error) {
     console.error('AI comment generation failed:', error);
     return generateMockAIComment(analysisResult);
@@ -222,18 +265,65 @@ function generateNextDayPlan(
 
 function createAnalysisPrompt(analysisResult: AnalysisResult): string {
   return `
-整骨院の日次分析データを基に、経営改善のためのコメントを生成してください。
+あなたは整骨院の経営アナリストです。以下のデータから、経営改善のための簡潔なコメントを日本語で作成してください。出力は必ず次のJSON形式のみで返してください（余計な前置きやコードブロックは不要）。
 
-売上分析: 総売上${analysisResult.salesAnalysis.total.toLocaleString()}円、トレンド: ${analysisResult.salesAnalysis.trend}
-患者数: 総数${analysisResult.patientMetrics.total}名、新規${analysisResult.patientMetrics.newPatients}名
-リピート率: ${analysisResult.patientMetrics.returnRate}%
+{
+  "summary": string,               // 100文字以内の総評
+  "highlights": string[3],         // 好調だった点 最大3つ（配列長は1〜3）
+  "improvements": string[3],       // 改善が必要な点 最大3つ（配列長は1〜3）
+  "suggestions": string[3]         // 明日への提案 最大3つ（配列長は1〜3）
+}
 
-以下の形式で回答してください：
-- 総評（100文字以内）
-- 好調だった点（3つまで）
-- 改善が必要な点（3つまで）
-- 明日への提案（3つまで）
+入力データ:
+- 売上合計: ${analysisResult.salesAnalysis.total.toLocaleString()} 円
+- トレンド: ${analysisResult.salesAnalysis.trend}
+- 患者総数: ${analysisResult.patientMetrics.total} 名
+- 新規患者: ${analysisResult.patientMetrics.newPatients} 名
+- リピート率: ${analysisResult.patientMetrics.returnRate} %
+- 異常検知: ${(analysisResult.salesAnalysis.anomalies || []).join(' / ') || 'なし'}
 `;
+}
+
+function parseAIResponseTextToObject(text: string): {
+  summary?: string;
+  highlights?: string[];
+  improvements?: string[];
+  suggestions?: string[];
+} {
+  if (!text) return {};
+  // JSONとして直接解釈を試みる
+  const tryParse = (s: string) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return null;
+    }
+  };
+
+  // ```json ... ``` の中身を抽出
+  const fenced = text.match(/```(?:json)?\n([\s\S]*?)```/i);
+  const candidateJson = fenced?.[1]?.trim() || text.trim();
+  const obj = tryParse(candidateJson) || tryParse(extractFirstJsonObject(text));
+  if (obj && typeof obj === 'object') {
+    const summary = typeof obj.summary === 'string' ? obj.summary : undefined;
+    const arr = (v: any) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : undefined);
+    return {
+      summary,
+      highlights: arr(obj.highlights),
+      improvements: arr(obj.improvements),
+      suggestions: arr(obj.suggestions),
+    };
+  }
+  return {};
+}
+
+function extractFirstJsonObject(s: string): string {
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    return s.slice(start, end + 1);
+  }
+  return '';
 }
 
 function generateMockAIComment(analysisResult: AnalysisResult): AIComment {

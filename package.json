@@ -13,7 +13,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "clean": "rm -rf node_modules package-lock.json && npm cache clean --force"
+    "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",
+    "supabase:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID --schema public > src/types/supabase.ts",
+    "scan:secrets": "node scripts/scan-secrets.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

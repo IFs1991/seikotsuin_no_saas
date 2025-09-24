@@ -70,6 +70,15 @@ const eslintConfig = [
       'no-implied-eval': 'error',
       'no-new-func': 'error',
       'no-script-url': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'MemberExpression[object.object.name="process"][object.property.name="env"][property.name="SUPABASE_SERVICE_ROLE_KEY"]',
+          message:
+            'Do not reference SUPABASE_SERVICE_ROLE_KEY directly; use server-side helpers instead.',
+        },
+      ],
 
       // コード品質
       'prefer-const': 'error',

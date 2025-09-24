@@ -80,6 +80,12 @@ export class AuditLogger {
     if (userAgent !== undefined) entry.user_agent = userAgent;
 
     await this.createLogEntry(entry);
+
+    logger.warn('Unauthorized access attempt detected', {
+      attemptedResource,
+      userId,
+      ipAddress,
+    });
   }
 
   // ログイン失敗

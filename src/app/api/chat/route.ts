@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { AppError, ERROR_CODES } from '../../../lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { generateAIComment } from '../../../api/gemini/ai-analysis-service';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const PATH = '/api/chat';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +11,21 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('session_id');
     const userId = searchParams.get('user_id');
 
-    if (!sessionId && !userId) {
-      return NextResponse.json(
-        { error: 'session_id or user_id is required' },
-        { status: 400 }
+    const { supabase, user, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      null,
+      { requireClinicMatch: false }
+    );
+
+    const isPrivileged = ['admin', 'clinic_manager'].includes(permissions.role);
+    const effectiveUserId = userId ?? user.id;
+
+    if (effectiveUserId !== user.id && !isPrivileged) {
+      throw new AppError(
+        ERROR_CODES.FORBIDDEN,
+        '他ユーザーのチャット履歴を閲覧する権限がありません',
+        403
       );
     }
 
@@ -27,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     if (sessionId) {
       query = query.eq('id', sessionId);
-    } else if (userId) {
-      query = query.eq('user_id', userId);
+    } else {
+      query = query.eq('user_id', effectiveUserId);
     }
 
     const { data: sessions, error } = await query
@@ -44,6 +53,12 @@ export async function GET(request: NextRequest) {
       data: sessions,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Chat GET error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -55,12 +70,30 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { user_id, clinic_id, message, session_id } = body;
+    const { clinic_id, message, session_id } = body;
 
-    if (!user_id || !message) {
+    const { supabase, user, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      clinic_id,
+      { requireClinicMatch: Boolean(clinic_id) }
+    );
+
+    const user_id = body.user_id ?? user.id;
+
+    if (!message) {
       return NextResponse.json(
-        { error: 'user_id and message are required' },
+        { error: 'message is required' },
         { status: 400 }
+      );
+    }
+
+    const isPrivileged = ['admin', 'clinic_manager'].includes(permissions.role);
+    if (user.id !== user_id && !isPrivileged) {
+      throw new AppError(
+        ERROR_CODES.FORBIDDEN,
+        '他ユーザーとしてメッセージを送信する権限がありません',
+        403
       );
     }
 
@@ -144,6 +177,12 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Chat POST error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

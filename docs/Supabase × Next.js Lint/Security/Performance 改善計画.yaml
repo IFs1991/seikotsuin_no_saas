@@ -1,0 +1,211 @@
+meta:
+  title: "Supabase × Next.js Lint/Security/Performance 改善計画"
+  version: "1.0.0"
+  date: "2025-09-22"
+  scope:
+    - Lint出力スキーマの拡張
+    - ESLint Flat Configへの統一
+    - セキュリティルール強化（Node/React）
+    - SupabaseのRLS/キー運用/性能
+    - Git HooksとCIゲートの導入
+
+objectives:
+  - 観測性: ファイル/ルール/カテゴリ粒度でホットスポットを特定できるデータにする
+  - 安全性: 重大なセキュリティリスクをCIで未然ブロック
+  - 性能: RLSとクエリパスのボトルネックを構造的に削減
+  - 継続性: プリコミットとCIで品質を自動維持
+
+risks_to_address:
+  - 現状CSVの情報不足（file/rule/category欠落）
+  - Next標準ESLintのみでは一般JS規則が不足する点
+  - `eslint-plugin-security` の誤検知（抑制とルール選別が必要）
+  - npm 供給網の改ざんリスク（バージョン固定/監査/署名検討）
+
+lint_export_pipeline:
+  schema:
+    required: ["file_path","rule_id","level","category","message"]
+    optional: ["line","column","timestamp","project"]
+  extraction:
+    eslint_json: "eslint --max-warnings=0 -f json 'src/**/*.{ts,tsx,js,jsx}' > .reports/eslint.json"
+  normalization:
+    script: "node scripts/normalize-lint.js .reports/eslint.json > .reports/lints.csv"
+    notes:
+      - "rule_id は '@typescript-eslint/no-unused-vars' 等の完全名"
+      - "category は security/performance/accessibility/correctness/style 等に正規化"
+  artifacts:
+    - ".reports/lints.csv"
+    - "dashboards/lint_hotspots.csv"
+
+eslint:
+  migration:
+    config_style: "ESLint Flat Config (eslint.config.mjs)"
+  packages:
+    devDependencies:
+      - "eslint"
+      - "@eslint/js"
+      - "typescript"
+      - "typescript-eslint"        # plugin + parser バンドル
+      - "eslint-plugin-next"       # Next.js ルール
+      - "eslint-plugin-security"   # セキュリティのホットスポット検出
+      - "prettier"
+      - "eslint-config-prettier"
+  sample_eslint_config_mjs: |
+    // eslint.config.mjs
+    import js from "@eslint/js";
+    import tseslint from "typescript-eslint";
+    import nextPlugin from "eslint-plugin-next";
+    import security from "eslint-plugin-security";
+
+    export default [
+      // 1) ベース推奨（Next単体では含まれないため明示）
+      js.configs.recommended,
+
+      // 2) TypeScript推奨（型情報あり）
+      ...tseslint.configs.recommendedTypeChecked, // requires project in tsconfig
+      // 3) Next.js ルール（Core Web Vitals）
+      nextPlugin.configs["core-web-vitals"],
+
+      // 4) セキュリティ（誤検知は逐次disable可）
+      {
+        plugins: { security },
+        rules: {
+          "security/detect-object-injection": "off", // 誤検知が多い代表例
+        },
+      },
+
+      // 5) プロジェクト共通の調整
+      {
+        languageOptions: {
+          parserOptions: {
+            project: ["./tsconfig.json"],
+          },
+        },
+        rules: {
+          "@typescript-eslint/no-explicit-any": "warn",
+          "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+          "no-console": ["warn", { "allow": ["warn","error"] }],
+        },
+      },
+
+      // 6) Prettierと競合しないよう最終で無効化
+      {
+        rules: {
+          "arrow-body-style": "off",   // 例: Prettierと競合しやすい
+        },
+      },
+    ];
+  commands:
+    lint: "eslint ."
+    lint_fix: "eslint . --fix"
+  notes:
+    - "Next.jsの `next/core-web-vitals` はReact/Next特化。一般JS規則は `eslint:recommended` 相当を別途加える"
+
+precommit:
+  tools:
+    - "husky"
+    - "lint-staged"
+  setup:
+    scripts:
+      postinstall: "husky"
+      prepare: "husky"
+    husky_hooks:
+      pre-commit: |
+        npx lint-staged
+    lint_staged:
+      "*.ts": ["eslint --fix --max-warnings=0","prettier --write"]
+      "*.tsx": ["eslint --fix --max-warnings=0","prettier --write"]
+      "*.js": ["eslint --fix --max-warnings=0","prettier --write"]
+      "*.jsx": ["eslint --fix --max-warnings=0","prettier --write"]
+      "*.{json,md,css,scss}": ["prettier --write"]
+  supply_chain_hardening:
+    - "package.json と lockfile をコミット（厳密Pin）"
+    - "インシデント発生パッケージは安全版に固定（eslint-config-prettier 等）"
+    - "CIで `npm audit --omit=dev || pnpm audit` を毎回実行"
+    - "必要に応じて `--ignore-scripts` の一時適用やSandbox CIを検討"
+
+ci_gates:
+  provider: "GitHub Actions"
+  workflow: |
+    name: quality-gates
+    on: [push, pull_request]
+    jobs:
+      lint-typecheck:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with: { node-version: "20" }
+          - run: npm ci
+          - run: npm run lint
+          - run: npm run typecheck || tsc --noEmit
+          - run: npm audit --omit=dev
+      block-on-warnings:
+        needs: lint-typecheck
+        runs-on: ubuntu-latest
+        steps:
+          - run: 'test "$(git diff --name-only origin/main... | wc -l)" -eq 0 || exit 0'
+        if: ${{ always() }}
+  thresholds:
+    - "error:1件以上でfail"
+    - "WARN: 前回比 +10 以上でfail（baselineと比較）"
+
+supabase_security_performance:
+  rls:
+    enforce: "公開スキーマの全テーブルで RLS を有効化"
+    sql_example: |
+      alter table public.foo enable row level security;
+    policy_indexing:
+      tip: "ポリシーで使用する列（例: user_id や org_id）に B-Tree インデックスを作成"
+      example: "create index on public.foo (user_id);"
+  api_keys:
+    anon_key: "ブラウザ向け（権限はRLSにより制御）"
+    service_role_key:
+      usage: "サーバー/Edge Functions限定。クライアントに出さない"
+      rotation: "ダッシュボード/APIで定期ローテーション"
+  edge_functions:
+    secrets_access: "Deno.env.get('NAME_OF_SECRET') で取得"
+  query_performance:
+    - "必要な列のみselect（過剰取得を避ける）"
+    - "RPC/ビューの活用でネットワーク往復を減らす"
+    - "EXPLAIN ANALYZEで重いRLSや結合を特定"
+
+deliverables:
+  - "eslint.config.mjs（flat config）"
+  - "scripts/normalize-lint.js（JSON→正規化CSV）"
+  - ".husky/pre-commit（lint-staged起動）"
+  - ".reports/lints.csv（集計の元データ）"
+  - "GitHub Actions workflow: .github/workflows/quality-gates.yml"
+
+tickets:
+  - id: LINT-001
+    title: "ESLint Flat Configへの移行と推奨セット適用"
+    acceptance:
+      - "eslint.config.mjs を導入し、`eslint .` が成功"
+      - "typescript-eslint recommendedTypeChecked が有効"
+  - id: LINT-002
+    title: "Lint出力の正規化パイプライン実装"
+    acceptance:
+      - "file/rule/category/level を含むCSVが生成される"
+      - "ダッシュボードでルール別Top20を可視化"
+  - id: SEC-101
+    title: "RLS一括適用とポリシー列の索引作成"
+    acceptance:
+      - "公開スキーマ全テーブルでRLS=ON"
+      - "ポリシー参照列にインデックスが存在"
+  - id: SEC-102
+    title: "Service Role Key運用の固定化（サーバ限定・ローテーション）"
+    acceptance:
+      - "フロントエンドからService Role利用が排除"
+      - "ローテーション手順書の整備"
+  - id: CI-201
+    title: "Husky + lint-staged 導入"
+    acceptance:
+      - "pre-commitでESLint/Prettierが走り、失敗でコミットブロック"
+  - id: CI-202
+    title: "Quality Gates（lint/typecheck/audit）をPR必須に"
+    acceptance:
+      - "main保護 + PRでワークフロー成功が必須"
+
+notes:
+  - "security系ルールは誤検知があるため、`// eslint-disable-next-line` はPRでレビューのうえ限定使用"
+  - "Prettier連携は最後に適用してルール競合を避ける"

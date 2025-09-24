@@ -111,6 +111,14 @@ cp env.example .env.local
 # .env.localファイルを編集して必要な環境変数を設定
 ```
 
+必須環境変数（アプリケーション起動時に検証されます）:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+`NODE_ENV=test` 以外では上記が未設定の場合に起動時エラーとなります。
+
 4. **MCPサーバー起動**
 
 ```bash
@@ -137,6 +145,16 @@ npm run test:watch
 
 # カバレッジレポート生成
 npm run test:coverage
+```
+
+### 🔐 セキュリティスキャン & 型生成
+
+```bash
+# Supabase 型定義の再生成
+npm run supabase:types
+
+# 機密情報のバンドル混入チェック
+npm run scan:secrets
 ```
 
 ### 📦 パッケージマネージャ方針（重要）

@@ -1,25 +1,24 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/api/database/supabase-client';
-import { generateAnalysisReport } from '../api/gemini/ai-analysis-service';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
-  timestamp: Date;
-  storeIds?: string[];
+  createdAt: string;
 }
 
 interface ChatState {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
-  selectedStores: string[];
-  visualizationEnabled: boolean;
-  exportChat?: () => void;
-  searchHistory?: () => void;
+}
+
+interface ChatApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 export const useAdminChat = () => {
@@ -27,132 +26,141 @@ export const useAdminChat = () => {
     messages: [],
     isLoading: false,
     error: null,
-    selectedStores: [],
-    visualizationEnabled: false,
   });
 
-  // supabaseは既にインポート済み
-
-  const connectWebSocket = useCallback(() => {
-    const channel = supabase
-      .channel('admin-chat')
-      .on('presence', { event: 'sync' }, () => {
-        console.log('Presence sync');
-      })
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [supabase]);
-
-  const loadChatHistory = useCallback(async () => {
+  const fetchMessages = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select('*')
-        .order('timestamp', { ascending: true });
+      const response = await fetch('/api/chat', {
+        method: 'GET',
+        credentials: 'include',
+      });
 
-      if (error) throw error;
+      const payload = (await response.json()) as ChatApiResponse<
+        Array<{
+          id: string;
+          chat_messages?: Array<{
+            id: string;
+            sender: 'user' | 'ai';
+            message_text: string;
+            created_at: string;
+          }>;
+        }>
+      >;
 
-      setState(prev => ({
-        ...prev,
-        messages: data,
-      }));
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.error || 'チャット履歴の取得に失敗しました');
+      }
+
+      const messages = payload.data
+        .flatMap(session => session.chat_messages ?? [])
+        .sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        )
+        .map<Message>(message => ({
+          id: message.id,
+          content: message.message_text,
+          role: message.sender === 'ai' ? 'assistant' : 'user',
+          createdAt: message.created_at,
+        }));
+
+      setState({ messages, isLoading: false, error: null });
     } catch (error) {
+      console.error(error);
       setState(prev => ({
         ...prev,
+        isLoading: false,
         error: 'チャット履歴の読み込みに失敗しました',
       }));
     }
-  }, [supabase]);
+  }, []);
 
   const sendMessage = useCallback(
     async (content: string) => {
-      setState(prev => ({ ...prev, isLoading: true }));
+      if (!content.trim()) return;
 
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
       try {
-        const message: Message = {
-          id: crypto.randomUUID(),
-          content,
-          role: 'user',
-          timestamp: new Date(),
-          storeIds: state.selectedStores,
-        };
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: content }),
+        });
 
-        await supabase.from('chat_sessions').insert([message]);
+        const payload = (await response.json()) as ChatApiResponse<{
+          session_id: string;
+          user_message: {
+            id: string;
+            message_text: string;
+            created_at: string;
+          };
+          ai_message: {
+            id: string;
+            message_text: string;
+            created_at: string;
+          };
+        }>;
 
-        const aiResponse = await gemini.generateResponse(
-          content,
-          state.selectedStores
-        );
-
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          content: aiResponse,
-          role: 'assistant',
-          timestamp: new Date(),
-          storeIds: state.selectedStores,
-        };
-
-        await supabase.from('chat_sessions').insert([assistantMessage]);
+        if (!response.ok || !payload.success || !payload.data) {
+          throw new Error(payload.error || 'メッセージ送信に失敗しました');
+        }
 
         setState(prev => ({
           ...prev,
-          messages: [...prev.messages, message, assistantMessage],
           isLoading: false,
+          messages: [
+            ...prev.messages,
+            {
+              id: payload.data.user_message.id,
+              content: payload.data.user_message.message_text,
+              role: 'user',
+              createdAt: payload.data.user_message.created_at,
+            },
+            {
+              id: payload.data.ai_message.id,
+              content: payload.data.ai_message.message_text,
+              role: 'assistant',
+              createdAt: payload.data.ai_message.created_at,
+            },
+          ],
         }));
       } catch (error) {
+        console.error(error);
         setState(prev => ({
           ...prev,
-          error: 'メッセージの送信に失敗しました',
           isLoading: false,
+          error: 'メッセージの送信に失敗しました',
         }));
       }
     },
-    [state.selectedStores, supabase, gemini]
+    []
   );
 
-  const setSelectedStores = useCallback((storeIds: string[]) => {
-    setState(prev => ({
-      ...prev,
-      selectedStores: storeIds,
-    }));
-  }, []);
-
-  const toggleVisualization = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      visualizationEnabled: !prev.visualizationEnabled,
-    }));
-  }, []);
-
   const exportChat = useCallback(() => {
-    // チャット履歴をエクスポートする機能（スタブ）
-    console.log('Chat export functionality');
-  }, []);
-
-  const searchHistory = useCallback(() => {
-    // チャット履歴を検索する機能（スタブ）
-    console.log('Search history functionality');
-  }, []);
+    const blob = new Blob([JSON.stringify(state.messages, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `admin-chat_${new Date().toISOString()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [state.messages]);
 
   useEffect(() => {
-    loadChatHistory();
-    const cleanup = connectWebSocket();
-    return cleanup;
-  }, [loadChatHistory, connectWebSocket]);
+    fetchMessages();
+  }, [fetchMessages]);
 
   return {
     messages: state.messages,
     isLoading: state.isLoading,
     error: state.error,
-    selectedStores: state.selectedStores,
-    visualizationEnabled: state.visualizationEnabled,
     sendMessage,
-    setSelectedStores,
-    toggleVisualization,
     exportChat,
-    searchHistory,
   };
 };

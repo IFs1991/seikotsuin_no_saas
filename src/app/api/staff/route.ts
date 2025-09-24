@@ -1,34 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest } from 'next/server';
+import {
+  createErrorResponse,
+  createSuccessResponse,
+} from '@/lib/api-helpers';
+import {
+  AppError,
+  createApiError,
+  ERROR_CODES,
+  normalizeSupabaseError,
+  logError,
+} from '@/lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import {
+  mapStaffInsertToRow,
+  staffInsertSchema,
+  staffQuerySchema,
+} from './schema';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const PATH = '/api/staff';
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const clinicId = searchParams.get('clinic_id');
+    const parsedQuery = staffQuerySchema.safeParse({
+      clinic_id: request.nextUrl.searchParams.get('clinic_id'),
+    });
 
-    if (!clinicId) {
-      return NextResponse.json(
-        { error: 'clinic_id is required' },
-        { status: 400 }
+    if (!parsedQuery.success) {
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedQuery.error.flatten()
       );
     }
 
-    // スタッフパフォーマンスデータ取得
+    const { clinic_id } = parsedQuery.data;
+
+    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
+      requireClinicMatch: true,
+    });
+
     const { data: staffPerformance, error: staffError } = await supabase
       .from('staff_performance_summary')
       .select('*')
-      .eq('clinic_id', clinicId);
+      .eq('clinic_id', clinic_id);
 
     if (staffError) {
-      throw staffError;
+      throw normalizeSupabaseError(staffError, PATH);
     }
 
-    // 今月のパフォーマンスデータ
     const currentMonth = new Date().toISOString().slice(0, 7);
     const { data: monthlyPerformance, error: monthlyError } = await supabase
       .from('staff_performance')
@@ -38,38 +57,35 @@ export async function GET(request: NextRequest) {
         staff(name, role)
       `
       )
-      .eq('clinic_id', clinicId)
+      .eq('clinic_id', clinic_id)
       .gte('performance_date', `${currentMonth}-01`)
       .order('performance_date', { ascending: false });
 
     if (monthlyError) {
-      throw monthlyError;
+      throw normalizeSupabaseError(monthlyError, PATH);
     }
 
-    // スタッフメトリクス計算
     const staffMetrics = {
       dailyPatients:
-        staffPerformance?.reduce((sum, staff) => {
+        (staffPerformance?.reduce((sum, staff) => {
           const avgDaily = staff.total_visits / Math.max(staff.working_days, 1);
           return sum + avgDaily;
-        }, 0) / Math.max(staffPerformance?.length || 1, 1),
-
+        }, 0) ?? 0) / Math.max(staffPerformance?.length || 1, 1),
       totalRevenue:
         staffPerformance?.reduce(
           (sum, staff) => sum + (staff.total_revenue_generated || 0),
           0
         ) || 0,
-
       averageSatisfaction:
-        staffPerformance?.reduce((sum, staff) => {
+        (staffPerformance?.reduce((sum, staff) => {
           return sum + (staff.average_satisfaction_score || 0);
-        }, 0) / Math.max(staffPerformance?.length || 1, 1),
+        }, 0) ?? 0) / Math.max(staffPerformance?.length || 1, 1),
     };
 
-    // 収益ランキング
     const revenueRanking =
       staffPerformance
-        ?.sort(
+        ?.slice()
+        .sort(
           (a, b) =>
             (b.total_revenue_generated || 0) - (a.total_revenue_generated || 0)
         )
@@ -82,7 +98,6 @@ export async function GET(request: NextRequest) {
           satisfaction: staff.average_satisfaction_score || 0,
         })) || [];
 
-    // 満足度相関データ
     const satisfactionCorrelation =
       staffPerformance?.map(staff => ({
         name: staff.staff_name,
@@ -91,7 +106,6 @@ export async function GET(request: NextRequest) {
         patients: staff.unique_patients || 0,
       })) || [];
 
-    // パフォーマンストレンド（過去3ヶ月）
     const performanceTrends =
       monthlyPerformance?.reduce(
         (acc, record) => {
@@ -110,7 +124,6 @@ export async function GET(request: NextRequest) {
         {} as Record<string, any[]>
       ) || {};
 
-    // スキルマトリックス（ダミーデータ）
     const skillMatrix =
       staffPerformance?.map(staff => ({
         id: staff.staff_id,
@@ -123,7 +136,6 @@ export async function GET(request: NextRequest) {
         ],
       })) || [];
 
-    // 研修履歴（ダミーデータ）
     const trainingHistory = [
       {
         id: 1,
@@ -141,71 +153,103 @@ export async function GET(request: NextRequest) {
       },
     ];
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        staffMetrics,
-        revenueRanking,
-        satisfactionCorrelation,
-        performanceTrends,
-        skillMatrix,
-        trainingHistory,
-        totalStaff: staffPerformance?.length || 0,
-        activeStaff:
-          staffPerformance?.filter(s => s.working_days > 0).length || 0,
-      },
+    return createSuccessResponse({
+      staffMetrics,
+      revenueRanking,
+      satisfactionCorrelation,
+      performanceTrends,
+      skillMatrix,
+      trainingHistory,
+      totalStaff: staffPerformance?.length || 0,
+      activeStaff:
+        staffPerformance?.filter(s => s.working_days > 0).length || 0,
     });
   } catch (error) {
-    console.error('Staff API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    let apiError;
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      apiError = error.toApiError(PATH);
+      statusCode = error.statusCode;
+    } else if (error && typeof error === 'object' && 'code' in error) {
+      apiError = error;
+    } else {
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Staff data fetch failed',
+        undefined,
+        PATH
+      );
+    }
+
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
+
+    return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { clinic_id, name, role, email, hire_date, is_therapist } = body;
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return createErrorResponse('無効なJSONデータです', 400);
+    }
 
-    if (!clinic_id || !name || !email || !role) {
-      return NextResponse.json(
-        { error: 'Required fields missing' },
-        { status: 400 }
+    const parsedBody = staffInsertSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedBody.error.flatten()
       );
     }
 
-    // パスワードハッシュ化（実際の実装では適切なハッシュ化を使用）
-    const password_hash = 'temporary_hash'; // 実際は bcrypt などを使用
+    const dto = parsedBody.data;
+
+    const { supabase } = await ensureClinicAccess(request, PATH, dto.clinic_id, {
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: true,
+    });
+
+    const insertPayload = mapStaffInsertToRow(dto);
 
     const { data, error } = await supabase
       .from('staff')
-      .insert({
-        clinic_id,
-        name,
-        role,
-        email,
-        password_hash,
-        hire_date,
-        is_therapist: is_therapist || false,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
     if (error) {
-      throw error;
+      throw normalizeSupabaseError(error, PATH);
     }
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return createSuccessResponse(data, 201);
   } catch (error) {
-    console.error('Staff POST error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    let apiError;
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      apiError = error.toApiError(PATH);
+      statusCode = error.statusCode;
+    } else if (error && typeof error === 'object' && 'code' in error) {
+      apiError = normalizeSupabaseError(error, PATH);
+    } else {
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Staff creation failed',
+        undefined,
+        PATH
+      );
+    }
+
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
+
+    return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }

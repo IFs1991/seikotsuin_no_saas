@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { AppError, ERROR_CODES } from '../../../lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import type { SupabaseServerClient } from '@/lib/supabase/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const PATH = '/api/ai-comments';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +19,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
+
     const { data, error } = await supabase
       .from('daily_ai_comments')
       .select('*')
@@ -31,9 +32,12 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // コメントが存在しない場合は生成
     if (!data) {
-      const generatedComment = await generateDailyComment(clinicId, date);
+      const generatedComment = await generateDailyComment(
+        supabase,
+        clinicId,
+        date
+      );
       return NextResponse.json({
         success: true,
         data: generatedComment,
@@ -46,7 +50,9 @@ export async function GET(request: NextRequest) {
         id: data.id,
         summary: data.summary,
         highlights: data.good_points ? [data.good_points] : [],
-        improvements: data.improvement_points ? [data.improvement_points] : [],
+        improvements: data.improvement_points
+          ? [data.improvement_points]
+          : [],
         suggestions: data.suggestion_for_tomorrow
           ? [data.suggestion_for_tomorrow]
           : [],
@@ -54,6 +60,13 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
     console.error('AI Comments GET error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -74,14 +87,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
+      allowedRoles: ['manager'],
+    });
+
     const commentDate = date || new Date().toISOString().split('T')[0];
-    const generatedComment = await generateDailyComment(clinic_id, commentDate);
+    const generatedComment = await generateDailyComment(
+      supabase,
+      clinic_id,
+      commentDate
+    );
 
     return NextResponse.json({
       success: true,
       data: generatedComment,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+
     console.error('AI Comments POST error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -90,44 +118,55 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateDailyComment(clinicId: string, date: string) {
+async function generateDailyComment(
+  supabase: SupabaseServerClient,
+  clinicId: string,
+  date: string
+) {
   try {
-    // 当日のデータを取得
-    const { data: dailyData } = await supabase
+    const { data: dailyData, error: dailyError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('revenue_date', date)
       .single();
 
-    // 前日のデータを取得
+    if (dailyError && dailyError.code !== 'PGRST116') {
+      throw dailyError;
+    }
+
     const yesterday = new Date(date);
     yesterday.setDate(yesterday.getDate() - 1);
-    const { data: previousData } = await supabase
+    const { data: previousData, error: previousError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('revenue_date', yesterday.toISOString().split('T')[0])
       .single();
 
-    // 過去7日間の平均を取得
+    if (previousError && previousError.code !== 'PGRST116') {
+      throw previousError;
+    }
+
     const weekAgo = new Date(date);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    const { data: weeklyData } = await supabase
+    const { data: weeklyData, error: weeklyError } = await supabase
       .from('daily_revenue_summary')
       .select('*')
       .eq('clinic_id', clinicId)
       .gte('revenue_date', weekAgo.toISOString().split('T')[0])
       .lt('revenue_date', date);
 
-    // AI分析コメント生成
+    if (weeklyError) {
+      throw weeklyError;
+    }
+
     const analysis = analyzePerformance(
       dailyData,
       previousData,
       weeklyData || []
     );
 
-    // データベースに保存
     const { data: savedComment, error } = await supabase
       .from('daily_ai_comments')
       .upsert(
@@ -161,7 +200,12 @@ async function generateDailyComment(clinicId: string, date: string) {
     };
   } catch (error) {
     console.error('Generate daily comment error:', error);
-    throw error;
+    throw new AppError(
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      'Failed to generate AI comment',
+      500,
+      { clinicId, date }
+    );
   }
 }
 
@@ -191,7 +235,6 @@ function analyzePerformance(
   const improvements: string[] = [];
   const suggestions: string[] = [];
 
-  // 売上分析
   if (todayRevenue > yesterdayRevenue) {
     const increase = (
       ((todayRevenue - yesterdayRevenue) / Math.max(yesterdayRevenue, 1)) *
@@ -203,65 +246,39 @@ function analyzePerformance(
       ((yesterdayRevenue - todayRevenue) / Math.max(yesterdayRevenue, 1)) *
       100
     ).toFixed(1);
-    improvements.push(`前日比売上が${decrease}%減少しています`);
+    improvements.push(`前日比売上が${decrease}%低下している可能性があります`);
   }
 
-  // 患者数分析
   if (todayPatients > yesterdayPatients) {
-    highlights.push(
-      `来院患者数が前日より${todayPatients - yesterdayPatients}名増加しました`
-    );
-  } else if (todayPatients < yesterdayPatients) {
-    improvements.push(
-      `来院患者数が前日より${yesterdayPatients - todayPatients}名減少しました`
-    );
+    highlights.push('患者数が前日より増加しています');
   }
 
-  // 週平均との比較
-  if (todayRevenue > weeklyAvgRevenue * 1.1) {
-    highlights.push('週平均を上回る優秀な売上実績です');
-  } else if (todayRevenue < weeklyAvgRevenue * 0.9) {
-    improvements.push('週平均を下回る売上となっています');
+  if (todayPatients < yesterdayPatients) {
+    improvements.push('患者数が前日より減少しています');
   }
 
-  // 提案生成
-  if (improvements.length > 0) {
-    suggestions.push('新患獲得キャンペーンの実施を検討してください');
-    suggestions.push('既存患者へのフォローアップを強化しましょう');
-  }
-
-  if (highlights.length > 0) {
-    suggestions.push('好調な要因を分析し、継続的な改善につなげましょう');
-  }
-
-  if (dailyData?.insurance_revenue && dailyData?.private_revenue) {
-    const privateRatio =
-      (dailyData.private_revenue /
-        (dailyData.insurance_revenue + dailyData.private_revenue)) *
-      100;
-    if (privateRatio < 30) {
-      suggestions.push('自費診療メニューの提案を積極的に行いましょう');
+  if (weeklyAvgRevenue > 0) {
+    const diff = todayRevenue - weeklyAvgRevenue;
+    if (diff > 0) {
+      highlights.push('週間平均を上回る売上を記録しました');
+    } else if (diff < 0) {
+      improvements.push('週間平均を下回っています。施策の見直しを検討してください');
     }
   }
 
-  // サマリー生成
-  summary = `本日の売上は${todayRevenue.toLocaleString()}円、来院患者数は${todayPatients}名でした。`;
-  if (highlights.length > 0) {
-    summary += ' 全体的に良好な結果となっています。';
-  } else if (improvements.length > 0) {
-    summary += ' 改善の余地がある結果となっています。';
-  } else {
-    summary += ' 安定した運営状況です。';
+  if (!summary) {
+    summary =
+      '本日の売上と患者数を分析しました。詳細はハイライトと改善提案をご確認ください。';
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push('スタッフとの共有ミーティングで好調・不調要因を確認してください');
   }
 
   return {
     summary,
-    highlights:
-      highlights.length > 0 ? highlights : ['安定した運営を継続されています'],
-    improvements: improvements.length > 0 ? improvements : [],
-    suggestions:
-      suggestions.length > 0
-        ? suggestions
-        : ['現在の運営方針を継続してください'],
+    highlights,
+    improvements,
+    suggestions,
   };
 }

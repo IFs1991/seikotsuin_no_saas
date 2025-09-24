@@ -1,211 +1,189 @@
-import { useState, useCallback, useRef } from 'react';
-import { supabase } from '../api/database/supabase-client';
+'use client';
 
-interface MasterData {
-  id: string;
-  name: string;
-  category: string;
-  order: number;
-  isActive: boolean;
-  updatedAt: string;
+import { useMemo, useState } from 'react';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import {
+  listMasterData,
+  createMasterData,
+  updateMasterData,
+  deleteMasterData,
+  type MasterDataItem,
+} from '@/lib/api/admin/master-data-client';
+
+export interface UseMasterDataOptions {
+  clinicId?: string | null;
+  category?: string;
 }
 
-interface MasterDataHistory {
-  data: MasterData[];
-  timestamp: number;
+export interface MasterDataGroupedResult {
+  [category: string]: MasterDataItem[];
 }
 
-export const useMasterData = () => {
-  const [data, setData] = useState<MasterData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export interface UseMasterDataReturn {
+  data: MasterDataGroupedResult;
+  items: MasterDataItem[];
+  loading: boolean;
+  error: string | null;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
+  createItem: (
+    payload: Omit<MasterDataItem, 'id' | 'updated_at' | 'updated_by'>
+  ) => Promise<void>;
+  updateItem: (
+    id: string,
+    payload: Partial<Omit<MasterDataItem, 'id'>>
+  ) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  importData: (file: File) => Promise<void>;
+  exportData: () => void;
+  refetch: () => Promise<void>;
+  isMutating: boolean;
+}
+
+export function useMasterData(
+  options: UseMasterDataOptions = {}
+): UseMasterDataReturn {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [history, setHistory] = useState<MasterDataHistory[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data: masterData, error: fetchError } = await supabase
-        .from('master_data')
-        .select('*')
-        .order('order');
+  const query = useQuery({
+    queryKey: ['admin-master-data', options.clinicId ?? 'global', options.category ?? 'all'],
+    queryFn: () =>
+      listMasterData({
+        clinic_id: options.clinicId ?? undefined,
+        category: options.category,
+      }),
+  });
 
-      if (fetchError) throw fetchError;
-      setData(masterData);
-      addToHistory(masterData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '取得エラー');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const items = query.data?.items ?? [];
 
-  const addToHistory = (newData: MasterData[]) => {
-    const newHistory = {
-      data: JSON.parse(JSON.stringify(newData)),
-      timestamp: Date.now(),
-    };
-    setHistory(prev => [...prev.slice(0, historyIndex + 1), newHistory]);
-    setHistoryIndex(prev => prev + 1);
+  const filteredItems = useMemo(() => {
+    if (!searchQuery) return items;
+    const lowerSearch = searchQuery.toLowerCase();
+    return items.filter(item => {
+      return (
+        item.name.toLowerCase().includes(lowerSearch) ||
+        item.category.toLowerCase().includes(lowerSearch) ||
+        (typeof item.value === 'string'
+          ? item.value.toLowerCase().includes(lowerSearch)
+          : false)
+      );
+    });
+  }, [items, searchQuery]);
+
+  const groupedData = useMemo(() => {
+    return filteredItems.reduce<MasterDataGroupedResult>((acc, item) => {
+      const key = item.category || 'uncategorized';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
+      return acc;
+    }, {});
+  }, [filteredItems]);
+
+  const invalidate = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-master-data'],
+    });
   };
 
-  const undo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(prev => prev - 1);
-      setData(history[historyIndex - 1].data);
-    }
+  const createMutation = useMutation({
+    mutationFn: createMasterData,
+    onSuccess: invalidate,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Omit<MasterDataItem, 'id'>> }) =>
+      updateMasterData(id, payload),
+    onSuccess: invalidate,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteMasterData,
+    onSuccess: invalidate,
+  });
+
+  const createItem = async (
+    payload: Omit<MasterDataItem, 'id' | 'updated_at' | 'updated_by'>
+  ) => {
+    await createMutation.mutateAsync(payload);
   };
 
-  const redo = () => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
-      setData(history[historyIndex + 1].data);
-    }
-  };
-
-  const createItem = async (newItem: Omit<MasterData, 'id' | 'updatedAt'>) => {
-    try {
-      const { data: created, error } = await supabase
-        .from('master_data')
-        .insert([{ ...newItem, updatedAt: new Date().toISOString() }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      setData(prev => [...prev, created]);
-      addToHistory([...data, created]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '作成エラー');
-    }
-  };
-
-  const updateItem = async (id: string, updates: Partial<MasterData>) => {
-    try {
-      const { data: updated, error } = await supabase
-        .from('master_data')
-        .update({ ...updates, updatedAt: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      setData(prev => prev.map(item => (item.id === id ? updated : item)));
-      addToHistory(data.map(item => (item.id === id ? updated : item)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '更新エラー');
-    }
+  const updateItem = async (
+    id: string,
+    payload: Partial<Omit<MasterDataItem, 'id'>>
+  ) => {
+    await updateMutation.mutateAsync({ id, payload });
   };
 
   const deleteItem = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('master_data')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      setData(prev => prev.filter(item => item.id !== id));
-      addToHistory(data.filter(item => item.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '削除エラー');
-    }
-  };
-
-  const handleDragStart = (position: number) => {
-    dragItem.current = position;
-  };
-
-  const handleDragEnter = (position: number) => {
-    dragOverItem.current = position;
-  };
-
-  const handleDrop = async () => {
-    if (dragItem.current === null || dragOverItem.current === null) return;
-
-    const newData = [...data];
-    const draggedItem = newData[dragItem.current];
-    newData.splice(dragItem.current, 1);
-    newData.splice(dragOverItem.current, 0, draggedItem);
-
-    const updates = newData.map((item, index) => ({
-      id: item.id,
-      order: index,
-    }));
-
-    try {
-      const { error } = await supabase.from('master_data').upsert(updates);
-
-      if (error) throw error;
-      setData(newData);
-      addToHistory(newData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '並び替えエラー');
-    }
-
-    dragItem.current = null;
-    dragOverItem.current = null;
-  };
-
-  const filterData = useCallback(() => {
-    return data.filter(
-      item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [data, searchQuery]);
-
-  const exportData = () => {
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `master_data_${new Date().toISOString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await deleteMutation.mutateAsync(id);
   };
 
   const importData = async (file: File) => {
     try {
-      const content = await file.text();
-      const importedData = JSON.parse(content);
+      const text = await file.text();
+      const parsed: MasterDataItem[] = JSON.parse(text);
 
-      const { error } = await supabase.from('master_data').upsert(
-        importedData.map((item: MasterData, index: number) => ({
-          ...item,
-          order: index,
-          updatedAt: new Date().toISOString(),
-        }))
+      await Promise.all(
+        parsed.map(item =>
+          createItem({
+            clinic_id: item.clinic_id,
+            name: item.name,
+            category: item.category,
+            value: item.value,
+            data_type: item.data_type,
+            description: item.description ?? null,
+            is_editable: item.is_editable,
+            is_public: item.is_public,
+          })
+        )
       );
-
-      if (error) throw error;
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'インポートエラー');
+    } catch (error) {
+      console.error(error);
+      throw new Error('インポートに失敗しました。ファイル形式を確認してください。');
     }
   };
 
+  const exportData = () => {
+    const jsonString = JSON.stringify(items, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `master-data_${new Date().toISOString()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const refetch = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ['admin-master-data'],
+    });
+    await query.refetch();
+  };
+
   return {
-    data,
-    loading,
-    error,
+    data: groupedData,
+    items,
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
     searchQuery,
     setSearchQuery,
-    filteredData: filterData(),
     createItem,
     updateItem,
     deleteItem,
-    handleDragStart,
-    handleDragEnter,
-    handleDrop,
-    undo,
-    redo,
-    canUndo: historyIndex > 0,
-    canRedo: historyIndex < history.length - 1,
-    exportData,
     importData,
+    exportData,
+    refetch,
+    isMutating:
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending,
   };
-};
+}

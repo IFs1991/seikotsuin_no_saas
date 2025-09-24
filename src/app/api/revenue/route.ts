@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { AppError } from '../../../lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const PATH = '/api/revenue';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +38,8 @@ export async function GET(request: NextRequest) {
       }
       dateFilter = { gte: start.toISOString().split('T')[0] };
     }
+
+    const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
 
     // 収益データ取得
     const { data: revenueData, error: revenueError } = await supabase
@@ -175,6 +175,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Revenue API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -204,6 +210,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
+      allowedRoles: ['manager'],
+    });
+
     const { data, error } = await supabase
       .from('revenues')
       .insert({
@@ -229,6 +239,12 @@ export async function POST(request: NextRequest) {
       data,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
     console.error('Revenue POST error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },

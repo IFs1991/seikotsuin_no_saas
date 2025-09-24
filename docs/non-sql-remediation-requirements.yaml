@@ -1,0 +1,130 @@
+title: "Non-SQL Remediation Requirements for Seikotsuin Management SaaS"
+context:
+  background: >-
+    Recent code review identified several critical non-database issues that block a
+    safe MVP release of the SaaS product. These requirements focus on application
+    layer fixes; database schema reconciliation is handled in a separate track.
+  goals:
+    - Eliminate exposure of Supabase service role credentials and enforce RLS-backed access from all public entry points.
+    - Align front-end data flows with secured server APIs and real Supabase data sources instead of mock fallbacks.
+    - Stabilize admin/master-data tooling so it works within the secured architecture.
+  out_of_scope:
+    - SQL schema consolidation and migration planning.
+    - Seed data design and Supabase function/view definitions.
+requirements:
+  - id: SEC-001
+    name: "Replace service role usage in API routes with session-scoped clients"
+    issue_reference:
+      files:
+        - src/app/api/dashboard/route.ts
+        - src/app/api/revenue/route.ts
+        - src/app/api/staff/route.ts
+        - src/app/api/daily-reports/route.ts
+        - src/app/api/chat/route.ts
+    rationale: >-
+      Service role keys bypass Supabase Row Level Security. Current API handlers expose
+      full read/write access to any caller, creating a critical data breach risk.
+    actions:
+      - Introduce a shared server helper that instantiates Supabase clients via Next.js cookies (`createClient`) scoped to the requester session.
+      - For privileged operations (e.g., admin dashboards) wrap calls in server-side checks that confirm the authenticated user is authorized before querying with the same session-scoped client.
+      - Remove all direct references to `SUPABASE_SERVICE_ROLE_KEY` from route handlers.
+      - Add integration tests covering unauthorized access attempts to ensure RLS is respected.
+    acceptance_criteria:
+      - No API route imports `@supabase/supabase-js` directly or references `SUPABASE_SERVICE_ROLE_KEY`.
+      - Authenticated requests succeed for authorized users; unauthorized requests receive 401/403 responses and leave audit logs.
+      - Security regression tests pass in CI.
+  - id: SEC-002
+    name: "Confine service role client to server-only modules"
+    issue_reference:
+      files:
+        - src/hooks/useMasterData.ts
+        - src/hooks/useAdminDashboard.ts
+        - src/app/master-data/page.tsx
+    rationale: >-
+      Client bundles currently import a module that initialises a Supabase service
+      role client, risking exposure of the secret. All client components must call
+      secure APIs instead of reaching into privileged helpers.
+    actions:
+      - Move `api/database/supabase-client` into a `server-only` constrained module or replace it with server actions.
+      - Refactor affected hooks/components to call application APIs (e.g., `/api/admin/master-data`) via `fetch` or React Query.
+      - Add linting/CI checks (e.g., Next.js `server-only`/`client-only` boundaries) to prevent future leakage.
+    acceptance_criteria:
+      - Bundle analyzer confirms no service role key is included in client payloads.
+      - Admin/master-data UI works via authenticated API calls without direct Supabase access in the browser.
+  - id: API-003
+    name: "Align API DTOs with Supabase types via generated client"
+    issue_reference:
+      files:
+        - src/app/api/staff/route.ts
+        - src/app/api/patients/route.ts
+        - src/types/api.ts
+    rationale: >-
+      Mismatches between expected payload fields and database columns cause runtime errors.
+      A typed client and explicit mapping layer will keep API contracts consistent without direct SQL edits.
+    actions:
+      - Consume Supabase TypeScript types (generated via `supabase gen types typescript`) in API routes.
+      - Introduce DTO mappers that translate between request bodies and Supabase column names (e.g., split `name` into `last_name`/`first_name` before insert).
+      - Add zod-based validation schemas tied to these DTOs and unit tests covering happy/error paths.
+    acceptance_criteria:
+      - TypeScript compilation fails if API code references non-existent columns.
+      - POST/GET handlers succeed against a Supabase sandbox with representative data during automated tests.
+  - id: UX-004
+    name: "Remove placeholder dashboard fallbacks"
+    issue_reference:
+      files:
+        - src/hooks/useDashboard.ts
+        - src/app/dashboard/page.tsx
+    rationale: >-
+      The main dashboard currently masks API failures with static sample data, hiding outages and showing inaccurate metrics.
+    actions:
+      - Replace fallback sample data with explicit error UI and retry controls.
+      - Implement a loading state driven by real API availability and surface actionable error messages based on `ApiError` codes.
+      - Ensure client passes the authenticated clinic ID sourced from the user profile hook instead of a default environment variable.
+    acceptance_criteria:
+      - Dashboard displays live data with correct clinic scoping in staging.
+      - When the API returns 4xx/5xx, users see an error prompt and optional retry, not stale mock data.
+  - id: ADMIN-005
+    name: "Stabilize master-data management workflow"
+    issue_reference:
+      files:
+        - src/app/master-data/page.tsx
+        - src/hooks/useMasterData.ts
+        - src/components/master/master-data-form.tsx
+    rationale: >-
+      The admin UI invokes hook methods with incompatible signatures and relies on client-side Supabase access.
+      This blocks CRUD operations for core master tables.
+    actions:
+      - Redesign `useMasterData` to expose a typed API that mirrors available server endpoints (list/create/update/delete/import/export).
+      - Update UI components to use the new contract (e.g., provide files to import handler, consume paginated results).
+      - Add optimistic update handling through React Query or equivalent, backed by server validations.
+    acceptance_criteria:
+      - Admins can create, edit, reorder, import, and export master data via the UI against staging Supabase.
+      - TypeScript types align across hook, components, and API responses with no runtime signature mismatches.
+  - id: OPS-006
+    name: "Harden configuration and monitoring for secured APIs"
+    rationale: >-
+      After refactoring authentication flows, ops needs visibility to ensure misconfiguration or credential
+      leaks are caught early.
+    actions:
+      - Document required environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, etc.) and add runtime checks that fail fast when missing.
+      - Configure logging/auditing so unauthorized attempts against secured routes produce alerts (leveraging existing `AuditLogger`).
+      - Extend CI to scan for accidental usage of restricted env vars in client bundles (e.g., `eslint-plugin-security` or custom rule).
+    acceptance_criteria:
+      - Application boot fails with descriptive errors when mandatory env vars are absent or misconfigured.
+      - Audit logs show entries for denied access with traceable metadata in staging.
+      - CI includes a step that searches bundles for secret keys and fails on detection.
+milestones:
+  - name: "Security baseline"
+    description: Complete SEC-001 and SEC-002 to eliminate service role exposure.
+    target_date: 2025-02-07
+  - name: "API contract hardening"
+    description: Deliver API-003 and UX-004 with automated tests passing in CI.
+    target_date: 2025-02-14
+  - name: "Admin tooling readiness"
+    description: Fulfill ADMIN-005 and OPS-006, unblock end-to-end master data workflows.
+    target_date: 2025-02-21
+dependencies:
+  - description: "Requires finalized database schema naming to complete DTO mapping (tracked separately)."
+    owner: "Database/Platform team"
+  - description: "Access to staging Supabase project with RLS enabled for integration tests."
+    owner: "DevOps"

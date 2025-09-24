@@ -47,72 +47,13 @@ const useDashboard = (
         setDashboardData(response.data as DashboardData);
         setError(null);
       } else if (isErrorResponse(response)) {
-        // エラーの場合はサンプルデータにフォールバック
-        console.warn('API error, falling back to sample data:', response.error);
-        const sampleData: DashboardData = {
-          dailyData: {
-            revenue: 125000,
-            patients: 23,
-            insuranceRevenue: 85000,
-            privateRevenue: 40000,
-          },
-          aiComment: {
-            id: 'sample-id',
-            summary:
-              '本日の業績は順調です。患者数、売上ともに前日比で安定しています。保険診療が主体となっており、健全な運営が継続されています。',
-            highlights: ['患者数が安定している', '保険診療の比率が適正'],
-            improvements: ['自費診療の促進余地がある'],
-            suggestions: ['午後の時間帯の予約枠を増やすことを検討'],
-            created_at: new Date().toISOString(),
-          },
-          revenueChartData: [
-            { name: '月', 総売上: 120000, 保険診療: 80000, 自費診療: 40000 },
-            { name: '火', 総売上: 110000, 保険診療: 75000, 自費診療: 35000 },
-            { name: '水', 総売上: 130000, 保険診療: 90000, 自費診療: 40000 },
-            { name: '木', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
-            { name: '金', 総売上: 140000, 保険診療: 95000, 自費診療: 45000 },
-            { name: '土', 総売上: 135000, 保険診療: 90000, 自費診療: 45000 },
-            { name: '日', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
-          ],
-          heatmapData: [],
-          alerts: [],
-        };
-        setDashboardData(sampleData);
-        setError(null);
+        setDashboardData(null);
+        setError(handleApiError(response.error));
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard data, using sample data:', err);
-      // 完全にエラーの場合もサンプルデータを使用
-      const sampleData: DashboardData = {
-        dailyData: {
-          revenue: 125000,
-          patients: 23,
-          insuranceRevenue: 85000,
-          privateRevenue: 40000,
-        },
-        aiComment: {
-          id: 'sample-id',
-          summary:
-            '本日の業績は順調です。患者数、売上ともに前日比で安定しています。（サンプルデータ）',
-          highlights: ['患者数が安定している', '保険診療の比率が適正'],
-          improvements: ['自費診療の促進余地がある'],
-          suggestions: ['午後の時間帯の予約枠を増やすことを検討'],
-          created_at: new Date().toISOString(),
-        },
-        revenueChartData: [
-          { name: '月', 総売上: 120000, 保険診療: 80000, 自費診療: 40000 },
-          { name: '火', 総売上: 110000, 保険診療: 75000, 自費診療: 35000 },
-          { name: '水', 総売上: 130000, 保険診療: 90000, 自費診療: 40000 },
-          { name: '木', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
-          { name: '金', 総売上: 140000, 保険診療: 95000, 自費診療: 45000 },
-          { name: '土', 総売上: 135000, 保険診療: 90000, 自費診療: 45000 },
-          { name: '日', 総売上: 125000, 保険診療: 85000, 自費診療: 40000 },
-        ],
-        heatmapData: [],
-        alerts: [],
-      };
-      setDashboardData(sampleData);
-      setError(null);
+      console.error('Failed to fetch dashboard data:', err);
+      setDashboardData(null);
+      setError('ダッシュボードデータの取得に失敗しました');
     } finally {
       setLoading(false);
     }

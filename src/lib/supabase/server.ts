@@ -1,13 +1,19 @@
+import 'server-only';
+
 import { createServerClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { Database } from '@/types/supabase';
+import { assertEnv } from '@/lib/env';
 
-export function createClient() {
+export type SupabaseServerClient = SupabaseClient<Database>;
+
+export function createClient(): SupabaseServerClient {
   const cookieStore = cookies();
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
+    assertEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     {
       cookies: {
         getAll() {
@@ -35,8 +41,8 @@ export function createClient() {
 // 管理者専用のSupabaseクライアント（サービスロールキー使用）
 export function createAdminClient() {
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
+    assertEnv('SUPABASE_SERVICE_ROLE_KEY'),
     {
       auth: {
         persistSession: false,
@@ -52,8 +58,10 @@ export function createAdminClient() {
 }
 
 // ユーザー認証・認可チェック用のヘルパー関数
-export async function getCurrentUser() {
-  const supabase = createClient();
+export async function getCurrentUser(
+  client?: SupabaseServerClient
+) {
+  const supabase = client ?? createClient();
   const {
     data: { user },
     error,
@@ -66,8 +74,16 @@ export async function getCurrentUser() {
   return user;
 }
 
-export async function getUserPermissions(userId: string) {
-  const supabase = createClient();
+export interface UserPermissions {
+  role: string;
+  clinic_id: string | null;
+}
+
+export async function getUserPermissions(
+  userId: string,
+  client?: SupabaseServerClient
+): Promise<UserPermissions | null> {
+  const supabase = client ?? createClient();
   const { data: permissions, error } = await supabase
     .from('user_permissions')
     .select('role, clinic_id')
@@ -78,20 +94,21 @@ export async function getUserPermissions(userId: string) {
     return null;
   }
 
-  return permissions;
+  return permissions as UserPermissions;
 }
 
-export async function requireAuth() {
-  const user = await getCurrentUser();
+export async function requireAuth(client?: SupabaseServerClient) {
+  const user = await getCurrentUser(client);
   if (!user) {
     throw new Error('認証が必要です');
   }
   return user;
 }
 
-export async function requireAdminAuth() {
-  const user = await requireAuth();
-  const permissions = await getUserPermissions(user.id);
+export async function requireAdminAuth(client?: SupabaseServerClient) {
+  const supabase = client ?? createClient();
+  const user = await requireAuth(supabase);
+  const permissions = await getUserPermissions(user.id, supabase);
 
   if (!permissions || !['admin', 'clinic_manager'].includes(permissions.role)) {
     throw new Error('管理者権限が必要です');

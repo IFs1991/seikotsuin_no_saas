@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/api/database/supabase-client';
 import {
   safeValidateTableData,
   SupportedTableName,
@@ -13,6 +12,7 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
+import type { SupabaseServerClient } from '@/lib/supabase/server';
 
 // ================================================================
 // データベーステーブル管理 API - 動的スキーマ版
@@ -20,19 +20,21 @@ import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
 // テーブル一覧取得エンドポイント (GET /api/admin/tables)
 export async function GET(request: NextRequest) {
   try {
-    // 認証・認可チェック
-    const processResult = await processApiRequest(request, false);
+    const processResult = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth } = processResult;
+    const { auth, supabase } = processResult;
     const { searchParams } = new URL(request.url);
     const tableName = searchParams.get('table');
 
     // 特定テーブルのデータ取得
     if (tableName) {
-      return await getTableData(tableName, searchParams, auth?.id);
+      return await getTableData(tableName, searchParams, supabase, auth?.id);
     }
 
     // テーブル一覧取得
@@ -86,6 +88,7 @@ async function getTablesConfig(userId?: string) {
 async function getTableData(
   tableName: string,
   searchParams: URLSearchParams,
+  supabase: SupabaseServerClient,
   userId?: string
 ) {
   try {
@@ -167,12 +170,16 @@ async function getTableData(
 export async function POST(request: NextRequest) {
   try {
     // 認証・認可・サニタイゼーション
-    const processResult = await processApiRequest(request, true);
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth, body } = processResult;
+    const { auth, body, supabase } = processResult;
 
     if (
       !body ||
@@ -248,12 +255,16 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // 認証・認可・サニタイゼーション
-    const processResult = await processApiRequest(request, true);
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth, body } = processResult;
+    const { auth, body, supabase } = processResult;
 
     if (
       !body ||
@@ -333,12 +344,15 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // 認証・認可チェック
-    const processResult = await processApiRequest(request, false);
+    const processResult = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth } = processResult;
+    const { auth, supabase } = processResult;
     const { searchParams } = new URL(request.url);
     const tableName = searchParams.get('table');
     const id = searchParams.get('id');

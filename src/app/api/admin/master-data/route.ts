@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/api/database/supabase-client';
 import { z } from 'zod';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '@/lib/constants';
 import {
@@ -48,18 +47,37 @@ const masterDataSchema = z.object({
 // GET: マスターデータ一覧取得
 export async function GET(request: NextRequest) {
   try {
-    // 共通前処理（認証・認可チェック）
-    const processResult = await processApiRequest(request, false);
-    if (!processResult.success) {
-      return processResult.error!;
-    }
-
-    const { auth } = processResult;
-
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const clinicId = searchParams.get('clinic_id');
     const isPublic = searchParams.get('is_public');
+
+    const clinicParam = clinicId?.toLowerCase() ?? undefined;
+    const normalizedClinicId =
+      clinicParam === 'null' || clinicParam === 'global'
+        ? null
+        : clinicParam;
+
+    const processResult = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager'],
+      clinicId: normalizedClinicId ?? null,
+      requireClinicMatch:
+        normalizedClinicId !== null && normalizedClinicId !== undefined,
+    });
+
+    if (!processResult.success) {
+      return processResult.error!;
+    }
+
+    const { auth, supabase, permissions } = processResult;
+
+    let effectiveClinicId = normalizedClinicId;
+    if (
+      effectiveClinicId === undefined &&
+      permissions.role === 'clinic_manager'
+    ) {
+      effectiveClinicId = permissions.clinic_id ?? null;
+    }
 
     let query = supabase
       .from('system_settings')
@@ -72,10 +90,10 @@ export async function GET(request: NextRequest) {
       query = query.ilike('key', `${category}%`);
     }
 
-    if (clinicId === 'null' || clinicId === 'global') {
+    if (clinicParam === 'null' || clinicParam === 'global') {
       query = query.is('clinic_id', null);
-    } else if (clinicId) {
-      query = query.eq('clinic_id', clinicId);
+    } else if (effectiveClinicId) {
+      query = query.eq('clinic_id', effectiveClinicId);
     }
 
     if (isPublic) {
@@ -89,7 +107,7 @@ export async function GET(request: NextRequest) {
         endpoint: '/api/admin/master-data',
         method: 'GET',
         userId: auth?.id || 'unknown',
-        params: { category, clinicId, isPublic },
+        params: { category, clinicId: clinicParam, isPublic },
       });
       return createErrorResponse('データの取得に失敗しました', 500);
     }
@@ -129,12 +147,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // 共通前処理（認証・サニタイゼーション）
-    const processResult = await processApiRequest(request, true);
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth, body } = processResult;
+    const { auth, body, supabase, permissions } = processResult;
 
     // Zodバリデーション
     const validationResult = masterDataSchema.safeParse(body);
@@ -156,12 +178,25 @@ export async function POST(request: NextRequest) {
       is_public,
     } = validationResult.data;
 
+    if (
+      permissions.role !== 'admin' &&
+      clinic_id &&
+      permissions.clinic_id !== clinic_id
+    ) {
+      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
+    }
+
+    const targetClinicId =
+      clinic_id ?? (permissions.role === 'clinic_manager'
+        ? permissions.clinic_id ?? null
+        : null);
+
     // system_settingsテーブルに挿入
     const { data, error } = await supabase
       .from('system_settings')
       .insert([
         {
-          clinic_id: clinic_id || null,
+          clinic_id: targetClinicId,
           key: name,
           value: JSON.stringify(value),
           data_type: data_type || 'string',
@@ -223,12 +258,16 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // 共通前処理（認証・サニタイゼーション）
-    const processResult = await processApiRequest(request, true);
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth, body } = processResult;
+    const { auth, body, supabase, permissions } = processResult;
 
     if (!body || typeof body !== 'object' || !('id' in body) || !body.id) {
       return createErrorResponse('IDが指定されていません', 400);
@@ -302,6 +341,14 @@ export async function PUT(request: NextRequest) {
       updated_by: data.updated_by,
     };
 
+    if (
+      permissions.role !== 'admin' &&
+      data.clinic_id &&
+      permissions.clinic_id !== data.clinic_id
+    ) {
+      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
+    }
+
     // 監査ログ記録
     await AuditLogger.logDataModify(
       auth?.id || '',
@@ -327,12 +374,15 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // 共通前処理（認証・認可チェック）
-    const processResult = await processApiRequest(request, false);
+    const processResult = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager'],
+      requireClinicMatch: false,
+    });
     if (!processResult.success) {
       return processResult.error!;
     }
 
-    const { auth } = processResult;
+    const { auth, supabase, permissions } = processResult;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -344,12 +394,20 @@ export async function DELETE(request: NextRequest) {
     // 削除前に対象データを取得（編集可能チェック）
     const { data: existingData, error: fetchError } = await supabase
       .from('system_settings')
-      .select('is_editable')
+      .select('is_editable, clinic_id')
       .eq('id', id)
       .single();
 
     if (fetchError) {
       return createErrorResponse('データが見つかりません', 404);
+    }
+
+    if (
+      permissions.role !== 'admin' &&
+      existingData.clinic_id &&
+      permissions.clinic_id !== existingData.clinic_id
+    ) {
+      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
     }
 
     if (!existingData.is_editable) {

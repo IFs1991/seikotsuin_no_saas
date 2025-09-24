@@ -1,3 +1,5 @@
+// This file should be regenerated via `supabase gen types typescript`
+// See `npm run supabase:types` for details.
 // Supabaseの型定義（自動生成されるファイルの代替）
 export interface Database {
   public: {
