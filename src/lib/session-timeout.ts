@@ -184,15 +184,15 @@ export class SessionTimeoutManager {
   /**
    * コールバック設定
    */
-  onStateChange(callback: SessionTimeoutCallback): void {
+  setOnStateChange(callback: SessionTimeoutCallback): void {
     this.onStateChange = callback;
   }
 
-  onWarning(callback: TimeoutWarningCallback): void {
+  setOnWarning(callback: TimeoutWarningCallback): void {
     this.onWarning = callback;
   }
 
-  onTimeout(callback: TimeoutCallback): void {
+  setOnTimeout(callback: TimeoutCallback): void {
     this.onTimeout = callback;
   }
 
@@ -402,7 +402,7 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
 
   useEffect(() => {
     // コールバック設定
-    timeoutManager.onStateChange(setState);
+    timeoutManager.setOnStateChange(setState);
 
     // タイムアウト監視開始
     timeoutManager.start();

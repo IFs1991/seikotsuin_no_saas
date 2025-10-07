@@ -1,14 +1,21 @@
+/** @jest-environment jsdom */
+
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PatientsPage from '@/app/patients/page';
 import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
 // Mock the custom hook
 jest.mock('@/hooks/usePatientAnalysis');
 const mockUsePatientAnalysis = usePatientAnalysis as jest.MockedFunction<
   typeof usePatientAnalysis
 >;
+
+jest.mock('@/providers/user-profile-context');
+const mockUseUserProfileContext =
+  useUserProfileContext as jest.MockedFunction<typeof useUserProfileContext>;
 
 // Mock data
 const mockPatientData = {
@@ -80,7 +87,23 @@ const mockPatientData = {
 
 describe('PatientsPage', () => {
   beforeEach(() => {
-    mockUsePatientAnalysis.mockReturnValue(mockPatientData);
+    mockUsePatientAnalysis.mockReturnValue({
+      data: mockPatientData,
+      loading: false,
+      error: null,
+    });
+    mockUseUserProfileContext.mockReturnValue({
+      profile: {
+        id: 'user-1',
+        email: 'user@example.com',
+        role: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      },
+      loading: false,
+      error: null,
+    });
   });
 
   afterEach(() => {

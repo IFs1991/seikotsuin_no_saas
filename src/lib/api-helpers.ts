@@ -13,7 +13,7 @@ import {
 import type {
   SupabaseServerClient,
   UserPermissions,
-} from '@/lib/supabase/server';
+} from '@/lib/supabase';
 
 // 認証・認可の結果型
 export interface AuthResult {

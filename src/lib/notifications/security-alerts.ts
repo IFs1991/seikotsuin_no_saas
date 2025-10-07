@@ -3,7 +3,7 @@
  * Phase 3B Refactoring: 高重要度CSP違反の通知機能
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export interface SecurityAlert {

@@ -30,10 +30,10 @@ export default function HomePage() {
           <h2 className='text-xl font-semibold text-gray-900 mb-2'>管理者機能</h2>
           <p className='text-gray-600 mb-4'>全店舗統合管理・セキュリティ監視・マスタ設定</p>
           <a
-            href='/admin'
-            className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500'
+            href='/admin/login'
+            className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
           >
-            管理者画面へ
+            管理者ログイン
           </a>
           <p className='mt-2 text-xs text-gray-500'>
             ※ 管理者ロールが付与されていないアカウントはアクセスできません。

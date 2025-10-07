@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint, Typecheck, Test
+    name: Quality Checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,5 +36,90 @@ jobs:
       - name: Type check
         run: npm run type-check
 
-      - name: Test
-        run: npm test -- --ci
+      - name: Secret scan
+        run: npm run scan:secrets
+
+  test-unit-integration:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit and integration tests
+        run: npm test -- --ci --coverage --testPathIgnorePatterns=e2e
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+      - name: Generate coverage summary
+        run: |
+          echo "## Test Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f coverage/coverage-summary.txt ]; then
+            cat coverage/coverage-summary.txt >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Coverage summary not available" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+  test-security:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security tests
+        run: npm test -- --ci --testPathPattern="security|session-management"
+
+      - name: Generate security test summary
+        run: |
+          echo "## Security Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Security test suite completed" >> $GITHUB_STEP_SUMMARY
+
+  test-e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run E2E tests
+        run: npm run test:e2e -- --ci
+
+      - name: Generate E2E test summary
+        run: |
+          echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "✅ E2E test suite completed" >> $GITHUB_STEP_SUMMARY

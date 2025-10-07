@@ -120,11 +120,73 @@ export async function GET(
       // ヒートマップエラーは致命的でないため、空配列で継続
     }
 
+    // 前日データ取得（差分アラート用）
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0];
+    const { data: yesterdayRevenue } = await supabase
+      .from('daily_revenue_summary')
+      .select('*')
+      .eq('clinic_id', resolvedClinicId)
+      .eq('revenue_date', yesterday)
+      .single();
+
+    const { data: yesterdayPatientCount } = await supabase
+      .from('visits')
+      .select('patient_id')
+      .eq('clinic_id', resolvedClinicId)
+      .gte('visit_date', yesterday)
+      .lt('visit_date', today);
+
+    // 差分アラート生成
+    const alerts: string[] = [];
+    const ALERT_THRESHOLDS = {
+      REVENUE_DECREASE: 0.2, // 20%減少
+      REVENUE_INCREASE: 0.3, // 30%増加
+      PATIENTS_DECREASE: 0.2, // 20%減少
+      PATIENTS_INCREASE: 0.3, // 30%増加
+    };
+
+    const todayRevenue = dailyRevenue?.total_revenue || 0;
+    const todayPatients = patientCount?.length || 0;
+    const prevRevenue = yesterdayRevenue?.total_revenue || 0;
+    const prevPatients = yesterdayPatientCount?.length || 0;
+
+    if (prevRevenue > 0) {
+      const revenueChange = (todayRevenue - prevRevenue) / prevRevenue;
+      if (revenueChange < -ALERT_THRESHOLDS.REVENUE_DECREASE) {
+        const changePercent = Math.abs(Math.round(revenueChange * 100));
+        alerts.push(
+          `売上が前日比${changePercent}%減少しています（前日: ¥${prevRevenue.toLocaleString()}, 本日: ¥${todayRevenue.toLocaleString()}）`
+        );
+      } else if (revenueChange > ALERT_THRESHOLDS.REVENUE_INCREASE) {
+        const changePercent = Math.round(revenueChange * 100);
+        alerts.push(
+          `売上が前日比${changePercent}%増加しています（前日: ¥${prevRevenue.toLocaleString()}, 本日: ¥${todayRevenue.toLocaleString()}）`
+        );
+      }
+    }
+
+    if (prevPatients > 0) {
+      const patientsChange = (todayPatients - prevPatients) / prevPatients;
+      if (patientsChange < -ALERT_THRESHOLDS.PATIENTS_DECREASE) {
+        const changePercent = Math.abs(Math.round(patientsChange * 100));
+        alerts.push(
+          `患者数が前日比${changePercent}%減少しています（前日: ${prevPatients}名, 本日: ${todayPatients}名）`
+        );
+      } else if (patientsChange > ALERT_THRESHOLDS.PATIENTS_INCREASE) {
+        const changePercent = Math.round(patientsChange * 100);
+        alerts.push(
+          `患者数が前日比${changePercent}%増加しています（前日: ${prevPatients}名, 本日: ${todayPatients}名）`
+        );
+      }
+    }
+
     // レスポンスデータの構築
     const dashboardData: DashboardData = {
       dailyData: {
-        revenue: dailyRevenue?.total_revenue || 0,
-        patients: patientCount?.length || 0,
+        revenue: todayRevenue,
+        patients: todayPatients,
         insuranceRevenue: dailyRevenue?.insurance_revenue || 0,
         privateRevenue: dailyRevenue?.private_revenue || 0,
       },
@@ -150,7 +212,7 @@ export async function GET(
           自費診療: Number(item.private_revenue) || 0,
         })) || [],
       heatmapData: heatmapData || [],
-      alerts: [],
+      alerts,
     };
 
     const response: ApiResponse<DashboardData> = {

@@ -5,7 +5,7 @@ const getCurrentUserMock = jest.fn();
 const getUserPermissionsMock = jest.fn();
 const logUnauthorizedAccessMock = jest.fn();
 
-jest.mock('@/lib/supabase/server', () => ({
+jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
   getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
   getUserPermissions: (...args: unknown[]) =>

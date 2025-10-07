@@ -12,27 +12,63 @@ import {
   afterEach,
 } from '@jest/globals';
 
-// Mock Supabase client
-const mockSupabaseClient = {
+const createProfileQueryBuilder = () => {
+  const builder: any = {
+    select: jest.fn(),
+    eq: jest.fn(),
+    single: jest.fn(),
+  };
+
+  builder.select.mockReturnValue(builder);
+  builder.eq.mockReturnValue(builder);
+
+  return builder;
+};
+
+const createMockSupabaseClient = () => ({
   auth: {
     signInWithPassword: jest.fn(),
     signUp: jest.fn(),
     signOut: jest.fn(),
     getUser: jest.fn(),
   },
-  from: jest.fn(() => ({
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        single: jest.fn(),
-      })),
-    })),
+  from: jest.fn(),
+  channel: jest.fn(() => ({
+    on: jest.fn().mockReturnThis(),
+    subscribe: jest.fn(),
+    send: jest.fn().mockResolvedValue({}),
   })),
+  rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
+  functions: {
+    invoke: jest.fn().mockResolvedValue({ data: null, error: null }),
+  },
+});
+
+let mockSupabaseClient = createMockSupabaseClient();
+
+jest.mock('@/lib/supabase', () => ({
+  getServerClient: () => mockSupabaseClient,
+  createClient: () => mockSupabaseClient,
+  createAdminClient: () => mockSupabaseClient,
+}));
+
+const auditLoggerMocks = {
+  logDataAccess: jest.fn().mockResolvedValue(undefined),
+  logSecurityEvent: jest.fn().mockResolvedValue(undefined),
 };
 
-// Mock the Supabase server client
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
+jest.mock('@/lib/audit-logger', () => ({
+  AuditLogger: auditLoggerMocks,
+  getRequestInfo: jest.fn(() => ({ ipAddress: '127.0.0.1', userAgent: 'jest' })),
 }));
+
+let profileQueryBuilder = createProfileQueryBuilder();
+
+const {
+  login,
+  signup,
+  logout,
+} = require('@/app/admin/actions');
 
 // Mock Next.js functions
 jest.mock('next/cache', () => ({
@@ -53,6 +89,9 @@ const consoleMock = {
 describe('Authentication Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSupabaseClient = createMockSupabaseClient();
+    profileQueryBuilder = createProfileQueryBuilder();
+    mockSupabaseClient.from.mockImplementation(() => profileQueryBuilder);
     // Replace console methods with mocks
     global.console = { ...global.console, ...consoleMock };
   });
@@ -77,8 +116,6 @@ describe('Authentication Integration Tests', () => {
           data: { role: 'staff', is_active: true },
         });
 
-      const { login } = require('@/app/admin/actions');
-
       // Test with valid FormData
       const formData = new FormData();
       formData.append('email', '  USER@EXAMPLE.COM  '); // Test trimming and lowercase
@@ -94,8 +131,6 @@ describe('Authentication Integration Tests', () => {
     });
 
     test('login action rejects invalid input', async () => {
-      const { login } = require('@/app/admin/actions');
-
       // Test with invalid email
       const formData = new FormData();
       formData.append('email', 'invalid-email');
@@ -109,8 +144,6 @@ describe('Authentication Integration Tests', () => {
     });
 
     test('signup action enforces strong password policy', async () => {
-      const { signup } = require('@/app/admin/actions');
-
       // Test with weak password
       const formData = new FormData();
       formData.append('email', 'user@example.com');
@@ -140,8 +173,6 @@ describe('Authentication Integration Tests', () => {
 
       mockSupabaseClient.auth.signOut.mockResolvedValue({ error: null });
 
-      const { login } = require('@/app/admin/actions');
-
       const formData = new FormData();
       formData.append('email', 'inactive@example.com');
       formData.append('password', 'ValidPassword123!');
@@ -159,11 +190,9 @@ describe('Authentication Integration Tests', () => {
   describe('Error Handling and Logging', () => {
     test('logs security events appropriately', async () => {
       mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
-        error: { message: 'Invalid credentials' },
+        error: { message: 'Invalid credentials', status: 400 },
         data: null,
       });
-
-      const { login } = require('@/app/admin/actions');
 
       const formData = new FormData();
       formData.append('email', 'user@example.com');
@@ -176,7 +205,39 @@ describe('Authentication Integration Tests', () => {
         '[Security] Login attempt failed:',
         expect.objectContaining({
           email: 'user@example.com',
-          error: 'Invalid credentials',
+          error: 'メールアドレスまたはパスワードが正しくありません',
+          status: 400,
+          details: 'Invalid credentials',
+        })
+      );
+      expect(result.errors._form).toContain(
+        'メールアドレスまたはパスワードが正しくありません'
+      );
+    });
+
+    test('maps 403 authentication errors to inactive message', async () => {
+      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+        error: { message: 'User inactive', status: 403 },
+        data: null,
+      });
+
+      const formData = new FormData();
+      formData.append('email', 'user@example.com');
+      formData.append('password', 'ValidPassword123!');
+
+      const result = await login(null, formData);
+
+      expect(result.success).toBe(false);
+      expect(result.errors._form).toContain(
+        'アカウントが無効化されています。管理者にお問い合わせください'
+      );
+      expect(consoleMock.warn).toHaveBeenCalledWith(
+        '[Security] Login attempt failed:',
+        expect.objectContaining({
+          email: 'user@example.com',
+          error: 'アカウントが無効化されています。管理者にお問い合わせください',
+          status: 403,
+          details: 'User inactive',
         })
       );
     });
@@ -185,8 +246,6 @@ describe('Authentication Integration Tests', () => {
       mockSupabaseClient.auth.signInWithPassword.mockRejectedValue(
         new Error('Database connection failed')
       );
-
-      const { login } = require('@/app/admin/actions');
 
       const formData = new FormData();
       formData.append('email', 'user@example.com');

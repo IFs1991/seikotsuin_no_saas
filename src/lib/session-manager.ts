@@ -3,7 +3,7 @@
  * Phase 3A: セッション管理強化の中核機能
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { createBrowserClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
@@ -143,7 +143,8 @@ export class SessionManager {
         created_by: userId,
       };
 
-      const { data: session, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: session, error } = await supabase
         .from('user_sessions')
         .insert(sessionData)
         .select()
@@ -246,7 +247,8 @@ export class SessionManager {
     }
 
     try {
-      const { data: session, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: session, error } = await supabase
         .from('user_sessions')
         .select('*')
         .eq('session_token', sessionToken)
@@ -310,7 +312,8 @@ export class SessionManager {
         now.getTime() + validation.session.max_idle_minutes * 60 * 1000
       );
 
-      const { error } = await this.supabase
+      const supabase = await this.supabase;
+    const { error } = await supabase
         .from('user_sessions')
         .update({
           last_activity: now.toISOString(),
@@ -349,7 +352,8 @@ export class SessionManager {
         return false;
       }
 
-      const { error } = await this.supabase
+      const supabase = await this.supabase;
+    const { error } = await supabase
         .from('user_sessions')
         .update({
           is_active: false,
@@ -574,7 +578,8 @@ export class SessionManager {
     correlation_id?: string;
   }): Promise<void> {
     try {
-      await this.supabase.from('security_events').insert({
+      const supabase = await this.supabase;
+      await supabase.from('security_events').insert({
         ...event,
         event_data: event.event_data || {},
         created_at: new Date().toISOString(),

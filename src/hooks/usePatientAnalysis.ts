@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { PatientAnalysisData } from '@/types/api';
-import { api, isSuccessResponse } from '@/lib/api-client';
+import {
+  api,
+  isSuccessResponse,
+  isErrorResponse,
+  handleApiError,
+} from '@/lib/api-client';
 
 interface ConversionData {
   stages: Array<{
@@ -40,7 +45,7 @@ interface FollowUpItem {
   reason: string;
 }
 
-interface UsePatientAnalysisReturn {
+export interface PatientAnalysisViewModel {
   conversionData: ConversionData;
   visitCounts: VisitCounts;
   riskScores: RiskScore[];
@@ -51,82 +56,33 @@ interface UsePatientAnalysisReturn {
   followUpList: FollowUpItem[];
 }
 
-const DEFAULT_CLINIC_ID =
-  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
+interface UsePatientAnalysisResult {
+  data: PatientAnalysisViewModel | null;
+  loading: boolean;
+  error: string | null;
+}
 
 export const usePatientAnalysis = (
-  clinicId: string = DEFAULT_CLINIC_ID
-): UsePatientAnalysisReturn => {
-  const [data, setData] = useState<UsePatientAnalysisReturn>({
-    conversionData: {
-      stages: [
-        { name: '新患', value: 100, percentage: 100 },
-        { name: '2回目来院', value: 80, percentage: 80 },
-        { name: '継続治療', value: 60, percentage: 60 },
-        { name: 'リピーター', value: 40, percentage: 40 },
-      ],
-    },
-    visitCounts: {
-      average: 5.2,
-      monthlyChange: 12,
-    },
-    riskScores: [
-      {
-        id: 1,
-        name: '田中太郎',
-        lastVisit: '2024-08-01',
-        riskLevel: 'high',
-        score: 85,
-      },
-      {
-        id: 2,
-        name: '山田花子',
-        lastVisit: '2024-08-05',
-        riskLevel: 'medium',
-        score: 65,
-      },
-    ],
-    ltvRanking: [
-      { name: '佐藤次郎', ltv: 150000 },
-      { name: '鈴木三郎', ltv: 120000 },
-      { name: '高橋四郎', ltv: 95000 },
-    ],
-    segmentData: {
-      age: [
-        { label: '20-30代', value: 35 },
-        { label: '31-50代', value: 45 },
-        { label: '51歳以上', value: 20 },
-      ],
-      symptom: [
-        { label: '腰痛', value: 40 },
-        { label: '肩こり', value: 30 },
-        { label: 'その他', value: 30 },
-      ],
-      area: [
-        { label: '地域A', value: 50 },
-        { label: '地域B', value: 30 },
-        { label: '地域C', value: 20 },
-      ],
-    },
-    reservations: [],
-    satisfactionCorrelation: {},
-    followUpList: [
-      {
-        id: 1,
-        name: '田中太郎',
-        reason: '最終来院から2週間経過',
-      },
-      {
-        id: 2,
-        name: '山田花子',
-        reason: '治療完了後のフォローアップ',
-      },
-    ],
-  });
+  clinicId?: string | null
+): UsePatientAnalysisResult => {
+  const [data, setData] = useState<PatientAnalysisViewModel | null>(null);
+  const [loading, setLoading] = useState<boolean>(Boolean(clinicId));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (!clinicId) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const res = await api.patients.getAnalysis(clinicId);
         if (isSuccessResponse(res)) {
           const d = res.data as PatientAnalysisData;
@@ -184,27 +140,45 @@ export const usePatientAnalysis = (
             })
           );
 
-          setData({
-            conversionData: { stages },
-            visitCounts: {
-              average: Number(d.visitCounts?.average || 0),
-              monthlyChange: Number(d.visitCounts?.monthlyChange || 0),
-            },
-            riskScores,
-            ltvRanking,
-            segmentData,
-            reservations: [],
-            satisfactionCorrelation: {},
-            followUpList,
-          });
+          if (!cancelled) {
+            setData({
+              conversionData: { stages },
+              visitCounts: {
+                average: Number(d.visitCounts?.average || 0),
+                monthlyChange: Number(d.visitCounts?.monthlyChange || 0),
+              },
+              riskScores,
+              ltvRanking,
+              segmentData,
+              reservations: [],
+              satisfactionCorrelation: {},
+              followUpList,
+            });
+          }
+        } else if (isErrorResponse(res)) {
+          const message = handleApiError(res.error);
+          if (!cancelled) {
+            setError(message || '患者データの取得に失敗しました');
+            setData(null);
+          }
         }
       } catch (e) {
-        // フォールバック: 既定のサンプルを保持
-        console.warn('usePatientAnalysis fallback to sample:', e);
+        if (!cancelled) {
+          console.warn('usePatientAnalysis fetch error:', e);
+          setError('患者データの取得に失敗しました');
+          setData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [clinicId]);
 
-  return data;
+  return { data, loading, error };
 };

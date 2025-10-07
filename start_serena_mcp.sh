@@ -1,6 +1,7 @@
 #!/bin/bash
 
-echo "Starting Serena MCP Server with Context7..."
+echo "Starting Serena MCP Server..."
+echo "Note: Context7 is now configured as a remote MCP server in Claude Desktop"
 
 # Check if uv is available
 if ! command -v uv &> /dev/null; then
@@ -23,18 +24,12 @@ SERENA_PID=$!
 echo "Serena MCP Server started with PID: $SERENA_PID"
 
 echo ""
-echo "Starting Context7 MCP Server..."
-npx -y @upstash/context7-mcp &
-CONTEXT7_PID=$!
-echo "Context7 MCP Server started with PID: $CONTEXT7_PID"
-
-echo ""
-echo "Both MCP servers started successfully!"
+echo "Serena MCP Server started successfully!"
 echo "Serena PID: $SERENA_PID"
-echo "Context7 PID: $CONTEXT7_PID"
 echo ""
-echo "To stop servers, run:"
-echo "kill $SERENA_PID $CONTEXT7_PID"
+echo "Context7 is available as remote MCP server: https://mcp.context7.com/mcp"
+echo "To stop Serena server, run:"
+echo "kill $SERENA_PID"
 
-# Wait for both processes
+# Wait for Serena process
 wait

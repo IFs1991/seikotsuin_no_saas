@@ -12,18 +12,18 @@
 ./start_serena_mcp.sh
 ```
 
-#### 手動起動の場合
+#### Context7設定
 
-```bash
-# 標準的なstdioモード（推奨）
-npx -y @upstash/context7-mcp
+Context7はリモートMCPサーバーとして設定済み：
+- **URL**: https://mcp.context7.com/mcp
+- **使用方法**: プロンプトに「use context7」と記載
+- Claude Desktop設定に自動統合済み
 
-# HTTPモード（必要に応じて）
-npx -y @upstash/context7-mcp --transport http --port 3001
-```
+### Context7 & Serena Integration
 
-### Serena Memory Updates
-
+- **Context7**: LLM・AIコードエディタ向けドキュメンテーションプラットフォーム
+- **GitHub**: https://github.com/upstash/context7
+- **機能**: 最新のライブラリドキュメンテーション・API参照・コード例を提供
 - MCPサーバー（Context7）が統合されました
 - 最新のドキュメンテーションアクセスが可能
 - プロンプトで "use context7" と言及することで最新ライブラリ情報を取得

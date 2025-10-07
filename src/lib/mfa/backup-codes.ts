@@ -3,7 +3,7 @@
  * Phase 3B: MFA認証のフォールバック機能
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
 
 // バックアップコード設定

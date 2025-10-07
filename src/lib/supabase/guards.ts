@@ -11,7 +11,7 @@ import {
   getUserPermissions,
   type SupabaseServerClient,
   type UserPermissions,
-} from '@/lib/supabase/server';
+} from '@/lib/supabase';
 
 const CROSS_CLINIC_ROLES = new Set(['admin', 'clinic_manager']);
 

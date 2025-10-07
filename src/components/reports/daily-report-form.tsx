@@ -9,7 +9,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createLogger } from '@/utils/logger';
+import { createLogger } from '@/lib/logger';
 
 const log = createLogger('DailyReportForm');
 

@@ -2,7 +2,7 @@
 // テーブルメタデータ管理 - 動的スキーマ取得
 // =================================================================
 
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import type { TableConfig, TableColumn } from '@/types/admin';
 

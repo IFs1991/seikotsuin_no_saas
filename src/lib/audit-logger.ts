@@ -1,5 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/server';
-import { logger } from '@/lib/logger';
+import { createAdminClient } from '@/lib/supabase';
+import { createLogger } from '@/lib/logger';
 
 // 監査ログの種類
 export enum AuditEventType {
@@ -32,33 +32,41 @@ export interface AuditLogEntry {
 }
 
 // 監査ログ記録クラス
+const log = createLogger('AuditLogger');
+
 export class AuditLogger {
   private static async createLogEntry(entry: AuditLogEntry) {
+    const logData = {
+      event_type: entry.event_type,
+      user_id: entry.user_id,
+      user_email: entry.user_email,
+      target_table: entry.target_table,
+      target_id: entry.target_id,
+      clinic_id: entry.clinic_id,
+      ip_address: entry.ip_address,
+      user_agent: entry.user_agent,
+      details: entry.details,
+      success: entry.success,
+      error_message: entry.error_message,
+      created_at: new Date().toISOString(),
+    };
+
     try {
       const supabase = createAdminClient();
-
-      const logData = {
-        event_type: entry.event_type,
-        user_id: entry.user_id,
-        user_email: entry.user_email,
-        target_table: entry.target_table,
-        target_id: entry.target_id,
-        clinic_id: entry.clinic_id,
-        ip_address: entry.ip_address,
-        user_agent: entry.user_agent,
-        details: entry.details,
-        success: entry.success,
-        error_message: entry.error_message,
-        created_at: new Date().toISOString(),
-      };
-
       const { error } = await supabase.from('audit_logs').insert([logData]);
 
       if (error) {
-        logger.error('監査ログの記録に失敗しました:', error);
+        throw error;
       }
     } catch (error) {
-      logger.error('監査ログシステムエラー:', error);
+      // DB障害時のフォールバック: 構造化ログとして出力
+      log.error('監査ログDB書き込み失敗 - フォールバック出力', {
+        error,
+        logData,
+      });
+
+      // 本番環境では外部ログサービスへ転送可能（TODO: 将来実装）
+      // この段階でログは統一ロガーにより JSON 形式で出力される
     }
   }
 
@@ -80,12 +88,6 @@ export class AuditLogger {
     if (userAgent !== undefined) entry.user_agent = userAgent;
 
     await this.createLogEntry(entry);
-
-    logger.warn('Unauthorized access attempt detected', {
-      attemptedResource,
-      userId,
-      ipAddress,
-    });
   }
 
   // ログイン失敗
@@ -228,6 +230,12 @@ export class AuditLogger {
     if (userAgent !== undefined) entry.user_agent = userAgent;
 
     await this.createLogEntry(entry);
+
+    log.warn('Unauthorized access attempt detected', {
+      attemptedResource,
+      userId,
+      ipAddress,
+    });
   }
 
   // 管理者操作

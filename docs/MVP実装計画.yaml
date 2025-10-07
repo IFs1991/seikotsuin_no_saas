@@ -1,0 +1,237 @@
+meta:
+  document: MVP実装計画
+  version: 0.1.1
+  last_updated: 2025-09-27
+  owner: プロダクトマネージャー
+  reviewers:
+    - Tech Lead
+    - Security Lead
+    - Customer Success Lead
+business_goals:
+  primary:
+    - 直営およびFC整体院46拠点の月次売上/KPIを単一ダッシュボードで可視化する
+    - 日々の施術実績と患者接点データをチーム内で共有し、翌日の打ち手を決定できるようにする
+  secondary:
+    - 現場スタッフのデジタル利用率をリリース半年以内に70%以上に引き上げる
+    - 将来の多拠点展開に備えた監査・セキュリティ基盤の初期形を整える
+success_metrics:
+  - KPIダッシュボード閲覧率: 主要ユーザの80%が週2回以上アクセス
+  - 日報登録完了率: 稼働院の90%以上が営業日当日に登録
+  - 重大インシデントゼロ: サービスロールキー漏洩/未認可アクセスの発生なし
+  - CSフィードバック: ベータ参加院の満足度4.0/5.0以上
+mvp_scope:
+  in_scope:
+    functional:
+      - クリニック単位の売上/患者指標ダッシュボード（Supabase実データ連携）
+      - 日報の登録・編集・過去30件参照
+      - 患者分析モジュールの要約（リピート率・LTVランキング・離反リスク）
+      - 認証（Supabase Auth）とクリニックRLSによるアクセス制御
+      - 監査ログの最小実装（ログイン成功/失敗、データ取得・登録）
+    non_functional:
+      - Next.js App Router + ReactでのSSR/SSG構成
+      - Supabase行レベルセキュリティポリシーの適用と検証
+      - CIでのlint/type-check/unit+integration test実行
+  out_of_scope:
+    - AIインサイト生成の本番運用（モック表示は可）
+    - 多要素認証やマルチデバイス自動防御など高度セキュリティ機能
+    - グループ横断BIエクスポート/外部SaaS連携
+milestones:
+  - id: M0 （完了）
+    title: 基盤準備完了
+    status: 完了
+    target_week: 2025-W40
+    entry_gate: データチーム/KPI計算式とベータ対象院リストが承認済みであること
+    deliverables:
+      - ステージング/本番Supabase環境の初期構築と接続確認 （完了）
+      - KPI算出ロジック・データマッピング表・初期投入データ計画書 （完了）
+      - Next/Reactバージョン選定（安定版へのダウングレード含む）と互換性影響調査 （完了）
+  - id: M1 （完了）
+    title: データ連携有効化
+    status: 完了
+    target_week: 2025-W42
+    entry_gate: M0 deliverablesのレビュー完了
+    deliverables:
+      - Supabaseスキーマ/RLS最小構成、移行手順書、シードデータ投入 （完了）
+      - 主要API（dashboard/patients/daily-reports）のステージング連携テスト （完了）
+      - 認証フロー（ログイン/ログアウト）のE2E成功とエラーハンドリング確認 （完了）
+  - id: M2
+    title: コア画面MVP完成
+    status: 完了
+    completed_date: 2025-10-02
+    target_week: 2025-W44
+    entry_gate: ステージングでダッシュボード数値がシードデータと一致
+    deliverables:
+      - Dashboard/日報/患者分析ページでSupabase実データが表示されること （完了）
+      - 日報登録・編集フォーム＋クライアント/サーババリデーション完成 （完了）
+      - 必須ユースケースの統合テスト（新規ログイン→ダッシュボード閲覧→日報登録） （完了）
+    progress_notes:
+      - クリニックコンテキストを共有化し、Dashboard/Patients/DailyReportsページは認可済みクリニックのみデータ取得する構造に更新。
+      - 日報APIに数値整合チェックと詳細なエラーレスポンスを追加し、Jestでバリデーション成功/失敗ケースをカバー。
+      - 日報入力フォームはプロフィール読込状態・サーバエラーを考慮するUIに刷新（保存中ローディング・フィールド別エラーメッセージ表示対応）。
+      - 既存のuseDashboard/usePatientAnalysisフックテストをクリニックID必須仕様へ調整済み。
+      - ダッシュボード差分アラート実装完了: 前日比較ロジック（売上±20%/30%、患者数±20%/30%閾値）でアラート自動生成（src/app/api/dashboard/route.ts:123-183）
+      - 日報編集フロー実装完了: 個別日報取得API拡張（src/app/api/daily-reports/route.ts:25-65）、編集ページ作成（src/app/daily-reports/edit/[id]/page.tsx）
+      - 日報一覧UI強化完了: サマリー表示（登録数/平均患者数・売上/累計）、月別トレンド表示、編集ボタン導線追加（src/app/daily-reports/page.tsx:146-217）
+      - E2Eハッピーパステスト実装完了: ログイン→ダッシュボード→日報登録フロー（src/__tests__/e2e/happy-path.test.ts）、CI連携済み（npm run test:e2e）
+    completed_items:
+      - ダッシュボード差分アラート実装完了
+      - 日報編集フロー（GET API拡張・編集ページ作成）完了
+      - 日報一覧UI強化（サマリー・月別トレンド・編集導線）完了
+      - E2Eハッピーパステスト実装とCI連携完了
+    modified_files:
+      - src/app/api/dashboard/route.ts - ダッシュボード差分アラート実装（前日データ取得・比較ロジック・アラート生成）
+      - src/app/api/daily-reports/route.ts - 個別日報取得API追加（GET ?id=xxx対応）
+      - src/app/daily-reports/page.tsx - サマリー・月別トレンド表示追加、編集ボタン導線追加
+      - src/app/daily-reports/edit/[id]/page.tsx - 新規作成：日報編集ページ
+      - src/__tests__/integration/api-staging-data.test.ts - アラート機能テストケース追加
+      - src/__tests__/e2e/happy-path.test.ts - 新規作成：ログイン→ダッシュボード→日報登録のE2Eテスト
+      - package.json - テストスクリプト追加（test:e2e, test:integration）
+  - id: M3
+    title: 品質とセキュリティ強化
+    status: 完了
+    completed_date: 2025-10-03
+    target_week: 2025-W46
+    entry_gate: M2の統合テストおよびコードレビュー完了
+    deliverables:
+      - 監査ログ/セッション管理の不具合修正と本番向けログ出力設定 （完了）
+      - 必須テストケース自動化（単体/統合/E2E）とCI組み込み、レポート可視化 （完了）
+      - 障害ハンドリングレビュー（フェイルセーフ戦略・Runbookドラフト） （完了）
+    progress_notes:
+      - 統一ロガー実装完了: 環境変数LOG_LEVELによるレベル制御、本番環境で構造化JSON出力、開発環境で人間可読形式、テスト環境で出力抑制（src/lib/logger.ts）
+      - 監査ログ不具合修正完了: audit-logger.ts 84-88行目の未定義変数参照（attemptedResource, userId, ipAddress）削除、DB障害時の構造化ログフォールバック強化
+      - ロガー統一化完了: 旧ロガー（src/utils/logger.ts）削除、22ファイルのインポートを新ロガー（@/lib/logger）へ更新
+      - CI/CD完全自動化: GitHub Actions 4並列ジョブ構成（Quality Checks / Unit & Integration Tests / Security Tests / E2E Tests）、カバレッジレポート自動生成、scan:secrets CI統合
+      - RLS権限テスト拡充完了: クリニック間データ分離、ユーザーロール別アクセス制御、データ変更権限、監査ログ/セッション管理のRLS、患者情報保護、削除操作制限の8カテゴリ実装（src/__tests__/security/rls-policies.test.ts）
+      - フェイルセーフテスト実装完了: SessionManager/AuditLogger DB障害時の動作検証、冪等性テスト、リカバリー動作、グレースフルデグラデーションの7カテゴリ実装（src/__tests__/security/failsafe.test.ts）
+      - セキュリティ強化: 環境変数管理ポリシー策定（Critical/Sensitive/Public分類、四半期ローテーション手順）、Service Role Key厳格管理、シークレットスキャンで許可リスト3ファイルのみ参照確認
+      - 運用ドキュメント整備完了: Runbook（障害分類P0-P3、エスカレーションフロー、ロールバック手順）、監査ログ検証レポート、ペネトレーションチェックリスト（12カテゴリ90+項目）、Beta運用フロー、環境変数管理ポリシーの5ファイル作成
+      - セキュリティモニタリングダッシュボード実装完了: リアルタイムイベント監視、重要度別アラート表示、トレンド可視化、時間範囲選択（24h/7d/30d）機能追加（src/app/admin/(protected)/security-monitor/page.tsx）
+    completed_items:
+      - 統一ロガー実装（環境変数制御、構造化JSON出力）
+      - 監査ログの不具合修正（未定義変数削除、フォールバック強化）
+      - ロガー統一化（旧ロガー削除、22ファイルインポート更新）
+      - CI/CD 4並列ジョブ構成とカバレッジレポート自動生成
+      - scan:secrets CI統合
+      - RLS権限テスト拡充（8カテゴリ）
+      - フェイルセーフテスト実装（7カテゴリ）
+      - 環境変数管理ポリシー策定
+      - Runbook作成（障害対応・ロールバック手順）
+      - 監査ログ検証レポートテンプレート作成
+      - ペネトレーションテストチェックリスト作成（90+項目）
+      - Beta運用フロードキュメント作成
+      - セキュリティモニタリングダッシュボード実装
+      - M3完了レポート作成
+    modified_files:
+      - src/lib/logger.ts - 新規作成：統一ロガー（245行、環境変数制御・構造化JSON出力・レベル管理）
+      - src/lib/audit-logger.ts - 修正：未定義変数参照削除（84-88行）、DB障害時フォールバック強化
+      - src/utils/logger.ts - 削除：旧ロガー実装削除
+      - src/components/admin/CSPDashboard.tsx - インポート更新：@/utils/logger → @/lib/logger
+      - src/components/reports/daily-report-form.tsx - インポート更新：@/utils/logger → @/lib/logger
+      - .github/workflows/ci.yml - 完全書き換え：4並列ジョブ構成（Quality/Unit&Integration/Security/E2E）、カバレッジレポート自動生成
+      - src/__tests__/security/rls-policies.test.ts - 新規作成：RLS権限テスト（359行、8カテゴリ）
+      - src/__tests__/security/failsafe.test.ts - 新規作成：フェイルセーフテスト（352行、7カテゴリ）
+      - src/app/admin/(protected)/security-monitor/page.tsx - 新規作成：セキュリティモニタリングダッシュボード（287行）
+      - docs/operations/ENV_MANAGEMENT_POLICY.md - 新規作成：環境変数管理ポリシー
+      - docs/operations/RUNBOOK.md - 新規作成：運用Runbook（障害対応・エスカレーション・ロールバック）
+      - docs/operations/AUDIT_LOG_VERIFICATION.md - 新規作成：監査ログ検証レポートテンプレート
+      - docs/operations/PENETRATION_TEST_CHECKLIST.md - 新規作成：ペネトレーションテストチェックリスト（90+項目）
+      - docs/operations/BETA_OPERATIONS.md - 新規作成：Beta運用フロードキュメント
+      - docs/M3_COMPLETION_REPORT.md - 新規作成：M3完了レポート（225行）
+  - id: M4
+    title: ベータ運用検証
+    target_week: 2025-W48
+    entry_gate: ベータ院へのトレーニング完了と利用マニュアル配布済み
+    deliverables:
+      - ベータ院2週間運用レポート（活用状況・改善要望・重大不具合）
+      - CS/Tech/Security三者レビューでのGo/No-Go判定資料
+      - MVPローンチ後フォローアップ計画（改善バックログ・サポート体制）
+workstreams:
+  application:
+    owner: フロントエンドリード
+    tasks:
+      - Dashboard/日報/患者分析のダミーデータ排除とAPIレスポンス統合（UI/UX要件と整合）
+      - 状態管理（React Query + Zustand）とローディング/エラーUIの標準化
+      - Next.js/React安定版への移行実施と回帰テスト
+      - 必須E2EシナリオのPlaywright実装（共同作業: QA）
+  backend:
+    owner: バックエンドリード
+    tasks:
+      - Supabaseテーブル/ビュー/RPC設計の確定とマイグレーション管理（sql/migrations）
+      - nsureClinicAccessを含むAPIハンドラのバリデーション強化とエラーログ整備
+      - KPI計算/日報集計のSQLチューニングと負荷テスト（想定: 日次リクエスト10万）
+      - データ投入/バックアップ/ロールバック手順書の整備
+  security:
+    owner: セキュリティリード
+    tasks:
+      - AuditLogger/SessionManager/Logger修正後の本番ログ確認、モニタリングダッシュボード作成
+      - 環境変数・秘密情報管理ポリシー策定と
+pm run scan:secretsのCI組み込み
+      - RLS/権限テストケースおよび簡易ペネトレーションチェックリストの実施
+      - Beta運用時の監査証跡取得プロセス確立
+  quality_ops:
+    owner: QAリード
+    tasks:
+      - テストピラミッド定義と必須/任意テストケース一覧化
+      - CIでのlint/type-check/unit/integration/e2e実行と結果レポート化
+      - リリースRunbook/ローンバック手順・オンコール体制ドラフト
+      - ベータ期間中のサポート運用フローとフィードバック集計方法の策定
+quality_requirements:
+  testing:
+    must:
+      - 単体テスト: ビジネスロジックを担うhooks・ライブラリで主要分岐をカバー
+      - 統合テスト: dashboard/patients/daily-reports APIのハッピーパスを自動化
+      - E2E: 認証→ダッシュボード閲覧→日報登録→ログアウトシナリオをCIで実行
+    stretch:
+      - UIコンポーネントのスナップショット/アクセシビリティテスト
+      - 患者分析ページでの異常値シナリオテスト
+  monitoring:
+    must:
+      - Supabase監査ログとアプリ監査ログを日次で突合できるレポート
+      - 主要APIのエラー率・レイテンシ監視ダッシュボード
+    stretch:
+      - ベータ利用状況メトリクスの自動収集
+  documentation:
+    must:
+      - API仕様（OpenAPIまたは同等の設計書）
+      - 運用Runbook（障害対応/エスカレーション/ローンバック）
+    stretch:
+      - UI操作マニュアルとチュートリアル動画のドラフト
+security_requirements:
+  - Supabase Service Role Keyはサーバー側のみで利用し、起動時チェックとCIスキャン結果を残す
+  - 監査ログは失敗時にフォールバックし、監査ログ検証レポートをM3で提出
+  - Session/CSPミドルウェアは冪等で、失敗時のフェイルセーフ挙動をテストで証明
+  - クリニック外アクセスはRLSで拒否、監査ログとモニタリングに証跡が残ること
+acceptance_criteria:
+  - ベータ対象院で2週間の業務運用（ダッシュボード閲覧・日報登録）が成功し、重大インシデントがゼロである
+  - 必須テストケースと監査ログ検証レポートがCI/レビューで承認済み
+  - Beta運用レビュー会議でPM/Tech Lead/Security Lead/CS LeadがGoを合意
+  - 改善バックログとポストMVPロードマップが整備されている
+risks:
+  - id: R1
+    description: Next.js 15 / React 19採用によるライブラリ不整合
+    mitigation: LTS版へダウングレード済みで互換性テストを前倒し実施
+  - id: R2
+    description: 監査ログ/セッション管理の複雑化による障害リスク
+    mitigation: 最小構成へ縮小し、段階的に機能解放。M3でフェイルセーフ検証
+  - id: R3
+    description: Supabaseスキーマ変更が多院データを破壊する可能性
+    mitigation: ステージングでマイグレーション検証＋自動バックアップ、ロールバック手順確立
+  - id: R4
+    description: KPI算出ロジック確定が遅延しダッシュボードが確定しない
+    mitigation: M0でビジネス要件を締結し、変更窓口を設ける
+  - id: R5
+    description: ベータ院のトレーニング遅延によりM4開始がずれ込む
+    mitigation: CSチームと前倒しでスケジュール調整し、代替院を準備
+dependencies:
+  external:
+    - SupabaseプロジェクトIDと本番DB準備
+    - 認証用ドメイン/SSL設定
+    - 監査ログ監視のインフラ（例: CloudWatch, Logflare）
+  internal:
+    - データチームからの初期KPI定義と計算式共有
+    - CSチームによるベータ院トレーニング計画とスケジュール確定
+    - 法務/コンプラ確認（監査ログ・個人情報取扱手順）
+post_mvp_followups:
+  - AIインサイトの本番化（Gemini連携、PDFレポート出力）
+  - 多要素認証・マルチデバイス検知の強化
+  - グループ横断レベルのBI連携/データウェアハウス統合

@@ -2,41 +2,89 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import {
-  loginFormDataSchema,
-  signupFormDataSchema,
+  loginSchema,
+  signupSchema,
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
+import { getServerClient } from '@/lib/supabase/server';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
+
+const INACTIVE_ACCOUNT_MESSAGE =
+  'アカウントが無効化されています。管理者にお問い合わせください';
+const INVALID_CREDENTIALS_MESSAGE =
+  'メールアドレスまたはパスワードが正しくありません';
+const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
+
+function isRedirectLikeError(error: unknown): error is Error {
+  if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
+    return true;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const digest = (error as { digest?: string }).digest;
+    if (digest === 'NEXT_REDIRECT') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+type AuthErrorDetail = {
+  message?: string | null;
+  status?: number | null;
+};
+
+function mapAuthError(error?: AuthErrorDetail | null) {
+  const status = error?.status ?? null;
+  const message = (error?.message ?? '').toLowerCase();
+
+  if (status === 403 || /inactive|ban|blocked/i.test(message)) {
+    return INACTIVE_ACCOUNT_MESSAGE;
+  }
+
+  if (status === 400 || /invalid|wrong|mismatch/i.test(message)) {
+    return INVALID_CREDENTIALS_MESSAGE;
+  }
+
+  return GENERIC_AUTH_ERROR_MESSAGE;
+}
 
 /**
  * ログイン処理（入力値検証強化版）
  */
+function extractAuthFormValues(formData: FormData) {
+  const emailValue = formData.get('email');
+  const passwordValue = formData.get('password');
+
+  return {
+    email: typeof emailValue === 'string' ? emailValue : '',
+    password: typeof passwordValue === 'string' ? passwordValue : '',
+  };
+}
+
 export async function login(_: any, formData: FormData): Promise<AuthResponse> {
-  const supabase = await createClient();
+  const supabase = getServerClient();
 
   try {
-    // 1. 入力値の検証とサニタイゼーション
-    const result = loginFormDataSchema.safeParse(formData);
-
-    if (!result.success) {
-      console.warn(
-        '[Auth] Login validation failed:',
-        result.error.flatten().fieldErrors
-      );
+    // 1. 入力値の検証とサニタイズ
+    const parsed = loginSchema.safeParse(extractAuthFormValues(formData));
+    if (!parsed.success) {
+      const { fieldErrors } = parsed.error.flatten();
+      if (!fieldErrors.password || fieldErrors.password.length === 0) {
+        fieldErrors.password = ['パスワードを入力してください'];
+      }
+      console.warn('[Auth] Login validation failed:', fieldErrors);
       return {
         success: false,
-        errors: result.error.flatten().fieldErrors,
+        errors: fieldErrors,
       };
     }
 
-    const { email, password } = result.data;
-
-    // 2. 追加のサニタイゼーション
-    const sanitizedEmail = sanitizeAuthInput(String(email));
-    const sanitizedPassword = sanitizeAuthInput(String(password));
+    const sanitizedEmail = sanitizeAuthInput(parsed.data.email).toLowerCase();
+    const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
     // 3. レート制限チェック（基本的なブルートフォース対策）
     // TODO: より詳細なレート制限実装
@@ -48,46 +96,57 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     });
 
     if (error) {
-      // セキュリティログ
-      console.warn('[Security] Login attempt failed:', {
+      const errorMessage = mapAuthError(error);
+      const warningPayload: { email: string; error: string; status?: number | null; details?: string } = {
         email: sanitizedEmail,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      });
+        error: errorMessage,
+      };
 
-      // ユーザーには汎用的なエラーメッセージを返す
+      if (typeof error.status !== 'undefined') {
+        warningPayload.status = error.status ?? null;
+      }
+
+      if (error.message && error.message !== errorMessage) {
+        warningPayload.details = error.message;
+      }
+
+      console.warn('[Security] Login attempt failed:', warningPayload);
       return {
         success: false,
         errors: {
-          _form: ['メールアドレスまたはパスワードが正しくありません'],
+          password: [errorMessage],
+          _form: [errorMessage],
         },
       };
     }
 
     if (!data.user) {
+      const fallbackMessage = '認証に失敗しました。再度お試しください';
       return {
         success: false,
         errors: {
-          _form: ['認証に失敗しました。再度お試しください'],
+          password: [fallbackMessage],
+          _form: [fallbackMessage],
         },
       };
     }
 
     // 5. ユーザー権限の確認
-    const { data: profile } = await supabase
+    const profileResult = await supabase
       .from('profiles')
       .select('role, is_active')
       .eq('user_id', data.user.id)
       .single();
+
+    const profile = profileResult?.data;
 
     if (!profile?.is_active) {
       await supabase.auth.signOut();
       return {
         success: false,
         errors: {
-          _form: [
-            'アカウントが無効化されています。管理者にお問い合わせください',
-          ],
+          password: [INACTIVE_ACCOUNT_MESSAGE],
+          _form: [INACTIVE_ACCOUNT_MESSAGE],
         },
       };
     }
@@ -104,13 +163,15 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     const redirectPath = getDefaultRedirect(profile.role);
     redirect(redirectPath);
   } catch (error) {
+    if (isRedirectLikeError(error)) {
+      throw error;
+    }
     console.error('[Auth] Login error:', error);
     return {
       success: false,
       errors: {
-        _form: [
-          'システムエラーが発生しました。しばらく経ってから再度お試しください',
-        ],
+        password: [GENERIC_AUTH_ERROR_MESSAGE],
+        _form: [GENERIC_AUTH_ERROR_MESSAGE],
       },
     };
   }
@@ -123,33 +184,26 @@ export async function signup(
   _: any,
   formData: FormData
 ): Promise<AuthResponse> {
-  const supabase = await createClient();
+  const supabase = getServerClient();
+
+  // 1. 入力値の検証
+  const parsed = signupSchema.safeParse(extractAuthFormValues(formData));
+  if (!parsed.success) {
+    const { fieldErrors } = parsed.error.flatten();
+    if (!fieldErrors.password || fieldErrors.password.length === 0) {
+      fieldErrors.password = ['パスワードを入力してください'];
+    }
+    console.warn('[Auth] Signup validation failed:', fieldErrors);
+    return {
+      success: false,
+      errors: fieldErrors,
+    };
+  }
+
+  const sanitizedEmail = sanitizeAuthInput(parsed.data.email).toLowerCase();
+  const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
   try {
-    // 1. 入力値の検証
-    const result = signupFormDataSchema.safeParse(formData);
-
-    if (!result.success) {
-      console.warn(
-        '[Auth] Signup validation failed:',
-        result.error.flatten().fieldErrors
-      );
-      return {
-        success: false,
-        errors: result.error.flatten().fieldErrors,
-      };
-    }
-
-    const { email, password } = result.data;
-
-    // 2. 追加のサニタイゼーション
-    const sanitizedEmail = sanitizeAuthInput(String(email));
-    const sanitizedPassword = sanitizeAuthInput(String(password));
-
-    // 3. 既存ユーザーチェック（プライバシーを考慮した実装）
-    // Note: 実際の運用では詳細なチェックは行わず、Supabaseに委ねる
-
-    // 4. Supabase認証（メール確認付き）
     const { error, data } = await supabase.auth.signUp({
       email: sanitizedEmail,
       password: sanitizedPassword,
@@ -165,7 +219,6 @@ export async function signup(
         timestamp: new Date().toISOString(),
       });
 
-      // ユーザーには汎用的なエラーメッセージを返す
       const errorMessage = error.message.includes('already registered')
         ? 'このメールアドレスは既に登録されています'
         : 'アカウントの作成に失敗しました。入力内容を確認してください';
@@ -178,14 +231,12 @@ export async function signup(
       };
     }
 
-    // 5. 成功ログ
     console.info('[Auth] Successful signup:', {
       email: sanitizedEmail,
       userId: data.user?.id,
       timestamp: new Date().toISOString(),
     });
 
-    // 6. パス再検証
     revalidatePath('/', 'layout');
 
     return {
@@ -198,9 +249,7 @@ export async function signup(
     return {
       success: false,
       errors: {
-        _form: [
-          'システムエラーが発生しました。しばらく経ってから再度お試しください',
-        ],
+        _form: [GENERIC_AUTH_ERROR_MESSAGE],
       },
     };
   }
@@ -210,7 +259,7 @@ export async function signup(
  * ログアウト処理
  */
 export async function logout(): Promise<void> {
-  const supabase = await createClient();
+  const supabase = getServerClient();
 
   try {
     // 現在のユーザー情報を取得（ログ用）
@@ -236,6 +285,9 @@ export async function logout(): Promise<void> {
     revalidatePath('/', 'layout');
     redirect('/admin/login?message=ログアウトしました');
   } catch (error) {
+    if (isRedirectLikeError(error)) {
+      throw error;
+    }
     console.error('[Auth] Logout error:', error);
     redirect('/admin/login?error=logout_failed');
   }

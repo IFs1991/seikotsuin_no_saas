@@ -22,6 +22,7 @@ import {
   ResponsiveGrid,
 } from '@/components/layout/responsive-layout';
 import useDashboard from '@/hooks/useDashboard';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
 // パフォーマンス最適化のためのメモ化コンポーネント
 const DailyDataCard = memo(
@@ -123,7 +124,17 @@ const QuickActionsCard = memo(
 QuickActionsCard.displayName = 'QuickActionsCard';
 
 export default function DashboardPage() {
-  const { dashboardData, loading, error, handleQuickAction } = useDashboard();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfileContext();
+  const clinicId = profile?.clinicId ?? null;
+  const { dashboardData, loading, error, handleQuickAction } =
+    useDashboard(clinicId);
+
+  const isLoading = profileLoading || loading;
+  const hasClinic = Boolean(clinicId);
 
   // メモ化されたデータ計算
   const memoizedData = useMemo(() => {
@@ -137,7 +148,7 @@ export default function DashboardPage() {
     };
   }, [dashboardData]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
         <div className='flex items-center space-x-2'>
@@ -146,6 +157,44 @@ export default function DashboardPage() {
             ダッシュボードデータを読み込み中...
           </span>
         </div>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+        <Card className='max-w-md w-full mx-4'>
+          <CardHeader>
+            <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-gray-700 dark:text-gray-300 mb-4'>
+              {profileError}
+            </p>
+            <Button onClick={() => window.location.reload()} className='w-full'>
+              再読み込み
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!hasClinic) {
+    return (
+      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+        <Card className='max-w-md w-full mx-4'>
+          <CardHeader>
+            <CardTitle>クリニック情報が見つかりません</CardTitle>
+            <CardDescription>
+              アクセス権のあるクリニックが割り当てられていないため、ダッシュボードを表示できません。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className='text-gray-700 dark:text-gray-300'>管理者に権限を確認してください。</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

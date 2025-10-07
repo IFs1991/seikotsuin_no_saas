@@ -1,3 +1,5 @@
+/** @jest-environment jsdom */
+
 import { render, screen } from '@testing-library/react';
 import { AICommentCard } from '@/components/dashboard/ai-comment-card';
 

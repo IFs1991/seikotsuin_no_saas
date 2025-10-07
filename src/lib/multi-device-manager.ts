@@ -3,7 +3,7 @@
  * Phase 3A: セッション管理強化の一環としての複数デバイス管理
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { createBrowserClient } from '@supabase/ssr';
 import {
   SessionManager,

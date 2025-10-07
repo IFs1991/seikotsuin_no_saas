@@ -9,10 +9,6 @@ import {
   handleApiError,
 } from '../lib/api-client';
 
-// デフォルトのクリニックID（実際の実装では認証システムから取得）
-const DEFAULT_CLINIC_ID =
-  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
-
 interface UseDashboardReturn {
   dashboardData: DashboardData | null;
   loading: boolean;
@@ -22,17 +18,18 @@ interface UseDashboardReturn {
 }
 
 const useDashboard = (
-  clinicId: string = DEFAULT_CLINIC_ID
+  clinicId?: string | null
 ): UseDashboardReturn => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(Boolean(clinicId));
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async (): Promise<void> => {
     if (!clinicId) {
-      setError('Clinic ID is required');
+      setDashboardData(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -60,6 +57,12 @@ const useDashboard = (
   }, [clinicId]);
 
   useEffect(() => {
+    if (!clinicId) {
+      setLoading(false);
+      setDashboardData(null);
+      return;
+    }
+
     fetchData();
 
     // 5分ごとにデータを更新（リアルタイム性を向上）

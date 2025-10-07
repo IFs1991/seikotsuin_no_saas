@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 
 const ADMIN_ROLES = new Set(['admin', 'clinic_manager', 'manager']);
 

@@ -3,7 +3,8 @@ import { cn } from '@/lib/utils';
 import { Label } from './label';
 import { Input } from './input';
 
-export interface FormFieldProps {
+export interface FormFieldProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
   label: string;
   required?: boolean;
   error?: string;
@@ -46,7 +47,7 @@ export const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
         </Label>
 
         {children ? (
-          React.cloneElement(children as React.ReactElement, {
+          React.isValidElement(children) ? React.cloneElement(children, {
             id: fieldId,
             'aria-describedby':
               cn(
@@ -54,7 +55,7 @@ export const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
                 help ? helpId : undefined
               ).trim() || undefined,
             'aria-invalid': error ? 'true' : undefined,
-          })
+          }) : children
         ) : (
           <Input
             id={fieldId}

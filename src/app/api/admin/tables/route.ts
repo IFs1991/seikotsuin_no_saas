@@ -12,7 +12,7 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
-import type { SupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseServerClient } from '@/lib/supabase';
 
 // ================================================================
 // データベーステーブル管理 API - 動的スキーマ版

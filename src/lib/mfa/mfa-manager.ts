@@ -5,7 +5,7 @@
 
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
 
 // MFA設定スキーマ

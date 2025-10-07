@@ -3,13 +3,10 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-const Tabs = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('w-full', className)} {...props} />
-));
-Tabs.displayName = 'Tabs';
+const TabsContext = React.createContext<{
+  value: string;
+  setValue: (value: string) => void;
+} | null>(null);
 
 const TabsList = React.forwardRef<
   HTMLDivElement,
@@ -72,22 +69,46 @@ const TabsContent = React.forwardRef<
 });
 TabsContent.displayName = 'TabsContent';
 
-const TabsContext = React.createContext<{
-  value: string;
-  setValue: (value: string) => void;
-} | null>(null);
+interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
 
-const TabsProvider: React.FC<{
-  defaultValue: string;
-  children: React.ReactNode;
-}> = ({ defaultValue, children }) => {
-  const [value, setValue] = React.useState(defaultValue);
+const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
+  (
+    { className, defaultValue = '', value: controlledValue, onValueChange, children, ...props },
+    ref
+  ) => {
+    const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
+    const isControlled = controlledValue !== undefined;
+    const value = isControlled ? controlledValue : uncontrolledValue;
 
-  return (
-    <TabsContext.Provider value={{ value, setValue }}>
-      <Tabs>{children}</Tabs>
-    </TabsContext.Provider>
-  );
-};
+    const setValue = React.useCallback(
+      (nextValue: string) => {
+        if (!isControlled) {
+          setUncontrolledValue(nextValue);
+        }
+        onValueChange?.(nextValue);
+      },
+      [isControlled, onValueChange]
+    );
 
-export { TabsProvider as Tabs, TabsList, TabsTrigger, TabsContent };
+    React.useEffect(() => {
+      if (!isControlled && defaultValue !== uncontrolledValue) {
+        setUncontrolledValue(defaultValue);
+      }
+    }, [defaultValue, isControlled, uncontrolledValue]);
+
+    return (
+      <TabsContext.Provider value={{ value, setValue }}>
+        <div ref={ref} className={cn('w-full', className)} {...props}>
+          {children}
+        </div>
+      </TabsContext.Provider>
+    );
+  }
+);
+Tabs.displayName = 'Tabs';
+
+export { Tabs, TabsList, TabsTrigger, TabsContent };

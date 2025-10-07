@@ -87,6 +87,17 @@ const eslintConfig = [
       'no-debugger': 'error',
       'no-duplicate-imports': 'error',
       'no-unused-expressions': 'error',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/lib/supabase/server',
+              message: "必ず '@/lib/supabase' から import してください",
+            },
+          ],
+        },
+      ],
     },
     env: {
       browser: true,

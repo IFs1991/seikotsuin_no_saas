@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 import {
   Card,
   CardHeader,
@@ -14,15 +15,103 @@ import { ArrowRight } from 'lucide-react';
 
 export default function PatientsPage() {
   const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfileContext();
+  const clinicId = profile?.clinicId ?? null;
+
+  const {
+    data,
+    loading,
+    error,
+  } = usePatientAnalysis(clinicId);
+
+  const isLoading = profileLoading || loading;
+
+  if (profileError && !profileLoading) {
+    return (
+      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+        <div className='max-w-[800px] mx-auto'>
+          <Card className='bg-card'>
+            <CardHeader>
+              <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <p className='text-gray-700 dark:text-gray-300'>{profileError}</p>
+              <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+                再読み込み
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clinicId && !profileLoading) {
+    return (
+      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+        <div className='max-w-[800px] mx-auto'>
+          <Card className='bg-card'>
+            <CardHeader>
+              <CardTitle>クリニック情報が見つかりません</CardTitle>
+              <CardDescription>
+                権限が付与されたクリニックが設定されていないため、患者分析を表示できません。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+        <div className='text-gray-500'>患者分析データを読み込み中です...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+        <div className='max-w-[800px] mx-auto'>
+          <Card className='bg-card border border-red-200'>
+            <CardHeader>
+              <CardTitle className='text-red-600'>データ取得に失敗しました</CardTitle>
+              <CardDescription>
+                {error}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+                再読み込み
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+        <div className='text-gray-500'>表示できる患者データがありません。</div>
+      </div>
+    );
+  }
+
+  const {
     conversionData,
     visitCounts,
     riskScores,
     ltvRanking,
     segmentData,
-    reservations,
-    satisfactionCorrelation,
     followUpList,
-  } = usePatientAnalysis();
+  } = data;
 
   return (
     <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a]'>
@@ -134,37 +223,39 @@ export default function PatientsPage() {
           </CardContent>
         </Card>
 
-        <Card className='bg-card'>
-          <CardHeader>
-            <CardTitle>セグメント分析</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className='space-y-4'>
-              <div className='flex space-x-2'>
-                <button className='px-4 py-2 bg-blue-500 text-white rounded'>
-                  年齢層
-                </button>
-                <button className='px-4 py-2 bg-gray-200 text-gray-700 rounded'>
-                  症状
-                </button>
-                <button className='px-4 py-2 bg-gray-200 text-gray-700 rounded'>
-                  地域
-                </button>
+        {segmentData.age.length > 0 && (
+          <Card className='bg-card'>
+            <CardHeader>
+              <CardTitle>セグメント分析</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className='space-y-4'>
+                <div className='flex space-x-2'>
+                  <button className='px-4 py-2 bg-blue-500 text-white rounded'>
+                    年齢層
+                  </button>
+                  <button className='px-4 py-2 bg-gray-200 text-gray-700 rounded'>
+                    症状
+                  </button>
+                  <button className='px-4 py-2 bg-gray-200 text-gray-700 rounded'>
+                    地域
+                  </button>
+                </div>
+                <div className='grid grid-cols-2 gap-4'>
+                  {segmentData.age.map((item, index) => (
+                    <div
+                      key={index}
+                      className='flex justify-between p-2 bg-[#f3f4f6] dark:bg-[#2d2d2d] rounded'
+                    >
+                      <span>{item.label}</span>
+                      <span>{item.value}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className='grid grid-cols-2 gap-4'>
-                {segmentData.age.map((item, index) => (
-                  <div
-                    key={index}
-                    className='flex justify-between p-2 bg-[#f3f4f6] dark:bg-[#2d2d2d] rounded'
-                  >
-                    <span>{item.label}</span>
-                    <span>{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className='bg-card'>
           <CardHeader>
@@ -172,21 +263,25 @@ export default function PatientsPage() {
           </CardHeader>
           <CardContent>
             <div className='space-y-4'>
-              {followUpList.map((patient, index) => (
-                <div
-                  key={index}
-                  className='flex items-center justify-between p-3 bg-[#f3f4f6] dark:bg-[#2d2d2d] rounded'
-                >
-                  <div>
-                    <p className='font-medium'>{patient.name}</p>
-                    <p className='text-sm text-[#6b7280]'>{patient.reason}</p>
+              {followUpList.length === 0 ? (
+                <div className='text-gray-500'>フォローアップ対象者は現在ありません。</div>
+              ) : (
+                followUpList.map((patient, index) => (
+                  <div
+                    key={index}
+                    className='flex items-center justify-between p-3 bg-[#f3f4f6] dark:bg-[#2d2d2d] rounded'
+                  >
+                    <div>
+                      <p className='font-medium'>{patient.name}</p>
+                      <p className='text-sm text-[#6b7280]'>{patient.reason}</p>
+                    </div>
+                    <Button variant='outline'>
+                      連絡する
+                      <ArrowRight className='ml-2 h-4 w-4' />
+                    </Button>
                   </div>
-                  <Button variant='outline'>
-                    連絡する
-                    <ArrowRight className='ml-2 h-4 w-4' />
-                  </Button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

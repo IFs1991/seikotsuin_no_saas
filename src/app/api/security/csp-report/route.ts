@@ -96,7 +96,7 @@ async function saveCSPViolationToDB(
 ): Promise<void> {
   try {
     // Supabaseクライアントのインポート
-    const { createClient } = await import('@/lib/supabase/server');
+    const { createClient } = await import('@/lib/supabase');
     const supabase = createClient();
 
     // 違反の重要度を計算

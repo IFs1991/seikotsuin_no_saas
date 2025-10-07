@@ -1,33 +1,45 @@
 import 'server-only';
 
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { Database } from '@/types/supabase';
+
 import { assertEnv } from '@/lib/env';
+import { Database } from '@/types/supabase';
 
 export type SupabaseServerClient = SupabaseClient<Database>;
+type SupabaseServerClientFactory = () => Promise<SupabaseServerClient>;
 
-export function createClient(): SupabaseServerClient {
-  const cookieStore = cookies();
+const FACTORY_KEY = Symbol.for('@@supabaseServerFactory');
+type GlobalScopeWithFactory = typeof globalThis & {
+  [FACTORY_KEY]?: SupabaseServerClientFactory;
+};
+
+const globalScope = globalThis as GlobalScopeWithFactory;
+
+async function createSupabaseClient(): Promise<SupabaseServerClient> {
+  const cookieStore = await cookies();
 
   return createServerClient<Database>(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll();
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        setAll(cookiesToSet) {
+        set(name: string, value: string, options?: CookieOptions) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookieStore.set({ name, value, ...options });
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Ignored: Next.js blocks cookie mutation in some server contexts.
+          }
+        },
+        remove(name: string, options?: CookieOptions) {
+          try {
+            cookieStore.delete({ name, ...options });
+          } catch {
+            // Ignored: Next.js blocks cookie mutation in some server contexts.
           }
         },
       },
@@ -35,11 +47,29 @@ export function createClient(): SupabaseServerClient {
   );
 }
 
-// サーバー用のSupabaseクライアント（サーバーコンポーネント、Route Handler、Server Actions用）
-// Note: Use createClient() directly in async contexts
+function resolveSupabaseClientFactory(): SupabaseServerClientFactory {
+  return globalScope[FACTORY_KEY] ?? createSupabaseClient;
+}
 
-// 管理者専用のSupabaseクライアント（サービスロールキー使用）
-export function createAdminClient() {
+export function setSupabaseClientFactory(
+  factory: SupabaseServerClientFactory
+) {
+  globalScope[FACTORY_KEY] = factory;
+}
+
+export function resetSupabaseClientFactory() {
+  delete globalScope[FACTORY_KEY];
+}
+
+export async function getServerClient(): Promise<SupabaseServerClient> {
+  return await resolveSupabaseClientFactory()();
+}
+
+export async function createClient(): Promise<SupabaseServerClient> {
+  return await getServerClient();
+}
+
+export function createAdminClient(): SupabaseServerClient {
   return createServerClient<Database>(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('SUPABASE_SERVICE_ROLE_KEY'),
@@ -57,11 +87,10 @@ export function createAdminClient() {
   );
 }
 
-// ユーザー認証・認可チェック用のヘルパー関数
 export async function getCurrentUser(
   client?: SupabaseServerClient
 ) {
-  const supabase = client ?? createClient();
+  const supabase = client ?? await getServerClient();
   const {
     data: { user },
     error,
@@ -83,7 +112,7 @@ export async function getUserPermissions(
   userId: string,
   client?: SupabaseServerClient
 ): Promise<UserPermissions | null> {
-  const supabase = client ?? createClient();
+  const supabase = client ?? await getServerClient();
   const { data: permissions, error } = await supabase
     .from('user_permissions')
     .select('role, clinic_id')
@@ -106,7 +135,7 @@ export async function requireAuth(client?: SupabaseServerClient) {
 }
 
 export async function requireAdminAuth(client?: SupabaseServerClient) {
-  const supabase = client ?? createClient();
+  const supabase = client ?? await getServerClient();
   const user = await requireAuth(supabase);
   const permissions = await getUserPermissions(user.id, supabase);
 

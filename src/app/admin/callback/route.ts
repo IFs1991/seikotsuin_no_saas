@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 

@@ -1,6 +1,12 @@
 // This file should be regenerated via `supabase gen types typescript`
 // See `npm run supabase:types` for details.
 // Supabaseの型定義（自動生成されるファイルの代替）
+type GenericTableDefinition = {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+};
+
 export interface Database {
   public: {
     Tables: {
@@ -153,15 +159,195 @@ export interface Database {
           updated_at?: string | null;
         };
       };
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      [_ in never]: never;
-    };
-    Enums: {
-      [_ in never]: never;
-    };
+      user_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          clinic_id: string;
+          session_token: string;
+          refresh_token_id: string | null;
+          device_info: Record<string, unknown>;
+          ip_address: string | null;
+          user_agent: string | null;
+          geolocation: Record<string, unknown> | null;
+          created_at: string;
+          last_activity: string;
+          expires_at: string;
+          idle_timeout_at: string | null;
+          absolute_timeout_at: string | null;
+          is_active: boolean;
+          is_revoked: boolean;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          revoked_reason: string | null;
+          max_idle_minutes: number;
+          max_session_hours: number;
+          remember_device: boolean;
+          created_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          clinic_id: string;
+          session_token: string;
+          refresh_token_id?: string | null;
+          device_info?: Record<string, unknown>;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          geolocation?: Record<string, unknown> | null;
+          created_at?: string;
+          last_activity?: string;
+          expires_at: string;
+          idle_timeout_at?: string | null;
+          absolute_timeout_at?: string | null;
+          is_active?: boolean;
+          is_revoked?: boolean;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          revoked_reason?: string | null;
+          max_idle_minutes?: number;
+          max_session_hours?: number;
+          remember_device?: boolean;
+          created_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          clinic_id?: string;
+          session_token?: string;
+          refresh_token_id?: string | null;
+          device_info?: Record<string, unknown>;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          geolocation?: Record<string, unknown> | null;
+          created_at?: string;
+          last_activity?: string;
+          expires_at?: string;
+          idle_timeout_at?: string | null;
+          absolute_timeout_at?: string | null;
+          is_active?: boolean;
+          is_revoked?: boolean;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          revoked_reason?: string | null;
+          max_idle_minutes?: number;
+          max_session_hours?: number;
+          remember_device?: boolean;
+          created_by?: string | null;
+          updated_at?: string;
+        };
+      };
+      security_events: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          clinic_id: string | null;
+          session_id: string | null;
+          event_type: string;
+          event_category: string;
+          severity_level: string;
+          event_description: string;
+          event_data: Record<string, unknown>;
+          ip_address: string | null;
+          user_agent: string | null;
+          geolocation: Record<string, unknown> | null;
+          created_at: string;
+          source_component: string | null;
+          correlation_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          clinic_id?: string | null;
+          session_id?: string | null;
+          event_type: string;
+          event_category: string;
+          severity_level?: string;
+          event_description: string;
+          event_data?: Record<string, unknown>;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          geolocation?: Record<string, unknown> | null;
+          created_at?: string;
+          source_component?: string | null;
+          correlation_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          clinic_id?: string | null;
+          session_id?: string | null;
+          event_type?: string;
+          event_category?: string;
+          severity_level?: string;
+          event_description?: string;
+          event_data?: Record<string, unknown>;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          geolocation?: Record<string, unknown> | null;
+          created_at?: string;
+          source_component?: string | null;
+          correlation_id?: string | null;
+        };
+      };
+      registered_devices: {
+        Row: {
+          id: string;
+          user_id: string;
+          clinic_id: string;
+          device_fingerprint: string;
+          device_name: string | null;
+          device_info: Record<string, unknown>;
+          trust_level: string;
+          last_seen_at: string;
+          last_ip_address: string | null;
+          auto_trust_after_days: number | null;
+          trusted_at: string | null;
+          blocked_at: string | null;
+          blocked_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          clinic_id: string;
+          device_fingerprint: string;
+          device_name?: string | null;
+          device_info?: Record<string, unknown>;
+          trust_level?: string;
+          last_seen_at?: string;
+          last_ip_address?: string | null;
+          auto_trust_after_days?: number | null;
+          trusted_at?: string | null;
+          blocked_at?: string | null;
+          blocked_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          clinic_id?: string;
+          device_fingerprint?: string;
+          device_name?: string | null;
+          device_info?: Record<string, unknown>;
+          trust_level?: string;
+          last_seen_at?: string;
+          last_ip_address?: string | null;
+          auto_trust_after_days?: number | null;
+          trusted_at?: string | null;
+          blocked_at?: string | null;
+          blocked_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+    } & Record<string, GenericTableDefinition>;
+    Views: Record<string, unknown>;
+    Functions: Record<string, unknown>;
+    Enums: Record<string, unknown>;
   };
 }

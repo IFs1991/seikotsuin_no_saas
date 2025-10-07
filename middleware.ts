@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { SessionManager } from '@/lib/session-manager';
 import { SecurityMonitor } from '@/lib/security-monitor';
 import {

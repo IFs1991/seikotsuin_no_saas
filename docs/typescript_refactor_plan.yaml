@@ -1,0 +1,170 @@
+meta:
+  title: TypeScript Worktree Stabilization Plan
+  created: 2025-02-14
+  author: Codex Assistant
+  status: draft
+  last_review: pending
+
+context:
+  summary: |
+    The current repository contains a large number of TypeScript errors originating from
+    unsynchronised Supabase schema definitions, partially migrated UI primitives, and
+    incomplete feature stubs. Strict compiler settings (strict true, exactOptionalPropertyTypes true)
+    make the codebase fail `npm run type-check`, blocking CI/CD. This document breaks the
+    remediation effort into trackable tasks.
+  constraints:
+    - Maintain existing strict compiler options where feasible; only relax as a last resort with explicit approval.
+    - Preserve CI lint/type/test pipelines; interim skips must be documented and reversed before closure.
+    - Avoid large-scale feature rewrites—focus on typing, scaffolding, and missing module fills.
+
+goals:
+  - Restore a green `npm run type-check` without suppressing meaningful diagnostics.
+  - Align generated Supabase types with actual backend schema to eliminate pervasive `never` types.
+  - Ensure shared UI primitives expose stable, typed APIs consumed consistently across screens.
+  - Reduce false positives by decluttering unused imports, dead code, and speculative feature stubs.
+
+milestones:
+  - id: TS-M1
+    title: Supabase Schema Alignment
+    target_week: 2025-W08
+  - id: TS-M2
+    title: UI Primitive Harmonisation
+    target_week: 2025-W09
+  - id: TS-M3
+    title: Test & Mock Hygiene
+    target_week: 2025-W09
+  - id: TS-M4
+    title: Strict Mode Closure & Final Verification
+    target_week: 2025-W10
+
+tasks:
+  - id: TS-001
+    milestone: TS-M1
+    title: Regenerate Supabase Types & Patch Missing Entities
+    description: |
+      Run `npm run supabase:types` against the authoritative Supabase project, commit
+      the regenerated `src/types/supabase.ts`, and ensure all referenced tables/views/functions
+      in the application (e.g., `user_sessions`, `security_events`, `registered_devices`) exist in the
+      type definitions. For mock/test contexts, provide lightweight table records when full schema
+      is unavailable.
+    acceptance_criteria:
+      - `src/types/supabase.ts` reflects the latest backend schema (no manual TODO placeholders).
+      - TypeScript no longer produces `never` for `.from(...)` results in application code.
+      - Documentation of any intentionally omitted tables with mitigation plan.
+    owners: [backend-team, platform-team]
+    dependencies: []
+
+  - id: TS-002
+    milestone: TS-M1
+    title: Harden Supabase Server Client Wrapper
+    description: |
+      Refine `src/lib/supabase/server.ts` so cookie helpers interact with concrete types
+      (avoid `Promise<ReadonlyRequestCookies>` misuse) and ensure admin/client factories
+      expose a typed interface. Replace temporary `any` once TS-001 is complete.
+    acceptance_criteria:
+      - `SupabaseServerClient` uses generated `Database` type without reverting to `any`.
+      - Runtime cookie helpers handle Next.js request contexts safely; add unit coverage for guarded branches.
+      - No TypeScript errors in files importing `createAdminClient`/`getServerClient`.
+    owners: [platform-team]
+    dependencies: [TS-001]
+
+  - id: TS-003
+    milestone: TS-M2
+    title: Standardise Tabs/FormField/SwipeHandler APIs
+    description: |
+      Audit shared UI primitives (Tabs, FormField, SwipeHandler, ResponsiveTable) and align
+      their props with usage patterns. Provide controlled/uncontrolled support where necessary,
+      adjust default prop requirements, and update consuming components accordingly.
+    acceptance_criteria:
+      - All Tab usages (dashboard, master-data, session manager, revenue, multi-store) compile without `defaultValue` or `value` mismatches.
+      - FormField no longer triggers “no overload matches this call” in dependents.
+      - SwipeHandler className props accept `string | undefined` cleanly; touch event helpers guard undefined states.
+    owners: [frontend-team]
+    dependencies: []
+
+  - id: TS-004
+    milestone: TS-M2
+    title: Resolve Missing UI Module Exports
+    description: |
+      Ensure all referenced UI modules (e.g., `@/components/ui/alert`, `dropdown-menu`, `alert-dialog`, `progress`)
+      exist and export typed components. Add scaffolds or replace with shadcn equivalents. Update import paths to avoid
+      case/alias mismatches.
+    acceptance_criteria:
+      - No `TS2307` missing module errors during type-check.
+      - Shared UI index re-exports include typings and minimal docs.
+    owners: [frontend-team]
+    dependencies: [TS-003]
+
+  - id: TS-005
+    milestone: TS-M3
+    title: Stabilise Supabase Test Doubles
+    description: |
+      Replace ad-hoc mocks in `src/__tests__/e2e` and `src/__tests__/integration` with typed helpers.
+      Provide deterministic return types for Supabase queries, ensuring that test doubles satisfy
+      expected interfaces (`UserSession`, `SecurityThreat`, etc.). Skip or rewrite tests referencing unfinished features.
+    acceptance_criteria:
+      - Supabase mock utilities export typed factories; no calls accept/return `never`.
+      - Tests compile without relying on undefined tables/fields; unsupported scenarios are skipped with TODOs referencing follow-up tickets.
+      - Jest-specific globals are referenced correctly (import from `@jest/globals` or rely on test environment config).
+    owners: [qa-team, backend-team]
+    dependencies: [TS-001]
+
+  - id: TS-006
+    milestone: TS-M3
+    title: External Library Typings & Polyfills
+    description: |
+      Install or author type declarations for external packages lacking types (e.g., `speakeasy`, QRCode helpers).
+      Where upstream types are unavailable, create `.d.ts` shims with minimal but accurate signatures.
+    acceptance_criteria:
+      - No `TS7016` implicit any module errors remain.
+      - Shim files documented under `docs/typed-shims.md` with maintenance notes.
+    owners: [platform-team]
+    dependencies: []
+
+  - id: TS-007
+    milestone: TS-M3
+    title: Strict Option Gap Analysis
+    description: |
+      Evaluate each strict compiler error that stems from `exactOptionalPropertyTypes`, `noUnusedLocals`, and similar flags.
+      Decide per case whether to refactor code or adjust tsconfig, recording rationale. Any temporary relaxations must include
+      a revert plan and tracking issue.
+    acceptance_criteria:
+      - Decision log added to `docs/typescript_strict_decisions.md` with owner and due date for reversions.
+      - tsconfig modifications (if any) reviewed by tech lead and linked to follow-up tasks.
+    owners: [platform-team, tech-lead]
+    dependencies: [TS-001, TS-003, TS-005, TS-006]
+
+  - id: TS-008
+    milestone: TS-M4
+    title: Final Type-Check & CI Restoration
+    description: |
+      After upstream tasks are complete, run `npm run type-check`, `npm run lint`, and CI pipelines.
+      Address residual diagnostics, remove temporary skips, and ensure documentation reflects the stable state.
+    acceptance_criteria:
+      - Local type-check exits 0 without suppressing relevant warnings.
+      - GitHub Actions CI (lint, unit/integration, security, E2E) succeeds or has approved, documented skips.
+      - Summary of resolved vs. deferred issues added to `docs/M3_COMPLETION_REPORT.md` or successor report.
+    owners: [platform-team]
+    dependencies: [TS-001, TS-002, TS-003, TS-004, TS-005, TS-006, TS-007]
+
+risks:
+  - id: R1
+    detail: Backend schema drift may continue during remediation, reintroducing `never` types.
+    mitigation: Institute schema freeze or regeneration cadence until TS stabilisation completes.
+  - id: R2
+    detail: Relaxing strict compiler options could mask regressions.
+    mitigation: Track any config changes in TS-007 decision log with revert deadlines.
+  - id: R3
+    detail: Large surface area of untyped tests increases effort.
+    mitigation: Prioritise happy-path E2E flows, defer non-critical suites with explicit TODOs.
+
+deliverables:
+  - Updated Supabase type definitions and accompanying schema documentation.
+  - Refactored UI primitives with usage guidelines.
+  - Typed test utilities and reduced reliance on `any` or `ts-ignore`.
+  - Final verification report confirming green CI.
+
+review_process:
+  - Weekly check-in led by platform team to assess task progress.
+  - Merge requests require approval from both backend and frontend representatives where changes cross ownership.
+  - Documentation updates reviewed by tech lead.

@@ -15,11 +15,11 @@ export const emailSchema = z
     required_error: 'メールアドレスは必須です',
     invalid_type_error: 'メールアドレスの形式が正しくありません',
   })
+  .trim()
+  .toLowerCase()
   .email('正しいメールアドレスを入力してください')
   .min(5, 'メールアドレスが短すぎます')
-  .max(254, 'メールアドレスが長すぎます（254文字以内）')
-  .toLowerCase()
-  .trim();
+  .max(254, 'メールアドレスが長すぎます（254文字以内）');
 
 /**
  * パスワード検証スキーマ

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { SessionManager } from '@/lib/session-manager';
 import { SecurityMonitor } from '@/lib/security-monitor';
 import { logger } from '@/lib/logger';

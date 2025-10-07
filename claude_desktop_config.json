@@ -1,12 +1,10 @@
 {
   "mcpServers": {
-    "Context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"],
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
       "timeout": 60,
       "autoApprove": [],
-      "disabled": false,
-      "transportType": "stdio"
+      "disabled": false
     },
     "serena": {
       "command": "uvx",

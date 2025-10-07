@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import type { SupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseServerClient } from '@/lib/supabase';
 
 const PATH = '/api/ai-comments';
 
