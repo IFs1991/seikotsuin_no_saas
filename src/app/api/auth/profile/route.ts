@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createClient, type SupabaseServerClient } from '@/lib/supabase';
 
 const ADMIN_ROLES = new Set(['admin', 'clinic_manager', 'manager']);
 
@@ -19,7 +19,7 @@ interface ProfileResponse {
 }
 
 async function fetchProfileRole(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseServerClient,
   userId: string
 ): Promise<ProfileRow> {
   const profileQuery = await supabase
@@ -47,7 +47,7 @@ async function fetchProfileRole(
 
 export async function GET() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,

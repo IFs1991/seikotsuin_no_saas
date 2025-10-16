@@ -7,10 +7,16 @@ import { createClient } from '@/lib/supabase';
 import { createBrowserClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import type { Database } from '@/types/supabase';
+import type { SessionValidationResult } from '@/types/security';
 
 // ================================================================
 // 型定義
 // ================================================================
+
+// Supabase行型の定義
+type UserSessionRow = Database['public']['Tables']['user_sessions']['Row'];
+type SecurityEventInsert = Database['public']['Tables']['security_events']['Insert'];
 
 export interface UserSession {
   id: string;
@@ -18,7 +24,7 @@ export interface UserSession {
   clinic_id: string;
   session_token: string;
   device_info: DeviceInfo;
-  ip_address?: string;
+  ip_address: string;
   user_agent?: string;
   geolocation?: Geolocation;
   created_at: string;
@@ -83,6 +89,25 @@ export interface SessionValidationResult {
   requiresRefresh?: boolean;
 }
 
+export interface SessionValidationResultLocal {
+  isValid: boolean;
+  session?: UserSession;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    clinicId: string;
+    isActive: boolean;
+  };
+  reason?:
+    | 'expired'
+    | 'revoked'
+    | 'inactive'
+    | 'not_found'
+    | 'policy_violation';
+  requiresRefresh?: boolean;
+}
+
 // ================================================================
 // セッション管理クラス
 // ================================================================
@@ -95,13 +120,39 @@ export class SessionManager {
   }
 
   /**
+   * Supabase行をUserSessionに変換
+   */
+  private mapSessionRow(row: UserSessionRow): UserSession {
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      clinic_id: row.clinic_id,
+      session_token: row.session_token,
+      device_info: (row.device_info as Record<string, unknown>) as DeviceInfo,
+      ip_address: row.ip_address ?? '',
+      user_agent: row.user_agent ?? undefined,
+      geolocation: row.geolocation ? (row.geolocation as Record<string, unknown>) as Geolocation : undefined,
+      created_at: row.created_at,
+      last_activity: row.last_activity,
+      expires_at: row.expires_at,
+      idle_timeout_at: row.idle_timeout_at ?? undefined,
+      absolute_timeout_at: row.absolute_timeout_at ?? '',
+      is_active: row.is_active,
+      is_revoked: row.is_revoked,
+      max_idle_minutes: row.max_idle_minutes,
+      max_session_hours: row.max_session_hours,
+      remember_device: row.remember_device,
+    };
+  }
+
+  /**
    * 新規セッション作成
    */
   async createSession(
     userId: string,
     clinicId: string,
     options: CreateSessionOptions
-  ): Promise<{ session: UserSession; token: string }> {
+  ): Promise<SessionValidationResult<UserSession>> {
     try {
       // セッションポリシーを取得
       const policy = await this.getSessionPolicy(clinicId);
@@ -241,42 +292,43 @@ export class SessionManager {
    */
   async validateSession(
     sessionToken: string
-  ): Promise<SessionValidationResult> {
+  ): Promise<SessionValidationResultLocal> {
     if (!sessionToken) {
       return { isValid: false, reason: 'not_found' };
     }
 
     try {
       const supabase = await this.supabase;
-      const { data: session, error } = await supabase
+      const { data: sessionRow, error } = await supabase
         .from('user_sessions')
-        .select('*')
+        .select<'*', UserSessionRow>()
         .eq('session_token', sessionToken)
         .eq('is_active', true)
         .eq('is_revoked', false)
         .single();
 
-      if (error || !session) {
+      if (error || !sessionRow) {
         return { isValid: false, reason: 'not_found' };
       }
 
+      const session = this.mapSessionRow(sessionRow);
       const now = new Date();
 
       // 絶対タイムアウトチェック
-      if (new Date(session.absolute_timeout_at) < now) {
-        await this.revokeSession(session.id, 'timeout');
-        return { isValid: false, reason: 'session_expired' };
+      if (sessionRow.absolute_timeout_at && new Date(sessionRow.absolute_timeout_at) < now) {
+        await this.revokeSession(sessionRow.id, 'timeout');
+        return { isValid: false, reason: 'expired' };
       }
 
       // アイドルタイムアウトチェック
-      if (session.idle_timeout_at && new Date(session.idle_timeout_at) < now) {
-        await this.revokeSession(session.id, 'timeout');
-        return { isValid: false, reason: 'idle_timeout' };
+      if (sessionRow.idle_timeout_at && new Date(sessionRow.idle_timeout_at) < now) {
+        await this.revokeSession(sessionRow.id, 'timeout');
+        return { isValid: false, reason: 'inactive' };
       }
 
       // 通常の有効期限チェック
-      if (new Date(session.expires_at) < now) {
-        await this.revokeSession(session.id, 'timeout');
+      if (new Date(sessionRow.expires_at) < now) {
+        await this.revokeSession(sessionRow.id, 'timeout');
         return { isValid: false, reason: 'expired' };
       }
 
@@ -313,13 +365,14 @@ export class SessionManager {
       );
 
       const supabase = await this.supabase;
-    const { error } = await supabase
+      const updateData: Database['public']['Tables']['user_sessions']['Update'] = {
+        ip_address: ipAddress ?? null,
+        last_activity: now.toISOString(),
+        idle_timeout_at: newIdleTimeoutAt.toISOString(),
+      };
+      const { error } = await supabase
         .from('user_sessions')
-        .update({
-          last_activity: now.toISOString(),
-          idle_timeout_at: newIdleTimeoutAt.toISOString(),
-          ...(ipAddress && { ip_address: ipAddress }),
-        })
+        .update(updateData)
         .eq('id', validation.session.id);
 
       return !error;
@@ -342,13 +395,14 @@ export class SessionManager {
     revokedBy?: string
   ): Promise<boolean> {
     try {
-      const { data: session, error: fetchError } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: sessionRow, error: fetchError } = await supabase
         .from('user_sessions')
-        .select('*')
+        .select<'*', UserSessionRow>()
         .eq('id', sessionId)
         .single();
 
-      if (fetchError || !session) {
+      if (fetchError || !sessionRow) {
         return false;
       }
 
@@ -367,8 +421,8 @@ export class SessionManager {
       if (!error) {
         // セキュリティイベント記録
         await this.logSecurityEvent({
-          user_id: session.user_id,
-          clinic_id: session.clinic_id,
+          user_id: sessionRow.user_id,
+          clinic_id: sessionRow.clinic_id,
           session_id: sessionId,
           event_type: 'session_revoked',
           event_category: 'session_management',
@@ -393,7 +447,8 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<UserSession[]> {
-    const { data: sessions, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: sessions, error } = await supabase
       .from('user_sessions')
       .select('*')
       .eq('user_id', userId)
@@ -415,7 +470,8 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<number> {
-    const { count, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { count, error } = await supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
@@ -440,7 +496,8 @@ export class SessionManager {
     clinicId: string
   ): Promise<number> {
     try {
-      const { data: sessions, error: fetchError } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: sessions, error: fetchError } = await supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)
@@ -481,7 +538,8 @@ export class SessionManager {
     clinicId: string,
     role?: string
   ): Promise<SessionPolicy> {
-    const { data: policy, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: policy, error } = await supabase
       .from('session_policies')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -519,7 +577,7 @@ export class SessionManager {
 
     if (activeCount >= policy.max_concurrent_sessions) {
       // 最も古いセッションを無効化
-      const { data: oldestSession } = await this.supabase
+      const { data: oldestSession } = await supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)
@@ -537,7 +595,7 @@ export class SessionManager {
 
     // テスト環境用フォールバック（モックのcount未設定時の安定化）
     if (process.env.JEST_WORKER_ID) {
-      const { data: oldestSession } = await this.supabase
+      const { data: oldestSession } = await supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)

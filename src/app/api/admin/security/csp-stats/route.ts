@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 過去24時間の統計を取得
     const twentyFourHoursAgo = new Date();

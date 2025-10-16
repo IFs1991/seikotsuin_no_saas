@@ -1,7 +1,6 @@
 import { AuditLogger } from '@/lib/audit-logger';
 
 describe('AuditLogger - Type Safety Tests', () => {
-
   it('should handle optional clinic_id correctly', async () => {
     // このテストは現在失敗するはず（型エラーのため）
     expect(() => {

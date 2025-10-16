@@ -76,69 +76,66 @@ export const useAdminChat = () => {
     }
   }, []);
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim()) return;
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim()) return;
 
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ message: content }),
-        });
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: content }),
+      });
 
-        const payload = (await response.json()) as ChatApiResponse<{
-          session_id: string;
-          user_message: {
-            id: string;
-            message_text: string;
-            created_at: string;
-          };
-          ai_message: {
-            id: string;
-            message_text: string;
-            created_at: string;
-          };
-        }>;
+      const payload = (await response.json()) as ChatApiResponse<{
+        session_id: string;
+        user_message: {
+          id: string;
+          message_text: string;
+          created_at: string;
+        };
+        ai_message: {
+          id: string;
+          message_text: string;
+          created_at: string;
+        };
+      }>;
 
-        if (!response.ok || !payload.success || !payload.data) {
-          throw new Error(payload.error || 'メッセージ送信に失敗しました');
-        }
-
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          messages: [
-            ...prev.messages,
-            {
-              id: payload.data.user_message.id,
-              content: payload.data.user_message.message_text,
-              role: 'user',
-              createdAt: payload.data.user_message.created_at,
-            },
-            {
-              id: payload.data.ai_message.id,
-              content: payload.data.ai_message.message_text,
-              role: 'assistant',
-              createdAt: payload.data.ai_message.created_at,
-            },
-          ],
-        }));
-      } catch (error) {
-        console.error(error);
-        setState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: 'メッセージの送信に失敗しました',
-        }));
+      if (!response.ok || !payload.success || !payload.data) {
+        throw new Error(payload.error || 'メッセージ送信に失敗しました');
       }
-    },
-    []
-  );
+
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        messages: [
+          ...prev.messages,
+          {
+            id: payload.data.user_message.id,
+            content: payload.data.user_message.message_text,
+            role: 'user',
+            createdAt: payload.data.user_message.created_at,
+          },
+          {
+            id: payload.data.ai_message.id,
+            content: payload.data.ai_message.message_text,
+            role: 'assistant',
+            createdAt: payload.data.ai_message.created_at,
+          },
+        ],
+      }));
+    } catch (error) {
+      console.error(error);
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'メッセージの送信に失敗しました',
+      }));
+    }
+  }, []);
 
   const exportChat = useCallback(() => {
     const blob = new Blob([JSON.stringify(state.messages, null, 2)], {

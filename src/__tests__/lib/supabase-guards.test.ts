@@ -8,8 +8,7 @@ const logUnauthorizedAccessMock = jest.fn();
 jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
   getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
-  getUserPermissions: (...args: unknown[]) =>
-    getUserPermissionsMock(...args),
+  getUserPermissions: (...args: unknown[]) => getUserPermissionsMock(...args),
 }));
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -20,9 +19,7 @@ jest.mock('@/lib/audit-logger', () => ({
   getRequestInfo: () => ({ ipAddress: '127.0.0.1', userAgent: 'jest' }),
 }));
 
-const { ensureClinicAccess } = jest.requireActual(
-  '@/lib/supabase/guards'
-);
+const { ensureClinicAccess } = jest.requireActual('@/lib/supabase/guards');
 
 beforeEach(() => {
   createClientMock.mockReturnValue({});
@@ -100,7 +97,10 @@ describe('ensureClinicAccess', () => {
   });
 
   it('allows privileged roles to bypass clinic checks', async () => {
-    getCurrentUserMock.mockResolvedValue({ id: 'admin-1', email: 'admin@test' });
+    getCurrentUserMock.mockResolvedValue({
+      id: 'admin-1',
+      email: 'admin@test',
+    });
     getUserPermissionsMock.mockResolvedValue({
       role: 'admin',
       clinic_id: 'clinic-a',
@@ -109,7 +109,10 @@ describe('ensureClinicAccess', () => {
     const result = await ensureClinicAccess(request, '/api/test', 'clinic-b');
 
     expect(result.user).toEqual({ id: 'admin-1', email: 'admin@test' });
-    expect(result.permissions).toEqual({ role: 'admin', clinic_id: 'clinic-a' });
+    expect(result.permissions).toEqual({
+      role: 'admin',
+      clinic_id: 'clinic-a',
+    });
     expect(logUnauthorizedAccessMock).not.toHaveBeenCalled();
   });
 });

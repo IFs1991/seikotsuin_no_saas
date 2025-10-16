@@ -50,9 +50,7 @@ export async function GET(request: NextRequest) {
         id: data.id,
         summary: data.summary,
         highlights: data.good_points ? [data.good_points] : [],
-        improvements: data.improvement_points
-          ? [data.improvement_points]
-          : [],
+        improvements: data.improvement_points ? [data.improvement_points] : [],
         suggestions: data.suggestion_for_tomorrow
           ? [data.suggestion_for_tomorrow]
           : [],
@@ -262,7 +260,9 @@ function analyzePerformance(
     if (diff > 0) {
       highlights.push('週間平均を上回る売上を記録しました');
     } else if (diff < 0) {
-      improvements.push('週間平均を下回っています。施策の見直しを検討してください');
+      improvements.push(
+        '週間平均を下回っています。施策の見直しを検討してください'
+      );
     }
   }
 
@@ -272,7 +272,9 @@ function analyzePerformance(
   }
 
   if (suggestions.length === 0) {
-    suggestions.push('スタッフとの共有ミーティングで好調・不調要因を確認してください');
+    suggestions.push(
+      'スタッフとの共有ミーティングで好調・不調要因を確認してください'
+    );
   }
 
   return {

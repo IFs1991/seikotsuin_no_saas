@@ -14,7 +14,9 @@ describe('patient schemas', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.clinic_id).toBe('123e4567-e89b-12d3-a456-426614174000');
+      expect(result.data.clinic_id).toBe(
+        '123e4567-e89b-12d3-a456-426614174000'
+      );
       expect(result.data.analysis).toBe('conversion');
     }
   });

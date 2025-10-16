@@ -147,7 +147,9 @@ export default function DailyReportEditPage() {
             errorMessage = errorJson.error.message;
           }
           if (errorJson?.error?.fieldErrors) {
-            setFieldErrors(errorJson.error.fieldErrors as Record<string, string[]>);
+            setFieldErrors(
+              errorJson.error.fieldErrors as Record<string, string[]>
+            );
           }
         } catch (parseError) {
           const text = await res.text();
@@ -198,7 +200,10 @@ export default function DailyReportEditPage() {
               <Button onClick={() => router.back()} className='flex-1'>
                 戻る
               </Button>
-              <Button onClick={() => window.location.reload()} className='flex-1'>
+              <Button
+                onClick={() => window.location.reload()}
+                className='flex-1'
+              >
                 再読み込み
               </Button>
             </div>
@@ -219,7 +224,9 @@ export default function DailyReportEditPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-gray-700 dark:text-gray-300'>管理者にお問い合わせください。</p>
+            <p className='text-gray-700 dark:text-gray-300'>
+              管理者にお問い合わせください。
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -234,7 +241,10 @@ export default function DailyReportEditPage() {
             <CardTitle>日報が見つかりません</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => router.push('/daily-reports')} className='w-full'>
+            <Button
+              onClick={() => router.push('/daily-reports')}
+              className='w-full'
+            >
               一覧に戻る
             </Button>
           </CardContent>
@@ -330,7 +340,9 @@ export default function DailyReportEditPage() {
         <Card>
           <CardHeader>
             <CardTitle>患者・売上情報</CardTitle>
-            <CardDescription>日報の数値データを編集してください</CardDescription>
+            <CardDescription>
+              日報の数値データを編集してください
+            </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -401,7 +413,9 @@ export default function DailyReportEditPage() {
           <CardContent className='pt-6'>
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-center'>
               <div>
-                <p className='text-2xl font-bold text-blue-600'>{totalPatients}</p>
+                <p className='text-2xl font-bold text-blue-600'>
+                  {totalPatients}
+                </p>
                 <p className='text-sm text-blue-800'>総患者数</p>
               </div>
               <div>

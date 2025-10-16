@@ -67,6 +67,9 @@ jobs:
 
       - name: Generate coverage summary
         run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            npm run coverage:summary
+          fi
           echo "## Test Coverage Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
           if [ -f coverage/coverage-summary.txt ]; then

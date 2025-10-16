@@ -11,7 +11,10 @@ type QueryResult<TData = unknown> = {
   error: null | { message: string };
 };
 
-function createDefaultProfileResult(): QueryResult<{ role: string; is_active: boolean }> {
+function createDefaultProfileResult(): QueryResult<{
+  role: string;
+  is_active: boolean;
+}> {
   return {
     data: { role: 'manager', is_active: true },
     error: null,
@@ -26,7 +29,10 @@ function createDefaultQueryResult(): QueryResult<unknown[]> {
 }
 
 function createQueryBuilder(table?: string) {
-  const result = table === 'profiles' ? createDefaultProfileResult() : createDefaultQueryResult();
+  const result =
+    table === 'profiles'
+      ? createDefaultProfileResult()
+      : createDefaultQueryResult();
 
   const builder: any = {};
   builder.select = jest.fn(() => builder);
@@ -59,7 +65,9 @@ function resetSupabaseMockState() {
     data: { user: { id: 'u1', email: 'manager@example.com' } },
     error: null,
   });
-  supabaseMock.from.mockImplementation((table?: string) => createQueryBuilder(table));
+  supabaseMock.from.mockImplementation((table?: string) =>
+    createQueryBuilder(table)
+  );
   supabaseMock.rpc.mockResolvedValue({ data: null, error: null });
 }
 

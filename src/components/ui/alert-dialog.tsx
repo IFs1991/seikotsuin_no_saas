@@ -8,7 +8,9 @@ interface AlertDialogContextValue {
   setOpen: (open: boolean) => void;
 }
 
-const AlertDialogContext = React.createContext<AlertDialogContextValue | null>(null);
+const AlertDialogContext = React.createContext<AlertDialogContextValue | null>(
+  null
+);
 
 interface AlertDialogProps {
   children: React.ReactNode;
@@ -47,7 +49,7 @@ const AlertDialogTrigger = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }
 >(({ className, children, asChild = false, ...props }, ref) => {
   const context = React.useContext(AlertDialogContext);
-  
+
   if (!context) {
     throw new Error('AlertDialogTrigger must be used within AlertDialog');
   }
@@ -66,7 +68,7 @@ const AlertDialogTrigger = React.forwardRef<
   return (
     <button
       ref={ref}
-      type="button"
+      type='button'
       className={className}
       onClick={() => context.setOpen(true)}
       {...props}
@@ -82,7 +84,7 @@ const AlertDialogContent = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const context = React.useContext(AlertDialogContext);
-  
+
   if (!context) {
     throw new Error('AlertDialogContent must be used within AlertDialog');
   }
@@ -92,10 +94,10 @@ const AlertDialogContent = React.forwardRef<
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className='fixed inset-0 z-50 flex items-center justify-center'>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50"
+        className='fixed inset-0 bg-black bg-opacity-50'
         onClick={() => context.setOpen(false)}
       />
       {/* Content */}
@@ -116,11 +118,7 @@ const AlertDialogHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn('mb-4', className)}
-    {...props}
-  />
+  <div ref={ref} className={cn('mb-4', className)} {...props} />
 ));
 AlertDialogHeader.displayName = 'AlertDialogHeader';
 
@@ -152,11 +150,7 @@ const AlertDialogDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn('text-sm text-gray-600', className)}
-    {...props}
-  />
+  <p ref={ref} className={cn('text-sm text-gray-600', className)} {...props} />
 ));
 AlertDialogDescription.displayName = 'AlertDialogDescription';
 
@@ -165,16 +159,16 @@ const AlertDialogAction = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => {
   const context = React.useContext(AlertDialogContext);
-  
+
   return (
     <button
       ref={ref}
-      type="button"
+      type='button'
       className={cn(
         'inline-flex items-center justify-center rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2',
         className
       )}
-      onClick={(e) => {
+      onClick={e => {
         props.onClick?.(e);
         context?.setOpen(false);
       }}
@@ -189,16 +183,16 @@ const AlertDialogCancel = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement>
 >(({ className, ...props }, ref) => {
   const context = React.useContext(AlertDialogContext);
-  
+
   return (
     <button
       ref={ref}
-      type="button"
+      type='button'
       className={cn(
         'inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
         className
       )}
-      onClick={(e) => {
+      onClick={e => {
         props.onClick?.(e);
         context?.setOpen(false);
       }}

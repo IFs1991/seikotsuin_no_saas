@@ -1,8 +1,5 @@
 import { NextRequest } from 'next/server';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from '@/lib/api-helpers';
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
 import {
   AppError,
   createApiError,
@@ -210,10 +207,15 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
 
-    const { supabase } = await ensureClinicAccess(request, PATH, dto.clinic_id, {
-      allowedRoles: ['admin', 'clinic_manager'],
-      requireClinicMatch: true,
-    });
+    const { supabase } = await ensureClinicAccess(
+      request,
+      PATH,
+      dto.clinic_id,
+      {
+        allowedRoles: ['admin', 'clinic_manager'],
+        requireClinicMatch: true,
+      }
+    );
 
     const insertPayload = mapStaffInsertToRow(dto);
 

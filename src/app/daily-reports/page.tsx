@@ -109,11 +109,16 @@ const Page: React.FC = () => {
         <div className='container mx-auto px-4'>
           <Card className='w-full bg-card'>
             <CardHeader className='bg-card'>
-              <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+              <CardTitle className='text-red-600'>
+                プロフィール取得に失敗しました
+              </CardTitle>
             </CardHeader>
             <CardContent className='bg-card space-y-4'>
               <p className='text-gray-700 dark:text-gray-300'>{profileError}</p>
-              <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+              <Button
+                onClick={() => window.location.reload()}
+                className='bg-blue-600 text-white'
+              >
                 再読み込み
               </Button>
             </CardContent>
@@ -154,26 +159,36 @@ const Page: React.FC = () => {
             <CardContent className='bg-card'>
               <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
-                  <p className='text-2xl font-bold text-blue-600'>{summary.totalReports}</p>
-                  <p className='text-sm text-gray-600 dark:text-gray-400'>登録日報数</p>
+                  <p className='text-2xl font-bold text-blue-600'>
+                    {summary.totalReports}
+                  </p>
+                  <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    登録日報数
+                  </p>
                 </div>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
                   <p className='text-2xl font-bold text-blue-600'>
                     {Math.round(summary.averagePatients)}
                   </p>
-                  <p className='text-sm text-gray-600 dark:text-gray-400'>平均患者数/日</p>
+                  <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    平均患者数/日
+                  </p>
                 </div>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
                   <p className='text-2xl font-bold text-blue-600'>
                     ¥{Math.round(summary.averageRevenue).toLocaleString()}
                   </p>
-                  <p className='text-sm text-gray-600 dark:text-gray-400'>平均売上/日</p>
+                  <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    平均売上/日
+                  </p>
                 </div>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
                   <p className='text-2xl font-bold text-blue-600'>
                     ¥{Math.round(summary.totalRevenue).toLocaleString()}
                   </p>
-                  <p className='text-sm text-gray-600 dark:text-gray-400'>累計売上</p>
+                  <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    累計売上
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -203,10 +218,17 @@ const Page: React.FC = () => {
                         <span className='font-medium'>{trend.reports}</span> 件
                       </div>
                       <div className='text-gray-600 dark:text-gray-400'>
-                        患者: <span className='font-medium'>{trend.totalPatients}</span> 名
+                        患者:{' '}
+                        <span className='font-medium'>
+                          {trend.totalPatients}
+                        </span>{' '}
+                        名
                       </div>
                       <div className='text-gray-600 dark:text-gray-400'>
-                        売上: <span className='font-medium'>¥{Math.round(trend.totalRevenue).toLocaleString()}</span>
+                        売上:{' '}
+                        <span className='font-medium'>
+                          ¥{Math.round(trend.totalRevenue).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -227,13 +249,17 @@ const Page: React.FC = () => {
             {isLoading ? (
               <div className='text-gray-500'>読み込み中...</div>
             ) : !hasClinic ? (
-              <div className='text-gray-500'>アクセス可能なクリニックが割り当てられていません。</div>
+              <div className='text-gray-500'>
+                アクセス可能なクリニックが割り当てられていません。
+              </div>
             ) : displayError ? (
               <div className='text-red-500'>{displayError}</div>
             ) : (
               <div className='space-y-3'>
                 {rows.length === 0 ? (
-                  <div className='text-gray-500'>表示できる日報がありません。</div>
+                  <div className='text-gray-500'>
+                    表示できる日報がありません。
+                  </div>
                 ) : (
                   rows.map(report => (
                     <div
@@ -245,7 +271,9 @@ const Page: React.FC = () => {
                           {report.date}
                         </div>
                         <div className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
-                          <span className='mr-4'>患者数: {report.patients}名</span>
+                          <span className='mr-4'>
+                            患者数: {report.patients}名
+                          </span>
                           <span>売上: ¥{report.revenue.toLocaleString()}</span>
                         </div>
                       </div>

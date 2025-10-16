@@ -99,7 +99,10 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         userId: auth.id,
       });
-      return createErrorResponse('スタッフパフォーマンスの取得に失敗しました', 500);
+      return createErrorResponse(
+        'スタッフパフォーマンスの取得に失敗しました',
+        500
+      );
     }
 
     const aggregatedMap = new Map<string, AggregatedClinicData>();

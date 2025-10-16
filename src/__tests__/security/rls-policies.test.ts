@@ -410,10 +410,7 @@ describe('RLS ポリシーテスト', () => {
         },
       });
 
-      const result = await mockSupabase
-        .from('patients')
-        .select('*')
-        .single();
+      const result = await mockSupabase.from('patients').select('*').single();
 
       expect(result.data).toBeNull();
       expect(result.error).toBeDefined();

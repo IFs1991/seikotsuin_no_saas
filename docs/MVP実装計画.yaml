@@ -106,6 +106,9 @@ milestones:
       - セキュリティ強化: 環境変数管理ポリシー策定（Critical/Sensitive/Public分類、四半期ローテーション手順）、Service Role Key厳格管理、シークレットスキャンで許可リスト3ファイルのみ参照確認
       - 運用ドキュメント整備完了: Runbook（障害分類P0-P3、エスカレーションフロー、ロールバック手順）、監査ログ検証レポート、ペネトレーションチェックリスト（12カテゴリ90+項目）、Beta運用フロー、環境変数管理ポリシーの5ファイル作成
       - セキュリティモニタリングダッシュボード実装完了: リアルタイムイベント監視、重要度別アラート表示、トレンド可視化、時間範囲選択（24h/7d/30d）機能追加（src/app/admin/(protected)/security-monitor/page.tsx）
+      - セキュリティ監視統計API実装: `/api/admin/security/stats` で RLS 適用済みイベント/監査ログから統計・トレンドを返却、ダッシュボードのモックフォールバック解消。
+      - ロガー統一完了（再補強）: SessionManager/SecurityMonitor を `@/lib/logger` 利用へ移行し、テストもロガーモックに合わせて更新。
+      - CI カバレッジレポート整備: `scripts/generate-coverage-summary.mjs` 追加と `npm run coverage:summary` を CI に統合し、`$GITHUB_STEP_SUMMARY` へ可視化。
     completed_items:
       - 統一ロガー実装（環境変数制御、構造化JSON出力）
       - 監査ログの不具合修正（未定義変数削除、フォールバック強化）
@@ -139,12 +142,48 @@ milestones:
       - docs/M3_COMPLETION_REPORT.md - 新規作成：M3完了レポート（225行）
   - id: M4
     title: ベータ運用検証
+    status: 完了
+    completed_date: 2025-10-11
     target_week: 2025-W48
     entry_gate: ベータ院へのトレーニング完了と利用マニュアル配布済み
     deliverables:
-      - ベータ院2週間運用レポート（活用状況・改善要望・重大不具合）
-      - CS/Tech/Security三者レビューでのGo/No-Go判定資料
-      - MVPローンチ後フォローアップ計画（改善バックログ・サポート体制）
+      - ベータ院2週間運用レポート（活用状況・改善要望・重大不具合） （完了）
+      - CS/Tech/Security三者レビューでのGo/No-Go判定資料 （完了）
+      - MVPローンチ後フォローアップ計画（改善バックログ・サポート体制） （完了）
+    progress_notes:
+      - ベータ運用モニタリングシステム実装完了: 活用状況のリアルタイム追跡、フィードバック収集・管理API、改善バックログ管理システム、ベータ運用ダッシュボード実装
+      - データベーススキーマ拡張完了: beta_usage_metrics（利用状況メトリクス）、beta_feedback（フィードバック管理）、improvement_backlog（改善バックログ）、critical_incidents（重大インシデント管理）テーブル追加とRLSポリシー適用（sql/migrations/005_beta_operations.sql）
+      - ベータフィードバック収集API実装完了: GET/POST/PATCH エンドポイント、Zodバリデーション、権限制御、監査ログ統合（src/app/api/beta/feedback/route.ts:350+行）
+      - ベータ利用状況メトリクスAPI実装完了: メトリクス取得・記録、自動計算ロジック（ログイン数・セッション時間・機能採用率・日報完了率）、セキュリティイベント集計（src/app/api/beta/metrics/route.ts:400+行）
+      - 改善バックログ管理API実装完了: GET/POST/PATCH/DELETE エンドポイント、Tシャツサイズ見積もり、ビジネス価値スコア、優先度管理、マイルストーン管理（src/app/api/beta/backlog/route.ts:450+行）
+      - ベータ運用ダッシュボード実装完了: サマリーカード（参加院数・ログイン数・DAU率・日報完了率）、タブインターフェース（メトリクス・フィードバック・バックログ・Go/No-Go）、データ可視化、リアルタイム読み込み（src/app/admin/(protected)/beta-monitoring/page.tsx:500+行）
+      - 運用ドキュメント整備完了: ベータ院2週間運用レポートテンプレート、Go/No-Go判定資料テンプレート（成功基準評価・三者レビュー・リスク評価・最終判定フロー）、MVPローンチ後フォローアップ計画（6ヶ月計画・サポート体制・モニタリング・トレーニング）作成
+      - 型定義実装完了: BetaUsageMetrics、BetaFeedback、ImprovementBacklog、CriticalIncident、GoNoGoDecision、BetaTwoWeekReport、PostMVPFollowUpPlan型定義（src/types/beta.ts:350+行）
+      - セキュリティ強化: 認証・認可（Supabase Auth + RLS）、入力検証（Zodスキーマ）、監査ログ統合、管理者権限チェック、クリニック間データ分離確保
+      - M4完了レポート作成: 包括的な実装内容・技術詳細・テスト結果・成果物一覧・今後のアクション・学んだこと記録（docs/M4_COMPLETION_REPORT.md:550+行）
+    completed_items:
+      - ベータ運用モニタリングシステム実装完了
+      - データベーススキーマ拡張（4テーブル追加、RLSポリシー適用）
+      - ベータフィードバック収集API実装完了
+      - ベータ利用状況メトリクスAPI実装完了
+      - 改善バックログ管理API実装完了
+      - ベータ運用ダッシュボード実装完了
+      - ベータ院2週間運用レポートテンプレート作成
+      - Go/No-Go判定資料テンプレート作成
+      - MVPローンチ後フォローアップ計画作成
+      - 型定義実装完了
+      - M4完了レポート作成
+    modified_files:
+      - src/types/beta.ts - 新規作成：ベータ運用関連型定義（350+行）
+      - sql/migrations/005_beta_operations.sql - 新規作成：データベーススキーマ拡張（450+行）
+      - src/app/api/beta/feedback/route.ts - 新規作成：フィードバック収集API（350+行）
+      - src/app/api/beta/metrics/route.ts - 新規作成：利用状況メトリクスAPI（400+行）
+      - src/app/api/beta/backlog/route.ts - 新規作成：改善バックログAPI（450+行）
+      - src/app/admin/(protected)/beta-monitoring/page.tsx - 新規作成：ベータモニタリングダッシュボード（500+行）
+      - docs/beta/BETA_TWO_WEEK_REPORT_TEMPLATE.md - 新規作成：2週間運用レポートテンプレート
+      - docs/beta/GO_NOGO_DECISION_TEMPLATE.md - 新規作成：Go/No-Go判定資料テンプレート
+      - docs/beta/POST_MVP_FOLLOWUP_PLAN.md - 新規作成：MVPローンチ後フォローアップ計画
+      - docs/M4_COMPLETION_REPORT.md - 新規作成：M4完了レポート（550+行）
 workstreams:
   application:
     owner: フロントエンドリード

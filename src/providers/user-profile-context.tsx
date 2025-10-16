@@ -18,8 +18,9 @@ interface UserProfileContextValue {
   setError?: Dispatch<SetStateAction<string | null>>;
 }
 
-const UserProfileContext =
-  createContext<UserProfileContextValue | undefined>(undefined);
+const UserProfileContext = createContext<UserProfileContextValue | undefined>(
+  undefined
+);
 
 interface UserProfileProviderProps {
   value: UserProfileContextValue;
@@ -46,4 +47,3 @@ export function useUserProfileContext(): UserProfileContextValue {
   }
   return context;
 }
-

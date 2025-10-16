@@ -1,11 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listMasterData,
   createMasterData,
@@ -51,7 +47,11 @@ export function useMasterData(
   const [searchQuery, setSearchQuery] = useState('');
 
   const query = useQuery({
-    queryKey: ['admin-master-data', options.clinicId ?? 'global', options.category ?? 'all'],
+    queryKey: [
+      'admin-master-data',
+      options.clinicId ?? 'global',
+      options.category ?? 'all',
+    ],
     queryFn: () =>
       listMasterData({
         clinic_id: options.clinicId ?? undefined,
@@ -98,8 +98,13 @@ export function useMasterData(
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Omit<MasterDataItem, 'id'>> }) =>
-      updateMasterData(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: Partial<Omit<MasterDataItem, 'id'>>;
+    }) => updateMasterData(id, payload),
     onSuccess: invalidate,
   });
 
@@ -146,7 +151,9 @@ export function useMasterData(
       );
     } catch (error) {
       console.error(error);
-      throw new Error('インポートに失敗しました。ファイル形式を確認してください。');
+      throw new Error(
+        'インポートに失敗しました。ファイル形式を確認してください。'
+      );
     }
   };
 

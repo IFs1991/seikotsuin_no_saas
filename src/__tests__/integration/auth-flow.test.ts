@@ -59,16 +59,15 @@ const auditLoggerMocks = {
 
 jest.mock('@/lib/audit-logger', () => ({
   AuditLogger: auditLoggerMocks,
-  getRequestInfo: jest.fn(() => ({ ipAddress: '127.0.0.1', userAgent: 'jest' })),
+  getRequestInfo: jest.fn(() => ({
+    ipAddress: '127.0.0.1',
+    userAgent: 'jest',
+  })),
 }));
 
 let profileQueryBuilder = createProfileQueryBuilder();
 
-const {
-  login,
-  signup,
-  logout,
-} = require('@/app/admin/actions');
+const { login, signup, logout } = require('@/app/admin/actions');
 
 // Mock Next.js functions
 jest.mock('next/cache', () => ({

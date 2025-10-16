@@ -21,11 +21,7 @@ export default function PatientsPage() {
   } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
 
-  const {
-    data,
-    loading,
-    error,
-  } = usePatientAnalysis(clinicId);
+  const { data, loading, error } = usePatientAnalysis(clinicId);
 
   const isLoading = profileLoading || loading;
 
@@ -35,11 +31,16 @@ export default function PatientsPage() {
         <div className='max-w-[800px] mx-auto'>
           <Card className='bg-card'>
             <CardHeader>
-              <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+              <CardTitle className='text-red-600'>
+                プロフィール取得に失敗しました
+              </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
               <p className='text-gray-700 dark:text-gray-300'>{profileError}</p>
-              <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+              <Button
+                onClick={() => window.location.reload()}
+                className='bg-blue-600 text-white'
+              >
                 再読み込み
               </Button>
             </CardContent>
@@ -80,13 +81,16 @@ export default function PatientsPage() {
         <div className='max-w-[800px] mx-auto'>
           <Card className='bg-card border border-red-200'>
             <CardHeader>
-              <CardTitle className='text-red-600'>データ取得に失敗しました</CardTitle>
-              <CardDescription>
-                {error}
-              </CardDescription>
+              <CardTitle className='text-red-600'>
+                データ取得に失敗しました
+              </CardTitle>
+              <CardDescription>{error}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+              <Button
+                onClick={() => window.location.reload()}
+                className='bg-blue-600 text-white'
+              >
                 再読み込み
               </Button>
             </CardContent>
@@ -264,7 +268,9 @@ export default function PatientsPage() {
           <CardContent>
             <div className='space-y-4'>
               {followUpList.length === 0 ? (
-                <div className='text-gray-500'>フォローアップ対象者は現在ありません。</div>
+                <div className='text-gray-500'>
+                  フォローアップ対象者は現在ありません。
+                </div>
               ) : (
                 followUpList.map((patient, index) => (
                   <div

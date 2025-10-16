@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase';
 const ADMIN_ROLES = new Set(['admin', 'clinic_manager', 'manager']);
 
 async function resolveRole(userId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const profileQuery = await supabase
     .from('profiles')
@@ -35,10 +35,13 @@ async function resolveRole(userId: string) {
     .eq('staff_id', userId)
     .maybeSingle();
 
-  if (permissions.data) {
+  type PermissionsData = { role: string; clinic_id: string | null } | null;
+  const typedPermissionsData = permissions.data as PermissionsData;
+
+  if (typedPermissionsData) {
     return {
-      role: permissions.data.role,
-      clinic_id: permissions.data.clinic_id,
+      role: typedPermissionsData.role,
+      clinic_id: typedPermissionsData.clinic_id,
       is_active: true,
     };
   }
@@ -51,7 +54,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

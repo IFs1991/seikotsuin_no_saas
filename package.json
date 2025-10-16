@@ -19,6 +19,7 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "jest --testPathPattern=e2e",
     "test:integration": "jest --testPathPattern=integration",
+    "coverage:summary": "node scripts/generate-coverage-summary.mjs",
     "swc:verify": "node scripts/check-swc-binary.mjs",
     "swc:clear": "node scripts/clear-swc-binaries.mjs",
     "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",

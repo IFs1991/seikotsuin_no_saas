@@ -166,7 +166,9 @@ export default function DashboardPage() {
       <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
-            <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+            <CardTitle className='text-red-600'>
+              プロフィール取得に失敗しました
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className='text-gray-700 dark:text-gray-300 mb-4'>
@@ -192,7 +194,9 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-gray-700 dark:text-gray-300'>管理者に権限を確認してください。</p>
+            <p className='text-gray-700 dark:text-gray-300'>
+              管理者に権限を確認してください。
+            </p>
           </CardContent>
         </Card>
       </div>

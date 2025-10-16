@@ -11,7 +11,10 @@ describe('Auth E2E flow (login/logout)', () => {
     formData.append('email', 'manager@example.com');
     formData.append('password', 'StrongPass123!');
 
-    supabaseMock.auth.signInWithPassword.mockResolvedValue({ data: { user: { id: 'u1' }}, error: null });
+    supabaseMock.auth.signInWithPassword.mockResolvedValue({
+      data: { user: { id: 'u1' } },
+      error: null,
+    });
 
     await expect(login(null, formData)).rejects.toThrow('REDIRECT:/dashboard');
     expect(supabaseMock.auth.signInWithPassword).toHaveBeenCalled();
@@ -22,7 +25,10 @@ describe('Auth E2E flow (login/logout)', () => {
     formData.append('email', 'bad@example.com');
     formData.append('password', 'wrong');
 
-    supabaseMock.auth.signInWithPassword.mockResolvedValue({ data: { user: null }, error: { message: 'invalid' } });
+    supabaseMock.auth.signInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'invalid' },
+    });
 
     await expect(login(null, formData)).resolves.toMatchObject({
       success: false,
@@ -36,12 +42,16 @@ describe('Auth E2E flow (login/logout)', () => {
 
   test('logs user out and redirects to login screen', async () => {
     supabaseMock.auth.signOut.mockResolvedValue({ error: null });
-    await expect(logout()).rejects.toThrow('REDIRECT:/admin/login?message=ログアウトしました');
+    await expect(logout()).rejects.toThrow(
+      'REDIRECT:/admin/login?message=ログアウトしました'
+    );
     expect(supabaseMock.auth.signOut).toHaveBeenCalled();
   });
 
   test('forces logout error path when signOut fails', async () => {
     supabaseMock.auth.signOut.mockResolvedValue({ error: { message: 'boom' } });
-    await expect(logout()).rejects.toThrow('REDIRECT:/admin/login?error=logout_failed');
+    await expect(logout()).rejects.toThrow(
+      'REDIRECT:/admin/login?error=logout_failed'
+    );
   });
 });

@@ -41,11 +41,7 @@ export async function GET(
       );
     }
 
-    const { supabase } = await ensureClinicAccess(
-      request,
-      path,
-      clinicId
-    );
+    const { supabase } = await ensureClinicAccess(request, path, clinicId);
 
     const resolvedClinicId = clinicId!;
 

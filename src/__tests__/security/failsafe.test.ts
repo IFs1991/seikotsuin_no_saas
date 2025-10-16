@@ -3,8 +3,31 @@
  * Phase 3 M3: Session/CSPミドルウェアのフェイルセーフ検証
  */
 
+jest.mock('@/lib/logger', () => {
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    log: jest.fn(),
+  };
+
+  return {
+    logger: mockLogger,
+    createLogger: jest.fn(() => mockLogger),
+    LogLevel: {
+      DEBUG: 0,
+      INFO: 1,
+      WARN: 2,
+      ERROR: 3,
+      NONE: 4,
+    },
+  };
+});
+
 import { SessionManager } from '@/lib/session-manager';
 import { AuditLogger } from '@/lib/audit-logger';
+import { logger } from '@/lib/logger';
 
 const createMockSupabase = () => ({
   from: jest.fn().mockReturnThis(),
@@ -31,13 +54,16 @@ jest.mock('@supabase/ssr', () => ({
   createBrowserClient: jest.fn(() => mockSupabase),
 }));
 
+jest.mock('@/lib/supabase', () => ({
+  createClient: jest.fn(async () => mockSupabase),
+  createAdminClient: jest.fn(() => mockSupabase),
+}));
+
 jest.setTimeout(30000);
 
 describe('フェイルセーフ動作テスト', () => {
-  let consoleErrorSpy: jest.SpyInstance;
-  let consoleWarnSpy: jest.SpyInstance;
-
   beforeEach(() => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
     jest.clearAllMocks();
     mockSupabase = createMockSupabase();
 
@@ -48,18 +74,6 @@ describe('フェイルセーフ動作テスト', () => {
 
     supabaseSSR.createServerClient.mockReturnValue(mockSupabase);
     supabaseSSR.createBrowserClient.mockReturnValue(mockSupabase);
-    // コンソール出力をキャプチャ
-    consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-    consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => undefined);
-  });
-
-  afterEach(() => {
-    consoleErrorSpy.mockRestore();
-    consoleWarnSpy.mockRestore();
   });
 
   describe('SessionManager フェイルセーフ', () => {
@@ -87,7 +101,7 @@ describe('フェイルセーフ動作テスト', () => {
       expect(result.session.user_id).toBe('user-123');
 
       // 警告ログが出力される
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         'createSession fallback:',
         expect.any(Error)
       );
@@ -97,9 +111,7 @@ describe('フェイルセーフ動作テスト', () => {
       const sessionManager = new SessionManager();
 
       // DB障害シミュレート
-      mockSupabase.single.mockRejectedValue(
-        new Error('Query timeout')
-      );
+      mockSupabase.single.mockRejectedValue(new Error('Query timeout'));
 
       const result = await sessionManager.validateSession('invalid-token');
 
@@ -108,15 +120,13 @@ describe('フェイルセーフ動作テスト', () => {
       expect(result.reason).toBe('not_found');
 
       // エラーログが記録される
-      expect(console.warn).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('セッション更新失敗時にエラーを吞み込む', async () => {
       const sessionManager = new SessionManager();
 
-      mockSupabase.single.mockRejectedValue(
-        new Error('Database write failed')
-      );
+      mockSupabase.single.mockRejectedValue(new Error('Database write failed'));
 
       const result = await sessionManager.refreshSession(
         'test-token',
@@ -125,7 +135,7 @@ describe('フェイルセーフ動作テスト', () => {
 
       // 失敗を返すが例外は投げない
       expect(result).toBe(false);
-      expect(console.error).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalled();
     });
 
     it('大量セッション操作時でもエラーが伝播しない', async () => {
@@ -152,7 +162,7 @@ describe('フェイルセーフ動作テスト', () => {
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(10);
-      results.forEach((result) => {
+      results.forEach(result => {
         expect(result).toHaveProperty('isValid');
       });
     });
@@ -173,8 +183,7 @@ describe('フェイルセーフ動作テスト', () => {
       );
 
       // エラーログが出力されるが例外は投げない
-      expect(console.error).toHaveBeenCalledWith(
-        'AuditLogger',
+      expect(logger.error).toHaveBeenCalledWith(
         '監査ログDB書き込み失敗 - フォールバック出力',
         expect.objectContaining({
           error: expect.any(Error),
@@ -187,9 +196,7 @@ describe('フェイルセーフ動作テスト', () => {
     });
 
     it('ログ記録失敗が連続してもシステムは動作継続', async () => {
-      mockSupabase.insert.mockRejectedValue(
-        new Error('Persistent DB failure')
-      );
+      mockSupabase.insert.mockRejectedValue(new Error('Persistent DB failure'));
 
       // 10回連続でログ記録を試行
       for (let i = 0; i < 10; i++) {
@@ -203,7 +210,7 @@ describe('フェイルセーフ動作テスト', () => {
       }
 
       // すべて完了（例外で停止しない）
-      expect(console.error).toHaveBeenCalledTimes(10);
+      expect(logger.error).toHaveBeenCalledTimes(10);
     });
 
     it('無効なデータでもログシステムがクラッシュしない', async () => {
@@ -221,7 +228,7 @@ describe('フェイルセーフ動作テスト', () => {
       );
 
       // エラーが発生しても処理継続
-      expect(console.error).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
     });
   });
 
@@ -241,7 +248,7 @@ describe('フェイルセーフ動作テスト', () => {
           }
         } catch (error) {
           // エラーを吞み込んで継続
-          console.warn('CSP violation report failed, continuing...', error);
+          logger.warn('CSP violation report failed, continuing...', error);
         }
       };
 
@@ -257,7 +264,7 @@ describe('フェイルセーフ動作テスト', () => {
       });
 
       // 警告が出力されるが処理は継続
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(logger.warn).toHaveBeenCalledWith(
         'CSP violation report failed, continuing...',
         expect.any(Error)
       );
@@ -315,7 +322,7 @@ describe('フェイルセーフ動作テスト', () => {
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(3);
-      results.forEach((result) => {
+      results.forEach(result => {
         expect(result.session).toBeDefined();
         expect(result.token).toBeDefined();
       });
@@ -356,9 +363,7 @@ describe('フェイルセーフ動作テスト', () => {
       const sessionManager = new SessionManager();
 
       // すべてのDB操作が失敗する状況
-      mockSupabase.single.mockRejectedValue(
-        new Error('Complete DB failure')
-      );
+      mockSupabase.single.mockRejectedValue(new Error('Complete DB failure'));
 
       // セッション作成はフォールバックで動作
       const createResult = await sessionManager.createSession(
@@ -378,7 +383,7 @@ describe('フェイルセーフ動作テスト', () => {
 
       // 監査ログはフォールバック出力
       await AuditLogger.logLogin('user-123', 'test@example.com');
-      expect(console.error).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 });

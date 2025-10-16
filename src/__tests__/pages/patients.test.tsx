@@ -14,8 +14,9 @@ const mockUsePatientAnalysis = usePatientAnalysis as jest.MockedFunction<
 >;
 
 jest.mock('@/providers/user-profile-context');
-const mockUseUserProfileContext =
-  useUserProfileContext as jest.MockedFunction<typeof useUserProfileContext>;
+const mockUseUserProfileContext = useUserProfileContext as jest.MockedFunction<
+  typeof useUserProfileContext
+>;
 
 // Mock data
 const mockPatientData = {

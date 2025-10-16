@@ -172,11 +172,18 @@ export async function middleware(request: NextRequest) {
         .eq('user_id', user.id)
         .single();
 
+      type ProfileData = {
+        role: string;
+        clinic_id: string | null;
+        is_active: boolean;
+      } | null;
+      const typedProfile = profile as ProfileData;
+
       // 管理者権限がない場合はアクセス拒否
       if (
-        !profile ||
-        !profile.is_active ||
-        !['admin', 'manager'].includes(profile.role)
+        !typedProfile ||
+        !typedProfile.is_active ||
+        !['admin', 'manager'].includes(typedProfile.role)
       ) {
         // アクセス拒否のセキュリティイベント記録
         try {
@@ -187,11 +194,11 @@ export async function middleware(request: NextRequest) {
             description: '権限不足によるアクセス拒否',
             evidence: {
               requestedPath: request.nextUrl.pathname,
-              userRole: profile?.role || 'unknown',
-              isActive: profile?.is_active || false,
+              userRole: typedProfile?.role || 'unknown',
+              isActive: typedProfile?.is_active || false,
             },
             userId: user.id,
-            clinicId: profile?.clinic_id,
+            clinicId: typedProfile?.clinic_id ?? '',
             ipAddress,
             timestamp: new Date(),
           });
@@ -211,10 +218,10 @@ export async function middleware(request: NextRequest) {
           description: '管理者ルートへのアクセス成功',
           evidence: {
             requestedPath: request.nextUrl.pathname,
-            userRole: profile.role,
+            userRole: typedProfile!.role,
           },
           userId: user.id,
-          clinicId: profile.clinic_id,
+          clinicId: typedProfile?.clinic_id ?? '',
           ipAddress,
           timestamp: new Date(),
         });

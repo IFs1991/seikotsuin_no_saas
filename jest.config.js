@@ -1,16 +1,13 @@
 const nextJest = require('next/jest');
 
-const createJestConfig = nextJest({
-  dir: './',
-});
+const createJestConfig = nextJest({ dir: './' });
 
-const customJestConfig = {
-  testEnvironment: 'node',
+const sharedConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testMatch: ['**/__tests__/**/*.(ts|tsx|js)', '**/*.(test|spec).(ts|tsx|js)'],
+  transformIgnorePatterns: ['/node_modules/', '^.+\\.module\\.(css|sass|scss)$'],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
@@ -19,10 +16,18 @@ const customJestConfig = {
     '<rootDir>/src/__tests__/session-management/penetration-test-prep.ts',
     '<rootDir>/src/__tests__/.*/mocks/.*',
   ],
-  transformIgnorePatterns: [
-    '/node_modules/',
-    '^.+\.module\.(css|sass|scss)$',
-  ],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
+    },
+  },
+  verbose: true,
+};
+
+const coverageConfig = {
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
@@ -38,15 +43,40 @@ const customJestConfig = {
       statements: 80,
     },
   },
-  verbose: true,
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  globals: {
-    'ts-jest': {
-      tsconfig: {
-        jsx: 'react-jsx',
-      },
-    },
-  },
 };
 
-module.exports = createJestConfig(customJestConfig);
+const createClientConfig = createJestConfig({
+  ...sharedConfig,
+  displayName: 'client',
+  testEnvironment: 'jsdom',
+  testMatch: [
+    '<rootDir>/src/__tests__/**/*.test.tsx',
+    '<rootDir>/src/__tests__/pages/**/*.test.tsx',
+  ],
+});
+
+const createServerConfig = createJestConfig({
+  ...sharedConfig,
+  displayName: 'server',
+  testEnvironment: 'node',
+  testMatch: [
+    '<rootDir>/src/__tests__/**/*.test.ts',
+    '<rootDir>/src/__tests__/**/*.test.js',
+  ],
+  testPathIgnorePatterns: [
+    ...sharedConfig.testPathIgnorePatterns,
+    '\\.test\\.tsx$',
+  ],
+});
+
+module.exports = async () => {
+  const [client, server] = await Promise.all([
+    createClientConfig(),
+    createServerConfig(),
+  ]);
+
+  return {
+    ...coverageConfig,
+    projects: [client, server],
+  };
+};

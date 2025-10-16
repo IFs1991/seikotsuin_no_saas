@@ -17,8 +17,16 @@ interface HeaderProps {
 const ADMIN_LINKS = [
   { id: 'admin-home', label: '管理ダッシュボード', href: '/admin' },
   { id: 'admin-master', label: 'マスタ管理', href: '/admin/master' },
-  { id: 'admin-security', label: 'セキュリティ監視', href: '/admin/security-dashboard' },
-  { id: 'admin-session', label: 'セッション管理', href: '/admin/session-management' },
+  {
+    id: 'admin-security',
+    label: 'セキュリティ監視',
+    href: '/admin/security-dashboard',
+  },
+  {
+    id: 'admin-session',
+    label: 'セッション管理',
+    href: '/admin/session-management',
+  },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
   { id: 'admin-chat', label: 'AIアシスタント', href: '/admin/chat' },
 ];
@@ -100,7 +108,9 @@ export function Header({
             骨
           </span>
           <span className='text-left'>
-            <span className='block text-xl font-bold leading-6'>ティラミス</span>
+            <span className='block text-xl font-bold leading-6'>
+              ティラミス
+            </span>
             {profile && (
               <span className='block text-xs text-blue-200 mt-0.5'>
                 {profile.email ?? 'アカウント'}
@@ -182,7 +192,9 @@ export function Header({
           {isUserMenuOpen && (
             <div className='absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg py-2 text-gray-700'>
               <div className='px-4 py-2 border-b text-xs text-gray-500'>
-                {profileLoading ? '情報を取得中…' : profile?.email ?? 'ゲスト'}
+                {profileLoading
+                  ? '情報を取得中…'
+                  : (profile?.email ?? 'ゲスト')}
               </div>
               <button
                 type='button'

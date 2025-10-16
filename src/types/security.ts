@@ -51,7 +51,7 @@ export interface DeviceFingerprint {
   browserVersion?: string;
   os: string;
   osVersion?: string;
-  device: 'desktop' | 'mobile' | 'tablet' | 'unknown';
+  device: 'Desktop' | 'Mobile' | 'Tablet' | 'Unknown';
   screenResolution?: string;
   timezone?: string;
   language?: string;
@@ -107,9 +107,9 @@ export type SessionRevocationReason =
   | 'policy_violation'
   | 'system_maintenance';
 
-export interface SessionValidationResult {
+export interface SessionValidationResult<TSession = SessionMetadata> {
   isValid: boolean;
-  session?: SessionMetadata;
+  session?: TSession;
   user?: {
     id: string;
     email: string;

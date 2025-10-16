@@ -66,7 +66,7 @@ function extractAuthFormValues(formData: FormData) {
 }
 
 export async function login(_: any, formData: FormData): Promise<AuthResponse> {
-  const supabase = getServerClient();
+  const supabase = await getServerClient();
 
   try {
     // 1. 入力値の検証とサニタイズ
@@ -97,7 +97,12 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
 
     if (error) {
       const errorMessage = mapAuthError(error);
-      const warningPayload: { email: string; error: string; status?: number | null; details?: string } = {
+      const warningPayload: {
+        email: string;
+        error: string;
+        status?: number | null;
+        details?: string;
+      } = {
         email: sanitizedEmail,
         error: errorMessage,
       };
@@ -138,7 +143,8 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
       .eq('user_id', data.user.id)
       .single();
 
-    const profile = profileResult?.data;
+    type ProfileData = { role: string; is_active: boolean } | null;
+    const profile = profileResult?.data as ProfileData;
 
     if (!profile?.is_active) {
       await supabase.auth.signOut();
@@ -154,13 +160,13 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     // 6. 成功ログ
     console.info('[Auth] Successful login:', {
       email: sanitizedEmail,
-      role: profile.role,
+      role: profile!.role,
       timestamp: new Date().toISOString(),
     });
 
     // 7. パス再検証とリダイレクト
     revalidatePath('/', 'layout');
-    const redirectPath = getDefaultRedirect(profile.role);
+    const redirectPath = getDefaultRedirect(profile!.role);
     redirect(redirectPath);
   } catch (error) {
     if (isRedirectLikeError(error)) {
@@ -184,7 +190,7 @@ export async function signup(
   _: any,
   formData: FormData
 ): Promise<AuthResponse> {
-  const supabase = getServerClient();
+  const supabase = await getServerClient();
 
   // 1. 入力値の検証
   const parsed = signupSchema.safeParse(extractAuthFormValues(formData));
@@ -259,7 +265,7 @@ export async function signup(
  * ログアウト処理
  */
 export async function logout(): Promise<void> {
-  const supabase = getServerClient();
+  const supabase = await getServerClient();
 
   try {
     // 現在のユーザー情報を取得（ログ用）

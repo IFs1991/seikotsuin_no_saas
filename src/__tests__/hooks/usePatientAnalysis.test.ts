@@ -12,8 +12,8 @@ describe('usePatientAnalysis', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApi.isSuccessResponse.mockImplementation(
-      (response: any) => Boolean(response?.success)
+    mockApi.isSuccessResponse.mockImplementation((response: any) =>
+      Boolean(response?.success)
     );
     mockApi.isErrorResponse.mockImplementation(
       (response: any) => response?.success === false

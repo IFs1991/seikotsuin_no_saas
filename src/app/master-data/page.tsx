@@ -38,7 +38,12 @@ interface MasterDataRowProps {
   disabled?: boolean;
 }
 
-function MasterDataRow({ item, onUpdate, onDelete, disabled }: MasterDataRowProps) {
+function MasterDataRow({
+  item,
+  onUpdate,
+  onDelete,
+  disabled,
+}: MasterDataRowProps) {
   const [value, setValue] = useState(() =>
     typeof item.value === 'string' ? item.value : JSON.stringify(item.value)
   );
@@ -131,7 +136,11 @@ export default function MasterDataPage() {
   useEffect(() => {
     if (!activeTab && categories.length > 0) {
       setActiveTab(categories[0]);
-    } else if (activeTab && categories.length > 0 && !categories.includes(activeTab)) {
+    } else if (
+      activeTab &&
+      categories.length > 0 &&
+      !categories.includes(activeTab)
+    ) {
       setActiveTab(categories[0]);
     }
   }, [activeTab, categories]);
@@ -193,7 +202,9 @@ export default function MasterDataPage() {
                 className='md:max-w-sm'
               />
               <div className='flex items-center gap-3'>
-                <Label className='sr-only' htmlFor='master-data-import'>インポート</Label>
+                <Label className='sr-only' htmlFor='master-data-import'>
+                  インポート
+                </Label>
                 <Input
                   id='master-data-import'
                   type='file'
@@ -201,7 +212,11 @@ export default function MasterDataPage() {
                   onChange={handleImport}
                   className='md:w-48'
                 />
-                <Button variant='outline' onClick={exportData} disabled={items.length === 0}>
+                <Button
+                  variant='outline'
+                  onClick={exportData}
+                  disabled={items.length === 0}
+                >
                   エクスポート
                 </Button>
               </div>
@@ -225,14 +240,22 @@ export default function MasterDataPage() {
               >
                 <TabsList className='w-full justify-start overflow-x-auto'>
                   {categories.map(category => (
-                    <TabsTrigger key={category} value={category} className='capitalize'>
+                    <TabsTrigger
+                      key={category}
+                      value={category}
+                      className='capitalize'
+                    >
                       {category}
                     </TabsTrigger>
                   ))}
                 </TabsList>
 
                 {categories.map(category => (
-                  <TabsContent key={category} value={category} className='mt-4 space-y-4'>
+                  <TabsContent
+                    key={category}
+                    value={category}
+                    className='mt-4 space-y-4'
+                  >
                     <div className='rounded border bg-background p-4 shadow-sm'>
                       <div className='text-sm text-muted-foreground mb-3'>
                         {category} の登録件数: {data[category]?.length ?? 0}
@@ -261,7 +284,9 @@ export default function MasterDataPage() {
 
             {activeTab ? (
               <div className='rounded border border-dashed bg-muted/30 p-4 space-y-3'>
-                <div className='text-sm font-medium'>新規登録 ({activeTab})</div>
+                <div className='text-sm font-medium'>
+                  新規登録 ({activeTab})
+                </div>
                 <div className='grid gap-3 md:grid-cols-3'>
                   <Input
                     placeholder='名称'

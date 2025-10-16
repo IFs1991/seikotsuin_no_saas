@@ -306,7 +306,8 @@ function parseAIResponseTextToObject(text: string): {
   const obj = tryParse(candidateJson) || tryParse(extractFirstJsonObject(text));
   if (obj && typeof obj === 'object') {
     const summary = typeof obj.summary === 'string' ? obj.summary : undefined;
-    const arr = (v: any) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string') : undefined);
+    const arr = (v: any) =>
+      Array.isArray(v) ? v.filter(x => typeof x === 'string') : undefined;
     return {
       summary,
       highlights: arr(obj.highlights),

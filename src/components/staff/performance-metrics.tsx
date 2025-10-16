@@ -13,9 +13,9 @@ const PerformanceMetrics: React.FC = () => {
 
   const staffMembers = useMemo(
     () => [
-    { id: 1, name: '山田 太郎', role: '施術者', rating: 4.8 },
-    { id: 2, name: '鈴木 花子', role: '施術者', rating: 4.5 },
-    { id: 3, name: '佐藤 健一', role: '施術者', rating: 4.2 },
+      { id: 1, name: '山田 太郎', role: '施術者', rating: 4.8 },
+      { id: 2, name: '鈴木 花子', role: '施術者', rating: 4.5 },
+      { id: 3, name: '佐藤 健一', role: '施術者', rating: 4.2 },
     ],
     []
   );

@@ -27,7 +27,12 @@ export function ResponsiveLayout({
   return (
     <div className='min-h-screen bg-gray-50'>
       <div className='desktop-only'>
-        <Sidebar isOpen={true} onClose={() => {}} isAdmin={isAdmin} profileLoading={profileLoading} />
+        <Sidebar
+          isOpen={true}
+          onClose={() => {}}
+          isAdmin={isAdmin}
+          profileLoading={profileLoading}
+        />
       </div>
 
       <div className='mobile-only'>

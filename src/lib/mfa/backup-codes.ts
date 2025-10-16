@@ -111,7 +111,8 @@ export class BackupCodeManager {
       }
 
       // 現在のMFA設定取得
-      const { data: mfaSettings, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', userId)
@@ -144,7 +145,8 @@ export class BackupCodeManager {
       updatedBackupCodes.splice(codeIndex, 1);
 
       // データベース更新
-      await this.supabase
+      const supabase2 = await this.supabase;
+      await supabase2
         .from('user_mfa_settings')
         .update({
           backup_codes: updatedBackupCodes,
@@ -185,7 +187,8 @@ export class BackupCodeManager {
    */
   async getBackupCodeUsage(userId: string): Promise<BackupCodeUsage> {
     try {
-      const { data: mfaSettings, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', userId)
@@ -231,7 +234,8 @@ export class BackupCodeManager {
       const newBackupCodes = this.generateBackupCodes();
 
       // データベース更新
-      const { error } = await this.supabase
+      const supabase = await this.supabase;
+      const { error } = await supabase
         .from('user_mfa_settings')
         .update({
           backup_codes: newBackupCodes,
@@ -271,7 +275,8 @@ export class BackupCodeManager {
   }> {
     try {
       // MFA有効ユーザー統計
-      const { data: mfaUsers, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaUsers, error } = await supabase
         .from('user_mfa_settings')
         .select('backup_codes, last_used_at')
         .eq('clinic_id', clinicId)
@@ -307,7 +312,8 @@ export class BackupCodeManager {
 
       // 最近のバックアップコード使用回数（直近7日間）
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const { count: recentUsageCount } = await this.supabase
+      const supabase2 = await this.supabase;
+      const { count: recentUsageCount } = await supabase2
         .from('security_events')
         .select('*', { count: 'exact', head: true })
         .eq('event_type', 'mfa_backup_code_success')
@@ -408,7 +414,8 @@ export class BackupCodeManager {
     details: Record<string, unknown>
   ): Promise<void> {
     try {
-      await this.supabase.from('security_events').insert({
+      const supabase = await this.supabase;
+      await supabase.from('security_events').insert({
         event_type: `mfa_backup_${eventType}`,
         user_id: userId,
         event_details: details,

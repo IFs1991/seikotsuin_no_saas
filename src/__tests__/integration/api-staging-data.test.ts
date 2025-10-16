@@ -23,7 +23,10 @@ describe('API integration with Supabase staging data mocks', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    requestInfoMock.mockReturnValue({ ipAddress: '127.0.0.1', userAgent: 'jest' });
+    requestInfoMock.mockReturnValue({
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
     auditLogMock.mockResolvedValue();
   });
 
@@ -40,10 +43,24 @@ describe('API integration with Supabase staging data mocks', () => {
       private_revenue: 70000,
     };
     const revenueTrend = [
-      { revenue_date: '2025-09-25', total_revenue: 120000, insurance_revenue: 50000, private_revenue: 70000 },
-      { revenue_date: '2025-09-26', total_revenue: 135000, insurance_revenue: 54000, private_revenue: 81000 },
+      {
+        revenue_date: '2025-09-25',
+        total_revenue: 120000,
+        insurance_revenue: 50000,
+        private_revenue: 70000,
+      },
+      {
+        revenue_date: '2025-09-26',
+        total_revenue: 135000,
+        insurance_revenue: 54000,
+        private_revenue: 81000,
+      },
     ];
-    const visits = [{ patient_id: 'p1' }, { patient_id: 'p2' }, { patient_id: 'p3' }];
+    const visits = [
+      { patient_id: 'p1' },
+      { patient_id: 'p2' },
+      { patient_id: 'p3' },
+    ];
     const yesterdayVisits = [{ patient_id: 'p1' }, { patient_id: 'p2' }];
     const aiComment = {
       id: 'comment-1',
@@ -72,7 +89,9 @@ describe('API integration with Supabase staging data mocks', () => {
       user: { id: 'user-1', email: 'manager@example.com', clinic_id: clinicId },
     });
 
-    const request = new NextRequest(`http://localhost/api/dashboard?clinic_id=${clinicId}`);
+    const request = new NextRequest(
+      `http://localhost/api/dashboard?clinic_id=${clinicId}`
+    );
 
     const response = await getDashboard(request);
     expect(response.status).toBe(200);
@@ -83,16 +102,30 @@ describe('API integration with Supabase staging data mocks', () => {
     expect(payload.data.dailyData.patients).toBe(visits.length);
     expect(payload.data.revenueChartData).toHaveLength(revenueTrend.length);
     expect(payload.data.aiComment?.summary).toContain('順調');
-    expect(supabase.rpc).toHaveBeenCalledWith('get_hourly_visit_pattern', { clinic_uuid: clinicId });
+    expect(supabase.rpc).toHaveBeenCalledWith('get_hourly_visit_pattern', {
+      clinic_uuid: clinicId,
+    });
     expect(payload.data.alerts).toBeDefined();
   });
 
   it('generates alert when revenue decreases significantly', async () => {
     const clinicId = '11111111-1111-4111-8111-111111111111';
-    const todayRevenue = { total_revenue: 80000, insurance_revenue: 40000, private_revenue: 40000 };
-    const yesterdayRevenue = { total_revenue: 150000, insurance_revenue: 75000, private_revenue: 75000 };
+    const todayRevenue = {
+      total_revenue: 80000,
+      insurance_revenue: 40000,
+      private_revenue: 40000,
+    };
+    const yesterdayRevenue = {
+      total_revenue: 150000,
+      insurance_revenue: 75000,
+      private_revenue: 75000,
+    };
     const visits = [{ patient_id: 'p1' }, { patient_id: 'p2' }];
-    const yesterdayVisits = [{ patient_id: 'p1' }, { patient_id: 'p2' }, { patient_id: 'p3' }];
+    const yesterdayVisits = [
+      { patient_id: 'p1' },
+      { patient_id: 'p2' },
+      { patient_id: 'p3' },
+    ];
 
     const supabase = createDashboardSupabaseMock({
       dailyRevenue: todayRevenue,
@@ -109,13 +142,19 @@ describe('API integration with Supabase staging data mocks', () => {
       user: { id: 'user-1', email: 'manager@example.com', clinic_id: clinicId },
     });
 
-    const request = new NextRequest(`http://localhost/api/dashboard?clinic_id=${clinicId}`);
+    const request = new NextRequest(
+      `http://localhost/api/dashboard?clinic_id=${clinicId}`
+    );
     const response = await getDashboard(request);
     const payload = await response.json();
 
     expect(payload.success).toBe(true);
     expect(payload.data.alerts.length).toBeGreaterThan(0);
-    expect(payload.data.alerts.some((alert: string) => alert.includes('売上が前日比'))).toBe(true);
+    expect(
+      payload.data.alerts.some((alert: string) =>
+        alert.includes('売上が前日比')
+      )
+    ).toBe(true);
   });
 
   it('returns patient analysis data with LTV and risk scores', async () => {
@@ -156,7 +195,9 @@ describe('API integration with Supabase staging data mocks', () => {
       user: { id: 'user-1', email: 'manager@example.com', clinic_id: clinicId },
     });
 
-    const request = new NextRequest(`http://localhost/api/patients?clinic_id=${clinicId}`);
+    const request = new NextRequest(
+      `http://localhost/api/patients?clinic_id=${clinicId}`
+    );
 
     const response = await getPatients(request);
     const payload = await response.json();
@@ -165,7 +206,10 @@ describe('API integration with Supabase staging data mocks', () => {
     expect(payload.success).toBe(true);
     expect(payload.data.totalPatients).toBe(2);
     expect(payload.data.ltvRanking[0].ltv).toBe(420000);
-    expect(payload.data.riskScores.find((r: any) => r.patient_id === 'patient-1')?.riskScore).toBe(72);
+    expect(
+      payload.data.riskScores.find((r: any) => r.patient_id === 'patient-1')
+        ?.riskScore
+    ).toBe(72);
     expect(auditLogMock).toHaveBeenCalled();
   });
 
@@ -205,7 +249,9 @@ describe('API integration with Supabase staging data mocks', () => {
       user: { id: 'user-1', email: 'manager@example.com', clinic_id: clinicId },
     });
 
-    const request = new NextRequest(`http://localhost/api/daily-reports?clinic_id=${clinicId}`);
+    const request = new NextRequest(
+      `http://localhost/api/daily-reports?clinic_id=${clinicId}`
+    );
 
     const response = await getDailyReports(request);
     const payload = await response.json();
@@ -227,8 +273,16 @@ function createDashboardSupabaseMock({
   aiComment,
   heatmap,
 }: {
-  dailyRevenue: { total_revenue: number; insurance_revenue: number; private_revenue: number };
-  yesterdayRevenue?: { total_revenue: number; insurance_revenue: number; private_revenue: number } | null;
+  dailyRevenue: {
+    total_revenue: number;
+    insurance_revenue: number;
+    private_revenue: number;
+  };
+  yesterdayRevenue?: {
+    total_revenue: number;
+    insurance_revenue: number;
+    private_revenue: number;
+  } | null;
   revenueTrend: Array<Record<string, unknown>>;
   visits: Array<Record<string, unknown>>;
   yesterdayVisits?: Array<Record<string, unknown>>;
@@ -257,28 +311,37 @@ function createDashboardSupabaseMock({
                           data: isToday
                             ? dailyRevenue
                             : isYesterday
-                            ? yesterdayRevenue || null
-                            : null,
+                              ? yesterdayRevenue || null
+                              : null,
                           error:
                             !isToday && !isYesterday
                               ? { code: 'PGRST116' }
                               : isYesterday && !yesterdayRevenue
-                              ? { code: 'PGRST116' }
-                              : null,
+                                ? { code: 'PGRST116' }
+                                : null,
                         })),
                       };
                     }
                     return {
-                      single: jest.fn(async () => ({ data: dailyRevenue, error: null })),
+                      single: jest.fn(async () => ({
+                        data: dailyRevenue,
+                        error: null,
+                      })),
                     };
                   }),
                   gte: jest.fn(() => ({
-                    order: jest.fn(async () => ({ data: revenueTrend, error: null })),
+                    order: jest.fn(async () => ({
+                      data: revenueTrend,
+                      error: null,
+                    })),
                   })),
                 };
               }
               return {
-                single: jest.fn(async () => ({ data: dailyRevenue, error: null })),
+                single: jest.fn(async () => ({
+                  data: dailyRevenue,
+                  error: null,
+                })),
               };
             }),
           })),
@@ -293,7 +356,8 @@ function createDashboardSupabaseMock({
                 lt: jest.fn(async (_field: string, ltValue: string) => {
                   const rangeStart = gteValue.split('T')[0];
                   const rangeEnd = ltValue.split('T')[0];
-                  const isYesterdayRange = rangeStart === yesterday && rangeEnd === today;
+                  const isYesterdayRange =
+                    rangeStart === yesterday && rangeEnd === today;
                   return {
                     data: isYesterdayRange ? yesterdayVisits || [] : visits,
                     error: null,
@@ -365,11 +429,7 @@ function createPatientsSupabaseMock({
   };
 }
 
-function createDailyReportsSupabaseMock({
-  reports,
-}: {
-  reports: Array<any>;
-}) {
+function createDailyReportsSupabaseMock({ reports }: { reports: Array<any> }) {
   return {
     from: jest.fn((table: string) => {
       if (table === 'daily_reports') {
@@ -390,4 +450,3 @@ function createDailyReportsSupabaseMock({
     }),
   };
 }
-

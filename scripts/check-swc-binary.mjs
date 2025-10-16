@@ -20,7 +20,8 @@ if (!fs.existsSync(swcBaseDir)) {
   process.exit(0);
 }
 
-const expectedPackageSuffix = platform === 'win32' ? 'swc-win32-x64-msvc' : 'swc-linux-x64-gnu';
+const expectedPackageSuffix =
+  platform === 'win32' ? 'swc-win32-x64-msvc' : 'swc-linux-x64-gnu';
 const expectedPath = path.join(swcBaseDir, expectedPackageSuffix);
 
 const knownPackages = [

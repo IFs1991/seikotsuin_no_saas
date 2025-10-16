@@ -93,7 +93,8 @@ export class MFAManager {
       const backupCodes = this.generateBackupCodes();
 
       // データベースに一時保存（セットアップ完了まで）
-      await this.supabase.from('mfa_setup_sessions').insert({
+      const supabase = await this.supabase;
+      await supabase.from('mfa_setup_sessions').insert({
         user_id: validatedData.userId,
         clinic_id: validatedData.clinicId,
         secret_key: secret.base32,
@@ -128,7 +129,8 @@ export class MFAManager {
       });
 
       // セットアップセッション取得
-      const { data: setupSession, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: setupSession, error } = await supabase
         .from('mfa_setup_sessions')
         .select('*')
         .eq('user_id', validatedVerification.userId)
@@ -156,7 +158,8 @@ export class MFAManager {
       }
 
       // MFA設定を正式に有効化
-      await this.supabase.from('user_mfa_settings').upsert({
+      const supabase2 = await this.supabase;
+      await supabase2.from('user_mfa_settings').upsert({
         user_id: validatedVerification.userId,
         clinic_id: setupSession.clinic_id,
         secret_key: setupSession.secret_key,
@@ -168,7 +171,7 @@ export class MFAManager {
       });
 
       // セットアップセッション削除
-      await this.supabase
+      await supabase2
         .from('mfa_setup_sessions')
         .delete()
         .eq('id', setupSession.id);
@@ -199,7 +202,8 @@ export class MFAManager {
       });
 
       // MFA設定取得
-      const { data: mfaSettings, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', validatedVerification.userId)
@@ -220,7 +224,8 @@ export class MFAManager {
 
       if (isValid) {
         // 最終使用日時更新
-        await this.supabase
+        const supabase2 = await this.supabase;
+        await supabase2
           .from('user_mfa_settings')
           .update({ last_used_at: new Date().toISOString() })
           .eq('user_id', validatedVerification.userId);
@@ -263,7 +268,8 @@ export class MFAManager {
       });
 
       // MFA設定取得
-      const { data: mfaSettings, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', validatedCode.userId)
@@ -291,7 +297,8 @@ export class MFAManager {
       const updatedBackupCodes = [...backupCodes];
       updatedBackupCodes.splice(codeIndex, 1);
 
-      await this.supabase
+      const supabase2 = await this.supabase;
+      await supabase2
         .from('user_mfa_settings')
         .update({
           backup_codes: updatedBackupCodes,
@@ -331,7 +338,8 @@ export class MFAManager {
    */
   async getMFAStatus(userId: string): Promise<MFAStatus> {
     try {
-      const { data: mfaSettings, error } = await this.supabase
+      const supabase = await this.supabase;
+      const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
         .eq('user_id', userId)
@@ -368,7 +376,8 @@ export class MFAManager {
   async disableMFA(userId: string, adminUserId?: string): Promise<boolean> {
     try {
       // MFA設定を無効化
-      const { error } = await this.supabase
+      const supabase = await this.supabase;
+      const { error } = await supabase
         .from('user_mfa_settings')
         .update({
           is_enabled: false,
@@ -408,7 +417,8 @@ export class MFAManager {
       const newBackupCodes = this.generateBackupCodes();
 
       // データベース更新
-      const { error } = await this.supabase
+      const supabase = await this.supabase;
+      const { error } = await supabase
         .from('user_mfa_settings')
         .update({
           backup_codes: newBackupCodes,
@@ -491,7 +501,8 @@ export class MFAManager {
     details?: Record<string, any>;
   }): Promise<void> {
     try {
-      await this.supabase.from('security_events').insert({
+      const supabase = await this.supabase;
+      await supabase.from('security_events').insert({
         event_type: `mfa_${event.eventType}`,
         user_id: event.userId,
         event_details: event.details || {},

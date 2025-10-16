@@ -30,7 +30,7 @@ declare module 'speakeasy' {
   }
 
   export function generateSecret(options?: GenerateSecretOptions): Secret;
-  
+
   export const totp: {
     verify(options: VerifyOptions): boolean;
     generate(options: TOTPOptions): string;

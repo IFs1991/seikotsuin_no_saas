@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       hours: searchParams.get('hours'),
     });
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 期間設定
     const sinceTime = new Date();

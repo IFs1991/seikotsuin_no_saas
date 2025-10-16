@@ -17,9 +17,7 @@ interface UseDashboardReturn {
   refetch: () => Promise<void>;
 }
 
-const useDashboard = (
-  clinicId?: string | null
-): UseDashboardReturn => {
+const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(
     null
   );

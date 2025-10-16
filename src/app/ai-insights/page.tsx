@@ -41,7 +41,10 @@ type InsightCategory = {
   actions: InsightAction[];
 };
 
-const mockInsights: Record<'revenue' | 'efficiency' | 'satisfaction', InsightCategory> = {
+const mockInsights: Record<
+  'revenue' | 'efficiency' | 'satisfaction',
+  InsightCategory
+> = {
   revenue: {
     title: '収益向上',
     status: 'watch',
@@ -213,11 +216,12 @@ const mockInsights: Record<'revenue' | 'efficiency' | 'satisfaction', InsightCat
   },
 };
 
-const statusMeta: Record<InsightStatus, { label: string; className: string }> = {
-  on_track: { label: '順調', className: 'bg-green-100 text-green-700' },
-  watch: { label: '要注視', className: 'bg-yellow-100 text-yellow-800' },
-  at_risk: { label: '要改善', className: 'bg-red-100 text-red-700' },
-};
+const statusMeta: Record<InsightStatus, { label: string; className: string }> =
+  {
+    on_track: { label: '順調', className: 'bg-green-100 text-green-700' },
+    watch: { label: '要注視', className: 'bg-yellow-100 text-yellow-800' },
+    at_risk: { label: '要改善', className: 'bg-red-100 text-red-700' },
+  };
 
 const actionStatusLabel: Record<InsightAction['status'], string> = {
   in_progress: '進行中',
@@ -226,7 +230,9 @@ const actionStatusLabel: Record<InsightAction['status'], string> = {
 };
 
 const AiInsightsPage: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'revenue' | 'efficiency' | 'satisfaction'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<
+    'all' | 'revenue' | 'efficiency' | 'satisfaction'
+  >('all');
 
   const categories = useMemo(
     () => [
@@ -260,8 +266,13 @@ const AiInsightsPage: React.FC = () => {
         <CardContent className='bg-card space-y-4'>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
             {category.metrics.slice(0, 2).map(metric => (
-              <div key={metric.label} className='border rounded-lg p-3 bg-white dark:bg-gray-800'>
-                <p className='text-xs text-gray-400 uppercase tracking-wide'>{metric.label}</p>
+              <div
+                key={metric.label}
+                className='border rounded-lg p-3 bg-white dark:bg-gray-800'
+              >
+                <p className='text-xs text-gray-400 uppercase tracking-wide'>
+                  {metric.label}
+                </p>
                 <p className='text-lg font-semibold text-gray-900 dark:text-gray-100 mt-1'>
                   {metric.current}
                 </p>
@@ -273,7 +284,9 @@ const AiInsightsPage: React.FC = () => {
             ))}
           </div>
           <div>
-            <p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'>ハイライト</p>
+            <p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1'>
+              ハイライト
+            </p>
             <ul className='space-y-1 text-sm text-gray-700 dark:text-gray-300'>
               {category.highlights.map((item, index) => (
                 <li key={index}>• {item}</li>
@@ -308,8 +321,13 @@ const AiInsightsPage: React.FC = () => {
           <CardContent className='bg-card space-y-4'>
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               {category.metrics.map(metric => (
-                <div key={metric.label} className='border rounded-lg p-4 bg-white dark:bg-gray-800'>
-                  <p className='text-xs text-gray-400 uppercase tracking-wide'>{metric.label}</p>
+                <div
+                  key={metric.label}
+                  className='border rounded-lg p-4 bg-white dark:bg-gray-800'
+                >
+                  <p className='text-xs text-gray-400 uppercase tracking-wide'>
+                    {metric.label}
+                  </p>
                   <p className='text-xl font-bold text-gray-900 dark:text-gray-100 mt-2'>
                     {metric.current}
                   </p>
@@ -317,13 +335,17 @@ const AiInsightsPage: React.FC = () => {
                     {metric.delta}
                     {metric.target ? ` / 目標 ${metric.target}` : ''}
                   </p>
-                  <p className='text-[11px] text-gray-400 mt-2'>データソース: {metric.source}</p>
+                  <p className='text-[11px] text-gray-400 mt-2'>
+                    データソース: {metric.source}
+                  </p>
                 </div>
               ))}
             </div>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div className='border rounded-lg p-4 bg-white dark:bg-gray-800'>
-                <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2'>良い兆候</h3>
+                <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2'>
+                  良い兆候
+                </h3>
                 <ul className='space-y-1 text-sm text-gray-700 dark:text-gray-300'>
                   {category.highlights.map((item, idx) => (
                     <li key={idx}>• {item}</li>
@@ -331,7 +353,9 @@ const AiInsightsPage: React.FC = () => {
                 </ul>
               </div>
               <div className='border rounded-lg p-4 bg-white dark:bg-gray-800'>
-                <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2'>改善ポイント</h3>
+                <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2'>
+                  改善ポイント
+                </h3>
                 <ul className='space-y-1 text-sm text-gray-700 dark:text-gray-300'>
                   {category.improvements.map((item, idx) => (
                     <li key={idx}>• {item}</li>
@@ -365,7 +389,9 @@ const AiInsightsPage: React.FC = () => {
                     <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
                       担当: {action.owner} / 期限: {action.due}
                     </p>
-                    <p className='text-xs text-gray-400 mt-1'>データソース: {action.source}</p>
+                    <p className='text-xs text-gray-400 mt-1'>
+                      データソース: {action.source}
+                    </p>
                   </div>
                   <Badge
                     variant={
@@ -398,11 +424,19 @@ const AiInsightsPage: React.FC = () => {
             ティラミス AI インサイト
           </CardTitle>
           <CardDescription className='text-gray-600 dark:text-gray-300'>
-            Gemini Flash が算出した経営改善サマリのモックデータです。後日、`daily_revenue_summary` や `patient_feedback_summary` などのテーブルと連携予定です。
+            Gemini Flash
+            が算出した経営改善サマリのモックデータです。後日、`daily_revenue_summary`
+            や `patient_feedback_summary` などのテーブルと連携予定です。
           </CardDescription>
         </CardHeader>
         <CardContent className='bg-card'>
-          <Tabs value={selectedCategory} className='w-full' onValueChange={value => setSelectedCategory(value as typeof selectedCategory)}>
+          <Tabs
+            value={selectedCategory}
+            className='w-full'
+            onValueChange={value =>
+              setSelectedCategory(value as typeof selectedCategory)
+            }
+          >
             <TabsList className='grid grid-cols-4 gap-4'>
               {categories.map(category => (
                 <TabsTrigger key={category.id} value={category.id}>
@@ -413,7 +447,9 @@ const AiInsightsPage: React.FC = () => {
 
             <TabsContent value='all'>
               <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mt-6'>
-                {(['revenue', 'efficiency', 'satisfaction'] as const).map(renderSummaryCard)}
+                {(['revenue', 'efficiency', 'satisfaction'] as const).map(
+                  renderSummaryCard
+                )}
               </div>
             </TabsContent>
 

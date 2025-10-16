@@ -10,10 +10,7 @@ import {
   ensureClinicAccess,
   type ClinicAccessOptions,
 } from '@/lib/supabase/guards';
-import type {
-  SupabaseServerClient,
-  UserPermissions,
-} from '@/lib/supabase';
+import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -202,9 +199,10 @@ export async function processApiRequest(
     if (options.requireBody) {
       try {
         const rawBody = await request.json();
-        body = options.sanitizeInputValues === false
-          ? rawBody
-          : sanitizeInput(rawBody);
+        body =
+          options.sanitizeInputValues === false
+            ? rawBody
+            : sanitizeInput(rawBody);
       } catch {
         return {
           success: false,

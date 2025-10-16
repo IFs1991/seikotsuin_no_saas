@@ -237,7 +237,8 @@ export class SecurityMonitor {
     clinicId: string,
     limit: number = 50
   ): Promise<SecurityAlert[]> {
-    const { data: events, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: events, error } = await supabase
       .from('security_events')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -281,7 +282,8 @@ export class SecurityMonitor {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const { data: events, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: events, error } = await supabase
       .from('security_events')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -358,7 +360,8 @@ export class SecurityMonitor {
     const timeWindow = 15 * 60 * 1000; // 15分
     const maxAttempts = 5;
 
-    const { count, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { count, error } = await supabase
       .from('security_events')
       .select('*', { count: 'exact' })
       .eq('ip_address', attempt.ipAddress)
@@ -400,7 +403,8 @@ export class SecurityMonitor {
     ipAddress: string
   ): Promise<AnomalyDetectionResult> {
     // 過去30日間の正常なログイン場所を取得
-    const { data: recentSessions, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: recentSessions, error } = await supabase
       .from('user_sessions')
       .select('ip_address, geolocation')
       .eq('user_id', userId)
@@ -450,7 +454,8 @@ export class SecurityMonitor {
     const timeWindow = 30 * 60 * 1000; // 30分
     const startTime = new Date(Date.now() - timeWindow);
 
-    const { data: recentSessions, error } = await this.supabase
+    const supabase = await this.supabase;
+    const { data: recentSessions, error } = await supabase
       .from('user_sessions')
       .select('user_agent, device_info, created_at')
       .eq('user_id', userId)
@@ -570,7 +575,9 @@ export class SecurityMonitor {
       case 'brute_force':
         if (threat.severity === 'high' || threat.severity === 'critical') {
           // TODO: IPアドレスの一時ブロック
-          console.log(`ブルートフォース攻撃IPをブロック: ${threat.ipAddress}`);
+          logger.warn('ブルートフォース攻撃IPをブロック', {
+            ipAddress: threat.ipAddress,
+          });
         }
         break;
 
@@ -594,7 +601,9 @@ export class SecurityMonitor {
 
       case 'multiple_devices':
         // 追加監視の設定
-        console.log(`複数デバイスログインの監視強化: ${threat.userId}`);
+        logger.info('複数デバイスログインの監視強化', {
+          userId: threat.userId,
+        });
         break;
     }
   }
@@ -604,7 +613,7 @@ export class SecurityMonitor {
    */
   private async notifyAdministrators(threat: SecurityThreat): Promise<void> {
     // TODO: 実際の通知システム実装
-    console.log('管理者通知:', {
+    logger.info('管理者通知', {
       type: threat.threatType,
       severity: threat.severity,
       description: threat.description,
@@ -628,13 +637,14 @@ export class SecurityMonitor {
     source_component: string;
   }): Promise<void> {
     try {
-      await this.supabase.from('security_events').insert({
+      const supabase = await this.supabase;
+      await supabase.from('security_events').insert({
         ...event,
         event_data: event.event_data || {},
         created_at: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('セキュリティイベントログエラー:', error);
+      logger.error('セキュリティイベントログエラー:', error);
     }
   }
 

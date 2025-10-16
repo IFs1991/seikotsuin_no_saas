@@ -51,9 +51,7 @@ function resolveSupabaseClientFactory(): SupabaseServerClientFactory {
   return globalScope[FACTORY_KEY] ?? createSupabaseClient;
 }
 
-export function setSupabaseClientFactory(
-  factory: SupabaseServerClientFactory
-) {
+export function setSupabaseClientFactory(factory: SupabaseServerClientFactory) {
   globalScope[FACTORY_KEY] = factory;
 }
 
@@ -87,10 +85,8 @@ export function createAdminClient(): SupabaseServerClient {
   );
 }
 
-export async function getCurrentUser(
-  client?: SupabaseServerClient
-) {
-  const supabase = client ?? await getServerClient();
+export async function getCurrentUser(client?: SupabaseServerClient) {
+  const supabase = client ?? (await getServerClient());
   const {
     data: { user },
     error,
@@ -112,7 +108,7 @@ export async function getUserPermissions(
   userId: string,
   client?: SupabaseServerClient
 ): Promise<UserPermissions | null> {
-  const supabase = client ?? await getServerClient();
+  const supabase = client ?? (await getServerClient());
   const { data: permissions, error } = await supabase
     .from('user_permissions')
     .select('role, clinic_id')
@@ -135,7 +131,7 @@ export async function requireAuth(client?: SupabaseServerClient) {
 }
 
 export async function requireAdminAuth(client?: SupabaseServerClient) {
-  const supabase = client ?? await getServerClient();
+  const supabase = client ?? (await getServerClient());
   const user = await requireAuth(supabase);
   const permissions = await getUserPermissions(user.id, supabase);
 

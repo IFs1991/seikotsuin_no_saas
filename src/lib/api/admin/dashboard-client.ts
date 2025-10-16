@@ -40,7 +40,8 @@ export async function fetchAdminDashboard(
   const payload = (await response.json()) as ApiResponse<AdminDashboardPayload>;
 
   if (!response.ok || payload.success === false || !('data' in payload)) {
-    const message = (payload as { error?: string }).error || response.statusText;
+    const message =
+      (payload as { error?: string }).error || response.statusText;
     throw new Error(message || 'ダッシュボードデータの取得に失敗しました');
   }
 

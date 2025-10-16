@@ -97,7 +97,7 @@ async function saveCSPViolationToDB(
   try {
     // Supabaseクライアントのインポート
     const { createClient } = await import('@/lib/supabase');
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // 違反の重要度を計算
     const severity = calculateViolationSeverity(report);

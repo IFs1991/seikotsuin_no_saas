@@ -4,7 +4,9 @@ export default function HomePage() {
   return (
     <div className='space-y-6'>
       <div className='border-b border-gray-200 pb-4'>
-        <h1 className='text-3xl font-bold text-gray-900'>整骨院経営管理システム</h1>
+        <h1 className='text-3xl font-bold text-gray-900'>
+          整骨院経営管理システム
+        </h1>
         <p className='mt-2 text-gray-600'>
           46店舗展開の整骨院グループ向けリアルタイム経営分析システム
         </p>
@@ -16,7 +18,9 @@ export default function HomePage() {
 
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
         <div className='bg-white p-6 rounded-lg shadow border'>
-          <h2 className='text-xl font-semibold text-gray-900 mb-2'>ダッシュボード</h2>
+          <h2 className='text-xl font-semibold text-gray-900 mb-2'>
+            ダッシュボード
+          </h2>
           <p className='text-gray-600 mb-4'>リアルタイムの経営データを確認</p>
           <a
             href='/dashboard'
@@ -27,8 +31,12 @@ export default function HomePage() {
         </div>
 
         <div className='bg-white p-6 rounded-lg shadow border'>
-          <h2 className='text-xl font-semibold text-gray-900 mb-2'>管理者機能</h2>
-          <p className='text-gray-600 mb-4'>全店舗統合管理・セキュリティ監視・マスタ設定</p>
+          <h2 className='text-xl font-semibold text-gray-900 mb-2'>
+            管理者機能
+          </h2>
+          <p className='text-gray-600 mb-4'>
+            全店舗統合管理・セキュリティ監視・マスタ設定
+          </p>
           <a
             href='/admin/login'
             className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
@@ -41,7 +49,9 @@ export default function HomePage() {
         </div>
 
         <div className='bg-white p-6 rounded-lg shadow border'>
-          <h2 className='text-xl font-semibold text-gray-900 mb-2'>AIチャット</h2>
+          <h2 className='text-xl font-semibold text-gray-900 mb-2'>
+            AIチャット
+          </h2>
           <p className='text-gray-600 mb-4'>経営分析とインサイトの相談</p>
           <a
             href='/chat'

@@ -146,7 +146,9 @@ export default function DailyReportInputPage() {
             errorMessage = errorJson.error.message;
           }
           if (errorJson?.error?.fieldErrors) {
-            setFieldErrors(errorJson.error.fieldErrors as Record<string, string[]>);
+            setFieldErrors(
+              errorJson.error.fieldErrors as Record<string, string[]>
+            );
           }
         } catch (parseError) {
           const text = await res.text();
@@ -203,11 +205,16 @@ export default function DailyReportInputPage() {
       <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
-            <CardTitle className='text-red-600'>プロフィール取得に失敗しました</CardTitle>
+            <CardTitle className='text-red-600'>
+              プロフィール取得に失敗しました
+            </CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
             <p className='text-gray-700 dark:text-gray-300'>{errorMessage}</p>
-            <Button onClick={() => window.location.reload()} className='bg-blue-600 text-white'>
+            <Button
+              onClick={() => window.location.reload()}
+              className='bg-blue-600 text-white'
+            >
               再読み込み
             </Button>
           </CardContent>
@@ -227,7 +234,9 @@ export default function DailyReportInputPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-gray-700 dark:text-gray-300'>管理者にお問い合わせください。</p>
+            <p className='text-gray-700 dark:text-gray-300'>
+              管理者にお問い合わせください。
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -448,12 +457,15 @@ export default function DailyReportInputPage() {
           <CardHeader>
             <CardTitle>施術記録一覧</CardTitle>
             <CardDescription>
-              本日の患者数: {totalPatients}名 | 合計売上: ¥{totalRevenue.toLocaleString()}
+              本日の患者数: {totalPatients}名 | 合計売上: ¥
+              {totalRevenue.toLocaleString()}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {patients.length === 0 ? (
-              <div className='text-center py-8 text-gray-500'>まだ患者が登録されていません</div>
+              <div className='text-center py-8 text-gray-500'>
+                まだ患者が登録されていません
+              </div>
             ) : (
               <div className='space-y-3'>
                 {patients.map(patient => (
@@ -530,7 +542,9 @@ export default function DailyReportInputPage() {
             <CardContent className='pt-6'>
               <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-center'>
                 <div>
-                  <p className='text-2xl font-bold text-blue-600'>{totalPatients}</p>
+                  <p className='text-2xl font-bold text-blue-600'>
+                    {totalPatients}
+                  </p>
                   <p className='text-sm text-blue-800'>総患者数</p>
                 </div>
                 <div>
@@ -543,7 +557,9 @@ export default function DailyReportInputPage() {
                   <p className='text-2xl font-bold text-blue-600'>
                     ¥
                     {totalPatients > 0
-                      ? Math.round(totalRevenue / totalPatients).toLocaleString()
+                      ? Math.round(
+                          totalRevenue / totalPatients
+                        ).toLocaleString()
                       : 0}
                   </p>
                   <p className='text-sm text-blue-800'>平均単価</p>

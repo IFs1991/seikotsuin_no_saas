@@ -18,9 +18,7 @@ const optionalTrimmedString = (max: number) =>
     });
 
 export const patientQuerySchema = z.object({
-  clinic_id: z
-    .string()
-    .uuid('clinic_id はUUID形式で指定してください'),
+  clinic_id: z.string().uuid('clinic_id はUUID形式で指定してください'),
   analysis: analysisEnum.optional(),
 });
 

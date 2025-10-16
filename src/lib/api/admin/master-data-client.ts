@@ -30,10 +30,7 @@ function buildUrl(base: string, params?: Record<string, unknown>) {
   return query ? `${base}?${query}` : base;
 }
 
-async function request<T>(
-  input: string,
-  init?: RequestInit
-): Promise<T> {
+async function request<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     ...init,
     headers: {
@@ -45,7 +42,11 @@ async function request<T>(
 
   const payload = (await response.json()) as ApiResponse<T>;
 
-  if (!response.ok || !payload || (payload as ApiResponse<T>).success === false) {
+  if (
+    !response.ok ||
+    !payload ||
+    (payload as ApiResponse<T>).success === false
+  ) {
     const errorMessage =
       (payload as { error?: string })?.error || response.statusText;
     throw new Error(errorMessage || 'API request failed');

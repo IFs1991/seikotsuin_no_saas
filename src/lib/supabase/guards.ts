@@ -1,10 +1,7 @@
 import 'server-only';
 
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
-import {
-  AuditLogger,
-  getRequestInfo,
-} from '@/lib/audit-logger';
+import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import {
   createClient,
   getCurrentUser,
@@ -41,7 +38,7 @@ export async function ensureClinicAccess(
 ): Promise<ClinicAccessContext> {
   const { ipAddress, userAgent } = getRequestInfo(request);
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser(supabase);
 
   if (!user) {
@@ -70,7 +67,7 @@ export async function ensureClinicAccess(
   }
 
   const requireClinicMatch =
-    options.requireClinicMatch ?? clinicId !== null && clinicId !== undefined;
+    options.requireClinicMatch ?? (clinicId !== null && clinicId !== undefined);
   const allowedRoles = new Set(options.allowedRoles ?? []);
   const hasPrivilegedRole = CROSS_CLINIC_ROLES.has(permissions.role);
 

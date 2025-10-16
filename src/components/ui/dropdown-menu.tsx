@@ -8,7 +8,8 @@ interface DropdownMenuContextValue {
   setOpen: (open: boolean) => void;
 }
 
-const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
+const DropdownMenuContext =
+  React.createContext<DropdownMenuContextValue | null>(null);
 
 interface DropdownMenuProps {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   return (
     <DropdownMenuContext.Provider value={{ open, setOpen }}>
-      <div className="relative inline-block text-left">{children}</div>
+      <div className='relative inline-block text-left'>{children}</div>
     </DropdownMenuContext.Provider>
   );
 };
@@ -47,7 +48,7 @@ const DropdownMenuTrigger = React.forwardRef<
   React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }
 >(({ className, children, asChild = false, ...props }, ref) => {
   const context = React.useContext(DropdownMenuContext);
-  
+
   if (!context) {
     throw new Error('DropdownMenuTrigger must be used within DropdownMenu');
   }
@@ -66,7 +67,7 @@ const DropdownMenuTrigger = React.forwardRef<
   return (
     <button
       ref={ref}
-      type="button"
+      type='button'
       className={cn(
         'inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
         className
@@ -88,7 +89,7 @@ const DropdownMenuContent = React.forwardRef<
   }
 >(({ className, align = 'center', sideOffset = 4, ...props }, ref) => {
   const context = React.useContext(DropdownMenuContext);
-  
+
   if (!context) {
     throw new Error('DropdownMenuContent must be used within DropdownMenu');
   }

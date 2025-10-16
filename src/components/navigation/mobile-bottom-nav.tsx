@@ -92,7 +92,9 @@ export function MobileBottomNav({ isAdmin = false }: MobileBottomNavProps) {
     >
       <div
         className='grid h-16'
-        style={{ gridTemplateColumns: `repeat(${navigationItems.length}, minmax(0, 1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(${navigationItems.length}, minmax(0, 1fr))`,
+        }}
       >
         {navigationItems.map(item => {
           const active = isActive(item.href);
@@ -136,12 +138,7 @@ export function MobileAwarePage({
   isAdmin?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        'min-h-screen',
-        'md:pb-0 pb-20'
-      )}
-    >
+    <div className={cn('min-h-screen', 'md:pb-0 pb-20')}>
       {children}
       <MobileBottomNav isAdmin={isAdmin} />
     </div>

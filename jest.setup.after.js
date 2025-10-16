@@ -29,9 +29,19 @@ if (typeof globalScope.document === 'undefined') {
 
 const windowObject = globalScope.window;
 
-const webApiKeys = ['fetch', 'Headers', 'Request', 'Response', 'FormData', 'File'];
+const webApiKeys = [
+  'fetch',
+  'Headers',
+  'Request',
+  'Response',
+  'FormData',
+  'File',
+];
 for (const key of webApiKeys) {
-  if (typeof windowObject[key] === 'undefined' && typeof globalScope[key] !== 'undefined') {
+  if (
+    typeof windowObject[key] === 'undefined' &&
+    typeof globalScope[key] !== 'undefined'
+  ) {
     windowObject[key] = globalScope[key];
   }
 }
@@ -280,6 +290,7 @@ jest.mock('@supabase/ssr', () => ({
         getSession: jest
           .fn()
           .mockResolvedValue({ data: { session: null }, error: null }),
+        onAuthStateChange: jest.fn(),
       },
       from: jest.fn(table => makeBuilder(table)),
       channel: jest.fn(() => ({

@@ -54,9 +54,7 @@ export async function GET(request: NextRequest) {
 
     const clinicParam = clinicId?.toLowerCase() ?? undefined;
     const normalizedClinicId =
-      clinicParam === 'null' || clinicParam === 'global'
-        ? null
-        : clinicParam;
+      clinicParam === 'null' || clinicParam === 'global' ? null : clinicParam;
 
     const processResult = await processApiRequest(request, {
       allowedRoles: ['admin', 'clinic_manager'],
@@ -183,12 +181,16 @@ export async function POST(request: NextRequest) {
       clinic_id &&
       permissions.clinic_id !== clinic_id
     ) {
-      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
+      return createErrorResponse(
+        '指定されたクリニックへのアクセス権限がありません',
+        403
+      );
     }
 
     const targetClinicId =
-      clinic_id ?? (permissions.role === 'clinic_manager'
-        ? permissions.clinic_id ?? null
+      clinic_id ??
+      (permissions.role === 'clinic_manager'
+        ? (permissions.clinic_id ?? null)
         : null);
 
     // system_settingsテーブルに挿入
@@ -346,7 +348,10 @@ export async function PUT(request: NextRequest) {
       data.clinic_id &&
       permissions.clinic_id !== data.clinic_id
     ) {
-      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
+      return createErrorResponse(
+        '指定されたクリニックへのアクセス権限がありません',
+        403
+      );
     }
 
     // 監査ログ記録
@@ -407,7 +412,10 @@ export async function DELETE(request: NextRequest) {
       existingData.clinic_id &&
       permissions.clinic_id !== existingData.clinic_id
     ) {
-      return createErrorResponse('指定されたクリニックへのアクセス権限がありません', 403);
+      return createErrorResponse(
+        '指定されたクリニックへのアクセス権限がありません',
+        403
+      );
     }
 
     if (!existingData.is_editable) {

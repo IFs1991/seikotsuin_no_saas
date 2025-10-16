@@ -17,11 +17,14 @@ if (!['win32', 'linux'].includes(platform)) {
 
 const swcBaseDir = path.join(repoRoot, 'node_modules', '@next');
 if (!fs.existsSync(swcBaseDir)) {
-  console.log('[swc-clear] node_modules directory not found. Nothing to clean.');
+  console.log(
+    '[swc-clear] node_modules directory not found. Nothing to clean.'
+  );
   process.exit(0);
 }
 
-const expectedPackageSuffix = platform === 'win32' ? 'swc-win32-x64-msvc' : 'swc-linux-x64-gnu';
+const expectedPackageSuffix =
+  platform === 'win32' ? 'swc-win32-x64-msvc' : 'swc-linux-x64-gnu';
 const knownPackages = [
   'swc-win32-ia32-msvc',
   'swc-win32-x64-msvc',

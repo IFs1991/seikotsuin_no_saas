@@ -42,8 +42,16 @@ const CORE_MENU: SidebarMenuItem[] = [
 const ADMIN_MENU: SidebarMenuItem[] = [
   { id: 'admin', label: '管理ダッシュボード', href: '/admin' },
   { id: 'admin-master', label: 'マスタ管理', href: '/admin/master' },
-  { id: 'admin-security', label: 'セキュリティ監視', href: '/admin/security-dashboard' },
-  { id: 'admin-session', label: 'セッション管理', href: '/admin/session-management' },
+  {
+    id: 'admin-security',
+    label: 'セキュリティ監視',
+    href: '/admin/security-dashboard',
+  },
+  {
+    id: 'admin-session',
+    label: 'セッション管理',
+    href: '/admin/session-management',
+  },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
   { id: 'admin-chat', label: 'AIアシスタント', href: '/admin/chat' },
   { id: 'multi-store', label: 'マルチ店舗分析', href: '/multi-store' },
@@ -107,7 +115,12 @@ export function Sidebar({
         }}
         title={item.label}
       >
-        <span className={cn('mr-2 text-xs uppercase tracking-wide', !isExpanded && 'hidden')}>
+        <span
+          className={cn(
+            'mr-2 text-xs uppercase tracking-wide',
+            !isExpanded && 'hidden'
+          )}
+        >
           ●
         </span>
         {isExpanded ? item.label : item.label.slice(0, 2)}
@@ -125,7 +138,12 @@ export function Sidebar({
       )}
     >
       <div className='p-4 flex justify-between items-center border-b border-[#2d4ba0]'>
-        <h1 className={cn('font-bold text-sm tracking-wide', !isExpanded && 'hidden')}>
+        <h1
+          className={cn(
+            'font-bold text-sm tracking-wide',
+            !isExpanded && 'hidden'
+          )}
+        >
           整骨院管理
         </h1>
         <Button
@@ -139,7 +157,12 @@ export function Sidebar({
 
       <div className='p-4 overflow-y-auto h-[calc(100%-64px)] space-y-6'>
         <div>
-          <p className={cn('text-xs text-blue-100 uppercase tracking-[0.2em]', !isExpanded && 'hidden')}>
+          <p
+            className={cn(
+              'text-xs text-blue-100 uppercase tracking-[0.2em]',
+              !isExpanded && 'hidden'
+            )}
+          >
             メインメニュー
           </p>
           <div className='mt-2'>
@@ -147,24 +170,32 @@ export function Sidebar({
               <div key={item.id}>
                 {renderMenuButton(item)}
 
-                {item.subItems && isExpanded && openSubMenus.includes(item.id) && (
-                  <div className='ml-4'>
-                    {item.subItems.map(subItem => (
-                      <Link key={subItem.id} href={subItem.href} className='w-full'>
-                        <Button
-                          variant='ghost'
-                          className={cn(
-                            'w-full mb-1 justify-start text-sm',
-                            currentMenuId === subItem.id ? 'bg-[#2d4ba0]' : 'hover:bg-[#2d4ba0]'
-                          )}
-                          onClick={onClose}
+                {item.subItems &&
+                  isExpanded &&
+                  openSubMenus.includes(item.id) && (
+                    <div className='ml-4'>
+                      {item.subItems.map(subItem => (
+                        <Link
+                          key={subItem.id}
+                          href={subItem.href}
+                          className='w-full'
                         >
-                          {subItem.label}
-                        </Button>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                          <Button
+                            variant='ghost'
+                            className={cn(
+                              'w-full mb-1 justify-start text-sm',
+                              currentMenuId === subItem.id
+                                ? 'bg-[#2d4ba0]'
+                                : 'hover:bg-[#2d4ba0]'
+                            )}
+                            onClick={onClose}
+                          >
+                            {subItem.label}
+                          </Button>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
               </div>
             ))}
           </div>
@@ -195,7 +226,9 @@ export function Sidebar({
             <Separator className='my-4 bg-[#2d4ba0]' />
             <div className={cn('space-y-2', !isExpanded && 'space-y-0')}>
               {isExpanded && (
-                <h2 className='text-sm font-bold mb-1 text-blue-100'>管理セクション</h2>
+                <h2 className='text-sm font-bold mb-1 text-blue-100'>
+                  管理セクション
+                </h2>
               )}
               {ADMIN_MENU.map(item => (
                 <Link key={item.id} href={item.href} className='w-full'>
@@ -203,7 +236,9 @@ export function Sidebar({
                     variant='ghost'
                     className={cn(
                       'w-full mb-1 justify-start text-sm',
-                      currentMenuId === item.id ? 'bg-[#2d4ba0]' : 'hover:bg-[#2d4ba0]'
+                      currentMenuId === item.id
+                        ? 'bg-[#2d4ba0]'
+                        : 'hover:bg-[#2d4ba0]'
                     )}
                     onClick={onClose}
                     title={item.label}
@@ -217,7 +252,9 @@ export function Sidebar({
         )}
 
         {profileLoading && (
-          <div className='text-xs text-blue-100'>ロール情報を取得しています…</div>
+          <div className='text-xs text-blue-100'>
+            ロール情報を取得しています…
+          </div>
         )}
       </div>
     </div>

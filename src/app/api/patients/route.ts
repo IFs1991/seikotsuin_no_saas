@@ -9,10 +9,7 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-} from '@/lib/api-helpers';
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
 import {
   patientInsertSchema,
   patientQuerySchema,
@@ -88,7 +85,7 @@ export async function GET(request: NextRequest) {
       const total = newPatients.length + returnPatients.length;
       const conversionRate =
         total > 0
-          ? Math.round(((returnPatients.length / total) * 100) * 100) / 100
+          ? Math.round((returnPatients.length / total) * 100 * 100) / 100
           : 0;
 
       return {
@@ -145,10 +142,17 @@ export async function GET(request: NextRequest) {
       if (total === 0) return {};
 
       const visitSegments = {
-        初診のみ: typedPatients.filter(p => p.visit_category === '初診のみ').length,
-        軽度リピート: typedPatients.filter(p => p.visit_category === '軽度リピート').length,
-        中度リピート: typedPatients.filter(p => p.visit_category === '中度リピート').length,
-        高度リピート: typedPatients.filter(p => p.visit_category === '高度リピート').length,
+        初診のみ: typedPatients.filter(p => p.visit_category === '初診のみ')
+          .length,
+        軽度リピート: typedPatients.filter(
+          p => p.visit_category === '軽度リピート'
+        ).length,
+        中度リピート: typedPatients.filter(
+          p => p.visit_category === '中度リピート'
+        ).length,
+        高度リピート: typedPatients.filter(
+          p => p.visit_category === '高度リピート'
+        ).length,
       };
 
       return {
@@ -186,7 +190,9 @@ export async function GET(request: NextRequest) {
     const patientAnalysisData: PatientAnalysisData = {
       conversionData: conversionAnalysis(),
       visitCounts,
-      riskScores: riskScores.sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
+      riskScores: riskScores
+        .sort((a, b) => b.riskScore - a.riskScore)
+        .slice(0, 20),
       ltvRanking: ltvRanking.sort((a, b) => b.ltv - a.ltv),
       segmentData: segmentAnalysis(),
       followUpList,
@@ -245,9 +251,14 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
 
-    const { supabase } = await ensureClinicAccess(request, path, dto.clinic_id, {
-      requireClinicMatch: true,
-    });
+    const { supabase } = await ensureClinicAccess(
+      request,
+      path,
+      dto.clinic_id,
+      {
+        requireClinicMatch: true,
+      }
+    );
 
     const insertPayload = mapPatientInsertToRow(dto);
     const registrationDate = new Date().toISOString().split('T')[0];

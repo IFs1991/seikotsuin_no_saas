@@ -25,12 +25,12 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   const isAdmin = profile?.isAdmin ?? false;
 
   React.useEffect(() => {
-    const savedTheme = typeof window !== 'undefined'
-      ? localStorage.getItem('theme')
-      : null;
-    const prefersDark = typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-      : false;
+    const savedTheme =
+      typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
+    const prefersDark =
+      typeof window !== 'undefined'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : false;
     const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
 
     setIsDarkMode(shouldBeDark);

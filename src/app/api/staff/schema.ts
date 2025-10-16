@@ -4,12 +4,15 @@ import { StaffRole } from '@/types/api';
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
-const staffRoles = ['manager', 'practitioner', 'receptionist', 'admin'] as const satisfies ReadonlyArray<StaffRole>;
+const staffRoles = [
+  'manager',
+  'practitioner',
+  'receptionist',
+  'admin',
+] as const satisfies ReadonlyArray<StaffRole>;
 
 export const staffQuerySchema = z.object({
-  clinic_id: z
-    .string()
-    .uuid('clinic_id はUUID形式で指定してください'),
+  clinic_id: z.string().uuid('clinic_id はUUID形式で指定してください'),
 });
 
 export type StaffQueryInput = z.infer<typeof staffQuerySchema>;

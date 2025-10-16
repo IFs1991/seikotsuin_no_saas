@@ -80,6 +80,64 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      profiles: {
+        Row: {
+          id: string;
+          user_id: string;
+          clinic_id: string | null;
+          role: string;
+          is_active: boolean;
+          is_approved: boolean;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          clinic_id?: string | null;
+          role: string;
+          is_active?: boolean;
+          is_approved?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          clinic_id?: string | null;
+          role?: string;
+          is_active?: boolean;
+          is_approved?: boolean;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      user_permissions: {
+        Row: {
+          id: string;
+          staff_id: string;
+          clinic_id: string | null;
+          role: string;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          clinic_id?: string | null;
+          role: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          staff_id?: string;
+          clinic_id?: string | null;
+          role?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+      };
       patients: {
         Row: {
           id: string;
@@ -347,7 +405,17 @@ export interface Database {
       };
     } & Record<string, GenericTableDefinition>;
     Views: Record<string, unknown>;
-    Functions: Record<string, unknown>;
+    Functions: {
+      get_table_columns: {
+        Args: { table_name_param: string };
+        Returns: Array<{
+          column_name: string;
+          data_type: string;
+          is_nullable: string;
+          column_default: string | null;
+        }>;
+      };
+    };
     Enums: Record<string, unknown>;
   };
 }

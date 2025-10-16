@@ -13,9 +13,9 @@ import {
 } from '../../types/api';
 
 // 型チェック用の未使用型
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 type _RevenueAnalysisData = import('../../types/api').RevenueAnalysisData;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 type _StaffAnalysisData = import('../../types/api').StaffAnalysisData;
 
 describe('Type Consistency', () => {

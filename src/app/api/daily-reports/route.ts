@@ -191,9 +191,14 @@ export async function POST(request: NextRequest) {
 
     const payload = validationResult.data;
 
-    const { supabase } = await ensureClinicAccess(request, PATH, payload.clinic_id, {
-      allowedRoles: ['manager'],
-    });
+    const { supabase } = await ensureClinicAccess(
+      request,
+      PATH,
+      payload.clinic_id,
+      {
+        allowedRoles: ['manager'],
+      }
+    );
 
     const { data, error } = await supabase
       .from('daily_reports')
@@ -251,7 +256,10 @@ const DailyReportPayloadSchema = z
       .nullable(),
     report_date: z
       .string({ required_error: 'report_dateは必須です' })
-      .regex(/\d{4}-\d{2}-\d{2}/, 'report_dateはYYYY-MM-DD形式で入力してください'),
+      .regex(
+        /\d{4}-\d{2}-\d{2}/,
+        'report_dateはYYYY-MM-DD形式で入力してください'
+      ),
     total_patients: z.coerce
       .number({ invalid_type_error: 'total_patientsは数値で入力してください' })
       .int('total_patientsは整数で入力してください')
@@ -264,7 +272,9 @@ const DailyReportPayloadSchema = z
       .number({ invalid_type_error: 'total_revenueは数値で入力してください' })
       .min(0, 'total_revenueは0以上で入力してください'),
     insurance_revenue: z.coerce
-      .number({ invalid_type_error: 'insurance_revenueは数値で入力してください' })
+      .number({
+        invalid_type_error: 'insurance_revenueは数値で入力してください',
+      })
       .min(0, 'insurance_revenueは0以上で入力してください'),
     private_revenue: z.coerce
       .number({ invalid_type_error: 'private_revenueは数値で入力してください' })
@@ -287,7 +297,8 @@ const DailyReportPayloadSchema = z
     if (data.insurance_revenue + data.private_revenue > data.total_revenue) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'total_revenueは保険診療と自費診療の合計以上である必要があります',
+        message:
+          'total_revenueは保険診療と自費診療の合計以上である必要があります',
         path: ['total_revenue'],
       });
     }

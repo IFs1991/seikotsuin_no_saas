@@ -6,7 +6,8 @@ import { type VariantProps } from 'class-variance-authority';
 
 const cva = (base: string, options?: any) => {
   return ({ ...args }: any) => {
-    const variant = args.variant || options?.defaultVariants?.variant || 'default';
+    const variant =
+      args.variant || options?.defaultVariants?.variant || 'default';
     const variantClass = options?.variants?.variant?.[variant] || '';
     return `${base} ${variantClass}`;
   };
@@ -38,7 +39,7 @@ const Alert = React.forwardRef<
 >(({ className, variant, ...props }, ref) => (
   <div
     ref={ref}
-    role="alert"
+    role='alert'
     className={cn(alertVariants({ variant }), className)}
     {...props}
   />
