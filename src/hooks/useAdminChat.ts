@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-interface Message {
+export interface AdminChatMessage {
   id: string;
   content: string;
   role: 'user' | 'assistant';
@@ -10,7 +10,7 @@ interface Message {
 }
 
 interface ChatState {
-  messages: Message[];
+  messages: AdminChatMessage[];
   isLoading: boolean;
   error: string | null;
 }
@@ -58,7 +58,7 @@ export const useAdminChat = () => {
           (a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         )
-        .map<Message>(message => ({
+        .map<AdminChatMessage>(message => ({
           id: message.id,
           content: message.message_text,
           role: message.sender === 'ai' ? 'assistant' : 'user',

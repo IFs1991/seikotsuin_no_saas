@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import AdminChatInterface from '@/components/chat/admin-chat-interface';
 import { useAdminChat } from '@/hooks/useAdminChat';
 import {
@@ -13,16 +13,42 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
+type StoreFilter = 'all' | 'area';
+
 const AdminChatPage: React.FC = () => {
   const {
     messages,
     sendMessage,
     isLoading,
     exportChat,
-    searchHistory,
-    selectedStores,
-    setSelectedStores,
+    error,
   } = useAdminChat();
+  const [selectedStore, setSelectedStore] = useState<StoreFilter>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredMessages = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return messages;
+    }
+
+    const normalizedTerm = searchTerm.trim().toLowerCase();
+    return messages.filter(message =>
+      message.content.toLowerCase().includes(normalizedTerm)
+    );
+  }, [messages, searchTerm]);
+
+  const handleSelectStore = (store: StoreFilter) => {
+    setSelectedStore(store);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const storeButtons: Array<{ label: string; value: StoreFilter }> = [
+    { label: '全店舗', value: 'all' },
+    { label: 'エリア別', value: 'area' },
+  ];
 
   return (
     <div className='min-h-screen p-6' style={{ backgroundColor: '#F3F4F6' }}>
@@ -41,43 +67,34 @@ const AdminChatPage: React.FC = () => {
             <div className='mb-4'>
               <Label>分析対象店舗</Label>
               <div className='flex flex-wrap gap-2 mt-2'>
-                <Button
-                  variant='outline'
-                  onClick={() => setSelectedStores(['all'])}
-                  style={{
-                    backgroundColor: selectedStores.includes('all')
-                      ? '#4C1D95'
-                      : '#ffffff',
-                    color: selectedStores.includes('all')
-                      ? '#ffffff'
-                      : '#4C1D95',
-                  }}
-                >
-                  全店舗
-                </Button>
-                <Button
-                  variant='outline'
-                  onClick={() => setSelectedStores(['area'])}
-                  style={{
-                    backgroundColor: selectedStores.includes('area')
-                      ? '#4C1D95'
-                      : '#ffffff',
-                    color: selectedStores.includes('area')
-                      ? '#ffffff'
-                      : '#4C1D95',
-                  }}
-                >
-                  エリア別
-                </Button>
+                {storeButtons.map(button => {
+                  const isActive = selectedStore === button.value;
+                  return (
+                    <Button
+                      key={button.value}
+                      variant='outline'
+                      onClick={() => handleSelectStore(button.value)}
+                      style={{
+                        backgroundColor: isActive ? '#4C1D95' : '#ffffff',
+                        color: isActive ? '#ffffff' : '#4C1D95',
+                      }}
+                      aria-pressed={isActive}
+                    >
+                      {button.label}
+                    </Button>
+                  );
+                })}
               </div>
             </div>
 
             <Separator className='my-4' />
 
             <AdminChatInterface
-              messages={messages}
+              messages={filteredMessages}
               onSendMessage={sendMessage}
               isLoading={isLoading}
+              onExport={exportChat}
+              error={error}
             />
 
             <div className='flex justify-between mt-4'>
@@ -97,7 +114,8 @@ const AdminChatPage: React.FC = () => {
               </div>
               <Input
                 placeholder='チャット履歴を検索'
-                onChange={() => searchHistory()}
+                value={searchTerm}
+                onChange={handleSearchChange}
                 className='w-64'
                 style={{ borderColor: '#4C1D95' }}
               />

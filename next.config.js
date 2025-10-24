@@ -87,6 +87,9 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react'],
   },
 
+  // Docker本番運用のためNext.jsをstandaloneビルド
+  output: 'standalone',
+
   // バンドル分析と最適化
   webpack: (config, { dev, isServer }) => {
     if (!dev && !isServer) {

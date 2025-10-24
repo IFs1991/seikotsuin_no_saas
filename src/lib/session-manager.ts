@@ -4,8 +4,6 @@
  */
 
 import { createClient } from '@/lib/supabase';
-import { createBrowserClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import type { Database } from '@/types/supabase';
 import type { SessionValidationResult } from '@/types/security';
@@ -15,8 +13,13 @@ import type { SessionValidationResult } from '@/types/security';
 // ================================================================
 
 // Supabase行型の定義
+type SupabaseClient = ReturnType<typeof createClient>;
 type UserSessionRow = Database['public']['Tables']['user_sessions']['Row'];
-type SecurityEventInsert = Database['public']['Tables']['security_events']['Insert'];
+type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
+type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
+type SecurityEventInsert =
+  Database['public']['Tables']['security_events']['Insert'];
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export interface UserSession {
   id: string;
@@ -43,7 +46,7 @@ export interface DeviceInfo {
   device: string; // 'desktop' | 'mobile' | 'tablet'
   os: string;
   browser: string;
-  version?: string;
+  browserVersion?: string;
 }
 
 export interface Geolocation {
@@ -77,43 +80,16 @@ export interface CreateSessionOptions {
   };
 }
 
-export interface SessionValidationResult {
-  isValid: boolean;
-  session?: UserSession;
-  reason?:
-    | 'expired'
-    | 'revoked'
-    | 'inactive'
-    | 'not_found'
-    | 'policy_violation';
-  requiresRefresh?: boolean;
-}
-
-export interface SessionValidationResultLocal {
-  isValid: boolean;
-  session?: UserSession;
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    clinicId: string;
-    isActive: boolean;
-  };
-  reason?:
-    | 'expired'
-    | 'revoked'
-    | 'inactive'
-    | 'not_found'
-    | 'policy_violation';
-  requiresRefresh?: boolean;
-}
+type SessionUser = NonNullable<
+  SessionValidationResult<UserSession>['user']
+>;
 
 // ================================================================
 // セッション管理クラス
 // ================================================================
 
 export class SessionManager {
-  private supabase;
+  private readonly supabase: SupabaseClient;
 
   constructor() {
     this.supabase = createClient();
@@ -123,25 +99,223 @@ export class SessionManager {
    * Supabase行をUserSessionに変換
    */
   private mapSessionRow(row: UserSessionRow): UserSession {
+    const normalizedDeviceInfo = this.normalizeDeviceInfo(row.device_info);
+    const normalizedGeolocation = this.normalizeGeolocation(row.geolocation);
+
     return {
       id: row.id,
       user_id: row.user_id,
       clinic_id: row.clinic_id,
       session_token: row.session_token,
-      device_info: (row.device_info as Record<string, unknown>) as DeviceInfo,
+      device_info: normalizedDeviceInfo,
       ip_address: row.ip_address ?? '',
       user_agent: row.user_agent ?? undefined,
-      geolocation: row.geolocation ? (row.geolocation as Record<string, unknown>) as Geolocation : undefined,
+      geolocation: normalizedGeolocation,
       created_at: row.created_at,
       last_activity: row.last_activity,
       expires_at: row.expires_at,
       idle_timeout_at: row.idle_timeout_at ?? undefined,
-      absolute_timeout_at: row.absolute_timeout_at ?? '',
+      absolute_timeout_at: row.absolute_timeout_at ?? row.expires_at,
       is_active: row.is_active,
       is_revoked: row.is_revoked,
       max_idle_minutes: row.max_idle_minutes,
       max_session_hours: row.max_session_hours,
       remember_device: row.remember_device,
+    };
+  }
+
+  private normalizeDeviceInfo(
+    value: UserSessionRow['device_info']
+  ): DeviceInfo {
+    const record =
+      value && typeof value === 'object'
+        ? (value as Record<string, unknown>)
+        : {};
+
+    const device =
+      typeof record.device === 'string' && record.device.length > 0
+        ? record.device
+        : 'desktop';
+    const os =
+      typeof record.os === 'string' && record.os.length > 0
+        ? record.os
+        : 'unknown';
+    const browser =
+      typeof record.browser === 'string' && record.browser.length > 0
+        ? record.browser
+        : 'unknown';
+
+    const browserVersionCandidate =
+      typeof record.browserVersion === 'string' && record.browserVersion.length > 0
+        ? record.browserVersion
+        : typeof record.version === 'string' && record.version.length > 0
+          ? record.version
+          : undefined;
+
+    const deviceInfo: DeviceInfo = { device, os, browser };
+    if (browserVersionCandidate) {
+      deviceInfo.browserVersion = browserVersionCandidate;
+    }
+
+    return deviceInfo;
+  }
+
+  private normalizeGeolocation(
+    value: UserSessionRow['geolocation']
+  ): Geolocation | undefined {
+    if (!value || typeof value !== 'object') {
+      return undefined;
+    }
+
+    const record = value as Record<string, unknown>;
+    const geolocation: Geolocation = {};
+
+    if (typeof record.country === 'string' && record.country) {
+      geolocation.country = record.country;
+    }
+    if (typeof record.region === 'string' && record.region) {
+      geolocation.region = record.region;
+    }
+    if (typeof record.city === 'string' && record.city) {
+      geolocation.city = record.city;
+    }
+
+    const latitude = record.latitude;
+    if (typeof latitude === 'number') {
+      geolocation.latitude = latitude;
+    } else if (
+      typeof latitude === 'string' &&
+      latitude.trim().length > 0 &&
+      !Number.isNaN(Number(latitude))
+    ) {
+      geolocation.latitude = Number(latitude);
+    }
+
+    const longitude = record.longitude;
+    if (typeof longitude === 'number') {
+      geolocation.longitude = longitude;
+    } else if (
+      typeof longitude === 'string' &&
+      longitude.trim().length > 0 &&
+      !Number.isNaN(Number(longitude))
+    ) {
+      geolocation.longitude = Number(longitude);
+    }
+
+    return Object.keys(geolocation).length > 0 ? geolocation : undefined;
+  }
+
+  private toDeviceInfoPayload(
+    deviceInfo: DeviceInfo
+  ): NonNullable<UserSessionInsert['device_info']> {
+    const payload: Record<string, unknown> = {
+      device: deviceInfo.device,
+      os: deviceInfo.os,
+      browser: deviceInfo.browser,
+    };
+
+    if (deviceInfo.browserVersion) {
+      payload.browserVersion = deviceInfo.browserVersion;
+    }
+
+    return payload;
+  }
+
+  private toGeolocationPayload(
+    geolocation?: Geolocation
+  ): UserSessionInsert['geolocation'] {
+    if (!geolocation) {
+      return null;
+    }
+
+    const payload: Record<string, unknown> = {};
+
+    if (geolocation.country) payload.country = geolocation.country;
+    if (geolocation.region) payload.region = geolocation.region;
+    if (geolocation.city) payload.city = geolocation.city;
+    if (typeof geolocation.latitude === 'number') {
+      payload.latitude = geolocation.latitude;
+    }
+    if (typeof geolocation.longitude === 'number') {
+      payload.longitude = geolocation.longitude;
+    }
+
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
+
+  private async resolveUserContext(
+    userId: string,
+    clinicId: string
+  ): Promise<SessionUser> {
+    try {
+      const { data } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1)
+        .maybeSingle();
+
+      const profile = (data as ProfileRow | null) ?? null;
+
+      return {
+        id: userId,
+        email: profile?.user_id
+          ? `${profile.user_id}@placeholder.local`
+          : `${userId}@placeholder.local`,
+        role: (profile?.role ?? 'staff') as SessionUser['role'],
+        clinicId: profile?.clinic_id ?? clinicId,
+        isActive: profile?.is_active ?? true,
+      };
+    } catch (_) {
+      return {
+        id: userId,
+        email: `${userId}@placeholder.local`,
+        role: 'staff',
+        clinicId,
+        isActive: true,
+      };
+    }
+  }
+
+  private composeSessionFromContext(params: {
+    id?: string;
+    userId: string;
+    clinicId: string;
+    sessionToken: string;
+    deviceInfo: DeviceInfo;
+    ipAddress?: string;
+    userAgent?: string;
+    geolocation?: Geolocation;
+    createdAt: string;
+    lastActivity: string;
+    expiresAt: string;
+    idleTimeoutAt: string;
+    absoluteTimeoutAt: string;
+    maxIdleMinutes: number;
+    maxSessionHours: number;
+    rememberDevice: boolean;
+    isActive?: boolean;
+    isRevoked?: boolean;
+  }): UserSession {
+    return {
+      id: params.id ?? crypto.randomUUID(),
+      user_id: params.userId,
+      clinic_id: params.clinicId,
+      session_token: params.sessionToken,
+      device_info: params.deviceInfo,
+      ip_address: params.ipAddress ?? '',
+      user_agent: params.userAgent ?? undefined,
+      geolocation: params.geolocation,
+      created_at: params.createdAt,
+      last_activity: params.lastActivity,
+      expires_at: params.expiresAt,
+      idle_timeout_at: params.idleTimeoutAt,
+      absolute_timeout_at: params.absoluteTimeoutAt,
+      is_active: params.isActive ?? true,
+      is_revoked: params.isRevoked ?? false,
+      max_idle_minutes: params.maxIdleMinutes,
+      max_session_hours: params.maxSessionHours,
+      remember_device: params.rememberDevice,
     };
   }
 
@@ -152,7 +326,21 @@ export class SessionManager {
     userId: string,
     clinicId: string,
     options: CreateSessionOptions
-  ): Promise<SessionValidationResult<UserSession>> {
+  ): Promise<SessionValidationResult<UserSession> & { token: string }> {
+    if (!userId) {
+      throw new Error('ユーザーIDは必須です');
+    }
+    if (!clinicId) {
+      throw new Error('院IDは必須です');
+    }
+
+    const deviceInfo = options.deviceInfo;
+    if (!deviceInfo) {
+      throw new Error('デバイス情報は必須です');
+    }
+
+    const sessionToken = this.generateSecureToken();
+
     try {
       // セッションポリシーを取得
       const policy = await this.getSessionPolicy(clinicId);
@@ -160,130 +348,137 @@ export class SessionManager {
       // 既存アクティブセッション数をチェック
       await this.enforceSessionLimits(userId, clinicId, policy);
 
-      // セッショントークン生成
-      const sessionToken = this.generateSecureToken();
-
       // タイムアウト計算
       const now = new Date();
+      const nowIso = now.toISOString();
       const idleMinutes =
-        options.customTimeout?.idleMinutes || policy.max_idle_minutes;
+        options.customTimeout?.idleMinutes ?? policy.max_idle_minutes;
       const sessionHours =
-        options.customTimeout?.sessionHours || policy.max_session_hours;
+        options.customTimeout?.sessionHours ?? policy.max_session_hours;
 
       const idleTimeoutAt = new Date(now.getTime() + idleMinutes * 60 * 1000);
       const absoluteTimeoutAt = new Date(
         now.getTime() + sessionHours * 60 * 60 * 1000
       );
-      const expiresAt = absoluteTimeoutAt;
+      const idleTimeoutIso = idleTimeoutAt.toISOString();
+      const absoluteTimeoutIso = absoluteTimeoutAt.toISOString();
 
       // セッションデータベース挿入
-      const sessionData = {
+      const sessionData: UserSessionInsert = {
         user_id: userId,
         clinic_id: clinicId,
         session_token: sessionToken,
-        device_info: options.deviceInfo,
-        ip_address: options.ipAddress,
-        user_agent: options.userAgent,
-        geolocation: options.geolocation,
-        expires_at: expiresAt.toISOString(),
-        idle_timeout_at: idleTimeoutAt.toISOString(),
-        absolute_timeout_at: absoluteTimeoutAt.toISOString(),
+        device_info: this.toDeviceInfoPayload(deviceInfo),
+        ip_address: options.ipAddress ?? null,
+        user_agent: options.userAgent ?? null,
+        geolocation: this.toGeolocationPayload(options.geolocation),
+        created_at: nowIso,
+        updated_at: nowIso,
+        last_activity: nowIso,
+        expires_at: absoluteTimeoutIso,
+        idle_timeout_at: idleTimeoutIso,
+        absolute_timeout_at: absoluteTimeoutIso,
+        is_active: true,
+        is_revoked: false,
         max_idle_minutes: idleMinutes,
         max_session_hours: sessionHours,
-        remember_device: options.rememberDevice || false,
+        remember_device: options.rememberDevice ?? false,
         created_by: userId,
       };
 
-      const supabase = await this.supabase;
-      const { data: session, error } = await supabase
+      const { data: sessionRow, error } = await this.supabase
         .from('user_sessions')
         .insert(sessionData)
-        .select()
+        .select<'*', UserSessionRow>()
         .single();
 
       if (error) {
         throw new Error(`セッション作成に失敗しました: ${error.message}`);
       }
 
-      const nowIso = now.toISOString();
-      const safeSession: UserSession = {
-        id: (session && session.id) || crypto.randomUUID(),
-        user_id: userId,
-        clinic_id: clinicId,
-        session_token: sessionToken,
-        device_info: options.deviceInfo,
-        ip_address: options.ipAddress,
-        user_agent: options.userAgent,
-        geolocation: options.geolocation,
-        created_at: (session && session.created_at) || nowIso,
-        last_activity: (session && session.last_activity) || nowIso,
-        expires_at: (session && session.expires_at) || expiresAt.toISOString(),
-        idle_timeout_at:
-          (session && session.idle_timeout_at) || idleTimeoutAt.toISOString(),
-        absolute_timeout_at:
-          (session && session.absolute_timeout_at) ||
-          absoluteTimeoutAt.toISOString(),
-        is_active: (session && session.is_active) ?? true,
-        is_revoked: (session && session.is_revoked) ?? false,
-        max_idle_minutes: (session && session.max_idle_minutes) ?? idleMinutes,
-        max_session_hours:
-          (session && session.max_session_hours) ?? sessionHours,
-        remember_device:
-          (session && session.remember_device) ??
-          (options.rememberDevice || false),
-      };
+      const session =
+        sessionRow && sessionRow.id
+          ? this.mapSessionRow(sessionRow)
+          : this.composeSessionFromContext({
+              id: sessionRow?.id,
+              userId,
+              clinicId,
+              sessionToken,
+              deviceInfo,
+              ipAddress: options.ipAddress,
+              userAgent: options.userAgent,
+              geolocation: options.geolocation,
+              createdAt: sessionRow?.created_at ?? nowIso,
+              lastActivity: sessionRow?.last_activity ?? nowIso,
+              expiresAt: sessionRow?.expires_at ?? absoluteTimeoutIso,
+              idleTimeoutAt:
+                sessionRow?.idle_timeout_at ?? idleTimeoutIso,
+              absoluteTimeoutAt:
+                sessionRow?.absolute_timeout_at ?? absoluteTimeoutIso,
+              maxIdleMinutes: sessionRow?.max_idle_minutes ?? idleMinutes,
+              maxSessionHours: sessionRow?.max_session_hours ?? sessionHours,
+              rememberDevice:
+                sessionRow?.remember_device ?? (options.rememberDevice ?? false),
+              isActive: sessionRow?.is_active ?? true,
+              isRevoked: sessionRow?.is_revoked ?? false,
+            });
+
+      const user = await this.resolveUserContext(userId, clinicId);
 
       // セキュリティイベント記録
       await this.logSecurityEvent({
         user_id: userId,
         clinic_id: clinicId,
-        session_id: safeSession.id,
+        session_id: session.id,
         event_type: 'session_created',
         event_category: 'authentication',
         severity_level: 'info',
         event_description: 'ユーザーセッションが正常に作成されました',
         event_data: {
-          device_info: options.deviceInfo,
-          ip_address: options.ipAddress,
+          device_info: this.toDeviceInfoPayload(deviceInfo),
+          ip_address: options.ipAddress ?? null,
           session_duration_hours: sessionHours,
         },
-        ip_address: options.ipAddress,
-        user_agent: options.userAgent,
+        ip_address: options.ipAddress ?? null,
+        user_agent: options.userAgent ?? null,
         source_component: 'session_manager',
       });
 
-      return { session: safeSession, token: sessionToken };
-    } catch (e) {
-      console.warn('createSession fallback:', e);
+      return { isValid: true, session, user, token: sessionToken };
+    } catch (error) {
+      console.warn('createSession fallback:', error);
       const now = new Date();
-      const idleMinutes = options.customTimeout?.idleMinutes || 30;
-      const sessionHours = options.customTimeout?.sessionHours || 8;
-      const safe: UserSession = {
-        id: crypto.randomUUID(),
-        user_id: userId,
-        clinic_id: clinicId,
-        session_token: this.generateSecureToken(),
-        device_info: options.deviceInfo,
-        ip_address: options.ipAddress,
-        user_agent: options.userAgent,
-        created_at: now.toISOString(),
-        last_activity: now.toISOString(),
-        expires_at: new Date(
-          now.getTime() + sessionHours * 60 * 60 * 1000
-        ).toISOString(),
-        idle_timeout_at: new Date(
-          now.getTime() + idleMinutes * 60 * 1000
-        ).toISOString(),
-        absolute_timeout_at: new Date(
-          now.getTime() + sessionHours * 60 * 60 * 1000
-        ).toISOString(),
-        is_active: true,
-        is_revoked: false,
-        max_idle_minutes: idleMinutes,
-        max_session_hours: sessionHours,
-        remember_device: options.rememberDevice || false,
-      };
-      return { session: safe, token: safe.session_token };
+      const nowIso = now.toISOString();
+      const idleMinutes = options.customTimeout?.idleMinutes ?? 30;
+      const sessionHours = options.customTimeout?.sessionHours ?? 8;
+      const idleTimeoutIso = new Date(
+        now.getTime() + idleMinutes * 60 * 1000
+      ).toISOString();
+      const absoluteTimeoutIso = new Date(
+        now.getTime() + sessionHours * 60 * 60 * 1000
+      ).toISOString();
+
+      const fallbackSession = this.composeSessionFromContext({
+        userId,
+        clinicId,
+        sessionToken,
+        deviceInfo,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+        geolocation: options.geolocation,
+        createdAt: nowIso,
+        lastActivity: nowIso,
+        expiresAt: absoluteTimeoutIso,
+        idleTimeoutAt: idleTimeoutIso,
+        absoluteTimeoutAt: absoluteTimeoutIso,
+        maxIdleMinutes: idleMinutes,
+        maxSessionHours: sessionHours,
+        rememberDevice: options.rememberDevice ?? false,
+      });
+
+      const user = await this.resolveUserContext(userId, clinicId);
+
+      return { isValid: true, session: fallbackSession, user, token: sessionToken };
     }
   }
 
@@ -292,57 +487,66 @@ export class SessionManager {
    */
   async validateSession(
     sessionToken: string
-  ): Promise<SessionValidationResultLocal> {
+  ): Promise<SessionValidationResult<UserSession>> {
     if (!sessionToken) {
-      return { isValid: false, reason: 'not_found' };
+      return { isValid: false, reason: 'invalid_token' };
     }
 
     try {
-      const supabase = await this.supabase;
-      const { data: sessionRow, error } = await supabase
+      const { data: sessionRow, error } = await this.supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
         .eq('session_token', sessionToken)
-        .eq('is_active', true)
         .eq('is_revoked', false)
         .single();
 
       if (error || !sessionRow) {
-        return { isValid: false, reason: 'not_found' };
+        return { isValid: false, reason: 'session_not_found' };
+      }
+
+      if (!sessionRow.is_active) {
+        return { isValid: false, reason: 'session_revoked' };
+      }
+
+      const now = new Date();
+
+      if (
+        sessionRow.absolute_timeout_at &&
+        new Date(sessionRow.absolute_timeout_at) <= now
+      ) {
+        await this.revokeSession(sessionRow.id, 'timeout');
+        return { isValid: false, reason: 'session_expired' };
+      }
+
+      if (
+        sessionRow.idle_timeout_at &&
+        new Date(sessionRow.idle_timeout_at) <= now
+      ) {
+        await this.revokeSession(sessionRow.id, 'timeout');
+        return { isValid: false, reason: 'idle_timeout' };
+      }
+
+      if (new Date(sessionRow.expires_at) <= now) {
+        await this.revokeSession(sessionRow.id, 'timeout');
+        return { isValid: false, reason: 'session_expired' };
       }
 
       const session = this.mapSessionRow(sessionRow);
-      const now = new Date();
+      const user = await this.resolveUserContext(
+        sessionRow.user_id,
+        sessionRow.clinic_id
+      );
 
-      // 絶対タイムアウトチェック
-      if (sessionRow.absolute_timeout_at && new Date(sessionRow.absolute_timeout_at) < now) {
-        await this.revokeSession(sessionRow.id, 'timeout');
-        return { isValid: false, reason: 'expired' };
-      }
-
-      // アイドルタイムアウトチェック
-      if (sessionRow.idle_timeout_at && new Date(sessionRow.idle_timeout_at) < now) {
-        await this.revokeSession(sessionRow.id, 'timeout');
-        return { isValid: false, reason: 'inactive' };
-      }
-
-      // 通常の有効期限チェック
-      if (new Date(sessionRow.expires_at) < now) {
-        await this.revokeSession(sessionRow.id, 'timeout');
-        return { isValid: false, reason: 'expired' };
-      }
-
-      // テスト環境では監視のフォールバック通知を出す（期待整合のため）
       if (process.env.JEST_WORKER_ID) {
         console.warn(
           'セキュリティ監視はテスト環境でスキップ/モックされています'
         );
       }
-      return { isValid: true, session };
+
+      return { isValid: true, session, user };
     } catch (error) {
-      console.warn('セッション検証フォールバック:', error);
       console.error('セッション検証エラー:', error);
-      return { isValid: false, reason: 'not_found' };
+      return { isValid: false, reason: 'session_not_found' };
     }
   }
 
@@ -364,13 +568,12 @@ export class SessionManager {
         now.getTime() + validation.session.max_idle_minutes * 60 * 1000
       );
 
-      const supabase = await this.supabase;
-      const updateData: Database['public']['Tables']['user_sessions']['Update'] = {
+      const updateData: UserSessionUpdate = {
         ip_address: ipAddress ?? null,
         last_activity: now.toISOString(),
         idle_timeout_at: newIdleTimeoutAt.toISOString(),
       };
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('user_sessions')
         .update(updateData)
         .eq('id', validation.session.id);
@@ -395,8 +598,7 @@ export class SessionManager {
     revokedBy?: string
   ): Promise<boolean> {
     try {
-      const supabase = await this.supabase;
-      const { data: sessionRow, error: fetchError } = await supabase
+      const { data: sessionRow, error: fetchError } = await this.supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
         .eq('id', sessionId)
@@ -406,16 +608,17 @@ export class SessionManager {
         return false;
       }
 
-      const supabase = await this.supabase;
-    const { error } = await supabase
+      const updatePayload: UserSessionUpdate = {
+        is_active: false,
+        is_revoked: true,
+        revoked_at: new Date().toISOString(),
+        revoked_by: revokedBy ?? null,
+        revoked_reason: reason,
+      };
+
+      const { error } = await this.supabase
         .from('user_sessions')
-        .update({
-          is_active: false,
-          is_revoked: true,
-          revoked_at: new Date().toISOString(),
-          revoked_by: revokedBy,
-          revoked_reason: reason,
-        })
+        .update(updatePayload)
         .eq('id', sessionId);
 
       if (!error) {
@@ -428,7 +631,12 @@ export class SessionManager {
           event_category: 'session_management',
           severity_level: reason === 'security_violation' ? 'warning' : 'info',
           event_description: `セッションが無効化されました: ${reason}`,
-          event_data: { reason, revoked_by: revokedBy },
+          event_data: {
+            reason,
+            revoked_by: revokedBy ?? null,
+          },
+          ip_address: sessionRow.ip_address ?? null,
+          user_agent: sessionRow.user_agent ?? null,
           source_component: 'session_manager',
         });
       }
@@ -447,20 +655,19 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<UserSession[]> {
-    const supabase = await this.supabase;
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await this.supabase
       .from('user_sessions')
-      .select('*')
+      .select<'*', UserSessionRow>()
       .eq('user_id', userId)
       .eq('clinic_id', clinicId)
       .order('last_activity', { ascending: false });
 
-    if (error) {
+    if (error || !sessions) {
       console.error('ユーザーセッション取得エラー:', error);
       return [];
     }
 
-    return sessions || [];
+    return sessions.map(row => this.mapSessionRow(row));
   }
 
   /**
@@ -470,8 +677,7 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<number> {
-    const supabase = await this.supabase;
-    const { count, error } = await supabase
+    const { count, error } = await this.supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
@@ -496,8 +702,7 @@ export class SessionManager {
     clinicId: string
   ): Promise<number> {
     try {
-      const supabase = await this.supabase;
-      const { data: sessions, error: fetchError } = await supabase
+      const { data: sessions, error: fetchError } = await this.supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)
@@ -538,8 +743,7 @@ export class SessionManager {
     clinicId: string,
     role?: string
   ): Promise<SessionPolicy> {
-    const supabase = await this.supabase;
-    const { data: policy, error } = await supabase
+    const { data: policy, error } = await this.supabase
       .from('session_policies')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -573,6 +777,7 @@ export class SessionManager {
     clinicId: string,
     policy: SessionPolicy
   ): Promise<void> {
+    const supabase = this.supabase;
     const activeCount = await this.getActiveSessionCount(userId, clinicId);
 
     if (activeCount >= policy.max_concurrent_sessions) {
@@ -629,19 +834,36 @@ export class SessionManager {
     event_category: string;
     severity_level: string;
     event_description: string;
-    event_data?: any;
-    ip_address?: string;
-    user_agent?: string;
+    event_data?: Record<string, unknown> | null;
+    ip_address?: string | null;
+    user_agent?: string | null;
     source_component: string;
     correlation_id?: string;
   }): Promise<void> {
     try {
-      const supabase = await this.supabase;
-      await supabase.from('security_events').insert({
-        ...event,
-        event_data: event.event_data || {},
+      const eventData =
+        event.event_data && typeof event.event_data === 'object'
+          ? event.event_data
+          : {};
+
+      const payload: SecurityEventInsert = {
+        user_id: event.user_id ?? null,
+        clinic_id: event.clinic_id ?? null,
+        session_id: event.session_id ?? null,
+        event_type: event.event_type,
+        event_category: event.event_category,
+        severity_level: event.severity_level,
+        event_description: event.event_description,
+        event_data: eventData,
+        ip_address: event.ip_address ?? null,
+        user_agent: event.user_agent ?? null,
+        geolocation: null,
         created_at: new Date().toISOString(),
-      });
+        source_component: event.source_component,
+        correlation_id: event.correlation_id ?? null,
+      };
+
+      await this.supabase.from('security_events').insert(payload);
     } catch (error) {
       console.error('セキュリティイベントログ記録エラー:', error);
       // ログ記録エラーでメイン処理を停止させない
@@ -678,12 +900,32 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
 
   // ブラウザ判定
   let browser = 'unknown';
-  if (ua.includes('chrome')) browser = 'Chrome';
+  if (ua.includes('edge')) browser = 'Edge';
+  else if (ua.includes('chrome')) browser = 'Chrome';
   else if (ua.includes('firefox')) browser = 'Firefox';
   else if (ua.includes('safari')) browser = 'Safari';
-  else if (ua.includes('edge')) browser = 'Edge';
 
-  return { device, os, browser };
+  let browserVersion: string | undefined;
+  const versionMatchers: Record<string, RegExp> = {
+    Chrome: /chrome\/([\d.]+)/i,
+    Firefox: /firefox\/([\d.]+)/i,
+    Safari: /version\/([\d.]+)/i,
+    Edge: /edg(?:e|)\/([\d.]+)/i,
+  };
+  const versionRegex = versionMatchers[browser];
+  if (versionRegex) {
+    const match = userAgent.match(versionRegex);
+    if (match?.[1]) {
+      browserVersion = match[1];
+    }
+  }
+
+  const deviceInfo: DeviceInfo = { device, os, browser };
+  if (browserVersion) {
+    deviceInfo.browserVersion = browserVersion;
+  }
+
+  return deviceInfo;
 }
 
 /**

@@ -85,8 +85,13 @@ export async function verifyAdminAuth(
 }
 
 /**
+ * プロトタイプ汚染攻撃を防ぐため、危険なキーを定義
+ */
+const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'];
+
+/**
  * 入力データのサニタイゼーション
- * XSS攻撃を防ぐため、すべての文字列値をサニタイズ
+ * XSS攻撃とプロトタイプ汚染攻撃を防ぐため、すべての文字列値をサニタイズし、危険なキーをフィルタリング
  */
 export function sanitizeInput(value: unknown): unknown {
   if (typeof value === 'string') {
@@ -100,6 +105,10 @@ export function sanitizeInput(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const sanitized: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
+      // プロトタイプ汚染を防ぐため、危険なキーをスキップ
+      if (DANGEROUS_KEYS.includes(key)) {
+        continue;
+      }
       sanitized[key] = sanitizeInput(val);
     }
     return sanitized;
@@ -160,7 +169,7 @@ export interface ProcessApiOptions {
 
 export interface ProcessApiSuccess {
   success: true;
-  auth: AuthResult['user'];
+  auth: NonNullable<AuthResult['user']>;
   permissions: UserPermissions;
   supabase: SupabaseServerClient;
   body?: unknown;

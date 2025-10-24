@@ -15,19 +15,10 @@ import {
   Calendar,
   MessageSquare,
   Stethoscope,
-  Banknote,
   Search,
   ChevronRight,
   LogOut,
 } from 'lucide-react';
-
-interface SettingsItem {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  category: string;
-}
 
 const settingsCategories = [
   {

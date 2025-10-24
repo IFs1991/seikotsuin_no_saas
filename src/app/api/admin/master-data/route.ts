@@ -8,6 +8,40 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import type { Database } from '@/types/supabase';
+
+type SystemSettingRow =
+  Database['public']['Tables']['system_settings']['Row'];
+
+const parseSettingValue = (raw: unknown) => {
+  if (typeof raw !== 'string') {
+    return raw;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+};
+
+const extractCategory = (key: string) =>
+  key.includes('_') ? key.split('_')[0] : key;
+
+const formatSystemSetting = (row: SystemSettingRow) => ({
+  id: row.id,
+  clinic_id: row.clinic_id,
+  name: row.key,
+  category: extractCategory(row.key),
+  value: parseSettingValue(row.value),
+  data_type: row.data_type ?? 'string',
+  description: row.description ?? undefined,
+  is_editable: row.is_editable ?? false,
+  is_public: row.is_public ?? false,
+  display_order: row.display_order ?? 0,
+  updated_at: row.updated_at ?? undefined,
+  updated_by: row.updated_by ?? undefined,
+});
+
 
 // ================================================================
 // マスターデータ管理 API - リファクタリング版
@@ -77,8 +111,7 @@ export async function GET(request: NextRequest) {
       effectiveClinicId = permissions.clinic_id ?? null;
     }
 
-    let query = supabase
-      .from('system_settings')
+    let query = (supabase.from('system_settings') as any)
       .select('*')
       .order('category', { ascending: true })
       .order('display_order', { ascending: true });
@@ -104,28 +137,16 @@ export async function GET(request: NextRequest) {
       logError(error, {
         endpoint: '/api/admin/master-data',
         method: 'GET',
-        userId: auth?.id || 'unknown',
+        userId: auth.id,
         params: { category, clinicId: clinicParam, isPublic },
       });
       return createErrorResponse('データの取得に失敗しました', 500);
     }
 
     // データを整形してフロントエンド用の形式に変換
-    const formattedData =
-      data?.map(item => ({
-        id: item.id,
-        clinic_id: item.clinic_id,
-        name: item.key,
-        category: item.key.split('_')[0], // キーの最初の部分をカテゴリとして使用
-        value: item.value,
-        data_type: item.data_type || 'string',
-        description: item.description,
-        is_editable: item.is_editable,
-        is_public: item.is_public,
-        display_order: 0,
-        updated_at: item.updated_at,
-        updated_by: item.updated_by,
-      })) || [];
+    const formattedData = ((data ?? []) as SystemSettingRow[]).map(
+      formatSystemSetting
+    );
 
     return createSuccessResponse({
       items: formattedData,
@@ -194,8 +215,8 @@ export async function POST(request: NextRequest) {
         : null);
 
     // system_settingsテーブルに挿入
-    const { data, error } = await supabase
-      .from('system_settings')
+    const { data, error } = await (supabase
+      .from('system_settings') as any)
       .insert([
         {
           clinic_id: targetClinicId,
@@ -205,7 +226,7 @@ export async function POST(request: NextRequest) {
           description,
           is_editable: is_editable !== false,
           is_public: is_public === true,
-          updated_by: auth?.id,
+          updated_by: auth.id,
         },
       ])
       .select()
@@ -215,34 +236,23 @@ export async function POST(request: NextRequest) {
       logError(error, {
         endpoint: '/api/admin/master-data',
         method: 'POST',
-        userId: auth?.id || 'unknown',
+        userId: auth.id,
         params: { name },
       });
       return createErrorResponse('データの作成に失敗しました', 500);
     }
 
     // レスポンス用にデータを整形
-    const formattedData = {
-      id: data.id,
-      clinic_id: data.clinic_id,
-      name: data.key,
-      category: data.key.split('_')[0],
-      value: JSON.parse(data.value),
-      data_type: data.data_type,
-      description: data.description,
-      is_editable: data.is_editable,
-      is_public: data.is_public,
-      updated_at: data.updated_at,
-      updated_by: data.updated_by,
-    };
+    const inserted = data as SystemSettingRow;
+    const formattedData = formatSystemSetting(inserted);
 
     // 監査ログ記録
     await AuditLogger.logDataAccess(
-      auth?.id || '',
-      auth?.email || '',
+      auth.id,
+      auth.email,
       'system_settings',
-      data.id,
-      data.clinic_id || undefined
+      inserted.id,
+      inserted.clinic_id || undefined
     );
 
     return createSuccessResponse(formattedData, 201, SUCCESS_MESSAGES.CREATED);
@@ -289,7 +299,6 @@ export async function PUT(request: NextRequest) {
       id,
       clinic_id,
       name,
-      category,
       value,
       data_type,
       description,
@@ -300,7 +309,7 @@ export async function PUT(request: NextRequest) {
     // 更新データを準備
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
-      updated_by: auth?.id,
+      updated_by: auth.id,
     };
 
     if (name !== undefined) updateData.key = name;
@@ -311,8 +320,8 @@ export async function PUT(request: NextRequest) {
     if (is_public !== undefined) updateData.is_public = is_public;
     if (clinic_id !== undefined) updateData.clinic_id = clinic_id;
 
-    const { data, error } = await supabase
-      .from('system_settings')
+    const { data, error } = await (supabase
+      .from('system_settings') as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -322,26 +331,15 @@ export async function PUT(request: NextRequest) {
       logError(error, {
         endpoint: '/api/admin/master-data',
         method: 'PUT',
-        userId: auth?.id || 'unknown',
+        userId: auth.id,
         params: { id, name },
       });
       return createErrorResponse('データの更新に失敗しました', 500);
     }
 
     // レスポンス用にデータを整形
-    const formattedData = {
-      id: data.id,
-      clinic_id: data.clinic_id,
-      name: data.key,
-      category: data.key.split('_')[0],
-      value: JSON.parse(data.value),
-      data_type: data.data_type,
-      description: data.description,
-      is_editable: data.is_editable,
-      is_public: data.is_public,
-      updated_at: data.updated_at,
-      updated_by: data.updated_by,
-    };
+    const updated = data as SystemSettingRow;
+    const formattedData = formatSystemSetting(updated);
 
     if (
       permissions.role !== 'admin' &&
@@ -356,12 +354,12 @@ export async function PUT(request: NextRequest) {
 
     // 監査ログ記録
     await AuditLogger.logDataModify(
-      auth?.id || '',
-      auth?.email || '',
+      auth.id,
+      auth.email,
       'system_settings',
-      data.id,
+      updated.id,
       updateData,
-      data.clinic_id || undefined
+      updated.clinic_id || undefined
     );
 
     return createSuccessResponse(formattedData, 200, SUCCESS_MESSAGES.UPDATED);
@@ -397,20 +395,25 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 削除前に対象データを取得（編集可能チェック）
-    const { data: existingData, error: fetchError } = await supabase
-      .from('system_settings')
+    const { data: existingData, error: fetchError } = await (supabase
+      .from('system_settings') as any)
       .select('is_editable, clinic_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
-    if (fetchError) {
+    if (fetchError || !existingData) {
       return createErrorResponse('データが見つかりません', 404);
     }
 
+    const settingMeta = existingData as Pick<
+      SystemSettingRow,
+      'clinic_id' | 'is_editable'
+    >;
+
     if (
       permissions.role !== 'admin' &&
-      existingData.clinic_id &&
-      permissions.clinic_id !== existingData.clinic_id
+      settingMeta.clinic_id &&
+      permissions.clinic_id !== settingMeta.clinic_id
     ) {
       return createErrorResponse(
         '指定されたクリニックへのアクセス権限がありません',
@@ -418,12 +421,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (!existingData.is_editable) {
+    if (!settingMeta.is_editable) {
       return createErrorResponse('編集不可のデータは削除できません', 403);
     }
 
-    const { error } = await supabase
-      .from('system_settings')
+    const { error } = await (supabase.from('system_settings') as any)
       .delete()
       .eq('id', id);
 
@@ -431,7 +433,7 @@ export async function DELETE(request: NextRequest) {
       logError(error, {
         endpoint: '/api/admin/master-data',
         method: 'DELETE',
-        userId: auth?.id || 'unknown',
+        userId: auth.id,
         params: { id },
       });
       return createErrorResponse('データの削除に失敗しました', 500);
@@ -439,10 +441,11 @@ export async function DELETE(request: NextRequest) {
 
     // 監査ログ記録
     await AuditLogger.logDataDelete(
-      auth?.id || '',
-      auth?.email || '',
+      auth.id,
+      auth.email,
       'system_settings',
-      id
+      id,
+      settingMeta.clinic_id || undefined
     );
 
     return createSuccessResponse(null, 200, SUCCESS_MESSAGES.DELETED);

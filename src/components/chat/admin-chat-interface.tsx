@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAdminChat } from '@/hooks/useAdminChat';
+import React, { useState } from 'react';
+import type { AdminChatMessage } from '@/hooks/useAdminChat';
 import {
   Card,
   CardHeader,
@@ -12,7 +12,21 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-const AdminChatInterface: React.FC = () => {
+interface AdminChatInterfaceProps {
+  messages: AdminChatMessage[];
+  onSendMessage: (content: string) => Promise<void> | void;
+  onExport: () => void;
+  isLoading: boolean;
+  error?: string | null;
+}
+
+const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
+  messages,
+  onSendMessage,
+  onExport,
+  isLoading,
+  error,
+}) => {
   const [message, setMessage] = useState('');
   const [suggestions] = useState([
     '全店舗の売上傾向を分析して',
@@ -21,12 +35,10 @@ const AdminChatInterface: React.FC = () => {
     '収益改善のための提案をください',
   ]);
 
-  const { messages, sendMessage, isLoading, exportChat } = useAdminChat();
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim()) {
-      sendMessage(message);
+      onSendMessage(message);
       setMessage('');
     }
   };
@@ -68,6 +80,13 @@ const AdminChatInterface: React.FC = () => {
                 </div>
               </div>
             )}
+            {error && (
+              <div className='flex justify-start'>
+                <div className='bg-red-50 border border-red-200 text-red-700 rounded-lg p-3'>
+                  {error}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className='p-4 bg-white border-t'>
@@ -102,7 +121,7 @@ const AdminChatInterface: React.FC = () => {
                 type='button'
                 variant='outline'
                 className='border-[#7C3AED] text-[#7C3AED]'
-                onClick={exportChat}
+                onClick={onExport}
               >
                 エクスポート
               </Button>

@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
+import type { Database } from '@/types/supabase';
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -9,9 +12,6 @@ export async function GET(request: Request) {
 
   // セキュアなリダイレクト先を検証
   const safeRedirectUrl = getSafeRedirectUrl(nextParam, origin);
-  const redirectPath = safeRedirectUrl
-    ? new URL(safeRedirectUrl).pathname
-    : getDefaultRedirect();
 
   if (code) {
     const supabase = await createClient();
@@ -23,11 +23,11 @@ export async function GET(request: Request) {
         // ユーザー情報を取得して適切なリダイレクト先を決定
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role')
+          .select<'role', ProfileRow>('role')
           .eq('user_id', data.user.id)
-          .single();
+          .maybeSingle();
 
-        const userRole = profile?.role || 'staff';
+        const userRole = profile?.role ?? 'staff';
         const finalRedirectPath = safeRedirectUrl
           ? new URL(safeRedirectUrl).pathname
           : getDefaultRedirect(userRole);

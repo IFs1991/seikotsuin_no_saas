@@ -6,6 +6,23 @@ import {
   logError,
 } from '@/lib/api-helpers';
 
+type ClinicRow = {
+  id: string;
+  name: string;
+  is_active?: boolean | null;
+};
+
+type DailyReportRow = {
+  clinic_id: string;
+  total_patients: number | null;
+  total_revenue: number | string | null;
+};
+
+type StaffPerformanceRow = {
+  clinic_id: string;
+  performance_score: number | null;
+};
+
 interface AggregatedClinicData {
   id: string;
   name: string;
@@ -62,7 +79,9 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('クリニック情報の取得に失敗しました', 500);
     }
 
-    const clinicIds = clinics?.map(clinic => clinic.id) ?? [];
+    const clinicRows: ClinicRow[] = (clinics ?? []) as ClinicRow[];
+
+    const clinicIds = clinicRows.map(clinic => clinic.id);
     if (clinicIds.length === 0) {
       return createSuccessResponse({
         clinicsData: [],
@@ -105,9 +124,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const reportRows: DailyReportRow[] =
+      (dailyReports ?? []) as DailyReportRow[];
+    const performanceRows: StaffPerformanceRow[] =
+      (staffPerformance ?? []) as StaffPerformanceRow[];
+
     const aggregatedMap = new Map<string, AggregatedClinicData>();
 
-    clinics?.forEach(clinic => {
+    clinicRows.forEach(clinic => {
       aggregatedMap.set(clinic.id, {
         id: clinic.id,
         name: clinic.name,
@@ -117,21 +141,24 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    dailyReports?.forEach(report => {
+    reportRows.forEach(report => {
       const entry = aggregatedMap.get(report.clinic_id);
       if (!entry) return;
-      entry.totalRevenue += Number(report.total_revenue || 0);
-      entry.totalPatientCount += report.total_patients || 0;
+      const revenue = typeof report.total_revenue === 'number'
+        ? report.total_revenue
+        : Number(report.total_revenue ?? 0);
+      entry.totalRevenue += revenue;
+      entry.totalPatientCount += report.total_patients ?? 0;
     });
 
     const performanceTotals = new Map<string, { sum: number; count: number }>();
 
-    staffPerformance?.forEach(perf => {
+    performanceRows.forEach(perf => {
       const current = performanceTotals.get(perf.clinic_id) ?? {
         sum: 0,
         count: 0,
       };
-      current.sum += perf.performance_score || 0;
+      current.sum += perf.performance_score ?? 0;
       current.count += 1;
       performanceTotals.set(perf.clinic_id, current);
     });

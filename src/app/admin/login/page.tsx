@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useActionState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -18,13 +18,15 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
   const [isSignUp, setIsSignUp] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({
+  const [passwordStrength, setPasswordStrength] = useState<{
+    score: number;
+    feedback: string[];
+  }>({
     score: 0,
     feedback: [],
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Server Actions用のstate
@@ -99,14 +101,24 @@ export default function AdminLogin() {
     const state = isSignUp ? signupState : loginState;
 
     if (!state.success && 'errors' in state) {
-      setClientErrors(state.errors);
+      const normalizedErrors = Object.fromEntries(
+        Object.entries(state.errors).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? value[0] ?? '' : value ?? '',
+        ])
+      );
+      setClientErrors(normalizedErrors);
     } else if (state.success && 'message' in state && state.message) {
       setClientErrors({ _success: state.message });
     }
   }, [loginState, signupState, isSignUp]);
 
   const isLoading = isLoginPending || isSignupPending;
-  const currentErrors = isSignUp ? signupState : loginState;
+  const activeActionState = isSignUp ? signupState : loginState;
+  const serverFormErrors =
+    !activeActionState.success && 'errors' in activeActionState
+      ? activeActionState.errors
+      : null;
 
   const getPasswordStrengthColor = (score: number) => {
     if (score < 2) return 'bg-red-500';
@@ -245,15 +257,13 @@ export default function AdminLogin() {
           )}
 
           {/* サーバーサイドエラー表示 */}
-          {!currentErrors.success &&
-            'errors' in currentErrors &&
-            currentErrors.errors._form && (
-              <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm'>
-                {Array.isArray(currentErrors.errors._form)
-                  ? currentErrors.errors._form.join(', ')
-                  : currentErrors.errors._form}
-              </div>
-            )}
+          {serverFormErrors?._form && (
+            <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm'>
+              {Array.isArray(serverFormErrors._form)
+                ? serverFormErrors._form.join(', ')
+                : serverFormErrors._form}
+            </div>
+          )}
 
           <Button
             type='submit'

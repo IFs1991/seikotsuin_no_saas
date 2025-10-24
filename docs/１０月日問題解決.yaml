@@ -138,3 +138,133 @@ implementation_results:
     - "Supabase自動生成型を活用した型整合性の確保"
     - "never型推論問題の解決"
     - "既存ロジックを崩さない最小限の修正アプローチ"
+
+next_phase_priorities:
+  title: "残存型エラー修正計画"
+  analysis_date: 2025-10-16
+  priority_files:
+    phase_1_critical:
+      - file: src/lib/session-manager.ts
+        errors: 30+
+        priority: 🔥 緊急
+        issues:
+          - "Database型との不整合"
+          - "never型推論問題"
+          - "Supabaseクライアントawait処理"
+          - "createSession戻り値型不整合"
+        impact: "セッション管理のコア機能に影響"
+
+      - file: src/api/gemini/ai-analysis-service.ts
+        errors: 4
+        priority: 🔥 緊急
+        issues:
+          - "string | undefined → string 変換問題"
+          - "exactOptionalPropertyTypes対応不足"
+          - "オプショナルプロパティのundefined処理"
+        impact: "AI分析サービスのコア機能に影響"
+
+    phase_2_ui_components:
+      - file: src/app/admin/(protected)/chat/page.tsx
+        errors: 5
+        priority: 🟡 中
+        issues:
+          - "useAdminChatフックのプロパティ不足(searchHistory, selectedStores, setSelectedStores)"
+          - "コンポーネントProps型不整合"
+        impact: "管理画面チャット機能"
+
+      - file: src/app/admin/(protected)/session-management/page.tsx
+        errors: 4
+        priority: 🟡 中
+        issues:
+          - "never型推論によるプロパティアクセスエラー(full_name, role, clinic_id)"
+          - "ユーザー情報表示機能の型不整合"
+        impact: "セッション管理UI機能"
+
+      - file: src/app/admin/(protected)/master/page.tsx
+        errors: 2
+        priority: 🟡 中
+        issues:
+          - "戻り値型の不整合 Promise<Data> → Promise<void>"
+          - "マスターデータ更新・削除関数の型不適合"
+        impact: "マスターデータ管理機能"
+
+      - file: src/app/admin/actions.ts
+        errors: 1
+        priority: 🟡 中
+        issues:
+          - "AuthError型のexactOptionalPropertyTypes対応(status: number | undefined → number | null)"
+        impact: "認証アクション関数"
+
+    phase_3_cleanup:
+      - file: src/app/admin/(protected)/settings/page.tsx
+        errors: 2
+        priority: 🟢 低
+        issues:
+          - "未使用import削除(Banknote)"
+          - "未使用変数削除(SettingsItem)"
+        impact: "コードクリーンアップ"
+
+      - file: src/app/admin/callback/route.ts
+        errors: 1
+        priority: 🟢 低
+        issues:
+          - "未使用変数削除(redirectPath)"
+        impact: "コードクリーンアップ"
+
+      - file: src/app/admin/login/page.tsx
+        errors: 1
+        priority: 🟢 低
+        issues:
+          - "未使用変数削除(router)"
+        impact: "コードクリーンアップ"
+
+  root_causes:
+    - "exactOptionalPropertyTypes: true設定による厳密な型チェック"
+    - "Supabase自動生成型との不整合"
+    - "never型推論の多発"
+    - "Hook戻り値型定義の不備"
+    - "undefined型の適切な処理不足"
+
+  recommended_approach:
+    - "PHASE 1: セッション管理とAI分析の型整合性確保"
+    - "PHASE 2: UI コンポーネントの型エラー解消"
+    - "PHASE 3: コードクリーンアップ（未使用要素削除）"
+    - "session-manager.ts修正により関連エラーの連鎖解消を期待"
+
+  estimated_effort:
+    phase_1: "2-3時間（複雑な型整合性問題）"
+    phase_2: "1-2時間（UI型修正）"
+    phase_3: "30分（簡単なクリーンアップ）"
+    total: "4-6時間"
+
+progress_updates:
+  - date: 2025-10-17
+    phase: "PHASE 1: セッション管理とAI分析の型整合性確保"
+    status: completed
+    details:
+      - "src/lib/session-manager.ts を Supabase 行型ベースで再構成し、SessionValidationResult<UserSession> を常に返却するよう整備"
+      - "createSession / validateSession を含む主要メソッドで JSONB 正規化・SecurityEventInsert 型を導入"
+      - "src/api/gemini/ai-analysis-service.ts の分析・AIコメント生成フローを厳密型へリファクタし、undefined 流入を遮断"
+    next_steps: "Phase 2 (UI コンポーネントの型エラー解消) に着手し、残存する admin 配下の型エラーを解決する"
+  - date: 2025-10-18
+    phase: "PHASE 2: UI コンポーネントの型エラー解消"
+    status: completed
+    details:
+      - "src/app/admin/(protected)/chat/page.tsx と AdminChatInterface を再配線し、useAdminChat の契約と整合する props／検索・フィルタのローカル状態を導入"
+      - "セッション管理ページの Supabase プロファイル取得を安全化し、未割当て clinic_id へのフェイルセーフを追加"
+      - "useAdminMaster 返却型を AdminMasterForm の期待に合わせ、settings/actions など未使用要素を整理"
+    next_steps: "Phase 3 (管理 API・ログイン画面の残存型エラーとクリーンアップ) を実施し `npm run type-check` の完走を確認する"
+  - date: 2025-10-18
+    phase: "PHASE 3: 管理API・ログイン画面の型エラー／クリーンアップ"
+    status: in_progress
+    details:
+      - "Supabase テーブル定義不足により `system_settings`, `daily_reports`, `staff_performance`, `csp_violations`, `security_events` などが `never` 推論になっている"
+      - "admin/tables, master-data, security/*, rate-limit/* API で `insert/update` ペイロードが `never` を要求し、AuditLogger 呼び出しや JSON 変換で型崩れが発生中"
+      - "CSP 統計・違反 API で未使用パラメータ (`request`, `reason`, `statsQuery`) や非同期クライアントを await し忘れている箇所が散在"
+      - "ai-comments API でも `clinic_id` 未指定時の `select` が `string` を要求しており、optional handling の手当が必要"
+    blockers: |
+      - `src/types/supabase.ts` に該当テーブルの Row/Insert/Update を整理追加し、それを使って API 側で結果整形を行う必要がある
+      - rate-limit / security 系 API の未使用引数整理と `createClient()` の await 化が残作業
+    next_steps: |
+      1. Supabase テーブル型を補完し、各 API のクエリ結果を専用整形関数で安全にマッピングする
+      2. rate-limit, security, ai-comments API の未使用変数・await 漏れを解消し、`npm run type-check` を再実行する

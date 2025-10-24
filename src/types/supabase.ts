@@ -217,6 +217,122 @@ export interface Database {
           updated_at?: string | null;
         };
       };
+      daily_reports: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          total_patients: number | null;
+          total_revenue: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          total_patients?: number | null;
+          total_revenue?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          total_patients?: number | null;
+          total_revenue?: number | null;
+          created_at?: string | null;
+        };
+      };
+      staff_performance: {
+        Row: {
+          id: string;
+          clinic_id: string;
+          staff_name: string | null;
+          performance_score: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          clinic_id: string;
+          staff_name?: string | null;
+          performance_score?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string;
+          staff_name?: string | null;
+          performance_score?: number | null;
+          created_at?: string | null;
+        };
+      };
+      system_settings: {
+        Row: {
+          id: string;
+          clinic_id: string | null;
+          key: string;
+          value: unknown;
+          data_type: string | null;
+          description: string | null;
+          is_editable: boolean | null;
+          is_public: boolean | null;
+          display_order: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          clinic_id?: string | null;
+          key: string;
+          value?: unknown;
+          data_type?: string | null;
+          description?: string | null;
+          is_editable?: boolean | null;
+          is_public?: boolean | null;
+          display_order?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string | null;
+          key?: string;
+          value?: unknown;
+          data_type?: string | null;
+          description?: string | null;
+          is_editable?: boolean | null;
+          is_public?: boolean | null;
+          display_order?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+          updated_by?: string | null;
+        };
+      };
+      csp_violations: {
+        Row: {
+          id: string;
+          created_at: string | null;
+          client_ip: string | null;
+          violated_directive: string | null;
+          severity: string | null;
+          report_sample: Record<string, unknown> | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string | null;
+          client_ip?: string | null;
+          violated_directive?: string | null;
+          severity?: string | null;
+          report_sample?: Record<string, unknown> | null;
+        };
+        Update: {
+          id?: string;
+          created_at?: string | null;
+          client_ip?: string | null;
+          violated_directive?: string | null;
+          severity?: string | null;
+          report_sample?: Record<string, unknown> | null;
+        };
+      };
       user_sessions: {
         Row: {
           id: string;

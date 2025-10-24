@@ -159,6 +159,31 @@ npm run scan:secrets
 
 ### 📦 パッケージマネージャ方針（重要）
 
+### 🐳 Docker Desktop での起動
+
+Docker Desktop を利用した開発環境・検証環境のセットアップ手順です。
+
+1. 事前準備
+   - Docker Desktop と Docker Compose v2 をインストール
+   - `env.example` を参考に、以下のファイルを用意  
+     - `.env.development`（開発用）  
+     - `.env.production`（動作確認・本番用）  
+   - いずれのファイルにも Supabase/Gemini/API キーなど必須の環境変数を設定
+2. 開発モードでの起動
+   ```bash
+   docker compose -f docker-compose.dev.yml up --build
+   ```
+   - ブラウザから `http://localhost:3001` にアクセス
+   - 停止する場合は `Ctrl+C` もしくは `docker compose -f docker-compose.dev.yml down`
+3. 本番モード相当での起動
+   ```bash
+   docker compose up --build
+   ```
+   - `http://localhost:3000` が表示され、`curl -fsS http://localhost:3000/api/health` が `200` を返すことを確認
+   - 停止する場合は `docker compose down`
+
+Docker イメージは Next.js の standalone 出力を利用しており、`docker-compose.yml` では非 root・read only 実行やヘルスチェックを有効化しています。
+
 - 本プロジェクトは npm を採用し、ロックファイルは `package-lock.json` に統一します。
 - Yarn は使用しません（ロックファイルは1つのみに統一）。
 - CI では再現性のため `npm ci` を使用してください。

@@ -1,10 +1,25 @@
 import { supabase } from '@/lib/supabase/client';
 import type { AIComment } from '@/types';
 
+interface RevenueRecord {
+  amount: number;
+  created_at: string;
+}
+
+interface PatientRecord {
+  is_new: boolean;
+  created_at: string;
+}
+
+interface TherapistRecord {
+  staff_name: string;
+  performance_score: number;
+}
+
 interface AnalysisData {
-  salesData: any[];
-  patientData: any[];
-  therapistData: any[];
+  salesData: RevenueRecord[];
+  patientData: PatientRecord[];
+  therapistData: TherapistRecord[];
 }
 
 interface AnalysisResult {
@@ -54,9 +69,9 @@ export async function fetchAnalysisData(): Promise<AnalysisData> {
       ]);
 
     return {
-      salesData: salesResponse.data || [],
-      patientData: patientResponse.data || [],
-      therapistData: therapistResponse.data || [],
+      salesData: mapRevenueRecords(salesResponse.data),
+      patientData: mapPatientRecords(patientResponse.data),
+      therapistData: mapTherapistRecords(therapistResponse.data),
     };
   } catch (error) {
     console.error('Failed to fetch analysis data:', error);
@@ -70,9 +85,11 @@ export async function fetchAnalysisData(): Promise<AnalysisData> {
 export function generateAnalysisReport(data: AnalysisData): AnalysisResult {
   const { salesData, patientData, therapistData } = data;
 
+  const [firstTherapist] = therapistData;
+
   return {
     salesAnalysis: {
-      total: salesData.reduce((acc, curr) => acc + (curr.amount || 0), 0),
+      total: salesData.reduce((acc, curr) => acc + curr.amount, 0),
       trend: calculateTrend(salesData),
       anomalies: detectAnomalies(salesData),
     },
@@ -82,14 +99,14 @@ export function generateAnalysisReport(data: AnalysisData): AnalysisResult {
       returnRate: calculateReturnRate(patientData),
     },
     therapistPerformance: {
-      topPerformer: therapistData[0]?.staff_name || '',
-      metrics: therapistData.reduce(
-        (acc, curr) => ({
-          ...acc,
-          [curr.staff_name]: curr.performance_score,
-        }),
-        {}
-      ),
+      topPerformer: firstTherapist?.staff_name ?? '',
+      metrics: therapistData.reduce<Record<string, number>>((acc, curr) => {
+        if (!curr.staff_name) {
+          return acc;
+        }
+        acc[curr.staff_name] = curr.performance_score;
+        return acc;
+      }, {}),
     },
     aiInsights: {
       summary: generateSummary(salesData, patientData, therapistData),
@@ -153,21 +170,40 @@ export async function generateAIComment(
     const parsed = parseAIResponseTextToObject(text);
 
     // 型をAICommentに整形
+    const summary =
+      typeof parsed.summary === 'string' && parsed.summary.trim().length > 0
+        ? parsed.summary
+        : analysisResult.aiInsights.summary;
+
+    const highlights =
+      parsed.highlights && parsed.highlights.length > 0
+        ? parsed.highlights
+        : [...analysisResult.aiInsights.recommendations];
+
+    const improvements =
+      parsed.improvements && parsed.improvements.length > 0
+        ? parsed.improvements
+        : [
+            '待ち時間の短縮が必要',
+            '予約システムの最適化',
+            '設備のメンテナンス',
+          ];
+
+    const suggestions =
+      parsed.suggestions && parsed.suggestions.length > 0
+        ? parsed.suggestions
+        : [...analysisResult.aiInsights.nextDayPlan];
+
+    const [datePart = ''] = new Date().toISOString().split('T');
+
     const aiComment: AIComment = {
       id: `ai-comment-${Date.now()}`,
       clinic_id: 'default-clinic',
-      date: new Date().toISOString().split('T')[0],
-      summary: parsed.summary || analysisResult.aiInsights?.summary || '',
-      highlights: parsed.highlights?.length
-        ? parsed.highlights
-        : analysisResult.aiInsights?.recommendations || [],
-      improvements: parsed.improvements || [
-        '待ち時間の短縮が必要',
-        '予約システムの最適化',
-      ],
-      suggestions: parsed.suggestions?.length
-        ? parsed.suggestions
-        : analysisResult.aiInsights?.nextDayPlan || [],
+      date: datePart,
+      summary,
+      highlights,
+      improvements,
+      suggestions,
       created_at: new Date().toISOString(),
     };
 
@@ -178,65 +214,143 @@ export async function generateAIComment(
   }
 }
 
-// ヘルパー関数
-function calculateTrend(salesData: any[]): string {
-  if (salesData.length < 2) return '不明';
-
-  const recent = salesData
-    .slice(0, 7)
-    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const previous = salesData
-    .slice(7, 14)
-    .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-
-  return recent > previous
-    ? '上昇傾向'
-    : recent < previous
-      ? '下降傾向'
-      : '横ばい';
+function mapRevenueRecords(rows: unknown): RevenueRecord[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.map(sanitizeRevenueRecord);
 }
 
-function detectAnomalies(salesData: any[]): string[] {
-  // 簡単な異常値検知
-  const amounts = salesData.map(d => d.amount || 0);
-  const avg = amounts.reduce((acc, curr) => acc + curr, 0) / amounts.length;
+function mapPatientRecords(rows: unknown): PatientRecord[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.map(sanitizePatientRecord);
+}
+
+function mapTherapistRecords(rows: unknown): TherapistRecord[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.map(sanitizeTherapistRecord);
+}
+
+function sanitizeRevenueRecord(row: unknown): RevenueRecord {
+  if (!isRecord(row)) {
+    return { amount: 0, created_at: '' };
+  }
+
+  return {
+    amount: toNumber(row.amount),
+    created_at: toStringOrEmpty(row.created_at),
+  };
+}
+
+function sanitizePatientRecord(row: unknown): PatientRecord {
+  if (!isRecord(row)) {
+    return { is_new: false, created_at: '' };
+  }
+
+  return {
+    is_new: row.is_new === true,
+    created_at: toStringOrEmpty(row.created_at),
+  };
+}
+
+function sanitizeTherapistRecord(row: unknown): TherapistRecord {
+  if (!isRecord(row)) {
+    return { staff_name: '', performance_score: 0 };
+  }
+
+  return {
+    staff_name: toStringOrEmpty(row.staff_name),
+    performance_score: toNumber(row.performance_score),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function toNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return 0;
+}
+
+function toStringOrEmpty(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+// ヘルパー関数
+function calculateTrend(salesData: RevenueRecord[]): string {
+  if (salesData.length < 2) return '不明';
+
+  const sumAmounts = (records: RevenueRecord[]): number =>
+    records.reduce((acc, curr) => acc + curr.amount, 0);
+
+  const recent = sumAmounts(salesData.slice(0, 7));
+  const previous = sumAmounts(salesData.slice(7, 14));
+
+  if (recent > previous) return '上昇傾向';
+  if (recent < previous) return '下降傾向';
+  return '横ばい';
+}
+
+function detectAnomalies(salesData: RevenueRecord[]): string[] {
+  if (!salesData.length) {
+    return [];
+  }
+
+  const amounts = salesData.map(record => record.amount);
+  const average = amounts.reduce((acc, curr) => acc + curr, 0) / amounts.length;
 
   const anomalies: string[] = [];
   amounts.forEach((amount, index) => {
-    if (amount > avg * 1.5) {
-      const date = new Date(salesData[index].created_at).toLocaleDateString(
-        'ja-JP'
-      );
-      anomalies.push(`${date}の売上が平均を大きく上回っています`);
+    if (amount > average * 1.5) {
+      const rawDate = salesData[index]?.created_at;
+      const date = rawDate ? new Date(rawDate) : null;
+      const formatted =
+        date && !Number.isNaN(date.getTime())
+          ? date.toLocaleDateString('ja-JP')
+          : '日付不明';
+      anomalies.push(`${formatted}の売上が平均を大きく上回っています`);
     }
   });
 
   return anomalies;
 }
 
-function calculateReturnRate(patientData: any[]): number {
+function calculateReturnRate(patientData: PatientRecord[]): number {
   const totalPatients = patientData.length;
   const returningPatients = patientData.filter(p => !p.is_new).length;
 
   return totalPatients > 0
-    ? Math.round((returningPatients / totalPatients) * 100 * 10) / 10
+    ? Math.round((returningPatients / totalPatients) * 1000) / 10
     : 0;
 }
 
 function generateSummary(
-  salesData: any[],
-  _patientData: any[],
-  _therapistData: any[]
+  salesData: RevenueRecord[],
+  _patientData: PatientRecord[],
+  _therapistData: TherapistRecord[]
 ): string {
   const trend = calculateTrend(salesData);
   return `全体的に${trend}で推移しており、患者満足度も良好です。`;
 }
 
 function generateRecommendations(
-  salesData: any[],
-  patientData: any[]
+  salesData: RevenueRecord[],
+  patientData: PatientRecord[]
 ): string[] {
-  const recommendations = [];
+  const recommendations: string[] = [];
 
   if (patientData.filter(p => p.is_new).length > patientData.length * 0.3) {
     recommendations.push('新規患者の受入れ体制を強化することをお勧めします');
@@ -252,9 +366,9 @@ function generateRecommendations(
 }
 
 function generateNextDayPlan(
-  _salesData: any[],
-  _patientData: any[],
-  _therapistData: any[]
+  _salesData: RevenueRecord[],
+  _patientData: PatientRecord[],
+  _therapistData: TherapistRecord[]
 ): string[] {
   return [
     'スタッフミーティングで本日の振り返りを実施',
@@ -305,15 +419,42 @@ function parseAIResponseTextToObject(text: string): {
   const candidateJson = fenced?.[1]?.trim() || text.trim();
   const obj = tryParse(candidateJson) || tryParse(extractFirstJsonObject(text));
   if (obj && typeof obj === 'object') {
-    const summary = typeof obj.summary === 'string' ? obj.summary : undefined;
-    const arr = (v: any) =>
-      Array.isArray(v) ? v.filter(x => typeof x === 'string') : undefined;
-    return {
-      summary,
-      highlights: arr(obj.highlights),
-      improvements: arr(obj.improvements),
-      suggestions: arr(obj.suggestions),
-    };
+    const summary =
+      typeof obj.summary === 'string' && obj.summary.trim().length > 0
+        ? obj.summary
+        : undefined;
+    const arr = (v: unknown) =>
+      Array.isArray(v)
+        ? v.filter((x): x is string => typeof x === 'string' && x.length > 0)
+        : undefined;
+
+    const parsedResult: {
+      summary?: string;
+      highlights?: string[];
+      improvements?: string[];
+      suggestions?: string[];
+    } = {};
+
+    if (summary) {
+      parsedResult.summary = summary;
+    }
+
+    const highlights = arr(obj.highlights);
+    if (highlights && highlights.length > 0) {
+      parsedResult.highlights = highlights;
+    }
+
+    const improvements = arr(obj.improvements);
+    if (improvements && improvements.length > 0) {
+      parsedResult.improvements = improvements;
+    }
+
+    const suggestions = arr(obj.suggestions);
+    if (suggestions && suggestions.length > 0) {
+      parsedResult.suggestions = suggestions;
+    }
+
+    return parsedResult;
   }
   return {};
 }
@@ -328,11 +469,13 @@ function extractFirstJsonObject(s: string): string {
 }
 
 function generateMockAIComment(analysisResult: AnalysisResult): AIComment {
+  const [datePart = ''] = new Date().toISOString().split('T');
+
   return {
     id: `ai-comment-${Date.now()}`,
     clinic_id: 'default-clinic',
-    date: new Date().toISOString().split('T')[0],
-    summary: analysisResult.aiInsights?.summary || '',
+    date: datePart,
+    summary: analysisResult.aiInsights.summary,
     highlights: [
       '患者満足度が高水準を維持',
       '新規患者の獲得が順調',
@@ -343,7 +486,7 @@ function generateMockAIComment(analysisResult: AnalysisResult): AIComment {
       '予約システムの最適化',
       '設備のメンテナンス',
     ],
-    suggestions: analysisResult.aiInsights.nextDayPlan,
+    suggestions: [...analysisResult.aiInsights.nextDayPlan],
     created_at: new Date().toISOString(),
   };
 }

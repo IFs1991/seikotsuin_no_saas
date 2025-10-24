@@ -7,6 +7,10 @@ import React from 'react';
 import { createClient } from '@/lib/supabase';
 import { redirect } from 'next/navigation';
 import { SessionManager } from '@/components/session/SessionManager';
+import type { Database } from '@/types/supabase';
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+type SessionProfile = Pick<ProfileRow, 'clinic_id' | 'role'>;
 
 export default async function SessionManagementPage() {
   const supabase = await createClient();
@@ -22,15 +26,28 @@ export default async function SessionManagementPage() {
   }
 
   // ユーザープロファイル取得
-  const { data: profile } = await supabase
+  const profileResponse = await supabase
     .from('profiles')
-    .select('clinic_id, role, full_name')
+    .select('clinic_id, role')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (!profile) {
+  const profile = profileResponse.data as SessionProfile | null;
+
+  if (profileResponse.error || !profile) {
     redirect('/admin/login?error=profile_not_found');
   }
+
+  if (!profile.clinic_id) {
+    redirect('/admin/login?error=clinic_not_assigned');
+  }
+
+  const displayName =
+    (typeof user.user_metadata?.full_name === 'string'
+      ? user.user_metadata.full_name
+      : null) ??
+    user.email ??
+    'ログインユーザー';
 
   return (
     <div className='container mx-auto px-4 py-8 max-w-6xl'>
@@ -45,7 +62,7 @@ export default async function SessionManagementPage() {
           </div>
 
           <div className='text-right text-sm text-gray-500'>
-            <p>ログインユーザー: {profile.full_name}</p>
+            <p>ログインユーザー: {displayName}</p>
             <p>権限: {profile.role}</p>
           </div>
         </div>

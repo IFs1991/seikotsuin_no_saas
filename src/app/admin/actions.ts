@@ -33,8 +33,8 @@ function isRedirectLikeError(error: unknown): error is Error {
 }
 
 type AuthErrorDetail = {
-  message?: string | null;
-  status?: number | null;
+  message?: string | null | undefined;
+  status?: number | null | undefined;
 };
 
 function mapAuthError(error?: AuthErrorDetail | null) {
