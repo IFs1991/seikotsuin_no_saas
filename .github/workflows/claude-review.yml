@@ -10,6 +10,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write  # ← この行を追加
     steps:
       - uses: actions/checkout@v4
       - uses: anthropics/claude-code-action@v1
