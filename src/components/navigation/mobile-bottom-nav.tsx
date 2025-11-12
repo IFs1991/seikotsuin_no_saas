@@ -11,6 +11,7 @@ import {
   DollarSign,
   Sparkles,
   ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -33,6 +34,12 @@ const BASE_ITEMS: NavigationItem[] = [
     label: '日報',
     href: '/daily-reports',
     icon: FileText,
+  },
+  {
+    id: 'reservations',
+    label: '予約',
+    href: '/reservations',
+    icon: Calendar,
   },
   {
     id: 'patients',

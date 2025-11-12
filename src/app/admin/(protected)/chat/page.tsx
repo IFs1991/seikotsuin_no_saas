@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useMemo, useState } from 'react';
 import AdminChatInterface from '@/components/chat/admin-chat-interface';
 import { useAdminChat } from '@/hooks/useAdminChat';
