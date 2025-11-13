@@ -1,4 +1,4 @@
-﻿name: Claude Code Review
+name: Claude Code Review
 
 on:
   pull_request:
@@ -27,6 +27,7 @@ jobs:
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@v1
         with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             このPRを以下の観点でレビューしてください:
 
@@ -38,12 +39,3 @@ jobs:
 
           claude_args: |
             --max-turns 3
-```
-
----
-
-## もう一度テスト
-
-両方のファイルを修正したら、Issue #1で:
-```
-@claude 設定を修正しました!簡単な自己紹介をお願いします
