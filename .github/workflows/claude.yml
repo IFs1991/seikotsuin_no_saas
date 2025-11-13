@@ -10,31 +10,29 @@ on:
 
 jobs:
   claude:
-    # @claudeメンションまたは特定のラベルで起動
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.labels.*.name, 'claude')))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 最大30分で終了
+    timeout-minutes: 30
 
     permissions:
-      contents: write        # コード変更のため
-      issues: write          # Issue更新のため
-      pull-requests: write   # PR作成・更新のため
-      id-token: write        # OIDC認証のため
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 全履歴を取得(diff確認用)
+          fetch-depth: 0
 
       - name: Run Claude Code
         uses: anthropics/claude-code-action@v1
         with:
-          # カスタムプロンプト: Toshuさんのプロジェクトに最適化
           prompt: |
             あなたは整骨院管理SaaSの開発を支援する専門AIアシスタントです。
 
@@ -51,77 +49,18 @@ jobs:
 
             2. **セキュリティとプライバシーの最優先**
                - 患者の個人情報を扱うため、セキュリティは最重要
-               - パスワード、APIキー、機密情報は絶対にハードコードしない
                - 入力値のバリデーションを必ず実装
                - SQLインジェクション、XSS対策を徹底
 
             3. **段階的で堅実な実装**
-               - 一度に多くを実装せず、小さく確実に進める
                - 既存コードを壊さないよう慎重に
                - 変更箇所は最小限に抑える
-               - 必ずテストコードを追加または更新
 
             4. **保守性とコード品質**
                - コメントは日本語で、わかりやすく
                - 変数名・関数名は英語で、意味が明確に
-               - 一つの関数は一つの責任(Single Responsibility)
-               - DRY原則(Don't Repeat Yourself)を守る
-               - エラーハンドリングを必ず実装
-
-            5. **ユーザー体験(UX)の重視**
-               - ローディング表示を適切に
-               - エラーメッセージはユーザーフレンドリーに
-               - レスポンシブデザイン(スマホ・タブレット対応)
-               - アクセシビリティを考慮
-
-            ## 技術スタック(プロジェクトから自動検出)
-            実装時は、プロジェクトの既存の技術スタックに従ってください:
-            - package.jsonでフレームワーク・ライブラリを確認
-            - 既存コードのコーディングスタイルに合わせる
-            - 新しい依存関係は必要最小限に
-
-            ## 実装の流れ
-            1. まず既存コードを読んで理解する
-            2. 実装方針を説明する
-            3. コードを実装する
-            4. テストを追加する
-            5. 動作確認方法を説明する
-            6. PRを作成する
-
-            ## 注意事項
-            - 不明点があれば、実装前に確認する
-            - 複雑な変更の場合は、段階的なアプローチを提案する
-            - 既存の患者データやビジネスロジックに影響する変更は特に慎重に
 
             開発者が安心してレビューできる、品質の高いコードを提供してください。
 
-          # Claude Codeの動作設定
           claude_args: |
-            --max-turns 8
-            --model claude-sonnet-4-5-20250929
-
-          # 利用可能なツールを制限(セキュリティ向上)
-          allowed_tools: |
-            Bash(git:*)
-            View
-            Edit
-            StrReplace
-            FileCreate
-            GlobTool
-            GrepTool
-            BatchTool
-
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issue_number = context.issue.number;
-            if (issue_number) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issue_number,
-                body: '⚠️ Claude Codeの実行中にエラーが発生しました。[ワークフローのログ](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})を確認してください。'
-              });
-            }
+            --max-turns 5
