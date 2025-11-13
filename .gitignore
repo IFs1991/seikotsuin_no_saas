@@ -126,3 +126,4 @@ serena_env/
 *.db
 *.db-shm
 *.db-wal
+.worktrees/
