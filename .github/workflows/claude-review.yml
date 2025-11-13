@@ -3,14 +3,11 @@
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    # ドラフトPRは除外
     branches:
       - main
-      - develop
 
 jobs:
   review:
-    # ドラフトPRはスキップ
     if: github.event.pull_request.draft == false
 
     runs-on: ubuntu-latest
@@ -25,80 +22,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 全履歴を取得
+          fetch-depth: 0
 
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@v1
         with:
           prompt: |
-            あなたは整骨院管理SaaSの専門コードレビュアーです。
-            このPRを慎重にレビューし、以下の観点で問題点を指摘してください。
+            このPRを以下の観点でレビューしてください:
 
-            ## 最優先: セキュリティとプライバシー
-            ✅ チェック項目:
-            - 患者の個人情報(氏名、住所、電話番号、保険証番号など)の取り扱いは適切か
-            - 機密情報(パスワード、APIキー、トークン)がハードコードされていないか
-            - 入力値のバリデーションは実装されているか
-            - SQLインジェクション、XSS、CSRF対策は十分か
-            - 認証・認可の実装に抜けがないか
-            - ログに機密情報が出力されていないか
+            1. セキュリティ上の問題(SQLインジェクション、XSS、認証など)
+            2. 明らかなバグや論理エラー
+            3. パフォーマンス上の問題
 
-            ## 重要: バグと論理エラー
-            ✅ チェック項目:
-            - 明らかなバグはないか
-            - エッジケース(null、空文字列、範囲外の値)の処理は適切か
-            - 非同期処理のエラーハンドリングは十分か
-            - 予約の二重登録など、ビジネスロジックの問題はないか
-            - データの整合性は保たれるか
-
-            ## 重要: パフォーマンス
-            ✅ チェック項目:
-            - N+1クエリ問題はないか
-            - 不要なAPI呼び出しやデータベースアクセスはないか
-            - 大量データでも動作するか
-            - メモリリークの可能性はないか
-
-            ## コード品質
-            ✅ チェック項目:
-            - コードは読みやすいか
-            - 関数・変数名は適切か(英語で意味が明確)
-            - コメントは日本語でわかりやすいか
-            - DRY原則に従っているか
-            - 既存のコーディングスタイルに一致しているか
-
-            ## テストとドキュメント
-            ✅ チェック項目:
-            - 新機能にテストは追加されているか
-            - 既存のテストは壊れていないか
-            - 必要に応じてドキュメント(README等)は更新されているか
-
-            ## レビューコメントの書き方
-            - 🔴 **重大**: セキュリティ、データ損失、サービス停止につながる問題
-            - 🟡 **推奨**: 将来的なバグやメンテナンス性の問題
-            - 💡 **提案**: より良い実装方法の提案(必須ではない)
-
-            **重要な問題のみ**を指摘してください。細かいフォーマットの問題は無視してください。
-            各指摘には、具体的なファイル名と行番号、修正方法を含めてください。
-
-            問題がない場合は「✅ このPRには重大な問題は見つかりませんでした」とコメントしてください。
+            重要な問題のみを指摘してください。
 
           claude_args: |
-            --max-turns 5
-            --model claude-sonnet-4-5-20250929
+            --max-turns 3
+```
 
-          allowed_tools: |
-            View
-            GlobTool
-            GrepTool
+---
 
-      - name: Notify on failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: '⚠️ 自動レビュー中にエラーが発生しました。[ワークフローのログ](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})を確認してください。'
-            });
+## もう一度テスト
+
+両方のファイルを修正したら、Issue #1で:
+```
+@claude 設定を修正しました!簡単な自己紹介をお願いします
