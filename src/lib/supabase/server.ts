@@ -1,26 +1,14 @@
 import 'server-only';
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
-import { Database } from '@/types/supabase';
 
-export type SupabaseServerClient = SupabaseClient<Database>;
-type SupabaseServerClientFactory = () => Promise<SupabaseServerClient>;
-
-const FACTORY_KEY = Symbol.for('@@supabaseServerFactory');
-type GlobalScopeWithFactory = typeof globalThis & {
-  [FACTORY_KEY]?: SupabaseServerClientFactory;
-};
-
-const globalScope = globalThis as GlobalScopeWithFactory;
-
-async function createSupabaseClient(): Promise<SupabaseServerClient> {
+async function createSupabaseClient() {
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(
+  return createServerClient(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     {
@@ -47,6 +35,16 @@ async function createSupabaseClient(): Promise<SupabaseServerClient> {
   );
 }
 
+export type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseClient>>;
+type SupabaseServerClientFactory = () => Promise<SupabaseServerClient>;
+
+const FACTORY_KEY = Symbol.for('@@supabaseServerFactory');
+type GlobalScopeWithFactory = typeof globalThis & {
+  [FACTORY_KEY]?: SupabaseServerClientFactory;
+};
+
+const globalScope = globalThis as GlobalScopeWithFactory;
+
 function resolveSupabaseClientFactory(): SupabaseServerClientFactory {
   return globalScope[FACTORY_KEY] ?? createSupabaseClient;
 }
@@ -68,7 +66,7 @@ export async function createClient(): Promise<SupabaseServerClient> {
 }
 
 export function createAdminClient(): SupabaseServerClient {
-  return createServerClient<Database>(
+  return createServerClient(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('SUPABASE_SERVICE_ROLE_KEY'),
     {
@@ -115,11 +113,21 @@ export async function getUserPermissions(
     .eq('staff_id', userId)
     .single();
 
-  if (error) {
+  if (permissions && !error) {
+    return permissions as UserPermissions;
+  }
+
+  const { data: profilePermissions } = await supabase
+    .from('profiles')
+    .select('role, clinic_id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!profilePermissions) {
     return null;
   }
 
-  return permissions as UserPermissions;
+  return profilePermissions as UserPermissions;
 }
 
 export async function requireAuth(client?: SupabaseServerClient) {

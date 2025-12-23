@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
+import { processApiRequest } from '@/lib/api-helpers';
 
 // クエリパラメータのスキーマ
 const QuerySchema = z.object({
@@ -28,6 +29,14 @@ const QuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
+
     const { searchParams } = new URL(request.url);
     const params = QuerySchema.parse({
       limit: searchParams.get('limit'),
@@ -164,8 +173,21 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { violationId, is_false_positive, notes, reviewed_by } = body;
+    const auth = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+      sanitizeInputValues: true,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
+
+    const body = auth.body as Record<string, unknown> | undefined;
+    const violationId =
+      body && typeof body.violationId === 'string' ? body.violationId : '';
+    const is_false_positive = body ? (body as any).is_false_positive : undefined;
+    const notes = body ? (body as any).notes : undefined;
 
     if (!violationId) {
       return NextResponse.json(
@@ -174,14 +196,14 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from('csp_violations')
       .update({
         is_false_positive,
         notes,
-        reviewed_by,
+        reviewed_by: auth.auth.id,
         reviewed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })

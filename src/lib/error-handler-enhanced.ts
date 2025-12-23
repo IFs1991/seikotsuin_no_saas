@@ -198,14 +198,18 @@ export class SecurityErrorHandler {
   ): Promise<void> {
     try {
       await this.securityMonitor.logSecurityEvent({
-        eventType: 'system_error',
-        userId: context.userId || 'anonymous',
-        clinicId: context.clinicId || 'unknown',
-        ipAddress: context.ipAddress || 'unknown',
-        userAgent: context.userAgent || 'unknown',
-        details: {
+        event_type: 'system_error',
+        event_category: 'security_violation',
+        severity_level: errorData.severity === 'critical' ? 'critical' : errorData.severity === 'high' ? 'error' : 'warning',
+        event_description: error.message,
+        user_id: context.userId || 'anonymous',
+        clinic_id: context.clinicId || 'unknown',
+        ip_address: context.ipAddress || 'unknown',
+        user_agent: context.userAgent || 'unknown',
+        source_component: 'error_handler',
+        event_data: {
           errorMessage: error.message,
-          errorStack: error.stack?.substring(0, 1000), // スタックトレースを1000文字に制限
+          errorStack: error.stack?.substring(0, 1000),
           errorCategory: errorData.category,
           severity: errorData.severity,
           riskScore: errorData.riskScore,

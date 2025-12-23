@@ -111,7 +111,7 @@ export function AIAnalysis({ className }: AIAnalysisProps) {
               <h3 className='font-medium text-gray-900'>売上分析</h3>
             </div>
             <p className='text-2xl font-bold text-gray-900 mb-1'>
-              ¥{analysisData.salesAnalysis.total.toLocaleString()}
+              {analysisData.salesAnalysis.total.toLocaleString()}
             </p>
             <p className='text-sm text-gray-600'>
               トレンド: {analysisData.salesAnalysis.trend}

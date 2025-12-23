@@ -1,0 +1,5 @@
+src/components/ui/form-field.tsx(52,15): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'Partial<unknown> & Attributes'.
+src/hooks/useSystemSettings.ts(231,5): error TS2353: Object literal may only specify known properties, and 'filterState' does not exist in type 'UseSystemSettingsReturn'.
+src/lib/integration-tests.ts(3,29): error TS2306: File 'C:/Users/seekf/Desktop/seikotsuin_management_saas/src/__tests__/e2e/dashboard.test.ts' is not a module.

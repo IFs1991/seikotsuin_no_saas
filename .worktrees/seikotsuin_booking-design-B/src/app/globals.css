@@ -1,0 +1,396 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 医療系システム用のカスタムスタイル + shadcn/ui */
+@layer base {
+  :root {
+    /* shadcn/ui variables */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 221.2 83.2% 53.3%;
+    --chart-2: 142.1 76.2% 36.3%;
+    --chart-3: 45.4 93.4% 47.5%;
+    --chart-4: 0 84.2% 60.2%;
+    --chart-5: 262.1 83.3% 57.8%;
+
+    /* 医療系システム用カスタム変数 (WCAG 2.2 AA準拠) */
+    --primary-color: #1e3a8a;
+    --accent-color: #059669; /* より高コントラスト */
+    --bg-color: #f9fafb;
+    --text-color: #111827;
+    --surface-color: #ffffff;
+    --border-color: #d1d5db; /* より明確な境界 */
+    --admin-color: #7c3aed; /* コントラスト改善 */
+    --medical-urgent: #dc2626; /* 緊急時カラー */
+    --medical-success: #059669; /* 成功状態 */
+    --medical-warning: #d97706; /* 警告カラー */
+    --medical-info: #2563eb; /* 情報カラー */
+
+    /* タッチターゲットサイズ（24px以上） */
+    --touch-target-min: 1.5rem; /* 24px */
+    --touch-target-comfortable: 2.75rem; /* 44px */
+  }
+
+  .dark {
+    --bg-color: #1f2937;
+    --text-color: #f3f4f6;
+    --surface-color: #374151;
+    --border-color: #4b5563;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+
+  /* 日本語フォントの最適化 */
+  html {
+    font-family: 'Inter', 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+  }
+}
+
+@layer components {
+  /* 医療系UI共通コンポーネント (WCAG 2.2 + タッチターゲット対応) */
+  .medical-card {
+    @apply bg-white border border-gray-300 rounded-medical shadow-medical;
+  }
+
+  /* タッチターゲット24px以上のボタン */
+  .medical-button-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-medical transition-colors duration-200;
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: 0.5rem 1rem;
+  }
+
+  .medical-button-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium rounded-medical transition-colors duration-200;
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: 0.5rem 1rem;
+  }
+
+  /* 医療系専用ボタンバリアント */
+  .medical-button-urgent {
+    @apply text-white font-medium rounded-medical transition-colors duration-200;
+    background-color: var(--medical-urgent);
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: 0.5rem 1rem;
+  }
+
+  .medical-button-urgent:hover {
+    background-color: #b91c1c;
+  }
+
+  .medical-button-success {
+    @apply text-white font-medium rounded-medical transition-colors duration-200;
+    background-color: var(--medical-success);
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: 0.5rem 1rem;
+  }
+
+  .medical-button-success:hover {
+    background-color: #047857;
+  }
+
+  .medical-input {
+    @apply border-gray-300 rounded-medical focus:border-primary-500 focus:ring-primary-500;
+    min-height: var(--touch-target-min);
+  }
+
+  /* Admin専用スタイル */
+  .admin-card {
+    @apply bg-white border border-admin-200 rounded-medical shadow-medical;
+  }
+
+  .admin-button {
+    @apply bg-admin-600 hover:bg-admin-700 text-white font-medium py-2 px-4 rounded-medical transition-colors duration-200;
+  }
+
+  /* ダッシュボード用スタイル */
+  .dashboard-widget {
+    @apply medical-card p-6;
+  }
+
+  .dashboard-metric {
+    @apply text-2xl font-bold text-gray-900;
+  }
+
+  .dashboard-metric-label {
+    @apply text-sm font-medium text-gray-500;
+  }
+
+  /* チャート用スタイル */
+  .chart-container {
+    @apply medical-card p-4;
+  }
+
+  /* 形状とアニメーション */
+  .fade-in {
+    @apply animate-fade-in;
+  }
+
+  .slide-up {
+    @apply animate-slide-up;
+  }
+
+  /* レスポンシブ対応 */
+  .container-medical {
+    @apply container mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* スクロールバーのカスタマイズ */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(156, 163, 175, 0.7);
+  }
+}
+
+@layer utilities {
+  /* 医療系システム固有のユーティリティ */
+  .text-medical-primary {
+    color: var(--primary-color);
+  }
+
+  .text-medical-accent {
+    color: var(--accent-color);
+  }
+
+  .bg-medical-primary {
+    background-color: var(--primary-color);
+  }
+
+  .bg-medical-accent {
+    background-color: var(--accent-color);
+  }
+
+  /* アクセシビリティ強化 (WCAG 2.2対応) */
+  .focus-visible-medical {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  /* フォーカス時の要素隠れ防止 (WCAG 2.2 基準 2.4.11) */
+  .focus-no-obscure {
+    scroll-margin: 1rem;
+  }
+
+  /* スキップリンク */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    z-index: 999;
+    padding: 8px;
+    background-color: var(--primary-color);
+    color: white;
+    text-decoration: none;
+  }
+
+  .skip-link:focus {
+    left: 6px;
+    top: 7px;
+  }
+
+  /* タッチターゲットユーティリティ */
+  .touch-target {
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+  }
+
+  .touch-target-comfortable {
+    min-height: var(--touch-target-comfortable);
+    min-width: var(--touch-target-comfortable);
+  }
+
+  /* 状態表示（色だけに依存しない） */
+  .status-urgent {
+    background-color: var(--medical-urgent);
+    color: white;
+  }
+
+  .status-urgent::before {
+    content: '⚠ ';
+    font-weight: bold;
+  }
+
+  .status-success {
+    background-color: var(--medical-success);
+    color: white;
+  }
+
+  .status-success::before {
+    content: '✓ ';
+    font-weight: bold;
+  }
+
+  .status-warning {
+    background-color: var(--medical-warning);
+    color: white;
+  }
+
+  .status-warning::before {
+    content: '⚡ ';
+    font-weight: bold;
+  }
+
+  /* 印刷用スタイル */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .print-friendly {
+      @apply text-black bg-white;
+    }
+  }
+
+  /* モバイル対応ユーティリティ */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-section {
+    @apply py-4 sm:py-6 lg:py-8;
+  }
+
+  /* iOS Safe Area対応 */
+  .pb-safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* タッチデバイス専用スタイル */
+  @media (hover: none) and (pointer: coarse) {
+    .hover-touch-none:hover {
+      background-color: inherit !important;
+      color: inherit !important;
+    }
+
+    .touch-device-spacing {
+      @apply p-6; /* タッチデバイスでは余白を大きく */
+    }
+  }
+
+  /* デスクトップでのタッチ要素の制限 */
+  @media (hover: hover) and (pointer: fine) {
+    .desktop-hide {
+      display: none;
+    }
+  }
+
+  /* モバイル専用要素 */
+  @media (max-width: 768px) {
+    .mobile-only {
+      display: block;
+    }
+
+    .desktop-only {
+      display: none;
+    }
+
+    /* モバイルでのカード間隔調整 */
+    .mobile-card-spacing {
+      @apply space-y-3;
+    }
+
+    /* モバイルフォーム最適化 */
+    .mobile-form-field {
+      @apply mb-4; /* フィールド間隔を広く */
+    }
+
+    .mobile-form-input {
+      @apply text-base; /* ズーム防止のため16px以上 */
+      min-height: var(--touch-target-comfortable);
+    }
+  }
+
+  /* デスクトップ専用要素 */
+  @media (min-width: 769px) {
+    .mobile-only {
+      display: none;
+    }
+
+    .desktop-only {
+      display: block;
+    }
+  }
+
+  /* 横向き対応 */
+  @media (orientation: landscape) and (max-height: 600px) {
+    .landscape-compact {
+      @apply py-2; /* 縦幅が狭い時は余白を減らす */
+    }
+  }
+
+  /* 高コントラストモード対応 */
+  @media (prefers-contrast: high) {
+    .medical-card {
+      @apply border-2 border-gray-900;
+    }
+
+    .touch-target,
+    .touch-target-comfortable {
+      @apply border border-gray-600;
+    }
+  }
+
+  /* 動きを控えめにするユーザー向け */
+  @media (prefers-reduced-motion: reduce) {
+    .fade-in,
+    .slide-up {
+      animation: none;
+    }
+
+    /* スワイプアニメーション無効化 */
+    .swipe-transition {
+      transition: none !important;
+    }
+  }
+}

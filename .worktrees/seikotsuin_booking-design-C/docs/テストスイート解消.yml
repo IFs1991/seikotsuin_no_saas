@@ -1,0 +1,286 @@
+meta:
+  title: "Auth Flow Integration Test 安定化・緑化 要件定義書"
+  version: "1.2.0"
+  date: "2025-10-02"
+  owner: "seikotsuin_management_saas"
+  scope:
+    - Next.js 14
+    - Jest (integration)
+    - Supabase Auth
+    - Windows / WSL 両環境
+
+objectives:
+  - "auth-flow.test.ts の4失敗（mock未適用／errors.passwordなし／エラーマッピング不足／warn未出力）を解消"
+  - "Node + undici でサーバー寄り統合テストを安定実行"
+  - "Windows と WSL の SWC 混在問題の恒常対応"
+  - "再発防止（import規約・lint・CI）"
+
+problems:
+  - id: P1
+    name: "Web標準APIの未定義（Response等）"
+    cause: "Node環境で `next/server` がWeb API前提／Jestで未提供"
+  - id: P2
+    name: "Supabaseクライアントのモック未適用"
+    cause: "実装 import 経路不一致／mock宣言より先にimport"
+  - id: P3
+    name: "signupのパスワード強度エラーがundefined"
+    cause: "Zodの `flatten().fieldErrors` を返却していない"
+  - id: P4
+    name: "無効ユーザーの文言不一致"
+    cause: "エラーマッピング未整備で汎用文へ丸め込み"
+  - id: P5
+    name: "セキュリティwarnログ未出力"
+    cause: "失敗分岐で `console.warn` を呼んでいない"
+  - id: P6
+    name: "WSLでSWCバイナリ不足"
+    cause: "node_modulesを異OS間で共用"
+
+requirements:
+  functional:
+    - id: F1
+      desc: "全サーバーアクションは '@/lib/supabase' から getServerClient を import する（単一入口）"
+    - id: F2
+      desc: "signup失敗時は `errors = zodError.flatten().fieldErrors` を返す（`errors.password` を生成）"
+    - id: F3
+      desc: "login失敗時は status優先で文言をマップ（403→アカウント無効／400→認証失敗／その他→システムエラー）"
+    - id: F4
+      desc: "login失敗時に必ず `console.warn('[Security] Login attempt failed:', { email, error })` を出力"
+    - id: F5
+      desc: "監査ユーティリティはテストで最小モック化（副作用回避）"
+  non_functional:
+    - id: N1
+      desc: "Jestは `testEnvironment: 'node'`、Web APIは `undici/register` でポリフィル"
+    - id: N2
+      desc: "Windows/WSLで node_modules を混用しない。両用時はOS別SWCをdevDeps追加＋各OSでrebuild"
+    - id: N3
+      desc: "jsdomはDOMが必要なテストファイルにのみ付与（ファイル先頭の `@jest-environment` 指定）"
+    - id: N4
+      desc: "ESLintで '@/lib/supabase/server' の直importを禁止（規約化）"
+
+deliverables:
+  - "jest.setup.js（undici登録・TextEncoder/Decoder注入）"
+  - "jest.config.js|ts（setupFiles参照・moduleNameMapper）"
+  - "src/lib/supabase/index.ts（getServerClientの再エクスポート）"
+  - "authサーバーアクションの実装修正（Zod・エラーマップ・warn出力）"
+  - "integrationテスト修正（mock順序／監査モック／warn spy）"
+  - ".eslintrc.json のルール追加（直import禁止）"
+  - "SWC多環境運用手順"
+
+implementation_steps:
+  - step: "依存導入（undici）"
+    commands:
+      - "npm i -D undici"
+    files:
+      - path: "jest.setup.js"
+        action: "create_or_update"
+        content: |
+          // CommonJS で記述（*.jsの場合）
+          require('undici/register');
+          const { TextEncoder, TextDecoder } = require('node:util');
+          global.TextEncoder = TextEncoder;
+          global.TextDecoder = TextDecoder;
+      - path: "jest.config.js|ts"
+        action: "merge"
+        content: |
+          module.exports = {
+            testEnvironment: 'node',
+            setupFiles: ['<rootDir>/jest.setup.js'],
+            moduleNameMapper: { '^@/(.*)$': '<rootDir>/$1' },
+          };
+  - step: "Supabase import 統一"
+    files:
+      - path: "src/lib/supabase/index.ts"
+        action: "create_or_update"
+        content: |
+          export { getServerClient } from './server';
+      - path: "src/app/**/(auth)/**/actions.ts"
+        action: "replace_imports"
+        before: "import { getServerClient } from '@/lib/supabase/server'"
+        after:  "import { getServerClient } from '@/lib/supabase'"
+  - step: "authサーバーアクション修正（Zod・エラーマップ・warn）"
+    files:
+      - path: "src/app/(auth)/actions.ts"
+        action: "patch"
+        content: |
+          import { z } from 'zod';
+          import { getServerClient } from '@/lib/supabase';
+
+          const SignupSchema = z.object({
+            email: z.string().email('メール形式が不正です'),
+            password: z.string()
+              .min(12, '12文字以上')
+              .regex(/[a-z]/, '小文字必須')
+              .regex(/[A-Z]/, '大文字必須')
+              .regex(/[0-9]/, '数字必須')
+              .regex(/[^A-Za-z0-9]/, '記号必須'),
+          });
+
+          const INACTIVE_MSG = 'アカウントが無効化されています。管理者にお問い合わせください';
+          const INVALID_MSG  = 'メールアドレスまたはパスワードが正しくありません';
+          const GENERIC_MSG  = 'システムエラーが発生しました';
+
+          function mapAuthError(err: any): string {
+            const status = err?.status ?? err?.cause?.status;
+            const msg = (err?.message ?? '').toLowerCase();
+            if (status === 403 || /inactive|banned|email not confirmed/.test(msg)) return INACTIVE_MSG;
+            if (status === 400 || /invalid credentials|invalid login/.test(msg))  return INVALID_MSG;
+            return GENERIC_MSG;
+          }
+
+          export async function signupAction(input: { email: string; password: string }) {
+            const parsed = SignupSchema.safeParse(input);
+            if (!parsed.success) {
+              const { fieldErrors } = parsed.error.flatten();
+              return { success: false, errors: fieldErrors };
+            }
+            const supabase = getServerClient();
+            try {
+              await supabase.auth.signUp(parsed.data);
+              return { success: true };
+            } catch {
+              return { success: false, errors: { _form: [GENERIC_MSG] } };
+            }
+          }
+
+          export async function loginAction(input: { email: string; password: string }) {
+            const email = input.email.trim().toLowerCase();
+            const password = input.password;
+            const supabase = getServerClient();
+            try {
+              await supabase.auth.signInWithPassword({ email, password });
+              return { success: true };
+            } catch (e) {
+              const msg = mapAuthError(e);
+              console.warn('[Security] Login attempt failed:', { email, error: msg });
+              return { success: false, errors: { _form: [msg] } };
+            }
+          }
+  - step: "integrationテスト修正（mock順序・監査モック・warn spy）"
+    files:
+      - path: "src/__tests__/integration/auth-flow.test.ts"
+        action: "patch"
+        content: |
+          // Supabaseモックは import より前に宣言
+          const mockSupabaseClient = {
+            auth: {
+              signInWithPassword: jest.fn(),
+              signUp: jest.fn(),
+              signOut: jest.fn(),
+            },
+          };
+          jest.mock('@/lib/supabase', () => ({
+            getServerClient: () => mockSupabaseClient,
+          }));
+          jest.mock('@/lib/audit-logger', () => ({
+            AuditLogger: { logDataAccess: jest.fn(), logSecurityEvent: jest.fn() },
+            getRequestInfo: jest.fn(() => ({ ip: '127.0.0.1', userAgent: 'jest' })),
+          }));
+          // ここから対象を import
+          // import { loginAction, signupAction } from '@/app/(auth)/actions';
+
+          // warn spy 例
+          // let warnSpy: jest.SpyInstance;
+          // beforeEach(() => { warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {}); });
+          // afterEach(() => { warnSpy.mockRestore(); });
+
+          // 無効ユーザーケース
+          // mockSupabaseClient.auth.signInWithPassword.mockRejectedValueOnce({ status: 403, message: 'inactive' });
+  - step: "ESLint ルールで直import禁止"
+    files:
+      - path: ".eslintrc.json"
+        action: "merge"
+        content: |
+          {
+            "rules": {
+              "no-restricted-imports": ["error", {
+                "paths": [
+                  { "name": "@/lib/supabase/server", "message": "必ず '@/lib/supabase' から import してください" }
+                ]
+              }]
+            }
+          }
+  - step: "SWC運用（Windows / WSL）"
+    guidance:
+      windows:
+        - "PowerShellで `npm ci` 実行→Windows用SWC解決"
+      wsl:
+        - "WSL内で `npm ci` 実行→linux/x64用SWC解決"
+      both:
+        - "両OS併用時は devDeps に @next/swc-win32-x64-msvc と @next/swc-linux-x64-gnu を追加"
+        - "各OSで `npm rebuild <該当SWC> --force`"
+      wasm_fallback:
+        - "緊急回避のみ: `NEXT_SKIP_NATIVE_BUNDLER_DETECTION=1`（速度低下許容時）"
+
+test_plan:
+  cases:
+    - id: T1
+      name: "login 正常系の呼出し"
+      assert:
+        - "mockSupabaseClient.auth.signInWithPassword を email小文字化・passwordそのままで toHaveBeenCalledWith"
+    - id: T2
+      name: "signup 弱パスワード"
+      assert:
+        - "result.success === false"
+        - "result.errors.password が toBeDefined()"
+    - id: T3
+      name: "無効ユーザー文言"
+      arrange: "signInWithPassword を { status:403, message:'inactive' } で reject"
+      assert:
+        - "result.errors._form に 'アカウントが無効化されています。管理者にお問い合わせください' を含む"
+    - id: T4
+      name: "セキュリティwarnログ"
+      arrange: "jest.spyOn(console, 'warn').mockImplementation(() => {})"
+      assert:
+        - "toHaveBeenCalledWith('[Security] Login attempt failed:', expect.objectContaining({ email: 'user@example.com' }))"
+
+verification:
+  commands:
+    - "node -p \"require.resolve('undici/register')\""
+    - "npm run test:integration -- src/__tests__/integration/auth-flow.test.ts -t \"login action validates input\""
+    - "npm run test:integration"
+  expected:
+    - "Test Suites: 0 failed"
+    - "Tests: 17 passed, 0 failed"
+
+ci_pipeline:
+  matrix:
+    os: ["windows-latest", "ubuntu-latest"]
+    node: ["18", "20"]
+  steps:
+    - "npm ci"
+    - "npm run test:integration"
+  notes:
+    - "UbuntuランナーでSWC解決不可時は devDepsへ `@next/swc-linux-x64-gnu` を追加"
+
+risks:
+  - id: R1
+    desc: "直import残存によりmock未適用"
+    mitigation: "ESLintルールで強制／CIでlint必須化"
+  - id: R2
+    desc: "Supabaseエラー仕様の将来変更"
+    mitigation: "status優先の分岐／`mapAuthError`で集約し局所修正"
+  - id: R3
+    desc: "warnログが本番でノイズ化"
+    mitigation: "本番はpino/winston等へ委譲しレベル制御。テストはconsole.warn維持"
+
+acceptance_criteria:
+  - "auth-flow.test.ts の4失敗が解消（calls>0／errors.password生成／403で無効化メッセージ／warn出力）"
+  - "全統合テストがPass（17/17）"
+  - "Windows/WSLいずれの実行でも手順通りに完走"
+
+progress:
+  - timestamp: '2025-10-02 21:35'
+    phase: '検証フェーズ'
+    summary: 'auth-flow統合テストの仕様反映と環境整備を完了し、残課題の検証を継続中'
+    details:
+      - 'jest.setup.jsでundici/registerを優先し、存在しない環境ではundici本体のpolyfillにフォールバックするハンドリングを追加'
+      - '管理画面auth actionsでZod検証エラー時のpasswordフィールド補完とステータス・詳細を含むwarnログを実装'
+      - 'auth-flow.integrationテストをローカライズされた期待値に合わせ更新し、403ケースを追加'
+      - 'npm run test:integration -- src/__tests__/integration/auth-flow.test.ts を実行し、auth-flow関連は通過、api-staging-data.alert検知が未解消で継続調査中'
+  - timestamp: '2025-10-02 21:50'
+    phase: '検証フェーズ'
+    summary: 'dashboard連動のアラート検証まで完了し、統合テスト一式がグリーン'
+    details:
+      - 'dashboard API用Supabaseモックを日付判定ベースにリファクタし、前日差分アラートを再現'
+      - 'visitsモックも範囲比較で昨日データを返すよう調整し、患者数アラートを検証'
+      - 'npm run test:integration -- src/__tests__/integration/auth-flow.test.ts を再実行し、3スイート22テストすべて成功を確認'

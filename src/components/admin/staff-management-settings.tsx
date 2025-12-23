@@ -96,10 +96,14 @@ export function StaffManagementSettings() {
     },
   ]);
 
-  const [newStaff, setNewStaff] = useState({
+  const [newStaff, setNewStaff] = useState<{
+    name: string;
+    email: string;
+    role: Staff['role'];
+  }>({
     name: '',
     email: '',
-    role: 'receptionist' as const,
+    role: 'receptionist',
   });
 
   const [isLoading, setIsLoading] = useState(false);

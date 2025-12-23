@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js build output
+.next
+out
+
+# Environment files
+.env*
+
+# Testing artifacts
+coverage
+.nyc_output
+
+# IDE / editor
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,261 @@
+meta:
+  title: "Auth Flow Integration Test 緑化 要件定義書（最終版）"
+  version: "1.1.0"
+  date: "2025-10-02"
+  owner: "seikotsuin_management_saas"
+  scope: ["Next.js 14", "Jest", "Supabase Auth", "Windows/WSL 両対応"]
+  goals:
+    - "auth-flow.test.ts の赤4件を解消し 17/17 パス"
+    - "モック差替えの再現性（import経路と順序）を規約化"
+    - "エラーハンドリング／ログ出力の仕様を確定"
+  non_goals:
+    - "UI/UX の変更"
+    - "本番ログ基盤の刷新（必要なら別案件で）"
+
+context:
+  summary:
+    - "SWC バイナリ問題は Windows 側で解消。現状の失敗は実装とテスト期待の不整合。"
+  test_failures:
+    - "loginAction がモックに到達せず calls:0"
+    - "signupAction で errors.password が undefined"
+    - "無効ユーザー文言が 'システムエラー...' に丸められる"
+    - "セキュリティ warn ログ未出力"
+
+requirements:
+  functional:
+    - id: F1
+      desc: "サーバーアクションは常に '@/lib/supabase' を経由して Supabase クライアントを取得する"
+    - id: F2
+      desc: "signup バリデーション失敗時は Zod の fieldErrors をそのまま返却（errors.password が存在）"
+    - id: F3
+      desc: "認証エラーは種類別に文言マッピング（403/inactive→無効化、400/invalid→認証失敗、その他→システムエラー）"
+    - id: F4
+      desc: "ログイン失敗時に必ず console.warn を発行（期待メッセージ・payload 含む）"
+    - id: F5
+      desc: "監査ユーティリティはテストで最小モック化（副作用回避）"
+  non_functional:
+    - id: N1
+      desc: "Jest で Web API を undici/register でポリフィル（Response 等）"
+    - id: N2
+      desc: "Windows と WSL で node_modules を混用しない（混用する場合は両プラットフォームの SWC を devDeps 追加）"
+    - id: N3
+      desc: "ESLint で '@/lib/supabase' の直 import を禁止"
+
+design_decisions:
+  - "モジュール入口の集約で 'どこをモックすれば良いか' を単純化"
+  - "エラーマッピングは status 優先・message 補助で brittle を回避"
+  - "ログは console.warn を最低限保証（必要なら AuditLogger 併用）"
+
+implementation_plan:
+  - step: "Supabase import 統一"
+    tasks:
+      - path: "src/lib/supabase/index.ts"
+        action: "create_or_update"
+        content: |
+          export { getServerClient } from './server';
+      - path: "（login・signup の各サーバーアクション）"
+        action: "update_imports"
+        before: "import { getServerClient } from '@/lib/supabase'"
+        after:  "import { getServerClient } from '@/lib/supabase'"
+  - step: "Jest モック順序の是正"
+    tasks:
+      - path: "src/__tests__/integration/auth-flow.test.ts"
+        action: "ensure_mock_before_import"
+        content: |
+          const mockSupabaseClient = {
+            auth: {
+              signInWithPassword: jest.fn(),
+              signUp: jest.fn(),
+              signOut: jest.fn(),
+            },
+          };
+          jest.mock('@/lib/supabase', () => ({
+            getServerClient: () => mockSupabaseClient,
+          }));
+          // ここより下で対象を import
+          // import { loginAction, signupAction } from '@/app/(auth)/actions';
+  - step: "Zod バリデーションとエラー形の確定"
+    tasks:
+      - path: "src/app/(auth)/actions.ts"
+        action: "update_validation"
+        content: |
+          import { z } from 'zod';
+          const SignupSchema = z.object({
+            email: z.string().email('メール形式が不正です'),
+            password: z.string()
+              .min(12, '12文字以上')
+              .regex(/[a-z]/, '小文字必須')
+              .regex(/[A-Z]/, '大文字必須')
+              .regex(/[0-9]/, '数字必須')
+              .regex(/[^A-Za-z0-9]/, '記号必須'),
+          });
+          export async function signupAction(input: { email: string; password: string }) {
+            const parsed = SignupSchema.safeParse(input);
+            if (!parsed.success) {
+              const { fieldErrors } = parsed.error.flatten();
+              return { success: false, errors: fieldErrors };
+            }
+            const supabase = getServerClient();
+            try {
+              await supabase.auth.signUp(parsed.data);
+              return { success: true };
+            } catch {
+              return { success: false, errors: { _form: ['システムエラーが発生しました'] } };
+            }
+          }
+  - step: "認証エラーマッピングの導入＋warn 出力"
+    tasks:
+      - path: "src/app/(auth)/actions.ts"
+        action: "add_error_mapping"
+        content: |
+          const INACTIVE_MSG = 'アカウントが無効化されています。管理者にお問い合わせください';
+          const INVALID_MSG  = 'メールアドレスまたはパスワードが正しくありません';
+          const GENERIC_MSG  = 'システムエラーが発生しました';
+          function mapAuthError(err: any): string {
+            const status = err?.status ?? err?.cause?.status;
+            const msg = (err?.message ?? '').toLowerCase();
+            if (status === 403 || /inactive|banned|email not confirmed/.test(msg)) return INACTIVE_MSG;
+            if (status === 400 || /invalid credentials|invalid login/.test(msg))  return INVALID_MSG;
+            return GENERIC_MSG;
+          }
+          export async function loginAction(input: { email: string; password: string }) {
+            const email = input.email.trim().toLowerCase();
+            const password = input.password;
+            const supabase = getServerClient();
+            try {
+              await supabase.auth.signInWithPassword({ email, password });
+              return { success: true };
+            } catch (e) {
+              const msg = mapAuthError(e);
+              console.warn('[Security] Login attempt failed:', { email, error: msg });
+              return { success: false, errors: { _form: [msg] } };
+            }
+          }
+  - step: "監査ユーティリティのモック"
+    tasks:
+      - path: "src/__tests__/integration/auth-flow.test.ts"
+        action: "mock_audit_logger"
+        content: |
+          jest.mock('@/lib/audit-logger', () => ({
+            AuditLogger: { logDataAccess: jest.fn(), logSecurityEvent: jest.fn() },
+            getRequestInfo: jest.fn(() => ({ ip: '127.0.0.1', userAgent: 'jest' })),
+          }));
+  - step: "Jest の Web API ポリフィル（既対応済みならスキップ可）"
+    tasks:
+      - path: "jest.setup.ts"
+        action: "create_or_update"
+        content: |
+          import 'undici/register';
+          import { TextEncoder, TextDecoder } from 'node:util';
+          // @ts-ignore
+          global.TextEncoder = TextEncoder;
+          // @ts-ignore
+          global.TextDecoder = TextDecoder;
+      - path: "jest.config.ts"
+        action: "merge"
+        content: |
+          export default {
+            testEnvironment: 'node',
+            setupFiles: ['<rootDir>/jest.setup.ts'],
+            moduleNameMapper: { '^@/(.*)$': '<rootDir>/$1' },
+          };
+  - step: "ESLint で直 import を禁止（事故防止）"
+    tasks:
+      - path: ".eslintrc.json"
+        action: "merge"
+        content: |
+          {
+            "rules": {
+              "no-restricted-imports": ["error", {
+                "paths": [
+                  { "name": "@/lib/supabase", "message": "必ず '@/lib/supabase' から import してください" }
+                ]
+              }]
+            }
+          }
+
+test_updates:
+  - id: T1
+    name: "login 正常系の呼び出し検証"
+    arrange: "mockSupabaseClient.auth.signInWithPassword.mockResolvedValueOnce({ data:{}, error:null })"
+    assert:
+      - "toHaveBeenCalledWith({ email:'user@example.com', password:'ValidPassword123!' })"
+  - id: T2
+    name: "signup 弱パスワードで fieldErrors"
+    arrange: "12未満または記号欠如などの弱パスワード"
+    assert:
+      - "result.success === false"
+      - "result.errors.password が toBeDefined()"
+  - id: T3
+    name: "無効ユーザーの文言"
+    arrange: "signInWithPassword を { status:403, message:'inactive' } で reject"
+    assert:
+      - "result.errors._form に 'アカウントが無効化されています。管理者にお問い合わせください' を含む"
+  - id: T4
+    name: "セキュリティ warn ログ"
+    arrange: "jest.spyOn(console, 'warn').mockImplementation(() => {})"
+    assert:
+      - "toHaveBeenCalledWith('[Security] Login attempt failed:', expect.objectContaining({ email:'user@example.com' }))"
+
+dev_environment:
+  node:
+    supported: ["18.x", "20.x"]
+  os_notes:
+    windows:
+      - "PowerShell で実行する場合は Windows 用 SWC を維持"
+    wsl:
+      - "WSL で実行する場合は WSL 内で npm ci（linux/x64 向け SWC を解決）"
+    cross_platform:
+      - "両OSで動かす場合は devDeps に @next/swc-linux-x64-gnu と @next/swc-win32-x64-msvc を追加し、各環境で npm rebuild 実施"
+      - "WASM フォールバックは速度低下を許容する場合のみ: NEXT_SKIP_NATIVE_BUNDLER_DETECTION=1"
+
+ci_pipeline:
+  matrix:
+    node: ["18", "20"]
+    os: ["windows-latest", "ubuntu-latest"]
+  steps:
+    - "npm ci"
+    - "npm run test:integration"
+  notes:
+    - "もし CI で SWC が解決しない場合は ubuntu 側で @next/swc-linux-x64-gnu を devDeps に加える"
+
+verification:
+  local_commands:
+    - "npm run test:integration -- src/__tests__/integration/auth-flow.test.ts -t \"login action validates input\""
+    - "npm run test:integration"
+  expected_result:
+    - "Test Suites: 3 total, 0 failed"
+    - "Tests: 17 passed, 0 failed"
+
+acceptance_criteria:
+  - "auth-flow.test.ts の4失敗が解消される"
+  - "loginAction で mockSupabaseClient.auth.signInWithPassword の calls > 0"
+  - "signupAction で errors.password が常に生成される（弱パスワード時）"
+  - "403/inactive で所定の日本語メッセージが返る"
+  - "失敗時に console.warn が呼ばれ、テストが検証に成功"
+
+risks:
+  - id: R1
+    desc: "既存コードが '@/lib/supabase' を参照している箇所の置換漏れ"
+    mitigation: "ESLint ルール導入／CI で lint を必須化"
+  - id: R2
+    desc: "Supabase 側エラーメッセージ仕様変更"
+    mitigation: "status 優先で分岐（message は補助）。将来変更は mapAuthError のみで吸収"
+  - id: R3
+    desc: "本番で warn がノイズ化"
+    mitigation: "本番は logger ライブラリへ切替しレベル制御、テストでは console.warn を維持"
+
+rollback_plan:
+  - "本ブランチを revert 可能にし、既存の挙動（_form中心のエラー返却）へ戻す"
+  - "mapAuthError を無効化し、GENERIC_MSG のみ返却する暫定パッチを用意"
+
+appendix:
+  snippets:
+    eslint_rule: |
+      "no-restricted-imports": ["error", {
+        "paths": [{ "name": "@/lib/supabase", "message": "必ず '@/lib/supabase' からimportしてください" }]
+      }]
+    console_warn_spy: |
+      let warnSpy: jest.SpyInstance;
+      beforeEach(() => { warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {}); });
+      afterEach(() => { warnSpy.mockRestore(); });

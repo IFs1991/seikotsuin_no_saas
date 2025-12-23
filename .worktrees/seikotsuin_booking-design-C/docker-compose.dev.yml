@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.development
+    environment:
+      NODE_ENV: development
+      HOSTNAME: 0.0.0.0
+      PORT: 3001
+      CHOKIDAR_USEPOLLING: "1"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./src:/app/src:cached
+      - ./public:/app/public:cached
+      - ./package.json:/app/package.json:cached
+      - ./package-lock.json:/app/package-lock.json:cached
+      - ./next.config.js:/app/next.config.js:cached
+      - ./tailwind.config.ts:/app/tailwind.config.ts:cached
+      - ./tsconfig.json:/app/tsconfig.json:cached
+    restart: unless-stopped
+    tty: true

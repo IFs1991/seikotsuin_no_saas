@@ -77,13 +77,16 @@ const useDailyReports = () => {
       const { data, error } = await supabase
         .from('daily_reports')
         .insert([report])
+        .select()
         .single();
 
       if (error) {
         throw error;
       }
 
-      setReports([...reports, data]);
+      if (data && typeof data === 'object' && 'staff_id' in data) {
+        setReports([...reports, data as DailyReport]);
+      }
       setFormState({
         staff_id: 0,
         date: new Date().toISOString().slice(0, 10),
@@ -102,17 +105,20 @@ const useDailyReports = () => {
         .from('daily_reports')
         .update(updates)
         .eq('id', id)
+        .select()
         .single();
 
       if (error) {
         throw error;
       }
 
-      setReports(
-        reports.map(report =>
-          report.id === id ? { ...report, ...data } : report
-        )
-      );
+      if (data && typeof data === 'object') {
+        setReports(
+          reports.map(report =>
+            report.id === id ? { ...report, ...(data as Partial<DailyReport>) } : report
+          )
+        );
+      }
     } catch (err: any) {
       setError(err.message);
     }

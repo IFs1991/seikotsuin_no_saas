@@ -1,0 +1,19 @@
+FROM node:20-bookworm-slim
+
+# Configure working directory
+WORKDIR /app
+
+# Install dependencies first to leverage Docker layer caching
+COPY package*.json ./
+RUN npm ci
+
+# Copy the rest of the application source
+COPY . .
+
+# Ensure Next.js can bind to all interfaces and use the expected port
+ENV HOSTNAME=0.0.0.0 \
+    PORT=3001
+
+EXPOSE 3001
+
+CMD ["npm", "run", "dev"]

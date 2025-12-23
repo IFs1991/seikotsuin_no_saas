@@ -5,21 +5,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { backupCodeManager } from '@/lib/mfa/backup-codes';
+import { createClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'ユーザーIDが必要です' },
-        { status: 400 }
-      );
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
     // バックアップコード使用状況取得
-    const usage = await backupCodeManager.getBackupCodeUsage(userId);
+    const usage = await backupCodeManager.getBackupCodeUsage(user.id);
 
     return NextResponse.json(usage);
   } catch (error) {

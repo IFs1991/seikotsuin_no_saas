@@ -1,0 +1,94 @@
+title: "１２月１２日の進捗"
+date: "2025-12-12"
+summary:
+  - "予約機能のフロントエンド基盤を、モック駆動＋Supabase実データ差し替え可能な形で整備。"
+  - "新規予約・予約詳細・メニュー管理・リソース管理の主要画面とAPIを追加。"
+completed:
+  backend_and_schema:
+    - item: "予約システムSQLスキーマにオプション対応を追加"
+      files:
+        - "sql/migrations/reservation_system_schema.sql"
+      details:
+        - "menus.options(JSONB) を追加"
+        - "reservations.selected_options(JSONB) を追加"
+    - item: "予約/顧客/メニュー/リソースのNext.js Route Handler APIを追加（未適用時はモック返却）"
+      files:
+        - "src/app/api/reservations/route.ts"
+        - "src/app/api/reservations/schema.ts"
+        - "src/app/api/customers/route.ts"
+        - "src/app/api/customers/schema.ts"
+        - "src/app/api/menus/route.ts"
+        - "src/app/api/menus/schema.ts"
+        - "src/app/api/resources/route.ts"
+        - "src/app/api/resources/schema.ts"
+      endpoints:
+        reservations:
+          - "GET /api/reservations"
+          - "POST /api/reservations"
+          - "PATCH /api/reservations"
+          - "DELETE /api/reservations"
+        customers:
+          - "GET /api/customers"
+          - "POST /api/customers"
+          - "PATCH /api/customers"
+        menus:
+          - "GET /api/menus"
+          - "POST /api/menus"
+          - "PATCH /api/menus"
+          - "DELETE /api/menus"
+        resources:
+          - "GET /api/resources"
+          - "POST /api/resources"
+          - "PATCH /api/resources"
+          - "DELETE /api/resources"
+  frontend:
+    - item: "予約用型をオプション/選択オプション対応へ拡張"
+      files:
+        - "src/types/reservation.ts"
+      details:
+        - "MenuOption / ReservationOptionSelection を追加"
+        - "Menu.options / Reservation.selectedOptions を追加"
+    - item: "予約一覧・予約作成で使うフロント用hooksを追加"
+      files:
+        - "src/hooks/useReservations.ts"
+        - "src/hooks/useReservationFormData.ts"
+      details:
+        - "API失敗時はReservationService→モックの順でフォールバック"
+        - "予約フォーム用に customers/menus/resources をまとめて取得"
+    - item: "新規予約フォームを共通コンポーネント化"
+      files:
+        - "src/components/reservations/reservation-form.tsx"
+      details:
+        - "患者・メニュー・スタッフ・日時・オプション・メモを一括入力"
+        - "選択オプションの所要時間/価格差分を反映して終了時刻を計算"
+    - item: "主要予約画面の追加/実データ接続"
+      files:
+        - "src/app/reservations/new/page.tsx"
+        - "src/app/reservations/[id]/page.tsx"
+        - "src/app/reservations/page.tsx"
+        - "src/app/reservations/list/page.tsx"
+      details:
+        - "タイムライン/一覧はuseReservationsでAPI接続"
+        - "予約カード/一覧の詳細ボタンから予約詳細へ遷移"
+        - "予約詳細でメモ保存・ステータス更新を実装"
+    - item: "予約運用向けマスタ管理画面を追加"
+      files:
+        - "src/app/reservations/settings/menus/page.tsx"
+        - "src/app/reservations/settings/resources/page.tsx"
+      details:
+        - "menus/resources のCRUDと有効切替"
+        - "オプション・勤務時間などはJSON入力で暫定対応"
+fixed_bugs:
+  - "reservations画面の500エラー原因だったAvatarImage未定義を修正"
+  - "予約関連のimport/export不整合を解消"
+next_steps:
+  required_for_real_data:
+    - "Supabaseへ sql/migrations/apply_reservation_system.sql を適用（更新済みschema使用）"
+    - "npm run supabase:types で src/types/supabase.ts を再生成"
+  feature_buildout:
+    - "customers(患者)一覧/詳細UIを追加し、予約履歴と新規予約導線を提供"
+    - "タイムラインの空き枠クリック→新規予約モーダル化（ReservationForm再利用）"
+    - "既存 /reservations/register を新フォームに統合"
+notes:
+  - "既存の patients/staff は分析用途として残し、予約運用は customers/resources/menus/reservations に寄せる方針。"
+  - "APIはRLS/clinic_idガードを前提にしているため、Supabase側の権限・clinic_id整合が必要。"

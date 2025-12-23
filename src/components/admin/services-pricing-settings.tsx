@@ -260,7 +260,7 @@ export function ServicesPricingSettings() {
                         <span>{service.duration}分</span>
                       </div>
                       <div className='font-medium text-gray-900'>
-                        ¥{service.price.toLocaleString()}
+                        {service.price.toLocaleString()}
                       </div>
                       <div>カテゴリ: {categoryNames[service.category]}</div>
                     </div>
@@ -330,7 +330,7 @@ export function ServicesPricingSettings() {
                     </p>
                     <div className='flex items-center space-x-4 text-sm text-gray-500'>
                       <div className='font-medium text-gray-900'>
-                        ¥{product.price.toLocaleString()}
+                        {product.price.toLocaleString()}
                       </div>
                       <div
                         className={`${product.stock <= 5 ? 'text-red-600 font-medium' : ''}`}
@@ -407,10 +407,10 @@ export function ServicesPricingSettings() {
                       <div>{pkg.sessions}回分</div>
                       <div className='flex items-center space-x-2'>
                         <span className='line-through text-gray-400'>
-                          ¥{pkg.originalPrice.toLocaleString()}
+                          {pkg.originalPrice.toLocaleString()}
                         </span>
                         <span className='font-medium text-red-600'>
-                          ¥{pkg.discountedPrice.toLocaleString()}
+                          {pkg.discountedPrice.toLocaleString()}
                         </span>
                         <span className='bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs'>
                           {Math.round(

@@ -19,7 +19,7 @@ export async function GET(
   try {
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
-    const period = searchParams.get('period') || 'day';
+    void searchParams.get('period'); // reserved for future aggregation
 
     // バリデーション
     const validator = new ValidationErrorCollector();
@@ -51,7 +51,7 @@ export async function GET(
     // 日次収益データ
     const { data: dailyRevenue, error: revenueError } = await supabase
       .from('daily_revenue_summary')
-      .select('*')
+      .select('total_revenue, insurance_revenue, private_revenue')
       .eq('clinic_id', resolvedClinicId)
       .eq('revenue_date', today)
       .single();
@@ -61,9 +61,9 @@ export async function GET(
     }
 
     // 患者数データ
-    const { data: patientCount, error: patientError } = await supabase
+    const { count: patientCount, error: patientError } = await supabase
       .from('visits')
-      .select('patient_id')
+      .select('patient_id', { count: 'exact', head: true })
       .eq('clinic_id', resolvedClinicId)
       .gte('visit_date', today)
       .lt(
@@ -77,8 +77,10 @@ export async function GET(
 
     // AIコメント取得
     const { data: aiComment, error: aiError } = await supabase
-      .from('daily_ai_comments')
-      .select('*')
+      .from('ai_comments')
+      .select(
+        'id, summary, good_points, improvement_points, suggestion_for_tomorrow, created_at'
+      )
       .eq('clinic_id', resolvedClinicId)
       .eq('comment_date', today)
       .single();
@@ -93,7 +95,7 @@ export async function GET(
       .split('T')[0];
     const { data: revenueChartData, error: chartError } = await supabase
       .from('daily_revenue_summary')
-      .select('*')
+      .select('revenue_date, total_revenue, insurance_revenue, private_revenue')
       .eq('clinic_id', resolvedClinicId)
       .gte('revenue_date', sevenDaysAgo)
       .order('revenue_date', { ascending: true });
@@ -122,14 +124,14 @@ export async function GET(
       .split('T')[0];
     const { data: yesterdayRevenue } = await supabase
       .from('daily_revenue_summary')
-      .select('*')
+      .select('total_revenue')
       .eq('clinic_id', resolvedClinicId)
       .eq('revenue_date', yesterday)
       .single();
 
-    const { data: yesterdayPatientCount } = await supabase
+    const { count: yesterdayPatientCount } = await supabase
       .from('visits')
-      .select('patient_id')
+      .select('patient_id', { count: 'exact', head: true })
       .eq('clinic_id', resolvedClinicId)
       .gte('visit_date', yesterday)
       .lt('visit_date', today);
@@ -144,21 +146,21 @@ export async function GET(
     };
 
     const todayRevenue = dailyRevenue?.total_revenue || 0;
-    const todayPatients = patientCount?.length || 0;
+    const todayPatients = patientCount || 0;
     const prevRevenue = yesterdayRevenue?.total_revenue || 0;
-    const prevPatients = yesterdayPatientCount?.length || 0;
+    const prevPatients = yesterdayPatientCount || 0;
 
     if (prevRevenue > 0) {
       const revenueChange = (todayRevenue - prevRevenue) / prevRevenue;
       if (revenueChange < -ALERT_THRESHOLDS.REVENUE_DECREASE) {
         const changePercent = Math.abs(Math.round(revenueChange * 100));
         alerts.push(
-          `売上が前日比${changePercent}%減少しています（前日: ¥${prevRevenue.toLocaleString()}, 本日: ¥${todayRevenue.toLocaleString()}）`
+          `売上が前日比${changePercent}%減少しています（前日: ${prevRevenue.toLocaleString()}, 本日: ${todayRevenue.toLocaleString()}）`
         );
       } else if (revenueChange > ALERT_THRESHOLDS.REVENUE_INCREASE) {
         const changePercent = Math.round(revenueChange * 100);
         alerts.push(
-          `売上が前日比${changePercent}%増加しています（前日: ¥${prevRevenue.toLocaleString()}, 本日: ¥${todayRevenue.toLocaleString()}）`
+          `売上が前日比${changePercent}%増加しています（前日: ${prevRevenue.toLocaleString()}, 本日: ${todayRevenue.toLocaleString()}）`
         );
       }
     }

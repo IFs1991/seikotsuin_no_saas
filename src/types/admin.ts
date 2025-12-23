@@ -196,14 +196,14 @@ export interface PaginationState {
 // テーブル設定型
 export interface TableColumn {
   type:
-    | 'string'
-    | 'integer'
-    | 'decimal'
-    | 'boolean'
-    | 'text'
-    | 'timestamp'
-    | 'uuid'
-    | 'json';
+  | 'string'
+  | 'integer'
+  | 'decimal'
+  | 'boolean'
+  | 'text'
+  | 'timestamp'
+  | 'uuid'
+  | 'json';
   label?: string;
   required?: boolean;
   readonly?: boolean;
@@ -261,6 +261,9 @@ export interface FormField {
   required: boolean;
   readonly: boolean;
   value: unknown;
+  maxLength?: number;
+  min?: number;
+  max?: number;
   error?: string;
 }
 
@@ -287,6 +290,7 @@ export interface FilterState {
   category?: string;
   clinicId?: string;
   isPublic?: boolean;
+  [key: string]: string | boolean | undefined;
 }
 
 // エラー型
@@ -390,25 +394,33 @@ export interface UseTableManagerReturn {
 export interface UseSystemSettingsReturn {
   // データ状態
   masterData: MasterDataDetail[];
-  categories: string[];
+  categories?: string[];
 
   // UI状態
   loading: boolean;
   error: string | null;
-  filterState: FilterState;
+  filters?: FilterState;
 
   // アクション
-  fetchMasterData: (filters?: Partial<FilterState>) => Promise<void>;
-  createMasterData: (data: Partial<MasterDataDetail>) => Promise<boolean>;
+  fetchMasterData: (filters?: Partial<FilterState>) => void | Promise<void>;
+  createMasterData: (data: Partial<MasterDataDetail>) => Promise<Partial<MasterDataDetail> | boolean>;
   updateMasterData: (
     id: string,
     data: Partial<MasterDataDetail>
-  ) => Promise<boolean>;
-  deleteMasterData: (id: string) => Promise<boolean>;
+  ) => Promise<void | boolean>;
+  deleteMasterData: (id: string) => Promise<void | boolean>;
 
   // フィルター
-  setFilter: (filter: Partial<FilterState>) => void;
-  resetFilter: () => void;
+  updateFilters?: (filter: Partial<FilterState>) => void;
+  resetFilters?: () => void;
+
+  // 追加状態（React Query特有）
+  isFetching?: boolean;
+  isRefetching?: boolean;
+  isCreating?: boolean;
+  isUpdating?: boolean;
+  isDeleting?: boolean;
+  total?: number;
 }
 
 // ユーティリティ型

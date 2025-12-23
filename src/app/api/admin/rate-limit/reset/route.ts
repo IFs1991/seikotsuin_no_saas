@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import { z } from 'zod';
+import { processApiRequest } from '@/lib/api-helpers';
 
 // リクエストスキーマ
 const ResetRateLimitSchema = z.object({
@@ -21,9 +22,16 @@ const ResetRateLimitSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // リクエストボディを解析
-    const body = await request.json();
-    const { type, identifier, reason } = ResetRateLimitSchema.parse(body);
+    const auth = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
+
+    const { type, identifier } = ResetRateLimitSchema.parse(auth.body);
 
     // レート制限リセット
     const success = await rateLimiter.resetRateLimit(type, identifier);

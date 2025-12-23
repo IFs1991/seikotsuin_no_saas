@@ -42,19 +42,19 @@ const RevenuePage: React.FC = () => {
               <div className='flex justify-between items-center'>
                 <span>日次売上:</span>
                 <span className='font-bold'>
-                  ¥{dailyRevenue.toLocaleString()}
+                  {dailyRevenue.toLocaleString()}
                 </span>
               </div>
               <div className='flex justify-between items-center'>
                 <span>週次売上:</span>
                 <span className='font-bold'>
-                  ¥{weeklyRevenue.toLocaleString()}
+                  {weeklyRevenue.toLocaleString()}
                 </span>
               </div>
               <div className='flex justify-between items-center'>
                 <span>月次売上:</span>
                 <span className='font-bold'>
-                  ¥{monthlyRevenue.toLocaleString()}
+                  {monthlyRevenue.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -109,7 +109,7 @@ const RevenuePage: React.FC = () => {
                   <span>{item.menu}</span>
                   <div className='text-right'>
                     <p className='font-bold'>
-                      ¥{item.revenue.toLocaleString()}
+                      {item.revenue.toLocaleString()}
                     </p>
                     <p className='text-sm text-gray-500'>{item.count}件</p>
                   </div>

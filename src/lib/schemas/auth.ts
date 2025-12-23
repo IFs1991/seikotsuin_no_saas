@@ -83,7 +83,7 @@ export const signupSchema = z.object({
  * FormData用ログインスキーマ
  * サーバーアクションで使用
  */
-export const loginFormDataSchema = zfd
+export const loginFormDataSchema: any = (zfd as any)
   .formData({
     email: zfd.text(),
     password: zfd.text(),
@@ -92,14 +92,14 @@ export const loginFormDataSchema = zfd
     z.object({
       email: emailSchema,
       password: z.string().min(1, 'パスワードを入力してください'),
-    })
+    }) as any
   );
 
 /**
  * FormData用サインアップスキーマ
  * サーバーアクションで使用
  */
-export const signupFormDataSchema = zfd
+export const signupFormDataSchema: any = (zfd as any)
   .formData({
     email: zfd.text(),
     password: zfd.text(),
@@ -108,7 +108,7 @@ export const signupFormDataSchema = zfd
     z.object({
       email: emailSchema,
       password: passwordSchema,
-    })
+    }) as any
   );
 
 /**

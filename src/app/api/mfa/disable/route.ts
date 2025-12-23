@@ -6,22 +6,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
 import { z } from 'zod';
+import { createClient } from '@/lib/supabase';
 
 // リクエストスキーマ
 const DisableMFASchema = z.object({
-  userId: z.string().min(1, 'ユーザーIDが必要です'),
-  adminUserId: z.string().optional(),
   reason: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
     // リクエストボディを解析
     const body = await request.json();
-    const { userId, adminUserId, reason } = DisableMFASchema.parse(body);
+    const { reason } = DisableMFASchema.parse(body);
 
     // MFA無効化
-    const isDisabled = await mfaManager.disableMFA(userId, adminUserId);
+    const isDisabled = await mfaManager.disableMFA(user.id, user.id);
 
     if (!isDisabled) {
       return NextResponse.json(

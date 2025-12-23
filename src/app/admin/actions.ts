@@ -24,7 +24,7 @@ function isRedirectLikeError(error: unknown): error is Error {
 
   if (typeof error === 'object' && error !== null) {
     const digest = (error as { digest?: string }).digest;
-    if (digest === 'NEXT_REDIRECT') {
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) {
       return true;
     }
   }

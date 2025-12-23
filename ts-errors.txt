@@ -1,0 +1,866 @@
+'CALL "C:\Program Files\nodejs\\node.exe" "C:\Program Files\nodejs\\node_modules\npm\bin\npm-prefix.js"' ÇÕÅAì‡ïîÉRÉ}ÉìÉhÇ‹ÇΩÇÕäOïîÉRÉ}ÉìÉhÅA
+ëÄçÏâ¬î\Ç»ÉvÉçÉOÉâÉÄÇ‹ÇΩÇÕÉoÉbÉ` ÉtÉ@ÉCÉãÇ∆ÇµÇƒîFéØÇ≥ÇÍÇƒÇ¢Ç‹ÇπÇÒÅB
+
+> seikotsuin-management-saas@0.1.0 type-check
+> tsc --noEmit
+
+src/app/api/admin/security/csp-stats/route.ts(68,50): error TS2339: Property 'client_ip' does not exist on type 'never'.
+src/app/api/admin/security/csp-stats/route.ts(74,30): error TS2339: Property 'violated_directive' does not exist on type 'never'.
+src/app/api/admin/security/csp-violations/route.ts(113,11): error TS6133: 'statsQuery' is declared but its value is never read.
+src/app/api/admin/security/csp-violations/route.ts(121,17): error TS2339: Property 'severity' does not exist on type 'never'.
+src/app/api/admin/security/csp-violations/route.ts(121,36): error TS2339: Property 'severity' does not exist on type 'never'.
+src/app/api/admin/security/csp-violations/route.ts(203,15): error TS2345: Argument of type '{ is_false_positive: any; notes: any; reviewed_by: string; reviewed_at: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/app/api/admin/security/stats/route.ts(50,35): error TS18048: 'days' is possibly 'undefined'.
+src/app/api/admin/security/stats/route.ts(107,42): error TS2339: Property 'severity_level' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(108,29): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(115,19): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(116,27): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(118,24): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(119,26): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(120,27): error TS2339: Property 'ip_address' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(121,27): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(122,34): error TS2339: Property 'event_description' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(135,18): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(138,18): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(142,13): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(148,25): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/api/admin/security/stats/route.ts(151,29): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/api/admin/tables/route.ts(220,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, string, never, "POST">', gave the following error.
+    Argument of type '({ name: string; is_active: boolean; color_code: string; display_order: number; id?: string | undefined; created_at?: string | undefined; description?: string | undefined; icon_name?: string | undefined; updated_at?: string | undefined; } | { ...; } | { ...; } | { ...; } | { ...; })[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, string, never, "POST">', gave the following error.
+    Type '{ name: string; is_active: boolean; color_code: string; display_order: number; id?: string | undefined; created_at?: string | undefined; description?: string | undefined; icon_name?: string | undefined; updated_at?: string | undefined; } | { ...; } | { ...; } | { ...; } | { ...; }' is not assignable to type 'never'.
+      Type '{ name: string; is_active: boolean; color_code: string; display_order: number; id?: string | undefined; created_at?: string | undefined; description?: string | undefined; icon_name?: string | undefined; updated_at?: string | undefined; }' is not assignable to type 'never'.
+src/app/api/admin/tables/route.ts(239,17): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/admin/tables/route.ts(295,7): error TS2554: Expected 2 arguments, but got 3.
+src/app/api/admin/tables/route.ts(308,15): error TS2345: Argument of type '{ name: string; is_active: boolean; color_code: string; display_order: number; id?: string | undefined; created_at?: string | undefined; description?: string | undefined; icon_name?: string | undefined; updated_at?: string | undefined; } | { ...; } | { ...; } | { ...; } | { ...; }' is not assignable to parameter of type 'never'.
+  Type '{ name: string; is_active: boolean; color_code: string; display_order: number; id?: string | undefined; created_at?: string | undefined; description?: string | undefined; icon_name?: string | undefined; updated_at?: string | undefined; }' is not assignable to type 'never'.
+src/app/api/ai-comments/route.ts(28,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '{}'.
+  Type 'undefined' is not assignable to type '{}'.
+src/app/api/ai-comments/route.ts(39,9): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/app/api/ai-comments/route.ts(50,18): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(51,23): error TS2339: Property 'summary' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(52,26): error TS2339: Property 'good_points' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(52,46): error TS2339: Property 'good_points' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(53,28): error TS2339: Property 'improvement_points' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(53,55): error TS2339: Property 'improvement_points' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(54,27): error TS2339: Property 'suggestion_for_tomorrow' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(55,19): error TS2339: Property 'suggestion_for_tomorrow' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(57,26): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(142,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '{}'.
+  Type 'undefined' is not assignable to type '{}'.
+src/app/api/ai-comments/route.ts(170,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "daily_ai_comments", never, "POST">', gave the following error.
+    Argument of type '{ clinic_id: string; comment_date: string; summary: string; good_points: string; improvement_points: string; suggestion_for_tomorrow: string; raw_ai_response: { summary: string; highlights: string[]; improvements: string[]; suggestions: string[]; }; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, ... 5 more ..., "POST">', gave the following error.
+    Object literal may only specify known properties, and 'clinic_id' does not exist in type 'never[]'.
+src/app/api/ai-comments/route.ts(192,24): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(197,32): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/ai-comments/route.ts(225,9): error TS6133: 'weeklyAvgPatients' is declared but its value is never read.
+src/app/api/auth/profile/route.ts(77,33): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/auth/profile/route.ts(78,37): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/auth/profile/route.ts(84,7): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/app/api/beta/backlog/route.ts(139,29): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/backlog/route.ts(167,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "improvement_backlog", never, "POST">', gave the following error.
+    Argument of type '{ title: string; description: string; category: "feature" | "enhancement" | "bug_fix" | "technical_debt" | "documentation"; priority: "low" | "medium" | "high" | "critical"; estimated_effort: "l" | ... 3 more ... | "xl"; ... 6 more ...; created_by: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "improvement_backlog", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'title' does not exist in type 'never[]'.
+src/app/api/beta/backlog/route.ts(197,29): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/beta/backlog/route.ts(240,29): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/backlog/route.ts(285,29): error TS2339: Property 'started_at' does not exist on type 'never'.
+src/app/api/beta/backlog/route.ts(298,15): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/beta/backlog/route.ts(365,29): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(82,17): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(83,45): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(149,30): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(180,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "beta_feedback", never, "POST">', gave the following error.
+    Argument of type '{ clinic_id: any; user_id: string; user_name: string; category: "other" | "feature_request" | "bug_report" | "usability" | "performance"; severity: "low" | "medium" | "high" | "critical"; ... 8 more ...; priority: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "beta_feedback", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'clinic_id' does not exist in type 'never[]'.
+src/app/api/beta/feedback/route.ts(181,28): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(212,31): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(255,29): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/feedback/route.ts(295,15): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/beta/metrics/route.ts(78,17): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(79,45): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(144,29): error TS2339: Property 'role' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(169,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "beta_usage_metrics", never, "POST">', gave the following error.
+    Argument of type '{ login_count: number; unique_users: number; dashboard_view_count: number; daily_report_submissions: number; patient_analysis_view_count: number; average_session_duration: number; daily_active_rate: number; ... 7 more ...; period_end: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "beta_usage_metrics", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'clinic_id' does not exist in type 'never[]'.
+src/app/api/beta/metrics/route.ts(193,31): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(228,57): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(274,38): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/beta/metrics/route.ts(275,36): error TS2339: Property 'last_activity' does not exist on type 'never'.
+src/app/api/chat/route.ts(4,1): error TS6133: 'generateAIComment' is declared but its value is never read.
+src/app/api/chat/route.ts(106,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_sessions", never, "POST">', gave the following error.
+    Argument of type '{ user_id: any; clinic_id: any; is_admin_session: boolean; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_sessions", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/app/api/chat/route.ts(118,37): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/chat/route.ts(124,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Argument of type '{ session_id: any; sender: string; message_text: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'session_id' does not exist in type 'never[]'.
+src/app/api/chat/route.ts(158,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Argument of type '{ session_id: any; sender: string; message_text: string; response_data: { chart_data: any; analysis_type: string; } | { analysis_type: string; chart_data?: never; }; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "chat_messages", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'session_id' does not exist in type 'never[]'.
+src/app/api/customers/route.ts(80,75): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "customers", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "customers", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never[]'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.
+src/app/api/customers/route.ts(109,75): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/daily-reports/route.ts(53,22): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(54,30): error TS2339: Property 'report_date' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(55,29): error TS2339: Property 'staff' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(56,33): error TS2339: Property 'total_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(57,31): error TS2339: Property 'new_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(58,43): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(59,47): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(60,45): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(61,30): error TS2339: Property 'report_text' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(62,29): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(98,49): error TS2339: Property 'total_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(104,46): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(110,42): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(119,32): error TS2339: Property 'report_date' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(129,46): error TS2339: Property 'total_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(130,56): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(141,24): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(142,32): error TS2339: Property 'report_date' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(143,31): error TS2339: Property 'staff' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(144,35): error TS2339: Property 'total_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(145,33): error TS2339: Property 'new_patients' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(146,45): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(147,49): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(148,47): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(149,32): error TS2339: Property 'report_text' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(150,31): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/daily-reports/route.ts(205,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "daily_reports", never, "POST">', gave the following error.
+    Argument of type '{ clinic_id: string; staff_id: string | null; report_date: string; total_patients: number; new_patients: number; total_revenue: number; insurance_revenue: number; private_revenue: number; report_text: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, ... 5 more ..., "POST">', gave the following error.
+    Object literal may only specify known properties, and 'clinic_id' does not exist in type 'never[]'.
+src/app/api/dashboard/route.ts(56,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '{}'.
+  Type 'undefined' is not assignable to type '{}'.
+src/app/api/dashboard/route.ts(85,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '{}'.
+  Type 'undefined' is not assignable to type '{}'.
+src/app/api/dashboard/route.ts(110,7): error TS2345: Argument of type '{ clinic_uuid: string; }' is not assignable to parameter of type 'undefined'.
+src/app/api/dashboard/route.ts(129,27): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '{}'.
+  Type 'undefined' is not assignable to type '{}'.
+src/app/api/dashboard/route.ts(148,40): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(150,43): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(188,41): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(189,39): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(193,27): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(194,32): error TS2339: Property 'summary' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(195,35): error TS2339: Property 'good_points' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(195,60): error TS2339: Property 'good_points' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(196,37): error TS2339: Property 'improvement_points' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(197,28): error TS2339: Property 'improvement_points' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(199,36): error TS2339: Property 'suggestion_for_tomorrow' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(200,28): error TS2339: Property 'suggestion_for_tomorrow' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(202,35): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(207,22): error TS2339: Property 'revenue_date' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(208,28): error TS2339: Property 'total_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(209,29): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/dashboard/route.ts(210,29): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/menus/route.ts(82,71): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "menus", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "menus", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never[]'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.
+src/app/api/menus/route.ts(112,71): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/menus/route.ts(136,65): error TS2345: Argument of type '{ is_deleted: boolean; }' is not assignable to parameter of type 'never'.
+src/app/api/mfa/backup-codes/usage/route.ts(10,27): error TS6133: 'request' is declared but its value is never read.
+src/app/api/mfa/disable/route.ts(30,11): error TS6133: 'reason' is declared but its value is never read.
+src/app/api/mfa/setup/initiate/route.ts(38,46): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/mfa/setup/initiate/route.ts(38,67): error TS2339: Property 'is_active' does not exist on type 'never'.
+src/app/api/mfa/setup/initiate/route.ts(45,49): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/app/api/mfa/status/route.ts(10,27): error TS6133: 'request' is declared but its value is never read.
+src/app/api/mfa/verify/route.ts(14,36): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: ["totp", "backup"], params?: RawCreateParams): ZodEnum<["totp", "backup"]>', gave the following error.
+    Type '"Ë™çË®º„Çø„Ç§„Éó„ÅåÁÑ°Âäπ„Åß„Åô"' has no properties in common with type 'RawCreateParams'.
+  Overload 2 of 2, '(values: ["totp", "backup"], params?: RawCreateParams): ZodEnum<["totp", "backup"]>', gave the following error.
+    Type '"Ë™çË®º„Çø„Ç§„Éó„ÅåÁÑ°Âäπ„Åß„Åô"' has no properties in common with type 'RawCreateParams'.
+src/app/api/patients/route.ts(30,22): error TS6133: 'userAgent' is declared but its value is never read.
+src/app/api/patients/route.ts(108,75): error TS2345: Argument of type '{ patient_uuid: string; }' is not assignable to parameter of type 'undefined'.
+src/app/api/patients/route.ts(126,11): error TS2345: Argument of type '{ patient_uuid: string; }' is not assignable to parameter of type 'undefined'.
+src/app/api/patients/route.ts(268,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "patients", never, "POST">', gave the following error.
+    Argument of type '{ registration_date: string | undefined; id?: string; clinic_id?: string | null; name: string; gender?: string | null; date_of_birth?: string | null; phone_number?: string | null; address?: string | null; last_visit_date?: string | null; created_at?: string | null; updated_at?: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "patients", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'registration_date' does not exist in type 'never[]'.
+src/app/api/reservations/route.ts(88,18): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/reservations/route.ts(89,26): error TS2339: Property 'customer_id' does not exist on type 'never'.
+src/app/api/reservations/route.ts(90,28): error TS2339: Property 'customer_name' does not exist on type 'never'.
+src/app/api/reservations/route.ts(91,22): error TS2339: Property 'menu_id' does not exist on type 'never'.
+src/app/api/reservations/route.ts(92,24): error TS2339: Property 'menu_name' does not exist on type 'never'.
+src/app/api/reservations/route.ts(93,23): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/reservations/route.ts(94,25): error TS2339: Property 'staff_name' does not exist on type 'never'.
+src/app/api/reservations/route.ts(95,25): error TS2339: Property 'start_time' does not exist on type 'never'.
+src/app/api/reservations/route.ts(96,23): error TS2339: Property 'end_time' does not exist on type 'never'.
+src/app/api/reservations/route.ts(97,22): error TS2339: Property 'status' does not exist on type 'never'.
+src/app/api/reservations/route.ts(98,23): error TS2339: Property 'channel' does not exist on type 'never'.
+src/app/api/reservations/route.ts(99,21): error TS2339: Property 'notes' does not exist on type 'never'.
+src/app/api/reservations/route.ts(100,31): error TS2339: Property 'selected_options' does not exist on type 'never'.
+src/app/api/reservations/route.ts(180,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "reservations", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "reservations", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never[]'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.
+src/app/api/reservations/route.ts(232,51): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/reservations/route.ts(233,55): error TS2339: Property 'start_time' does not exist on type 'never'.
+src/app/api/reservations/route.ts(234,51): error TS2339: Property 'end_time' does not exist on type 'never'.
+src/app/api/reservations/route.ts(252,15): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/resources/route.ts(74,75): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "resources", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "resources", never, "POST">', gave the following error.
+    Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never[]'.
+      Type 'Record<string, unknown>' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.
+src/app/api/resources/route.ts(101,75): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'never'.
+src/app/api/resources/route.ts(125,69): error TS2345: Argument of type '{ is_deleted: boolean; }' is not assignable to parameter of type 'never'.
+src/app/api/revenue/route.ts(56,39): error TS2339: Property 'gte' does not exist on type '{}'.
+src/app/api/revenue/route.ts(66,31): error TS2339: Property 'master_treatment_menus' does not exist on type 'never'.
+src/app/api/revenue/route.ts(69,27): error TS2339: Property 'treatment_menu_id' does not exist on type 'never'.
+src/app/api/revenue/route.ts(75,56): error TS2339: Property 'amount' does not exist on type 'never'.
+src/app/api/revenue/route.ts(89,27): error TS2339: Property 'revenue_date' does not exist on type 'never'.
+src/app/api/revenue/route.ts(99,52): error TS2339: Property 'amount' does not exist on type 'never'.
+src/app/api/revenue/route.ts(100,56): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/revenue/route.ts(101,54): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/revenue/route.ts(114,41): error TS6133: 'hourlyError' is declared but its value is never read.
+src/app/api/revenue/route.ts(116,7): error TS2345: Argument of type '{ clinic_uuid: string; }' is not assignable to parameter of type 'undefined'.
+src/app/api/revenue/route.ts(122,40): error TS6133: 'lastYearError' is declared but its value is never read.
+src/app/api/revenue/route.ts(135,64): error TS2339: Property 'amount' does not exist on type 'never'.
+src/app/api/revenue/route.ts(137,65): error TS2339: Property 'amount' does not exist on type 'never'.
+src/app/api/revenue/route.ts(160,50): error TS2339: Property 'insurance_revenue' does not exist on type 'never'.
+src/app/api/revenue/route.ts(165,50): error TS2339: Property 'private_revenue' does not exist on type 'never'.
+src/app/api/revenue/route.ts(219,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "revenues", never, "POST">', gave the following error.
+    Argument of type '{ clinic_id: any; patient_id: any; visit_id: any; revenue_date: string | undefined; amount: any; insurance_revenue: any; private_revenue: any; treatment_menu_id: any; payment_method_id: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "revenues", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'clinic_id' does not exist in type 'never[]'.
+src/app/api/security/csp-report/route.ts(128,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "csp_violations", never, "POST">', gave the following error.
+    Argument of type '{ document_uri: unknown; violated_directive: unknown; blocked_uri: unknown; effective_directive: unknown; original_policy: unknown; disposition: {}; referrer: unknown; client_ip: unknown; user_agent: unknown; line_number: {} | null; column_number: {} | null; ... 4 more ...; created_at: unknown; }[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "csp_violations", never, "POST">', gave the following error.
+    Type '{ document_uri: unknown; violated_directive: unknown; blocked_uri: unknown; effective_directive: unknown; original_policy: unknown; disposition: {}; referrer: unknown; client_ip: unknown; user_agent: unknown; line_number: {} | null; column_number: {} | null; ... 4 more ...; created_at: unknown; }' is not assignable to type 'never'.
+src/app/api/security/csp-report/route.ts(134,54): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/api/security/csp-report/route.ts(307,25): error TS2532: Object is possibly 'undefined'.
+src/app/api/security/csp-report/route.ts(309,18): error TS2339: Property 'ip' does not exist on type 'NextRequest'.
+src/app/api/staff/route.ts(68,34): error TS2339: Property 'total_visits' does not exist on type 'never'.
+src/app/api/staff/route.ts(68,64): error TS2339: Property 'working_days' does not exist on type 'never'.
+src/app/api/staff/route.ts(73,40): error TS2339: Property 'total_revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(78,31): error TS2339: Property 'average_satisfaction_score' does not exist on type 'never'.
+src/app/api/staff/route.ts(87,16): error TS2339: Property 'total_revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(87,51): error TS2339: Property 'total_revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(91,27): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/staff/route.ts(92,23): error TS2339: Property 'staff_name' does not exist on type 'never'.
+src/app/api/staff/route.ts(93,26): error TS2339: Property 'total_revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(94,27): error TS2339: Property 'unique_patients' does not exist on type 'never'.
+src/app/api/staff/route.ts(95,31): error TS2339: Property 'average_satisfaction_score' does not exist on type 'never'.
+src/app/api/staff/route.ts(100,21): error TS2339: Property 'staff_name' does not exist on type 'never'.
+src/app/api/staff/route.ts(101,29): error TS2339: Property 'average_satisfaction_score' does not exist on type 'never'.
+src/app/api/staff/route.ts(102,24): error TS2339: Property 'total_revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(103,25): error TS2339: Property 'unique_patients' does not exist on type 'never'.
+src/app/api/staff/route.ts(109,36): error TS2339: Property 'staff' does not exist on type 'never'.
+src/app/api/staff/route.ts(114,26): error TS2339: Property 'performance_date' does not exist on type 'never'.
+src/app/api/staff/route.ts(115,29): error TS2339: Property 'revenue_generated' does not exist on type 'never'.
+src/app/api/staff/route.ts(116,30): error TS2339: Property 'patient_count' does not exist on type 'never'.
+src/app/api/staff/route.ts(117,34): error TS2339: Property 'satisfaction_score' does not exist on type 'never'.
+src/app/api/staff/route.ts(126,19): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/staff/route.ts(127,21): error TS2339: Property 'staff_name' does not exist on type 'never'.
+src/app/api/staff/route.ts(139,42): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/staff/route.ts(146,42): error TS2339: Property 'staff_id' does not exist on type 'never'.
+src/app/api/staff/route.ts(162,41): error TS2339: Property 'working_days' does not exist on type 'never'.
+src/app/api/staff/route.ts(186,41): error TS2339: Property 'message' does not exist on type 'object & Record<"code", unknown>'.
+src/app/api/staff/route.ts(224,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "staff", never, "POST">', gave the following error.
+    Argument of type '{ id?: string; clinic_id?: string | null; name: string; role: string; hire_date?: string | null; is_therapist?: boolean | null; email: string; password_hash: string; created_at?: string | null; updated_at?: string | null; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "staff", never, "POST">', gave the following error.
+    Argument of type '{ id?: string; clinic_id?: string | null; name: string; role: string; hire_date?: string | null; is_therapist?: boolean | null; email: string; password_hash: string; created_at?: string | null; updated_at?: string | null; }' is not assignable to parameter of type 'never[]'.
+      Type '{ id?: string; clinic_id?: string | null; name: string; role: string; hire_date?: string | null; is_therapist?: boolean | null; email: string; password_hash: string; created_at?: string | null; updated_at?: string | null; }' is missing the following properties from type 'never[]': length, pop, push, concat, and 29 more.
+src/app/daily-reports/page.tsx(66,49): error TS2339: Property 'reports' does not exist on type '{}'.
+src/app/daily-reports/page.tsx(67,48): error TS2339: Property 'reports' does not exist on type '{}'.
+src/app/daily-reports/page.tsx(78,33): error TS2339: Property 'summary' does not exist on type '{}'.
+src/app/daily-reports/page.tsx(79,39): error TS2339: Property 'monthlyTrends' does not exist on type '{}'.
+src/app/dashboard/page.tsx(20,3): error TS6133: 'ResponsiveLayout' is declared but its value is never read.
+src/app/dashboard/page.tsx(21,3): error TS6133: 'ResponsiveSection' is declared but its value is never read.
+src/app/master-data/page.tsx(138,20): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
+src/app/master-data/page.tsx(144,20): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
+src/app/master-data/page.tsx(148,9): error TS6133: 'activeItems' is declared but its value is never read.
+src/app/multi-store/page.tsx(10,10): error TS2614: Module '"../../hooks/useMultiStore"' has no exported member 'useMultiStore'. Did you mean to use 'import useMultiStore from "../../hooks/useMultiStore"' instead?
+src/app/multi-store/page.tsx(11,10): error TS2614: Module '"../../components/multi-store/store-comparison-chart"' has no exported member 'StoreComparisonChart'. Did you mean to use 'import StoreComparisonChart from "../../components/multi-store/store-comparison-chart"' instead?
+src/app/multi-store/page.tsx(12,10): error TS2614: Module '"../../components/multi-store/best-practice-card"' has no exported member 'BestPracticeCard'. Did you mean to use 'import BestPracticeCard from "../../components/multi-store/best-practice-card"' instead?
+src/app/multi-store/page.tsx(86,41): error TS7006: Parameter 'kpi' implicitly has an 'any' type.
+src/app/multi-store/page.tsx(86,46): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/app/multi-store/page.tsx(146,38): error TS7006: Parameter 'practice' implicitly has an 'any' type.
+src/app/multi-store/page.tsx(146,48): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/app/reservations/list/page.tsx(11,1): error TS6133: 'Table' is declared but its value is never read.
+src/app/reservations/page.tsx(7,1): error TS6133: 'Badge' is declared but its value is never read.
+src/app/reservations/page.tsx(8,1): error TS6133: 'Card' is declared but its value is never read.
+src/app/reservations/page.tsx(20,3): error TS6133: 'Filter' is declared but its value is never read.
+src/app/reservations/page.tsx(23,3): error TS6133: 'RefreshCw' is declared but its value is never read.
+src/app/reservations/page.tsx(200,22): error TS6133: 'setSlotHeight' is declared but its value is never read.
+src/app/reservations/page.tsx(309,27): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/app/reservations/register/page.tsx(219,26): error TS18048: 'startH' is possibly 'undefined'.
+src/app/reservations/register/page.tsx(219,40): error TS18048: 'startM' is possibly 'undefined'.
+src/app/reservations/register/page.tsx(220,24): error TS18048: 'endH' is possibly 'undefined'.
+src/app/reservations/register/page.tsx(220,36): error TS18048: 'endM' is possibly 'undefined'.
+src/app/reservations/register/page.tsx(246,18): error TS2379: Argument of type '{ time: string; available: boolean; conflictReason: string | undefined; }' is not assignable to parameter of type 'TimeSlot' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'conflictReason' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/app/reservations/register/page.tsx(306,28): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/app/staff/page.tsx(16,5): error TS6133: 'staffMetrics' is declared but its value is never read.
+src/app/staff/page.tsx(18,5): error TS6133: 'satisfactionCorrelation' is declared but its value is never read.
+src/app/staff/page.tsx(21,5): error TS6133: 'performanceTrends' is declared but its value is never read.
+src/components/admin/booking-calendar-settings.tsx(8,33): error TS6133: 'Users' is declared but its value is never read.
+src/components/admin/clinic-hours-settings.tsx(100,18): error TS2532: Object is possibly 'undefined'.
+src/components/admin/clinic-hours-settings.tsx(101,21): error TS2532: Object is possibly 'undefined'.
+src/components/admin/clinic-hours-settings.tsx(107,17): error TS2345: Argument of type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to parameter of type 'SetStateAction<WeekSchedule>'.
+  Type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type '(prevState: WeekSchedule) => WeekSchedule'.
+    Type '{ [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type 'WeekSchedule'.
+      'string' index signatures are incompatible.
+        Type 'DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+          Type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+            Property 'isOpen' is optional in type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' but required in type 'DaySchedule'.
+src/components/admin/clinic-hours-settings.tsx(111,24): error TS2532: Object is possibly 'undefined'.
+src/components/admin/clinic-hours-settings.tsx(117,17): error TS2345: Argument of type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to parameter of type 'SetStateAction<WeekSchedule>'.
+  Type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type '(prevState: WeekSchedule) => WeekSchedule'.
+    Type '{ [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type 'WeekSchedule'.
+      'string' index signatures are incompatible.
+        Type 'DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+          Type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+            Property 'isOpen' is optional in type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' but required in type 'DaySchedule'.
+src/components/admin/clinic-hours-settings.tsx(121,20): error TS2532: Object is possibly 'undefined'.
+src/components/admin/clinic-hours-settings.tsx(132,17): error TS2345: Argument of type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to parameter of type 'SetStateAction<WeekSchedule>'.
+  Type '(prev: WeekSchedule) => { [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type '(prevState: WeekSchedule) => WeekSchedule'.
+    Type '{ [x: string]: DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }; }' is not assignable to type 'WeekSchedule'.
+      'string' index signatures are incompatible.
+        Type 'DaySchedule | { timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+          Type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' is not assignable to type 'DaySchedule'.
+            Property 'isOpen' is optional in type '{ timeSlots: TimeSlot[]; isOpen?: boolean; }' but required in type 'DaySchedule'.
+src/components/admin/clinic-hours-settings.tsx(136,20): error TS2532: Object is possibly 'undefined'.
+src/components/admin/communication-settings.tsx(33,21): error TS6133: 'setTemplates' is declared but its value is never read.
+src/components/admin/communication-settings.tsx(212,29): error TS2353: Object literal may only specify known properties, and 'patientName' does not exist in type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...>'.
+src/components/admin/communication-settings.tsx(212,29): error TS18004: No value exists in scope for the shorthand property 'patientName'. Either declare one or provide an initializer.
+src/components/admin/communication-settings.tsx(212,48): error TS2353: Object literal may only specify known properties, and 'appointmentDate' does not exist in type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...>'.
+src/components/admin/communication-settings.tsx(212,48): error TS18004: No value exists in scope for the shorthand property 'appointmentDate'. Either declare one or provide an initializer.
+src/components/admin/communication-settings.tsx(213,20): error TS2353: Object literal may only specify known properties, and 'appointmentTime' does not exist in type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...>'.
+src/components/admin/communication-settings.tsx(213,20): error TS18004: No value exists in scope for the shorthand property 'appointmentTime'. Either declare one or provide an initializer.
+src/components/admin/communication-settings.tsx(213,43): error TS2353: Object literal may only specify known properties, and 'staffName' does not exist in type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...>'.
+src/components/admin/communication-settings.tsx(213,43): error TS18004: No value exists in scope for the shorthand property 'staffName'. Either declare one or provide an initializer.
+src/components/admin/communication-settings.tsx(213,60): error TS2353: Object literal may only specify known properties, and 'serviceName' does not exist in type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...>'.
+src/components/admin/communication-settings.tsx(213,60): error TS18004: No value exists in scope for the shorthand property 'serviceName'. Either declare one or provide an initializer.
+src/components/admin/data-form-dialog.tsx(15,1): error TS6192: All imports in import declaration are unused.
+src/components/admin/data-form-dialog.tsx(87,13): error TS6133: 'name' is declared but its value is never read.
+src/components/admin/data-form-dialog.tsx(87,42): error TS2339: Property 'maxLength' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(87,53): error TS2339: Property 'min' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(87,58): error TS2339: Property 'max' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(218,32): error TS2339: Property 'maxLength' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(244,26): error TS2339: Property 'min' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(245,26): error TS2339: Property 'max' does not exist on type 'FormField'.
+src/components/admin/data-form-dialog.tsx(265,32): error TS2339: Property 'maxLength' does not exist on type 'FormField'.
+src/components/admin/data-table.tsx(18,3): error TS6133: 'SelectItem' is declared but its value is never read.
+src/components/admin/data-table.tsx(23,3): error TS6133: 'Plus' is declared but its value is never read.
+src/components/admin/data-table.tsx(236,29): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/components/admin/improved-table-editor.tsx(29,5): error TS6133: 'filterState' is declared but its value is never read.
+src/components/admin/insurance-billing-settings.tsx(10,3): error TS6133: 'Plus' is declared but its value is never read.
+src/components/admin/insurance-billing-settings.tsx(11,3): error TS6133: 'Edit' is declared but its value is never read.
+src/components/admin/insurance-billing-settings.tsx(14,3): error TS6133: 'Building2' is declared but its value is never read.
+src/components/admin/insurance-billing-settings.tsx(38,5): error TS2375: Type '{ id: string; name: string; code: string; isEnabled: true; coPaymentRate: number; maxAmount: undefined; }' is not assignable to type 'InsuranceType' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'maxAmount' are incompatible.
+    Type 'undefined' is not assignable to type 'number'.
+src/components/admin/insurance-billing-settings.tsx(46,5): error TS2375: Type '{ id: string; name: string; code: string; isEnabled: true; coPaymentRate: number; maxAmount: undefined; }' is not assignable to type 'InsuranceType' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'maxAmount' are incompatible.
+    Type 'undefined' is not assignable to type 'number'.
+src/components/admin/insurance-billing-settings.tsx(54,5): error TS2375: Type '{ id: string; name: string; code: string; isEnabled: true; coPaymentRate: number; maxAmount: undefined; }' is not assignable to type 'InsuranceType' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'maxAmount' are incompatible.
+    Type 'undefined' is not assignable to type 'number'.
+src/components/admin/insurance-billing-settings.tsx(70,5): error TS2375: Type '{ id: string; name: string; code: string; isEnabled: true; coPaymentRate: number; maxAmount: undefined; }' is not assignable to type 'InsuranceType' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'maxAmount' are incompatible.
+    Type 'undefined' is not assignable to type 'number'.
+src/components/admin/SecurityDashboard.tsx(15,3): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/components/admin/SecurityDashboard.tsx(18,3): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/components/admin/SecurityDashboard.tsx(22,3): error TS6133: 'Eye' is declared but its value is never read.
+src/components/admin/SecurityDashboard.tsx(28,3): error TS6133: 'Database' is declared but its value is never read.
+src/components/admin/services-pricing-settings.tsx(5,1): error TS6133: 'Input' is declared but its value is never read.
+src/components/admin/services-pricing-settings.tsx(7,1): error TS6133: 'Label' is declared but its value is never read.
+src/components/admin/staff-management-settings.tsx(16,3): error TS6133: 'Clock' is declared but its value is never read.
+src/components/admin/staff-management-settings.tsx(67,17): error TS6133: 'setRoles' is declared but its value is never read.
+src/components/admin/staff-management-settings.tsx(134,16): error TS2345: Argument of type '(prev: Staff[]) => (Staff | { id: string; name: string; email: string; role: "receptionist"; status: "pending"; joinDate: string | undefined; permissions: string[]; })[]' is not assignable to parameter of type 'SetStateAction<Staff[]>'.
+  Type '(prev: Staff[]) => (Staff | { id: string; name: string; email: string; role: "receptionist"; status: "pending"; joinDate: string | undefined; permissions: string[]; })[]' is not assignable to type '(prevState: Staff[]) => Staff[]'.
+    Type '(Staff | { id: string; name: string; email: string; role: "receptionist"; status: "pending"; joinDate: string | undefined; permissions: string[]; })[]' is not assignable to type 'Staff[]'.
+      Type 'Staff | { id: string; name: string; email: string; role: "receptionist"; status: "pending"; joinDate: string | undefined; permissions: string[]; }' is not assignable to type 'Staff'.
+        Type '{ id: string; name: string; email: string; role: "receptionist"; status: "pending"; joinDate: string | undefined; permissions: string[]; }' is not assignable to type 'Staff'.
+          Types of property 'joinDate' are incompatible.
+            Type 'string | undefined' is not assignable to type 'string'.
+              Type 'undefined' is not assignable to type 'string'.
+src/components/admin/staff-management-settings.tsx(267,33): error TS2345: Argument of type '(prev: { name: string; email: string; role: "receptionist"; }) => { role: "admin" | "manager" | "therapist" | "receptionist"; name: string; email: string; }' is not assignable to parameter of type 'SetStateAction<{ name: string; email: string; role: "receptionist"; }>'.
+  Type '(prev: { name: string; email: string; role: "receptionist"; }) => { role: "admin" | "manager" | "therapist" | "receptionist"; name: string; email: string; }' is not assignable to type '(prevState: { name: string; email: string; role: "receptionist"; }) => { name: string; email: string; role: "receptionist"; }'.
+    Call signature return types '{ role: "admin" | "manager" | "therapist" | "receptionist"; name: string; email: string; }' and '{ name: string; email: string; role: "receptionist"; }' are incompatible.
+      The types of 'role' are incompatible between these types.
+        Type '"admin" | "manager" | "therapist" | "receptionist"' is not assignable to type '"receptionist"'.
+          Type '"admin"' is not assignable to type '"receptionist"'.
+src/components/admin/system-settings.tsx(12,3): error TS6133: 'Key' is declared but its value is never read.
+src/components/admin/system-settings.tsx(13,3): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/components/admin/table-editor.tsx(16,11): error TS2375: Type '{ onTableChange: ((tableName: string) => void) | undefined; }' is not assignable to type 'ImprovedTableEditorProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'onTableChange' are incompatible.
+    Type '((tableName: string) => void) | undefined' is not assignable to type '(tableName: string) => void'.
+      Type 'undefined' is not assignable to type '(tableName: string) => void'.
+src/components/chat/chat-interface.tsx(11,48): error TS2554: Expected 1 arguments, but got 0.
+src/components/chat/chat-interface.tsx(82,23): error TS2339: Property 'isUser' does not exist on type 'Message'.
+src/components/dashboard/revenue-chart.tsx(52,18): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ daily: { date: string; insurance: number; selfPay: number; }[]; weekly: { week: string; insurance: number; selfPay: number; }[]; monthly: { month: string; insurance: number; selfPay: number; }[]; }'.
+  No index signature with a parameter of type 'string' was found on type '{ daily: { date: string; insurance: number; selfPay: number; }[]; weekly: { week: string; insurance: number; selfPay: number; }[]; monthly: { month: string; insurance: number; selfPay: number; }[]; }'.
+src/components/dashboard/revenue-chart.tsx(53,26): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ daily: { date: string; insurance: number; selfPay: number; }[]; weekly: { week: string; insurance: number; selfPay: number; }[]; monthly: { month: string; insurance: number; selfPay: number; }[]; }'.
+  No index signature with a parameter of type 'string' was found on type '{ daily: { date: string; insurance: number; selfPay: number; }[]; weekly: { week: string; insurance: number; selfPay: number; }[]; monthly: { month: string; insurance: number; selfPay: number; }[]; }'.
+src/components/dashboard/revenue-chart.tsx(65,54): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/dashboard/revenue-chart.tsx(69,54): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/master/admin-master-form.tsx(30,58): error TS6198: All destructured elements are unused.
+src/components/master/admin-master-form.tsx(48,26): error TS6133: 'setImpactedStores' is declared but its value is never read.
+src/components/master/admin-master-form.tsx(49,25): error TS6133: 'setNeedsApproval' is declared but its value is never read.
+src/components/master/admin-master-form.tsx(56,29): error TS6133: 'e' is declared but its value is never read.
+src/components/master/admin-master-form.tsx(159,43): error TS2322: Type '{ children: Element; variant: "outline"; asChild: true; }' is not assignable to type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLButtonElement>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & ButtonProps & RefAttributes<HTMLButtonElement>'.
+src/components/mfa/MFADashboard.tsx(11,1): error TS6133: 'Switch' is declared but its value is never read.
+src/components/mfa/MFADashboard.tsx(12,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/mfa/MFADashboard.tsx(19,3): error TS6133: 'Download' is declared but its value is never read.
+src/components/mfa/MFASetupWizard.tsx(8,27): error TS6133: 'useEffect' is declared but its value is never read.
+src/components/mfa/MFASetupWizard.tsx(11,1): error TS6133: 'Card' is declared but its value is never read.
+src/components/patients/conversion-funnel.tsx(27,27): error TS2532: Object is possibly 'undefined'.
+src/components/reservations/reservation-form.tsx(95,26): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/reservations/reservation-form.tsx(141,14): error TS2375: Type '{ children: Element[]; value: string | undefined; onValueChange: Dispatch<SetStateAction<string | undefined>>; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/reservations/reservation-form.tsx(165,14): error TS2375: Type '{ children: Element[]; value: string | undefined; onValueChange: Dispatch<SetStateAction<string | undefined>>; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/reservations/reservation-form.tsx(183,14): error TS2375: Type '{ children: Element[]; value: string | undefined; onValueChange: Dispatch<SetStateAction<string | undefined>>; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/session/SessionManager.tsx(19,3): error TS6133: 'MapPin' is declared but its value is never read.
+src/components/session/SessionManager.tsx(23,3): error TS6133: 'X' is declared but its value is never read.
+src/components/session/SessionManager.tsx(73,40): error TS2379: Argument of type '{ action: "revoke_all_other"; sessionId: string | undefined; }' is not assignable to parameter of type 'DeviceManagementAction' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'sessionId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/session/SessionManager.tsx(95,9): error TS6133: 'getDeviceIcon' is declared but its value is never read.
+src/components/session/SessionTimeoutDialog.tsx(98,33): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & HTMLAttributes<HTMLParagraphElement> & RefAttributes<HTMLParagraphElement>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & HTMLAttributes<HTMLParagraphElement> & RefAttributes<HTMLParagraphElement>'.
+src/components/staff/shift-optimizer.tsx(144,40): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/ui/alert-dialog.tsx(60,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'ref' does not exist in type 'Partial<unknown> & Attributes'.
+src/components/ui/alert-dialog.tsx(63,9): error TS18046: 'children.props' is of type 'unknown'.
+src/components/ui/alert.tsx(84,21): error TS7030: Not all code paths return a value.
+src/components/ui/dropdown-menu.tsx(59,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'ref' does not exist in type 'Partial<unknown> & Attributes'.
+src/components/ui/dropdown-menu.tsx(62,9): error TS18046: 'children.props' is of type 'unknown'.
+src/components/ui/form-field.tsx(52,15): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'Partial<unknown> & Attributes'.
+src/components/ui/medical-banner.tsx(11,3): error TS6133: 'Heart' is declared but its value is never read.
+src/components/ui/medical-icons.tsx(300,20): error TS2375: Type '{ name: "medical-heart" | "medical-activity" | "medical-stethoscope" | "medical-pill" | "medical-temperature" | "status-emergency" | "status-warning" | "status-error" | "status-success" | ... 33 more ... | "trend-down"; variant: "default" | ... 5 more ... | undefined; size: "lg"; }' is not assignable to type 'MedicalIconProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'variant' are incompatible.
+    Type '"default" | "admin" | "success" | "warning" | "emergency" | "medical" | undefined' is not assignable to type '"default" | "admin" | "success" | "warning" | "emergency" | "medical"'.
+      Type 'undefined' is not assignable to type '"default" | "admin" | "success" | "warning" | "emergency" | "medical"'.
+src/components/ui/responsive-table.tsx(76,23): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(99,29): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(155,27): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(193,27): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(234,21): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/swipe-handler.tsx(29,34): error TS18048: 'touch' is possibly 'undefined'.
+src/components/ui/swipe-handler.tsx(29,52): error TS18048: 'touch' is possibly 'undefined'.
+src/components/ui/swipe-handler.tsx(34,32): error TS18048: 'touch' is possibly 'undefined'.
+src/components/ui/swipe-handler.tsx(34,50): error TS18048: 'touch' is possibly 'undefined'.
+src/components/ui/swipe-handler.tsx(108,6): error TS2375: Type '{ children: Element; onSwipeLeft: () => void; onSwipeRight: () => void; className: string | undefined; }' is not assignable to type 'SwipeHandlerProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'className' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/ui/swipe-handler.tsx(149,27): error TS2532: Object is possibly 'undefined'.
+src/components/ui/swipe-handler.tsx(154,22): error TS2532: Object is possibly 'undefined'.
+src/hooks/queries/useSystemSettingsQuery.ts(45,5): error TS2322: Type '{ items: MasterDataDetail[]; total: number; } | undefined' is not assignable to type '{ items: MasterDataDetail[]; total: number; }'.
+  Type 'undefined' is not assignable to type '{ items: MasterDataDetail[]; total: number; }'.
+src/hooks/queries/useSystemSettingsQuery.ts(68,5): error TS2322: Type 'MasterDataDetail | undefined' is not assignable to type 'MasterDataDetail'.
+  Type 'undefined' is not assignable to type 'MasterDataDetail'.
+src/hooks/queries/useSystemSettingsQuery.ts(94,5): error TS2322: Type 'MasterDataDetail | undefined' is not assignable to type 'MasterDataDetail'.
+  Type 'undefined' is not assignable to type 'MasterDataDetail'.
+src/hooks/queries/useSystemSettingsQuery.ts(131,45): error TS2345: Argument of type 'FilterState' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'FilterState'.
+src/hooks/useAdminChat.ts(117,17): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminChat.ts(118,22): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminChat.ts(120,24): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminChat.ts(123,17): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminChat.ts(124,22): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminChat.ts(126,24): error TS18048: 'payload.data' is possibly 'undefined'.
+src/hooks/useAdminMaster.ts(16,42): error TS2379: Argument of type '{ category: string | undefined; clinicId: string | undefined; }' is not assignable to parameter of type 'Partial<FilterState>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/hooks/useAdminMaster.ts(22,5): error TS6133: 'limit' is declared but its value is never read.
+src/hooks/useChat.ts(2,1): error TS6133: 'createClient' is declared but its value is never read.
+src/hooks/useChat.ts(3,1): error TS6133: 'generateAnalysisReport' is declared but its value is never read.
+src/hooks/useChat.ts(95,32): error TS2304: Cannot find name 'analyzeMessage'.
+src/hooks/useChat.ts(145,17): error TS2339: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(145,46): error TS2339: Property 'webkitSpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(154,14): error TS2339: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(154,42): error TS2339: Property 'webkitSpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(160,28): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/hooks/useDailyReports.ts(113,43): error TS2698: Spread types may only be created from object types.
+src/hooks/useMasterData.ts(56,22): error TS2379: Argument of type '{ clinic_id: string | undefined; category: string | undefined; }' is not assignable to parameter of type '{ category?: string; clinic_id?: string | null; is_public?: boolean; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/hooks/useMultiStore.ts(3,8): error TS6133: 'React' is declared but its value is never read.
+src/hooks/useMultiStore.ts(38,10): error TS6133: 'tableName' is declared but its value is never read.
+src/hooks/useMultiStore.ts(39,14): error TS6133: 'columns' is declared but its value is never read.
+src/hooks/useMultiStore.ts(189,9): error TS2532: Object is possibly 'undefined'.
+src/hooks/useMultiStore.ts(190,9): error TS2532: Object is possibly 'undefined'.
+src/hooks/useMultiStore.ts(191,9): error TS2532: Object is possibly 'undefined'.
+src/hooks/useQualityAssurance.ts(24,18): error TS2345: Argument of type 'TestResult[] | undefined' is not assignable to parameter of type 'SetStateAction<TestResult[]>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<TestResult[]>'.
+src/hooks/useQualityAssurance.ts(28,53): error TS2345: Argument of type 'TestResult[] | undefined' is not assignable to parameter of type 'TestResult[]'.
+  Type 'undefined' is not assignable to type 'TestResult[]'.
+src/hooks/useQualityAssurance.ts(29,57): error TS2345: Argument of type 'TestResult[] | undefined' is not assignable to parameter of type 'TestResult[]'.
+  Type 'undefined' is not assignable to type 'TestResult[]'.
+src/hooks/useQualityAssurance.ts(30,48): error TS2345: Argument of type 'TestResult[] | undefined' is not assignable to parameter of type 'TestResult[]'.
+  Type 'undefined' is not assignable to type 'TestResult[]'.
+src/hooks/useQualityAssurance.ts(31,47): error TS2345: Argument of type 'TestResult[] | undefined' is not assignable to parameter of type 'TestResult[]'.
+  Type 'undefined' is not assignable to type 'TestResult[]'.
+src/hooks/useQualityAssurance.ts(43,13): error TS7030: Not all code paths return a value.
+src/hooks/useQualityAssurance.ts(170,47): error TS2345: Argument of type 'QualityMetrics | undefined' is not assignable to parameter of type 'QualityMetrics'.
+  Type 'undefined' is not assignable to type 'QualityMetrics'.
+src/hooks/useSessionManagement.ts(14,3): error TS6133: 'getGeolocationFromIP' is declared but its value is never read.
+src/hooks/useSessionManagement.ts(145,22): error TS2345: Argument of type '{ isAuthenticated: true; userId: any; clinicId: any; customSessionId: string | undefined; supabaseSession: any; }' is not assignable to parameter of type 'SetStateAction<SessionInfo>'.
+  Type '{ isAuthenticated: true; userId: any; clinicId: any; customSessionId: string | undefined; supabaseSession: any; }' is not assignable to type 'SessionInfo' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'customSessionId' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/hooks/useSessionManagement.ts(211,9): error TS2379: Argument of type '{ deviceInfo: DeviceInfo; ipAddress: string | undefined; userAgent: string; rememberDevice: false; }' is not assignable to parameter of type 'CreateSessionOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/hooks/useSessionManagement.ts(220,32): error TS18048: 'session' is possibly 'undefined'.
+src/hooks/useSessionManagement.ts(223,14): error TS18048: 'session' is possibly 'undefined'.
+src/hooks/useStaffAnalysis.ts(53,16): error TS6133: 'setData' is declared but its value is never read.
+src/hooks/useSystemSettingsV2.ts(150,5): error TS2322: Type '() => void' is not assignable to type '(filters?: Partial<FilterState> | undefined) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+src/hooks/useSystemSettingsV2.ts(151,5): error TS2322: Type '(data: Partial<MasterDataDetail>) => Promise<Partial<MasterDataDetail>>' is not assignable to type '(data: Partial<MasterDataDetail>) => Promise<boolean>'.
+  Type 'Promise<Partial<MasterDataDetail>>' is not assignable to type 'Promise<boolean>'.
+    Type 'Partial<MasterDataDetail>' is not assignable to type 'boolean'.
+src/hooks/useSystemSettingsV2.ts(152,5): error TS2322: Type '(id: string, updates: Partial<MasterDataDetail>) => Promise<void>' is not assignable to type '(id: string, data: Partial<MasterDataDetail>) => Promise<boolean>'.
+  Type 'Promise<void>' is not assignable to type 'Promise<boolean>'.
+    Type 'void' is not assignable to type 'boolean'.
+src/hooks/useSystemSettingsV2.ts(153,5): error TS2322: Type '(id: string) => Promise<void>' is not assignable to type '(id: string) => Promise<boolean>'.
+  Type 'Promise<void>' is not assignable to type 'Promise<boolean>'.
+    Type 'void' is not assignable to type 'boolean'.
+src/lib/accessibility-test.ts(139,41): error TS6133: 'index' is declared but its value is never read.
+src/lib/accessibility-test.ts(242,9): error TS2532: Object is possibly 'undefined'.
+src/lib/api/admin/dashboard-client.ts(44,8): error TS2352: Conversion of type 'ApiResponse<AdminDashboardPayload>' to type '{ error?: string; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'error' are incompatible.
+    Type 'ApiError' is not comparable to type 'string'.
+src/lib/api/admin/master-data-client.ts(51,8): error TS2352: Conversion of type 'ApiResponse<T>' to type '{ error?: string; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'error' are incompatible.
+    Type 'ApiError' is not comparable to type 'string'.
+src/lib/audit-logger.ts(56,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "audit_logs", never, "POST">', gave the following error.
+    Argument of type '{ event_type: AuditEventType; user_id: string | undefined; user_email: string | undefined; target_table: string | undefined; target_id: string | undefined; clinic_id: string | undefined; ... 5 more ...; created_at: string; }[]' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "audit_logs", never, "POST">', gave the following error.
+    Type '{ event_type: AuditEventType; user_id: string | undefined; user_email: string | undefined; target_table: string | undefined; target_id: string | undefined; clinic_id: string | undefined; ... 5 more ...; created_at: string; }' is not assignable to type 'never'.
+src/lib/error-handler-enhanced.ts(70,11): error TS6133: 'errorStack' is declared but its value is never read.
+src/lib/error-handler-enhanced.ts(200,34): error TS2341: Property 'logSecurityEvent' is private and only accessible within class 'SecurityMonitor'.
+src/lib/error-handler-enhanced.ts(201,9): error TS2561: Object literal may only specify known properties, but 'eventType' does not exist in type '{ user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; event_data?: any; ip_address?: string; user_agent?: string; source_component: string; }'. Did you mean to write 'event_type'?
+src/lib/error-handler.ts(98,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/integration-tests.ts(3,29): error TS2306: File 'C:/Users/seekf/Desktop/seikotsuin_management_saas/src/__tests__/e2e/dashboard.test.ts' is not a module.
+src/lib/mfa/backup-codes.ts(126,40): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(151,17): error TS2345: Argument of type '{ backup_codes: string[]; last_used_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/backup-codes.ts(201,40): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(205,7): error TS2375: Type '{ totalGenerated: 10; totalUsed: number; remainingCount: number; lastUsed: Date | undefined; generatedAt: Date; warningLevel: "low" | "critical" | "none"; }' is not assignable to type 'BackupCodeUsage' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'lastUsed' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/lib/mfa/backup-codes.ts(209,31): error TS2339: Property 'last_used_at' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(210,34): error TS2339: Property 'last_used_at' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(213,23): error TS2339: Property 'setup_completed_at' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(213,57): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(240,17): error TS2345: Argument of type '{ backup_codes: string[]; backup_codes_regenerated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/backup-codes.ts(295,29): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(323,31): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/lib/mfa/backup-codes.ts(418,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Argument of type '{ event_type: string; user_id: string; event_details: Record<string, unknown>; ip_address: string; user_agent: string; created_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'event_type' does not exist in type 'never[]'.
+src/lib/mfa/mfa-manager.ts(97,49): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "mfa_setup_sessions", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; clinic_id: string; secret_key: string; backup_codes: string[]; expires_at: string; created_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "mfa_setup_sessions", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/lib/mfa/mfa-manager.ts(150,30): error TS2339: Property 'secret_key' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(162,49): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "user_mfa_settings", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; clinic_id: any; secret_key: any; backup_codes: any; is_enabled: boolean; setup_completed_at: string; last_used_at: string; created_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { onConflict?: string; ignoreDuplicates?: boolean; count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, ... 5 more ..., "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/lib/mfa/mfa-manager.ts(164,33): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(165,34): error TS2339: Property 'secret_key' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(166,36): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(177,32): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(219,29): error TS2339: Property 'secret_key' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(230,19): error TS2345: Argument of type '{ last_used_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/mfa-manager.ts(283,39): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(303,17): error TS2345: Argument of type '{ backup_codes: any[]; last_used_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/mfa-manager.ts(355,7): error TS2375: Type '{ isEnabled: any; hasBackupCodes: boolean; lastUsed: Date | undefined; setupCompletedAt: Date | undefined; }' is not assignable to type 'MFAStatus' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'lastUsed' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/lib/mfa/mfa-manager.ts(356,32): error TS2339: Property 'is_enabled' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(357,38): error TS2339: Property 'backup_codes' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(358,31): error TS2339: Property 'last_used_at' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(359,34): error TS2339: Property 'last_used_at' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(361,39): error TS2339: Property 'setup_completed_at' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(362,34): error TS2339: Property 'setup_completed_at' does not exist on type 'never'.
+src/lib/mfa/mfa-manager.ts(382,17): error TS2345: Argument of type '{ is_enabled: boolean; disabled_at: string; disabled_by: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/mfa-manager.ts(423,17): error TS2345: Argument of type '{ backup_codes: string[]; backup_codes_regenerated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/mfa/mfa-manager.ts(505,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Argument of type '{ event_type: string; user_id: string; event_details: Record<string, any>; ip_address: string; user_agent: string; created_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'event_type' does not exist in type 'never[]'.
+src/lib/middleware-optimizer.ts(37,5): error TS6133: 'isAdminRoute' is declared but its value is never read.
+src/lib/middleware-optimizer.ts(74,9): error TS2739: Type 'PostgrestBuilder<{ PostgrestVersion: "12"; }, never, false>' is missing the following properties from type 'Promise<any>': catch, finally, [Symbol.toStringTag]
+src/lib/middleware-optimizer.ts(137,36): error TS2341: Property 'logSecurityEvent' is private and only accessible within class 'SecurityMonitor'.
+src/lib/middleware-optimizer.ts(138,11): error TS2561: Object literal may only specify known properties, but 'eventType' does not exist in type '{ user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; event_data?: any; ip_address?: string; user_agent?: string; source_component: string; }'. Did you mean to write 'event_type'?
+src/lib/middleware-optimizer.ts(159,5): error TS6133: 'requestPath' is declared but its value is never read.
+src/lib/middleware-optimizer.ts(189,14): error TS2532: Object is possibly 'undefined'.
+src/lib/middleware-optimizer.ts(204,20): error TS2339: Property 'ip' does not exist on type 'NextRequest'.
+src/lib/multi-device-manager.ts(7,1): error TS6133: 'createBrowserClient' is declared but its value is never read.
+src/lib/multi-device-manager.ts(10,8): error TS6133: 'UserSession' is declared but its value is never read.
+src/lib/multi-device-manager.ts(72,11): error TS6133: 'securityMonitor' is declared but its value is never read.
+src/lib/multi-device-manager.ts(90,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(102,11): error TS2578: Unused '@ts-expect-error' directive.
+src/lib/multi-device-manager.ts(141,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(168,27): error TS7006: Parameter 'session' implicitly has an 'any' type.
+src/lib/multi-device-manager.ts(329,5): error TS2375: Type '{ totalDevices: number; activeDevices: number; trustedDevices: number; suspiciousDevices: number; lastSyncAt: Date | undefined; }' is not assignable to type '{ totalDevices: number; activeDevices: number; trustedDevices: number; suspiciousDevices: number; lastSyncAt?: Date; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'lastSyncAt' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/lib/multi-device-manager.ts(334,40): error TS2532: Object is possibly 'undefined'.
+src/lib/multi-device-manager.ts(408,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(444,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(463,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(475,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/lib/multi-device-manager.ts(476,27): error TS7006: Parameter 'ip' implicitly has an 'any' type.
+src/lib/multi-device-manager.ts(498,5): error TS6133: 'deviceInfo' is declared but its value is never read.
+src/lib/multi-device-manager.ts(521,43): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(545,43): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(563,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(610,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/multi-device-manager.ts(657,28): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+src/lib/notifications/security-alerts.ts(59,11): error TS2375: Type '{ type: "csp_violation"; severity: "low" | "medium" | "high" | "critical"; title: string; message: string; details: { violationId: string; violatedDirective: string; blockedUri: string; documentUri: string; threatScore: number; }; ... 7 more ...; source: string; }' is not assignable to type 'CSPViolationAlert' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'userAgent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/notifications/security-alerts.ts(94,11): error TS2375: Type '{ type: "rate_limit"; severity: "medium"; title: string; message: string; details: { clientIP: string; userAgent: string | undefined; requestCount: number; timeWindow: string; endpoint: string; }; clientIP: string; userAgent: string | undefined; timestamp: string; source: string; }' is not assignable to type 'SecurityAlert' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'userAgent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/notifications/security-alerts.ts(158,7): error TS2375: Type '{ success: boolean; channels: string[]; errors: string[] | undefined; }' is not assignable to type 'NotificationResult' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'errors' are incompatible.
+    Type 'string[] | undefined' is not assignable to type 'string[]'.
+      Type 'undefined' is not assignable to type 'string[]'.
+src/lib/notifications/security-alerts.ts(214,5): error TS2578: Unused '@ts-expect-error' directive.
+src/lib/notifications/security-alerts.ts(222,25): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/notifications/security-alerts.ts(240,13): error TS6133: 'data' is declared but its value is never read.
+src/lib/notifications/security-alerts.ts(240,49): error TS2339: Property 'functions' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/notifications/security-alerts.ts(260,35): error TS2339: Property 'channel' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/notifications/security-alerts.ts(361,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/performance.ts(14,11): error TS6133: 'observer' is declared but its value is never read.
+src/lib/performance.ts(181,44): error TS18048: 'measure' is possibly 'undefined'.
+src/lib/performance.ts(184,14): error TS18048: 'measure' is possibly 'undefined'.
+src/lib/rate-limiting/csp-rate-limiter.ts(57,5): error TS2322: Type 'CSPRateLimitConfig | undefined' is not assignable to type 'CSPRateLimitConfig'.
+  Type 'undefined' is not assignable to type 'CSPRateLimitConfig'.
+src/lib/rate-limiting/csp-rate-limiter.ts(107,31): error TS2571: Object is of type 'unknown'.
+src/lib/rate-limiting/csp-rate-limiter.ts(177,5): error TS2322: Type 'CSPRateLimitConfig | undefined' is not assignable to type 'CSPRateLimitConfig'.
+  Type 'undefined' is not assignable to type 'CSPRateLimitConfig'.
+src/lib/rate-limiting/middleware.ts(95,21): error TS6133: 'request' is declared but its value is never read.
+src/lib/rate-limiting/middleware.ts(143,21): error TS6133: 'request' is declared but its value is never read.
+src/lib/rate-limiting/middleware.ts(168,21): error TS6133: 'request' is declared but its value is never read.
+src/lib/rate-limiting/middleware.ts(251,12): error TS2532: Object is possibly 'undefined'.
+src/lib/rate-limiting/middleware.ts(255,18): error TS2339: Property 'ip' does not exist on type 'NextRequest'.
+src/lib/rate-limiting/middleware.ts(258,51): error TS6133: 'result' is declared but its value is never read.
+src/lib/rate-limiting/rate-limiter.ts(108,16): error TS2339: Property 'MAX_ATTEMPTS' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; } | { readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; } | { ...; } | { ...; }'.
+  Property 'MAX_ATTEMPTS' does not exist on type '{ readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; }'.
+src/lib/rate-limiting/rate-limiter.ts(109,16): error TS2339: Property 'MAX_CALLS' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; } | { readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; } | { ...; } | { ...; }'.
+  Property 'MAX_CALLS' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; }'.
+src/lib/rate-limiting/rate-limiter.ts(110,16): error TS2339: Property 'MAX_SESSIONS' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; } | { readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; } | { ...; } | { ...; }'.
+  Property 'MAX_SESSIONS' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; }'.
+src/lib/rate-limiting/rate-limiter.ts(156,29): error TS7053: Element implicitly has an 'any' type because expression of type '1' can't be used to index type '{}'.
+  Property '1' does not exist on type '{}'.
+src/lib/rate-limiting/rate-limiter.ts(224,45): error TS2339: Property 'BLOCK_DURATION' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; } | { readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; } | { ...; } | { ...; }'.
+  Property 'BLOCK_DURATION' does not exist on type '{ readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; }'.
+src/lib/rate-limiting/rate-limiter.ts(226,32): error TS2339: Property 'BLOCK_DURATION' does not exist on type '{ readonly WINDOW: 900; readonly MAX_ATTEMPTS: 5; readonly BLOCK_DURATION: readonly [60, 300, 3600, 86400]; } | { readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; } | { ...; } | { ...; }'.
+  Property 'BLOCK_DURATION' does not exist on type '{ readonly WINDOW: 60; readonly MAX_CALLS: 100; readonly BURST_LIMIT: 10; }'.
+src/lib/rate-limiting/rate-limiter.ts(227,7): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/lib/rate-limiting/rate-limiter.ts(381,7): error TS2375: Type '{ currentCount: number; isBlocked: boolean; blockLevel: number | undefined; nextResetTime: number; }' is not assignable to type '{ currentCount: number; isBlocked: boolean; blockLevel?: number; nextResetTime: number; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'blockLevel' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/lib/rate-limiting/rate-limiter.ts(401,5): error TS6133: 'ipAddress' is declared but its value is never read.
+src/lib/rate-limiting/rate-limiter.ts(402,5): error TS6133: 'allowedCountries' is declared but its value is never read.
+src/lib/schemas/auth.ts(92,5): error TS2345: Argument of type 'ZodObject<{ email: ZodString; password: ZodString; }, "strip", ZodTypeAny, { email: string; password: string; }, { email: string; password: string; }>' is not assignable to parameter of type '$ZodType<any, { email: string; password: string; }, $ZodTypeInternals<any, { email: string; password: string; }>>'.
+  Property '_zod' is missing in type 'ZodObject<{ email: ZodString; password: ZodString; }, "strip", ZodTypeAny, { email: string; password: string; }, { email: string; password: string; }>' but required in type '$ZodType<any, { email: string; password: string; }, $ZodTypeInternals<any, { email: string; password: string; }>>'.
+src/lib/schemas/auth.ts(108,5): error TS2345: Argument of type 'ZodObject<{ email: ZodString; password: ZodEffects<ZodString, string, string>; }, "strip", ZodTypeAny, { email: string; password: string; }, { ...; }>' is not assignable to parameter of type '$ZodType<any, { email: string; password: string; }, $ZodTypeInternals<any, { email: string; password: string; }>>'.
+  Property '_zod' is missing in type 'ZodObject<{ email: ZodString; password: ZodEffects<ZodString, string, string>; }, "strip", ZodTypeAny, { email: string; password: string; }, { ...; }>' but required in type '$ZodType<any, { email: string; password: string; }, $ZodTypeInternals<any, { email: string; password: string; }>>'.
+src/lib/schemas/auth.ts(176,42): error TS2344: Type 'ZodPipe<ZodPipe<ZodTransform<ZodObject<{ email: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; password: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; }, $strip>, FormData | ... 1 more ... | { ...; }>, ZodObject<...>>, $ZodType<...>>' does not satisfy the constraint 'ZodType<any, any, any>'.
+  Type 'ZodPipe<ZodPipe<ZodTransform<ZodObject<{ email: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; password: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; }, $strip>, FormData | ... 1 more ... | { ...; }>, ZodObject<...>>, $ZodType<...>>' is missing the following properties from type 'ZodType<any, any, any>': _type, _parse, _getType, _getOrReturnCtx, and 7 more.
+src/lib/schemas/auth.ts(177,43): error TS2344: Type 'ZodPipe<ZodPipe<ZodTransform<ZodObject<{ email: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; password: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; }, $strip>, FormData | ... 1 more ... | { ...; }>, ZodObject<...>>, $ZodType<...>>' does not satisfy the constraint 'ZodType<any, any, any>'.
+  Type 'ZodPipe<ZodPipe<ZodTransform<ZodObject<{ email: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; password: ZodPipe<ZodTransform<unknown, unknown>, ZodString>; }, $strip>, FormData | ... 1 more ... | { ...; }>, ZodObject<...>>, $ZodType<...>>' is missing the following properties from type 'ZodType<any, any, any>': _type, _parse, _getType, _getOrReturnCtx, and 7 more.
+src/lib/security-monitor.ts(11,8): error TS6133: 'DeviceInfo' is declared but its value is never read.
+src/lib/security-monitor.ts(88,20): error TS2379: Argument of type '{ threatType: "brute_force"; severity: "medium" | "high"; description: string; evidence: { ipAddress: string; confidence: number; reasons: string[]; }; userId: string | undefined; clinicId: string | undefined; ipAddress: string; timestamp: Date; }' is not assignable to parameter of type 'SecurityThreat' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'userId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/security-monitor.ts(111,22): error TS2379: Argument of type '{ threatType: "location_anomaly"; severity: "low" | "medium"; description: string; evidence: { ipAddress: string; confidence: number; reasons: string[]; }; userId: string; clinicId: string | undefined; ipAddress: string; timestamp: Date; }' is not assignable to parameter of type 'SecurityThreat' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'clinicId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/security-monitor.ts(135,22): error TS2379: Argument of type '{ threatType: "multiple_devices"; severity: "medium"; description: string; evidence: { userId: string; userAgent: string; confidence: number; reasons: string[]; }; userId: string; clinicId: string | undefined; ipAddress: string; timestamp: Date; }' is not assignable to parameter of type 'SecurityThreat' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'clinicId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/security-monitor.ts(174,20): error TS2379: Argument of type '{ threatType: "session_hijack"; severity: "medium" | "high"; description: string; evidence: { sessionId: string; originalIp: string; currentIp: string | undefined; confidence: number; reasons: string[]; }; userId: string; clinicId: string; ipAddress: string | undefined; timestamp: Date; }' is not assignable to parameter of type 'SecurityThreat' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/security-monitor.ts(201,35): error TS2379: Argument of type '{ user_id: string | undefined; clinic_id: string | undefined; event_type: string; event_category: string; severity_level: string; event_description: string; event_data: { threat_type: "suspicious_login" | ... 3 more ... | "brute_force"; evidence: unknown; }; ip_address: string | undefined; source_component: string; }' is not assignable to parameter of type '{ user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; event_data?: any; ip_address?: string; user_agent?: string; source_component: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'user_id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/security-monitor.ts(255,17): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/security-monitor.ts(256,25): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(257,45): error TS2339: Property 'severity_level' does not exist on type 'never'.
+src/lib/security-monitor.ts(258,44): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(259,26): error TS2339: Property 'event_description' does not exist on type 'never'.
+src/lib/security-monitor.ts(260,21): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/lib/security-monitor.ts(261,23): error TS2339: Property 'clinic_id' does not exist on type 'never'.
+src/lib/security-monitor.ts(263,33): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/lib/security-monitor.ts(312,26): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(313,29): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(316,35): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/lib/security-monitor.ts(317,19): error TS2538: Type 'undefined' cannot be used as an index type.
+src/lib/security-monitor.ts(317,40): error TS2538: Type 'undefined' cannot be used as an index type.
+src/lib/security-monitor.ts(321,15): error TS2339: Property 'severity_level' does not exist on type 'never'.
+src/lib/security-monitor.ts(322,15): error TS2339: Property 'severity_level' does not exist on type 'never'.
+src/lib/security-monitor.ts(328,15): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(329,15): error TS2339: Property 'event_type' does not exist on type 'never'.
+src/lib/security-monitor.ts(427,56): error TS2339: Property 'ip_address' does not exist on type 'never'.
+src/lib/security-monitor.ts(452,5): error TS6133: 'userAgent' is declared but its value is never read.
+src/lib/security-monitor.ts(476,33): error TS2339: Property 'device_info' does not exist on type 'never'.
+src/lib/security-monitor.ts(641,46): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated"; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Argument of type '{ event_data: any; created_at: string; user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; ip_address?: string; user_agent?: string; source_component: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated"; defaultToNull?: boolean; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "security_events", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'event_data' does not exist in type 'never[]'.
+src/lib/services/block-service.ts(29,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(48,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(77,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(106,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(130,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(150,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/block-service.ts(174,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(9,3): error TS6196: 'Customer' is declared but never used.
+src/lib/services/reservation-service.ts(10,3): error TS6196: 'Menu' is declared but never used.
+src/lib/services/reservation-service.ts(31,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(49,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(70,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(86,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(100,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(132,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/services/reservation-service.ts(133,34): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/services/reservation-service.ts(134,30): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/services/reservation-service.ts(135,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/lib/services/reservation-service.ts(168,47): error TS2339: Property 'customerName' does not exist on type 'Reservation'.
+src/lib/services/reservation-service.ts(200,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(221,13): error TS2375: Type '{ customerId: string; menuId: string; staffId: string; startTime: Date; endTime: Date; channel: "phone" | "line" | "web" | "walk_in"; notes: string | undefined; createdBy: string; }' is not assignable to type 'CreateReservationData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'notes' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/services/reservation-service.ts(242,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(257,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(272,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(287,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(303,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(320,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(334,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(348,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(417,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/services/reservation-service.ts(452,29): error TS6133: 'startDate' is declared but its value is never read.
+src/lib/services/reservation-service.ts(452,46): error TS6133: 'endDate' is declared but its value is never read.
+src/lib/services/reservation-service.ts(482,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(105,5): error TS2375: Type '{ id: string; user_id: string; clinic_id: string; session_token: string; device_info: DeviceInfo; ip_address: string; user_agent: string | undefined; geolocation: Geolocation | undefined; ... 9 more ...; remember_device: boolean; }' is not assignable to type 'UserSession' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'user_agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/session-manager.ts(252,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(300,5): error TS2375: Type '{ id: string; user_id: string; clinic_id: string; session_token: string; device_info: DeviceInfo; ip_address: string; user_agent: string | undefined; geolocation: Geolocation | undefined; ... 9 more ...; remember_device: boolean; }' is not assignable to type 'UserSession' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'user_agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/session-manager.ts(367,13): error TS2375: Type '{ user_id: string; clinic_id: string; session_token: string; device_info: Record<string, unknown>; ip_address: string | null; user_agent: string | null; geolocation: Record<string, unknown> | null | undefined; ... 11 more ...; created_by: string; }' is not assignable to type '{ id?: string; user_id: string; clinic_id: string; session_token: string; refresh_token_id?: string | null; device_info?: Record<string, unknown>; ip_address?: string | null; user_agent?: string | null; ... 15 more ...; updated_at?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'geolocation' are incompatible.
+    Type 'Record<string, unknown> | null | undefined' is not assignable to type 'Record<string, unknown> | null'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown> | null'.
+src/lib/session-manager.ts(390,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(402,44): error TS2379: Argument of type '{ id: any; userId: string; clinicId: string; sessionToken: string; deviceInfo: DeviceInfo; ipAddress: string | undefined; userAgent: string | undefined; geolocation: Geolocation | undefined; ... 9 more ...; isRevoked: any; }' is not assignable to parameter of type '{ id?: string; userId: string; clinicId: string; sessionToken: string; deviceInfo: DeviceInfo; ipAddress?: string; userAgent?: string; geolocation?: Geolocation; createdAt: string; ... 8 more ...; isRevoked?: boolean; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/session-manager.ts(461,62): error TS2379: Argument of type '{ userId: string; clinicId: string; sessionToken: string; deviceInfo: DeviceInfo; ipAddress: string | undefined; userAgent: string | undefined; geolocation: Geolocation | undefined; ... 7 more ...; rememberDevice: boolean; }' is not assignable to parameter of type '{ id?: string; userId: string; clinicId: string; sessionToken: string; deviceInfo: DeviceInfo; ipAddress?: string; userAgent?: string; geolocation?: Geolocation; createdAt: string; ... 8 more ...; isRevoked?: boolean; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/session-manager.ts(497,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(577,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(602,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(620,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(659,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(670,25): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/lib/session-manager.ts(681,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(706,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(747,8): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(786,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(804,10): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.
+src/lib/session-manager.ts(866,27): error TS2339: Property 'from' does not exist on type 'Promise<SupabaseServerClient>'.

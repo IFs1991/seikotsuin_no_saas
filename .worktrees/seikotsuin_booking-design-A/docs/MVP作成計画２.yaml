@@ -1,0 +1,187 @@
+meta:
+  title: "整骨院管理SaaS MVP作成計画2"
+  author: "Codex支援メモ"
+  last_updated: "2025-10-24"
+  status: "draft"
+context:
+  background: >
+    現行のNext.js API実装は Supabase 上に `daily_revenue_summary` や
+    `patient_visit_summary` といったビュー／RPC関数が存在する前提で設計されているが、
+    `src/database/` 配下の正式スキーマには同名オブジェクトが未定義であり、
+    ディレクトリ直下の `src/api/database/schema.sql` にのみ旧仕様の定義が残存している。
+    また、Supabase 型定義 (`src/types/supabase.ts`) は正式スキーマ側のテーブル名
+    （例: `treatment_menus`）に合わせて生成されており、APIコードで参照している
+    `master_treatment_menus` などのマスタテーブルは整合が取れていない。
+  findings:
+    - "`src/app/api/dashboard/route.ts`・`src/app/api/patients/route.ts`・`src/app/api/revenue/route.ts` が参照するビュー／関数／テーブルがスキーマに欠落している"
+    - "権限制御ロジック（`ensureClinicAccess`）が依存する `user_permissions` テーブルは旧スキーマにのみ存在し、正式スキーマ側では未整備"
+    - "フロントの可視化コンポーネントはデータ供給が無いためプレースホルダ表示のまま"
+  objective: >
+    Supabase(PostgreSQL) 上の最低限のスキーマ・データアクセス面を整備し、
+    現行API群がエラー無く動作できる「接続検証可能なMVP」状態を作る。
+scope:
+  in_scope:
+    - "旧 `schema.sql` に存在し正式スキーマに無いビュー／関数／テーブルの要件整理と移植方針決定"
+    - "`user_permissions` を含む権限モデルの最小要件定義（ログインユーザーが所属院のデータのみ取得できる状態）"
+    - "Supabase型生成プロセスの更新条件と整合性チェック方法の定義"
+    - "初期データ投入・E2E動作確認に必要なサンプルデータの最小要件"
+    - "UIプレースホルダ解消に必要なデータ供給（グラフ表示が行える集計APIの整合性）"
+  out_of_scope:
+    - "本番運用向けの完全な医療法令準拠やレセプト連携"
+    - "AI生成ロジック本体の実装詳細（外部API連携部分）"
+    - "高度な監査ログ／MFA等のセキュリティ周辺の最適化（現段階では最小権限確認に留める）"
+deliverables:
+  - id: "DL1"
+    description: "正式スキーマへ統合するためのDDL差分（ビュー／関数／テーブル定義）の一覧と整備方針"
+    acceptance:
+      - "各オブジェクトの目的・参照元（ファイル・行番号）・想定カラムを列挙"
+      - "移植先ファイル（例: `src/database/schemas/*.sql`）の候補を明記"
+  - id: "DL2"
+    description: "権限モデル最小要件（`user_permissions`/profilesとの関係、RLS適用方針）"
+    acceptance:
+      - "希望するロール種別とデータアクセスの対照表"
+      - "RLSポリシー実装メモ（対象テーブル、想定policy文）"
+  - id: "DL3"
+    description: "Supabase型自動生成運用ガイド（再生成タイミング・検証チェックリスト）"
+    acceptance:
+      - "`npm run supabase:types` 実行前後に確認すべき差分項目を列挙"
+      - "型ファイルで期待する新規エントリ（ビュー・関数）が反映されることを明文化"
+requirements:
+  data_model:
+    - id: "DM1"
+      name: "日次収益サマリービュー"
+      object_name: "daily_revenue_summary"
+      needs:
+        description: >
+          ダッシュボードAPI `src/app/api/dashboard/route.ts:53` と
+          収益API `src/app/api/revenue/route.ts:38` が参照。
+          `clinic_id`, `revenue_date`, `total_revenue`, `insurance_revenue`,
+          `private_revenue`, `total_transactions`, `average_transaction_amount` を提供する。
+        source_tables:
+          - "public.revenues"
+          - "public.clinics"
+        acceptance:
+          - "ビュー作成後に `SELECT * FROM daily_revenue_summary LIMIT 1;` が成功する"
+          - "日付・クリニックIDでのフィルタリングにインデックスが効く（`revenues` 側に複合INDEXが必要）"
+    - id: "DM2"
+      name: "日次AIコメント"
+      object_name: "daily_ai_comments"
+      needs:
+        description: >
+          ダッシュボードAPI `src/app/api/dashboard/route.ts:80` が参照。
+          `ai_comments` テーブルとの差分（単票日次レベルの一意制約、`suggestion_for_tomorrow` 列）が必要。
+          既存 `src/database/schemas/03_transaction_tables.sql` 内の `ai_comments` と役割が重複するため、
+          どちらを正式採用するか判断し、必要ならばビュー化で互換を取る。
+        acceptance:
+          - "APIが `summary`/`good_points`/`improvement_points`/`suggestion_for_tomorrow` を取得できる"
+          - "1クリニック1日1件の制約が担保される（UNIQUE制約またはビュー定義）"
+    - id: "DM3"
+      name: "来院履歴サマリー"
+      object_name: "patient_visit_summary"
+      needs:
+        description: >
+          患者分析API `src/app/api/patients/route.ts:72` が参照。
+          `visit_count`, `total_revenue`, `last_visit_date`, `visit_category` 等を返す集計ビューを実装。
+          正式スキーマには `visits` テーブルが存在しないため、`treatments` などから代替するか、
+          最低限の `visits` テーブル（来院イベント）を新設する必要がある。
+        acceptance:
+          - "ビュー生成時に依存テーブルが存在すること（必要なら `visits` テーブルのDDLを追加）"
+          - "APIで `conversionAnalysis`/`ltvRanking` が計算できるデータ量が取得できる"
+    - id: "DM4"
+      name: "時間帯別来院パターン関数"
+      object_name: "get_hourly_visit_pattern(clinic_uuid UUID)"
+      needs:
+        description: >
+          ダッシュボードAPI `src/app/api/dashboard/route.ts:107` が参照。
+          指定クリニックの曜日×時間帯ヒートマップデータを返却するRPC。
+          旧 `schema.sql` には未定義のため、新規に `visits` ベースで作成する。
+        acceptance:
+          - "戻り値に `weekday`, `hour_slot`, `visit_count` 等ヒートマップ描画可能な構造が含まれる"
+          - "異常時は空配列を返しAPI側がフェイルソフトできる"
+    - id: "DM5"
+      name: "時間帯別収益パターン関数"
+      object_name: "get_hourly_revenue_pattern(clinic_uuid UUID)"
+      needs:
+        description: >
+          収益API `src/app/api/revenue/route.ts:92` が参照。
+          来院テーブルと売上テーブルをJOINして時間帯別売上集計を返す。
+        acceptance:
+          - "1時間刻みなどUI要件に一致するバケット設定を定義"
+          - "nullデータでもエラーにならず空配列を返却"
+    - id: "DM6"
+      name: "患者指標計算RPC"
+      object_name: "calculate_patient_ltv / calculate_churn_risk_score"
+      needs:
+        description: >
+          患者分析API `src/app/api/patients/route.ts:108` および `:125` が参照。
+          旧 `schema.sql` に雛形あり。正式スキーマのテーブル構成（例: `revenues`, 将来導入予定の `visits`）に合わせて調整する。
+        acceptance:
+          - "対象患者が存在しない場合は 0 を返却し、API側エラーハンドリングを不要にする"
+          - "実データで計算できることを Supabase SQL テストで確認"
+    - id: "DM7"
+      name: "権限テーブル"
+      object_name: "user_permissions"
+      needs:
+        description: >
+          サーバーサイドAuthガード `src/lib/supabase/server.ts:113` と `src/app/api/auth/profile/route.ts:71`
+          が `user_permissions` を参照。正式スキーマでは `profiles` テーブルが存在するため、
+          両者の役割を統合するか、中間テーブルとして再設計する。
+        acceptance:
+          - "スタッフ／Supabase Authユーザーの紐付けが一意に管理できる"
+          - "RLSで clinic_id ごとにアクセス制御が可能"
+  api_alignment:
+    - id: "API1"
+      description: >
+        API実装とスキーマ命名の乖離を解消する。
+        具体的には `master_treatment_menus` / `master_categories` / `master_payment_methods`
+        など旧スキーマ名を、正式スキーマの `treatment_menus` / `menu_categories` へ合わせるか、
+        互換ビューを作成する方針を決定する。
+      acceptance:
+        - "命名整合方針をドキュメント化し、APIコード修正 or ビュー追加の工数見積もりを提示"
+        - "型定義 (`src/types/supabase.ts`) と矛盾しない状態にする"
+    - id: "API2"
+      description: >
+        ダッシュボード／患者／収益APIのレスポンス例を最低1件ずつ用意し、
+        Next.js側のプレースホルダUI（`チャート表示機能は準備中です` 等）を置き換え可能なデータフォーマットを確定する。
+      acceptance:
+        - "想定レスポンスを `docs/api_samples/` などに保存し、UI開発者が参照できる形式で共有"
+        - "グラフ描画に必要なキーとデータ型をリスト化"
+work_plan:
+  phases:
+    - name: "フェーズ1: スキーマ棚卸しと方針決定"
+      target_duration: "3日"
+      tasks:
+        - "旧 `src/api/database/schema.sql` と正式スキーマ (`src/database/schemas/*.sql`) の差分洗い出し"
+        - "各APIが参照するオブジェクトと依存関係図の作成"
+        - "命名整合ポリシー（互換ビュー作成かコード側調整か）の決定"
+    - name: "フェーズ2: DDL実装とSupabase反映"
+      target_duration: "4日"
+      tasks:
+        - "不足オブジェクト（DM1〜DM7）のDDL草案作成"
+        - "Supabase CLI もしくは psql スクリプトで検証環境へ適用"
+        - "サンプルデータ投入およびクエリテスト"
+    - name: "フェーズ3: 型定義・API確認"
+      target_duration: "2日"
+      tasks:
+        - "`npm run supabase:types` の再実行と差分レビュー"
+        - "Next.js API 経由でレスポンス確認（curl/Postman等）"
+        - "不足データでのUI挙動（ローディング／エラー表示）チェック"
+risks:
+  - id: "RSK1"
+    description: "正式スキーマと旧スキーマのデータモデルが大きく異なるため、単純移植では矛盾が発生する可能性"
+    mitigation: "互換ビューで段階的に吸収し、後続でフルリファクタ（API命名変更）を計画"
+  - id: "RSK2"
+    description: "RLSポリシーが未定義のテーブルにアクセスすると全件取得になり、データ漏洩リスクがある"
+    mitigation: "DDL適用と同時に `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` とポリシーを必須化"
+  - id: "RSK3"
+    description: "型定義更新を怠るとフロントでランタイムエラーが発生してもビルドで検知できない"
+    mitigation: "DDLマージ時に型再生成をCIチェック項目へ追加"
+verification:
+  checklist:
+    - "Supabase ダッシュボードで各ビュー／関数が作成済みであることを確認"
+    - "`npm run test` 実行時にAPIハンドラのモックが最新スキーマに追随していること"
+    - "ダッシュボード画面で日次データ・アラート・AIコメントが表示されることを手動確認"
+open_questions:
+  - "正式スキーマの `treatments` / `revenues` など詳細設計を旧マスタ構成に寄せるのか、それとも互換ビューで吸収するのか（プロダクトオーナー判断待ち）"
+  - "AIコメントの保存先を `ai_comments` と `daily_ai_comments` のどちらに統一するか（機能要件定義が必要）"
+  - "来院イベントをどの粒度で記録するか（`visits` 新設 or `appointments`/`treatments` から派生ビューで代替するか）"

@@ -1,0 +1,221 @@
+meta:
+  document: "RLS再設計と重複インデックス解消｜要件定義書"
+  version: "1.0.0"
+  last_updated: "2025-10-12T13:00:00+09:00"
+  owner: "DB/Platform チーム"
+  reviewers:
+    - "Security Lead"
+    - "App Backend Lead"
+    - "SRE/Infra Lead"
+
+context:
+  inputs:
+    advisor_csv_path: "/mnt/data/Supabase Performance Security Lints (eeczntsiyehoygsptksh) (9).csv"
+  current_findings:
+    # アドバイザCSVから抽出（作業手順で再スキャン）。ここでは代表2項目にフォーカス。
+    lints_in_scope:
+      - code: "0006_multiple_permissive_policies"
+        description: "同一テーブル・同一コマンドにPERMISSIVEポリシーが複数 → ORで拡張・意図せぬ開放の恐れ"
+      - code: "0009_duplicate_index"
+        description: "同一定義の重複インデックス → 更新コスト/容量の無駄"
+
+goals:
+  primary:
+    - "Advisor 0006/0009 をゼロにする（再実行で0件）"
+    - "各対象テーブルのRLSを『許可=PERMISSIVE(最大1本/コマンド)、共通ガード=RESTRICTIVE(1本/ALL)』に正規化"
+    - "重複インデックスを無停止で削除（DROP INDEX CONCURRENTLY）"
+  secondary:
+    - "RLSの式をテナント境界/論理削除/有効フラグで統一（監査容易性）"
+    - "認証IDはSupabase標準のauth.uid()を原則使用（必要時auth.jwt()で代替可）"
+
+non_goals:
+  - "新規テーブル設計変更（列追加/リレーション変更）は本フェーズ対象外"
+  - "クエリ最適化の全般（個別クエリ・統計更新・パーティション設計）は別計画で扱う"
+
+scope:
+  tables:  # CSVから機械抽出し、この配列を確定させる
+    discover_from_csv: true
+    include_like:
+      - "patients"
+      - "profiles"
+      - "chat_sessions"
+      - "revenues"
+      - "staff"
+      - "clinics"
+      - "daily_reports"
+      - "staff_performance"
+    exclude_patterns: []  # 監査対象外スキーマがあれば列挙
+  indexes:
+    discover_duplicates: true
+
+security_model:
+  rls_baseline:
+    principles:
+      - "PERMISSIVEはコマンド毎に最大1本（複数条件は1本のUSING/WITH CHECKへOR集約）"
+      - "共通ガードはRESTRICTIVEでFOR ALLに1本（AND結合）"
+      - "USINGは既存行の可視条件 / WITH CHECKはINSERT/UPDATE時の検査条件"
+      - "テナント境界は user_permissions 等の中間表を参照して強制"
+      - "未認証時のauth.uid()はNULL → 明示的にauthenticatedロールへ限定"
+    helpers:
+      auth_identity:
+        preferred: "auth.uid()"          # Supabase標準
+        alternative: "auth.jwt()->>'sub'" # 外部IdPや非UUIDの場合に採用
+  policy_templates:
+    restrictive_guard_all:
+      description: "論理削除や有効フラグなどの共通AND条件"
+      sql: |
+        CREATE POLICY {table}_guard
+        ON {schema}.{table}
+        AS RESTRICTIVE
+        FOR ALL
+        TO authenticated
+        USING (COALESCE({table}.is_deleted, false) = false)
+        WITH CHECK (COALESCE({table}.is_deleted, false) = false);
+    permissive_select_unified:
+      description: "SELECT許可を1本に集約（複数許可はORでまとめる）"
+      sql: |
+        CREATE POLICY {table}_select_permit
+        ON {schema}.{table}
+        AS PERMISSIVE
+        FOR SELECT
+        TO authenticated
+        USING (
+          {table}.clinic_id IN (
+            SELECT up.clinic_id
+            FROM public.user_permissions AS up
+            WHERE up.user_id = auth.uid()
+          )
+          OR {optional_extra_or_conditions}
+        );
+    permissive_insert_update:
+      description: "INSERT/UPDATEの検査条件（WITH CHECK）"
+      sql: |
+        CREATE POLICY {table}_write_permit
+        ON {schema}.{table}
+        AS PERMISSIVE
+        FOR INSERT, UPDATE
+        TO authenticated
+        WITH CHECK (
+          {table}.clinic_id IN (
+            SELECT up.clinic_id
+            FROM public.user_permissions AS up
+            WHERE up.user_id = auth.uid()
+          )
+          AND COALESCE({table}.is_deleted, false) = false
+        );
+
+index_policy:
+  detection_query: |
+    WITH idx AS (
+      SELECT i.indexrelid, i.indrelid, i.indkey, i.indisunique, i.indisprimary,
+             i.indexrelid::regclass AS index_name,
+             i.indrelid::regclass  AS table_name
+      FROM pg_index i
+    ),
+    constraint_idx AS (
+      SELECT conindid FROM pg_constraint WHERE conindid <> 0
+    ),
+    dups AS (
+      SELECT a.table_name, a.indkey,
+             array_agg(a.index_name ORDER BY pg_relation_size(a.indexrelid) DESC) AS indexes
+      FROM idx a
+      LEFT JOIN constraint_idx c ON a.indexrelid = c.conindid
+      WHERE c.conindid IS NULL AND a.indisprimary = false
+      GROUP BY a.table_name, a.indkey
+      HAVING COUNT(*) > 1
+    )
+    SELECT table_name, indexes[1] AS keep_index, indexes[2:] AS drop_candidates
+    FROM dups;
+  drop_strategy:
+    method: "DROP INDEX CONCURRENTLY"
+    transaction_block: "不可（単独実行）"
+    example_sql: |
+      -- 例：不要な重複インデックスを1本ずつ無停止で削除
+      DROP INDEX CONCURRENTLY IF EXISTS public.idx_patients_clinic_dup;
+      DROP INDEX CONCURRENTLY IF EXISTS public.idx_staff_clinic_dup;
+
+deliverables:
+  artifacts:
+    - "001_prepare_targets.sql      # CSV→対象テーブル抽出（ローカルスクリプトでも可）"
+    - "010_rls_drop_existing.sql    # 重複PERMISSIVE/誤構成をDROP"
+    - "020_rls_create_guard.sql     # RESTRICTIVEガード（FOR ALL）作成"
+    - "030_rls_create_permits.sql   # 統合PERMISSIVE(SELECT/INSERT/UPDATE)"
+    - "040_index_dups_detect.sql    # 重複インデックス検出クエリ"
+    - "041_index_dups_drop.sql      # CONCURRENTLY削除スクリプト"
+    - "090_verify_checks.sql        # EXPLAIN/roles検証"
+    - "README_runbook.md            # 手順書（本YAML準拠）"
+  environments:
+    - "staging"
+    - "production"
+
+migration_plan:
+  steps:
+    - name: "対象抽出"
+      actions:
+        - "Advisor CSVを取り込み、0006/0009のテーブルとオブジェクトを列挙"
+        - "本YAML scope.tables を確定（手動レビュー）"
+    - name: "RLS再設計（staging）"
+      actions:
+        - "各テーブルの既存PERMISSIVE（重複/分散）をDROP"
+        - "RESTRICTIVEガードをFOR ALLで1本作成"
+        - "SELECT/INSERT/UPDATEのPERMISSIVEを1本ずつ作成（必要条件はORで集約）"
+        - "ロール別テスト（anon/authenticated/admin-like）で可視と拒否を確認"
+    - name: "重複インデックス削除（staging）"
+      actions:
+        - "検出クエリでkeep/drop候補を確定（制約連動は除外）"
+        - "DROP INDEX CONCURRENTLY を個別発行（並行実行OK／TXブロック禁止）"
+    - name: "検証（staging）"
+      actions:
+        - "Supabase Advisorsを再実行（0006/0009が0件であること）"
+        - "主要クエリを EXPLAIN (ANALYZE, BUFFERS) で計画とI/Oを比較"
+    - name: "本番適用"
+      prechecks:
+        - "接続数・長大トランザクションの有無"
+        - "メンテナンス時間帯の告知（RLS変更は瞬時、INDEX DROPは無停止）"
+      actions:
+        - "RLS: staging同様の順序で適用"
+        - "INDEX: CONCURRENTLYで順次DROP（ジョブ分割可）"
+      postchecks:
+        - "Advisors再実行＝0件"
+        - "アプリE2E（RBAC/テナント越境が無いこと）"
+
+verification:
+  role_matrix:
+    roles: ["anon", "authenticated", "service_role"]
+    tests:
+      - "未認証は全テーブルでゼロ件（auth.uid()はNULL）"
+      - "認証済みは所属clinic_idの行のみ可視"
+      - "INSERT/UPDATEは所属clinic_id行のみ許可、is_deleted=trueは常に拒否"
+  advisor_check:
+    rerun: true
+    expected_zero:
+      - "0006_multiple_permissive_policies"
+      - "0009_duplicate_index"
+  performance:
+    plans: ["EXPLAIN ANALYZE", "BUFFERS"]
+    thresholds:
+      seqscan_ratio_warn: 0.2  # テナント境界キーのLookupがIndex Scanになること
+
+risk_and_rollback:
+  risks:
+    - "RLS条件の誤設定によるアクセス不可/越境"
+    - "誤ったINDEX削除（制約連動）"
+  mitigations:
+    - "全DDLをトランザクション化（INDEX DROPは除く）/即時ロールバック可能"
+    - "制約連動インデックスは検出クエリで除外"
+  rollback_plan:
+    - "RLS: 事前バックアップDDLで元ポリシーを即時再作成"
+    - "INDEX: CREATE INDEX CONCURRENTLYで再作成、必要ならREINDEX CONCURRENTLY"
+
+constraints:
+  operational:
+    - "DROP INDEX CONCURRENTLYはトランザクションブロック内で実行不可"
+    - "複数のDROP INDEX CONCURRENTLYは同時投下可（内部的に順番に進む）"
+  compatibility:
+    - "auth.uid()はSupabase Auth前提。外部IdPや非UUIDのsubはauth.jwt()->>'sub'に置換"
+
+acceptance_criteria:
+  - "Supabase Advisorsで0006/0009が0件"
+  - "ロール別テストにすべて合格（テナント越境ゼロ）"
+  - "主要クエリの計画に余計なOR連鎖やSeq Scanの悪化がない"
+  - "監査SQL（サンプル）で誤開放/誤拒否が0件"

@@ -19,15 +19,20 @@ import type {
 } from '@/types/reservation';
 
 export class ReservationService {
-  private supabase;
+  private readonly supabasePromise: Promise<any>;
 
   constructor() {
-    this.supabase = createClient();
+    this.supabasePromise = createClient();
+  }
+
+  private async getSupabase() {
+    return await this.supabasePromise;
   }
 
   // 予約検索・取得機能
   async getReservationById(id: string): Promise<Reservation> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .eq('id', id)
@@ -45,7 +50,8 @@ export class ReservationService {
   }
 
   async getReservationsByDateRange(startDate: Date, endDate: Date): Promise<Reservation[]> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .gte('startTime', startDate.toISOString())
@@ -66,7 +72,8 @@ export class ReservationService {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .eq('staffId', staffId)
@@ -82,7 +89,8 @@ export class ReservationService {
   }
 
   async getCustomerReservations(customerId: string): Promise<Reservation[]> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .eq('customerId', customerId)
@@ -96,7 +104,8 @@ export class ReservationService {
   }
 
   async getReservationsByStatus(status: string): Promise<Reservation[]> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .select('*')
       .eq('status', status)
@@ -165,7 +174,7 @@ export class ReservationService {
           slots.push({
             time: timeString,
             available: false,
-            conflictReason: `予約済み: ${conflict.customerName || ''}様`
+            conflictReason: `予約済み: ${((conflict as any).customerName ?? '')}様`
           });
         } else {
           slots.push({
@@ -183,6 +192,7 @@ export class ReservationService {
 
   // 予約作成機能
   async createReservation(data: CreateReservationData): Promise<Reservation> {
+    const supabase = await this.getSupabase();
     // バリデーション
     const validation = await this.validateTimeSlot(data.staffId, data.startTime, data.endTime);
     if (!validation.isValid) {
@@ -196,7 +206,7 @@ export class ReservationService {
       updatedAt: new Date(),
     };
 
-    const { data: result, error } = await this.supabase
+    const { data: result, error } = await supabase
       .from('reservations')
       .insert(reservationData)
       .select()
@@ -238,7 +248,8 @@ export class ReservationService {
 
   // 予約更新機能
   async updateReservationStatus(id: string, status: string): Promise<Reservation> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .update({ status, updatedAt: new Date() })
       .eq('id', id)
@@ -253,7 +264,8 @@ export class ReservationService {
   }
 
   async updateReservationTime(id: string, startTime: Date, endTime: Date): Promise<Reservation> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .update({ startTime, endTime, updatedAt: new Date() })
       .eq('id', id)
@@ -268,7 +280,8 @@ export class ReservationService {
   }
 
   async updateReservationStaff(id: string, staffId: string): Promise<Reservation> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .update({ staffId, updatedAt: new Date() })
       .eq('id', id)
@@ -283,7 +296,8 @@ export class ReservationService {
   }
 
   async updateReservationNotes(id: string, notes: string): Promise<Reservation> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .update({ notes, updatedAt: new Date() })
       .eq('id', id)
@@ -299,7 +313,8 @@ export class ReservationService {
 
   // 予約削除機能
   async cancelReservation(id: string, reason: string): Promise<boolean> {
-    const { error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { error } = await supabase
       .from('reservations')
       .update({ 
         status: 'cancelled', 
@@ -316,7 +331,8 @@ export class ReservationService {
   }
 
   async deleteReservation(id: string): Promise<boolean> {
-    const { error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { error } = await supabase
       .from('reservations')
       .delete()
       .eq('id', id);
@@ -330,7 +346,8 @@ export class ReservationService {
 
   // 一括操作機能
   async bulkUpdateStatus(reservationIds: string[], status: string): Promise<number> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .update({ status, updatedAt: new Date() })
       .in('id', reservationIds)
@@ -344,7 +361,8 @@ export class ReservationService {
   }
 
   async bulkDeleteReservations(reservationIds: string[]): Promise<number> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('reservations')
       .delete()
       .in('id', reservationIds)
@@ -413,7 +431,8 @@ export class ReservationService {
 
     // F008: Block（販売停止）チェック
     try {
-      const { data: blocks, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: blocks, error } = await supabase
         .from('blocks')
         .select('*')
         .eq('resourceId', staffId)
@@ -478,7 +497,8 @@ export class ReservationService {
 
   // ヘルパーメソッド
   private async getStaffById(staffId: string): Promise<Resource | null> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('staff')
       .select('*')
       .eq('id', staffId)

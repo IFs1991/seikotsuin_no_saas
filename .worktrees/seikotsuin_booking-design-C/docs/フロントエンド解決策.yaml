@@ -1,0 +1,41 @@
+issues:
+  - id: FE-001
+    title: ダッシュボードのサンプルデータフェールオープン解消
+    description: "API失敗時に静的サンプルを返してしまい、障害検知ができない。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "React Query等を導入し、APIエラー時はリトライとエラーステート表示に切り替える"
+        owner: frontend
+      - step: "ローディング/エラーUIをアクセシブルに実装し、監視通知と連携"
+        owner: frontend
+      - step: "統合テストでAPIエラー時にサンプルデータへフォールバックしないことを確認"
+        owner: qa
+
+  - id: FE-002
+    title: 患者分析画面の初期値と実データ同期
+    description: "usePatientAnalysisが固定の初期値を返し続け、API結果が空でもUIが正常に見えてしまう。"
+    status: pending
+    severity: medium
+    resolution:
+      - step: "APIレスポンスをstate初期値に反映し、取得失敗時は明示的にエラーメッセージを表示"
+        owner: frontend
+      - step: "セクションごとにSkeleton/Empty状態を用意し、実データとの差異を即時に伝える"
+        owner: frontend
+      - step: "Storybook等で状態遷移を可視化し、デザイナーと共有"
+        owner: design
+
+  - id: FE-003
+    title: 日報入力フォームの認証連携と整合性確保
+    description: "固定の`NEXT_PUBLIC_DEFAULT_CLINIC_ID`と手入力のスタッフ名だけで日報を送信している。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "ログインユーザーのクリニック/スタッフIDをSupabaseセッションから取得して自動設定"
+        owner: frontend
+      - step: "フォームバリデーションを強化し、APIレスポンスのエラー内容を表示"
+        owner: frontend
+      - step: "送信後にTanStack Queryのキャッシュを更新し、日報一覧へ反映"
+        owner: frontend
+      - step: "E2Eテストでフォーム送信と一覧反映を検証"
+        owner: qa

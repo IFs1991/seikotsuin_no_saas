@@ -238,7 +238,7 @@ const ShiftOptimizer: React.FC = () => {
             <p className='text-2xl font-bold text-[#111827] dark:text-[#f9fafb]'>
               総人件費予測:{' '}
               <span className='text-[#10b981]'>
-                ¥{totalCost.toLocaleString()}
+                {totalCost.toLocaleString()}
               </span>
             </p>
             <p className='text-sm text-gray-600 dark:text-gray-400 mt-2'>

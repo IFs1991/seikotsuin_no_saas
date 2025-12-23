@@ -76,23 +76,10 @@ export default function AdminLogin() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = (e: React.FormEvent) => {
     // クライアント側検証
     if (!validateClientSide()) {
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('email', email.trim().toLowerCase());
-    formData.append('password', password);
-
-    // Server Actionを実行
-    if (isSignUp) {
-      signupAction(formData);
-    } else {
-      loginAction(formData);
+      e.preventDefault();
     }
   };
 
@@ -145,13 +132,18 @@ export default function AdminLogin() {
           <p className='text-gray-600'>システム管理画面にアクセス</p>
         </div>
 
-        <form onSubmit={handleSubmit} className='space-y-4'>
+        <form
+          onSubmit={handleSubmit}
+          action={isSignUp ? signupAction : loginAction}
+          className='space-y-4'
+        >
           <div>
             <label className='block text-sm font-medium text-gray-700 mb-1'>
               メールアドレス <span className='text-red-500'>*</span>
             </label>
             <Input
               type='email'
+              name='email'
               value={email}
               onChange={e => {
                 setEmail(e.target.value);
@@ -179,9 +171,10 @@ export default function AdminLogin() {
               パスワード <span className='text-red-500'>*</span>
             </label>
             <div className='relative'>
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              name='password'
+              value={password}
                 onChange={e => {
                   setPassword(e.target.value);
                   // リアルタイム検証

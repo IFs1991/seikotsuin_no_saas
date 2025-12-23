@@ -7,10 +7,14 @@ import { createClient } from '@/lib/supabase';
 import type { Block, CreateBlockData } from '@/types/reservation';
 
 export class BlockService {
-  private supabase;
+  private readonly supabasePromise: Promise<any>;
 
   constructor() {
-    this.supabase = createClient();
+    this.supabasePromise = createClient();
+  }
+
+  private async getSupabase() {
+    return await this.supabasePromise;
   }
 
   /**
@@ -19,13 +23,14 @@ export class BlockService {
    * @returns 作成されたBlock
    */
   async createBlock(data: CreateBlockData): Promise<Block> {
+    const supabase = await this.getSupabase();
     const blockData = {
       ...data,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const { data: result, error } = await this.supabase
+    const { data: result, error } = await supabase
       .from('blocks')
       .insert(blockData)
       .select()
@@ -44,7 +49,8 @@ export class BlockService {
    * @returns Block
    */
   async getBlockById(id: string): Promise<Block> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('blocks')
       .select('*')
       .eq('id', id)
@@ -73,7 +79,8 @@ export class BlockService {
     startDate?: Date,
     endDate?: Date
   ): Promise<Block[]> {
-    let query = this.supabase
+    const supabase = await this.getSupabase();
+    let query = supabase
       .from('blocks')
       .select('*')
       .eq('resourceId', resourceId);
@@ -102,7 +109,8 @@ export class BlockService {
    * @returns Block配列
    */
   async getBlocksByDateRange(startDate: Date, endDate: Date): Promise<Block[]> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('blocks')
       .select('*')
       .gte('startTime', startDate.toISOString())
@@ -126,7 +134,8 @@ export class BlockService {
     id: string,
     updates: Partial<Omit<Block, 'id' | 'createdAt' | 'createdBy'>>
   ): Promise<Block> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('blocks')
       .update({ ...updates, updatedAt: new Date() })
       .eq('id', id)
@@ -146,7 +155,8 @@ export class BlockService {
    * @returns 成功フラグ
    */
   async deleteBlock(id: string): Promise<boolean> {
-    const { error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { error } = await supabase
       .from('blocks')
       .delete()
       .eq('id', id);
@@ -170,7 +180,8 @@ export class BlockService {
     startTime: Date,
     endTime: Date
   ): Promise<Block | null> {
-    const { data, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data, error } = await supabase
       .from('blocks')
       .select('*')
       .eq('resourceId', resourceId)

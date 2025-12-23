@@ -6,21 +6,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
 import { z } from 'zod';
+import { createClient } from '@/lib/supabase';
 
 // リクエストスキーマ
 const CompleteMFASetupSchema = z.object({
-  userId: z.string().min(1, 'ユーザーIDが必要です'),
   token: z.string().length(6, 'TOTPトークンは6桁である必要があります'),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
     // リクエストボディを解析
     const body = await request.json();
-    const { userId, token } = CompleteMFASetupSchema.parse(body);
+    const { token } = CompleteMFASetupSchema.parse(body);
 
     // MFA設定完了
-    const isCompleted = await mfaManager.completeMFASetup(userId, token);
+    const isCompleted = await mfaManager.completeMFASetup(user.id, token);
 
     if (!isCompleted) {
       return NextResponse.json(

@@ -47,8 +47,8 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
     !payload ||
     (payload as ApiResponse<T>).success === false
   ) {
-    const errorMessage =
-      (payload as { error?: string })?.error || response.statusText;
+    const errorPayload = payload as unknown as { error?: string };
+    const errorMessage = errorPayload?.error || response.statusText;
     throw new Error(errorMessage || 'API request failed');
   }
 

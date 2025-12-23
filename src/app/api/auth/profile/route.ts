@@ -81,7 +81,7 @@ export async function GET() {
 
     const response: ProfileResponse = {
       id: user.id,
-      email: user.email,
+      email: user.email ?? null,
       role,
       clinicId,
       isActive: Boolean(isActive),

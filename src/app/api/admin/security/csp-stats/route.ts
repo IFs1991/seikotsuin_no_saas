@@ -5,9 +5,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { processApiRequest } from '@/lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
+
     const supabase = await createClient();
 
     // 過去24時間の統計を取得

@@ -228,7 +228,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     // UI状態
     loading,
     error,
-    filterState,
+    filters: filterState,
 
     // アクション
     fetchMasterData,
@@ -237,7 +237,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     deleteMasterData,
 
     // フィルター
-    setFilter,
-    resetFilter,
+    updateFilters: setFilter,
+    resetFilters: resetFilter,
   };
 };

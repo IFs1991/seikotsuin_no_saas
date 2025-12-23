@@ -3,7 +3,7 @@
  * Phase 3A: セッション管理強化の中核機能
  */
 
-import { createClient } from '@/lib/supabase';
+import { createClient, type SupabaseServerClient } from '@/lib/supabase';
 import crypto from 'crypto';
 import type { Database } from '@/types/supabase';
 import type { SessionValidationResult } from '@/types/security';
@@ -13,7 +13,7 @@ import type { SessionValidationResult } from '@/types/security';
 // ================================================================
 
 // Supabase行型の定義
-type SupabaseClient = ReturnType<typeof createClient>;
+type SupabaseClient = SupabaseServerClient;
 type UserSessionRow = Database['public']['Tables']['user_sessions']['Row'];
 type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
 type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
@@ -89,10 +89,14 @@ type SessionUser = NonNullable<
 // ================================================================
 
 export class SessionManager {
-  private readonly supabase: SupabaseClient;
+  private readonly supabasePromise: Promise<SupabaseClient>;
 
   constructor() {
-    this.supabase = createClient();
+    this.supabasePromise = createClient();
+  }
+
+  private async getSupabase() {
+    return await this.supabasePromise;
   }
 
   /**
@@ -223,7 +227,7 @@ export class SessionManager {
 
   private toGeolocationPayload(
     geolocation?: Geolocation
-  ): UserSessionInsert['geolocation'] {
+  ): Exclude<UserSessionInsert['geolocation'], undefined> {
     if (!geolocation) {
       return null;
     }
@@ -248,7 +252,8 @@ export class SessionManager {
     clinicId: string
   ): Promise<SessionUser> {
     try {
-      const { data } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -363,6 +368,8 @@ export class SessionManager {
       const idleTimeoutIso = idleTimeoutAt.toISOString();
       const absoluteTimeoutIso = absoluteTimeoutAt.toISOString();
 
+      const supabase = await this.getSupabase();
+
       // セッションデータベース挿入
       const sessionData: UserSessionInsert = {
         user_id: userId,
@@ -386,7 +393,7 @@ export class SessionManager {
         created_by: userId,
       };
 
-      const { data: sessionRow, error } = await this.supabase
+      const { data: sessionRow, error } = await supabase
         .from('user_sessions')
         .insert(sessionData)
         .select<'*', UserSessionRow>()
@@ -405,9 +412,13 @@ export class SessionManager {
               clinicId,
               sessionToken,
               deviceInfo,
-              ipAddress: options.ipAddress,
-              userAgent: options.userAgent,
-              geolocation: options.geolocation,
+              ...(typeof options.ipAddress === 'string'
+                ? { ipAddress: options.ipAddress }
+                : {}),
+              ...(typeof options.userAgent === 'string'
+                ? { userAgent: options.userAgent }
+                : {}),
+              ...(options.geolocation ? { geolocation: options.geolocation } : {}),
               createdAt: sessionRow?.created_at ?? nowIso,
               lastActivity: sessionRow?.last_activity ?? nowIso,
               expiresAt: sessionRow?.expires_at ?? absoluteTimeoutIso,
@@ -463,9 +474,9 @@ export class SessionManager {
         clinicId,
         sessionToken,
         deviceInfo,
-        ipAddress: options.ipAddress,
-        userAgent: options.userAgent,
-        geolocation: options.geolocation,
+        ...(typeof options.ipAddress === 'string' ? { ipAddress: options.ipAddress } : {}),
+        ...(typeof options.userAgent === 'string' ? { userAgent: options.userAgent } : {}),
+        ...(options.geolocation ? { geolocation: options.geolocation } : {}),
         createdAt: nowIso,
         lastActivity: nowIso,
         expiresAt: absoluteTimeoutIso,
@@ -493,7 +504,8 @@ export class SessionManager {
     }
 
     try {
-      const { data: sessionRow, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: sessionRow, error } = await supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
         .eq('session_token', sessionToken)
@@ -573,7 +585,8 @@ export class SessionManager {
         last_activity: now.toISOString(),
         idle_timeout_at: newIdleTimeoutAt.toISOString(),
       };
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { error } = await supabase
         .from('user_sessions')
         .update(updateData)
         .eq('id', validation.session.id);
@@ -598,7 +611,8 @@ export class SessionManager {
     revokedBy?: string
   ): Promise<boolean> {
     try {
-      const { data: sessionRow, error: fetchError } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: sessionRow, error: fetchError } = await supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
         .eq('id', sessionId)
@@ -616,7 +630,7 @@ export class SessionManager {
         revoked_reason: reason,
       };
 
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('user_sessions')
         .update(updatePayload)
         .eq('id', sessionId);
@@ -655,7 +669,8 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<UserSession[]> {
-    const { data: sessions, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data: sessions, error } = await supabase
       .from('user_sessions')
       .select<'*', UserSessionRow>()
       .eq('user_id', userId)
@@ -667,7 +682,7 @@ export class SessionManager {
       return [];
     }
 
-    return sessions.map(row => this.mapSessionRow(row));
+    return sessions.map((row: UserSessionRow) => this.mapSessionRow(row));
   }
 
   /**
@@ -677,7 +692,8 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<number> {
-    const { count, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { count, error } = await supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
@@ -702,7 +718,8 @@ export class SessionManager {
     clinicId: string
   ): Promise<number> {
     try {
-      const { data: sessions, error: fetchError } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: sessions, error: fetchError } = await supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)
@@ -743,7 +760,8 @@ export class SessionManager {
     clinicId: string,
     role?: string
   ): Promise<SessionPolicy> {
-    const { data: policy, error } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data: policy, error } = await supabase
       .from('session_policies')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -777,7 +795,7 @@ export class SessionManager {
     clinicId: string,
     policy: SessionPolicy
   ): Promise<void> {
-    const supabase = this.supabase;
+    const supabase = await this.getSupabase();
     const activeCount = await this.getActiveSessionCount(userId, clinicId);
 
     if (activeCount >= policy.max_concurrent_sessions) {
@@ -863,7 +881,8 @@ export class SessionManager {
         correlation_id: event.correlation_id ?? null,
       };
 
-      await this.supabase.from('security_events').insert(payload);
+      const supabase = await this.getSupabase();
+      await supabase.from('security_events').insert(payload);
     } catch (error) {
       console.error('セキュリティイベントログ記録エラー:', error);
       // ログ記録エラーでメイン処理を停止させない

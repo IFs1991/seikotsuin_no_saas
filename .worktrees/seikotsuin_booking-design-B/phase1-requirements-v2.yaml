@@ -1,0 +1,430 @@
+# 整骨院管理SaaS Phase1 UI統合・改善 要件定義書 v2.0
+# Project: 整骨院管理SaaS Frontend Improvement
+# Version: 2.0 (Gemini分析・最新知見反映版)
+# Date: 2025-08-23
+# Phase: 1 - UI統合・改善 (RSC/CC分離・医療業界特化)
+
+project:
+  name: '整骨院管理SaaS'
+  phase: 'Phase 1 - UI統合・改善'
+  version: '2.0'
+  created_date: '2025-08-23'
+  updated_date: '2025-08-23'
+  status: 'Updated with Technical Analysis'
+
+# プロジェクト概要
+overview:
+  description: '医療業界特化のUI/UX改善とモダンアーキテクチャ実装'
+  current_status: 'Phase 0 完了 (7ページ基本実装済み)'
+  target_status: 'Phase 1 完了 (医療業界標準UI・RSC最適化・WCAG2.2準拠)'
+  business_value: '整骨院スタッフの業務効率20%向上、患者満足度向上、将来拡張性確保'
+
+# 技術スタック (2025年最新基準)
+tech_stack:
+  frontend:
+    framework: 'Next.js 15 (App Router + RSC)'
+    language: 'TypeScript 5.7+'
+    ui_library: 'React 19'
+    styling: 'Tailwind CSS v4.0 (Oxide Engine)'
+    components: 'shadcn/ui v2 + Radix UI'
+    state_management: 'Zustand + React Query'
+    icons: 'Lucide React'
+    validation: 'Zod (型安全性強化)'
+
+  architecture_principles:
+    - 'React Server Components (RSC) ファースト設計'
+    - 'クライアントコンポーネント最小化'
+    - 'Server Actions活用でAPIルート削減'
+    - 'TypeScript strictモード完全準拠'
+
+# 医療業界特化要件
+healthcare_specific:
+  ui_ux_principles:
+    - '情報密度優先 (美観より視認性)'
+    - '3クリック以内主要操作完了'
+    - '定型作業の効率化 (テンプレート・複製機能)'
+    - 'エラー時の明確な誘導'
+
+  target_users:
+    primary: '整骨院スタッフ (ITリテラシー中程度)'
+    secondary: '患者 (高齢者含む、多様なデバイス)'
+    tertiary: '院長・管理者 (経営分析重視)'
+
+  workflow_optimization:
+    - '施術記録入力: 平均3分 → 1分短縮'
+    - '予約管理: 視覚的スケジュール表示'
+    - '患者検索: リアルタイム候補表示'
+    - '売上確認: ワンクリックアクセス'
+
+# アーキテクチャ設計詳細
+architecture_design:
+  component_strategy:
+    server_components:
+      - 'データ表示中心のページコンポーネント'
+      - '静的なレイアウト・ナビゲーション'
+      - 'チャート・グラフコンポーネント (初期表示)'
+
+    client_components:
+      - 'フォーム・入力コンポーネント'
+      - 'モーダル・ダイアログ'
+      - 'インタラクティブなチャート操作'
+      - '検索・フィルタ機能'
+
+    hybrid_approach:
+      - 'テーブル: RSCでデータ取得、CCで操作'
+      - 'カード: RSCで表示、CCでアクション'
+
+  data_flow:
+    server_actions:
+      - 'フォーム送信処理'
+      - 'CRUD操作'
+      - 'ファイルアップロード'
+
+    client_side:
+      - 'UI状態管理 (Zustand)'
+      - 'リアルタイム更新 (React Query)'
+      - 'ローカル検索・フィルタ'
+
+# 改善対象領域 (優先度・具体性強化)
+improvement_areas:
+  # 1. デザインシステム構築 (最優先)
+  design_system:
+    priority: 'CRITICAL'
+    description: '医療業界標準に準拠したデザインシステム確立'
+
+    technical_requirements:
+      tailwind_v4:
+        - 'CSS-firstアプローチ (@theme利用)'
+        - 'Oxideエンジン活用でビルド速度向上'
+        - 'カスタムプロパティでデザイントークン管理'
+
+      color_system:
+        - 'WCAG 2.2 AA準拠 (コントラスト比4.5:1以上)'
+        - '医療用カラーパレット (ステータス表示重視)'
+        - 'ダークモード対応準備'
+
+      typography:
+        - 'メディカル向けフォント選択'
+        - '可読性重視のサイズスケール'
+        - '数値・データの強調表示'
+
+      spacing:
+        - 'タッチターゲット24x24px以上 (WCAG 2.2)'
+        - '情報密度最適化'
+        - 'スクロール最小化レイアウト'
+
+    implementation_plan:
+      week1: 'Tailwind v4.0セットアップ・デザイントークン定義'
+      week2: 'shadcn/uiコンポーネント医療業界向けカスタマイズ'
+
+  # 2. コンポーネント統合・最適化
+  component_optimization:
+    priority: 'HIGH'
+    description: 'RSC/CC分離とshadcn/ui統合'
+
+    core_components:
+      button:
+        variants: ['primary', 'secondary', 'medical-urgent', 'medical-normal']
+        requirements:
+          - '24x24px以上のクリック領域'
+          - 'loading状態表示'
+          - 'キーボード操作完全対応'
+
+      form:
+        requirements:
+          - 'リアルタイムバリデーション'
+          - '自動保存 (5秒間隔)'
+          - 'エラー時の具体的ガイダンス'
+          - 'テンプレート機能'
+
+      table:
+        mobile_strategy: 'カード型変換 + 優先度表示'
+        desktop_features:
+          - '固定ヘッダー・左列'
+          - 'インライン編集'
+          - 'バルクアクション'
+
+      modal:
+        requirements:
+          - 'フォーカストラップ実装'
+          - 'ESCキー・オーバーレイクリック対応'
+          - '適切なaria属性'
+
+    performance_targets:
+      - '初回レンダリング: 100ms以内'
+      - 'バンドルサイズ: 現状から15%削減'
+      - 'Lighthouse Performance: 95以上'
+
+  # 3. レスポンシブ最適化 (医療現場特化)
+  responsive_design:
+    priority: 'HIGH'
+    description: '多様なデバイス・使用環境への対応'
+
+    breakpoint_strategy:
+      mobile:
+        range: '< 768px'
+        priorities: ['重要情報優先表示', 'タッチ最適化', '縦画面対応']
+      tablet:
+        range: '768px - 1024px'
+        priorities: ['二画面分割', '横画面活用', '手書き対応準備']
+      desktop:
+        range: '> 1024px'
+        priorities: ['情報密度最大化', 'マルチタスク対応', 'ショートカット']
+
+    mobile_specific:
+      table_solutions:
+        - '重要度ベース列表示 (患者名・予約時間優先)'
+        - '展開型詳細表示'
+        - '水平スクロール + 固定列'
+
+      navigation:
+        - 'ボトムタブナビゲーション'
+        - 'スワイプジェスチャー'
+        - '片手操作配慮'
+
+      input_optimization:
+        - '数値入力パッド自動表示'
+        - '音声入力対応準備'
+        - '予測変換・履歴機能'
+
+  # 4. UX改善 (業務フロー最適化)
+  ux_enhancement:
+    priority: 'HIGH'
+    description: '整骨院業務に特化したユーザビリティ向上'
+
+    workflow_efficiency:
+      patient_management:
+        - '2秒以内検索結果表示'
+        - '患者カード即座表示'
+        - '施術履歴ワンクリック確認'
+
+      appointment_booking:
+        - 'ドラッグ&ドロップ予約変更'
+        - '空き時間視覚表示'
+        - 'ダブルブッキング防止'
+
+      medical_records:
+        - 'テンプレート選択・カスタマイズ'
+        - '前回記録コピー機能'
+        - '症状部位ビジュアル選択'
+
+    error_prevention:
+      - '入力必須項目の事前表示'
+      - '保存前確認ダイアログ'
+      - '操作取消機能'
+
+    accessibility_wcag22:
+      keyboard_navigation:
+        - '論理的フォーカス順序'
+        - 'スキップリンク実装'
+        - 'ショートカットキー (Ctrl+S保存等)'
+
+      screen_reader:
+        - '適切な見出し構造'
+        - 'aria-live動的コンテンツ通知'
+        - 'フォーム関連付け'
+
+      visual_accessibility:
+        - 'カラーのみに依存しない情報伝達'
+        - 'フォーカス表示明確化'
+        - '動的コンテンツの配慮'
+
+# 実装工程詳細 (段階的デリバリ)
+implementation_phases:
+  phase1_1_foundation:
+    name: '基盤構築・デザインシステム'
+    duration: '5日'
+    deliverables:
+      - 'Tailwind CSS v4.0 セットアップ'
+      - '医療業界向けデザイントークン定義'
+      - 'shadcn/ui カスタマイズベース構築'
+      - 'RSC/CC分離ガイドライン策定'
+
+    success_criteria:
+      - 'デザイントークン適用率100%'
+      - 'Tailwind設定エラー0件'
+      - 'ビルド時間現状から30%短縮'
+
+  phase1_2_components:
+    name: 'コアコンポーネント実装'
+    duration: '6日'
+    deliverables:
+      - 'Button, Input, Form統一実装'
+      - 'Table (デスクトップ版) 改善'
+      - 'Modal, Dialog RSC対応'
+      - 'Loading, Error状態統一'
+
+    success_criteria:
+      - '全コンポーネントTypeScript strict準拠'
+      - 'Storybook対応コンポーネント5個以上'
+      - '単体テストカバレッジ80%以上'
+
+  phase1_3_responsive:
+    name: 'レスポンシブ最適化・モバイル対応'
+    duration: '5日'
+    deliverables:
+      - 'モバイル向けTable・Form最適化'
+      - 'タッチインターフェイス改善'
+      - 'ナビゲーション・レイアウト調整'
+
+    success_criteria:
+      - '全画面サイズでの表示崩れ0件'
+      - 'タッチターゲット24px以上100%達成'
+      - 'Mobile Lighthouse Score 90以上'
+
+  phase1_4_integration:
+    name: '統合・最適化・品質保証'
+    duration: '4日'
+    deliverables:
+      - '全ページ統一デザイン適用'
+      - 'パフォーマンス最適化'
+      - 'アクセシビリティ完全対応'
+      - '品質保証・テスト'
+
+    success_criteria:
+      - 'WCAG 2.2 AA準拠100%達成'
+      - 'Core Web Vitals すべてGreen'
+      - '回帰テスト成功率100%'
+
+# 成功指標 (定量・定性)
+success_metrics:
+  technical_kpis:
+    performance:
+      - 'Lighthouse Performance Score: 95+'
+      - 'First Contentful Paint: < 1.0s'
+      - 'Largest Contentful Paint: < 2.5s'
+      - 'Cumulative Layout Shift: < 0.1'
+
+    accessibility:
+      - 'WCAG 2.2 AA準拠: 100%'
+      - 'キーボード操作対応: 100%'
+      - 'スクリーンリーダー対応: 100%'
+
+    code_quality:
+      - 'TypeScript strict: エラー0件'
+      - 'ESLint警告: 0件'
+      - 'テストカバレッジ: 85%以上'
+
+  user_experience_kpis:
+    efficiency:
+      - '施術記録入力時間: 30%短縮'
+      - '患者検索速度: 2秒以内'
+      - '予約操作: 3クリック以内'
+
+    satisfaction:
+      - 'ユーザビリティテスト評価: 4.5/5.0+'
+      - 'モバイル使用満足度: 90%+'
+      - 'エラー発生率: 50%削減'
+
+  business_impact:
+    - '日次業務時間: 20%短縮'
+    - '新規スタッフ習得時間: 40%短縮'
+    - '患者待ち時間: 15%短縮'
+
+# リスク管理 (具体的対策)
+risk_management:
+  technical_risks:
+    rsc_complexity:
+      risk: 'RSC/CC境界設計の複雑化'
+      probability: 'Medium'
+      impact: 'High'
+      mitigation:
+        - '段階的移行 (CC→RSC変換)'
+        - '明確なガイドライン策定'
+        - '定期的アーキテクチャレビュー'
+
+    performance_degradation:
+      risk: 'UI改善によるパフォーマンス低下'
+      probability: 'Medium'
+      impact: 'High'
+      mitigation:
+        - '継続的性能監視'
+        - 'Bundle Analyzerでの定期確認'
+        - '不要ライブラリの積極削除'
+
+    breaking_changes:
+      risk: '既存機能の意図しない破壊'
+      probability: 'Low'
+      impact: 'Critical'
+      mitigation:
+        - 'E2Eテスト強化'
+        - '段階的デプロイ'
+        - 'ロールバック手順確立'
+
+  timeline_risks:
+    scope_creep:
+      risk: '要求仕様の拡大'
+      probability: 'High'
+      impact: 'Medium'
+      mitigation:
+        - '段階的デリバリによる価値実証'
+        - 'Phase2計画での対応'
+        - 'ステークホルダー合意徹底'
+
+# 品質保証戦略
+quality_assurance:
+  testing_strategy:
+    unit_testing:
+      - 'コンポーネント単体テスト (Jest + RTL)'
+      - 'カスタムフック テスト'
+      - 'ユーティリティ関数テスト'
+
+    integration_testing:
+      - 'ページレベル統合テスト'
+      - 'API連携テスト準備'
+      - '状態管理テスト'
+
+    e2e_testing:
+      - '重要業務フロー (予約→施術→会計)'
+      - 'レスポンシブ対応確認'
+      - 'アクセシビリティ自動テスト'
+
+    manual_testing:
+      - '実際のスタッフによるユーザビリティテスト'
+      - '多デバイス・ブラウザ確認'
+      - 'パフォーマンス体感確認'
+
+  code_review:
+    process:
+      - '全PR必須レビュー'
+      - 'アーキテクチャ観点レビュー'
+      - 'アクセシビリティ確認'
+
+    automation:
+      - 'Lighthouse CI統合'
+      - 'Bundle size tracking'
+      - 'TypeScript strict check'
+
+# Phase2以降への準備
+future_preparation:
+  immediate_next:
+    - 'Supabase連携準備 (RSC対応)'
+    - '認証システム設計'
+    - 'データマイグレーション計画'
+
+  scalability:
+    - 'マルチテナント対応準備'
+    - 'API設計統一'
+    - '監視・ログ基盤構築'
+
+  enhancement:
+    - 'AI機能統合準備'
+    - 'リアルタイム通信検討'
+    - 'PWA化検討'
+
+# 備考・注意事項
+notes:
+  development:
+    - '医療業界の法規制・慣例を最優先に考慮'
+    - '既存データの整合性を絶対に破壊しない'
+    - '段階的改善で業務中断を最小化'
+
+  maintenance:
+    - 'コンポーネント仕様書の継続更新'
+    - 'デザイン決定の文書化'
+    - 'パフォーマンス基準の定期見直し'
+
+  collaboration:
+    - '医療従事者との密なコミュニケーション'
+    - 'フィードバック収集・反映サイクル確立'
+    - 'トレーニング・サポート体制準備'

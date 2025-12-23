@@ -47,17 +47,17 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: report.id,
-          reportDate: report.report_date,
-          staffName: report.staff?.name || '未設定',
-          totalPatients: report.total_patients,
-          newPatients: report.new_patients,
-          totalRevenue: parseFloat(report.total_revenue || '0'),
-          insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
-          privateRevenue: parseFloat(report.private_revenue || '0'),
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: report.id,
+            reportDate: report.report_date,
+            staffName: (report.staff as any)?.name || '未設定',
+            totalPatients: report.total_patients,
+            newPatients: report.new_patients,
+            totalRevenue: parseFloat(report.total_revenue || '0'),
+            insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
+            privateRevenue: parseFloat(report.private_revenue || '0'),
           reportText: report.report_text,
           createdAt: report.created_at,
         },
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
           reports?.map(report => ({
             id: report.id,
             reportDate: report.report_date,
-            staffName: report.staff?.name || '未設定',
+            staffName: (report.staff as any)?.name || '未設定',
             totalPatients: report.total_patients,
             newPatients: report.new_patients,
             totalRevenue: parseFloat(report.total_revenue || '0'),

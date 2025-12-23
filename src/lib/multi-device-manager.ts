@@ -51,10 +51,10 @@ export interface DeviceManagementAction {
 
 export interface DeviceSecurityAlert {
   type:
-    | 'new_device'
-    | 'suspicious_activity'
-    | 'concurrent_limit'
-    | 'location_change';
+  | 'new_device'
+  | 'suspicious_activity'
+  | 'concurrent_limit'
+  | 'location_change';
   severity: 'low' | 'medium' | 'high';
   message: string;
   deviceInfo: DeviceInfo;
@@ -99,7 +99,7 @@ export class MultiDeviceManager {
       if (error || !data) {
         try {
           const res = await query;
-          // @ts-expect-error: Supabase builder may return thenable without strict typing
+          // Supabase builder may return thenable without strict typing
           data = res && res.data ? res.data : null;
         } catch (_) {
           // ignore
@@ -121,8 +121,8 @@ export class MultiDeviceManager {
 
       return Boolean(
         record.is_trusted === true ||
-          record.trust_level === 'trusted' ||
-          (typeof record.trust_score === 'number' && record.trust_score >= 80)
+        record.trust_level === 'trusted' ||
+        (typeof record.trust_score === 'number' && record.trust_score >= 80)
       );
     } catch (_) {
       return false;

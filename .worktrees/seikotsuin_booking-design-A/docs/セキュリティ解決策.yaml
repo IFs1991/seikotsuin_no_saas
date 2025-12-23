@@ -1,0 +1,39 @@
+issues:
+  - id: SECURITY-001
+    title: APIエンドポイントの認証保護強化
+    description: "ミドルウェアのmatcherに`/api`が含まれておらず、匿名で高権限APIへアクセスできる。"
+    status: pending
+    severity: critical
+    resolution:
+      - step: "middlewareの`matcher`に`/api/:path*`を追加し、全APIでSupabaseセッション検証を実行"
+        owner: security
+      - step: "Rate limiting設定をAPIにも適用し、IP/ユーザー単位で閾値を設ける"
+        owner: security
+      - step: "保護対象ルートをテーブル化し、自動テストで未保護ルートが無いことを検証"
+        owner: qa
+
+  - id: SECURITY-002
+    title: レスポンスヘッダーに含まれる機微情報の削減
+    description: "middlewareが`X-User-ID`等の機微情報をレスポンスヘッダーに設定しており、攻撃者にセッション情報を与える恐れがある。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "外部へ送出するヘッダーを最小限にし、監査用途の情報はサーバー側ログへ限定"
+        owner: security
+      - step: "セッションIDはHttpOnly Cookieで管理し、レスポンスヘッダーではトレースIDのみ返す"
+        owner: backend
+      - step: "OWASP ASVSに沿ったヘッダー監査チェックリストを運用に組み込む"
+        owner: security
+
+  - id: SECURITY-003
+    title: Supabaseサービスロールキーの安全な取り扱い
+    description: "サービスロールキーが複数のAPIルートで直接使用され、漏洩リスクと権限過多を招いている。"
+    status: pending
+    severity: high
+    resolution:
+      - step: "サービスロールキーをサーバーサイド専用環境変数に限定し、クライアントバンドルから排除"
+        owner: security
+      - step: "サービスロールを使う処理は中央のラッパー経由に統一し、操作ログとアクセス制約を実装"
+        owner: backend
+      - step: "RLSの有効化とユニットテストで権限逸脱がないことを確認"
+        owner: qa

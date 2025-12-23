@@ -1,0 +1,209 @@
+meta:
+  proposal: "supabase_lint_fix_plan"
+  version: "2025-09-22"
+  requires_pg15: true          # security_invoker を使うため
+  target_schema: "public"
+  affected_objects:
+    views:
+      - public.patient_visit_summary
+      - public.daily_revenue_summary
+      - public.staff_performance_summary
+    tables:
+      - public.test_permissions
+
+prechecks:
+  sql:
+    - name: "postgres_version>=15"
+      stmt: |
+        SELECT current_setting('server_version_num')::int >= 150000 AS ok;
+    - name: "objects_exist"
+      stmt: |
+        SELECT 'public.patient_visit_summary'::regclass IS NOT NULL
+           AND 'public.daily_revenue_summary'::regclass IS NOT NULL
+           AND 'public.staff_performance_summary'::regclass IS NOT NULL
+           AND 'public.test_permissions'::regclass IS NOT NULL AS ok;
+    - name: "list_current_privs"
+      stmt: |
+        SELECT table_schema, table_name, privilege_type, grantee
+        FROM information_schema.table_privileges
+        WHERE table_schema='public'
+          AND table_name IN ('patient_visit_summary','daily_revenue_summary','staff_performance_summary','test_permissions')
+        ORDER BY table_name, grantee, privilege_type;
+
+roles_and_policies:
+  # アプリ用の読み取りロール（存在しない場合に作成）
+  bootstrap_roles:
+    - |
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='app_readonly') THEN
+          CREATE ROLE app_readonly NOINHERIT;
+        END IF;
+      END$$;
+
+  # 将来作成されるオブジェクトにも最小権限を適用（PUBLICへの自動付与を抑制）
+  default_privileges:
+    - |
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC;
+    - |
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_readonly;
+
+ddl:
+  # --- 1) ビューの SECURITY INVOKER 化 + 最小権限化 ---
+  views:
+    - object: public.patient_visit_summary
+      up:
+        - |
+          ALTER VIEW public.patient_visit_summary SET (security_invoker = true);
+        - |
+          ALTER VIEW public.patient_visit_summary OWNER TO app_readonly;
+        - |
+          REVOKE ALL ON public.patient_visit_summary FROM PUBLIC;
+        - |
+          GRANT SELECT ON public.patient_visit_summary TO authenticated;
+      down:
+        - |
+          -- 元の権限に戻す場合の例（必要に応じて調整）
+          REVOKE SELECT ON public.patient_visit_summary FROM authenticated;
+          GRANT SELECT ON public.patient_visit_summary TO PUBLIC;
+          ALTER VIEW public.patient_visit_summary SET (security_invoker = false);
+
+    - object: public.daily_revenue_summary
+      up:
+        - |
+          ALTER VIEW public.daily_revenue_summary SET (security_invoker = true);
+        - |
+          ALTER VIEW public.daily_revenue_summary OWNER TO app_readonly;
+        - |
+          REVOKE ALL ON public.daily_revenue_summary FROM PUBLIC;
+        - |
+          GRANT SELECT ON public.daily_revenue_summary TO authenticated;
+      down:
+        - |
+          REVOKE SELECT ON public.daily_revenue_summary FROM authenticated;
+          GRANT SELECT ON public.daily_revenue_summary TO PUBLIC;
+          ALTER VIEW public.daily_revenue_summary SET (security_invoker = false);
+
+    - object: public.staff_performance_summary
+      up:
+        - |
+          ALTER VIEW public.staff_performance_summary SET (security_invoker = true);
+        - |
+          ALTER VIEW public.staff_performance_summary OWNER TO app_readonly;
+        - |
+          REVOKE ALL ON public.staff_performance_summary FROM PUBLIC;
+        - |
+          GRANT SELECT ON public.staff_performance_summary TO authenticated;
+      down:
+        - |
+          REVOKE SELECT ON public.staff_performance_summary FROM authenticated;
+          GRANT SELECT ON public.staff_performance_summary TO PUBLIC;
+          ALTER VIEW public.staff_performance_summary SET (security_invoker = false);
+
+  # --- 2) RLSの有効化（test_permissions） + 最小権限 + ポリシー ---
+  rls:
+    table: public.test_permissions
+    up:
+      - |
+        -- RLS 有効化 + 強制（テーブル所有者にもRLS適用）
+        ALTER TABLE public.test_permissions ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE public.test_permissions FORCE ROW LEVEL SECURITY;
+      - |
+        -- PUBLIC権限の剥奪と必要ロールのみ付与
+        REVOKE ALL ON public.test_permissions FROM PUBLIC;
+        GRANT SELECT ON public.test_permissions TO authenticated;
+      - |
+        -- 代表的なポリシー（A: user境界）
+        -- 必要に応じてB: tenant境界を使用。片方だけ有効にする想定。
+        DROP POLICY IF EXISTS by_user_select ON public.test_permissions;
+        CREATE POLICY by_user_select ON public.test_permissions
+          FOR SELECT
+          TO authenticated
+          USING (user_id = auth.uid());
+
+        -- B: tenant境界（JWTに 'tenant_id' クレームがある前提）
+        DROP POLICY IF EXISTS by_tenant_select ON public.test_permissions;
+        CREATE POLICY by_tenant_select ON public.test_permissions
+          FOR SELECT
+          TO authenticated
+          USING (
+            (current_setting('request.jwt.claims', true)::jsonb ? 'tenant_id')
+            AND tenant_id = (current_setting('request.jwt.claims', true)::jsonb->>'tenant_id')
+          );
+      - |
+        -- RLSで参照する列へインデックス（性能対策）
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='public' AND c.relname='idx_test_permissions_user_id'
+          ) THEN
+            CREATE INDEX idx_test_permissions_user_id ON public.test_permissions (user_id);
+          END IF;
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='public' AND c.relname='idx_test_permissions_tenant_id'
+          ) THEN
+            CREATE INDEX idx_test_permissions_tenant_id ON public.test_permissions (tenant_id);
+          END IF;
+        END$$;
+    down:
+      - |
+        DROP POLICY IF EXISTS by_user_select ON public.test_permissions;
+        DROP POLICY IF EXISTS by_tenant_select ON public.test_permissions;
+      - |
+        ALTER TABLE public.test_permissions NO FORCE ROW LEVEL SECURITY;
+        ALTER TABLE public.test_permissions DISABLE ROW LEVEL SECURITY;
+      - |
+        -- 権限を暫定的に元へ戻す例（必要なら）
+        GRANT SELECT ON public.test_permissions TO PUBLIC;
+      - |
+        -- インデックスは必要に応じて
+        DROP INDEX IF EXISTS public.idx_test_permissions_user_id;
+        DROP INDEX IF EXISTS public.idx_test_permissions_tenant_id;
+
+hardening_optional:
+  # publicスキーマはデフォでAPI公開対象。派生/レポート系は非公開スキーマへ退避可能。
+  move_views_to_reporting_schema:
+    create_schema: "CREATE SCHEMA IF NOT EXISTS reporting;"
+    move:
+      - "ALTER VIEW public.patient_visit_summary SET SCHEMA reporting;"
+      - "ALTER VIEW public.daily_revenue_summary SET SCHEMA reporting;"
+      - "ALTER VIEW public.staff_performance_summary SET SCHEMA reporting;"
+    grant:
+      - "REVOKE ALL ON SCHEMA reporting FROM PUBLIC;"
+      - "GRANT USAGE ON SCHEMA reporting TO authenticated;"
+    note: "アプリ/APIの参照先変更が必要になるためリリース計画と一緒に実施すること"
+
+tests:
+  # 期待動作を匿名・認証・サービスロールで検証
+  psql_snippets:
+    - name: "RLSフラグ確認"
+      stmt: |
+        SELECT relname, relrowsecurity, relforcerowsecurity
+        FROM pg_class WHERE relname='test_permissions';
+    - name: "定義済みポリシー確認"
+      stmt: |
+        SELECT schemaname, tablename, policyname, roles, cmd, qual
+        FROM pg_policies
+        WHERE schemaname='public' AND tablename='test_permissions';
+    - name: "ビューのinvoker確認"
+      stmt: |
+        SELECT c.relname AS view_name,
+               pg_catalog.array_to_string(c.reloptions, ',') AS reloptions
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE c.relkind='v' AND n.nspname='public'
+          AND c.relname IN ('patient_visit_summary','daily_revenue_summary','staff_performance_summary');
+
+ops_guidance:
+  - "クライアントに `service_role` キーを絶対に埋め込まない（サーバーサイド専用）"
+  - "JWTクレーム（user_id / tenant_id）の正規化とテストデータを用意"
+  - "マイグレーションはトランザクション化し、ステージングでRLS誤拒否を先に検知"
+  - "将来のオブジェクトにも最小権限が効くよう DEFAULT PRIVILEGES を維持"
+  - "ポリシー列にインデックスを必ず付与し、クエリ計画を実測で監視"
+
+rollback_plan:
+  - "DDL.down 手順をそのまま逆適用"
+  - "必要に応じて直前スナップショット/バックアップへロールバック"
+  - "RLSで業務停止が起きた場合は `NO FORCE` で一時緩和 → 原因切り分け後に再適用"

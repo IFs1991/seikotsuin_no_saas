@@ -105,9 +105,10 @@ export class RateLimiter {
       const window = customConfig?.window || config.WINDOW;
       const limit =
         customConfig?.limit ||
-        config.MAX_ATTEMPTS ||
-        config.MAX_CALLS ||
-        config.MAX_SESSIONS;
+        (('MAX_ATTEMPTS' in config && config.MAX_ATTEMPTS) ||
+          ('MAX_CALLS' in config && config.MAX_CALLS) ||
+          ('MAX_SESSIONS' in config && config.MAX_SESSIONS) ||
+          0);
 
       const key = this.generateKey(type, identifier);
       const blockKey = `${key}:block`;
@@ -221,13 +222,18 @@ export class RateLimiter {
     const config = this.getConfig(type);
     let blockDuration: number;
 
-    if (type === 'login_attempts' && config.BLOCK_DURATION) {
+    if (type === 'login_attempts') {
       // ログイン試行の段階的ブロック
-      const durations = config.BLOCK_DURATION as number[];
+      const loginConfig = RATE_LIMIT_CONFIG.LOGIN_ATTEMPTS;
+      const durations = loginConfig.BLOCK_DURATION;
       blockDuration = durations[Math.min(level, durations.length - 1)];
+    } else if (type === 'session_creation') {
+      blockDuration = RATE_LIMIT_CONFIG.SESSION_CREATION.BLOCK_DURATION;
+    } else if (type === 'mfa_attempts') {
+      blockDuration = RATE_LIMIT_CONFIG.MFA_ATTEMPTS.BLOCK_DURATION;
     } else {
-      // その他のタイプ
-      blockDuration = (config as any).BLOCK_DURATION || 300; // デフォルト5分
+      // その他のタイプ - デフォルト5分
+      blockDuration = 300;
     }
 
     const unblockTime = now + blockDuration;

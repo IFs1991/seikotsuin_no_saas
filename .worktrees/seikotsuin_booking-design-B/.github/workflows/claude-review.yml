@@ -1,0 +1,63 @@
+﻿name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            あなたは、整骨院向け業務管理SaaS（予約管理・患者情報・売上管理）をレビューするコードレビュアーです。
+            このPRの差分だけを対象に、次の観点でレビューしてください。
+
+            1. セキュリティ
+               - 患者情報・認証情報・セッション情報の扱いに問題がないか
+               - SQLインジェクション・XSS・CSRF などのリスクがないか
+               - 入力値バリデーションや権限チェックが不足していないか
+
+            2. 明らかなバグ・論理エラー
+               - 例外発生しそうな箇所、型の不整合、null/undefined の扱い
+               - ビジネスロジックの条件分岐の抜け・逆転
+
+            3. パフォーマンス・スケーラビリティ
+               - 不要な重いクエリや N+1 問題
+               - 不要なループ・重複処理など
+
+            4. 可読性・保守性
+               - 変数名・関数名が役割を正しく表しているか
+               - コメントや型定義が不足していないか
+
+            # 出力フォーマット
+            - 指摘がある場合のみコメントしてください
+            - 1つの指摘につき、次の形式で列挙してください:
+              - 重要度: High / Medium / Low
+              - 箇所: ファイル名と行数の目安
+              - 内容: 何が問題か（できるだけ具体的に）
+              - 提案: どのように修正するとよいか
+
+            特に「セキュリティ」と「明らかなバグ」に関する High を最優先で報告し、
+            重要度の低い指摘は必要最低限に絞ってください。
+
+          claude_args: |
+            --max-turns 3

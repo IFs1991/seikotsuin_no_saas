@@ -237,7 +237,22 @@ export class CSPConfig {
       }
     }
 
-    return Buffer.from(array).toString('base64');
+    // Edge RuntimeではBufferが存在しないため、Web標準のエンコードにフォールバックする
+    if (typeof Buffer !== 'undefined') {
+      return Buffer.from(array).toString('base64');
+    }
+
+    let binary = '';
+    for (const byte of array) {
+      binary += String.fromCharCode(byte);
+    }
+
+    if (typeof btoa === 'function') {
+      return btoa(binary);
+    }
+
+    // 最終フォールバック（btoaもない環境は稀）
+    return binary;
   }
 
   /**

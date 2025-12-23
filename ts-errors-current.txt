@@ -1,0 +1,47 @@
+src/components/ui/form-field.tsx(52,15): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type 'Partial<unknown> & Attributes'.
+src/components/ui/responsive-table.tsx(76,23): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(99,29): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(155,27): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(193,27): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/ui/responsive-table.tsx(234,21): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/hooks/queries/useSystemSettingsQuery.ts(131,45): error TS2345: Argument of type 'FilterState' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'FilterState'.
+src/hooks/useChat.ts(95,32): error TS2304: Cannot find name 'analyzeMessage'.
+src/hooks/useChat.ts(145,17): error TS2339: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(145,46): error TS2339: Property 'webkitSpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(154,14): error TS2339: Property 'SpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useChat.ts(154,42): error TS2339: Property 'webkitSpeechRecognition' does not exist on type 'Window & typeof globalThis'.
+src/hooks/useDailyReports.ts(86,19): error TS2739: Type '{}' is missing the following properties from type 'DailyReport': staff_id, date, treatment_count, revenue
+src/hooks/useDailyReports.ts(86,31): error TS2739: Type '{}' is missing the following properties from type 'DailyReport': staff_id, date, treatment_count, revenue
+src/hooks/useDailyReports.ts(113,43): error TS2698: Spread types may only be created from object types.
+src/hooks/useSystemSettingsV2.ts(150,5): error TS2322: Type '() => void' is not assignable to type '(filters?: Partial<FilterState>) => Promise<void>'.
+  Type 'void' is not assignable to type 'Promise<void>'.
+src/hooks/useSystemSettingsV2.ts(151,5): error TS2322: Type '(data: Partial<MasterDataDetail>) => Promise<Partial<MasterDataDetail>>' is not assignable to type '(data: Partial<MasterDataDetail>) => Promise<boolean>'.
+  Type 'Promise<Partial<MasterDataDetail>>' is not assignable to type 'Promise<boolean>'.
+    Type 'Partial<MasterDataDetail>' is not assignable to type 'boolean'.
+src/hooks/useSystemSettingsV2.ts(152,5): error TS2322: Type '(id: string, updates: Partial<MasterDataDetail>) => Promise<void>' is not assignable to type '(id: string, data: Partial<MasterDataDetail>) => Promise<boolean>'.
+  Type 'Promise<void>' is not assignable to type 'Promise<boolean>'.
+    Type 'void' is not assignable to type 'boolean'.
+src/hooks/useSystemSettingsV2.ts(153,5): error TS2322: Type '(id: string) => Promise<void>' is not assignable to type '(id: string) => Promise<boolean>'.
+  Type 'Promise<void>' is not assignable to type 'Promise<boolean>'.
+    Type 'void' is not assignable to type 'boolean'.
+src/lib/api/admin/dashboard-client.ts(44,8): error TS2352: Conversion of type 'ApiResponse<AdminDashboardPayload>' to type '{ error?: string; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'error' are incompatible.
+    Type 'ApiError' is not comparable to type 'string'.
+src/lib/api/admin/master-data-client.ts(51,8): error TS2352: Conversion of type 'ApiResponse<T>' to type '{ error?: string; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of property 'error' are incompatible.
+    Type 'ApiError' is not comparable to type 'string'.
+src/lib/error-handler-enhanced.ts(200,34): error TS2341: Property 'logSecurityEvent' is private and only accessible within class 'SecurityMonitor'.
+src/lib/error-handler-enhanced.ts(201,9): error TS2561: Object literal may only specify known properties, but 'eventType' does not exist in type '{ user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; event_data?: any; ip_address?: string; user_agent?: string; source_component: string; }'. Did you mean to write 'event_type'?
+src/lib/integration-tests.ts(3,29): error TS2306: File 'C:/Users/seekf/Desktop/seikotsuin_management_saas/src/__tests__/e2e/dashboard.test.ts' is not a module.
+src/lib/middleware-optimizer.ts(74,9): error TS2739: Type 'PostgrestBuilder<any, { role: any; clinic_id: any; is_active: any; full_name: any; }, false>' is missing the following properties from type 'Promise<any>': catch, finally, [Symbol.toStringTag]
+src/lib/middleware-optimizer.ts(137,36): error TS2341: Property 'logSecurityEvent' is private and only accessible within class 'SecurityMonitor'.
+src/lib/middleware-optimizer.ts(138,11): error TS2561: Object literal may only specify known properties, but 'eventType' does not exist in type '{ user_id?: string; clinic_id?: string; session_id?: string; event_type: string; event_category: string; severity_level: string; event_description: string; event_data?: any; ip_address?: string; user_agent?: string; source_component: string; }'. Did you mean to write 'event_type'?
+src/lib/middleware-optimizer.ts(204,20): error TS2339: Property 'ip' does not exist on type 'NextRequest'.
+src/lib/multi-device-manager.ts(102,11): error TS2578: Unused '@ts-expect-error' directive.
+src/lib/notifications/security-alerts.ts(214,5): error TS2578: Unused '@ts-expect-error' directive.
+src/lib/rate-limiting/middleware.ts(255,18): error TS2339: Property 'ip' does not exist on type 'NextRequest'.
+src/lib/rate-limiting/rate-limiter.ts(227,25): error TS2352: Conversion of type 'number | readonly [60, 300, 3600, 86400]' to type 'number[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  The type 'readonly [60, 300, 3600, 86400]' is 'readonly' and cannot be assigned to the mutable type 'number[]'.

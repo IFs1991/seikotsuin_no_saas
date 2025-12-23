@@ -17,14 +17,6 @@ try {
 async function getSecurityHeaders() {
   // 環境に応じたCSP取得
   const environment = process.env.NODE_ENV;
-  const cspPolicy =
-    CSPConfig?.getCSPForEnvironment?.(environment) || "default-src 'self'";
-
-  // CSP段階的導入設定
-  const rolloutPhase = process.env.CSP_ROLLOUT_PHASE || 'report-only';
-  const cspConfig = CSPConfig?.getGradualRolloutCSP?.(rolloutPhase) || {
-    csp: cspPolicy,
-  };
 
   const securityHeaders = [
     // フレーミング防止
@@ -62,20 +54,6 @@ async function getSecurityHeaders() {
       value:
         'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
     },
-    // Content Security Policy（動的nonce対応）
-    {
-      key: 'Content-Security-Policy',
-      value: cspConfig.csp,
-    },
-    // CSP Report-Only（段階的導入時）
-    ...(cspConfig.cspReportOnly
-      ? [
-          {
-            key: 'Content-Security-Policy-Report-Only',
-            value: cspConfig.cspReportOnly,
-          },
-        ]
-      : []),
   ];
 
   return securityHeaders;

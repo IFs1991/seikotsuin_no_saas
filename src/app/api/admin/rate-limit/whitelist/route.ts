@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import { z } from 'zod';
+import { processApiRequest } from '@/lib/api-helpers';
 
 // ホワイトリスト追加スキーマ
 const WhitelistAddSchema = z.object({
@@ -33,9 +34,16 @@ const WhitelistCheckSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // リクエストボディを解析
-    const body = await request.json();
-    const { type, identifier, ttl, reason } = WhitelistAddSchema.parse(body);
+    const auth = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
+
+    const { type, identifier, ttl } = WhitelistAddSchema.parse(auth.body);
 
     // ホワイトリストに追加
     const success = await rateLimiter.addToWhitelist(type, identifier, ttl);
@@ -82,11 +90,21 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') as any;
-    const identifier = searchParams.get('identifier');
+    const auth = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
 
-    if (!type || !identifier) {
+    const { searchParams } = new URL(request.url);
+    const parsed = WhitelistCheckSchema.safeParse({
+      type: searchParams.get('type'),
+      identifier: searchParams.get('identifier'),
+    });
+
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'type と identifier パラメータが必要です' },
         { status: 400 }
@@ -94,11 +112,14 @@ export async function GET(request: NextRequest) {
     }
 
     // ホワイトリスト状態チェック
-    const isWhitelisted = await rateLimiter.isWhitelisted(type, identifier);
+    const isWhitelisted = await rateLimiter.isWhitelisted(
+      parsed.data.type,
+      parsed.data.identifier
+    );
 
     return NextResponse.json({
-      type,
-      identifier,
+      type: parsed.data.type,
+      identifier: parsed.data.identifier,
       isWhitelisted,
       checkedAt: new Date().toISOString(),
     });

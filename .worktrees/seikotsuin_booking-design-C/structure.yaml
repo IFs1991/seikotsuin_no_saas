@@ -1,0 +1,1126 @@
+src:
+  structure.yaml:
+    content: |-
+      整骨院グループ向け経営管理システム
+      - 46店舗展開の整骨院グループ向けリアルタイム経営分析システム
+      - Next.js + Supabase + Gemini Flashによる技術スタック
+      - リアルタイムダッシュボード、患者分析、スタッフ管理、日報システム
+      - AI活用による日次分析とコメント機能
+      - インテリジェントチャットとAdmin統合管理
+      - マルチ店舗比較とベストプラクティス共有
+      - 依存関係: 各コンポーネント間のデータフローと統合
+    agent選定理由: |-
+      claude-3-5-sonnet-20241022は複雑なシステムアーキテクチャの理解と
+      体系的な構造化に優れており、医療経営システムの要件を
+      正確に把握して実装可能な形に落とし込むことができます。
+    api選定理由: |-
+      特定のAPIは必要ないため選択していません。
+    dependency: []
+    agent: 'claude-3-5-sonnet-20241022'
+    api: []
+
+  api:
+    database:
+      schema.sql:
+        content: |-
+          整骨院グループ経営管理システムのデータベーススキーマ
+          - clinics: 店舗情報管理
+          - staff: スタッフ情報（施術者含む）
+          - patients: 患者情報
+          - visits: 来院記録
+          - revenues: 売上データ
+          - staff_performance: スタッフパフォーマンス
+          - daily_reports: 日報データ（施術者情報含む）
+          - master_treatment_menus: 施術メニューマスタ
+          - master_payment_methods: 支払方法マスタ
+          - master_patient_types: 患者区分マスタ
+          - master_categories: カテゴリーマスタ
+          - daily_ai_comments: 日次AIコメント
+          - chat_sessions: チャットセッション
+          - user_permissions: ユーザー権限管理
+          上記内容に従って記述するように（これは書く。contentはpromptと同義）
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は論理的なデータ構造設計に優れており、
+          複雑なリレーショナルデータベースの設計を効率的に行えます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+      supabase-client.ts:
+        content: |-
+          Supabaseクライアント設定とリアルタイム接続
+          - Supabaseクライアントの初期化
+          - 認証設定とセッション管理
+          - リアルタイムサブスクリプション設定
+          - Row Level Security (RLS)ポリシー適用
+          - データベース操作のヘルパー関数
+          - エラーハンドリングと再接続ロジック
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はSupabaseの実装に詳しく、
+          セキュアで効率的なクライアント設定を構築できます。
+        dependency:
+          - src/api/database/schema.sql
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    gemini:
+      ai-analysis.ts:
+        content: |-
+          Gemini Flash統合によるAI分析機能
+          - 日次売上・患者データの自動分析
+          - 異常値検知とアラート生成
+          - 施術者別パフォーマンス分析
+          - 自然言語による経営コメント生成
+          - 改善提案と明日への提案生成
+          - チャット応答のコンテキスト処理
+          - 全店舗データ統合分析（Admin用）
+          - プロンプトエンジニアリングと最適化
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はAI統合とプロンプトエンジニアリングに
+          優れており、Gemini Flashの能力を最大限に活用できます。
+        dependency:
+          - src/api/database/supabase-client.ts
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: 'gemini-2.0-flash-exp'
+
+  app:
+    layout.tsx:
+      content: |-
+        アプリケーション全体のレイアウト
+        - ヘッダーコンポーネント（ロゴ、ナビゲーション）
+        - サイドバーナビゲーション（権限別表示制御）
+        - メインコンテンツエリア
+        - 権限管理によるルート制御
+        - レスポンシブデザイン対応
+        - ダークモード対応
+        - カラーパレット:
+          メインカラー: #1e3a8a (信頼感のある青)
+          アクセントカラー: #10b981 (成長を表す緑)
+          背景色: #f9fafb
+          テキストカラー: #111827
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はReact/Next.jsのレイアウト設計に精通し、
+          医療系アプリケーションに適したUIを構築できます。
+        dependency:
+          - src/structure.yaml
+          - src/components/navigation/sidebar.tsx
+          - src/components/navigation/header.tsx
+        agent: "claude-3-5-sonnet-20241022"
+        api: []
+
+    admin:
+      chat:
+        page.tsx:
+          content: |-
+            Admin専用AIチャットページ
+            - 全46店舗のデータを統合したチャット機能
+            - グループ全体の経営判断をサポート
+            - 店舗間比較・ベンチマーク分析
+            - 経営戦略の相談・シミュレーション
+            - チャット履歴の保存と検索
+            - エクスポート機能（PDF/Excel）
+            - リアルタイムデータ反映
+            - カラー: Admin機能を示す特別な紫系統の配色
+          agent選定理由: |-
+            claude-3-5-sonnet-20241022は高度なチャットインターフェースの実装に優れ、
+            複雑なデータ統合とUIの調和を実現できます。
+          dependency:
+            - src/structure.yaml
+            - src/api/gemini/ai-analysis.ts
+            - src/components/chat/admin-chat-interface.tsx
+            - src/hooks/useAdminChat.ts
+          agent: 'claude-3-5-sonnet-20241022'
+          api: []
+
+      master:
+        page.tsx:
+          content: |-
+            Admin専用マスタデータ管理ページ
+            - 全店舗共通マスタデータの管理
+            - 施術メニューの一括登録・編集
+            - 価格設定の最適化提案（AI活用）
+            - 店舗別カスタマイズ設定
+            - インポート/エクスポート機能
+            - 変更履歴とロールバック機能
+            - バリデーションとエラーチェック
+          agent選定理由: |-
+            gemini-2.0-flash-exp はデータ管理画面の設計に適しており、
+            効率的なCRUD操作のインターフェースを構築できます。
+          dependency:
+            - src/structure.yaml
+            - src/components/master/admin-master-form.tsx
+            - src/hooks/useAdminMaster.ts
+          agent: 'gemini-2.0-flash-exp'
+          api: []
+
+      page.tsx:
+        content: |-
+          Admin統合管理ダッシュボード
+          - 全46店舗のリアルタイムパフォーマンス表示
+          - 店舗別KPIランキング（売上、患者数、満足度）
+          - グループ全体の統計情報とトレンド
+          - 問題店舗の自動検出とアラート
+          - ベストプラクティスの抽出と共有
+          - エリア別・時間帯別分析
+          - ドリルダウン機能で詳細確認
+          - エクスポート機能（経営レポート）
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は複雑なダッシュボード設計と
+          データビジュアライゼーションに優れています。
+        dependency:
+          - src/structure.yaml
+          - src/components/dashboard/admin-dashboard.tsx
+          - src/hooks/useAdminDashboard.ts
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+    ai-insights:
+      page.tsx:
+        content: |-
+          AI分析・インサイトページ
+          - Gemini Flashによる経営改善提案表示
+          - データドリブンな施策提案一覧
+          - 提案の優先度と期待効果の可視化
+          - 実行可能なアクションプランの生成
+          - 過去の提案と実施結果の追跡
+          - 成功事例の蓄積と学習
+          - 提案のカテゴリー分類（収益向上、効率化、満足度）
+          - PDFレポート出力機能
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はAIインサイトの効果的な表示方法を理解し、
+          実用的なインターフェースを設計できます。
+        dependency:
+          - src/structure.yaml
+          - src/api/gemini/ai-analysis.ts
+          - src/components/insights/recommendation-card.tsx
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    chat:
+      page.tsx:
+        content: |-
+          インテリジェントチャットページ
+          - トグルスイッチでON/OFF切り替え可能
+          - 店舗データを活用したGemini Flashチャット
+          - 自然言語での経営相談・データ分析
+          - よくある質問のクイックアクセス
+          - チャット履歴の保存と検索
+          - 音声入力対応（オプション）
+          - マルチモーダル対応（グラフ・表の表示）
+          - エクスポート機能
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はチャットUIの実装に精通し、
+          ユーザーフレンドリーなインターフェースを構築できます。
+        dependency:
+          - src/structure.yaml
+          - src/api/gemini/ai-analysis.ts
+          - src/components/chat/chat-interface.tsx
+          - src/hooks/useChat.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    daily-reports:
+      page.tsx:
+        content: |-
+          デジタル日報管理ページ
+          - 日報入力フォーム（施術者選択含む）
+          - 本日の施術記録一覧
+          - 施術者別・メニュー別集計
+          - 日次売上・来院者数の自動集計表示
+          - 前日・前週との比較分析
+          - 施術者パフォーマンスランキング
+          - 一括入力・編集機能
+          - バリデーションとエラーチェック
+          - 承認ワークフロー（オプション）
+        agent選定理由: |-
+          gemini-2.0-flash-exp は効率的なフォーム設計と
+          データ入力インターフェースの構築に適しています。
+        dependency:
+          - src/structure.yaml
+          - src/components/reports/daily-report-form.tsx
+          - src/components/reports/report-summary.tsx
+          - src/hooks/useDailyReports.ts
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+    dashboard:
+      page.tsx:
+        content: |-
+          メインダッシュボード（日次AIコメント付き）
+          - 本日の売上・患者数のリアルタイム表示
+          - 保険診療vs自費診療の収益比率グラフ
+          - 時間帯別の混雑状況ヒートマップ
+          - 前週・前月比での自動比較チャート
+          - 日次AIコメント表示エリア（ハイライト）
+          - 異常値アラート表示
+          - クイックアクション（日報入力、予約確認等）
+          - カスタマイズ可能なウィジェット配置
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219はダッシュボード設計に優れ、
+          複雑なデータを直感的に理解できる形で表示できます。
+        dependency:
+          - src/structure.yaml
+          - src/components/dashboard/revenue-chart.tsx
+          - src/components/dashboard/patient-flow-heatmap.tsx
+          - src/components/dashboard/ai-comment-card.tsx
+          - src/hooks/useDashboard.ts
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+    master-data:
+      page.tsx:
+        content: |-
+          マスタデータ管理ページ
+          - 施術メニューの追加・編集・削除
+          - 支払い方法の管理
+          - 患者区分（初診/再診）の管理
+          - カテゴリー（事故/自費）の管理
+          - 店舗別カスタマイズ設定
+          - 一括インポート/エクスポート
+          - 変更履歴の確認
+          - プレビュー機能
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はマスタデータ管理の
+          複雑な要件を理解し、使いやすいUIを設計できます。
+        dependency:
+          - src/structure.yaml
+          - src/components/master/master-data-form.tsx
+          - src/hooks/useMasterData.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    multi-store:
+      page.tsx:
+        content: |-
+          マルチ店舗比較分析ページ
+          - 店舗別KPIランキング表示
+          - ベストプラクティスの自動抽出
+          - 地域特性を考慮した目標設定
+          - 成功店舗の施策共有フィード
+          - 店舗間比較チャート（売上、患者数、満足度）
+          - ドリルダウン分析機能
+          - 施術者別クロス店舗分析
+          - レポート生成・共有機能
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は比較分析の
+          ビジュアライゼーションに優れています。
+        dependency:
+          - src/structure.yaml
+          - src/components/multi-store/store-comparison-chart.tsx
+          - src/components/multi-store/best-practice-card.tsx
+          - src/hooks/useMultiStore.ts
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+    patients:
+      page.tsx:
+        content: |-
+          患者フロー分析ページ
+          - 新患→再診転換率の表示とトレンド
+          - 治療完了までの平均通院回数分析
+          - 離脱リスクスコアリング一覧
+          - 患者LTV（Life Time Value）ランキング
+          - セグメント別分析（年齢、症状、地域）
+          - 予約状況と来院予測
+          - 患者満足度との相関分析
+          - アクションリスト（フォローアップ対象等）
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022は医療データの分析と
+          患者管理システムの設計に精通しています。
+        dependency:
+          - src/structure.yaml
+          - src/components/patients/conversion-funnel.tsx
+          - src/components/patients/risk-score-list.tsx
+          - src/hooks/usePatientAnalysis.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    revenue:
+      page.tsx:
+        content: |-
+          収益分析ページ
+          - 日次・週次・月次の売上推移グラフ
+          - 保険診療vs自費診療の詳細分析
+          - 施術メニュー別収益ランキング
+          - 時間帯別・曜日別収益パターン
+          - 前年同期比較と成長率
+          - 収益予測とシミュレーション
+          - コスト分析（人件費率等）
+          - 施術者別収益貢献度
+        agent選定理由: |-
+          gemini-2.0-flash-exp は財務データの可視化と
+          分析画面の設計に適しています。
+        dependency:
+          - src/structure.yaml
+          - src/components/revenue/revenue-trend-chart.tsx
+          - src/components/revenue/menu-ranking.tsx
+          - src/hooks/useRevenue.ts
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+    staff:
+      page.tsx:
+        content: |-
+          スタッフ生産性マネジメントページ
+          - 施術者別の1日あたり患者数表示
+          - 時間あたり売上貢献度ランキング
+          - 患者満足度との相関分析グラフ
+          - シフト最適化提案カレンダー
+          - スキルマトリックス表示
+          - 研修履歴と資格管理
+          - パフォーマンストレンド分析
+          - 個人別ダッシュボード
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はスタッフ管理システムの
+          複雑な要件を理解し、実用的なUIを構築できます。
+        dependency:
+          - src/structure.yaml
+          - src/components/staff/performance-metrics.tsx
+          - src/components/staff/shift-optimizer.tsx
+          - src/hooks/useStaffAnalysis.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+  components:
+    chat:
+      admin-chat-interface.tsx:
+        content: |-
+          Admin専用チャットインターフェースコンポーネント
+          - 全店舗データコンテキストでのチャット
+          - メッセージ入力と送信機能
+          - AIレスポンス表示（マークダウン対応）
+          - データビジュアライゼーション表示
+          - 質問サジェスト機能
+          - チャット履歴管理
+          - エクスポート機能
+          - 紫系統の特別なデザイン
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はリアルタイムチャットUIの実装に優れ、
+          複雑なインタラクションを実現できます。
+        dependency:
+          - src/structure.yaml
+          - src/api/gemini/ai-analysis.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+      chat-interface.tsx:
+        content: |-
+          店舗用チャットインターフェースコンポーネント
+          - トグルスイッチでの表示切り替え
+          - チャットメッセージの送受信
+          - AIレスポンスのストリーミング表示
+          - 店舗データコンテキストの自動付与
+          - よくある質問のクイックボタン
+          - 音声入力対応（オプション）
+          - チャット履歴の永続化
+          - モバイル最適化デザイン
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はユーザーフレンドリーな
+          チャットUIの設計に精通しています。
+        dependency:
+          - src/structure.yaml
+          - src/api/gemini/ai-analysis.ts
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    dashboard:
+      ai-comment-card.tsx:
+        content: |-
+          日次AIコメント表示カードコンポーネント
+          - 本日の総評表示エリア
+          - 好調だった点のハイライト
+          - 改善が必要な点の表示
+          - 明日への提案表示
+          - 施術者別インサイト
+          - 異常値検知アラート
+          - 過去のコメント履歴へのリンク
+          - アニメーション効果で注目度向上
+        agent選定理由: |-
+          gemini-2.0-flash-exp はカード型UIコンポーネントの
+          設計に適しており、情報を効果的に表示できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+      admin-dashboard.tsx:
+        content: |-
+          Admin用統合ダッシュボードコンポーネント
+          - 46店舗の一括表示グリッド
+          - 店舗別パフォーマンスヒートマップ
+          - グループ全体のKPIサマリー
+          - 問題店舗のアラート表示
+          - ドリルダウン機能
+          - リアルタイム更新
+          - カスタマイズ可能なレイアウト
+          - エクスポート機能
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は大規模なダッシュボード
+          コンポーネントの設計に優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+      patient-flow-heatmap.tsx:
+        content: |-
+          時間帯別混雑状況ヒートマップコンポーネント
+          - 曜日×時間帯のヒートマップ表示
+          - 色の濃淡で混雑度を視覚化
+          - ホバーで詳細情報表示
+          - 過去データとの比較機能
+          - ズーム・パン機能
+          - データフィルタリング
+          - CSV/画像エクスポート
+          - レスポンシブ対応
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219はデータビジュアライゼーション
+          コンポーネントの実装に優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+      revenue-chart.tsx:
+        content: |-
+          売上推移チャートコンポーネント
+          - 日次・週次・月次の切り替え
+          - 保険/自費の内訳表示
+          - 前期比較オーバーレイ
+          - インタラクティブなツールチップ
+          - ズーム機能
+          - データポイントのドリルダウン
+          - トレンドライン表示
+          - エクスポート機能
+        agent選定理由: |-
+          gemini-2.0-flash-exp はチャートコンポーネントの実装に適しており、
+          複雑なデータを分かりやすく表示できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+    insights:
+      recommendation-card.tsx:
+        content: |-
+          AI提案表示カードコンポーネント
+          - 提案タイトルと概要
+          - 期待効果の数値表示
+          - 優先度インジケーター
+          - 実施ステータス管理
+          - 詳細説明の展開表示
+          - アクションボタン
+          - フィードバック機能
+          - 関連データへのリンク
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はAI提案を効果的に表示する
+          UIコンポーネントの設計に優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    master:
+      admin-master-form.tsx:
+        content: |-
+          Admin用マスタデータ管理フォームコンポーネント
+          - 全店舗共通設定フォーム
+          - 店舗別カスタマイズ設定
+          - バルクアップロード機能
+          - バリデーションルール設定
+          - プレビュー表示
+          - 変更影響範囲の表示
+          - ロールバック機能
+          - 承認フロー対応
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022は複雑なフォームコンポーネントの
+          実装に精通しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+      master-data-form.tsx:
+        content: |-
+          マスタデータ管理フォームコンポーネント
+          - 施術メニュー編集フォーム
+          - ドラッグ&ドロップでの並び替え
+          - リアルタイムバリデーション
+          - 一括編集モード
+          - インポート/エクスポート
+          - 変更プレビュー
+          - 元に戻す/やり直し機能
+          - 検索・フィルター機能
+        agent選定理由: |-
+          gemini-2.0-flash-exp はフォームコンポーネントの
+          UX設計に適しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+    multi-store:
+      best-practice-card.tsx:
+        content: |-
+          ベストプラクティス表示カードコンポーネント
+          - 成功事例のタイトルと概要
+          - 実施店舗と期間
+          - 成果指標の表示
+          - 実施方法の詳細
+          - 他店舗での適用ボタン
+          - コメント・質問機能
+          - いいね・ブックマーク機能
+          - 関連資料のダウンロード
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022は情報共有UIの設計に優れ、
+          実用的なコンポーネントを構築できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+      store-comparison-chart.tsx:
+        content: |-
+          店舗間比較チャートコンポーネント
+          - 複数店舗の同時比較
+          - KPI選択機能
+          - 期間選択
+          - グラフタイプ切り替え
+          - 店舗グルーピング機能
+          - 統計的有意差の表示
+          - ベンチマークライン
+          - データエクスポート
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は比較分析の
+          ビジュアライゼーションに優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+    navigation:
+      header.tsx:
+        content: |-
+          ヘッダーコンポーネント
+          - ロゴとアプリケーション名
+          - ユーザー情報表示
+          - 店舗切り替えドロップダウン（権限に応じて）
+          - 通知アイコンとバッジ
+          - 設定メニュー
+          - ログアウトボタン
+          - モバイルメニュートグル
+          - ダークモード切り替え
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はナビゲーションUIの
+          ベストプラクティスを理解しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+      sidebar.tsx:
+        content: |-
+          サイドバーナビゲーションコンポーネント
+          - 権限別メニュー表示制御
+          - アクティブページのハイライト
+          - アイコン付きメニュー項目
+          - サブメニューの展開/折りたたみ
+          - クイックアクセスセクション
+          - 最近使った機能
+          - ミニマイズ/展開切り替え
+          - ツールチップ表示
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022は複雑なナビゲーション構造の
+          実装に精通しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    patients:
+      conversion-funnel.tsx:
+        content: |-
+          新患→再診転換ファネルコンポーネント
+          - ファネルチャートの視覚化
+          - 各段階の転換率表示
+          - 期間比較機能
+          - セグメント別分析
+          - ドリルダウン機能
+          - 改善ポイントのハイライト
+          - トレンド表示
+          - データエクスポート
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219はファネル分析の
+          可視化に優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+      risk-score-list.tsx:
+        content: |-
+          離脱リスクスコアリングリストコンポーネント
+          - リスクスコア別の患者リスト
+          - カラーコーディング（高中低）
+          - ソート・フィルター機能
+          - 患者詳細へのリンク
+          - アクションボタン（連絡等）
+          - 一括選択・操作
+          - リスク要因の表示
+          - CSV出力機能
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はリスト型UIコンポーネントの
+          実装に精通しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+    reports:
+      daily-report-form.tsx:
+        content: |-
+          日報入力フォームコンポーネント
+          - 施術者選択ドロップダウン
+          - メニュー選択（マスタ連動）
+          - 施術時間入力
+          - 次回予約設定
+          - 患者タイプ選択
+          - カテゴリー選択
+          - 支払い方法選択
+          - 金額自動計算
+          - バリデーション
+          - 一時保存機能
+        agent選定理由: |-
+          gemini-2.0-flash-exp は効率的なフォーム設計に適しており、
+          使いやすい入力インターフェースを構築できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+      report-summary.tsx:
+        content: |-
+          日報サマリー表示コンポーネント
+          - 本日の施術件数・売上表示
+          - 施術者別パフォーマンス
+          - メニュー別集計
+          - 時間帯別グラフ
+          - 前日比較
+          - 編集・削除機能
+          - 承認ステータス表示
+          - 印刷・PDF出力
+        agent選定理由: |-
+          gemini-2.0-flash-exp はサマリー情報の効果的な表示に
+          適しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-exp'
+        api: []
+
+    revenue:
+      menu-ranking.tsx:
+        content: |-
+          施術メニュー別収益ランキングコンポーネント
+          - メニュー別売上ランキング表示
+          - 利用回数と単価の表示
+          - 前期比較
+          - グラフとテーブルの切り替え
+          - ドリルダウン機能
+          - トレンド分析
+          - 施術者別内訳
+          - エクスポート機能
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219はランキング表示の
+          効果的なUIを設計できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+      revenue-trend-chart.tsx:
+        content: |-
+          収益トレンドチャートコンポーネント
+          - 時系列での収益推移表示
+          - 複数指標の同時表示
+          - 予測ラインの表示
+          - アノテーション機能
+          - ズーム・パン機能
+          - 期間選択
+          - 比較モード
+          - 高解像度エクスポート
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219は高度なチャート
+          コンポーネントの実装に優れています。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+    staff:
+      performance-metrics.tsx:
+        content: |-
+          スタッフパフォーマンス指標コンポーネント
+          - 個人別KPIダッシュボード
+          - レーダーチャート表示
+          - 目標達成率
+          - ランキング表示
+          - 時系列トレンド
+          - スキルマトリックス
+          - フィードバック履歴
+          - 印刷用レイアウト
+        agent選定理由: |-
+          claude-3-5-sonnet-20241022はパフォーマンス指標の
+          可視化に精通しています。
+        dependency:
+          - src/structure.yaml
+        agent: 'claude-3-5-sonnet-20241022'
+        api: []
+
+      shift-optimizer.tsx:
+        content: |-
+          シフト最適化提案コンポーネント
+          - AIによるシフト提案表示
+          - カレンダービュー
+          - ドラッグ&ドロップ編集
+          - 需要予測オーバーレイ
+          - スタッフ希望の反映
+          - コスト計算
+          - 承認フロー
+          - 通知機能
+        agent選定理由: |-
+          gemini-2.0-flash-thinking-exp-1219はシフト管理UIの
+          複雑な要件を実装できます。
+        dependency:
+          - src/structure.yaml
+        agent: 'gemini-2.0-flash-thinking-exp-1219'
+        api: []
+
+  hooks:
+    useAdminChat.ts:
+      content: |-
+        Admin専用チャット用カスタムフック
+        - 全店舗データコンテキストの管理
+        - メッセージ送受信ロジック
+        - AIレスポンスのストリーミング処理
+        - エラーハンドリング
+        - チャット履歴の永続化
+        - 店舗フィルタリング
+        - データ可視化の制御
+        - WebSocket接続管理
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はReact Hooksの高度な実装と
+        状態管理に精通しています。
+      dependency:
+        - src/structure.yaml
+        - src/api/gemini/ai-analysis.ts
+        - src/api/database/supabase-client.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    useAdminDashboard.ts:
+      content: |-
+        Admin用ダッシュボードカスタムフック
+        - 全46店舗データの取得と管理
+        - リアルタイム更新の購読
+        - フィルタリングとソート
+        - 集計データの計算
+        - キャッシング戦略
+        - エラーハンドリング
+        - パフォーマンス最適化
+        - データ更新の最適化
+      agent選定理由: |-
+        gemini-2.0-flash-thinking-exp-1219は大規模データの
+        効率的な管理ロジックを実装できます。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
+      api: []
+
+    useAdminMaster.ts:
+      content: |-
+        Admin用マスタデータ管理フック
+        - マスタデータのCRUD操作
+        - バリデーションロジック
+        - 変更の影響範囲計算
+        - ロールバック機能
+        - 一括操作の処理
+        - キャッシュ管理
+        - 楽観的更新
+        - エラーリカバリー
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022は複雑なデータ操作ロジックの
+        実装に優れています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    useChat.ts:
+      content: |-
+        店舗用チャットカスタムフック
+        - チャット状態管理
+        - メッセージ送受信
+        - 店舗データコンテキスト注入
+        - トグル状態の管理
+        - ローカルストレージ連携
+        - エラーハンドリング
+        - レート制限の実装
+        - 音声入力対応
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はチャット機能の
+        状態管理実装に精通しています。
+      dependency:
+        - src/structure.yaml
+        - src/api/gemini/ai-analysis.ts
+        - src/api/database/supabase-client.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    useDailyReports.ts:
+      content: |-
+        日報管理用カスタムフック
+        - 日報データのCRUD操作
+        - フォーム状態管理
+        - バリデーション
+        - 自動集計ロジック
+        - 施術者別集計
+        - 一時保存機能
+        - 送信キュー管理
+        - オフライン対応
+      agent選定理由: |-
+        gemini-2.0-flash-exp はフォーム管理の
+        効率的なロジック実装に適しています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+      agent: 'gemini-2.0-flash-exp'
+      api: []
+
+    useDashboard.ts:
+      content: |-
+        ダッシュボード用カスタムフック
+        - リアルタイムデータの購読
+        - 日次AIコメントの取得
+        - グラフデータの整形
+        - 期間フィルタリング
+        - 比較データの計算
+        - ウィジェット状態管理
+        - 自動更新タイマー
+        - パフォーマンス最適化
+      agent選定理由: |-
+        gemini-2.0-flash-thinking-exp-1219はダッシュボードの
+        複雑な状態管理を効率的に実装できます。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+        - src/api/gemini/ai-analysis.ts
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
+      api: []
+
+    useMasterData.ts:
+      content: |-
+        マスタデータ管理用カスタムフック
+        - マスタデータのCRUD操作
+        - ドラッグ&ドロップ処理
+        - 検索・フィルタリング
+        - インポート/エクスポート
+        - バリデーション
+        - 変更追跡
+        - アンドゥ/リドゥ
+        - 最適化された更新
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はマスタデータ管理の
+        複雑なロジックを実装できます。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    useMultiStore.ts:
+      content: |-
+        マルチ店舗分析用カスタムフック
+        - 店舗間データの比較ロジック
+        - ベストプラクティス抽出
+        - ランキング計算
+        - フィルタリング機能
+        - グルーピング処理
+        - 統計分析
+        - データ正規化
+        - キャッシュ戦略
+      agent選定理由: |-
+        gemini-2.0-flash-thinking-exp-1219は複数店舗データの
+        分析ロジック実装に優れています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+        - src/api/gemini/ai-analysis.ts
+      agent: 'gemini-2.0-flash-thinking-exp-1219'
+      api: []
+
+    usePatientAnalysis.ts:
+      content: |-
+        患者分析用カスタムフック
+        - 転換率計算ロジック
+        - 離脱リスクスコアリング
+        - LTV計算
+        - セグメント分析
+        - 予測モデル実行
+        - データフィルタリング
+        - 集計処理
+        - エクスポート機能
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022は医療データ分析の
+        ロジック実装に精通しています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+        - src/api/gemini/ai-analysis.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    useRevenue.ts:
+      content: |-
+        収益分析用カスタムフック
+        - 売上データの集計処理
+        - トレンド分析
+        - 予測計算
+        - 比較分析
+        - セグメント別集計
+        - グラフデータ整形
+        - パフォーマンス指標計算
+        - データキャッシング
+      agent選定理由: |-
+        gemini-2.0-flash-exp は財務データの
+        分析ロジック実装に適しています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+      agent: 'gemini-2.0-flash-exp'
+      api: []
+
+    useStaffAnalysis.ts:
+      content: |-
+        スタッフ分析用カスタムフック
+        - パフォーマンス指標計算
+        - 生産性分析
+        - 満足度相関分析
+        - シフト最適化ロジック
+        - ランキング計算
+        - トレンド分析
+        - スキル評価
+        - レポート生成
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はスタッフ管理の
+        分析ロジック実装に優れています。
+      dependency:
+        - src/structure.yaml
+        - src/api/database/supabase-client.ts
+        - src/api/gemini/ai-analysis.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+  images:
+    dashboard-mockup.png:
+      content: |-
+        整骨院経営管理システムのダッシュボード画面
+        - モダンで清潔感のあるUI
+        - 青と緑を基調とした医療系の配色
+        - グラフとKPIカードの配置
+        - 日次AIコメントの強調表示
+        - プロフェッショナルな雰囲気
+        - 1920x1080の高解像度
+      dependency: []
+      agent: 't2i-imagen3'
+      api: []
+
+    patient-flow-visualization.png:
+      content: |-
+        患者フロー分析の可視化イメージ
+        - ファネルチャートとフローダイアグラム
+        - 新患から再診への転換プロセス
+        - 色分けされたセグメント表示
+        - データドリブンなビジュアル
+        - 医療系の落ち着いた配色
+        - インフォグラフィック風
+      dependency: []
+      agent: 't2i-flux-pro'
+      api: []
+
+    system-architecture.png:
+      content: |-
+        システムアーキテクチャ図
+        - Next.js + Supabase + Gemini Flashの構成
+        - コンポーネント間の関係性
+        - データフローの可視化
+        - クラウドベースの構成
+        - テクニカルで詳細な図解
+        - エンタープライズ向けの表現
+      dependency: []
+      agent: 't2i-luma-photon'
+      api: []
+
+  lib:
+    constants.ts:
+      content: |-
+        アプリケーション全体の定数定義
+        - APIエンドポイント
+        - 権限レベル定義
+        - 日付フォーマット
+        - 数値フォーマット
+        - エラーメッセージ
+        - バリデーションルール
+        - デフォルト値
+        - 環境変数の型定義
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022は定数管理の
+        ベストプラクティスを理解しています。
+      dependency:
+        - src/structure.yaml
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+    utils.ts:
+      content: |-
+        汎用ユーティリティ関数
+        - 日付フォーマット関数
+        - 数値フォーマット関数
+        - バリデーション関数
+        - データ変換関数
+        - エラーハンドリング
+        - デバウンス/スロットル
+        - 型ガード関数
+        - テスト用ヘルパー
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はユーティリティ関数の
+        設計と実装に精通しています。
+      dependency:
+        - src/structure.yaml
+        - src/lib/constants.ts
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []
+
+  types:
+    index.ts:
+      content: |-
+        TypeScript型定義ファイル
+        - データベーステーブルの型定義
+        - APIレスポンスの型定義
+        - コンポーネントProps型
+        - ユーザー権限の型
+        - フォームデータの型
+        - チャートデータの型
+        - エラーオブジェクトの型
+        - ユーティリティ型
+      agent選定理由: |-
+        claude-3-5-sonnet-20241022はTypeScriptの型システムに精通し、
+        厳密で使いやすい型定義を作成できます。
+      dependency:
+        - src/structure.yaml
+      agent: 'claude-3-5-sonnet-20241022'
+      api: []

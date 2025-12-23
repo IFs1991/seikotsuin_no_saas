@@ -5,21 +5,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
+import { createClient } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'ユーザーIDが必要です' },
-        { status: 400 }
-      );
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
     // MFA状態取得
-    const mfaStatus = await mfaManager.getMFAStatus(userId);
+    const mfaStatus = await mfaManager.getMFAStatus(user.id);
 
     return NextResponse.json(mfaStatus);
   } catch (error) {

@@ -18,7 +18,7 @@ interface LayoutProps {
 export default function RootLayout({ children }: LayoutProps) {
   return (
     <html lang='ja'>
-      <body className='min-h-screen'>
+      <body className='min-h-screen' suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>

@@ -120,6 +120,11 @@ serena_env/
 .claude/
 .serena/
 
+# Supabase local (CLI/Docker)
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
 # Local databases (if any)
 *.sqlite
 *.sqlite3

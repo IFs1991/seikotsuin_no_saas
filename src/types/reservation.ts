@@ -17,11 +17,39 @@ export interface Customer {
 
 export interface Menu {
   id: string;
+  clinicId?: string;
+  code?: string;
   name: string;
   durationMinutes: number;
   price: number;
-  description: string;
+  description?: string;
+  category?: string;
+  categoryId?: string;
+  insuranceType?: string;
+  insurancePoints?: number;
+  isInsuranceApplicable?: boolean;
+  treatmentType?: string;
+  bodyParts?: string[];
+  contraindications?: string[];
+  maxSessionsPerDay?: number;
   isActive: boolean;
+  isPublic?: boolean;
+  options?: MenuOption[];
+}
+
+export interface MenuOption {
+  id: string;
+  name: string;
+  priceDelta: number;
+  durationDeltaMinutes: number;
+  isActive: boolean;
+}
+
+export interface ReservationOptionSelection {
+  optionId: string;
+  name: string;
+  priceDelta: number;
+  durationDeltaMinutes: number;
 }
 
 export interface Resource {
@@ -52,6 +80,7 @@ export interface Reservation {
   status: 'tentative' | 'confirmed' | 'arrived' | 'completed' | 'cancelled' | 'no_show' | 'unconfirmed' | 'trial';
   channel: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
+  selectedOptions?: ReservationOptionSelection[];
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -71,6 +100,7 @@ export interface CreateReservationData {
   endTime: Date;
   channel: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
+  selectedOptions?: ReservationOptionSelection[];
   createdBy: string;
 }
 
@@ -83,6 +113,7 @@ export interface CreateMultipleReservationData {
   dates: Date[];
   channel: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
+  selectedOptions?: ReservationOptionSelection[];
   createdBy: string;
 }
 

@@ -5,14 +5,31 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
+import { processApiRequest } from '@/lib/api-helpers';
+import { z } from 'zod';
+
+const QuerySchema = z.object({
+  type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
+  identifier: z.string().min(1),
+});
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type') as any;
-    const identifier = searchParams.get('identifier');
+    const auth = await processApiRequest(request, {
+      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      requireClinicMatch: false,
+    });
+    if (!auth.success) {
+      return auth.error!;
+    }
 
-    if (!type || !identifier) {
+    const { searchParams } = new URL(request.url);
+    const parsed = QuerySchema.safeParse({
+      type: searchParams.get('type'),
+      identifier: searchParams.get('identifier'),
+    });
+
+    if (!parsed.success) {
       return NextResponse.json(
         { error: 'type と identifier パラメータが必要です' },
         { status: 400 }
@@ -20,7 +37,10 @@ export async function GET(request: NextRequest) {
     }
 
     // レート制限統計取得
-    const stats = await rateLimiter.getRateLimitStats(type, identifier);
+    const stats = await rateLimiter.getRateLimitStats(
+      parsed.data.type,
+      parsed.data.identifier
+    );
 
     return NextResponse.json(stats);
   } catch (error) {

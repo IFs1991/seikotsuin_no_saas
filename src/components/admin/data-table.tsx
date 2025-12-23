@@ -79,7 +79,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   }, [config, visibleColumns]);
 
   // 値の表示形式を整える
-  const formatCellValue = (value: unknown, type: string) => {
+  const formatCellValue = (value: unknown, type: string): React.ReactNode => {
     if (value === null || value === undefined) return '-';
 
     switch (type) {
@@ -93,12 +93,12 @@ export const DataTable: React.FC<DataTableProps> = ({
             return value;
           }
         }
-        return value;
+        return String(value);
       case 'decimal':
         if (typeof value === 'number') {
           return value.toLocaleString();
         }
-        return value;
+        return String(value);
       default:
         return String(value);
     }

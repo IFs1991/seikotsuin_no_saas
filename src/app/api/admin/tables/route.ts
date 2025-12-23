@@ -291,8 +291,7 @@ export async function PUT(request: NextRequest) {
     // バリデーション（部分更新対応）
     const validationResult = safeValidateTableData(
       table_name as SupportedTableName,
-      data,
-      true
+      data
     );
     if (!validationResult.success) {
       return createErrorResponse(

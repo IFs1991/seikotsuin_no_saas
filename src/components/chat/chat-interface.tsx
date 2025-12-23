@@ -8,7 +8,7 @@ const ChatInterface: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
 
-  const { messages, sendMessage, isLoading } = useChat();
+  const { messages, sendMessage, isLoading } = useChat('default');
 
   const quickQuestions = [
     '本日の売上状況を教えて',
@@ -79,7 +79,7 @@ const ChatInterface: React.FC = () => {
               <div
                 key={index}
                 className={`p-3 rounded-lg ${
-                  msg.isUser
+                  msg.role === 'user'
                     ? 'bg-[#1e3a8a] text-white ml-8'
                     : 'bg-gray-100 dark:bg-gray-700 mr-8'
                 }`}

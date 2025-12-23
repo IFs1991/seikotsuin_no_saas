@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   const range = searchParams.get('range')?.toLowerCase() ?? '24h';
   const clinicId = searchParams.get('clinic_id');
 
-  const days = RANGE_TO_DAYS[range] ?? RANGE_TO_DAYS['24h'];
+  const days = RANGE_TO_DAYS[range] ?? 1;
   const since = new Date();
   since.setDate(since.getDate() - days);
 

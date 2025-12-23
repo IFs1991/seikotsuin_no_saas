@@ -1,0 +1,79 @@
+tickets:
+  - id: T-ADM-001
+    title: 管理者メニュー表示のためのプロフィールAPI実装
+    description: "ログインユーザーのロール情報を返すAPIを実装し、フロントエンドから利用できるようにする"
+    priority: P0
+    owner: backend
+    dependencies: []
+    subtasks:
+      - Next.js API `/api/auth/profile` を新設し、profiles と user_permissions からロールを判定
+      - Supabase Auth のユーザー情報取得エラーハンドリングを実装
+      - レスポンス形式を `idle/isAdmin` を含む構造で定義
+      - エラーログを出力しつつ安全なレスポンスを返す
+    acceptance_criteria:
+      - 認証済みリクエストに対しロール情報を含んだ JSON が返る
+      - 未認証時は 401 を返す
+      - 管理者ロール判定が正しく行われることを手動テストで確認
+
+  - id: T-ADM-002
+    title: クライアントレイアウトにロール情報を取り込む
+    description: "フロントエンドのルートレイアウトでロールを取得し、各ナビゲーションに反映する"
+    priority: P0
+    owner: frontend
+    dependencies:
+      - T-ADM-001
+    subtasks:
+      - `useUserProfile` フックを作成し `/api/auth/profile` をフェッチ
+      - `ClientLayout` でフックを呼び出し、ヘッダー・サイドバー・モバイルナビへ `isAdmin` を伝搬
+      - ローディング状態や未認証時の扱いを定義
+    acceptance_criteria:
+      - 管理者でログインするとヘッダーに管理メニューが表示される
+      - 一般ユーザーでは管理メニューが非表示になる
+      - ダークモードや既存機能との衝突がないことを確認
+
+  - id: T-ADM-003
+    title: サイドバー／ヘッダー／モバイルナビの管理メニュー実装
+    description: "ナビゲーション各所に管理者専用リンクを追加し、ロールに応じて表示を切り替える"
+    priority: P0
+    owner: frontend
+    dependencies:
+      - T-ADM-002
+    subtasks:
+      - サイドバーに管理セクション（ダッシュボード、マスタ、セキュリティ等）を追加
+      - ヘッダーに管理者ドロップダウンとホーム説明テキストを実装
+      - モバイルボトムナビに管理タブを追加
+      - ホーム画面に一般/管理者の導線と注意書きを追記
+    acceptance_criteria:
+      - 管理者ロールで各リンクが表示され、クリックで対象画面に遷移する
+      - 一般ユーザーではメニューが表示されない
+      - レイアウト崩れがないことを目視確認
+
+  - id: T-ADM-004
+    title: 管理者ページのサーバーサイドアクセスガード導入
+    description: "管理者用ページを route group `(protected)` にまとめてロールチェックを行う"
+    priority: P0
+    owner: frontend
+    dependencies:
+      - T-ADM-001
+    subtasks:
+      - `src/app/admin/(protected)/layout.tsx` を作成し、Supabase ロールを判定
+      - 既存の管理者ページを `(protected)` 配下へ移動
+      - 権限なしの場合 `/unauthorized` へリダイレクト
+    acceptance_criteria:
+      - 一般ユーザーが管理URLへ直接アクセスすると `/unauthorized` に遷移
+      - 管理者は問題なくアクセス可能
+
+  - id: T-ADM-005
+    title: 管理者向け導線とドキュメント更新
+    description: "トップページ文言とドキュメントを更新し、利用者への案内を整備"
+    priority: P1
+    owner: product
+    dependencies:
+      - T-ADM-003
+    subtasks:
+      - トップページに一般/管理者の利用案内を記載
+      - `アドミン画面実装.yaml` とチケット一覧を照合し、Docs を最新化
+      - リリースノートに管理メニュー導線の変更を追記
+    acceptance_criteria:
+      - ホーム画面の案内文が最新仕様を反映
+      - Docs/チケットがアップデート済み

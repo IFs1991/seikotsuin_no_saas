@@ -1,0 +1,167 @@
+tickets:
+  - id: T-BE-001
+    category: backend
+    summary: APIルートを認証保護しサービスロールキー依存を排除する
+    linked_issue: BE-001
+    priority: P0
+    owner: backend
+    dependencies:
+      - T-SC-001
+    subtasks:
+      - middlewareに`/api/:path*`を追加してSupabaseセッション更新を強制
+      - 各APIで`createClient`を用い、サービスロールキーを使用する処理を洗い出して`createAdminClient`へ限定
+      - 認証失敗時に401/403を返し、AuditLoggerへ出力
+      - API統合テストを追加し、認証済みユーザーのみ成功することを検証
+    acceptance_criteria:
+      - 未認証リクエストが`/api/dashboard`へアクセスすると401を返す
+      - サービスロールキーを使用するAPIが`createAdminClient`経由のみに限定されている
+      - CIでAPI保護テストが通過する
+
+  - id: T-BE-002
+    category: backend
+    summary: 患者分析APIの例外・バリデーション不具合を修正する
+    linked_issue: BE-002
+    priority: P1
+    owner: backend
+    dependencies: []
+    subtasks:
+      - `searchParams`を冒頭で定義し、Nullチェックを実装
+      - `createApiError`呼び出し引数を正しい順序に修正
+      - 単体テストでバリデーションエラー時のレスポンスを確認
+    acceptance_criteria:
+      - `clinic_id`未指定時に400/エラーメッセージが返る
+      - API実行時にランタイム例外が発生しない
+      - テストがCIに追加され成功する
+
+  - id: T-BE-003
+    category: backend
+    summary: スタッフ登録APIを本番運用可能な認証・資格情報管理へ移行
+    linked_issue: BE-003
+    priority: P0
+    owner: backend
+    dependencies:
+      - T-SC-001
+    subtasks:
+      - 管理者ロールのみPOSTできるよう認可ミドルウェアを追加
+      - Supabase Authでユーザー作成し、必要に応じてbcryptで補助ハッシュを保存
+      - 入力バリデーション・重複チェック・監査ログを追加
+      - 初期パスワード通知フローを設計しドキュメント化
+    acceptance_criteria:
+      - 非管理者がPOSTすると403を返す
+      - 登録されたスタッフがSupabase Authに作成され、仮パスワードでログインできる
+      - 監査ログに作成イベントが記録される
+
+  - id: T-BE-004
+    category: backend
+    summary: AIチャット/コメントAPIを本番仕様へ強化
+    linked_issue: BE-004
+    priority: P2
+    owner: backend
+    dependencies: []
+    subtasks:
+      - Gemini API呼び出しロジックをサーバー専用クライアントで実装し、タイムアウト/リトライ処理を追加
+      - APIキー未設定時は機能を無効化し、エラーレスポンスで明示
+      - 応答データの型定義と監査ログ出力を整備
+      - パフォーマンステストとコストモニタリングを設定
+    acceptance_criteria:
+      - APIキー未設定環境でリクエストすると明示的なエラーが返る
+      - 正常リクエストでGemini応答が保存される
+      - 主要ルートにテストが追加される
+
+  - id: T-FE-001
+    category: frontend
+    summary: ダッシュボードのサンプルデータフェールオープンを廃止
+    linked_issue: FE-001
+    priority: P1
+    owner: frontend
+    dependencies:
+      - T-BE-001
+    subtasks:
+      - TanStack Query等でデータ取得を再実装し、エラーハンドリングを明示
+      - エラー/リトライUI・監視連携を追加
+      - テストでAPIエラー時にフェールオープンしないことを確認
+    acceptance_criteria:
+      - APIエラー時に利用者へエラーステートが表示される
+      - サンプルデータへのフォールバックが削除される
+      - フロントエンドテストがCIで通過
+
+  - id: T-FE-002
+    category: frontend
+    summary: 患者分析画面の初期表示とAPI同期を改善
+    linked_issue: FE-002
+    priority: P2
+    owner: frontend
+    dependencies:
+      - T-BE-002
+    subtasks:
+      - APIレスポンスを初期stateへ反映し、取得失敗時はエラー表示
+      - セクション単位のSkeleton/Emptyを実装
+      - Storybookで状態遷移を検証
+    acceptance_criteria:
+      - APIレスポンスが空の場合、UIが空状態を表示する
+      - Storybookでエラー/ローディング/完了の3状態が確認できる
+
+  - id: T-FE-003
+    category: frontend
+    summary: 日報入力フォームを認証済みユーザー情報と連携
+    linked_issue: FE-003
+    priority: P1
+    owner: frontend
+    dependencies:
+      - T-BE-001
+    subtasks:
+      - SupabaseセッションからクリニックID/スタッフIDを取得して自動入力
+      - フォームバリデーションとAPIエラーメッセージ表示を実装
+      - 送信後のキャッシュ更新とE2Eテスト追加
+    acceptance_criteria:
+      - ログインユーザーのクリニックID/スタッフIDが自動で紐付く
+      - バリデーション不備時にエラーメッセージが表示される
+      - E2EテストがCIで成功
+
+  - id: T-SC-001
+    category: security
+    summary: `/api` を含む全リクエストをミドルウェアで保護
+    linked_issue: SECURITY-001
+    priority: P0
+    owner: security
+    dependencies: []
+    subtasks:
+      - middlewareの`matcher`へ`/api/:path*`を追加
+      - APIへのRate limit設定を適用し、閾値を構成
+      - 自動テストで未保護パスがないか検証
+    acceptance_criteria:
+      - 未認証ユーザーが任意のAPIにアクセスすると401/403を返す
+      - Rate limitが期待通り動作することを確認する
+
+  - id: T-SC-002
+    category: security
+    summary: レスポンスヘッダーから機微情報を排除
+    linked_issue: SECURITY-002
+    priority: P1
+    owner: security
+    dependencies:
+      - T-SC-001
+    subtasks:
+      - middlewareで設定している`X-User-ID`等のヘッダーを削除
+      - 監査用データはサーバーログ/監査テーブルに出力
+      - ASVS準拠のヘッダーチェックをCIで自動化
+    acceptance_criteria:
+      - レスポンスヘッダーにユーザー識別子が含まれない
+      - 監査ログに必要な追跡情報が残る
+
+  - id: T-SC-003
+    category: security
+    summary: Supabaseサービスロールキーの管理とRLS検証
+    linked_issue: SECURITY-003
+    priority: P1
+    owner: security
+    dependencies:
+      - T-BE-001
+    subtasks:
+      - サービスロールキーを中央の環境変数管理に統一し、コード上から直接参照しない
+      - サービスロール操作用ラッパーを実装し、権限ログを記録
+      - RLSテストを作成し、権限逸脱がないことを確認
+    acceptance_criteria:
+      - コードベースからサービスロールキーの直接使用が除去される
+      - RLSテストがCIで成功
+      - アクセスログにサービスロール操作が記録される

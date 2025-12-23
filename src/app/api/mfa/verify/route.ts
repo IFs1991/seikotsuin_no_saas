@@ -7,20 +7,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
 import { backupCodeManager } from '@/lib/mfa/backup-codes';
 import { z } from 'zod';
+import { createClient } from '@/lib/supabase';
 
 // リクエストスキーマ
 const VerifyMFASchema = z.object({
-  userId: z.string().min(1, 'ユーザーIDが必要です'),
-  type: z.enum(['totp', 'backup'], '認証タイプが無効です'),
+  type: z.enum(['totp', 'backup'], {
+    errorMap: () => ({ message: '認証タイプが無効です' }),
+  }),
   code: z.string().min(1, '認証コードが必要です'),
   window: z.number().min(1).max(4).optional().default(1),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
     // リクエストボディを解析
     const body = await request.json();
-    const { userId, type, code, window } = VerifyMFASchema.parse(body);
+    const { type, code, window } = VerifyMFASchema.parse(body);
 
     let isValid = false;
     let additionalInfo = {};
@@ -34,7 +46,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      isValid = await mfaManager.verifyTOTP(userId, code, window);
+      isValid = await mfaManager.verifyTOTP(user.id, code, window);
     } else if (type === 'backup') {
       // バックアップコード検証
       if (code.length !== 8) {
@@ -45,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
 
       const backupResult = await backupCodeManager.verifyAndMarkBackupCode(
-        userId,
+        user.id,
         code
       );
       isValid = backupResult.isValid;

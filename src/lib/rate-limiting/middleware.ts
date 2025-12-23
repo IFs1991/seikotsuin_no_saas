@@ -251,8 +251,8 @@ function getClientIP(request: NextRequest): string {
     return xForwardedFor.split(',')[0].trim();
   }
 
-  // フォールバック
-  return request.ip || '127.0.0.1';
+  // フォールバック (NextRequest does not have .ip property)
+  return '127.0.0.1';
 }
 
 function getRateLimitMessage(type: RateLimitType, result: any): string {

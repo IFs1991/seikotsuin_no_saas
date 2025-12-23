@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 期間設定
-    let dateFilter = {};
+    let dateFilter: { gte: string; lte?: string } = { gte: '' };
     if (startDate && endDate) {
       dateFilter = {
         gte: startDate,
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       } else {
         start = new Date(now.getFullYear(), 0, 1);
       }
-      dateFilter = { gte: start.toISOString().split('T')[0] };
+      dateFilter = { gte: start.toISOString().slice(0, 10) };
     }
 
     const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        master_treatment_menus(name),
+        menus(name),
         master_categories(name),
         patients(name)
       `
@@ -63,10 +63,10 @@ export async function GET(request: NextRequest) {
     // メニュー別収益ランキング
     const menuRevenue = revenueData?.reduce(
       (acc, item) => {
-        const menuName = item.master_treatment_menus?.name || 'その他';
+        const menuName = (item.menus as any)?.name || 'その他';
         if (!acc[menuName]) {
           acc[menuName] = {
-            menu_id: item.treatment_menu_id,
+            menu_id: item.menu_id,
             menu_name: menuName,
             total_revenue: 0,
             transaction_count: 0,
@@ -119,17 +119,17 @@ export async function GET(request: NextRequest) {
     // 前年同期比較
     const lastYear = new Date();
     lastYear.setFullYear(lastYear.getFullYear() - 1);
-    const { data: lastYearData, error: lastYearError } = await supabase
-      .from('revenues')
-      .select('amount')
-      .eq('clinic_id', clinicId)
-      .gte('revenue_date', lastYear.toISOString().split('T')[0])
-      .lte(
-        'revenue_date',
-        new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0)
-          .toISOString()
-          .split('T')[0]
-      );
+      const { data: lastYearData, error: lastYearError } = await supabase
+        .from('revenues')
+        .select('amount')
+        .eq('clinic_id', clinicId)
+        .gte('revenue_date', lastYear.toISOString().slice(0, 10))
+        .lte(
+          'revenue_date',
+          new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0)
+            .toISOString()
+            .slice(0, 10)
+        );
 
     const currentTotal =
       revenueData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;
@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
       amount,
       insurance_revenue,
       private_revenue,
-      treatment_menu_id,
+      menu_id,
       payment_method_id,
     } = body;
 
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         amount,
         insurance_revenue: insurance_revenue || 0,
         private_revenue: private_revenue || 0,
-        treatment_menu_id,
+        menu_id,
         payment_method_id,
       })
       .select()

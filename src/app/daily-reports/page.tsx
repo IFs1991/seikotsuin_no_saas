@@ -63,8 +63,9 @@ const Page: React.FC = () => {
 
       try {
         const res = await api.dailyReports.get(clinicId);
-        if (isSuccessResponse(res) && res.data?.reports) {
-          const mapped: ReportRow[] = res.data.reports.map(
+        const data = (res as any)?.data as any;
+        if (isSuccessResponse(res) && data?.reports) {
+          const mapped: ReportRow[] = data.reports.map(
             (r: any, idx: number) => ({
               id: r.id || idx,
               date: r.reportDate,
@@ -75,8 +76,8 @@ const Page: React.FC = () => {
 
           if (!cancelled) {
             setRows(mapped);
-            setSummary(res.data.summary || null);
-            setMonthlyTrends(res.data.monthlyTrends || []);
+            setSummary(data.summary || null);
+            setMonthlyTrends(data.monthlyTrends || []);
           }
         } else if (!cancelled) {
           setError('日報データの取得に失敗しました');
@@ -176,7 +177,7 @@ const Page: React.FC = () => {
                 </div>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
                   <p className='text-2xl font-bold text-blue-600'>
-                    ¥{Math.round(summary.averageRevenue).toLocaleString()}
+                    {Math.round(summary.averageRevenue).toLocaleString()}
                   </p>
                   <p className='text-sm text-gray-600 dark:text-gray-400'>
                     平均売上/日
@@ -184,7 +185,7 @@ const Page: React.FC = () => {
                 </div>
                 <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
                   <p className='text-2xl font-bold text-blue-600'>
-                    ¥{Math.round(summary.totalRevenue).toLocaleString()}
+                    {Math.round(summary.totalRevenue).toLocaleString()}
                   </p>
                   <p className='text-sm text-gray-600 dark:text-gray-400'>
                     累計売上
@@ -227,7 +228,7 @@ const Page: React.FC = () => {
                       <div className='text-gray-600 dark:text-gray-400'>
                         売上:{' '}
                         <span className='font-medium'>
-                          ¥{Math.round(trend.totalRevenue).toLocaleString()}
+                          {Math.round(trend.totalRevenue).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -274,7 +275,7 @@ const Page: React.FC = () => {
                           <span className='mr-4'>
                             患者数: {report.patients}名
                           </span>
-                          <span>売上: ¥{report.revenue.toLocaleString()}</span>
+                          <span>売上: {report.revenue.toLocaleString()}</span>
                         </div>
                       </div>
                       <Link href={`/daily-reports/edit/${report.id}`}>

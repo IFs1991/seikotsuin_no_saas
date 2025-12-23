@@ -206,14 +206,6 @@ export default function AdminSettings() {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    // 認証チェック
-    const isAuthenticated = localStorage.getItem('adminAuth') === 'true';
-    if (!isAuthenticated) {
-      router.push('/admin/login');
-    }
-  }, [router]);
-
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
     localStorage.removeItem('adminUser');

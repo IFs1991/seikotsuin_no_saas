@@ -1,6 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { generateAnalysisReport } from '../api/gemini/ai-analysis-service';
+
+// SpeechRecognition type declarations for browser compatibility
+interface SpeechRecognitionEvent {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: () => void;
+  start: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new(): SpeechRecognitionInstance;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 interface Message {
   id: string;
@@ -18,6 +47,12 @@ interface ChatState {
 
 const RATE_LIMIT_INTERVAL = 1000;
 const MAX_MESSAGES_PER_INTERVAL = 5;
+
+// Stub function for message analysis - to be implemented with actual AI service
+async function analyzeMessage(content: string, _storeId: string): Promise<string> {
+  // TODO: Integrate with actual AI analysis service
+  return `分析結果: ${content.substring(0, 50)}...`;
+}
 
 export const useChat = (storeId: string) => {
   const [state, setState] = useState<ChatState>({

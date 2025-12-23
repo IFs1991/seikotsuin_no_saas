@@ -147,6 +147,89 @@ npm run test:watch
 npm run test:coverage
 ```
 
+### 🎨 デザイン案の並列開発（git worktree）
+
+予約管理UI/UXのデザイン案（A〜D）を`git worktree`を使って並列開発・比較できます。
+
+#### 目的
+
+複数のデザインパターンを同時に開発し、ブラウザで並べて比較することで、最適なUI/UXを選択できます。
+
+#### 基本的な使い方
+
+1. **mainブランチをclean状態にする**
+   ```bash
+   git status
+   # 必要に応じて変更をコミットまたはstash
+   ```
+
+2. **A〜D案用のworktreeを作成**
+   ```bash
+   .\scripts\create_booking_design_worktrees.ps1
+   ```
+
+   これにより以下のworktreeが作成されます:
+   - `C:\Users\seekf\Desktop\seikotsuin_booking-design-A` (ブランチ: `feature/booking-design-A`)
+   - `C:\Users\seekf\Desktop\seikotsuin_booking-design-B` (ブランチ: `feature/booking-design-B`)
+   - `C:\Users\seekf\Desktop\seikotsuin_booking-design-C` (ブランチ: `feature/booking-design-C`)
+   - `C:\Users\seekf\Desktop\seikotsuin_booking-design-D` (ブランチ: `feature/booking-design-D`)
+
+3. **main + A〜D案の開発サーバーを一括起動**
+   ```bash
+   .\scripts\start_booking_design_dev.ps1
+   ```
+
+   各デザイン案が異なるポートで起動します:
+   - `http://localhost:3000` → main
+   - `http://localhost:3001` → A案
+   - `http://localhost:3002` → B案
+   - `http://localhost:3003` → C案
+   - `http://localhost:3004` → D案
+
+4. **ブラウザでUI/UXを比較**
+
+   複数のブラウザウィンドウを並べて、各デザイン案を比較検討します。
+
+5. **各worktreeで開発**
+
+   各worktreeは独立したブランチで管理されているため、自由に変更・コミットできます:
+   ```bash
+   cd C:\Users\seekf\Desktop\seikotsuin_booking-design-A
+   # A案の開発...
+   git add .
+   git commit -m "A案: カレンダーUIを改善"
+   ```
+
+6. **採用する案をPRとして提出**
+
+   最適なデザイン案を選択したら、そのブランチをGitHubにpushしてPRを作成します:
+   ```bash
+   git push origin feature/booking-design-A
+   # GitHub上でPR作成
+   ```
+
+#### worktreeの削除
+
+不要になったworktreeは以下のコマンドで削除できます:
+
+```bash
+# worktree一覧を確認
+git worktree list
+
+# 特定のworktreeを削除
+git worktree remove C:\Users\seekf\Desktop\seikotsuin_booking-design-A
+
+# ブランチも削除する場合
+git branch -d feature/booking-design-A
+```
+
+#### 運用上の注意
+
+- 各worktreeの変更は、それぞれ対応する`feature/booking-design-?`ブランチにコミットしてください
+- mainブランチへのマージは、必ずPRレビューを経由してください
+- 不要なworktreeは定期的に削除して、ディスク容量を節約してください
+- 各worktreeで`npm install`を実行する必要がある場合があります
+
 ### 🔐 セキュリティスキャン & 型生成
 
 ```bash

@@ -1,0 +1,16 @@
+  - AIAnalysis（src/components/dashboard/ai-analysis.tsx:5・:46）が fetchAnalysisData() を呼び出しており、裏側    で Supabase の revenues, patients, staff_performance を supabase.from(...).select() しています。カード全体    の売上/患者/スタッフ指標と AI インサイトがリアルデータ化済み。
+  - 予約登録ウィザード（src/app/reservations/register/page.tsx:13, :51, :154, :174）は ReservationService を介    して reservations, staff, blocks とやり取り。単発/複数予約作成ともに Supabase へ insert が飛ぶため、UI の
+    完了/エラー表示も実データベースに依存。
+    updateReservationTime が即座に更新を投げています。
+  - ブロック管理（src/app/blocks/page.tsx:11, :31, :77, :120, :134）は BlockService で blocks テーブルへ
+    insert/select/delete。UI の「ブロック作成」「取得」「削除」ボタンが Supabase API と直結。
+  - 管理画面レイアウト（src/app/admin/(protected)/layout.tsx:3-60）はすべての子ページ描画前に Supabase Server
+    Client で auth.getUser() と profiles/user_permissions を確認し、認可できない場合は即 redirect()。UI/UX 全
+    体のゲートとして Supabase を利用。
+  - セッション管理ページ（src/app/admin/(protected)/session-management/page.tsx:16-31）も SSR で Supabase から
+    ユーザーと profiles を取得し、SessionManager に userId/clinicId を渡す実データ連携スクリーン。
+  - SessionManager コンポーネント（src/components/session/SessionManager.tsx:28-62）は useMultiDeviceManager
+    を呼び、devices, refreshDevices, executeAction などは Supabase の registered_devices, user_sessions へアク
+    セス（src/lib/multi-device-manager.ts:27-120 付近で createClient() → .from(...).select/insert/update）。
+    security/csp-stats/route.ts:7 および csp-violations/route.ts:7 で Supabase Client を生成して csp_alerts/
+    csp_violations テーブルを直接読み出しているため、CSP UI も Supabase 直結データを表示。

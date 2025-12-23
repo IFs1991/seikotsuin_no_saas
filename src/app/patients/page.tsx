@@ -175,7 +175,7 @@ export default function PatientsPage() {
                   >
                     <span>{patient.name}</span>
                     <span className='font-bold'>
-                      ¥{patient.ltv.toLocaleString()}
+                      {patient.ltv.toLocaleString()}
                     </span>
                   </div>
                 ))}

@@ -173,6 +173,7 @@ export interface ProcessApiSuccess {
   permissions: UserPermissions;
   supabase: SupabaseServerClient;
   body?: unknown;
+  error?: never;
 }
 
 export interface ProcessApiFailure {

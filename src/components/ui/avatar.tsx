@@ -28,3 +28,16 @@ export const AvatarFallback = React.forwardRef<
   <span ref={ref} className={cn('text-sm font-medium', className)} {...props} />
 ));
 AvatarFallback.displayName = 'AvatarFallback';
+
+export type AvatarImageProps = React.ImgHTMLAttributes<HTMLImageElement>;
+
+export const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
+  ({ className, ...props }, ref) => (
+    <img
+      ref={ref}
+      className={cn('aspect-square h-full w-full object-cover', className)}
+      {...props}
+    />
+  )
+);
+AvatarImage.displayName = 'AvatarImage';

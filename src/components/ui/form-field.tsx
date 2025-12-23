@@ -48,7 +48,7 @@ export const FormField = React.forwardRef<HTMLDivElement, FormFieldProps>(
 
         {children ? (
           React.isValidElement(children) ? (
-            React.cloneElement(children, {
+            React.cloneElement(children as React.ReactElement<{ id?: string; 'aria-describedby'?: string; 'aria-invalid'?: string }>, {
               id: fieldId,
               'aria-describedby':
                 cn(

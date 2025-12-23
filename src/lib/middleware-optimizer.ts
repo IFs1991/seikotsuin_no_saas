@@ -71,11 +71,13 @@ export class MiddlewareOptimizer {
       // ユーザー認証成功後の追加チェックを並列実行
       const additionalPromises: Promise<any>[] = [
         // 3. ユーザープロファイル取得
-        supabase
-          .from('profiles')
-          .select('role, clinic_id, is_active, full_name')
-          .eq('user_id', user.id)
-          .single(),
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .select('role, clinic_id, is_active, full_name')
+            .eq('user_id', user.id)
+            .single()
+        ),
       ];
 
       // 4. セキュリティ分析（カスタムセッションが有効な場合）
@@ -135,12 +137,16 @@ export class MiddlewareOptimizer {
 
         // セキュリティイベントの記録も非同期
         await this.securityMonitor.logSecurityEvent({
-          eventType: 'session_activity',
-          userId,
-          clinicId: clinicId || 'unknown',
-          ipAddress,
-          userAgent: 'middleware',
-          details: {
+          event_type: 'session_activity',
+          event_category: 'session_management',
+          severity_level: 'info',
+          event_description: 'Session refresh via middleware',
+          user_id: userId,
+          clinic_id: clinicId || 'unknown',
+          ip_address: ipAddress,
+          user_agent: 'middleware',
+          source_component: 'middleware_optimizer',
+          event_data: {
             action: 'session_refresh',
             timestamp: new Date().toISOString(),
           },
@@ -201,7 +207,7 @@ export class MiddlewareOptimizer {
       return cfIp;
     }
 
-    return request.ip || 'unknown';
+    return 'unknown';
   }
 }
 

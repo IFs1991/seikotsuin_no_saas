@@ -1,0 +1,280 @@
+doc:
+  title: "Supabase SQL Warnings 修正 要件定義書"
+  version: "1.0.0"
+  date: "2025-10-02"
+  owner:
+    engineering_lead: "DBA / Platform Eng"
+    reviewers: ["App Eng", "Security"]
+  context:
+    source: "Supabase Performance & Security Lints CSV（ユーザー提供）"
+    summary:
+      total_warnings: 99
+      categories:
+        multiple_permissive_policies: 95
+        duplicate_index: 4
+    affected_tables:
+      - public.auth_config
+      - public.chat_sessions
+      - public.clinics
+      - public.daily_ai_comments
+      - public.daily_reports
+      - public.master_categories
+      - public.master_patient_types
+      - public.master_payment_methods
+      - public.master_treatment_menus
+      - public.patients
+      - public.profiles
+      - public.revenues
+      - public.staff
+      - public.staff_performance
+      - public.user_permissions
+      - public.visits
+    duplicate_index_objects:
+      - schema: internal
+        object: mv_user_permissions
+        pairs:
+          - idx_mv_user_permissions_user
+          - mv_user_permissions_unique_idx
+      - schema: public
+        object: chat_sessions
+        pairs:
+          - idx_chat_sessions_user
+          - idx_chat_sessions_user_id
+      - schema: public
+        object: patients
+        pairs:
+          - idx_patients_clinic
+          - idx_patients_clinic_id
+      - schema: public
+        object: staff
+        pairs:
+          - idx_staff_clinic
+          - idx_staff_clinic_id
+
+goals:
+  - "RLSを安全かつ単純に（OR地獄を撤去）"
+  - "テナント/有効フラグなどの“常時必須”条件をRESTRICTIVEで担保"
+  - "重複インデックスを解消して更新コストとストレージを削減"
+  - "性能回帰テストを自動化（EXPLAIN/計測のbefore/afterを残す）"
+
+non_goals:
+  - "新しいビジネスロジック追加"
+  - "スキーマの大規模変更（列追加/型変更など）"
+
+constraints:
+  postgres_version: ">=15（CREATE POLICYのPERMISSIVE/RESTRICTIVE対応）"
+  supabase:
+    uses_auth: true
+    rls_enabled: true
+
+design_principles:
+  - "各コマンド種別（SELECT/INSERT/UPDATE/DELETE）でPERMISSIVEは原則1本"
+  - "常時要求される制約（tenant_id一致・deleted_at is null）はRESTRICTIVEで全コマンドにAND適用"
+  - "広域ALLポリシー（*_all_manage）はDML専用に分解し、SELECTは別ポリシーに集約"
+  - "auth.uid()/auth.jwt()等は行非依存なので(SELECT ...)で包んでinitPlan化"
+  - "with checkはusingと同一条件・同一基準で揃える"
+
+remediation_plan:
+  rls_normalization:
+    steps:
+      - name: "現状棚卸し"
+        sql: |
+          select schemaname, tablename, policyname, cmd, permissive, roles, qual, with_check
+          from pg_policies
+          where schemaname='public'
+          order by schemaname, tablename, cmd, policyname;
+      - name: "パターンA：*_all_manageの分解（SELECT分離）"
+        template_sql: |
+          begin;
+
+          -- 旧ALLポリシーを退避
+          alter policy {old_manage_policy} on {schema}.{table} rename to {old_manage_policy}__old;
+
+          -- DML別ポリシー
+          create policy {table}_insert_manage
+            as permissive for insert to authenticated
+            with check ({admin_predicate});
+
+          create policy {table}_update_manage
+            as permissive for update to authenticated
+            using ({admin_predicate})
+            with check ({admin_predicate});
+
+          create policy {table}_delete_manage
+            as permissive for delete to authenticated
+            using ({admin_predicate});
+
+          -- SELECTは単一に集約（要件に応じてtrue/tenant条件を選択）
+          create policy {table}_select_read
+            as permissive for select to authenticated
+            using ({read_predicate});
+
+          drop policy {old_manage_policy}__old on {schema}.{table};
+
+          commit;
+      - name: "パターンB：所有データ系（重複SELECTを1本化）"
+        template_sql: |
+          begin;
+
+          -- 旧重複ポリシーを退避
+          alter policy "{old_policy_1}" on {schema}.{table} rename to tmp_{old_policy_1}__old;
+          alter policy "{old_policy_2}" on {schema}.{table} rename to tmp_{old_policy_2}__old;
+
+          -- SELECT: 所有者のみ
+          create policy {table}_select_own
+            as permissive for select to authenticated
+            using ({owner_col} = (select auth.uid()));
+
+          -- INSERT: 自分のレコードのみ作成
+          create policy {table}_insert_own
+            as permissive for insert to authenticated
+            with check ({owner_col} = (select auth.uid()));
+
+          -- UPDATE/DELETEが必要なら同様に定義
+
+          drop policy tmp_{old_policy_1}__old on {schema}.{table};
+          drop policy tmp_{old_policy_2}__old on {schema}.{table};
+
+          commit;
+      - name: "パターンC：RESTRICTIVEガード（テナント/有効フラグ）"
+        notes: "全テーブル共通の“土台”制約。PERMISSIVEのORに対してANDで常時適用。"
+        template_sql: |
+          -- 例：tenant_idとdeleted_atでガード
+          create policy {table}_tenant_guard
+            as restrictive for all to authenticated
+            using (
+              {tenant_col} = coalesce((select (auth.jwt() ->> 'tenant_id')), '')
+              and ({soft_delete_col} is null)
+            )
+            with check (
+              {tenant_col} = coalesce((select (auth.jwt() ->> 'tenant_id')), '')
+              and ({soft_delete_col} is null)
+            );
+      - name: "関数呼び出しのinitPlan化"
+        rule: "auth.uid()/auth.jwt()/current_setting()等は(SELECT ...)で包む"
+        example_sql: |
+          -- before: using (user_id = auth.uid())
+          -- after:
+          using (user_id = (select auth.uid()))
+    per_table_actions:
+      public.chat_sessions:
+        owner_col: "user_id"
+        apply:
+          - pattern: "B（所有データ1本化）"
+          - pattern: "C（RESTRICTIVEテナント/ソフトデリート）"
+      public.patients:
+        tenant_col: "clinic_id"
+        soft_delete_col: "deleted_at"
+        apply:
+          - pattern: "A（ALL分解）"
+          - pattern: "C（RESTRICTIVEガード）"
+      public.staff:
+        tenant_col: "clinic_id"
+        soft_delete_col: "deleted_at"
+        apply:
+          - pattern: "A"
+          - pattern: "C"
+      public.revenues:
+        tenant_col: "clinic_id"
+        soft_delete_col: "deleted_at"
+        apply:
+          - pattern: "A"
+          - pattern: "C"
+      public.visits:
+        tenant_col: "clinic_id"
+        soft_delete_col: "deleted_at"
+        apply:
+          - pattern: "A"
+          - pattern: "C"
+      public.profiles:
+        owner_col: "id"
+        apply:
+          - pattern: "B"
+          - pattern: "C"
+      # 他のテーブルも同様に列名を置換して適用
+
+  index_cleanup:
+    verification_queries:
+      - |
+        select n.nspname as schema, c.relname as table_name, ci.relname as index_name,
+               i.indisunique, pg_get_indexdef(i.indexrelid) as indexdef
+        from pg_index i
+        join pg_class ci on ci.oid = i.indexrelid
+        join pg_class c  on c.oid  = i.indrelid
+        join pg_namespace n on n.oid = c.relnamespace
+        where (n.nspname, c.relname) in (('internal','mv_user_permissions'),
+                                         ('public','chat_sessions'),
+                                         ('public','patients'),
+                                         ('public','staff'))
+        order by schema, table_name, indisunique desc, index_name;
+    decision_rules:
+      - "同一キー・同一opclass・同一述語なら非UNIQUE側を削除"
+      - "UNIQUEが存在するなら、同じキーの非UNIQUEは冗長"
+    drop_sql_examples:
+      - |
+        begin;
+        drop index concurrently if exists internal.idx_mv_user_permissions_user;
+        drop index concurrently if exists public.idx_chat_sessions_user;
+        drop index concurrently if exists public.idx_patients_clinic;
+        drop index concurrently if exists public.idx_staff_clinic;
+        commit;
+
+testing_and_validation:
+  datasets:
+    - "本番スナップショットのマスキング複製（ステージング）"
+  checks:
+    functional:
+      - "各テーブルで役割ごとの到達可能行が“設計通り”であること（allow/denyマトリクス）"
+      - "ポリシー変更で意図せぬ開放/遮断がない（既存E2E/統合テストパス）"
+    performance:
+      - "代表クエリでEXPLAIN ANALYZEを取得し、実行計画が簡潔化・コスト低下"
+      - "RLS内関数のinitPlan化により関数評価回数が縮小"
+    regression:
+      - "pg_stat_statementsで上位クエリの平均/95pが改善 or 非悪化"
+  tooling:
+    - "Supabase Studio: Policyテスト＆Advisors再実行"
+    - "Query Performance Report / index_advisor で追加インデックス提案確認"
+  acceptance_criteria:
+    - "Advisors: multiple_permissive_policies=0, duplicate_index=0"
+    - "主要エンドポイントのP95応答時間 非悪化（±5%以内）"
+    - "監査用SQL/結果をリポジトリに保存"
+
+migration_plan:
+  phases:
+    - name: "Phase 0: 調査"
+      actions:
+        - "pg_policies/インデックス定義のエビデンス取得"
+    - name: "Phase 1: ステージング適用"
+      actions:
+        - "テーブル単位でパターンA/B/Cのテンプレ適用"
+        - "ユニット/E2E/ポリシーテスト"
+        - "EXPLAIN/統計計測のbefore/after保存"
+    - name: "Phase 2: 本番ローリング適用"
+      actions:
+        - "低トラフィック時間帯にDDL適用（トランザクション化）"
+        - "DROP INDEXはCONCURRENTLYを使用"
+        - "Advisors再実行→ゼロ化確認"
+    - name: "Phase 3: 監視とチューニング"
+      actions:
+        - "pg_stat_statementsとAPMで1週間モニタリング"
+        - "index_advisorで不要/不足の見直し"
+
+rollback_plan:
+  - "DDL適用は必ずトランザクション内。ポリシーrename→新規作成→検証→旧削除の順で安全に"
+  - "問題発生時は旧ポリシー名に即時rename復帰、インデックスは再作成（CONCURRENTLY）"
+  - "Runbookと連絡体制（DBA/アプリ）を事前合意"
+
+risks_and_mitigations:
+  - risk: "RESTRICTIVEガードの条件不足によるアクセス遮断"
+    mitigation: "本番前に“denyログ”の疑似実行で影響検出、E2Eで境界ケース検証"
+  - risk: "DROP INDEXでクエリ計画が退化"
+    mitigation: "EXPLAINと実運用メトリクスを併用、必要なら再作成"
+
+references:
+  - "PostgreSQL RLS 合成規則（PERMISSIVE=OR / RESTRICTIVE=AND）: https://www.postgresql.org/docs/current/ddl-rowsecurity.html"
+  - "PostgreSQL CREATE POLICY ドキュメント: https://www.postgresql.org/docs/current/sql-createpolicy.html"
+  - "Supabase Advisors: multiple_permissive_policies (0006): https://supabase.com/docs/guides/database/database-advisors?lint=0006_multiple_permissive_policies"
+  - "Supabase Advisors: duplicate_index (0009): https://supabase.com/docs/guides/database/database-advisors?lint=0009_duplicate_index"
+  - "Supabase: RLS Performance & Best Practices（関数はSELECTで包む）: https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv"
+  - "Supabase: Row Level Security 概説: https://supabase.com/docs/guides/database/postgres/row-level-security"
+  - "Supabase: index_advisor 概要: https://supabase.com/docs/guides/database/extensions/index_advisor"

@@ -75,7 +75,7 @@ export const ResponsiveTable = React.forwardRef<
                     <span className='text-sm font-semibold'>
                       {column.accessor
                         ? column.accessor(item)
-                        : item[column.key]}
+                        : (item[column.key] as React.ReactNode)}
                     </span>
                   </div>
                 ))}
@@ -98,7 +98,7 @@ export const ResponsiveTable = React.forwardRef<
                           <span>
                             {column.accessor
                               ? column.accessor(item)
-                              : item[column.key]}
+                              : (item[column.key] as React.ReactNode)}
                           </span>
                         </div>
                       ))}
@@ -154,7 +154,7 @@ export const ResponsiveTable = React.forwardRef<
                         >
                           {column.accessor
                             ? column.accessor(item)
-                            : item[column.key]}
+                            : (item[column.key] as React.ReactNode)}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -192,7 +192,7 @@ export const ResponsiveTable = React.forwardRef<
                         >
                           {column.accessor
                             ? column.accessor(item)
-                            : item[column.key]}
+                            : (item[column.key] as React.ReactNode)}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -231,7 +231,7 @@ export const ResponsiveTable = React.forwardRef<
               >
                 {columns.map(column => (
                   <TableCell key={column.key} className={column.className}>
-                    {column.accessor ? column.accessor(item) : item[column.key]}
+                    {column.accessor ? column.accessor(item) : (item[column.key] as React.ReactNode)}
                   </TableCell>
                 ))}
               </TableRow>

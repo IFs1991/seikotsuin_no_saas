@@ -549,7 +549,7 @@ export default function DailyReportInputPage() {
                 </div>
                 <div>
                   <p className='text-2xl font-bold text-blue-600'>
-                    ¥{totalRevenue.toLocaleString()}
+                    {totalRevenue.toLocaleString()}
                   </p>
                   <p className='text-sm text-blue-800'>総売上</p>
                 </div>

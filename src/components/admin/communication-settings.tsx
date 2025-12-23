@@ -209,8 +209,8 @@ export function CommunicationSettings() {
               </div>
 
               <div className='mt-3 text-xs text-gray-500'>
-                利用可能な変数: {{ patientName }}, {{ appointmentDate }},{' '}
-                {{ appointmentTime }}, {{ staffName }}, {{ serviceName }}
+                利用可能な変数: {'{{ patientName }}'}, {'{{ appointmentDate }}'},{' '}
+                {'{{ appointmentTime }}'}, {'{{ staffName }}'}, {'{{ serviceName }}'}
               </div>
             </div>
           ))}

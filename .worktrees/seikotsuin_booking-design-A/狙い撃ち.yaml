@@ -1,0 +1,91 @@
+targets:
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\__tests__\session-management\penetration-test-prep.ts
+    total_issues: 39
+    errors: 14
+    warnings: 25
+    rules:
+      no-console: 24
+      @typescript-eslint/no-unused-vars: 9
+      no-empty: 4
+      no-script-url: 1
+      @typescript-eslint/no-explicit-any: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\components\reports\daily-report-form.tsx
+    total_issues: 21
+    errors: 19
+    warnings: 2
+    rules:
+      react/jsx-no-undef: 12
+      @typescript-eslint/no-unused-vars: 6
+      jsx-a11y/label-has-associated-control: 2
+      @typescript-eslint/no-explicit-any: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\__tests__\e2e\dashboard.test.ts
+    total_issues: 19
+    errors: 0
+    warnings: 19
+    rules:
+      no-console: 19
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\components\staff\shift-optimizer.tsx
+    total_issues: 18
+    errors: 5
+    warnings: 13
+    rules:
+      @typescript-eslint/no-unused-vars: 9
+      no-console: 6
+      @typescript-eslint/no-explicit-any: 2
+      react-hooks/exhaustive-deps: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\api\gemini\ai-analysis-service.ts
+    total_issues: 17
+    errors: 11
+    warnings: 6
+    rules:
+      @typescript-eslint/no-unused-vars: 8
+      no-console: 5
+      @typescript-eslint/no-explicit-any: 3
+      @typescript-eslint/no-require-imports: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\components\admin\CSPDashboard.tsx
+    total_issues: 16
+    errors: 16
+    warnings: 0
+    rules:
+      react/jsx-no-undef: 13
+      @typescript-eslint/no-unused-vars: 2
+      react/no-unescaped-entities: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\components\insights\recommendation-card.tsx
+    total_issues: 16
+    errors: 13
+    warnings: 3
+    rules:
+      react/jsx-no-undef: 9
+      @typescript-eslint/no-unused-vars: 4
+      @typescript-eslint/no-explicit-any: 2
+      react/no-unescaped-entities: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\__tests__\session-management\security-monitor.test.ts
+    total_issues: 15
+    errors: 0
+    warnings: 15
+    rules:
+      no-console: 15
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\hooks\useSessionManagement.ts
+    total_issues: 14
+    errors: 1
+    warnings: 13
+    rules:
+      no-console: 11
+      react-hooks/exhaustive-deps: 2
+      @typescript-eslint/no-unused-vars: 1
+
+  - file: C:\Users\seekf\Desktop\seikotsuin_management_saas\src\app\admin\actions.ts
+    total_issues: 13
+    errors: 0
+    warnings: 13
+    rules:
+      no-console: 11
+      @typescript-eslint/no-explicit-any: 2

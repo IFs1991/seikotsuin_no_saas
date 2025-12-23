@@ -211,8 +211,8 @@ export class SecurityNotificationManager {
       separatorBottom: '='.repeat(60),
     };
 
-    // @ts-expect-error: index access for log level mapping
-    logger[logLevel]('Security Alert:', logMessage);
+    // Use type assertion for dynamic log level access
+    (logger as Record<string, (msg: string, data: unknown) => void>)[logLevel]('Security Alert:', logMessage);
   }
 
   /**

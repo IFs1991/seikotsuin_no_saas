@@ -39,8 +39,8 @@ const CORE_MENU: SidebarMenuItem[] = [
     href: '/reservations',
     subItems: [
       { id: 'reservation-timeline', label: 'タイムライン', href: '/reservations' },
-      { id: 'reservation-register', label: '新規予約', href: '/reservations/register' },
-      { id: 'reservation-list', label: '予約一覧', href: '/reservations/list' },
+      { id: 'reservation-register', label: '新規予約', href: '/reservations?view=register' },
+      { id: 'reservation-list', label: '予約一覧', href: '/reservations?view=list' },
     ],
   },
   { id: 'patients', label: '患者分析', href: '/patients' },
@@ -69,7 +69,7 @@ const ADMIN_MENU: SidebarMenuItem[] = [
 
 const QUICK_ACCESS: SidebarMenuItem[] = [
   { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
-  { id: 'quick-reservation', label: '新規予約', href: '/reservations/register' },
+  { id: 'quick-reservation', label: '新規予約', href: '/reservations?view=register' },
   { id: 'quick-patient', label: '患者検索', href: '/patients' },
   { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
 ];
@@ -96,7 +96,7 @@ export function Sidebar({
       ...ADMIN_MENU.flatMap(item => [item, ...(item.subItems ?? [])]),
     ];
 
-    const match = candidates.find(item => pathname.startsWith(item.href));
+    const match = candidates.find(item => pathname.startsWith(item.href.split('?')[0]));
     return match?.id ?? '';
   }, [pathname]);
 

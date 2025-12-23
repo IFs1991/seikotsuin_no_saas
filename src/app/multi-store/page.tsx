@@ -7,21 +7,24 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useMultiStore } from '../../hooks/useMultiStore';
-import { StoreComparisonChart } from '../../components/multi-store/store-comparison-chart';
-import { BestPracticeCard } from '../../components/multi-store/best-practice-card';
+import useMultiStore from '../../hooks/useMultiStore';
+import StoreComparisonChart from '../../components/multi-store/store-comparison-chart';
+import BestPracticeCard from '../../components/multi-store/best-practice-card';
 
 const MultiStorePage: React.FC = () => {
   const {
-    storeKpis,
     bestPractices,
-    comparisonData,
     loading,
     error,
-    filterStores: _filterStores, // 未使用だが、useMultiStoreのcontentに記載があるため含める
-    selectKpi: _selectKpi, // 未使用だが、useMultiStoreのcontentに記載があるため含める
-    generateReport,
+    getRankings,
   } = useMultiStore();
+
+  const storeKpis = getRankings('revenue').map(clinic => ({
+    clinicName: clinic.name,
+    revenue: clinic.revenue,
+    patients: clinic.patients,
+    satisfaction: clinic.staff_performance_score,
+  }));
 
   if (loading) {
     return (
@@ -34,7 +37,7 @@ const MultiStorePage: React.FC = () => {
   if (error) {
     return (
       <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
-        <p>エラーが発生しました: {error.message}</p>
+        <p>エラーが発生しました: {error}</p>
       </div>
     );
   }
@@ -89,7 +92,7 @@ const MultiStorePage: React.FC = () => {
                               {kpi.clinicName}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                              ¥{kpi.revenue.toLocaleString()}
+                              {kpi.revenue.toLocaleString()}
                             </td>
                             <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
                               {kpi.patients}人
@@ -121,13 +124,7 @@ const MultiStorePage: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className='bg-card'>
-                {comparisonData ? (
-                  <StoreComparisonChart data={comparisonData} />
-                ) : (
-                  <p className='text-gray-500 dark:text-gray-400'>
-                    比較データがありません。
-                  </p>
-                )}
+                <StoreComparisonChart />
               </CardContent>
             </Card>
 
@@ -143,9 +140,7 @@ const MultiStorePage: React.FC = () => {
               </CardHeader>
               <CardContent className='bg-card grid grid-cols-1 md:grid-cols-2 gap-4'>
                 {bestPractices && bestPractices.length > 0 ? (
-                  bestPractices.map((practice, index) => (
-                    <BestPracticeCard key={index} practice={practice} />
-                  ))
+                  bestPractices.map((_, index) => <BestPracticeCard key={index} />)
                 ) : (
                   <p className='text-gray-500 dark:text-gray-400'>
                     ベストプラクティスがありません。
@@ -172,7 +167,6 @@ const MultiStorePage: React.FC = () => {
                   施術者別クロス店舗分析
                 </Button>
                 <Button
-                  onClick={generateReport}
                   className='bg-[#1e3a8a] hover:bg-[#10b981] text-white dark:bg-gray-700 dark:hover:bg-gray-600'
                 >
                   レポート生成・共有

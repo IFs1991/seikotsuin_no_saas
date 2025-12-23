@@ -17,11 +17,11 @@ import {
 
 export interface SecurityThreat {
   threatType:
-    | 'suspicious_login'
-    | 'multiple_devices'
-    | 'location_anomaly'
-    | 'session_hijack'
-    | 'brute_force';
+  | 'suspicious_login'
+  | 'multiple_devices'
+  | 'location_anomaly'
+  | 'session_hijack'
+  | 'brute_force';
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   evidence: unknown;
@@ -623,7 +623,7 @@ export class SecurityMonitor {
   /**
    * セキュリティイベントログ記録
    */
-  private async logSecurityEvent(event: {
+  public async logSecurityEvent(event: {
     user_id?: string;
     clinic_id?: string;
     session_id?: string;

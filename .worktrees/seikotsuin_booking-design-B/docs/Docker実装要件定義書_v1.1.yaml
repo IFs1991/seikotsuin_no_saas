@@ -1,0 +1,392 @@
+meta:
+  title: "実装要件定義書（Implementation Requirements Spec）"
+  project: "seikotsuin_no_saas"
+  repository: "https://github.com/IFs1991/seikotsuin_no_saas"
+  owners:
+    product: "Toshu"
+    tech_lead: "TBD"
+  version: "1.1.0"
+  updated: "2025-09-21"
+  compliance:
+    - "個人情報保護法（日本）"
+    - "医療法（関連範囲）"
+    - "GDPR（EU居住者データの可能性を考慮）"
+  references:
+    - "docs/Docker導入_v2.1.yaml（本ドキュメントと整合必須）"
+
+scope:
+  objective:
+    - "Next.js 14 + TypeScript + Tailwind を基盤とした美容・ウェルネスSaaSの安定稼働"
+    - "Supabase 認証/DB/ストレージ連携の本番運用"
+    - "Docker と CI/CD による再現性の高いビルド/デプロイ"
+  out_of_scope:
+    - "ネイティブアプリ（Flutter/Dart）の実装"
+    - "決済ゲートウェイ本番契約（MVPではモック/サンドボックス）"
+    - "複数リージョン冗長構成（将来検討）"
+
+architecture:
+  stack:
+    frontend: "Next.js 14 (App Router) / TypeScript / Tailwind CSS"
+    backend: "Next.js Route Handlers（API） + Supabase（Postgres, Auth, Edge Functions任意）"
+    runtime: "Node.js 20（Debian slimベース）"
+    auth: "Supabase Auth（Google OAuth想定）"
+    styles: "Tailwind + shadcn/ui（必要に応じて）"
+  directories:
+    project_root:
+      - "package.json"
+      - "next.config.js"
+      - "tailwind.config.ts"
+      - "tsconfig.json"
+      - "eslint.config.mjs"
+      - "jest.config.js"
+      - "middleware.ts"
+      - ".github/workflows/ci.yml"
+      - "serena_memory_update_daily_reports.json"
+    src:
+      - "src/app/layout.tsx"
+      - "src/app/globals.css"
+      - "src/app/dashboard/page.tsx"
+      - "src/app/api/health/route.ts（新規：200を返すヘルスチェック）"
+      - "src/components/navigation/{sidebar.tsx, header.tsx, mobile-bottom-nav.tsx}"
+      - "src/components/layout/responsive-layout.tsx"
+  runtime_ports:
+    dev: 3000
+    prod: 3000
+
+environments:
+  dev:
+    description: "ローカル開発（WSL2対応）"
+    run: "docker compose -f docker-compose.dev.yml up --build"
+  staging:
+    description: "本番相当の検証環境"
+    run: "docker compose up --build（別ENVファイル使用）"
+  prod:
+    description: "本番環境"
+    run: "CI/CDでイメージをpull→起動。read_onlyFS + healthcheck必須"
+
+env_vars:
+  public:
+    - name: "NEXT_PUBLIC_SUPABASE_URL"
+      required: true
+      notes: "クライアントでも参照可能な公開URL"
+    - name: "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      required: true
+      notes: "クライアント用Anonキー（漏えいリスクに注意）"
+  server_only:
+    - name: "SUPABASE_SERVICE_ROLE_KEY"
+      required: false
+      notes: "サーバ限定。RLS bypass用途。Route HandlersやEdge Functionsのみで使用"
+    - name: "PORT"
+      required: false
+      default: 3000
+  management:
+    storage: ".env.development / .env.staging / .env.production（Git管理外）"
+
+non_functional_requirements:
+  security:
+    - "Next.jsのmiddleware.tsでCSP/STS/XCTO等のヘッダを設定"
+    - "非root実行、cap_drop: [ALL]、no-new-privilegesをDocker/Composeに適用"
+    - "read_onlyルートFS + tmpfs(/tmp)"
+    - "依存関係の定期スキャン（Trivy, npm audit）"
+  performance:
+    - "TTI < 3.5s（ダッシュボード初回表示, 10Mbps/中スペッククライアントを想定）"
+    - "API p95 < 400ms（キャッシュ未使用時）"
+  reliability:
+    - "ヘルスチェック /api/health が200を返すこと"
+    - "再起動ポリシー: unless-stopped"
+  observability:
+    - "アプリログにリクエストID付与"
+    - "p95/p99レイテンシ、エラーレート、CPU/メモリの収集"
+  privacy:
+    - "個人情報は最低権限原則（RLS）"
+    - "アクセスログ/監査ログの保存期間: 90日以上"
+
+coding_standards:
+  typescript:
+    strict: true
+    path_alias:
+      "@/*": "src/*"
+  eslint:
+    rules:
+      - "@typescript-eslint/no-unused-vars: error（CIではfail）"
+      - "no-console: warn（本番コードはloggerへ置換）"
+      - "@typescript-eslint/no-explicit-any: warn→段階的削減"
+  tailwind:
+    content:
+      - "src/**/*.{ts,tsx}"
+      - "components/**/*.{ts,tsx}"
+    safelist: []
+  testing:
+    unit: "Jest（testEnvironment: jsdom）"
+    e2e: "任意：Playwright（後日）"
+    coverage_threshold:
+      statements: 0.6
+      branches: 0.5
+      functions: 0.6
+      lines: 0.6
+
+api_contracts:
+  health:
+    route: "GET /api/health"
+    request: "none"
+    response:
+      status: 200
+      body:
+        json:
+          ok: true
+          ts: "ISO8601"
+  auth_status:
+    route: "GET /api/auth/session（任意：Supabaseのセッション確認）"
+    response:
+      status: 200
+      body:
+        json:
+          authenticated: "boolean"
+
+supabase_integration:
+  database:
+    schema: "public（RLS適用）"
+    policies:
+      - "各テーブルでuser_idベースのRLS（INSERT/SELECT/UPDATE/DELETE）"
+    migrations: "任意：supabase CLI or drizzle-kit を後日導入"
+  auth:
+    providers:
+      - "google"
+    session_storage: "Supabaseクライアントのセッション（httpOnly Cookie優先）"
+  edge_functions:
+    optional: true
+    runtime: "Deno"
+    usage: "メールWebhooks/非同期処理（HPB連携時の将来拡張）"
+
+ui_requirements:
+  layout:
+    - "src/app/layout.tsxで全ページ共通のヘッダ/フッタ/Toaster"
+    - "レスポンシブ対応（components/layout/responsive-layout.tsx）"
+  navigation:
+    - "components/navigation/{sidebar, header, mobile-bottom-nav}.tsx"
+    - "アクセシビリティ（キーボード操作、aria属性）"
+  dashboard:
+    - "src/app/dashboard/page.tsx 初回レンダリングで重要指標を即時表示"
+    - "loading.tsx（Skeleton）とerror.tsxを適切に用意"
+
+docker_and_ops:
+  dockerfiles:
+    dev: "Docker導入_v2.1.yamlのDockerfile.devを使用"
+    prod: "Docker導入_v2.1.yamlのDockerfileを使用（Next standalone）"
+  compose:
+    dev: "docker-compose.dev.yml（WSL2向け監視フラグ有効）"
+    prod: "docker-compose.yml（read_only/tmpfs/cap_drop/no-new-privileges/healthcheck）"
+  images:
+    base: "node:20-bookworm-slim"
+    scan_policy:
+      trivy: "HIGH以上でfail"
+  ports:
+    exposed: [3000]
+  logging:
+    format: "JSON lines（timestamp, level, reqId, path, msg）"
+    destination: "stdout（コンテナオーケストレータ依存）"
+
+ci_cd:
+  github_actions:
+    path: ".github/workflows/ci.yml"
+    jobs:
+      - "build-and-test: node20でnpm ci→lint→test→build"
+      - "docker-image: GHCRへpush（ghcr.io/<owner>/<repo>:latest）"
+  branch_policy:
+    - "main 以外は PR 経由でマージ（必須レビュー1+）"
+  tags:
+    - "release/* でversionタグを打つ運用（任意）"
+
+security_headers:
+  middleware_ts:
+    csp: "default-src 'self'; script-src 'self' 'nonce-<generated>'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
+    hsts: "max-age=31536000; includeSubDomains; preload"
+    x_content_type_options: "nosniff"
+    referrer_policy: "strict-origin-when-cross-origin"
+  notes:
+    - "CSPのnonceはリクエスト毎に生成"
+    - "Next/Imageを使用する場合はimages.domainsをnext.config.jsに設定"
+
+acceptance_criteria:
+  build:
+    - "ローカル: docker compose -f docker-compose.dev.yml up --build で起動し http://localhost:3000 が表示される"
+    - "本番: docker compose up --build -d で起動し /api/health が 200 を返す"
+  quality:
+    - "CIで lint error=0、testが通過、Trivy（HIGH以上）0件"
+    - "Lighthouse（ダッシュボード画面）Performance 70+"
+  security:
+    - "middleware.tsのヘッダ有効（CSP違反がコンソールに出ない）"
+    - "RLSが有効で未認証ユーザが個人データへアクセス不可"
+  docs:
+    - "README.md に起動/環境変数/デプロイ手順が最新化されている"
+    - "SECURITY.md に脆弱性報告窓口/更新ポリシーの記述"
+
+implementation_tasks:
+  t01_health_route:
+    desc: "ヘルスチェック実装"
+    files:
+      - "src/app/api/health/route.ts"
+    definition_of_done:
+      - "GET /api/health で200と {ok:true, ts} を返す"
+  t02_middleware_security:
+    desc: "セキュリティヘッダ実装"
+    files:
+      - "middleware.ts"
+    dod:
+      - "CSP/HSTS/XCTO/Referrer-Policyが応答ヘッダに付与"
+  t03_next_config_standalone:
+    desc: "next.config.jsのstandalone化"
+    files:
+      - "next.config.js"
+    dod:
+      - "output: 'standalone' が有効で本番Dockerビルド成功"
+  t04_ts_tailwind_paths:
+    desc: "tsconfig/tailwindの整合"
+    files:
+      - "tsconfig.json"
+      - "tailwind.config.ts"
+    dod:
+      - "paths: {'@/*':'src/*'}、contentグロブが正しく反映"
+  t05_eslint_jest_ci:
+    desc: "ESLint/Jest/CIの確立"
+    files:
+      - "eslint.config.mjs"
+      - "jest.config.js"
+      - ".github/workflows/ci.yml"
+    dod:
+      - "PRで自動実行、エラー時はfail"
+  t06_dockerize:
+    desc: "Docker/Compose実装"
+    files:
+      - "Dockerfile.dev"
+      - "Dockerfile"
+      - "docker-compose.dev.yml"
+      - "docker-compose.yml"
+    dod:
+      - "dev/prod双方で起動・/api/health 200"
+  t07_supabase_auth_routing:
+    desc: "認証状態に基づくルーティング（保護ページ）"
+    files:
+      - "middleware.ts"
+      - "src/app/(protected)/layout.tsx（任意）"
+    dod:
+      - "未認証はログイン導線へ、認証済はダッシュボードへ"
+  t08_navigation_accessibility:
+    desc: "ナビゲーションのアクセシビリティ"
+    files:
+      - "src/components/navigation/*"
+    dod:
+      - "キーボード操作/aria属性/フォーカスリングの適正"
+  t09_logging_observability:
+    desc: "最低限の構造化ログ/メトリクス"
+    files:
+      - "src/lib/logger.ts（任意）"
+    dod:
+      - "JSONログ出力、リクエストID付与"
+  t10_docs_update:
+    desc: "README/SECURITY更新"
+    files:
+      - "README.md"
+      - "SECURITY.md"
+    dod:
+      - "ローカル/本番手順・環境変数・ポリシーが最新化"
+
+runbook:
+  overview: "dev→prod 二段階起動手順（WSL2/Windowsを考慮）。まず開発用composeで動作確認し、その後本番用composeに昇格。"
+  prerequisites:
+    - "Docker Desktop + Docker Compose v2（`docker compose` が使えること）"
+    - "WSL2 + Ubuntu（推奨、Windowsのみでも可）"
+    - "`.env.development` と `.env.production` を用意（Git管理外）"
+    - "`next.config.js` に `output: 'standalone'` を設定"
+    - "ヘルスチェック `GET /api/health` が実装済み"
+  files_required:
+    - "Docker導入_v2.1.yaml（Dockerfile.dev / Dockerfile / docker-compose.* を内包）"
+    - "docker-compose.dev.yml / docker-compose.yml"
+    - "src/app/api/health/route.ts"
+    - ".env.development / .env.production"
+  dev_flow:
+    steps:
+      - step: "依存インストールとビルド（初回）"
+        cmd:
+          - "docker compose -f docker-compose.dev.yml up --build"
+      - step: "動作確認"
+        verify:
+          - "ブラウザで http://localhost:3000 を開く"
+          - "`curl -fsS http://localhost:3000/api/health` が `200` を返す"
+      - step: "停止（必要に応じて）"
+        cmd:
+          - "docker compose -f docker-compose.dev.yml down -v"
+  prod_flow:
+    steps:
+      - step: "本番設定の確認"
+        checklist:
+          - ".env.production の `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` が有効"
+          - "`next.config.js` が `output: 'standalone'`"
+          - "CSPヘッダ設定（middleware.ts）と `images.domains`（必要なら）"
+      - step: "本番起動（foregroundで確認→detachedへ）"
+        cmd:
+          - "docker compose up --build"
+          - "（確認後）Ctrl+C で停止"
+          - "docker compose up -d"
+      - step: "ヘルスチェック"
+        verify:
+          - "`curl -fsS http://localhost:3000/api/health && echo OK`"
+  promotion_and_ci:
+    steps:
+      - step: "変更をコミット→PR→mainへマージ"
+      - step: "GitHub Actions（ci.yml）が lint/test/build まで実行"
+      - step: "docker-image ジョブが GHCR へ push（ghcr.io/<owner>/<repo>:latest）"
+  troubleshooting:
+    - case: "ポート競合（EADDRINUSE）"
+      fix:
+        - "`PORT` を `.env.*` で変更、または競合プロセスを停止"
+    - case: "CSPでスクリプト/フォントがブロック"
+      fix:
+        - "開発時は Report-Only で違反を収集→本番で Enforce"
+        - "nonce を正しく発行・適用"
+    - case: "Supabase環境変数不足"
+      fix:
+        - "`NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` を設定し再起動"
+    - case: "Next/Image で 403 / 外部ドメインブロック"
+      fix:
+        - "`next.config.js` の `images.domains` に対象ドメインを追加"
+    - case: "WSL2 でホットリロードが効かない"
+      fix:
+        - "dev compose に `CHOKIDAR_USEPOLLING=1` と `WATCHPACK_POLLING=true` を設定（既に適用済）"
+  verification_checklist:
+    - "dev: http://localhost:3000 表示 + /api/health=200"
+    - "prod: detached 起動後 `docker ps` に web が存在"
+    - "prod: /api/health=200、CSP違反がブラウザコンソールに出ない"
+    - "CI: main に push で `build-and-test` と `docker-image` が成功"
+  rollback:
+    - "本番: `docker compose down -v` → 前の安定版イメージへタグ戻し → `docker compose up -d`"
+    - "CI: GHCR の前バージョンにデプロイマニフェストで固定"
+
+rollout_plan:
+  phase_1_dev:
+    - "t01～t06 実装→ローカル起動→基本動作確認"
+  phase_2_staging:
+    - "t07～t09 実装→認証と観測性の確認→負荷軽測"
+  phase_3_prod:
+    - "t10 ドキュメント整備→CI/CDでデプロイ→初期運用監視（7日）"
+
+risks_and_mitigations:
+  - risk: "Alpine系でsharp等のネイティブ依存が失敗"
+    mitigation: "Debian slim採用（Docker導入_v2.1.yamlに準拠）"
+  - risk: "CSP誤設定でリソースブロック"
+    mitigation: "nonce運用・開発時にReport-Onlyで計測→本番Enforce"
+  - risk: "RLS誤設定でデータ露出"
+    mitigation: "サーバ側テスト＋stagingでクエリ検証"
+
+deliverables:
+  - "動作するDockerイメージ（dev/prod）"
+  - "CIが通るmainブランチ"
+  - "README/SECURITYの更新"
+  - "最低限の観測（ログ）"
+
+maintenance_plan:
+  dependencies:
+    audit: "週次 npm audit / 月次 Trivy"
+    update_policy: "minor自動、majorは手動検証"
+  backups:
+    db: "Supabase側のバックアップ設定に従う（将来拡張）"

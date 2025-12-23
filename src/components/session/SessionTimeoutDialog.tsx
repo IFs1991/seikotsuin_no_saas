@@ -95,7 +95,7 @@ export function SessionTimeoutDialog({
           </div>
         </AlertDialogHeader>
 
-        <AlertDialogDescription asChild>
+        <AlertDialogDescription>
           <div className='space-y-4'>
             <p className='text-gray-600'>
               セキュリティのため、あなたのセッションがまもなく期限切れになります。

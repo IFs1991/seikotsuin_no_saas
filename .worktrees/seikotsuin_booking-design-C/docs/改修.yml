@@ -1,0 +1,203 @@
+meta:
+  title: "Supabase/Postgres Lint Remediation Spec"
+  version: "1.0.0"
+  date: "2025-09-24"
+  owner: "Toshu"
+  environment:
+    platform: "Supabase (PostgREST)"
+    db: "PostgreSQL 15+"
+  scope:
+    findings_total: 50
+    breakdown:
+      - id: "0011_function_search_path_mutable"   # 49件（実体は関数48種）
+        count: 49
+      - id: "0016_materialized_view_in_api"       # 1件
+        count: 1
+  artifacts:
+    affected_objects_yaml: "sandbox:/mnt/data/affected_objects.yaml"
+    dashboards:
+      severity_counts: "sandbox:/mnt/data/summary_level_counts.csv"
+      rule_counts: "sandbox:/mnt/data/summary_rule_counts.csv"
+      facing_counts: "sandbox:/mnt/data/summary_facing_counts.csv"
+      category_counts: "sandbox:/mnt/data/summary_category_counts.csv"
+
+security_policies:
+  function_search_path_policy:
+    goal: "SECURITY DEFINER/INVOCATIONの有無に関わらず、関数の名前解決を安全かつ決定的にする"
+    rules:
+      - "関数定義で search_path を明示: `set search_path = pg_catalog, public`（必要に応じて対象スキーマを追加）"
+      - "関数内の参照は**必ず**スキーマ修飾（例: `public.table_x`）"
+      - "SECURITY DEFINER は最小限のみ。不要なら使わない"
+      - "SECURITY DEFINER を使う場合は PUBLIC からの EXECUTE を剥奪し、必要ロールに限定付与"
+      - "動的SQLは `format()`, `quote_ident()`, `quote_literal()` でサニタイズし、`USING` でパラメータ化"
+  api_exposure_policy:
+    goal: "Data API（PostgREST）が露出するスキーマ/オブジェクトを最小化する"
+    rules:
+      - "Exposed Schemas から `public` を外し、`api` など公開専用スキーマに限定"
+      - "公開不要の関数・ビュー・マテビューは `internal` 等の非公開スキーマへ移動"
+      - "RPC として公開する関数のみ公開スキーマに配置"
+  rls_matview_policy:
+    goal: "RLSが効かない/効きにくい経路の解消と最小化"
+    rules:
+      - "マテリアライズドビュー（MV）は**APIから直接参照させない**（非公開スキーマへ移動）"
+      - "公開が必要な集計は、RLSの効く基表に対する `security_invoker=true` ビューで代替"
+      - "どうしてもMVが必要なら、非公開で保持し、**RLS検証込みの関数**経由で必要最小データのみ返却"
+
+remediation_templates:
+  function_fix_template_sql: |
+    -- 1) 既存定義の確認（必要に応じて引数/戻り値は適切に置換）
+    -- \df+ public.func_name
+
+    create or replace function public.func_name(arg1 uuid)
+    returns boolean
+    language plpgsql
+    security invoker                 -- ← 基本は invoker。必要時のみ definer を選択
+    set search_path = pg_catalog, public
+    as $$
+    declare
+      v_ok boolean;
+    begin
+      -- 参照はすべてスキーマ修飾
+      select exists(select 1 from public.staff s where s.user_id = arg1) into v_ok;
+      return v_ok;
+    end;
+    $$;
+
+    -- SECURITY DEFINER が必要な場合の付帯措置
+    -- revoke all on function public.func_name(uuid) from public;
+    -- grant execute on function public.func_name(uuid) to authenticated;
+  definer_hardening_snippets: |
+    -- 典型的な強化手順
+    alter function public.func_name(uuid) owner to app_owner;
+    revoke all on function public.func_name(uuid) from public;
+    grant execute on function public.func_name(uuid) to app_user_role;
+
+    -- 依存オブジェクトもスキーマ修飾されているか静的解析で確認
+  dynamic_sql_safe_pattern: |
+    -- 動的SQL安全化
+    execute format('select col from %I.%I where id = $1', 'public', 'table_x')
+      using _id;
+
+  matview_containment_options:
+    move_to_internal_schema: |
+      -- MVをAPI非公開スキーマへ移動
+      alter materialized view public.mv_user_permissions set schema internal;
+    replace_with_security_invoker_view: |
+      -- RLSの効く基表に対する invoker ビューを公開
+      create or replace view api.v_user_permissions
+      with (security_invoker = true, security_barrier = true)
+      as
+      select ...
+      from public.user_permissions_base  -- ← RLS有効な基表
+      where tenant_id = auth.uid();      -- 例：SupabaseのJWTクレーム/関数に基づく制約
+    function_gate_for_mv: |
+      -- MVを非公開のまま、関数経由で厳密制御（RLSの代替チェックを内包）
+      create or replace function api.get_user_permissions(_uid uuid)
+      returns setof api.user_permission_row
+      language sql
+      security invoker
+      set search_path = pg_catalog, public
+      as $$
+        select ...
+        from internal.mv_user_permissions mv
+        join public.allowed_users a on a.user_id = _uid and a.user_id = auth.uid()
+      $$;
+
+postgrest_api_hardening:
+  exposed_schemas:
+    desired: ["api"]              # 公開専用
+    remove: ["public"]            # 既定では公開。ここから外す
+  supabase_ui_steps:
+    - "Settings → API → Exposed schemas で `api` のみを指定"
+    - "必要に応じて Supabase Config/TOML でも `db-schemas` を `api` に設定"
+  grants_minimization:
+    - "public スキーマへの USAGE/CREATE を一般ロールから剥奪（必要な運用ロールのみに付与）"
+
+detection_queries:
+  find_functions_without_search_path: |
+    select n.nspname as schema, p.proname as func, p.prosecdef as is_definer, p.proconfig
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public','api')
+      and (p.proconfig is null or not exists (
+            select 1 from unnest(p.proconfig) s where s like 'search_path=%'
+          ));
+  find_security_definer_in_exposed: |
+    -- Exposed schema（例: api）にある SECURITY DEFINER の棚卸し
+    select n.nspname, p.proname, p.prosecdef
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('api') and p.prosecdef = true;
+  list_matviews_in_public: |
+    select schemaname, matviewname from pg_matviews where schemaname = 'public';
+
+migration_plan:
+  phases:
+    - name: "P0 - Auth/RBAC/暗号化関連関数の是正"
+      targets_from_yaml: "affected_functions ⟂ ['process_google_login','set_jwt_custom_claims','update_jwt_on_profile_change','jwt_*','is_*','has_*','encrypt_*','decrypt_*']"
+      actions:
+        - "template:function_fix_template_sql を適用"
+        - "SECURITY DEFINER を使っている関数は公開スキーマから退避 or EXECUTE権の絞り込み"
+    - name: "P1 - 分析/集計/診断系関数の是正"
+      actions:
+        - "同テンプレ適用＋公開必要性の再評価（内部スキーマへ）"
+    - name: "P2 - マテビュー露出の解消"
+      actions:
+        - "public.mv_user_permissions を internal へ移動"
+        - "公開は security_invoker ビューに差し替え or 関数ゲート方式へ"
+    - name: "P3 - API露出最小化"
+      actions:
+        - "Exposed schemas を `api` のみに限定し、必要オブジェクトのみ配置"
+        - "不要な GRANT/USAGE を整理"
+  refresh_matview_strategy:
+    preferred: "REFRESH MATERIALIZED VIEW CONCURRENTLY（ユニークインデックス必須）"
+    notes:
+      - "大量更新時は通常REFRESHの方が速いが、読み取りがブロックされる点に留意"
+      - "同一MVの同時REFRESHは直列化される"
+
+verification:
+  automated_checks:
+    - name: "全関数のsearch_path固定を検証"
+      sql: "@detection_queries.find_functions_without_search_path == 0 rows"
+    - name: "Exposed schemas 構成の検証"
+      api: "PostgREST/Supabase 設定で db-schemas == ['api'] を確認"
+    - name: "SECURITY DEFINER の公開面残存なし"
+      sql: "@detection_queries.find_security_definer_in_exposed == 0 rows"
+    - name: "MVが公開スキーマに存在しない"
+      sql: "@detection_queries.list_matviews_in_public == 0 rows"
+  functional_tests:
+    - "認可境界（一般/管理/未認証）ごとにRPCを叩き、過剰データが返らないこと"
+    - "tenant境界でのRLS/フィルタの逸脱が無いこと"
+    - "JWTクレーム改ざん時に関数が拒否/空返却すること"
+  performance_tests:
+    - "関数改修後の計測（p95/p99・QPS・CPU/IO）"
+    - "MV並行リフレッシュ時のアプリスループット変化"
+
+deliverables:
+  code_changes:
+    - "全対象関数の `create or replace function ... set search_path = pg_catalog, public` 化"
+    - "スキーマ修飾の徹底（検索で裸識別子を検出し置換）"
+    - "`internal`/`api` スキーマの導入とオブジェクト再配置"
+    - "MVの非公開化＋代替ビュー/関数の新設"
+  runbooks:
+    - "DB移行手順（トランザクション/ロールバック/タイムウィンドウ）"
+    - "APIスキーマ切替手順と影響範囲"
+  qa_artifacts:
+    - "失敗時ロールバックSQL"
+    - "ポリシー試験項目と期待結果一覧"
+
+work_tickets_outline:
+  F-series (functions):
+    description: "affected_objects.yaml の `affected_functions` に対してテンプレ適用"
+    done_definition:
+      - "search_path固定"
+      - "全参照のスキーマ修飾"
+      - "SECURITY DEFINER不要化 or 権限の最小付与"
+  M-series (matviews):
+    - id: "M-001"
+      target: "public.mv_user_permissions"
+      action: "internalへ移設 + 公開はsecurity_invokerビュー or 関数ゲート"
+  A-series (api):
+    - id: "A-001"
+      action: "Exposed schemas を `api` のみに変更（UI/TOML双方）"
+    - id: "A-002"
+      action: "`api` スキーマ配下のRPC/ビューのみ公開対象に整理"

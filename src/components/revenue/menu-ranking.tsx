@@ -148,13 +148,13 @@ const MenuRanking: React.FC = () => {
                             {menu.name}
                           </td>
                           <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
-                            ¥{menu.revenue.toLocaleString()}
+                            {menu.revenue.toLocaleString()}
                           </td>
                           <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
                             {menu.usage.toLocaleString()}回
                           </td>
                           <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
-                            ¥{menu.unitPrice.toLocaleString()}
+                            {menu.unitPrice.toLocaleString()}
                           </td>
                           <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
                             <span

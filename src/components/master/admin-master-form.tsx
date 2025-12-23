@@ -155,11 +155,13 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
                 className='hidden'
                 id='bulkUpload'
               />
-              <Label htmlFor='bulkUpload'>
-                <Button variant='outline' asChild>
-                  <span>一括アップロード</span>
-                </Button>
-              </Label>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => document.getElementById('bulkUpload')?.click()}
+              >
+                一括アップロード
+              </Button>
             </div>
 
             {impactedStores.length > 0 && (

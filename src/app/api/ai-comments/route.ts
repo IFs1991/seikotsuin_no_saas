@@ -9,8 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
-    const date =
-      searchParams.get('date') || new Date().toISOString().split('T')[0];
+    const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
 
     if (!clinicId) {
       return NextResponse.json(
@@ -22,7 +21,7 @@ export async function GET(request: NextRequest) {
     const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
 
     const { data, error } = await supabase
-      .from('daily_ai_comments')
+      .from('ai_comments')
       .select('*')
       .eq('clinic_id', clinicId)
       .eq('comment_date', date)
@@ -166,7 +165,7 @@ async function generateDailyComment(
     );
 
     const { data: savedComment, error } = await supabase
-      .from('daily_ai_comments')
+      .from('ai_comments')
       .upsert(
         {
           clinic_id: clinicId,

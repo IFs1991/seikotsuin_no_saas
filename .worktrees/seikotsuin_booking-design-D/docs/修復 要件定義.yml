@@ -1,0 +1,248 @@
+title: "Next.js + Supabase + Jest テスト基盤・Auth/Session 修復 要件定義"
+version: "1.0"
+owner: "Toshu"
+updated: "2025-10-10"
+
+context:
+  summary: >
+    E2E/ユニット/統合テストで多数の失敗が発生。
+    主因は App Router の redirect の扱い、Jest 環境（TextEncoder/crypto）不足、
+    Supabase クライアント/クエリのモック形状崩れ、タイマー/Promiseのテスト駆動、
+    セッション検証の理由コード粒度不足、UA 解析ライブラリ選定と表記揺れ、時間窓境界の比較不一致。
+  goals:
+    - "テストの安定化と再現性の確保（CIでグリーン）"
+    - "Auth/Session サーバーアクションの契約を redirect throw に統一"
+    - "Supabase モックを PostgREST 互換チェーンに統一"
+    - "Jest 環境に必要な Polyfill と二系統（jsdom/node）の分離"
+    - "理由コード（session_expired / idle_timeout / session_revoked / session_not_found）の厳密化"
+    - "UA 解析ライブラリのライセンス安全性確保（MIT系へ）"
+  non_goals:
+    - "本番コードのビジネスロジック大改修"
+    - "E2E ランナーやテストフレームワークそのものの置き換え"
+
+environment:
+  runtime:
+    node: ">=18（webcrypto/undici対応）"
+  framework:
+    nextjs: "App Router（next/navigation を使用）"
+    jest: "29+（modern timers 前提）"
+  network:
+    http_client: "undici"
+  backend:
+    supabase: "@supabase/ssr + @supabase/supabase-js"
+  test_split:
+    client_tests: "jsdom"
+    server_tests: "node"
+
+deliverables:
+  - "jest.setup.js の整備（TextEncoder/Decoder, crypto polyfill、next/navigation モック）"
+  - "@supabase/ssr の正規モック（createServerClient / createBrowserClient）＋ PostgREST 風チェーン"
+  - "Auth サーバーアクション（login/logout）のリダイレクト契約統一（成功時 redirect throw）"
+  - "ApiClient タイムアウト系テスト：modern fake timers＋マイクロタスク flush"
+  - "SessionManager：validateSession の理由コード厳密化、getUserActiveSessions 実装"
+  - "UA 解析：MIT ライセンスの代替採用 or 表記ポリシー統一（Title Case）"
+  - "時間窓境界（15分）判定の >= 化およびテストデータ調整"
+  - "Jest multi-project 設定（jsdom と node を分離）"
+
+requirements:
+  R1_redirect_mock:
+    description: "next/navigation の redirect/notFound を Jest で正しくモックする"
+    implementation:
+      jest_setup_patch: |
+        // jest.setup.js
+        jest.mock('next/navigation', () => ({
+          __esModule: true,
+          redirect: (url) => { throw new Error(`REDIRECT:${url}`); },
+          notFound: () => { throw new Error('NEXT_NOT_FOUND'); },
+          useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+          useSearchParams: () => ({ get: () => undefined }),
+          usePathname: () => '',
+        }));
+    acceptance_criteria:
+      - "logout()/login() 成功時、テスト側で `await expect(fn()).rejects.toThrow('REDIRECT:...')` が成立する"
+      - "例外メッセージが `REDIRECT:/...` で始まる"
+    notes:
+      - "redirect は App Router では例外（NEXT_REDIRECT）を投げる契約"
+      - "try/catch の内側で呼ぶと捕捉してしまい遷移しないため実装側は注意"
+
+  R2_polyfill_textencoder_crypto:
+    description: "jsdom 実行時の TextEncoder/Decoder と WebCrypto を補う"
+    implementation:
+      jest_setup_patch: |
+        // jest.setup.js
+        const { TextEncoder, TextDecoder } = require('util');
+        if (!global.TextEncoder) global.TextEncoder = TextEncoder;
+        if (!global.TextDecoder) global.TextDecoder = TextDecoder;
+
+        const crypto = require('crypto');
+        if (!global.crypto) global.crypto = crypto.webcrypto;
+    acceptance_criteria:
+      - "undici 絡みの 'TextEncoder is not defined' が解消される"
+      - "React/RTK/Router 等の追加 polyfill 不要でテストが起動する"
+
+  R3_supabase_ssr_mock:
+    description: "@supabase/ssr を named export でモックし、PostgREST 風チェーンを再現"
+    implementation:
+      mock_file: |
+        // test/mocks/supabase-ssr.ts（または jest.setup.js 内）
+        const chain = (final = { data: null, error: null }) => {
+          const c = {
+            select: jest.fn(() => c),
+            eq:     jest.fn(() => c),
+            in:     jest.fn(() => c),
+            gte:    jest.fn(() => c),
+            order:  jest.fn(() => c),
+            limit:  jest.fn(() => c),
+            single: jest.fn(async () => final),
+            insert: jest.fn(() => c),
+            update: jest.fn(() => c),
+            delete: jest.fn(() => c),
+          };
+          return c;
+        };
+
+        export const mockSupabase = {
+          from: jest.fn(() => chain()),
+          rpc:  jest.fn(async () => ({ data: null, error: null })),
+          auth: { signOut: jest.fn(async () => ({ error: null })) },
+          // 一部テスト互換のために露出
+          insert: jest.fn(),
+          update: jest.fn(),
+        };
+
+        jest.mock('@supabase/ssr', () => ({
+          __esModule: true,
+          createServerClient: jest.fn(() => mockSupabase),
+          createBrowserClient: jest.fn(() => mockSupabase),
+        }));
+    acceptance_criteria:
+      - "`supabase.from(...).select().eq().gte()...` のチェーンが全テストで動作"
+      - "SecurityMonitor/SessionManager の `.from()` 呼び出しで TypeError が発生しない"
+
+  R4_auth_action_contract:
+    description: "サーバーアクション成功時に redirect（＝throw）で終了。失敗時は値でエラー返却"
+    implementation:
+      code_guideline: |
+        // 成功パス：redirect('/dashboard') など
+        // 失敗パス：{ success:false, errors:{...} } を return
+    acceptance_criteria:
+      - "happy-path: login → dashboard のテストが `rejects.toThrow('REDIRECT:/dashboard')` で成功"
+      - "logout: 成功/失敗で期待の query（message / error）が一致"
+
+  R5_api_client_timers:
+    description: "modern fake timers とマイクロタスク flush でタイムアウト系を安定化"
+    test_snippet: |
+      jest.useFakeTimers({ legacyFakeTimers: false });
+      const p = apiClient.get('/slow');
+      jest.advanceTimersByTime(5000);
+      await Promise.resolve(); await Promise.resolve();
+      await expect(p).rejects.toThrow(/timeout/i);
+    acceptance_criteria:
+      - "ApiClient の timeout/server error テストが 5s 以内で成功"
+      - "タイマー由来のハングなし"
+
+  R6_session_manager_reasons:
+    description: "validateSession の理由コードを厳密化し、getUserActiveSessions を提供"
+    implementation:
+      pseudo_code: |
+        if (!token) throw new Error('セッショントークンが無効です');
+
+        const s = await repo.findByToken(token);
+        if (!s) return { isValid:false, reason:'session_not_found' };
+
+        const now = new Date();
+        if (s.is_revoked) return { isValid:false, reason:'session_revoked' };
+        if (s.idle_timeout_at && now > new Date(s.idle_timeout_at))
+          return { isValid:false, reason:'idle_timeout' };
+        if (s.absolute_timeout_at && now > new Date(s.absolute_timeout_at))
+          return { isValid:false, reason:'session_expired' };
+
+        return { isValid:true, session:s, user: await repo.getUser(s.user_id) };
+      add_api: |
+        async function getUserActiveSessions(userId) {
+          if (!userId) throw new Error('ユーザーIDが無効です');
+          const { data, error } = await supabase
+            .from('user_sessions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_active', true);
+          if (error) throw error;
+          return data ?? [];
+        }
+    acceptance_criteria:
+      - "理由コードの期待一致（session_expired / idle_timeout / session_revoked / session_not_found）"
+      - "getUserActiveSessions の存在・型がテストをパス"
+
+  R7_ua_parser_policy:
+    description: "UA 解析のライセンスリスク低減と戻り値表記の統一"
+    options:
+      - "MIT の代替（例：detect-browser, my-ua-parser）へ移行"
+      - "現行継続の場合、v2 の AGPL/PRO デュアルライセンスの遵守を明文化"
+    output_format_policy:
+      browser_os_device_case: "Title Case（例：'Unknown', 'Windows', 'iOS'）"
+    acceptance_criteria:
+      - "Chrome/iPhone/Unknown の3ケースの期待が一致"
+      - "ライセンス監査で blocking が発生しない"
+
+  R8_time_window_boundary:
+    description: "“過去15分” の脅威イベント抽出で境界（>=）を採用しテストデータも整合"
+    db_query_guideline: |
+      // Supabase PostgREST
+      .gte('created_at', boundaryISOString)
+    acceptance_criteria:
+      - "テスト期待件数（境界含め 5 件）と一致"
+
+  R9_jest_multi_project:
+    description: "client(jsdom) / server(node) を Jest projects で分離"
+    jest_config_example: |
+      // jest.config.ts
+      import type { Config } from 'jest';
+      const config: Config = {
+        projects: [
+          { displayName: 'client', testEnvironment: 'jsdom',
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+            testMatch: ['**/__tests__/**/*.test.tsx','**/__tests__/pages/**/*.test.tsx'] },
+          { displayName: 'server', testEnvironment: 'node',
+            setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+            testMatch: ['**/__tests__/**/*.test.ts','!**/*.test.tsx'] }
+        ]
+      };
+      export default config;
+    acceptance_criteria:
+      - "Jest 実行時に 2 プロジェクトが独立に走り、相互干渉が消える"
+
+  R10_logging_and_contracts:
+    description: "SecurityMonitor/AuditLogger の insert/update 呼び出し契約を `.from(...).insert/update(...)` に統一"
+    acceptance_criteria:
+      - "`expect(mockSupabase.insert).toHaveBeenCalled()` 等のテストが `.from(...).insert(...)` で満たされるよう、テスト/実装/モックの契約を一致"
+    notes:
+      - "必要なら互換の top-level insert/update ダミーをモックに残す"
+
+test_plan:
+  layers:
+    - unit: "関数/モジュール単位（SessionManager/ApiClient/UA解析）"
+    - integration: "SecurityMonitor ↔ Supabase モック 連携、Auth サーバーアクション"
+    - e2e: "login/logout、dashboard 遷移、daily report 送信"
+  ci:
+    - "テスト並列化（--runInBand は極力避ける）"
+    - "flaky 監視（retries: 2 まで）"
+
+migration_steps:
+  - "jest.setup.js を導入/更新（R1, R2, R3）"
+  - "Auth サーバーアクションを R4 の契約に統一"
+  - "タイマー系テストを R5 に合わせて修正"
+  - "SessionManager/モニタ類を R6, R8, R10 に準拠"
+  - "UA 解析のライブラリ選定・置換（R7）"
+  - "jest.config.ts を multi-project 化（R9）"
+
+risks:
+  - "UA ライブラリ移行時の識別結果差分（スナップショット破断）"
+  - "redirect の throw 契約に合わせた既存エラーハンドリングの見直し"
+  - "モック刷新に伴うテストの一時的赤化"
+
+definition_of_done:
+  - "test suites: 30/30 PASS"
+  - "Auth E2E：リダイレクト系は rejects で捕捉されメッセージ一致"
+  - "SessionManager：全理由コードケースがグリーン"
+  - "TextEncoder/crypto 由来の ReferenceError が 0 件"
+  - "CI 連続3回実行で flakiness なし（再現性担保）"
