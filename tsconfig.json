@@ -71,7 +71,8 @@
     "out",
     "dist",
     "build",
-    "src/__tests__"
+    "src/__tests__",
+    "src/legacy"
   ],
   "ts-node": {
     "esm": true

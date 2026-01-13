@@ -356,9 +356,9 @@ export const api = {
 
   // チャット
   chat: {
-    getHistory: (userId: string, sessionId?: string) =>
+    getHistory: (clinicId?: string | null, sessionId?: string) =>
       apiClient.get('/api/chat', {
-        user_id: userId,
+        ...(clinicId ? { clinic_id: clinicId } : {}),
         ...(sessionId && { session_id: sessionId }),
       }),
     sendMessage: (data: any) => apiClient.post('/api/chat', data),

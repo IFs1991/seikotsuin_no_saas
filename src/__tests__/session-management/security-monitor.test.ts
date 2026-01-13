@@ -1,39 +1,34 @@
 /**
  * セキュリティ脅威検知機能のテスト
  * Security Monitor の包括的テストスイート
+ *
+ * Uses unified Supabase mock (jest-test-stabilization-spec.md)
  */
 
 import { SecurityMonitor } from '@/lib/security-monitor';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseMock, type SupabaseMock } from '../../../test-utils/supabaseMock';
 
-// Supabase モック
-jest.mock('@supabase/supabase-js');
+// Supabase モック - 統一モックを使用
+let mockSupabase: SupabaseMock;
 
-const mockSupabase = {
-  from: jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  insert: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  gte: jest.fn().mockReturnThis(),
-  lt: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  limit: jest.fn().mockReturnThis(),
-  single: jest.fn(),
-  data: null,
-  error: null,
-};
-
-(createClient as jest.Mock).mockReturnValue(mockSupabase);
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => {
+    // Return a Promise that resolves to the mock client
+    return Promise.resolve(mockSupabase.client);
+  },
+}));
 
 describe('SecurityMonitor', () => {
   let securityMonitor: SecurityMonitor;
 
   beforeEach(() => {
+    // Create fresh mock for each test
+    mockSupabase = createSupabaseMock();
     securityMonitor = new SecurityMonitor();
     jest.clearAllMocks();
 
     // デフォルトのモックレスポンス設定
-    mockSupabase.single.mockResolvedValue({
+    mockSupabase.setDefaultResult({
       data: [],
       error: null,
     });
@@ -62,10 +57,10 @@ describe('SecurityMonitor', () => {
 
     it('正常なアクティビティで脅威を検知しない', async () => {
       // 正常な履歴データのモック
-      mockSupabase.single.mockResolvedValue({
-        data: [],
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: [], error: null }
+      );
 
       // UAにデバイスブラウザ名を含め、誤検知を避ける
       const benignContext = {
@@ -88,10 +83,14 @@ describe('SecurityMonitor', () => {
         created_at: new Date(Date.now() - i * 60 * 1000).toISOString(), // 1分間隔
       }));
 
-      mockSupabase.single.mockResolvedValue({
-        data: recentFailures,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'security_events', op: 'select' },
+        { data: recentFailures, error: null }
+      );
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: [], error: null }
+      );
 
       jest
         .spyOn(SecurityMonitor.prototype as any, 'detectBruteForce')
@@ -136,10 +135,10 @@ describe('SecurityMonitor', () => {
         },
       ];
 
-      mockSupabase.single.mockResolvedValue({
-        data: recentSessions,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: recentSessions, error: null }
+      );
 
       const threats = await securityMonitor.analyzeSessionActivity(
         differentIPSession,
@@ -165,10 +164,10 @@ describe('SecurityMonitor', () => {
         },
       ];
 
-      mockSupabase.single.mockResolvedValue({
-        data: recentSessions,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: recentSessions, error: null }
+      );
 
       const threats = await securityMonitor.analyzeSessionActivity(
         mockSession as any,
@@ -194,10 +193,10 @@ describe('SecurityMonitor', () => {
         },
       ];
 
-      mockSupabase.single.mockResolvedValue({
-        data: concurrentSessions,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: concurrentSessions, error: null }
+      );
 
       jest
         .spyOn(SecurityMonitor.prototype as any, 'detectMultipleDeviceLogins')
@@ -239,10 +238,10 @@ describe('SecurityMonitor', () => {
     };
 
     it('セキュリティイベントを正常に記録する', async () => {
-      mockSupabase.single.mockResolvedValue({
-        data: { id: 'event-123' },
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'security_events', op: 'insert' },
+        { data: { id: 'event-123' }, error: null }
+      );
 
       await expect(
         securityMonitor.handleSecurityThreat({
@@ -257,7 +256,11 @@ describe('SecurityMonitor', () => {
         })
       ).resolves.not.toThrow();
 
-      expect(mockSupabase.insert).toHaveBeenCalled();
+      // Builder observation: Check that from() was called with the right table
+      expect(mockSupabase.from).toHaveBeenCalledWith('security_events');
+      // Check builder insert was called
+      const builder = mockSupabase.getBuilder('security_events');
+      expect(builder?.insert).toHaveBeenCalled();
     });
 
     // 実装は例外を投げない設計（ログ処理で吞み込み）
@@ -288,10 +291,10 @@ describe('SecurityMonitor', () => {
         },
       ];
 
-      mockSupabase.single.mockResolvedValue({
-        data: mockEvents,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'security_events', op: 'select' },
+        { data: mockEvents, error: null }
+      );
 
       const statistics = await securityMonitor.getSecurityStatistics(
         mockClinicId,
@@ -304,10 +307,10 @@ describe('SecurityMonitor', () => {
     });
 
     it('データなしでも適切な統計を返す', async () => {
-      mockSupabase.single.mockResolvedValue({
-        data: [],
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'security_events', op: 'select' },
+        { data: [], error: null }
+      );
 
       const statistics = await securityMonitor.getSecurityStatistics(
         mockClinicId,
@@ -331,10 +334,14 @@ describe('SecurityMonitor', () => {
         created_at: new Date(Date.now() - i * 60 * 1000).toISOString(),
       }));
 
-      mockSupabase.single.mockResolvedValue({
-        data: highThreatData,
-        error: null,
-      });
+      mockSupabase.setResult(
+        { table: 'security_events', op: 'select' },
+        { data: highThreatData, error: null }
+      );
+      mockSupabase.setResult(
+        { table: 'user_sessions', op: 'select' },
+        { data: [], error: null }
+      );
 
       jest
         .spyOn(SecurityMonitor.prototype as any, 'detectBruteForce')
@@ -369,22 +376,24 @@ describe('脅威検知アルゴリズム', () => {
   });
 
   it('時間ベースの脅威パターンを正確に検出する', async () => {
+    // Fix: Use fixed timestamp to avoid timing issues
+    const now = Date.now();
     const mockEvents = [
-      { created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString() }, // 5分前
-      { created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString() }, // 10分前
-      { created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString() }, // 12分前
-      { created_at: new Date(Date.now() - 14 * 60 * 1000).toISOString() }, // 14分前
-      { created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString() }, // 15分前（境界）
+      { created_at: new Date(now - 5 * 60 * 1000).toISOString() }, // 5分前
+      { created_at: new Date(now - 10 * 60 * 1000).toISOString() }, // 10分前
+      { created_at: new Date(now - 12 * 60 * 1000).toISOString() }, // 12分前
+      { created_at: new Date(now - 14 * 60 * 1000).toISOString() }, // 14分前
+      { created_at: new Date(now - 14 * 60 * 1000 - 59 * 1000).toISOString() }, // 14分59秒前（境界内）
     ];
 
     // 15分間の境界テスト
+    const cutoff = new Date(now - 15 * 60 * 1000);
     const recentEvents = mockEvents.filter(event => {
       const eventTime = new Date(event.created_at);
-      const cutoff = new Date(Date.now() - 15 * 60 * 1000);
       return eventTime >= cutoff;
     });
 
-    expect(recentEvents).toHaveLength(5); // 15分前の境界を含む
+    expect(recentEvents).toHaveLength(5); // 15分以内のイベントすべてを含む
   });
 
   it('地理的異常の検出精度をテストする', async () => {

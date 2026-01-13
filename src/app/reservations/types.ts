@@ -13,6 +13,7 @@ export interface MenuOptionItem {
   name: string;
   priceDelta: number;
   durationDeltaMinutes: number;
+  isActive?: boolean;
 }
 
 export interface MenuItem {
@@ -72,3 +73,4 @@ export interface TimeSlot {
 }
 
 export type ViewMode = 'timeline' | 'list' | 'register';
+export type AppointmentUpdateResult = { ok: boolean; error?: string };

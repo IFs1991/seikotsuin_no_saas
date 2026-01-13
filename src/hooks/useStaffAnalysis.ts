@@ -1,98 +1,136 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
 interface StaffMetrics {
   dailyPatients: number;
+  totalRevenue: number;
+  averageSatisfaction: number;
 }
 
 interface RevenueRanking {
+  staff_id: string;
   name: string;
   revenue: number;
-  percentage: number;
+  patients: number;
+  satisfaction: number;
 }
 
 interface SatisfactionCorrelation {
-  overall: number;
-}
-
-interface SkillMatrix {
-  id: number;
   name: string;
-  level: number;
+  satisfaction: number;
+  revenue: number;
+  patients: number;
 }
 
-interface TrainingHistory {
-  id: number;
-  title: string;
+interface HourlyReservation {
+  hour: number;
+  count: number;
+}
+
+interface ShiftAnalysis {
+  hourlyReservations: HourlyReservation[];
+  utilizationRate: number;
+  recommendations: string[];
+}
+
+interface PerformanceTrendItem {
   date: string;
-}
-
-interface PerformanceTrends {
-  monthly: Array<{
-    month: string;
-    patients: number;
-    revenue: number;
-  }>;
+  revenue: number;
+  patients: number;
+  satisfaction: number;
 }
 
 interface UseStaffAnalysisReturn {
   staffMetrics: StaffMetrics;
   revenueRanking: RevenueRanking[];
-  satisfactionCorrelation: SatisfactionCorrelation;
-  skillMatrix: SkillMatrix[];
-  trainingHistory: TrainingHistory[];
-  performanceTrends: PerformanceTrends;
+  satisfactionCorrelation: SatisfactionCorrelation[];
+  performanceTrends: Record<string, PerformanceTrendItem[]>;
+  shiftAnalysis: ShiftAnalysis;
+  totalStaff: number;
+  activeStaff: number;
   isLoading: boolean;
+  error: string | null;
+  refetch: () => void;
 }
 
-const DEFAULT_CLINIC_ID =
-  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
+const defaultShiftAnalysis: ShiftAnalysis = {
+  hourlyReservations: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
+  utilizationRate: 0,
+  recommendations: [],
+};
 
-export const useStaffAnalysis = (
-  clinicId: string = DEFAULT_CLINIC_ID
-): UseStaffAnalysisReturn => {
-  const [data, setData] = useState<UseStaffAnalysisReturn>({
+export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
+  const { profile, loading: profileLoading } = useUserProfileContext();
+  const clinicId = profile?.clinicId ?? null;
+
+  const [data, setData] = useState<Omit<UseStaffAnalysisReturn, 'refetch'>>({
     staffMetrics: {
-      dailyPatients: 12,
+      dailyPatients: 0,
+      totalRevenue: 0,
+      averageSatisfaction: 0,
     },
-    revenueRanking: [
-      { name: '田中', revenue: 120000, percentage: 28 },
-      { name: '佐藤', revenue: 110000, percentage: 25 },
-      { name: '山田', revenue: 95000, percentage: 22 },
-    ],
-    satisfactionCorrelation: {
-      overall: 4.2,
-    },
-    skillMatrix: [
-      { id: 1, name: '整体技術', level: 5 },
-      { id: 2, name: 'コミュニケーション', level: 4 },
-      { id: 3, name: '鍼灸技術', level: 3 },
-    ],
-    trainingHistory: [
-      { id: 1, title: '整体認定研修', date: '2024-07-15' },
-      { id: 2, title: '接客マナー講習', date: '2024-06-20' },
-      { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' },
-    ],
-    performanceTrends: {
-      monthly: [
-        { month: '7月', patients: 280, revenue: 350000 },
-        { month: '6月', patients: 260, revenue: 330000 },
-      ],
-    },
-    isLoading: false,
+    revenueRanking: [],
+    satisfactionCorrelation: [],
+    performanceTrends: {},
+    shiftAnalysis: defaultShiftAnalysis,
+    totalStaff: 0,
+    activeStaff: 0,
+    isLoading: true,
+    error: null,
   });
 
-  useEffect(() => {
-    // TODO: 実際のAPIからデータを取得
-    // const fetchData = async () => {
-    //   try {
-    //     const response = await api.staff.getAnalysis(clinicId);
-    //     setData(response.data);
-    //   } catch (error) {
-    //     console.error('Failed to fetch staff analysis:', error);
-    //   }
-    // };
-    // fetchData();
+  const fetchData = useCallback(async () => {
+    if (!clinicId) {
+      setData(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    setData(prev => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const response = await fetch(`/api/staff?clinic_id=${clinicId}`);
+      const json = await response.json();
+
+      if (!response.ok || !json?.success) {
+        throw new Error(
+          json?.error?.message || json?.error || 'スタッフ分析データの取得に失敗しました'
+        );
+      }
+
+      const apiData = json.data;
+      setData({
+        staffMetrics: apiData.staffMetrics || {
+          dailyPatients: 0,
+          totalRevenue: 0,
+          averageSatisfaction: 0,
+        },
+        revenueRanking: apiData.revenueRanking || [],
+        satisfactionCorrelation: apiData.satisfactionCorrelation || [],
+        performanceTrends: apiData.performanceTrends || {},
+        shiftAnalysis: apiData.shiftAnalysis || defaultShiftAnalysis,
+        totalStaff: apiData.totalStaff || 0,
+        activeStaff: apiData.activeStaff || 0,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      setData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'スタッフ分析データの取得に失敗しました',
+      }));
+    }
   }, [clinicId]);
 
-  return data;
+  useEffect(() => {
+    if (!profileLoading) {
+      fetchData();
+    }
+  }, [fetchData, profileLoading]);
+
+  return {
+    ...data,
+    isLoading: profileLoading || data.isLoading,
+    refetch: fetchData,
+  };
 };

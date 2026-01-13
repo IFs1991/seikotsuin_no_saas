@@ -47,6 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_improvement_backlog_created_at ON public.improvem
 ALTER TABLE public.improvement_backlog ENABLE ROW LEVEL SECURITY;
 
 -- RLSポリシー: 管理者のみ全操作可能
+DROP POLICY IF EXISTS improvement_backlog_admin_all ON public.improvement_backlog;
 CREATE POLICY improvement_backlog_admin_all ON public.improvement_backlog
     FOR ALL
     USING (
@@ -58,11 +59,13 @@ CREATE POLICY improvement_backlog_admin_all ON public.improvement_backlog
     );
 
 -- RLSポリシー: 認証ユーザーは閲覧可能
+DROP POLICY IF EXISTS improvement_backlog_authenticated_select ON public.improvement_backlog;
 CREATE POLICY improvement_backlog_authenticated_select ON public.improvement_backlog
     FOR SELECT
     USING (auth.role() = 'authenticated');
 
 -- updated_atトリガー
+DROP TRIGGER IF EXISTS update_improvement_backlog_updated_at ON public.improvement_backlog;
 CREATE TRIGGER update_improvement_backlog_updated_at
     BEFORE UPDATE ON public.improvement_backlog
     FOR EACH ROW

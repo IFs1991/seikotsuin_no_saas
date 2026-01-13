@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import { processApiRequest } from '@/lib/api-helpers';
 import { z } from 'zod';
+import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 const QuerySchema = z.object({
   type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
@@ -16,7 +17,7 @@ const QuerySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const auth = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
       requireClinicMatch: false,
     });
     if (!auth.success) {

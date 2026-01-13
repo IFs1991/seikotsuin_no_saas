@@ -1,27 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
   Save,
-  Plus,
-  Edit,
   FileText,
   CreditCard,
-  Building2,
   Settings,
+  Loader2,
 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
 
 interface InsuranceType {
   id: string;
   name: string;
   code: string;
   isEnabled: boolean;
-  coPaymentRate: number; // 自己負担割合
-  maxAmount?: number; // 上限額
+  coPaymentRate: number;
+  maxAmount?: number;
 }
 
 interface BillingConfig {
@@ -33,86 +34,95 @@ interface BillingConfig {
   reminderDays: number;
 }
 
-export function InsuranceBillingSettings() {
-  const [insuranceTypes, setInsuranceTypes] = useState<InsuranceType[]>([
-    {
-      id: '1',
-      name: '社会保険',
-      code: 'SHAKAI',
-      isEnabled: true,
-      coPaymentRate: 30,
-      maxAmount: undefined,
-    },
-    {
-      id: '2',
-      name: '国民健康保険',
-      code: 'KOKUHO',
-      isEnabled: true,
-      coPaymentRate: 30,
-      maxAmount: undefined,
-    },
-    {
-      id: '3',
-      name: '労災保険',
-      code: 'ROUSAI',
-      isEnabled: true,
-      coPaymentRate: 0,
-      maxAmount: undefined,
-    },
-    {
-      id: '4',
-      name: '交通事故（自賠責）',
-      code: 'JIBAI',
-      isEnabled: true,
-      coPaymentRate: 0,
-      maxAmount: 120000,
-    },
-    {
-      id: '5',
-      name: '後期高齢者医療',
-      code: 'KOUKI',
-      isEnabled: true,
-      coPaymentRate: 10,
-      maxAmount: undefined,
-    },
-  ]);
+interface ClinicReceiptInfo {
+  receiptClinicName: string;
+  receiptAddress: string;
+  receiptPhone: string;
+  medicallicense: string;
+  directorName: string;
+  licenseNumber: string;
+}
 
-  const [billingConfig, setBillingConfig] = useState<BillingConfig>({
+interface InsuranceBillingData {
+  insuranceTypes: InsuranceType[];
+  billingConfig: BillingConfig;
+  clinicInfo: ClinicReceiptInfo;
+}
+
+const initialData: InsuranceBillingData = {
+  insuranceTypes: [
+    { id: '1', name: '社会保険', code: 'SHAKAI', isEnabled: true, coPaymentRate: 30, maxAmount: undefined },
+    { id: '2', name: '国民健康保険', code: 'KOKUHO', isEnabled: true, coPaymentRate: 30, maxAmount: undefined },
+    { id: '3', name: '労災保険', code: 'ROUSAI', isEnabled: true, coPaymentRate: 0, maxAmount: undefined },
+    { id: '4', name: '交通事故（自賠責）', code: 'JIBAI', isEnabled: true, coPaymentRate: 0, maxAmount: 120000 },
+    { id: '5', name: '後期高齢者医療', code: 'KOUKI', isEnabled: true, coPaymentRate: 10, maxAmount: undefined },
+  ],
+  billingConfig: {
     receiptPrefix: 'RC',
     receiptStartNumber: 1000,
     taxRate: 10,
     paymentMethods: ['cash', 'card', 'transfer', 'qr'],
     autoReceiptGeneration: true,
     reminderDays: 7,
-  });
-
-  const [clinicInfo, setClinicInfo] = useState({
+  },
+  clinicInfo: {
     receiptClinicName: '整骨院グループ本店',
     receiptAddress: '東京都渋谷区神宮前1-1-1',
     receiptPhone: '03-1234-5678',
     medicallicense: '東京都知事許可第12345号',
     directorName: '田中 太郎',
     licenseNumber: '柔道整復師免許 第67890号',
-  });
+  },
+};
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+export function InsuranceBillingSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
 
-  const paymentMethodNames = {
+  const {
+    data: formData,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'insurance_billing',
+    autoLoad: true,
+  } : undefined);
+
+  const paymentMethodNames: Record<string, string> = {
     cash: '現金',
     card: 'クレジットカード',
     transfer: '銀行振込',
     qr: 'QRコード決済',
   };
 
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
+
+  const insuranceTypes = formData.insuranceTypes;
+  const billingConfig = formData.billingConfig;
+  const clinicInfo = formData.clinicInfo;
+
+  const onSave = async () => {
+    await handleSave();
+  };
+
   const toggleInsuranceType = (id: string) => {
-    setInsuranceTypes(prev =>
-      prev.map(insurance =>
+    updateData({
+      insuranceTypes: insuranceTypes.map(insurance =>
         insurance.id === id
           ? { ...insurance, isEnabled: !insurance.isEnabled }
           : insurance
-      )
-    );
+      ),
+    });
   };
 
   const updateInsuranceType = (
@@ -120,49 +130,39 @@ export function InsuranceBillingSettings() {
     field: keyof InsuranceType,
     value: any
   ) => {
-    setInsuranceTypes(prev =>
-      prev.map(insurance =>
+    updateData({
+      insuranceTypes: insuranceTypes.map(insurance =>
         insurance.id === id ? { ...insurance, [field]: value } : insurance
-      )
-    );
+      ),
+    });
+  };
+
+  const updateBilling = (updates: Partial<BillingConfig>) => {
+    updateData({ billingConfig: { ...billingConfig, ...updates } });
+  };
+
+  const updateClinicInfo = (updates: Partial<ClinicReceiptInfo>) => {
+    updateData({ clinicInfo: { ...clinicInfo, ...updates } });
   };
 
   const togglePaymentMethod = (method: string) => {
-    setBillingConfig(prev => ({
-      ...prev,
-      paymentMethods: prev.paymentMethods.includes(method)
-        ? prev.paymentMethods.filter(m => m !== method)
-        : [...prev.paymentMethods, method],
-    }));
-  };
-
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('保険・請求設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+    updateData({
+      billingConfig: {
+        ...billingConfig,
+        paymentMethods: billingConfig.paymentMethods.includes(method)
+          ? billingConfig.paymentMethods.filter(m => m !== method)
+          : [...billingConfig.paymentMethods, method],
+      },
+    });
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* 取扱保険種別 */}
@@ -255,10 +255,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.receiptClinicName}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  receiptClinicName: e.target.value,
-                }))
+                updateClinicInfo({ receiptClinicName: e.target.value })
               }
             />
           </div>
@@ -270,10 +267,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.directorName}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  directorName: e.target.value,
-                }))
+                updateClinicInfo({ directorName: e.target.value })
               }
             />
           </div>
@@ -285,10 +279,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.receiptAddress}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  receiptAddress: e.target.value,
-                }))
+                updateClinicInfo({ receiptAddress: e.target.value })
               }
             />
           </div>
@@ -300,10 +291,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.receiptPhone}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  receiptPhone: e.target.value,
-                }))
+                updateClinicInfo({ receiptPhone: e.target.value })
               }
             />
           </div>
@@ -315,10 +303,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.medicallicense}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  medicallicense: e.target.value,
-                }))
+                updateClinicInfo({ medicallicense: e.target.value })
               }
             />
           </div>
@@ -330,10 +315,7 @@ export function InsuranceBillingSettings() {
             <Input
               value={clinicInfo.licenseNumber}
               onChange={e =>
-                setClinicInfo(prev => ({
-                  ...prev,
-                  licenseNumber: e.target.value,
-                }))
+                updateClinicInfo({ licenseNumber: e.target.value })
               }
             />
           </div>
@@ -361,10 +343,7 @@ export function InsuranceBillingSettings() {
                 <Input
                   value={billingConfig.receiptPrefix}
                   onChange={e =>
-                    setBillingConfig(prev => ({
-                      ...prev,
-                      receiptPrefix: e.target.value,
-                    }))
+                    updateBilling({ receiptPrefix: e.target.value })
                   }
                   placeholder='RC'
                 />
@@ -377,10 +356,7 @@ export function InsuranceBillingSettings() {
                   type='number'
                   value={billingConfig.receiptStartNumber}
                   onChange={e =>
-                    setBillingConfig(prev => ({
-                      ...prev,
-                      receiptStartNumber: parseInt(e.target.value),
-                    }))
+                    updateBilling({ receiptStartNumber: parseInt(e.target.value) })
                   }
                   min='1'
                 />
@@ -393,10 +369,7 @@ export function InsuranceBillingSettings() {
                   type='number'
                   value={billingConfig.taxRate}
                   onChange={e =>
-                    setBillingConfig(prev => ({
-                      ...prev,
-                      taxRate: parseFloat(e.target.value),
-                    }))
+                    updateBilling({ taxRate: parseFloat(e.target.value) })
                   }
                   min='0'
                   max='100'
@@ -439,10 +412,7 @@ export function InsuranceBillingSettings() {
                   type='checkbox'
                   checked={billingConfig.autoReceiptGeneration}
                   onChange={e =>
-                    setBillingConfig(prev => ({
-                      ...prev,
-                      autoReceiptGeneration: e.target.checked,
-                    }))
+                    updateBilling({ autoReceiptGeneration: e.target.checked })
                   }
                   className='rounded border-gray-300'
                 />
@@ -459,10 +429,7 @@ export function InsuranceBillingSettings() {
                   type='number'
                   value={billingConfig.reminderDays}
                   onChange={e =>
-                    setBillingConfig(prev => ({
-                      ...prev,
-                      reminderDays: parseInt(e.target.value),
-                    }))
+                    updateBilling({ reminderDays: parseInt(e.target.value) })
                   }
                   className='w-20'
                   min='1'
@@ -478,12 +445,16 @@ export function InsuranceBillingSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

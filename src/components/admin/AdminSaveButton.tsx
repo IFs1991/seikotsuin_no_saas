@@ -29,6 +29,7 @@ export function AdminSaveButton({
         </Button>
       )}
       <Button
+        data-testid="save-settings-button"
         onClick={onSave}
         disabled={isLoading || disabled}
         className='flex items-center space-x-2'

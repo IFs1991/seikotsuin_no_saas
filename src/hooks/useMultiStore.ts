@@ -1,229 +1,128 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 
-// 依存ファイルからのモックインポート（実際のプロジェクトではパスを修正）
-// import { supabase } from '../api/database/supabase-client';
-// import { aiAnalysis } from '../api/gemini/ai-analysis';
-// import { Clinic, BestPractice, KPI, MultiStoreFilters } from '../types';
-
-// モックデータと型定義 (実際のプロジェクトでは上記のようにインポート)
-interface Clinic {
-  id: string;
-  name: string;
+export interface ClinicKPI {
   revenue: number;
   patients: number;
-  staff_performance_score: number;
-  region: string;
-  // 他の関連フィールド
+  staff_performance_score: number | null;
 }
 
-interface BestPractice {
+export interface ClinicWithKPI {
   id: string;
-  title: string;
-  description: string;
-  clinicId: string;
+  name: string;
+  address?: string | null;
+  phone_number?: string | null;
+  is_active: boolean;
+  created_at?: string | null;
+  kpi?: ClinicKPI;
 }
 
-type KPI = 'revenue' | 'patients' | 'staff_performance_score';
+type SortDirection = 'asc' | 'desc';
 
-interface MultiStoreFilters {
-  region?: string;
-  minRevenue?: number;
-  maxPatients?: number;
-}
-
-// Supabaseクライアントのモック
-const supabaseClient = {
-  from: (tableName: string) => ({
-    select: (columns: string) => ({
-      // 実際のデータ取得ロジックをここに記述
-      data: [
-        {
-          id: 'clinic1',
-          name: '新宿院',
-          revenue: 1000000,
-          patients: 500,
-          staff_performance_score: 85,
-          region: '東京',
-        },
-        {
-          id: 'clinic2',
-          name: '渋谷院',
-          revenue: 1200000,
-          patients: 600,
-          staff_performance_score: 90,
-          region: '東京',
-        },
-        {
-          id: 'clinic3',
-          name: '大阪院',
-          revenue: 900000,
-          patients: 450,
-          staff_performance_score: 80,
-          region: '大阪',
-        },
-        {
-          id: 'clinic4',
-          name: '福岡院',
-          revenue: 700000,
-          patients: 350,
-          staff_performance_score: 75,
-          region: '福岡',
-        },
-        {
-          id: 'clinic5',
-          name: '池袋院',
-          revenue: 1100000,
-          patients: 550,
-          staff_performance_score: 88,
-          region: '東京',
-        },
-        {
-          id: 'clinic6',
-          name: '横浜院',
-          revenue: 950000,
-          patients: 480,
-          staff_performance_score: 82,
-          region: '神奈川',
-        },
-      ] as Clinic[],
-      error: null,
-    }),
-  }),
-};
-
-// AI分析モジュールのモック
-const aiAnalysis = {
-  getBestPractices: async (data: Clinic[]): Promise<BestPractice[]> => {
-    // 実際のAI分析ロジックをここに記述
-    // 例: 売上が高いクリニックの情報を元にベストプラクティスを生成
-    const topClinics = data.sort((a, b) => b.revenue - a.revenue).slice(0, 2);
-    return topClinics.map(clinic => ({
-      id: `bp-${clinic.id}`,
-      title: `${clinic.name}の成功事例: 売上${clinic.revenue.toLocaleString()}円達成`,
-      description: `${clinic.name}は、患者満足度向上施策と効果的なマーケティングにより、高い売上を達成しました。特に、丁寧なカウンセリングとリピート促進が鍵です。`,
-      clinicId: clinic.id,
-    }));
-  },
-};
-
-const useMultiStore = () => {
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export function useMultiStore() {
+  const [clinics, setClinics] = useState<ClinicWithKPI[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<MultiStoreFilters>({});
-  const [bestPractices, setBestPractices] = useState<BestPractice[]>([]);
 
-  // データ取得
-  useEffect(() => {
-    const fetchClinics = async () => {
+  const fetchClinicsWithKPI = useCallback(async () => {
+    try {
       setLoading(true);
       setError(null);
-      try {
-        // Supabaseから店舗データを取得
-        const { data, error } = supabaseClient.from('clinics').select('*');
-        if (error) throw error;
-        setClinics(data || []);
 
-        // AI分析からベストプラクティスを取得
-        const practices = await aiAnalysis.getBestPractices(data || []);
-        setBestPractices(practices);
-      } catch (err: any) {
-        setError(err.message || 'データの取得に失敗しました。');
-        console.error('Failed to fetch multi-store data:', err);
-      } finally {
-        setLoading(false);
+      const params = new URLSearchParams();
+      params.set('include_kpi', 'true');
+
+      const response = await fetch(
+        `${API_ENDPOINTS.ADMIN.TENANTS}?${params.toString()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
       }
-    };
 
-    fetchClinics();
-  }, []); // 初回マウント時にのみ実行
+      setClinics(result.data?.items ?? []);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+      setError(message);
+      console.error('Failed to fetch clinics with KPI', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // フィルタリング機能
-  const filteredClinics = useMemo(() => {
-    return clinics.filter(clinic => {
-      if (filters.region && clinic.region !== filters.region) return false;
-      if (filters.minRevenue && clinic.revenue < filters.minRevenue)
-        return false;
-      if (filters.maxPatients && clinic.patients > filters.maxPatients)
-        return false;
-      return true;
-    });
-  }, [clinics, filters]);
+  const sortByRevenue = useCallback((direction: SortDirection) => {
+    setClinics((prev) =>
+      [...prev].sort((a, b) => {
+        const aRevenue = a.kpi?.revenue ?? 0;
+        const bRevenue = b.kpi?.revenue ?? 0;
+        return direction === 'desc' ? bRevenue - aRevenue : aRevenue - bRevenue;
+      })
+    );
+  }, []);
 
-  // ランキング計算
-  const getRankings = useCallback(
-    (kpi: KPI, ascending: boolean = false) => {
-      return [...filteredClinics].sort((a, b) => {
-        if (ascending) {
-          return a[kpi] - b[kpi];
-        }
-        return b[kpi] - a[kpi];
-      });
-    },
-    [filteredClinics]
-  );
+  const sortByPatients = useCallback((direction: SortDirection) => {
+    setClinics((prev) =>
+      [...prev].sort((a, b) => {
+        const aPatients = a.kpi?.patients ?? 0;
+        const bPatients = b.kpi?.patients ?? 0;
+        return direction === 'desc'
+          ? bPatients - aPatients
+          : aPatients - bPatients;
+      })
+    );
+  }, []);
 
-  // 店舗間比較データ整形
-  const getComparisonData = useCallback(
-    (kpi: KPI) => {
-      return filteredClinics.map(clinic => ({
-        name: clinic.name,
-        value: clinic[kpi],
-      }));
-    },
-    [filteredClinics]
-  );
+  const sortByPerformance = useCallback((direction: SortDirection) => {
+    setClinics((prev) =>
+      [...prev].sort((a, b) => {
+        const aScore = a.kpi?.staff_performance_score ?? 0;
+        const bScore = b.kpi?.staff_performance_score ?? 0;
+        return direction === 'desc' ? bScore - aScore : aScore - bScore;
+      })
+    );
+  }, []);
 
-  // グルーピング処理 (例: 地域別集計)
-  const getGroupedData = useCallback(
-    (groupBy: 'region') => {
-      const grouped: {
-        [key: string]: { revenue: number; patients: number; count: number };
-      } = {};
-      filteredClinics.forEach(clinic => {
-        if (!grouped[clinic[groupBy]]) {
-          grouped[clinic[groupBy]] = { revenue: 0, patients: 0, count: 0 };
-        }
-        grouped[clinic[groupBy]].revenue += clinic.revenue;
-        grouped[clinic[groupBy]].patients += clinic.patients;
-        grouped[clinic[groupBy]].count++;
-      });
-      return Object.entries(grouped).map(([key, value]) => ({
-        group: key,
-        averageRevenue: value.revenue / value.count,
-        averagePatients: value.patients / value.count,
-        clinicCount: value.count,
-      }));
-    },
-    [filteredClinics]
-  );
+  const totalRevenue = useMemo(() => {
+    return clinics.reduce((sum, clinic) => sum + (clinic.kpi?.revenue ?? 0), 0);
+  }, [clinics]);
 
-  // データ正規化 (例: 売上を患者数で正規化)
-  const getNormalizedData = useCallback(
-    (kpi: KPI, normalizeBy: 'patients' | 'staff_performance_score') => {
-      return filteredClinics.map(clinic => ({
-        name: clinic.name,
-        normalizedValue: clinic[kpi] / clinic[normalizeBy],
-      }));
-    },
-    [filteredClinics]
-  );
+  const totalPatients = useMemo(() => {
+    return clinics.reduce(
+      (sum, clinic) => sum + (clinic.kpi?.patients ?? 0),
+      0
+    );
+  }, [clinics]);
+
+  const averagePerformanceScore = useMemo(() => {
+    const scores = clinics
+      .map((c) => c.kpi?.staff_performance_score)
+      .filter((s): s is number => s !== null && s !== undefined);
+    if (scores.length === 0) return null;
+    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
+  }, [clinics]);
 
   return {
     clinics,
     loading,
     error,
-    filters,
-    setFilters,
-    filteredClinics,
-    bestPractices,
-    getRankings,
-    getComparisonData,
-    getGroupedData,
-    getNormalizedData,
+    fetchClinicsWithKPI,
+    sortByRevenue,
+    sortByPatients,
+    sortByPerformance,
+    totalRevenue,
+    totalPatients,
+    averagePerformanceScore,
   };
-};
+}
 
 export default useMultiStore;

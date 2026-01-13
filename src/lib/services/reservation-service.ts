@@ -126,9 +126,14 @@ export class ReservationService {
       throw new Error('スタッフが見つかりません');
     }
 
+    // workingHours null safety (jest-test-stabilization-spec.md 6.5)
+    if (!staff.workingHours) {
+      return [{ time: '09:00', available: false, conflictReason: '営業時間外' }];
+    }
+
     const dayName = this.getDayName(date);
     const workingHours = staff.workingHours[dayName];
-    
+
     if (!workingHours) {
       return [{ time: '09:00', available: false, conflictReason: '営業時間外' }];
     }
@@ -380,6 +385,11 @@ export class ReservationService {
     const staff = await this.getStaffById(staffId);
     if (!staff) {
       return { isValid: false, reason: 'スタッフが見つかりません' };
+    }
+
+    // workingHours null safety (jest-test-stabilization-spec.md 6.5)
+    if (!staff.workingHours) {
+      return { isValid: false, reason: '営業時間外です' };
     }
 
     const dayName = this.getDayName(dateTime);

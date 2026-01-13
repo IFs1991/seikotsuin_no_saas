@@ -24,6 +24,15 @@ export interface ReservationApiItem {
   selectedOptions?: ReservationOptionSelection[];
 }
 
+export interface CustomerApiItem {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  notes?: string;
+  customAttributes?: Record<string, unknown>;
+}
+
 class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -58,11 +67,24 @@ export const fetchReservations = async (
   return handleJson(res);
 };
 
+export const fetchCustomers = async (
+  clinicId: string,
+  query: string
+): Promise<CustomerApiItem[]> => {
+  const params = new URLSearchParams({
+    clinic_id: clinicId,
+    q: query,
+  });
+  const res = await fetch(`/api/customers?${params.toString()}`);
+  return handleJson(res);
+};
+
 export const createCustomer = async (payload: {
   clinicId: string;
   name: string;
   phone: string;
   email?: string;
+  customAttributes?: Record<string, unknown>;
 }): Promise<{ id: string; name: string }> => {
   const res = await fetch('/api/customers', {
     method: 'POST',
@@ -72,6 +94,7 @@ export const createCustomer = async (payload: {
       name: payload.name,
       phone: payload.phone,
       email: payload.email,
+      customAttributes: payload.customAttributes,
     }),
   });
   return handleJson(res);

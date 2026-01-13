@@ -291,6 +291,20 @@ export default function AdminSettings() {
         ),
       { loading: () => <LoadingCard /> }
     ),
+    'system-security': dynamic(
+      () =>
+        import('@/components/admin/system-settings').then(
+          m => m.SystemSettings
+        ),
+      { loading: () => <LoadingCard /> }
+    ),
+    'system-backup': dynamic(
+      () =>
+        import('@/components/admin/system-settings').then(
+          m => m.SystemSettings
+        ),
+      { loading: () => <LoadingCard /> }
+    ),
     'data-import': dynamic(
       () =>
         import('@/components/admin/data-management-settings').then(

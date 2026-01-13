@@ -2,6 +2,10 @@
 // Testing Library のカスタムマッチャーをインポート
 require('@testing-library/jest-dom/jest-globals');
 
+// React Testing Library の cleanup を明示的にインポート
+// テスト間でのReactコンポーネントの適切なアンマウントを保証
+const { cleanup } = require('@testing-library/react');
+
 // Nodeベースの環境でもブラウザ依存コードが安全に動作するように補助グローバルを定義
 const globalScope = /** @type {any} */ (globalThis);
 
@@ -56,10 +60,15 @@ const __MOCK_DB = {
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      getSession: jest.fn(),
-      getUser: jest.fn(),
-      signIn: jest.fn(),
-      signOut: jest.fn(),
+      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
+      getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      signIn: jest.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
+      signInWithPassword: jest.fn().mockResolvedValue({
+        data: { user: { id: 'mock-user-id', email: 'test@example.com' }, session: {} },
+        error: null,
+      }),
+      signUp: jest.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
       onAuthStateChange: jest.fn(),
     },
     from: jest.fn(() => {
@@ -157,8 +166,18 @@ afterEach(() => {
   supabaseModule.resetSupabaseClientFactory();
 });
 
-// Next.js router のモック
+// Next.js router のモック（redirect を REDIRECT エラー化して Server Actions 対応）
 jest.mock('next/navigation', () => ({
+  __esModule: true,
+  redirect: url => {
+    throw new Error(`REDIRECT:${url}`);
+  },
+  permanentRedirect: url => {
+    throw new Error(`REDIRECT:${url}`);
+  },
+  notFound: () => {
+    throw new Error('NEXT_NOT_FOUND');
+  },
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
@@ -169,6 +188,7 @@ jest.mock('next/navigation', () => ({
   }),
   usePathname: () => '/dashboard',
   useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
 }));
 
 // next/headers のモック（cookies をリクエストスコープ外で使う箇所の保護）
@@ -181,9 +201,32 @@ jest.mock('next/headers', () => ({
   headers: jest.fn().mockReturnValue(new Map()),
 }));
 
-// @supabase/ssr のモック（Server Client をテスト環境で安全に利用）
-jest.mock('@supabase/ssr', () => ({
-  createServerClient: jest.fn(() => {
+// @/lib/audit-logger のモック（ensureClinicAccess等で使用）
+jest.mock('@/lib/audit-logger', () => ({
+  AuditLogger: {
+    logLogin: jest.fn().mockResolvedValue(undefined),
+    logLogout: jest.fn().mockResolvedValue(undefined),
+    logFailedLogin: jest.fn().mockResolvedValue(undefined),
+    logDataAccess: jest.fn().mockResolvedValue(undefined),
+    logDataModification: jest.fn().mockResolvedValue(undefined),
+    logSecurityEvent: jest.fn().mockResolvedValue(undefined),
+    logAdminAction: jest.fn().mockResolvedValue(undefined),
+    logSystemEvent: jest.fn().mockResolvedValue(undefined),
+  },
+  getRequestInfoFromHeaders: jest.fn().mockReturnValue({
+    ipAddress: '127.0.0.1',
+    userAgent: 'test-agent',
+  }),
+  getRequestInfo: jest.fn().mockReturnValue({
+    ipAddress: '127.0.0.1',
+    userAgent: 'test-agent',
+  }),
+}));
+
+// @supabase/ssr のモック（Server Client / Browser Client をテスト環境で安全に利用）
+jest.mock('@supabase/ssr', () => {
+  // 共通のクライアントファクトリ
+  const createMockClient = () => {
     const makeBuilder = table => {
       const state = {
         table,
@@ -303,8 +346,13 @@ jest.mock('@supabase/ssr', () => ({
         invoke: jest.fn().mockResolvedValue({ data: null, error: null }),
       },
     };
-  }),
-}));
+  };
+
+  return {
+    createServerClient: jest.fn(() => createMockClient()),
+    createBrowserClient: jest.fn(() => createMockClient()),
+  };
+});
 
 // Web APIのモック（LocalStorage, SessionStorage等）
 const localStorageMock = {
@@ -377,6 +425,11 @@ afterAll(() => {
 
 // テスト間でのクリーンアップ
 afterEach(() => {
+  // React Testing Library の cleanup を実行
+  // これにより React コンポーネントがアンマウントされ、
+  // 関連する副作用（タイマー、イベントリスナー等）がクリーンアップされる
+  cleanup();
+
   jest.clearAllMocks();
   localStorageMock.clear();
   sessionStorageMock.clear();

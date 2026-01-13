@@ -5,28 +5,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Save,
   Shield,
   Database,
-  Key,
-  AlertTriangle,
   Download,
   Upload,
+  Loader2,
 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
+
+interface PasswordPolicy {
+  minLength: number;
+  requireUppercase: boolean;
+  requireNumbers: boolean;
+  requireSymbols: boolean;
+  expiryDays: number;
+}
 
 interface SecuritySettings {
-  passwordPolicy: {
-    minLength: number;
-    requireUppercase: boolean;
-    requireNumbers: boolean;
-    requireSymbols: boolean;
-    expiryDays: number;
-  };
+  passwordPolicy: PasswordPolicy;
   twoFactorEnabled: boolean;
-  sessionTimeout: number; // 分
+  sessionTimeout: number;
   loginAttempts: number;
-  lockoutDuration: number; // 分
+  lockoutDuration: number;
 }
 
 interface BackupSettings {
@@ -42,32 +47,47 @@ interface SystemInfo {
   version: string;
   lastUpdate: string;
   databaseSize: string;
-  storageUsage: number; // %
+  storageUsage: number;
 }
 
-export function SystemSettings() {
-  const [security, setSecurity] = useState<SecuritySettings>({
-    passwordPolicy: {
-      minLength: 8,
-      requireUppercase: true,
-      requireNumbers: true,
-      requireSymbols: false,
-      expiryDays: 90,
-    },
-    twoFactorEnabled: false,
-    sessionTimeout: 480, // 8時間
-    loginAttempts: 5,
-    lockoutDuration: 30,
-  });
+const initialSecurityData: SecuritySettings = {
+  passwordPolicy: {
+    minLength: 8,
+    requireUppercase: true,
+    requireNumbers: true,
+    requireSymbols: false,
+    expiryDays: 90,
+  },
+  twoFactorEnabled: false,
+  sessionTimeout: 480,
+  loginAttempts: 5,
+  lockoutDuration: 30,
+};
 
-  const [backup, setBackup] = useState<BackupSettings>({
-    autoBackup: true,
-    backupFrequency: 'daily',
-    backupTime: '02:00',
-    retentionDays: 30,
-    cloudStorage: true,
-    storageProvider: 'aws',
-  });
+const initialBackupData: BackupSettings = {
+  autoBackup: true,
+  backupFrequency: 'daily',
+  backupTime: '02:00',
+  retentionDays: 30,
+  cloudStorage: true,
+  storageProvider: 'aws',
+};
+
+export function SystemSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
+
+  const {
+    data: security,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialSecurityData, clinicId ? {
+    clinicId,
+    category: 'system_security',
+    autoLoad: true,
+  } : undefined);
 
   const [systemInfo] = useState<SystemInfo>({
     version: '2.1.0',
@@ -76,49 +96,48 @@ export function SystemSettings() {
     storageUsage: 65,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+  // Backup settings remain local until system_backup persistence is wired.
+  const [backup, setBackup] = useState<BackupSettings>(initialBackupData);
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('システム設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  const updateSecurity = (updates: Partial<SecuritySettings>) => {
+    updateData(updates);
+  };
+
+  const updatePasswordPolicy = (updates: Partial<PasswordPolicy>) => {
+    updateData({
+      passwordPolicy: { ...security.passwordPolicy, ...updates },
+    });
+  };
+
+  const updateBackup = (updates: Partial<BackupSettings>) => {
+    setBackup(prev => ({ ...prev, ...updates }));
+  };
+
+  const onSave = async () => {
+    await handleSave();
   };
 
   const handleBackupNow = async () => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setSavedMessage('バックアップを完了しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('バックアップに失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+    // バックアップは別途API呼び出しが必要
+    await new Promise(resolve => setTimeout(resolve, 2000));
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* システム情報 */}
@@ -196,13 +215,7 @@ export function SystemSettings() {
                   type='number'
                   value={security.passwordPolicy.minLength}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      passwordPolicy: {
-                        ...prev.passwordPolicy,
-                        minLength: parseInt(e.target.value),
-                      },
-                    }))
+                    updatePasswordPolicy({ minLength: parseInt(e.target.value) })
                   }
                   min='4'
                   max='32'
@@ -217,13 +230,7 @@ export function SystemSettings() {
                   type='number'
                   value={security.passwordPolicy.expiryDays}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      passwordPolicy: {
-                        ...prev.passwordPolicy,
-                        expiryDays: parseInt(e.target.value),
-                      },
-                    }))
+                    updatePasswordPolicy({ expiryDays: parseInt(e.target.value) })
                   }
                   min='0'
                   max='365'
@@ -237,13 +244,7 @@ export function SystemSettings() {
                   type='checkbox'
                   checked={security.passwordPolicy.requireUppercase}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      passwordPolicy: {
-                        ...prev.passwordPolicy,
-                        requireUppercase: e.target.checked,
-                      },
-                    }))
+                    updatePasswordPolicy({ requireUppercase: e.target.checked })
                   }
                   className='rounded border-gray-300'
                 />
@@ -257,13 +258,7 @@ export function SystemSettings() {
                   type='checkbox'
                   checked={security.passwordPolicy.requireNumbers}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      passwordPolicy: {
-                        ...prev.passwordPolicy,
-                        requireNumbers: e.target.checked,
-                      },
-                    }))
+                    updatePasswordPolicy({ requireNumbers: e.target.checked })
                   }
                   className='rounded border-gray-300'
                 />
@@ -275,13 +270,7 @@ export function SystemSettings() {
                   type='checkbox'
                   checked={security.passwordPolicy.requireSymbols}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      passwordPolicy: {
-                        ...prev.passwordPolicy,
-                        requireSymbols: e.target.checked,
-                      },
-                    }))
+                    updatePasswordPolicy({ requireSymbols: e.target.checked })
                   }
                   className='rounded border-gray-300'
                 />
@@ -299,13 +288,11 @@ export function SystemSettings() {
                   セッションタイムアウト（分）
                 </Label>
                 <Input
+                  data-testid="session-timeout-input"
                   type='number'
                   value={security.sessionTimeout}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      sessionTimeout: parseInt(e.target.value),
-                    }))
+                    updateSecurity({ sessionTimeout: parseInt(e.target.value) })
                   }
                   min='5'
                   max='1440'
@@ -320,10 +307,7 @@ export function SystemSettings() {
                   type='number'
                   value={security.loginAttempts}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      loginAttempts: parseInt(e.target.value),
-                    }))
+                    updateSecurity({ loginAttempts: parseInt(e.target.value) })
                   }
                   min='3'
                   max='10'
@@ -338,10 +322,7 @@ export function SystemSettings() {
                   type='number'
                   value={security.lockoutDuration}
                   onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      lockoutDuration: parseInt(e.target.value),
-                    }))
+                    updateSecurity({ lockoutDuration: parseInt(e.target.value) })
                   }
                   min='5'
                   max='1440'
@@ -349,23 +330,21 @@ export function SystemSettings() {
               </div>
             </div>
 
-            <div className='mt-4'>
-              <label className='flex items-center space-x-2'>
-                <input
-                  type='checkbox'
-                  checked={security.twoFactorEnabled}
-                  onChange={e =>
-                    setSecurity(prev => ({
-                      ...prev,
-                      twoFactorEnabled: e.target.checked,
-                    }))
-                  }
-                  className='rounded border-gray-300'
-                />
-                <span className='text-sm text-gray-700'>
-                  二要素認証を有効にする
-                </span>
-              </label>
+            <div className='mt-4 flex items-center space-x-2'>
+              <Switch
+                id='two-factor-toggle'
+                data-testid="2fa-toggle"
+                checked={security.twoFactorEnabled}
+                onCheckedChange={checked =>
+                  updateSecurity({ twoFactorEnabled: checked })
+                }
+              />
+              <Label
+                htmlFor='two-factor-toggle'
+                className='text-sm text-gray-700'
+              >
+                二要素認証を有効にする
+              </Label>
             </div>
           </div>
         </div>
@@ -385,7 +364,7 @@ export function SystemSettings() {
                 type='checkbox'
                 checked={backup.autoBackup}
                 onChange={e =>
-                  setBackup(prev => ({ ...prev, autoBackup: e.target.checked }))
+                  updateBackup({ autoBackup: e.target.checked })
                 }
                 className='rounded border-gray-300'
               />
@@ -403,13 +382,12 @@ export function SystemSettings() {
                   <select
                     value={backup.backupFrequency}
                     onChange={e =>
-                      setBackup(prev => ({
-                        ...prev,
+                      updateBackup({
                         backupFrequency: e.target.value as
                           | 'daily'
                           | 'weekly'
                           | 'monthly',
-                      }))
+                      })
                     }
                     className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
                   >
@@ -427,10 +405,7 @@ export function SystemSettings() {
                     type='time'
                     value={backup.backupTime}
                     onChange={e =>
-                      setBackup(prev => ({
-                        ...prev,
-                        backupTime: e.target.value,
-                      }))
+                      updateBackup({ backupTime: e.target.value })
                     }
                   />
                 </div>
@@ -443,10 +418,7 @@ export function SystemSettings() {
                     type='number'
                     value={backup.retentionDays}
                     onChange={e =>
-                      setBackup(prev => ({
-                        ...prev,
-                        retentionDays: parseInt(e.target.value),
-                      }))
+                      updateBackup({ retentionDays: parseInt(e.target.value) })
                     }
                     min='1'
                     max='365'
@@ -462,10 +434,7 @@ export function SystemSettings() {
                 type='checkbox'
                 checked={backup.cloudStorage}
                 onChange={e =>
-                  setBackup(prev => ({
-                    ...prev,
-                    cloudStorage: e.target.checked,
-                  }))
+                  updateBackup({ cloudStorage: e.target.checked })
                 }
                 className='rounded border-gray-300'
               />
@@ -482,13 +451,12 @@ export function SystemSettings() {
                 <select
                   value={backup.storageProvider}
                   onChange={e =>
-                    setBackup(prev => ({
-                      ...prev,
+                    updateBackup({
                       storageProvider: e.target.value as
                         | 'aws'
                         | 'gcp'
                         | 'azure',
-                    }))
+                    })
                   }
                   className='w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
@@ -503,12 +471,12 @@ export function SystemSettings() {
           <div className='flex space-x-4'>
             <Button
               onClick={handleBackupNow}
-              disabled={isLoading}
+              disabled={loadingState.isLoading}
               className='flex items-center space-x-2'
             >
               <Download className='w-4 h-4' />
               <span>
-                {isLoading ? 'バックアップ中...' : '今すぐバックアップ'}
+                {loadingState.isLoading ? 'バックアップ中...' : '今すぐバックアップ'}
               </span>
             </Button>
 
@@ -524,12 +492,17 @@ export function SystemSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          data-testid="save-settings-button"
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

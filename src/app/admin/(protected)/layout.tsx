@@ -1,48 +1,31 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getUserPermissions } from '@/lib/supabase';
+import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 
-const ADMIN_ROLES = new Set(['admin', 'clinic_manager', 'manager']);
-
+/**
+ * ユーザーのロールと権限を解決
+ * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+ * user_permissions テーブルを単一ソースとして使用
+ */
 async function resolveRole(userId: string) {
   const supabase = await createClient();
 
-  const profileQuery = await supabase
-    .from('profiles')
-    .select('role, clinic_id, is_active')
-    .eq('user_id', userId)
-    .maybeSingle();
+  // user_permissions を優先ソースとして使用
+  const permissions = await getUserPermissions(userId, supabase);
 
-  if (profileQuery.data) {
-    return profileQuery.data;
-  }
-
-  if (!profileQuery.error || profileQuery.error.code === 'PGRST116') {
-    const fallback = await supabase
+  if (permissions) {
+    // is_active は profiles テーブルから取得
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('role, clinic_id, is_active')
-      .eq('id', userId)
+      .select('is_active')
+      .eq('user_id', userId)
       .maybeSingle();
 
-    if (fallback.data) {
-      return fallback.data;
-    }
-  }
-
-  const permissions = await supabase
-    .from('user_permissions')
-    .select('role, clinic_id')
-    .eq('staff_id', userId)
-    .maybeSingle();
-
-  type PermissionsData = { role: string; clinic_id: string | null } | null;
-  const typedPermissionsData = permissions.data as PermissionsData;
-
-  if (typedPermissionsData) {
     return {
-      role: typedPermissionsData.role,
-      clinic_id: typedPermissionsData.clinic_id,
-      is_active: true,
+      role: permissions.role,
+      clinic_id: permissions.clinic_id,
+      is_active: (profile as { is_active?: boolean } | null)?.is_active ?? true,
     };
   }
 
@@ -65,10 +48,12 @@ export default async function AdminLayout({
 
   const profile = await resolveRole(user.id);
 
-  const isActive = (profile as any)?.is_active ?? true;
+  const isActive = profile?.is_active ?? true;
   const role = profile?.role ?? null;
 
-  if (!role || !ADMIN_ROLES.has(role) || !isActive) {
+  // 互換マッピング適用: clinic_manager → clinic_admin
+  // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
+  if (!role || !canAccessAdminUIWithCompat(role) || !isActive) {
     redirect('/unauthorized');
   }
 

@@ -7,7 +7,7 @@ interface MenuRanking {
   count: number;
 }
 
-interface UseRevenueReturn {
+interface RevenueData {
   dailyRevenue: number;
   weeklyRevenue: number;
   monthlyRevenue: number;
@@ -23,41 +23,57 @@ interface UseRevenueReturn {
   staffRevenueContribution: string;
 }
 
-const DEFAULT_CLINIC_ID =
-  process.env.NEXT_PUBLIC_DEFAULT_CLINIC_ID || 'default-clinic-id';
+interface UseRevenueReturn extends RevenueData {
+  loading: boolean;
+  error: string | null;
+}
 
-export const useRevenue = (
-  clinicId: string = DEFAULT_CLINIC_ID
-): UseRevenueReturn => {
-  const [data, setData] = useState<UseRevenueReturn>({
-    dailyRevenue: 150000,
-    weeklyRevenue: 980000,
-    monthlyRevenue: 4200000,
-    insuranceRevenue: 2520000,
-    selfPayRevenue: 1680000,
-    menuRanking: [
-      { menu: '整体', revenue: 1200000, count: 120 },
-      { menu: 'マッサージ', revenue: 800000, count: 160 },
-      { menu: '鍼灸', revenue: 600000, count: 60 },
-    ],
-    hourlyRevenue: 'ピーク: 14:00-16:00',
-    dailyRevenueByDayOfWeek: 'ピーク: 金曜日',
-    lastYearRevenue: 3800000,
-    growthRate: '+10.5%',
-    revenueForecast: 4500000,
-    costAnalysis: '35%',
-    staffRevenueContribution: '田中: 28%, 佐藤: 25%',
-  });
+const INITIAL_DATA: RevenueData = {
+  dailyRevenue: 0,
+  weeklyRevenue: 0,
+  monthlyRevenue: 0,
+  insuranceRevenue: 0,
+  selfPayRevenue: 0,
+  menuRanking: [],
+  hourlyRevenue: '',
+  dailyRevenueByDayOfWeek: '',
+  lastYearRevenue: 0,
+  growthRate: '0%',
+  revenueForecast: 0,
+  costAnalysis: '',
+  staffRevenueContribution: '',
+};
+
+export const useRevenue = (clinicId: string): UseRevenueReturn => {
+  const [data, setData] = useState<RevenueData>(INITIAL_DATA);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // clinicIdのバリデーション
+    if (!clinicId) {
+      setLoading(false);
+      setError('clinic_idは必須です');
+      setData(INITIAL_DATA);
+      return;
+    }
+
+    let isMounted = true;
+
     const fetchData = async () => {
       try {
+        setLoading(true);
+        setError(null);
+
         const res = await api.revenue.getAnalysis(clinicId);
+
+        if (!isMounted) return;
+
         if (isSuccessResponse(res)) {
           const d = res.data as any;
           const menuRanking: MenuRanking[] = (d.menuRanking || []).map(
             (m: any) => ({
-              menu: m.menu_name || '—',
+              menu: m.menu_name || '',
               revenue: Number(m.total_revenue || 0),
               count: Number(m.transaction_count || 0),
             })
@@ -67,7 +83,7 @@ export const useRevenue = (
           const hourlySummary =
             hourly.length > 0 ? `データ点: ${hourly.length}件` : 'データなし';
 
-          // growthRate から前年を概算（正確な前年売上はAPI未返却のため）
+          // growthRate から前年を概算
           let lastYearRevenue = 0;
           if (typeof d.growthRate === 'string' && d.growthRate.endsWith('%')) {
             const gr = parseFloat(d.growthRate.replace('%', '')) / 100;
@@ -86,21 +102,42 @@ export const useRevenue = (
             selfPayRevenue: Number(d.selfPayRevenue || 0),
             menuRanking,
             hourlyRevenue: hourlySummary,
-            dailyRevenueByDayOfWeek: '—',
+            dailyRevenueByDayOfWeek: '',
             lastYearRevenue,
             growthRate: String(d.growthRate || '0%'),
             revenueForecast: Number(d.revenueForecast || 0),
-            costAnalysis: String(d.costAnalysis || '—'),
-            staffRevenueContribution: '—',
+            costAnalysis: String(d.costAnalysis || ''),
+            staffRevenueContribution: '',
           });
+        } else {
+          // APIエラー時はサンプル値にフォールバックせずエラー状態にする
+          const errorMessage = res.error?.message || '収益データの取得に失敗しました';
+          setError(errorMessage);
+          setData(INITIAL_DATA);
         }
       } catch (e) {
-        // フォールバック: 既定のサンプルを保持
-        console.warn('useRevenue fallback to sample:', e);
+        if (isMounted) {
+          console.error('useRevenue error:', e);
+          setError('収益データの取得に失敗しました');
+          setData(INITIAL_DATA);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [clinicId]);
 
-  return data;
+  return {
+    ...data,
+    loading,
+    error,
+  };
 };

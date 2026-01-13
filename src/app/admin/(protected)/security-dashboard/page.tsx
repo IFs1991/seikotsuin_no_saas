@@ -1,14 +1,51 @@
 /**
  * セキュリティダッシュボードページ
  * Phase 3B: 管理者向けセキュリティ監視画面
+ * DOD-09: useUserProfileContext経由でclinic_id取得（直接Supabaseアクセス排除）
  */
+
+'use client';
 
 import React from 'react';
 import { SecurityDashboard } from '@/components/admin/SecurityDashboard';
 import { Card } from '@/components/ui/card';
-import { Shield, AlertTriangle, Info } from 'lucide-react';
+import { Shield, AlertTriangle, Info, Activity } from 'lucide-react';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
 export default function SecurityDashboardPage() {
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfileContext();
+
+  const clinicId = profile?.clinicId ?? null;
+
+  if (profileLoading) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <Activity className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>読み込み中...</span>
+      </div>
+    );
+  }
+
+  if (profileError || !clinicId) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <Shield className='w-16 h-16 text-gray-400 mx-auto mb-4' />
+          <h2 className='text-xl font-semibold text-gray-700 mb-2'>
+            {profileError || 'アクセス権限がありません'}
+          </h2>
+          <p className='text-gray-500'>
+            管理者としてログインしてください。
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='min-h-screen bg-gray-50'>
       {/* ヘッダー */}
@@ -73,7 +110,7 @@ export default function SecurityDashboardPage() {
         </div>
 
         {/* セキュリティダッシュボード本体 */}
-        <SecurityDashboard />
+        <SecurityDashboard clinicId={clinicId} />
 
         {/* フッター情報 */}
         <div className='mt-12 pt-8 border-t border-gray-200'>
@@ -81,20 +118,20 @@ export default function SecurityDashboardPage() {
             <div>
               <h4 className='font-medium text-gray-900 mb-2'>監視対象</h4>
               <ul className='space-y-1'>
-                <li>• ログイン・ログアウトアクティビティ</li>
-                <li>• セッション管理・異常検知</li>
-                <li>• MFA認証イベント</li>
-                <li>• 不正アクセス試行</li>
+                <li>- ログイン・ログアウトアクティビティ</li>
+                <li>- セッション管理・異常検知</li>
+                <li>- MFA認証イベント</li>
+                <li>- 不正アクセス試行</li>
               </ul>
             </div>
 
             <div>
               <h4 className='font-medium text-gray-900 mb-2'>自動対応機能</h4>
               <ul className='space-y-1'>
-                <li>• ブルートフォース攻撃自動ブロック</li>
-                <li>• 異常セッション自動終了</li>
-                <li>• 脅威レベル別アラート</li>
-                <li>• 管理者通知システム</li>
+                <li>- ブルートフォース攻撃自動ブロック</li>
+                <li>- 異常セッション自動終了</li>
+                <li>- 脅威レベル別アラート</li>
+                <li>- 管理者通知システム</li>
               </ul>
             </div>
 
@@ -103,10 +140,10 @@ export default function SecurityDashboardPage() {
                 コンプライアンス
               </h4>
               <ul className='space-y-1'>
-                <li>• 医療情報システム安全管理ガイドライン準拠</li>
-                <li>• 個人情報保護法対応</li>
-                <li>• セキュリティ監査ログ保存</li>
-                <li>• ISO 27001準拠設計</li>
+                <li>- 医療情報システム安全管理ガイドライン準拠</li>
+                <li>- 個人情報保護法対応</li>
+                <li>- セキュリティ監査ログ保存</li>
+                <li>- ISO 27001準拠設計</li>
               </ul>
             </div>
           </div>

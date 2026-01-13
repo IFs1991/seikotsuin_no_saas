@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { createLogger } from '@/lib/logger';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 
 const log = createLogger('SecurityStatsAPI');
 
@@ -50,11 +51,12 @@ export async function GET(request: NextRequest) {
   since.setDate(since.getDate() - days);
 
   try {
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (DOD-08)
     const { supabase, permissions } = await ensureClinicAccess(
       request,
       '/api/admin/security/stats',
       clinicId,
-      { requireClinicMatch: clinicId !== null }
+      { requireClinicMatch: clinicId !== null, allowedRoles: Array.from(ADMIN_UI_ROLES) }
     );
 
     const resolvedClinicId = clinicId ?? permissions.clinic_id ?? undefined;

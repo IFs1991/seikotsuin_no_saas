@@ -1,0 +1,464 @@
+# 整骨院グループ向けSaaS：親テナント（HQ）→子テナント（Clinics）横断管理 実装計画書 v1
+# format: YAML
+# language: ja-JP
+
+meta:
+  id: tenant-hq-clinic-plan-v1
+  created_at: "2025-12-23"
+  owner: "IFs1991"
+  repository:
+    name: "IFs1991/seikotsuin_no_saas"
+  stack:
+    frontend: ["Next.js", "React", "TypeScript"]
+    backend: ["Supabase (Postgres)", "RLS", "SQL migrations"]
+  scope_tags: ["multi-tenant", "hq", "clinics", "rbac", "rls", "admin-ui"]
+
+purpose:
+  summary: >
+    親テナント（本部/HQ）が子テナント（各院/clinics）を作成・編集・無効化し、
+    さらに配下の各院データを横断的に閲覧・分析できる運用基盤を実装する。
+  non_goals:
+    - "Hot Pepper連携/決済/課金は本計画の対象外（別計画）"
+    - "物理削除（hard delete）は原則行わない（論理無効化）"
+    - "高度な需要予測・シフト最適化はPhase外"
+
+definition_of_terms:
+  tenant:
+    HQ: "本部（親テナント）"
+    clinic: "院（子テナント）"
+  roles:
+    admin: "本部管理者（横断管理）"
+    clinic_manager: "院管理者"
+    therapist: "施術者"
+    staff: "受付/事務"
+
+current_state_assessment:
+  summary: >
+    clinic_id を分離キーとしたマルチテナント（院単位）のRLS基盤が中心。
+    Phase Aの管理UI（/admin/tenants, /admin/users）とAPIは実装済み。
+    親子階層（tenantsテーブル）はPhase Bで未実装。
+  constraints:
+    - "RLSは最終防衛線としてDBレベルで強制（UIガードは補助）"
+    - "JWTクレーム（clinic_id/user_role）に依存する箇所があるため、付与/整合が重要"
+
+goals:
+  mvp_phase_a:
+    - id: A-G1
+      description: "/admin/tenants で clinics 一覧/作成/編集/無効化が可能"
+    - id: A-G2
+      description: "/admin/users で user_permissions の付与/変更/剥奪が可能"
+    - id: A-G3
+      description: "adminのみ横断閲覧可能。非adminは必ず自院のみ（RLS強制）"
+    - id: A-G4
+      description: "拒否系（他院参照不可）をE2E/validateで検証"
+  extension_phase_b:
+    - id: B-G1
+      description: "tenants(HQ)導入。adminでも自分のHQ配下のみ横断可能"
+    - id: B-G2
+      description: "tenant_id をJWT(app_metadata)に格納し、スコープ制御を安定化"
+    - id: B-G3
+      description: "監査/運用/テストの本番運用強化"
+
+assumptions:
+  - "最小単位の分離キーは clinic_id（院単位）"
+  - "権限の正は user_permissions（JWTは最適化/補助）"
+  - "削除は原則禁止。無効化（is_active=false）で運用"
+  - "Phase Aは単一HQ（1グループ）想定。Phase Bで複数HQ対応へ拡張"
+  - "APIは Server Actions または Route Handlers を利用（Next.js方針に追従）"
+
+architecture:
+  phase_a:
+    tenant_model: "HQ=adminロール（論理上） / 子テナント=clinics"
+    data_isolation: "RLS: clinic_id で厳密分離。adminのみ例外（横断）"
+  phase_b:
+    tenant_model: "tenants(HQ)を導入し、clinicsはtenant_idで所属"
+    data_isolation: "RLS: adminでも tenant_id スコープ内のみ横断"
+
+data_model:
+  phase_a_changes:
+    clinics:
+      add_columns_if_missing:
+        - name: is_active
+          type: boolean
+          default: true
+          note: "論理無効化"
+      indexes:
+        - name: idx_clinics_is_active
+          columns: ["is_active"]
+    user_permissions:
+      indexes:
+        - name: idx_user_permissions_user_id
+          columns: ["user_id"]
+        - name: idx_user_permissions_clinic_id
+          columns: ["clinic_id"]
+        - name: idx_user_permissions_role
+          columns: ["role"]
+  phase_b_changes:
+    tenants:
+      create_table: true
+      columns:
+        - { name: id, type: uuid, pk: true, default: "gen_random_uuid()" }
+        - { name: name, type: text, not_null: true }
+        - { name: tenant_type, type: text, not_null: true, default: "HQ" }
+        - { name: is_active, type: boolean, not_null: true, default: true }
+        - { name: created_at, type: timestamptz, not_null: true, default: "now()" }
+        - { name: updated_at, type: timestamptz, not_null: true, default: "now()" }
+      indexes:
+        - name: idx_tenants_is_active
+          columns: ["is_active"]
+    clinics:
+      add_columns:
+        - name: tenant_id
+          type: uuid
+          fk: "tenants.id"
+          not_null: true
+      backfill:
+        strategy: "既存clinicsを既定HQ(tenants)へ所属させる"
+    user_permissions:
+      add_columns:
+        - name: tenant_id
+          type: uuid
+          fk: "tenants.id"
+          not_null: false
+          note: "adminスコープ制御用（clinics所属者はclinic_idで十分）"
+
+auth_and_claims:
+  required_claims:
+    - name: clinic_id
+      source_priority: ["jwt.app_metadata", "user_permissions_fallback"]
+    - name: user_role
+      source_priority: ["jwt.app_metadata", "user_permissions_fallback"]
+    - name: tenant_id
+      phase: "B"
+      source_priority: ["jwt.app_metadata", "user_permissions_fallback"]
+  hard_rules:
+    - "重要クレームは user_metadata ではなく app_metadata を推奨（改ざん耐性）"
+    - "クレーム欠落時の挙動は『最小権限』へ倒す（横断許可しない）"
+
+rls_design:
+  principles:
+    - "default-deny（明示許可のみ）"
+    - "tenant isolation first（clinic_id、将来 tenant_id）"
+    - "admin exception is scoped（Phase Aは全院、Phase BはHQ配下のみ）"
+  phase_a:
+    clinics_table:
+      policies:
+        - name: clinics_admin_select
+          operation: SELECT
+          using: "auth.get_current_role() = 'admin'"
+        - name: clinics_admin_write
+          operation: "INSERT/UPDATE"
+          using: "auth.get_current_role() = 'admin'"
+          with_check: "auth.get_current_role() = 'admin'"
+    user_permissions_table:
+      policies:
+        - name: perms_admin_manage
+          operation: "SELECT/INSERT/UPDATE/DELETE"
+          using: "auth.get_current_role() = 'admin'"
+          with_check: "auth.get_current_role() = 'admin'"
+  phase_b:
+    admin_scope:
+      rule: "adminでも clinic.tenant_id = auth.get_current_tenant_id() の範囲のみ横断"
+      note: "auth.get_current_tenant_id() を追加/整備"
+  critical_checks:
+    - "NULL clinic_id を許容するテーブルがある場合、漏えいに注意（必要なら閲覧制限）"
+    - "UPDATE/INSERT の検証が USING 依存なら、意図が違う場合は WITH CHECK 明示"
+
+admin_ui:
+  pages:
+    - route: "/admin/tenants"
+      purpose: "clinics の一覧/作成/編集/無効化（最小）"
+      access: "admin only"
+      features:
+        list:
+          filters: ["is_active", "name_search"]
+          columns: ["id", "name", "is_active", "created_at"]
+        create:
+          fields: ["name", "address?", "phone?"]
+          default_values: { is_active: true }
+        edit:
+          fields: ["name", "address?", "phone?", "is_active"]
+        disable:
+          method: "set is_active=false"
+    - route: "/admin/users"
+      purpose: "user_permissions の付与/変更/剥奪"
+      access: "admin only"
+      features:
+        list:
+          join: ["profiles", "user_permissions", "clinics"]
+          filters: ["role", "clinic", "user_search"]
+        assign:
+          fields: ["user_id", "clinic_id", "role"]
+        change_role:
+          fields: ["permission_id", "role"]
+        revoke:
+          method: "delete or set is_active=false (if column exists)"
+  ui_guards:
+    - "middleware.ts または server side guard で admin 以外を /admin/* から拒否"
+    - "UIガードに加え、DB(RLS)でも必ず拒否"
+
+api_surface:
+  preferred_style: "Next.js Server Actions または Route Handlers"
+  endpoints_phase_a:
+    - method: GET
+      path: "/api/admin/tenants"
+      action: "list_clinics"
+      authz: "admin"
+    - method: POST
+      path: "/api/admin/tenants"
+      action: "create_clinic"
+      authz: "admin"
+    - method: PATCH
+      path: "/api/admin/tenants/:clinic_id"
+      action: "update_or_disable_clinic"
+      authz: "admin"
+    - method: GET
+      path: "/api/admin/users"
+      action: "list_permissions"
+      authz: "admin"
+    - method: POST
+      path: "/api/admin/users"
+      action: "assign_permission"
+      authz: "admin"
+    - method: PATCH
+      path: "/api/admin/users/:permission_id"
+      action: "change_role_or_revoke"
+      authz: "admin"
+  logging:
+    - "admin操作は audit_logs / security_events に記録（可能な範囲で）"
+
+migrations_and_files:
+  phase_a:
+    - file: "supabase/migrations/20250817000100_schema.sql"
+      changes: ["clinics.is_active 既存", "user_permissions 既存"]
+    - file: "supabase/migrations/20251224000500_admin_clinic_permissions_rls.sql"
+      changes:
+        - "clinics is_active index"
+        - "user_permissions indexes"
+        - "clinics/user_permissions RLS policies (admin manage + own select)"
+  phase_b:
+    - file: "supabase/migrations/YYYYMMDDHHMMSS_create_tenants.sql"
+      changes: ["create table tenants"]
+    - file: "supabase/migrations/YYYYMMDDHHMMSS_add_tenant_id_to_clinics.sql"
+      changes: ["alter table clinics add tenant_id", "backfill", "index"]
+    - file: "supabase/migrations/YYYYMMDDHHMMSS_rls_scope_admin_by_tenant.sql"
+      changes: ["admin scope from global -> tenant scoped"]
+
+work_breakdown_structure:
+  phase_a:
+    duration_weeks: 2
+    tasks:
+      - id: A1
+        name: "DB: clinics論理無効化・インデックス"
+        dod:
+          - "clinics.is_active が存在し、一覧で利用できる"
+      - id: A2
+        name: "RLS: clinics/user_permissions の admin-only CRUD"
+        dod:
+          - "admin以外は /admin 操作がDBで拒否される"
+      - id: A3
+        name: "API: /admin/tenants・/admin/users の CRUD"
+        dod:
+          - "UIから操作→DB反映まで一気通貫"
+      - id: A4
+        name: "UI: /admin/tenants"
+        dod:
+          - "作成/編集/無効化が可能"
+      - id: A5
+        name: "UI: /admin/users"
+        dod:
+          - "権限付与/変更/剥奪が可能"
+      - id: A6
+        name: "検証: validate_rls + E2E拒否系"
+        dod:
+          - "他院データ参照が拒否される"
+  phase_b:
+    duration_weeks: 2
+    tasks:
+      - id: B1
+        name: "DB: tenants導入 + clinics.tenant_id"
+        dod:
+          - "全clinicsにtenant_idが埋まっている"
+      - id: B2
+        name: "Auth: tenant_id を app_metadata に付与"
+        dod:
+          - "adminログイン時に tenant_id が取得できる"
+      - id: B3
+        name: "RLS: admin横断を tenantスコープに限定"
+        dod:
+          - "別tenantのclinicへはadminでもアクセス不可"
+      - id: B4
+        name: "UI: tenantスコープの整合（表示/検索）"
+        dod:
+          - "admin UIで自分のtenant配下のみ表示"
+
+implementation_status:
+  phase_a:
+    status: "COMPLETED"
+    completed_at: "2025-12-24"
+    completed:
+      - "A1: DB clinics index / user_permissions indexes"
+      - "A2: clinics/user_permissions RLS (admin manage + own select)"
+      - "A3: /api/admin/tenants, /api/admin/users"
+      - "A4: /admin/tenants UI"
+      - "A5: /admin/users UI"
+      - "A6: validate_rls.sql + E2E拒否系テスト"
+    pending: []
+    additional_completed:
+      - id: "A6-EXT"
+        title: "RLSポリシー統一（懸念点解消）"
+        details:
+          - "auth.get_current_role() 関数作成（user_permissions参照）"
+          - "auth.get_current_clinic_id() 関数作成"
+          - "auth.is_admin() / auth.belongs_to_clinic() ヘルパー作成"
+          - "public.user_role() を auth.get_current_role() に統一"
+          - "clinics/user_permissions RLSポリシーを user_permissions ベースに更新"
+        migration: "20251224001000_auth_helper_functions.sql"
+  phase_b:
+    status: "NOT_STARTED"
+    completed: []
+    pending:
+      - "B1: DB tenants導入 + clinics.tenant_id"
+      - "B2: Auth tenant_id を app_metadata に付与"
+      - "B3: RLS admin横断を tenantスコープに限定"
+      - "B4: UI tenantスコープの整合"
+
+changelog:
+  - date: "2025-12-24"
+    author: "Claude"
+    changes:
+      - "Phase A 全タスク完了"
+      - "RLSポリシーを profiles 依存から user_permissions 依存に統一"
+      - "認証ヘルパー関数を auth スキーマに追加"
+      - "validate_rls.sql 作成（supabase/scripts/）"
+      - "E2Eテスト作成（src/__tests__/e2e/）"
+    files_created:
+      - "supabase/migrations/20251224001000_auth_helper_functions.sql"
+      - "supabase/scripts/validate_rls.sql"
+      - "src/__tests__/e2e/helpers/test-auth.ts"
+      - "src/__tests__/e2e/admin-tenants.e2e.test.ts"
+      - "src/__tests__/e2e/admin-access-denial.e2e.test.ts"
+      - "src/__tests__/e2e/cross-clinic-isolation.e2e.test.ts"
+      - ".env.test.example"
+
+next_steps:
+  - id: N1
+    title: "マイグレーション適用"
+    priority: "HIGH"
+    status: "PENDING"
+    details:
+      - "supabase db push または supabase migration up を実行"
+      - "20251224001000_auth_helper_functions.sql を適用"
+      - "validate_rls.sql で検証"
+  - id: N2
+    title: "テストユーザー作成とE2E実行"
+    priority: "HIGH"
+    status: "PENDING"
+    details:
+      - "Supabaseにテスト用ユーザー（admin, therapist, clinicA, clinicB）を作成"
+      - ".env.test を設定"
+      - "npm run test:e2e で E2E テスト実行"
+  - id: N3
+    title: "監査ログの動作確認"
+    priority: "MEDIUM"
+    status: "PENDING"
+    details:
+      - "admin操作が audit_logs に記録されるか検証"
+      - "AuditLogger.logAdminAction の動作確認"
+  - id: N4
+    title: "staging環境へのデプロイ"
+    priority: "MEDIUM"
+    status: "PENDING"
+    details:
+      - "stagingへ migrations 適用"
+      - "admin UI を staging で動作確認"
+      - "拒否系E2E・validate確認"
+  - id: N5
+    title: "Phase B 設計開始"
+    priority: "LOW"
+    status: "PENDING"
+    details:
+      - "tenants テーブル設計"
+      - "tenant_id 付与フロー設計"
+      - "RLSスコープ設計（admin横断をtenant配下に限定）"
+      - "既存clinicsへのbackfill戦略"
+
+resolved_concerns:
+  - id: "R6"
+    title: "RLSがprofiles依存でadmin判定がずれる"
+    resolution: "auth.get_current_role() を作成し user_permissions を参照するよう統一"
+    resolved_at: "2025-12-24"
+  - id: "N4-OLD"
+    title: "権限テーブル整合の見直し"
+    resolution: "user_permissions を権限の正として確定。RLSは user_permissions を参照"
+    resolved_at: "2025-12-24"
+  - id: "N5-OLD"
+    title: "権限更新時のclinic_id制約"
+    resolution: "API側で非adminロールには clinic_id 必須バリデーション実装済み"
+    resolved_at: "2025-12-24"
+
+test_plan:
+  validate_sql:
+    - name: "validate_rls.sql"
+      purpose: "ポリシー/関数/インデックス/監査の健全性確認"
+  e2e_playwright:
+    scenarios:
+      - id: E2E-1
+        title: "admin: clinic作成→一覧反映"
+        steps: ["login as admin", "create clinic", "assert clinic in list"]
+      - id: E2E-2
+        title: "non-admin: /admin へのアクセス拒否"
+        steps: ["login as therapist", "visit /admin/tenants", "assert 403/redirect"]
+      - id: E2E-3
+        title: "isolation: clinicAユーザーがclinicBデータ参照不可"
+        steps: ["login clinicA", "attempt query clinicB patient", "assert denied"]
+  manual_checks:
+    - "RLS拒否系（SQL直叩きでも拒否されること）"
+    - "無効化clinicsが通常UI/集計に出ないこと"
+
+acceptance_criteria:
+  - "adminが clinics を作成/編集/無効化できる"
+  - "adminが user_permissions を付与/変更/剥奪できる"
+  - "非adminは自院データ以外を参照できない（DBで拒否）"
+  - "監査ログに admin操作が残る（可能な範囲で）"
+  - "E2Eとvalidateが安定してパスする"
+
+rollout_plan:
+  phase_a:
+    environments: ["local", "staging", "production"]
+    rollout_steps:
+      - "stagingへ migrations 適用"
+      - "admin UI を staging で動作確認"
+      - "拒否系E2E・validate確認"
+      - "production適用（オフピーク推奨）"
+  phase_b:
+    rollout_steps:
+      - "tenants 作成→既存clinicsへ backfill"
+      - "adminクレーム（tenant_id）付与"
+      - "RLSスコープ切替"
+      - "監視/アラート強化"
+
+risks:
+  - id: R1
+    title: "adminが強すぎる（将来の複数グループで漏えい）"
+    mitigation: "Phase Bで tenantスコープ化"
+  - id: R2
+    title: "JWTクレーム不整合でRLSが機能不全（拒否/誤許可）"
+    mitigation: "app_metadataを正、フォールバックは最小権限、E2E拒否系必須"
+  - id: R3
+    title: "NULL clinic_id データの漏えい"
+    mitigation: "NULL禁止または閲覧制限（admin限定など）"
+  - id: R4
+    title: "論理無効化の参照漏れ"
+    mitigation: "標準クエリに is_active=true を徹底、集計ビューにも適用"
+  - id: R5
+    title: "user_permissions のFK不整合で権限付与が失敗"
+    mitigation: "staff_id と auth.users の対応方針を明確化し、必要ならスキーマ調整"
+  - id: R6
+    title: "RLSがprofiles依存で admin 判定がずれる"
+    mitigation: "auth.get_current_role() または user_permissions を参照するRLSへ統一"
+
+open_questions:
+  - "1ユーザーが複数clinicに所属する運用をMVPから許すか？（許すならclinic切替UIが必要）"
+  - "HQ（admin）を1種類に固定するか、将来ロールを細分化（hq_admin/hq_analyst等）するか？"
+  - "clinics削除を完全禁止にするか、一定期間後にアーカイブ/削除を許可するか？"

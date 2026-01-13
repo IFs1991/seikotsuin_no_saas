@@ -1,165 +1,245 @@
 import { useState, useEffect, useCallback } from 'react';
+import { api, isSuccessResponse, handleApiError } from '@/lib/api-client';
 
-// SpeechRecognition type declarations for browser compatibility
-interface SpeechRecognitionEvent {
-  results: {
-    [index: number]: {
-      [index: number]: {
-        transcript: string;
-      };
-    };
-  };
-}
-
-interface SpeechRecognitionInstance {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: () => void;
-  start: () => void;
-}
-
-interface SpeechRecognitionConstructor {
-  new(): SpeechRecognitionInstance;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
-
-interface Message {
+/**
+ * チャットメッセージの型定義
+ */
+export interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: number;
+  session_id?: string;
+  response_data?: Record<string, unknown>;
 }
 
+/**
+ * チャットセッションの型定義
+ */
+interface ChatSession {
+  id: string;
+  user_id: string;
+  clinic_id?: string;
+  created_at: string;
+  chat_messages: {
+    id: string;
+    sender: 'user' | 'ai';
+    message_text: string;
+    response_data?: Record<string, unknown>;
+    created_at: string;
+  }[];
+}
+
+/**
+ * チャット状態の型定義
+ */
 interface ChatState {
   messages: Message[];
   isLoading: boolean;
   error: string | null;
   isEnabled: boolean;
+  currentSessionId: string | null;
+  sessions: ChatSession[];
 }
 
-const RATE_LIMIT_INTERVAL = 1000;
-const MAX_MESSAGES_PER_INTERVAL = 5;
+/**
+ * API応答から内部メッセージ形式に変換
+ */
+function convertToMessages(sessions: ChatSession[]): Message[] {
+  const messages: Message[] = [];
 
-// Stub function for message analysis - to be implemented with actual AI service
-async function analyzeMessage(content: string, _storeId: string): Promise<string> {
-  // TODO: Integrate with actual AI analysis service
-  return `分析結果: ${content.substring(0, 50)}...`;
+  for (const session of sessions) {
+    for (const msg of session.chat_messages || []) {
+      messages.push({
+        id: msg.id,
+        content: msg.message_text,
+        role: msg.sender === 'user' ? 'user' : 'assistant',
+        timestamp: new Date(msg.created_at).getTime(),
+        session_id: session.id,
+        response_data: msg.response_data,
+      });
+    }
+  }
+
+  // 時間順でソート
+  return messages.sort((a, b) => a.timestamp - b.timestamp);
 }
 
-export const useChat = (storeId: string) => {
+/**
+ * useChat Hook - API連携版
+ *
+ * MVPチャット機能のフック
+ * - ローカル保存は廃止
+ * - API経由で送信/履歴取得
+ */
+export const useChat = (clinicId: string | null) => {
   const [state, setState] = useState<ChatState>({
     messages: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
     isEnabled: true,
+    currentSessionId: null,
+    sessions: [],
   });
 
-  const [messageCount, setMessageCount] = useState(0);
-  const [lastMessageTime, setLastMessageTime] = useState(Date.now());
+  /**
+   * チャット履歴を取得
+   */
+  const fetchHistory = useCallback(async () => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-  useEffect(() => {
-    const savedMessages = localStorage.getItem(`chat_messages_${storeId}`);
-    if (savedMessages) {
-      setState(prev => ({
-        ...prev,
-        messages: JSON.parse(savedMessages),
-      }));
-    }
-  }, [storeId]);
+    try {
+      const response = await api.chat.getHistory(clinicId ?? undefined);
 
-  const saveToLocalStorage = useCallback(
-    (messages: Message[]) => {
-      localStorage.setItem(
-        `chat_messages_${storeId}`,
-        JSON.stringify(messages)
-      );
-    },
-    [storeId]
-  );
+      if (isSuccessResponse(response)) {
+        const sessions = response.data as ChatSession[];
+        const messages = convertToMessages(sessions);
+        const currentSessionId = sessions.length > 0 ? sessions[0].id : null;
 
-  const checkRateLimit = useCallback(() => {
-    const now = Date.now();
-    if (now - lastMessageTime > RATE_LIMIT_INTERVAL) {
-      setMessageCount(1);
-      setLastMessageTime(now);
-      return true;
-    }
-    if (messageCount >= MAX_MESSAGES_PER_INTERVAL) {
-      return false;
-    }
-    setMessageCount(prev => prev + 1);
-    return true;
-  }, [lastMessageTime, messageCount]);
-
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!state.isEnabled) return;
-      if (!checkRateLimit()) {
         setState(prev => ({
           ...prev,
-          error: 'メッセージの送信頻度が高すぎます。しばらくお待ちください。',
+          sessions,
+          messages,
+          currentSessionId,
+          isLoading: false,
+          error: null,
         }));
+      } else {
+        const errorMessage = response.error
+          ? handleApiError(response.error, '履歴の取得に失敗しました')
+          : '履歴の取得に失敗しました';
+
+        setState(prev => ({
+          ...prev,
+          isLoading: false,
+          error: errorMessage,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch chat history:', error);
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: '履歴の取得に失敗しました',
+      }));
+    }
+  }, [clinicId]);
+
+  /**
+   * 初回ロード時に履歴を取得
+   */
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  /**
+   * メッセージを送信
+   */
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim()) {
         return;
       }
 
+      if (!state.isEnabled) {
+        return;
+      }
+
+      // 楽観的更新: ユーザーメッセージを即座に追加
+      const tempUserMessageId = `temp-user-${Date.now()}`;
+      const userMessage: Message = {
+        id: tempUserMessageId,
+        content,
+        role: 'user',
+        timestamp: Date.now(),
+        session_id: state.currentSessionId || undefined,
+      };
+
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, userMessage],
+        isLoading: true,
+        error: null,
+      }));
+
       try {
-        setState(prev => ({ ...prev, isLoading: true, error: null }));
+        const response = await api.chat.sendMessage({
+          message: content,
+          clinic_id: clinicId,
+          session_id: state.currentSessionId,
+        });
 
-        const newMessage: Message = {
-          id: Date.now().toString(),
-          content,
-          role: 'user',
-          timestamp: Date.now(),
-        };
+        if (isSuccessResponse(response)) {
+          const data = response.data as {
+            session_id: string;
+            user_message: {
+              id: string;
+              sender: string;
+              message_text: string;
+            };
+            ai_message: {
+              id: string;
+              sender: string;
+              message_text: string;
+              response_data?: Record<string, unknown>;
+            };
+          };
 
-        const updatedMessages = [...state.messages, newMessage];
-        setState(prev => ({
-          ...prev,
-          messages: updatedMessages,
-        }));
-        saveToLocalStorage(updatedMessages);
+          // ユーザーメッセージを正式なIDで更新し、AI応答を追加
+          const updatedUserMessage: Message = {
+            id: data.user_message.id,
+            content: data.user_message.message_text,
+            role: 'user',
+            timestamp: Date.now(),
+            session_id: data.session_id,
+          };
 
-        const response = await analyzeMessage(content, storeId);
+          const aiMessage: Message = {
+            id: data.ai_message.id,
+            content: data.ai_message.message_text,
+            role: 'assistant',
+            timestamp: Date.now() + 1,
+            session_id: data.session_id,
+            response_data: data.ai_message.response_data,
+          };
 
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: response,
-          role: 'assistant',
-          timestamp: Date.now(),
-        };
+          setState(prev => ({
+            ...prev,
+            messages: [
+              ...prev.messages.filter(m => m.id !== tempUserMessageId),
+              updatedUserMessage,
+              aiMessage,
+            ],
+            currentSessionId: data.session_id,
+            isLoading: false,
+            error: null,
+          }));
+        } else {
+          const errorMessage = response.error
+            ? handleApiError(response.error, 'メッセージの送信に失敗しました')
+            : 'メッセージの送信に失敗しました';
 
-        const finalMessages = [...updatedMessages, assistantMessage];
-        setState(prev => ({
-          ...prev,
-          messages: finalMessages,
-          isLoading: false,
-        }));
-        saveToLocalStorage(finalMessages);
+          setState(prev => ({
+            ...prev,
+            isLoading: false,
+            error: errorMessage,
+          }));
+        }
       } catch (error) {
+        console.error('Failed to send message:', error);
         setState(prev => ({
           ...prev,
           isLoading: false,
-          error: '申し訳ありません。メッセージの送信に失敗しました。',
+          error: 'メッセージの送信に失敗しました',
         }));
       }
     },
-    [
-      state.isEnabled,
-      state.messages,
-      checkRateLimit,
-      saveToLocalStorage,
-      storeId,
-    ]
+    [clinicId, state.currentSessionId, state.isEnabled]
   );
 
+  /**
+   * チャットの有効/無効を切り替え
+   */
   const toggleChat = useCallback(() => {
     setState(prev => ({
       ...prev,
@@ -167,17 +247,70 @@ export const useChat = (storeId: string) => {
     }));
   }, []);
 
+  /**
+   * 新しいセッションを開始
+   */
+  const startNewSession = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      currentSessionId: null,
+      messages: [],
+      error: null,
+    }));
+  }, []);
+
+  /**
+   * メッセージをクリア（現在のセッションのみ）
+   */
   const clearMessages = useCallback(() => {
     setState(prev => ({
       ...prev,
       messages: [],
       error: null,
     }));
-    localStorage.removeItem(`chat_messages_${storeId}`);
-  }, [storeId]);
+  }, []);
 
+  /**
+   * 履歴を再取得
+   */
+  const refetch = useCallback(async () => {
+    await fetchHistory();
+  }, [fetchHistory]);
+
+  /**
+   * 特定のセッションを選択
+   */
+  const selectSession = useCallback((sessionId: string) => {
+    setState(prev => {
+      const session = prev.sessions.find(s => s.id === sessionId);
+      if (!session) return prev;
+
+      const messages = convertToMessages([session]);
+      return {
+        ...prev,
+        currentSessionId: sessionId,
+        messages,
+      };
+    });
+  }, []);
+
+  /**
+   * 音声入力を開始（ブラウザ互換性チェック）
+   */
   const startVoiceInput = useCallback(() => {
-    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+    if (typeof window === 'undefined') {
+      setState(prev => ({
+        ...prev,
+        error: '音声入力はこの環境でサポートされていません。',
+      }));
+      return;
+    }
+
+    const SpeechRecognitionConstructor =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
       setState(prev => ({
         ...prev,
         error: '音声入力はこのブラウザでサポートされていません。',
@@ -185,14 +318,12 @@ export const useChat = (storeId: string) => {
       return;
     }
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionConstructor();
     recognition.lang = 'ja-JP';
     recognition.continuous = false;
     recognition.interimResults = false;
 
-    recognition.onresult = event => {
+    recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       sendMessage(transcript);
     };
@@ -212,11 +343,16 @@ export const useChat = (storeId: string) => {
     isLoading: state.isLoading,
     error: state.error,
     isEnabled: state.isEnabled,
+    currentSessionId: state.currentSessionId,
+    sessions: state.sessions,
     sendMessage,
     toggleChat,
+    startNewSession,
     clearMessages,
+    refetch,
+    selectSession,
     startVoiceInput,
   };
 };
 
-export type { Message };
+export type { ChatSession };

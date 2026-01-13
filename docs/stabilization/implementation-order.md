@@ -1,0 +1,225 @@
+# Stabilization 実装手順書
+
+## 概要
+
+このドキュメントは、整骨院管理SaaSの安定化（Stabilization）と新機能実装の正しい順序を定義します。
+各フェーズは依存関係があるため、順番を守って実装してください。
+
+## 実装順序
+
+| 順番 | 仕様書                                  | 状態 | 理由                                               |
+|------|-----------------------------------------|------|----------------------------------------------------|
+| 1    | spec-auth-role-alignment-v0.1.md        | ✅ 完了 | 全ての基盤。ロール定義が統一されないと他が動かない |
+| 2    | spec-rls-tenant-boundary-v0.1.md        | 未着手 | RLSがPhase 1のロール定義とJWT claimsに依存         |
+| 3    | spec-tenant-table-api-guard-v0.1.md     | 未着手 | RLSと並行可能だが、同じロール定数を使う            |
+| 4    | spec-admin-settings-contract-v0.1.md    | 未着手 | セキュリティ修正後に機能修正                       |
+| 5    | spec-e2e-preflight-fixtures-v0.1.md     | 未着手 | 新ロール名でフィクスチャ更新                       |
+| 6    | spec-playwright-baseurl-windows-v0.1.md | 未着手 | 独立、いつでもOK                                   |
+| 7    | spec-organization-multi-clinic-v0.1.md  | 未着手 | Stabilization完了後の新機能                        |
+
+## 依存関係図
+
+```
+[1] Auth Role Alignment ✅ 完了
+         │
+         ├──────────────────┐
+         ↓                  ↓
+[2] RLS Tenant          [3] API Guard
+    Boundary                (並行可能)
+         │                  │
+         └────────┬─────────┘
+                  ↓
+        [4] Admin Settings
+                  │
+                  ↓
+        [5] E2E Fixtures
+                  │
+         ┌───────┴───────┐
+         ↓               ↓
+[6] Playwright      [7] Organization
+    (独立)              Multi-Clinic
+```
+
+## 各フェーズの詳細
+
+### Phase 1: Auth Role Alignment（認可ロール統一）✅ 完了
+
+**仕様書**: `spec-auth-role-alignment-v0.1.md`
+
+**完了項目**:
+- [x] `src/lib/constants/roles.ts` 作成（ロール定数・ヘルパー関数）
+- [x] `middleware.ts` 更新（`ADMIN_UI_ROLES`使用）
+- [x] `guards.ts` 更新（`normalizeRole()`適用）
+- [x] API routes 更新（ロール定数使用）
+- [x] DOD-08: `verifyAdminAuth()`でrole正規化
+- [x] DOD-09: スタッフ系GETのテナント境界強化
+
+**検証コマンド**:
+```bash
+npm test -- --testPathPattern="roles"
+rg "clinic_manager" src --type ts  # 残存チェック
+```
+
+---
+
+### Phase 2: RLS Tenant Boundary（RLSテナント境界）
+
+**仕様書**: `spec-rls-tenant-boundary-v0.1.md`
+
+**実装タスク**:
+- [ ] RLSポリシーの`clinic_id`スコープ確認
+- [ ] `get_current_clinic_id()`ヘルパー関数の統一
+- [ ] JWT claimsからのclinic_id取得
+- [ ] テナントテーブルのRLSポリシー更新
+
+**依存**: Phase 1完了必須
+
+**検証コマンド**:
+```bash
+supabase db query --local "SELECT tablename, policyname, qual FROM pg_policies WHERE schemaname='public';"
+```
+
+---
+
+### Phase 3: Tenant Table API Guard（APIガード）
+
+**仕様書**: `spec-tenant-table-api-guard-v0.1.md`
+
+**実装タスク**:
+- [ ] `ensureClinicAccess()`の全API適用確認
+- [ ] クライアントからの直接テーブルアクセス排除
+- [ ] `requireClinicMatch`オプションの適切な使用
+
+**依存**: Phase 1完了必須、Phase 2と並行可能
+
+**検証コマンド**:
+```bash
+rg -n "from\('(reservations|blocks|customers|menus|resources)'\)" src
+```
+
+---
+
+### Phase 4: Admin Settings Contract（管理設定契約）
+
+**仕様書**: `spec-admin-settings-contract-v0.1.md`
+
+**実装タスク**:
+- [ ] 管理設定APIのスキーマ定義
+- [ ] 設定の永続化・取得ロジック
+- [ ] 権限チェック（CLINIC_ADMIN_ROLES）
+
+**依存**: Phase 2, 3完了後
+
+---
+
+### Phase 5: E2E Preflight Fixtures（E2Eフィクスチャ）
+
+**仕様書**: `spec-e2e-preflight-fixtures-v0.1.md`
+
+**実装タスク**:
+- [ ] `waitForSupabaseReady()` 追加
+- [ ] `assertTablesExist()` 追加
+- [ ] フィクスチャのロール名更新（`clinic_admin`使用）
+- [ ] グローバルセットアップの整備
+
+**依存**: Phase 1-4完了後（新ロール名反映のため）
+
+**検証コマンド**:
+```bash
+npm run e2e:validate-fixtures && npm run e2e:seed && npm run e2e:cleanup && npm run e2e:seed
+```
+
+---
+
+### Phase 6: Playwright BaseURL Windows（Playwright修正）
+
+**仕様書**: `spec-playwright-baseurl-windows-v0.1.md`
+
+**実装タスク**:
+- [ ] `PLAYWRIGHT_BASE_URL`の統一
+- [ ] Windows環境でのspawn EPERM対策
+- [ ] webServer設定の修正
+
+**依存**: 独立（いつでも実装可能）
+
+**検証コマンド**:
+```bash
+npm run test:e2e:pw -- --project=chromium
+```
+
+---
+
+### Phase 7: Organization Multi-Clinic（組織横断閲覧）
+
+**仕様書**: `spec-organization-multi-clinic-v0.1.md`
+
+**実装タスク**:
+
+#### Phase 7.1: DBスキーマ
+- [ ] `organizations`テーブル作成
+- [ ] `clinics.organization_id`カラム追加
+- [ ] `user_permissions.can_view_organization`カラム追加
+
+#### Phase 7.2: RLSポリシー
+- [ ] `can_view_reservation()`関数作成
+- [ ] 組織ベースの閲覧ポリシー追加
+
+#### Phase 7.3: バックエンド
+- [ ] `getAccessibleClinicIds()`関数作成
+- [ ] 予約API: 組織スコープ対応
+
+#### Phase 7.4: フロントエンド
+- [ ] `ClinicSelector`コンポーネント作成
+- [ ] 予約ページへの統合
+- [ ] 閲覧モードバッジ表示
+
+#### Phase 7.5: API
+- [ ] `/api/clinics/accessible`エンドポイント作成
+
+**依存**: Phase 1-6完了後（Stabilization完了後）
+
+**検証コマンド**:
+```bash
+npm test -- --testPathPattern="organization|clinic"
+npm run test:e2e:pw -- --grep="organization"
+```
+
+---
+
+## チェックリスト（DoD）
+
+各フェーズ完了時に以下を確認:
+
+- [ ] DOD-01: Supabaseスタック起動確認
+- [ ] DOD-02: マイグレーション冪等性
+- [ ] DOD-03: シード再現性
+- [ ] DOD-04: スキーマドリフトなし
+- [ ] DOD-05: E2Eフィクスチャ冪等性
+- [ ] DOD-06: Playwright baseURL整合性
+- [ ] DOD-07: Windows spawn EPERM解消
+- [ ] DOD-08: テナント境界+RLS整合性
+- [ ] DOD-09: クライアント直接アクセス排除
+- [ ] DOD-10: Next.jsビルド成功
+- [ ] DOD-11: Jestテスト成功
+- [ ] DOD-12: Supabase型生成クリーン
+
+詳細は `DoD-v0.1.md` を参照。
+
+---
+
+## 注意事項
+
+1. **PRは1タスク1PR**: 各仕様書内のタスクは個別PRで実装
+2. **テスト必須**: 実装後は必ず関連テストを実行
+3. **ロールバック準備**: 各仕様書にロールバック手順を記載済み
+4. **並行作業**: Phase 2と3のみ並行可能、他は順次実装
+
+---
+
+## 更新履歴
+
+| 日付 | 内容 |
+|------|------|
+| 2026-01-08 | Phase 1 (DOD-08, DOD-09) 完了 |
+| 2026-01-08 | Phase 7 仕様書追加 |
+| 2026-01-08 | 初版作成 |

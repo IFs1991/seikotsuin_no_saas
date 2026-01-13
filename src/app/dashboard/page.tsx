@@ -16,13 +16,11 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react';
-import {
-  ResponsiveLayout,
-  ResponsiveSection,
-  ResponsiveGrid,
-} from '@/components/layout/responsive-layout';
+import { ResponsiveGrid } from '@/components/layout/responsive-layout';
 import useDashboard from '@/hooks/useDashboard';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import RevenueChart from '@/components/dashboard/revenue-chart';
+import PatientFlowHeatmap from '@/components/dashboard/patient-flow-heatmap';
 
 // パフォーマンス最適化のためのメモ化コンポーネント
 const DailyDataCard = memo(
@@ -145,6 +143,8 @@ export default function DashboardPage() {
       aiComment:
         dashboardData.aiComment?.summary || '本日のデータを分析中です...',
       alerts: dashboardData.alerts || [],
+      revenueChartData: dashboardData.revenueChartData || [],
+      heatmapData: dashboardData.heatmapData || [],
     };
   }, [dashboardData]);
 
@@ -225,7 +225,8 @@ export default function DashboardPage() {
     return null;
   }
 
-  const { dailyData, aiComment, alerts } = memoizedData;
+  const { dailyData, aiComment, alerts, revenueChartData, heatmapData } =
+    memoizedData;
 
   return (
     <div className='min-h-screen bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 pt-8'>
@@ -241,35 +242,11 @@ export default function DashboardPage() {
         />
         <AICommentCard comment={aiComment} />
 
-        {/* 収益比率グラフ */}
-        <Card className='w-full bg-card shadow-md'>
-          <CardHeader className='bg-card'>
-            <CardTitle className='bg-card text-gray-900 dark:text-gray-100'>
-              収益推移と比率
-            </CardTitle>
-            <CardDescription className='bg-card text-gray-600 dark:text-gray-400'>
-              保険診療と自費診療の収益比率とトレンド。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='bg-card p-6'>
-            <p className='text-gray-500'>チャート表示機能は準備中です</p>
-          </CardContent>
-        </Card>
+        {/* 収益推移チャート */}
+        <RevenueChart data={revenueChartData} />
 
         {/* 時間帯別の混雑状況ヒートマップ */}
-        <Card className='w-full bg-card shadow-md'>
-          <CardHeader className='bg-card'>
-            <CardTitle className='bg-card text-gray-900 dark:text-gray-100'>
-              時間帯別混雑状況ヒートマップ
-            </CardTitle>
-            <CardDescription className='bg-card text-gray-600 dark:text-gray-400'>
-              曜日と時間帯ごとの混雑度を視覚化します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='bg-card p-6'>
-            <p className='text-gray-500'>ヒートマップ表示機能は準備中です</p>
-          </CardContent>
-        </Card>
+        <PatientFlowHeatmap data={heatmapData} />
 
         {/* 異常値アラート表示 */}
         {alerts && alerts.length > 0 && (

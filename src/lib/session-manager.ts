@@ -112,7 +112,7 @@ export class SessionManager {
       clinic_id: row.clinic_id,
       session_token: row.session_token,
       device_info: normalizedDeviceInfo,
-      ip_address: row.ip_address ?? '',
+      ip_address: (row.ip_address as string) ?? '',
       user_agent: row.user_agent ?? undefined,
       geolocation: normalizedGeolocation,
       created_at: row.created_at,
@@ -222,7 +222,7 @@ export class SessionManager {
       payload.browserVersion = deviceInfo.browserVersion;
     }
 
-    return payload;
+    return payload as NonNullable<UserSessionInsert['device_info']>;
   }
 
   private toGeolocationPayload(
@@ -244,7 +244,7 @@ export class SessionManager {
       payload.longitude = geolocation.longitude;
     }
 
-    return Object.keys(payload).length > 0 ? payload : null;
+    return Object.keys(payload).length > 0 ? (payload as Exclude<UserSessionInsert['geolocation'], undefined>) : null;
   }
 
   private async resolveUserContext(
@@ -649,7 +649,7 @@ export class SessionManager {
             reason,
             revoked_by: revokedBy ?? null,
           },
-          ip_address: sessionRow.ip_address ?? null,
+          ip_address: (sessionRow.ip_address as string | null) ?? null,
           user_agent: sessionRow.user_agent ?? null,
           source_component: 'session_manager',
         });
@@ -872,7 +872,7 @@ export class SessionManager {
         event_category: event.event_category,
         severity_level: event.severity_level,
         event_description: event.event_description,
-        event_data: eventData,
+        event_data: eventData as SecurityEventInsert['event_data'],
         ip_address: event.ip_address ?? null,
         user_agent: event.user_agent ?? null,
         geolocation: null,
@@ -901,24 +901,31 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
   const ua = userAgent.toLowerCase();
 
   // デバイス判定
-  let device: string = 'desktop';
-  if (ua.includes('mobile') || ua.includes('android')) {
+  let device: string = 'Unknown';
+  if (ua.includes('mobile') || ua.includes('iphone') || ua.includes('android')) {
     device = 'mobile';
   } else if (ua.includes('tablet') || ua.includes('ipad')) {
     device = 'tablet';
+  } else if (
+    ua.includes('windows') ||
+    ua.includes('mac') ||
+    ua.includes('linux') ||
+    ua.includes('x11')
+  ) {
+    device = 'desktop';
   }
 
-  // OS判定
-  let os = 'unknown';
-  if (ua.includes('windows')) os = 'Windows';
+  // OS判定 (iOS/iPad/iPhoneをmacより先に判定)
+  let os = 'Unknown';
+  if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod'))
+    os = 'iOS';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('windows')) os = 'Windows';
   else if (ua.includes('mac')) os = 'macOS';
   else if (ua.includes('linux')) os = 'Linux';
-  else if (ua.includes('android')) os = 'Android';
-  else if (ua.includes('ios') || ua.includes('iphone') || ua.includes('ipad'))
-    os = 'iOS';
 
   // ブラウザ判定
-  let browser = 'unknown';
+  let browser = 'Unknown';
   if (ua.includes('edge')) browser = 'Edge';
   else if (ua.includes('chrome')) browser = 'Chrome';
   else if (ua.includes('firefox')) browser = 'Firefox';

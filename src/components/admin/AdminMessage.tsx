@@ -4,12 +4,14 @@ interface AdminMessageProps {
   message: string;
   type?: 'success' | 'error' | 'info';
   className?: string;
+  dataTestId?: string;
 }
 
 export function AdminMessage({
   message,
   type = 'success',
   className = '',
+  dataTestId,
 }: AdminMessageProps) {
   if (!message) return null;
 
@@ -20,8 +22,19 @@ export function AdminMessage({
     info: 'bg-blue-50 border border-blue-200 text-blue-700',
   };
 
+  const resolvedTestId =
+    dataTestId ??
+    (type === 'success'
+      ? 'success-message'
+      : type === 'error'
+      ? 'error-message'
+      : undefined);
+
   return (
-    <div className={`${baseClasses} ${typeClasses[type]} ${className}`}>
+    <div
+      className={`${baseClasses} ${typeClasses[type]} ${className}`}
+      data-testid={resolvedTestId}
+    >
       {message}
     </div>
   );

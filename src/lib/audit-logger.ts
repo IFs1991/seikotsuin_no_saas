@@ -292,12 +292,32 @@ export class AuditLogger {
 }
 
 // リクエストから IP アドレスとUser-Agentを取得するヘルパー
-export function getRequestInfo(request: Request) {
-  const ipAddress =
-    request.headers.get('x-forwarded-for') ||
-    request.headers.get('x-real-ip') ||
-    'unknown';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
+function normalizeHeaderValue(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function extractForwardedIp(value: string | null): string | null {
+  const normalized = normalizeHeaderValue(value);
+  if (!normalized) return null;
+  const first = normalized.split(',')[0]?.trim();
+  return first && first.length > 0 ? first : null;
+}
+
+export function getRequestInfoFromHeaders(headers: Headers) {
+  const cfConnectingIp = normalizeHeaderValue(
+    headers.get('cf-connecting-ip')
+  );
+  const realIp = normalizeHeaderValue(headers.get('x-real-ip'));
+  const forwardedIp = extractForwardedIp(headers.get('x-forwarded-for'));
+
+  const ipAddress = cfConnectingIp || realIp || forwardedIp || 'unknown';
+  const userAgent = normalizeHeaderValue(headers.get('user-agent')) || 'unknown';
 
   return { ipAddress, userAgent };
+}
+
+export function getRequestInfo(request: Request) {
+  return getRequestInfoFromHeaders(request.headers);
 }

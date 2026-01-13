@@ -89,7 +89,7 @@ const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
           window.location.href = '/daily-reports';
           break;
         case 'appointments':
-          window.location.href = '/patients';
+          window.location.href = '/reservations';
           break;
         case 'ai-chat':
           window.location.href = '/chat';

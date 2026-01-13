@@ -6,11 +6,11 @@ import {
   createClient,
   getCurrentUser,
   getUserPermissions,
+  canAccessClinicScope,
   type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
-
-const CROSS_CLINIC_ROLES = new Set(['admin', 'clinic_manager']);
+import { canAccessCrossClinicWithCompat, normalizeRole } from '@/lib/constants/roles';
 
 export interface ClinicAccessOptions {
   /**
@@ -69,9 +69,13 @@ export async function ensureClinicAccess(
   const requireClinicMatch =
     options.requireClinicMatch ?? (clinicId !== null && clinicId !== undefined);
   const allowedRoles = new Set(options.allowedRoles ?? []);
-  const hasPrivilegedRole = CROSS_CLINIC_ROLES.has(permissions.role);
+  // 互換マッピング適用: clinic_manager → clinic_admin
+  // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
+  const normalizedRole = normalizeRole(permissions.role);
+  const hasPrivilegedRole = canAccessCrossClinicWithCompat(permissions.role);
 
-  if (allowedRoles.size > 0 && !allowedRoles.has(permissions.role)) {
+  // allowedRoles チェックも正規化されたロールを使用
+  if (allowedRoles.size > 0 && !allowedRoles.has(normalizedRole ?? '')) {
     if (!hasPrivilegedRole) {
       await AuditLogger.logUnauthorizedAccess(
         path,
@@ -94,10 +98,15 @@ export async function ensureClinicAccess(
       );
     }
 
-    if (!hasPrivilegedRole && permissions.clinic_id !== clinicId) {
+    // Parent-scope check: use clinic_scope_ids if available, else fallback to clinic_id
+    // Admin bypass REMOVED: admin is also scoped to their parent organization
+    // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+    const hasClinicAccess = canAccessClinicScope(permissions, clinicId);
+
+    if (!hasClinicAccess) {
       await AuditLogger.logUnauthorizedAccess(
         `${path}?clinic_id=${clinicId}`,
-        'Forbidden clinic access',
+        'Forbidden clinic access (parent-scope violation)',
         user.id,
         user.email || '',
         ipAddress,

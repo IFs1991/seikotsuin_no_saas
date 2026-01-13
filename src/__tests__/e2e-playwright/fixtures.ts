@@ -1,0 +1,61 @@
+export const CLINIC_A_ID = '00000000-0000-0000-0000-0000000000a1';
+export const CLINIC_B_ID = '00000000-0000-0000-0000-0000000000b1';
+
+export const USER_ADMIN_ID = '00000000-0000-0000-0000-00000000a001';
+export const USER_MANAGER_ID = '00000000-0000-0000-0000-00000000a002';
+export const USER_STAFF_ID = '00000000-0000-0000-0000-00000000a003';
+export const USER_CLINIC_B_ID = '00000000-0000-0000-0000-00000000b001';
+export const USER_NO_CLINIC_ID = '00000000-0000-0000-0000-00000000ffff';
+
+// シフト関連の固定ID
+export const STAFF_SHIFT_IDS = [
+  '00000000-0000-0000-0000-00000000s001',
+  '00000000-0000-0000-0000-00000000s002',
+  '00000000-0000-0000-0000-00000000s003',
+  '00000000-0000-0000-0000-00000000s004',
+  '00000000-0000-0000-0000-00000000s005',
+  '00000000-0000-0000-0000-00000000s006',
+  '00000000-0000-0000-0000-00000000s007',
+];
+
+export const STAFF_PREFERENCE_IDS = [
+  '00000000-0000-0000-0000-00000000p001',
+  '00000000-0000-0000-0000-00000000p002',
+];
+
+export const RESOURCE_IDS = [
+  '00000000-0000-0000-0000-00000000e001',
+  '00000000-0000-0000-0000-00000000e002',
+  '00000000-0000-0000-0000-00000000e003',
+];
+
+// セキュリティ関連の固定ID
+export const SECURITY_EVENT_IDS = [
+  '00000000-0000-0000-0000-00000000sec1', // high severity event
+  '00000000-0000-0000-0000-00000000sec2', // medium severity event
+];
+
+export const USER_SESSION_ID = '00000000-0000-0000-0000-000000sess01';
+
+export const ADMIN_EMAIL =
+  process.env.TEST_ADMIN_EMAIL || 'e2e-admin@clinic.local';
+export const ADMIN_PASSWORD =
+  process.env.TEST_ADMIN_PASSWORD || 'Admin#12345';
+export const MANAGER_EMAIL =
+  process.env.TEST_CLINIC_A_EMAIL || 'e2e-manager@clinic.local';
+export const MANAGER_PASSWORD =
+  process.env.TEST_CLINIC_A_PASSWORD || 'Manager#12345';
+export const STAFF_EMAIL =
+  process.env.TEST_THERAPIST_EMAIL || 'e2e-staff@clinic.local';
+export const STAFF_PASSWORD =
+  process.env.TEST_THERAPIST_PASSWORD || 'Staff#12345';
+export const CLINIC_B_EMAIL =
+  process.env.TEST_CLINIC_B_EMAIL || 'e2e-clinic-b@clinic.local';
+export const CLINIC_B_PASSWORD =
+  process.env.TEST_CLINIC_B_PASSWORD || 'Staff#12345';
+
+// clinicId未割当ユーザー（認証コンテキスト連携テスト用）
+export const NO_CLINIC_EMAIL =
+  process.env.TEST_NO_CLINIC_EMAIL || 'e2e-no-clinic@clinic.local';
+export const NO_CLINIC_PASSWORD =
+  process.env.TEST_NO_CLINIC_PASSWORD || 'NoClinic#12345';

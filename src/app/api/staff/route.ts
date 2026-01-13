@@ -13,6 +13,7 @@ import {
   staffInsertSchema,
   staffQuerySchema,
 } from './schema';
+import { ADMIN_UI_ROLES, STAFF_ROLES, canAccessCrossClinicWithCompat } from '@/lib/constants/roles';
 
 const PATH = '/api/staff';
 
@@ -30,11 +31,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { clinic_id } = parsedQuery.data;
+    const { clinic_id: queryClinicId } = parsedQuery.data;
 
-    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
+    // Q3決定: 一般スタッフも閲覧可能（自院限定）
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    const { supabase, permissions } = await ensureClinicAccess(request, PATH, queryClinicId, {
+      allowedRoles: Array.from(STAFF_ROLES),
       requireClinicMatch: true,
     });
+
+    // DOD-09: テナント境界の明示 - permissions.clinic_idでスコープし、欠落時は拒否
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    const isHQ = canAccessCrossClinicWithCompat(permissions.role);
+
+    // HQロール以外はpermissions.clinic_idが必須
+    if (!isHQ && !permissions.clinic_id) {
+      return createErrorResponse('クリニックが割り当てられていません', 403);
+    }
+
+    // 使用するclinic_id: HQロールはクエリパラメータ、それ以外はpermissions.clinic_id
+    const clinic_id = isHQ ? queryClinicId : permissions.clinic_id!;
 
     const { data: staffPerformance, error: staffError } = await supabase
       .from('staff_performance_summary')
@@ -121,42 +137,152 @@ export async function GET(request: NextRequest) {
         {} as Record<string, any[]>
       ) || {};
 
-    const skillMatrix =
-      staffPerformance?.map(staff => ({
-        id: staff.staff_id,
-        name: staff.staff_name,
-        skills: [
-          { name: '基本施術', level: Math.floor(Math.random() * 5) + 1 },
-          { name: 'カウンセリング', level: Math.floor(Math.random() * 5) + 1 },
-          { name: '専門技術', level: Math.floor(Math.random() * 5) + 1 },
-          { name: '接客', level: Math.floor(Math.random() * 5) + 1 },
-        ],
-      })) || [];
+    // シフト分析：時間帯別予約数を取得
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const trainingHistory = [
-      {
-        id: 1,
-        staff_id: staffPerformance?.[0]?.staff_id,
-        title: '基礎施術研修',
-        date: '2024-01-15',
-        completed: true,
-      },
-      {
-        id: 2,
-        staff_id: staffPerformance?.[0]?.staff_id,
-        title: 'コミュニケーション研修',
-        date: '2024-02-20',
-        completed: true,
-      },
-    ];
+    const { data: reservations, error: reservationsError } = await supabase
+      .from('reservations')
+      .select('id, staff_id, start_time, end_time, status')
+      .eq('clinic_id', clinic_id)
+      .gte('start_time', thirtyDaysAgo.toISOString())
+      .lte('start_time', new Date().toISOString());
+
+    if (reservationsError) {
+      throw normalizeSupabaseError(reservationsError, PATH);
+    }
+
+    // 時間帯別予約数を集計
+    const hourlyReservations: { hour: number; count: number }[] = [];
+    const hourCounts: Record<number, number> = {};
+
+    reservations?.forEach(res => {
+      const hour = new Date(res.start_time).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+
+    for (let h = 0; h < 24; h++) {
+      hourlyReservations.push({ hour: h, count: hourCounts[h] || 0 });
+    }
+
+    // スタッフリソースの稼働時間を取得
+    const { data: resources, error: resourcesError } = await supabase
+      .from('resources')
+      .select('id, name, type, working_hours')
+      .eq('clinic_id', clinic_id)
+      .eq('type', 'staff');
+
+    if (resourcesError) {
+      throw normalizeSupabaseError(resourcesError, PATH);
+    }
+
+    // 稼働率を計算
+    let totalAvailableMinutes = 0;
+    let totalBookedMinutes = 0;
+
+    resources?.forEach(resource => {
+      // 営業時間から利用可能時間を計算（簡易計算：平日5日 x 8時間 x 30日/7 = 約171時間）
+      const workingHours = resource.working_hours as Record<
+        string,
+        { start: string; end: string } | null
+      > | null;
+      if (workingHours) {
+        const weekdays = [
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sunday',
+        ];
+        let weeklyMinutes = 0;
+
+        weekdays.forEach(day => {
+          const dayHours = workingHours[day];
+          if (dayHours && dayHours.start && dayHours.end) {
+            const [startH, startM] = dayHours.start.split(':').map(Number);
+            const [endH, endM] = dayHours.end.split(':').map(Number);
+            const dailyMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            weeklyMinutes += dailyMinutes;
+          }
+        });
+
+        // 30日分 ≒ 約4.3週
+        totalAvailableMinutes += weeklyMinutes * (30 / 7);
+      }
+    });
+
+    // 予約時間を集計
+    reservations?.forEach(res => {
+      if (res.status !== 'cancelled' && res.status !== 'no_show') {
+        const start = new Date(res.start_time);
+        const end = new Date(res.end_time);
+        const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+        totalBookedMinutes += durationMinutes;
+      }
+    });
+
+    const utilizationRate =
+      totalAvailableMinutes > 0
+        ? Math.round((totalBookedMinutes / totalAvailableMinutes) * 100)
+        : 0;
+
+    // 推奨コメントを生成
+    const recommendations: string[] = [];
+
+    // ピーク時間帯の分析
+    const peakHours = hourlyReservations
+      .filter(h => h.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    if (peakHours.length > 0) {
+      const peakHourLabels = peakHours.map(h => `${h.hour}時`).join('、');
+      recommendations.push(
+        `ピーク時間帯は${peakHourLabels}です。この時間帯にスタッフを増員することを検討してください。`
+      );
+    }
+
+    // 稼働率に基づく推奨
+    if (utilizationRate < 50) {
+      recommendations.push(
+        `稼働率が${utilizationRate}%と低めです。予約促進キャンペーンの実施を検討してください。`
+      );
+    } else if (utilizationRate > 85) {
+      recommendations.push(
+        `稼働率が${utilizationRate}%と高いです。スタッフの増員または営業時間の拡大を検討してください。`
+      );
+    } else {
+      recommendations.push(
+        `稼働率は${utilizationRate}%で適正範囲内です。現在のシフト体制を維持してください。`
+      );
+    }
+
+    // 閑散時間帯の分析
+    const lowHours = hourlyReservations
+      .filter(h => h.hour >= 9 && h.hour <= 18 && h.count === 0)
+      .map(h => h.hour);
+
+    if (lowHours.length > 0) {
+      const lowHourLabels = lowHours.slice(0, 3).map(h => `${h}時`).join('、');
+      recommendations.push(
+        `${lowHourLabels}は予約が少ない傾向があります。この時間帯限定の割引を検討してください。`
+      );
+    }
+
+    const shiftAnalysis = {
+      hourlyReservations,
+      utilizationRate,
+      recommendations,
+    };
 
     return createSuccessResponse({
       staffMetrics,
       revenueRanking,
       satisfactionCorrelation,
       performanceTrends,
-      skillMatrix,
-      trainingHistory,
+      shiftAnalysis,
       totalStaff: staffPerformance?.length || 0,
       activeStaff:
         staffPerformance?.filter(s => s.working_days > 0).length || 0,
@@ -212,7 +338,7 @@ export async function POST(request: NextRequest) {
       PATH,
       dto.clinic_id,
       {
-        allowedRoles: ['admin', 'clinic_manager'],
+        allowedRoles: Array.from(ADMIN_UI_ROLES),
         requireClinicMatch: true,
       }
     );

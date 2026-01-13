@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { UserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/user-profile';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -16,6 +16,8 @@ interface HeaderProps {
 
 const ADMIN_LINKS = [
   { id: 'admin-home', label: '管理ダッシュボード', href: '/admin' },
+  { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
+  { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
   { id: 'admin-master', label: 'マスタ管理', href: '/admin/master' },
   {
     id: 'admin-security',

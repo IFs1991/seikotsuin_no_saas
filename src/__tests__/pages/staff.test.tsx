@@ -1,52 +1,77 @@
 /** @jest-environment jsdom */
 
+/**
+ * Staff Management Page Tests
+ * @spec docs/stabilization/jest-mock-unification-spec-v0.1.md - Error Class 4
+ */
+
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import StaffManagementPage from '@/app/staff/page';
 import { useStaffAnalysis } from '@/hooks/useStaffAnalysis';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
-// Mock the custom hook
+// Mock the custom hooks
 jest.mock('@/hooks/useStaffAnalysis');
 const mockUseStaffAnalysis = useStaffAnalysis as jest.MockedFunction<
   typeof useStaffAnalysis
 >;
 
-// Mock data
+// Mock useUserProfileContext - required by StaffManagementPage
+jest.mock('@/providers/user-profile-context');
+const mockUseUserProfileContext = useUserProfileContext as jest.MockedFunction<
+  typeof useUserProfileContext
+>;
+
+// Mock data - updated to match new API response
 const mockStaffData = {
   staffMetrics: {
     dailyPatients: 12,
+    totalRevenue: 500000,
+    averageSatisfaction: 4.5,
   },
   revenueRanking: [
-    { name: '田中', revenue: 120000, percentage: 28 },
-    { name: '佐藤', revenue: 110000, percentage: 25 },
-    { name: '山田', revenue: 95000, percentage: 22 },
+    { staff_id: 'staff-1', name: '田中', revenue: 120000, patients: 50, satisfaction: 4.5 },
+    { staff_id: 'staff-2', name: '佐藤', revenue: 110000, patients: 45, satisfaction: 4.2 },
+    { staff_id: 'staff-3', name: '山田', revenue: 95000, patients: 40, satisfaction: 4.0 },
   ],
-  satisfactionCorrelation: {
-    overall: 4.2,
-  },
-  skillMatrix: [
-    { id: 1, name: '整体技術', level: 5 },
-    { id: 2, name: 'コミュニケーション', level: 4 },
-    { id: 3, name: '鍼灸技術', level: 3 },
+  satisfactionCorrelation: [
+    { name: '田中', satisfaction: 4.5, revenue: 120000, patients: 50 },
+    { name: '佐藤', satisfaction: 4.2, revenue: 110000, patients: 45 },
   ],
-  trainingHistory: [
-    { id: 1, title: '整体認定研修', date: '2024-07-15' },
-    { id: 2, title: '接客マナー講習', date: '2024-06-20' },
-    { id: 3, title: '鍼灸基礎コース', date: '2024-05-10' },
-  ],
-  performanceTrends: {
-    monthly: [
-      { month: '7月', patients: 280, revenue: 350000 },
-      { month: '6月', patients: 260, revenue: 330000 },
+  performanceTrends: {},
+  shiftAnalysis: {
+    hourlyReservations: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: i >= 9 && i <= 18 ? 5 : 0 })),
+    utilizationRate: 65,
+    recommendations: [
+      'ピーク時間帯は10時、14時、16時です。この時間帯にスタッフを増員することを検討してください。',
+      '稼働率は65%で適正範囲内です。現在のシフト体制を維持してください。',
     ],
   },
+  totalStaff: 5,
+  activeStaff: 4,
   isLoading: false,
+  error: null,
+  refetch: jest.fn(),
 };
 
 describe('StaffManagementPage', () => {
   beforeEach(() => {
     mockUseStaffAnalysis.mockReturnValue(mockStaffData);
+    // Mock useUserProfileContext with valid profile
+    mockUseUserProfileContext.mockReturnValue({
+      profile: {
+        id: 'test-user-id',
+        email: 'test@example.com',
+        role: 'clinic_admin',
+        clinicId: 'test-clinic-id',
+        isActive: true,
+        isAdmin: true,
+      },
+      loading: false,
+      error: null,
+    });
   });
 
   afterEach(() => {
@@ -56,43 +81,38 @@ describe('StaffManagementPage', () => {
   test('should render staff management page with main title', () => {
     render(<StaffManagementPage />);
 
-    expect(screen.getByText('スタッフ生産性管理')).toBeInTheDocument();
-    expect(
-      screen.getByText('施術者のパフォーマンスと成長を追跡・管理')
-    ).toBeInTheDocument();
+    expect(screen.getByText('スタッフ分析とシフト最適化')).toBeInTheDocument();
   });
 
   test('should display tab navigation', () => {
     render(<StaffManagementPage />);
 
     expect(screen.getByText('パフォーマンス')).toBeInTheDocument();
-    expect(screen.getByText('シフト最適化')).toBeInTheDocument();
-    expect(screen.getByText('スキル管理')).toBeInTheDocument();
+    expect(screen.getByText('シフト分析')).toBeInTheDocument();
   });
 
-  test('should display skill matrix when skills tab is clicked', () => {
+  test('should display metrics cards', () => {
     render(<StaffManagementPage />);
 
-    const skillsTab = screen.getByText('スキル管理');
-    fireEvent.click(skillsTab);
-
-    expect(screen.getByText('スキルマトリックス')).toBeInTheDocument();
-    expect(screen.getByText('整体技術')).toBeInTheDocument();
-    expect(screen.getByText('コミュニケーション')).toBeInTheDocument();
-    expect(screen.getByText('鍼灸技術')).toBeInTheDocument();
+    expect(screen.getByText('平均患者数/日')).toBeInTheDocument();
+    expect(screen.getByText('12.0')).toBeInTheDocument();
+    expect(screen.getByText('総売上')).toBeInTheDocument();
+    expect(screen.getByText('¥500,000')).toBeInTheDocument();
+    expect(screen.getByText('平均満足度')).toBeInTheDocument();
+    // 4.50 appears multiple times (in metrics card and in ranking table)
+    expect(screen.getAllByText('4.50').length).toBeGreaterThan(0);
   });
 
-  test('should display training history when skills tab is clicked', () => {
+  test('should display shift analysis when shifts tab is clicked', () => {
     render(<StaffManagementPage />);
 
-    const skillsTab = screen.getByText('スキル管理');
-    fireEvent.click(skillsTab);
+    const shiftsTab = screen.getByText('シフト分析');
+    fireEvent.click(shiftsTab);
 
-    expect(screen.getByText('研修・資格履歴')).toBeInTheDocument();
-    expect(screen.getByText('整体認定研修')).toBeInTheDocument();
-    expect(screen.getByText('2024-07-15')).toBeInTheDocument();
-    expect(screen.getByText('接客マナー講習')).toBeInTheDocument();
-    expect(screen.getByText('2024-06-20')).toBeInTheDocument();
+    expect(screen.getByText('稼働率:')).toBeInTheDocument();
+    expect(screen.getByText('65%')).toBeInTheDocument();
+    expect(screen.getByText('時間帯別予約数（過去30日）')).toBeInTheDocument();
+    expect(screen.getByText('推奨事項')).toBeInTheDocument();
   });
 
   test('should display loading state', () => {
@@ -106,12 +126,32 @@ describe('StaffManagementPage', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
+  test('should display error state', () => {
+    mockUseStaffAnalysis.mockReturnValue({
+      ...mockStaffData,
+      error: 'APIエラーが発生しました',
+    });
+
+    render(<StaffManagementPage />);
+
+    expect(screen.getByText('APIエラーが発生しました')).toBeInTheDocument();
+  });
+
   test('should display performance metrics when performance tab is active', () => {
     render(<StaffManagementPage />);
 
     // Performance tab should be active by default
-    expect(screen.getByText('田中')).toBeInTheDocument();
-    expect(screen.getByText('120,000')).toBeInTheDocument();
-    expect(screen.getByText('28%')).toBeInTheDocument();
+    expect(screen.getByText('売上ランキング')).toBeInTheDocument();
+    // 田中 appears in both revenue ranking and satisfaction correlation
+    expect(screen.getAllByText('田中').length).toBeGreaterThan(0);
+    // ¥120,000 appears in both sections too
+    expect(screen.getAllByText('¥120,000').length).toBeGreaterThan(0);
+  });
+
+  test('should display staff count badges', () => {
+    render(<StaffManagementPage />);
+
+    expect(screen.getByText('総スタッフ: 5名')).toBeInTheDocument();
+    expect(screen.getByText('稼働中: 4名')).toBeInTheDocument();
   });
 });

@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
 
 interface TimeSlot {
   start: string;
@@ -28,8 +31,14 @@ interface SpecialDate {
   timeSlots?: TimeSlot[];
 }
 
-export function ClinicHoursSettings() {
-  const [schedule, setSchedule] = useState<WeekSchedule>({
+interface ClinicHoursData {
+  hoursByDay: WeekSchedule;
+  holidays: string[];
+  specialClosures: SpecialDate[];
+}
+
+const initialData: ClinicHoursData = {
+  hoursByDay: {
     monday: {
       isOpen: true,
       timeSlots: [
@@ -67,20 +76,39 @@ export function ClinicHoursSettings() {
     },
     saturday: { isOpen: true, timeSlots: [{ start: '09:00', end: '13:00' }] },
     sunday: { isOpen: false, timeSlots: [] },
-  });
+  },
+  holidays: [],
+  specialClosures: [],
+};
 
-  const [specialDates, setSpecialDates] = useState<SpecialDate[]>([
-    { date: '2025-01-01', type: 'holiday', label: '元旦' },
-    {
-      date: '2025-12-31',
-      type: 'specialHours',
-      label: '年末営業',
-      timeSlots: [{ start: '09:00', end: '15:00' }],
-    },
-  ]);
+export function ClinicHoursSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+  const {
+    data: formData,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'clinic_hours',
+    autoLoad: true,
+  } : undefined);
+
+  // ローディング中
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
+
+  const schedule = formData.hoursByDay;
+  const specialDates = formData.specialClosures;
 
   const dayNames = {
     monday: '月曜日',
@@ -93,34 +121,37 @@ export function ClinicHoursSettings() {
   };
 
   const toggleDayOpen = (day: string) => {
-    setSchedule(prev => ({
-      ...prev,
+    const newSchedule = {
+      ...schedule,
       [day]: {
-        ...prev[day],
-        isOpen: !prev[day].isOpen,
-        timeSlots: !prev[day].isOpen ? [{ start: '09:00', end: '17:00' }] : [],
+        ...schedule[day],
+        isOpen: !schedule[day].isOpen,
+        timeSlots: !schedule[day].isOpen ? [{ start: '09:00', end: '17:00' }] : [],
       },
-    }));
+    };
+    updateData({ hoursByDay: newSchedule });
   };
 
   const addTimeSlot = (day: string) => {
-    setSchedule(prev => ({
-      ...prev,
+    const newSchedule = {
+      ...schedule,
       [day]: {
-        ...prev[day],
-        timeSlots: [...prev[day].timeSlots, { start: '09:00', end: '17:00' }],
+        ...schedule[day],
+        timeSlots: [...schedule[day].timeSlots, { start: '09:00', end: '17:00' }],
       },
-    }));
+    };
+    updateData({ hoursByDay: newSchedule });
   };
 
   const removeTimeSlot = (day: string, index: number) => {
-    setSchedule(prev => ({
-      ...prev,
+    const newSchedule = {
+      ...schedule,
       [day]: {
-        ...prev[day],
-        timeSlots: prev[day].timeSlots.filter((_, i) => i !== index),
+        ...schedule[day],
+        timeSlots: schedule[day].timeSlots.filter((_, i) => i !== index),
       },
-    }));
+    };
+    updateData({ hoursByDay: newSchedule });
   };
 
   const updateTimeSlot = (
@@ -129,31 +160,36 @@ export function ClinicHoursSettings() {
     field: 'start' | 'end',
     value: string
   ) => {
-    setSchedule(prev => ({
-      ...prev,
+    const newSchedule = {
+      ...schedule,
       [day]: {
-        ...prev[day],
-        timeSlots: prev[day].timeSlots.map((slot, i) =>
+        ...schedule[day],
+        timeSlots: schedule[day].timeSlots.map((slot, i) =>
           i === index ? { ...slot, [field]: value } : slot
         ),
       },
-    }));
+    };
+    updateData({ hoursByDay: newSchedule });
   };
 
   const addSpecialDate = () => {
-    setSpecialDates(prev => [
-      ...prev,
-      {
-        date: '',
-        type: 'holiday',
-        label: '',
-        timeSlots: [],
-      },
-    ]);
+    updateData({
+      specialClosures: [
+        ...specialDates,
+        {
+          date: '',
+          type: 'holiday',
+          label: '',
+          timeSlots: [],
+        },
+      ],
+    });
   };
 
   const removeSpecialDate = (index: number) => {
-    setSpecialDates(prev => prev.filter((_, i) => i !== index));
+    updateData({
+      specialClosures: specialDates.filter((_, i) => i !== index),
+    });
   };
 
   const updateSpecialDate = (
@@ -161,38 +197,24 @@ export function ClinicHoursSettings() {
     field: keyof SpecialDate,
     value: any
   ) => {
-    setSpecialDates(prev =>
-      prev.map((date, i) => (i === index ? { ...date, [field]: value } : date))
-    );
+    updateData({
+      specialClosures: specialDates.map((date, i) =>
+        i === index ? { ...date, [field]: value } : date
+      ),
+    });
   };
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('診療時間設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  const onSave = async () => {
+    await handleSave();
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* 通常営業時間 */}
@@ -414,12 +436,16 @@ export function ClinicHoursSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

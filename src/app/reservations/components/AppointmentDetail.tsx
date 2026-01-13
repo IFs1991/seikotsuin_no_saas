@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Appointment, MenuItem, MenuOptionItem, SchedulerResource } from '../types';
+import Link from 'next/link';
+import { Appointment, AppointmentUpdateResult, MenuItem, MenuOptionItem, SchedulerResource } from '../types';
 import { calculateEndTime, calculateDuration } from '../utils/time';
 import { X, Trash2, Edit, Check, Undo } from 'lucide-react';
 import { AppointmentSummary } from './AppointmentSummary';
@@ -11,15 +12,17 @@ interface Props {
   menus: MenuItem[];
   options: MenuOptionItem[];
   onClose: () => void;
-  onUpdate: (updatedAppointment: Appointment) => void;
+  onUpdate: (updatedAppointment: Appointment) => Promise<AppointmentUpdateResult>;
 }
 
 export const AppointmentDetail: React.FC<Props> = ({ appointment, resources, menus, options, onClose, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setFormData(appointment);
+    setErrorMessage(null);
   }, [appointment]);
 
   const handleInputChange = (field: keyof Appointment, value: any) => {
@@ -65,18 +68,28 @@ export const AppointmentDetail: React.FC<Props> = ({ appointment, resources, men
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setErrorMessage(null);
     const title = (formData.lastName && formData.firstName)
         ? `${formData.lastName} ${formData.firstName}`
         : formData.title;
     
-    onUpdate({ ...formData, title });
-    setIsEditing(false);
+    try {
+      const result = await onUpdate({ ...formData, title });
+      if (result.ok) {
+        setIsEditing(false);
+      } else {
+        setErrorMessage(result.error ?? 'Failed to update reservation.');
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to update reservation.');
+    }
   };
 
   const handleCancelEdit = () => {
     setFormData(appointment);
     setIsEditing(false);
+    setErrorMessage(null);
   };
 
   return (
@@ -110,6 +123,11 @@ export const AppointmentDetail: React.FC<Props> = ({ appointment, resources, men
 
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto">
+            {errorMessage && (
+              <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
             {isEditing ? (
                 <AppointmentEditForm 
                     formData={formData} 
@@ -149,9 +167,16 @@ export const AppointmentDetail: React.FC<Props> = ({ appointment, resources, men
                  </div>
              ) : (
                 <>
-                <button className="text-xs font-bold text-sky-600 hover:underline">
-                    詳細ページ
-                </button>
+                {appointment.customerId ? (
+                    <Link
+                        href={`/patients/${appointment.customerId}`}
+                        className="text-xs font-bold text-sky-600 hover:underline"
+                    >
+                        詳細ページ
+                    </Link>
+                ) : (
+                    <span className="text-xs font-bold text-gray-400">詳細ページ</span>
+                )}
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setIsEditing(true)}

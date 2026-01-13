@@ -2,16 +2,17 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Save, Plus, Edit, Trash2, Clock, Package, Ticket } from 'lucide-react';
+import { Save, Plus, Edit, Trash2, Clock, Package, Ticket, Loader2 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
 
 interface Service {
   id: string;
   name: string;
   description: string;
-  duration: number; // 分
+  duration: number;
   price: number;
   insuranceApplicable: boolean;
   category: 'treatment' | 'massage' | 'rehabilitation' | 'other';
@@ -28,20 +29,26 @@ interface Product {
   isActive: boolean;
 }
 
-interface Package {
+interface ServicePackage {
   id: string;
   name: string;
   description: string;
   sessions: number;
   originalPrice: number;
   discountedPrice: number;
-  validityPeriod: number; // 日
+  validityPeriod: number;
   services: string[];
   isActive: boolean;
 }
 
-export function ServicesPricingSettings() {
-  const [services, setServices] = useState<Service[]>([
+interface ServicesPricingData {
+  services: Service[];
+  products: Product[];
+  packages: ServicePackage[];
+}
+
+const initialData: ServicesPricingData = {
+  services: [
     {
       id: '1',
       name: '整体治療',
@@ -62,9 +69,8 @@ export function ServicesPricingSettings() {
       category: 'massage',
       isActive: true,
     },
-  ]);
-
-  const [products, setProducts] = useState<Product[]>([
+  ],
+  products: [
     {
       id: '1',
       name: 'サポーター（膝用）',
@@ -83,9 +89,8 @@ export function ServicesPricingSettings() {
       category: 'supplement',
       isActive: true,
     },
-  ]);
-
-  const [packages, setPackages] = useState<Package[]>([
+  ],
+  packages: [
     {
       id: '1',
       name: '整体5回券',
@@ -97,81 +102,91 @@ export function ServicesPricingSettings() {
       services: ['1'],
       isActive: true,
     },
-  ]);
+  ],
+};
+
+export function ServicesPricingSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
+
+  const {
+    data: formData,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'services_pricing',
+    autoLoad: true,
+  } : undefined);
 
   const [activeTab, setActiveTab] = useState<
     'services' | 'products' | 'packages'
   >('services');
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
 
   const categoryNames = {
-    // サービスカテゴリ
     treatment: '治療',
     massage: 'マッサージ',
     rehabilitation: 'リハビリ',
-    // 商品カテゴリ
     supplement: 'サプリメント',
     equipment: '器具・用品',
     accessory: 'アクセサリー',
     other: 'その他',
   };
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('サービス・料金設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  const services = formData.services;
+  const products = formData.products;
+  const packages = formData.packages;
+
+  const onSave = async () => {
+    await handleSave();
   };
 
   const toggleServiceStatus = (serviceId: string) => {
-    setServices(prev =>
-      prev.map(service =>
+    updateData({
+      services: services.map(service =>
         service.id === serviceId
           ? { ...service, isActive: !service.isActive }
           : service
-      )
-    );
+      ),
+    });
   };
 
   const toggleProductStatus = (productId: string) => {
-    setProducts(prev =>
-      prev.map(product =>
+    updateData({
+      products: products.map(product =>
         product.id === productId
           ? { ...product, isActive: !product.isActive }
           : product
-      )
-    );
+      ),
+    });
   };
 
   const togglePackageStatus = (packageId: string) => {
-    setPackages(prev =>
-      prev.map(pkg =>
+    updateData({
+      packages: packages.map(pkg =>
         pkg.id === packageId ? { ...pkg, isActive: !pkg.isActive } : pkg
-      )
-    );
+      ),
+    });
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* タブナビゲーション */}
@@ -455,12 +470,16 @@ export function ServicesPricingSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

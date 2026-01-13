@@ -22,6 +22,9 @@ const AdminMasterPage: React.FC = () => {
     createMasterData,
     updateMasterData,
     deleteMasterData,
+    exportMasterData,
+    importMasterData,
+    rollbackMasterData,
   } = useAdminMaster();
 
   const [currentTable, setCurrentTable] = useState<string>('');
@@ -87,9 +90,9 @@ const AdminMasterPage: React.FC = () => {
                   onCreate={createMasterData}
                   onUpdate={updateMasterData}
                   onDelete={deleteMasterData}
-                  onImport={() => {}} // TODO: インポート機能の実装
-                  onExport={() => {}} // TODO: エクスポート機能の実装
-                  onRollback={() => {}} // TODO: ロールバック機能の実装
+                  onImport={importMasterData}
+                  onExport={exportMasterData}
+                  onRollback={rollbackMasterData}
                 />
               </TabsContent>
             </Tabs>

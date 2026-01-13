@@ -9,9 +9,24 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import type { Database } from '@/types/supabase';
+import { ADMIN_UI_ROLES, isHQRole } from '@/lib/constants/roles';
 
-type SystemSettingRow =
-  Database['public']['Tables']['system_settings']['Row'];
+// TODO: system_settings テーブルは clinic_settings に統合されたため、
+// このAPIは clinic_settings の新しいスキーマに対応するリファクタリングが必要
+type SystemSettingRow = {
+  id: string;
+  clinic_id: string;
+  key: string;
+  value: unknown;
+  data_type?: string;
+  category: string;
+  description?: string;
+  is_editable?: boolean;
+  is_public?: boolean;
+  display_order?: number;
+  created_at: string;
+  updated_at: string;
+};
 
 const parseSettingValue = (raw: unknown) => {
   if (typeof raw !== 'string') {
@@ -91,7 +106,7 @@ export async function GET(request: NextRequest) {
       clinicParam === 'null' || clinicParam === 'global' ? null : clinicParam;
 
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       clinicId: normalizedClinicId ?? null,
       requireClinicMatch:
         normalizedClinicId !== null && normalizedClinicId !== undefined,
@@ -106,7 +121,7 @@ export async function GET(request: NextRequest) {
     let effectiveClinicId = normalizedClinicId;
     if (
       effectiveClinicId === undefined &&
-      permissions.role === 'clinic_manager'
+      permissions.role === 'clinic_admin'
     ) {
       effectiveClinicId = permissions.clinic_id ?? null;
     }
@@ -168,7 +183,7 @@ export async function POST(request: NextRequest) {
     // 共通前処理（認証・サニタイゼーション）
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -210,9 +225,18 @@ export async function POST(request: NextRequest) {
 
     const targetClinicId =
       clinic_id ??
-      (permissions.role === 'clinic_manager'
+      (permissions.role === 'clinic_admin'
         ? (permissions.clinic_id ?? null)
         : null);
+
+    // Q2決定: グローバル設定（clinic_id=null）の変更は admin のみ
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    if (targetClinicId === null && !isHQRole(permissions.role)) {
+      return createErrorResponse(
+        'グローバル設定の変更は管理者のみ可能です',
+        403
+      );
+    }
 
     // system_settingsテーブルに挿入
     const { data, error } = await (supabase
@@ -272,7 +296,7 @@ export async function PUT(request: NextRequest) {
     // 共通前処理（認証・サニタイゼーション）
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -352,6 +376,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Q2決定: グローバル設定（clinic_id=null）の変更は admin のみ
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    if (data.clinic_id === null && !isHQRole(permissions.role)) {
+      return createErrorResponse(
+        'グローバル設定の変更は管理者のみ可能です',
+        403
+      );
+    }
+
     // 監査ログ記録
     await AuditLogger.logDataModify(
       auth.id,
@@ -378,7 +411,7 @@ export async function DELETE(request: NextRequest) {
   try {
     // 共通前処理（認証・認可チェック）
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -417,6 +450,15 @@ export async function DELETE(request: NextRequest) {
     ) {
       return createErrorResponse(
         '指定されたクリニックへのアクセス権限がありません',
+        403
+      );
+    }
+
+    // Q2決定: グローバル設定（clinic_id=null）の変更は admin のみ
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    if (settingMeta.clinic_id === null && !isHQRole(permissions.role)) {
+      return createErrorResponse(
+        'グローバル設定の削除は管理者のみ可能です',
         403
       );
     }

@@ -15,12 +15,20 @@ interface RateLimitConfig {
   onLimitExceeded?: (request: NextRequest, result: any) => NextResponse;
 }
 
+const hasRateLimitBackend = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
 /**
  * レート制限ミドルウェア生成関数
  */
 export function createRateLimitMiddleware(config: RateLimitConfig) {
   return async (request: NextRequest): Promise<NextResponse | null> => {
     try {
+      if (!hasRateLimitBackend) {
+        return null;
+      }
+
       // スキップ条件チェック
       if (config.skipIf && config.skipIf(request)) {
         return null; // スキップ

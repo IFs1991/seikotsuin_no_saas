@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -6,30 +8,55 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import useMultiStore from '../../hooks/useMultiStore';
-import StoreComparisonChart from '../../components/multi-store/store-comparison-chart';
-import BestPracticeCard from '../../components/multi-store/best-practice-card';
+import { useMultiStore, ClinicWithKPI } from '@/hooks/useMultiStore';
+
+type SortDirection = 'asc' | 'desc';
+type SortField = 'revenue' | 'patients' | 'performance' | null;
 
 const MultiStorePage: React.FC = () => {
   const {
-    bestPractices,
+    clinics,
     loading,
     error,
-    getRankings,
+    fetchClinicsWithKPI,
+    sortByRevenue,
+    sortByPatients,
+    sortByPerformance,
+    totalRevenue,
+    totalPatients,
+    averagePerformanceScore,
   } = useMultiStore();
 
-  const storeKpis = getRankings('revenue').map(clinic => ({
-    clinicName: clinic.name,
-    revenue: clinic.revenue,
-    patients: clinic.patients,
-    satisfaction: clinic.staff_performance_score,
-  }));
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  useEffect(() => {
+    fetchClinicsWithKPI();
+  }, [fetchClinicsWithKPI]);
+
+  const handleSort = (field: 'revenue' | 'patients' | 'performance') => {
+    const newDirection: SortDirection =
+      sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
+    setSortField(field);
+    setSortDirection(newDirection);
+
+    if (field === 'revenue') {
+      sortByRevenue(newDirection);
+    } else if (field === 'patients') {
+      sortByPatients(newDirection);
+    } else if (field === 'performance') {
+      sortByPerformance(newDirection);
+    }
+  };
+
+  const formatCurrency = (value: number): string => {
+    return value.toLocaleString('ja-JP');
+  };
 
   if (loading) {
     return (
       <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-gray-900 dark:text-gray-100'>
-        <p>データを読み込み中...</p>
+        <div data-testid='loading-spinner' className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
       </div>
     );
   }
@@ -37,142 +64,167 @@ const MultiStorePage: React.FC = () => {
   if (error) {
     return (
       <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
-        <p>エラーが発生しました: {error}</p>
+        <p>{error}</p>
       </div>
     );
   }
 
   return (
     <div className='bg-white dark:bg-gray-800 min-h-screen text-gray-900 dark:text-gray-100 p-4'>
-      <div className='max-w-4xl mx-auto py-8'>
-        <Card className='w-full bg-card shadow-lg rounded-lg'>
-          <CardHeader className='bg-card pb-4'>
-            <CardTitle className='text-2xl font-bold text-center text-[#1e3a8a] dark:text-gray-100'>
-              マルチ店舗比較分析
+      <div className='max-w-6xl mx-auto py-8'>
+        <h1 className='text-2xl font-bold text-center text-[#1e3a8a] dark:text-gray-100 mb-8'>
+          多店舗分析
+        </h1>
+
+        {/* サマリーカード */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
+          <Card className='bg-card shadow-md'>
+            <CardHeader className='pb-2'>
+              <CardDescription className='text-gray-600 dark:text-gray-300'>
+                合計収益
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p
+                data-testid='total-revenue'
+                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
+              >
+                {formatCurrency(totalRevenue)}円
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className='bg-card shadow-md'>
+            <CardHeader className='pb-2'>
+              <CardDescription className='text-gray-600 dark:text-gray-300'>
+                合計患者数
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p
+                data-testid='total-patients'
+                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
+              >
+                {totalPatients}人
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className='bg-card shadow-md'>
+            <CardHeader className='pb-2'>
+              <CardDescription className='text-gray-600 dark:text-gray-300'>
+                平均パフォーマンス
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p
+                data-testid='average-performance'
+                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
+              >
+                {averagePerformanceScore !== null
+                  ? averagePerformanceScore.toFixed(2)
+                  : '-'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 店舗別KPI比較テーブル */}
+        <Card className='bg-card shadow-lg'>
+          <CardHeader>
+            <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
+              店舗別KPI比較
             </CardTitle>
-            <CardDescription className='text-center text-gray-600 dark:text-gray-300 mt-2'>
-              全店舗のパフォーマンスを比較し、ベストプラクティスを共有します。
+            <CardDescription className='text-gray-600 dark:text-gray-300'>
+              各店舗の主要指標を比較します。ヘッダーをクリックでソートできます。
             </CardDescription>
           </CardHeader>
-          <CardContent className='bg-card space-y-8 pt-4'>
-            {/* 店舗別KPIランキング */}
-            <Card className='bg-card shadow-md'>
-              <CardHeader className='bg-card'>
-                <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-                  店舗別KPIランキング
-                </CardTitle>
-                <CardDescription className='text-gray-600 dark:text-gray-300'>
-                  主要な経営指標に基づいた店舗のランキングです。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='bg-card'>
-                {storeKpis && storeKpis.length > 0 ? (
-                  <div className='overflow-x-auto'>
-                    <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
-                      <thead className='bg-gray-50 dark:bg-gray-700'>
-                        <tr>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                            店舗名
-                          </th>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                            売上
-                          </th>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                            患者数
-                          </th>
-                          <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                            満足度
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className='bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700'>
-                        {storeKpis.map((kpi, index) => (
-                          <tr key={index}>
-                            <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
-                              {kpi.clinicName}
-                            </td>
-                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                              {kpi.revenue.toLocaleString()}
-                            </td>
-                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                              {kpi.patients}人
-                            </td>
-                            <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                              {kpi.satisfaction}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className='text-gray-500 dark:text-gray-400'>
-                    KPIデータがありません。
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* 店舗間比較チャート */}
-            <Card className='bg-card shadow-md'>
-              <CardHeader className='bg-card'>
-                <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-                  店舗間比較チャート
-                </CardTitle>
-                <CardDescription className='text-gray-600 dark:text-gray-300'>
-                  選択したKPIに基づいた店舗間の比較グラフです。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='bg-card'>
-                <StoreComparisonChart />
-              </CardContent>
-            </Card>
-
-            {/* ベストプラクティス */}
-            <Card className='bg-card shadow-md'>
-              <CardHeader className='bg-card'>
-                <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-                  ベストプラクティス
-                </CardTitle>
-                <CardDescription className='text-gray-600 dark:text-gray-300'>
-                  成功している店舗の施策やノウハウを共有します。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='bg-card grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {bestPractices && bestPractices.length > 0 ? (
-                  bestPractices.map((_, index) => <BestPracticeCard key={index} />)
-                ) : (
-                  <p className='text-gray-500 dark:text-gray-400'>
-                    ベストプラクティスがありません。
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* その他の機能 */}
-            <Card className='bg-card shadow-md'>
-              <CardHeader className='bg-card'>
-                <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-                  その他の分析機能
-                </CardTitle>
-                <CardDescription className='text-gray-600 dark:text-gray-300'>
-                  詳細な分析やレポート生成が可能です。
-                </CardDescription>
-              </CardHeader>
-              <CardContent className='bg-card flex flex-wrap gap-4'>
-                <Button className='bg-[#1e3a8a] hover:bg-[#10b981] text-white dark:bg-gray-700 dark:hover:bg-gray-600'>
-                  ドリルダウン分析
-                </Button>
-                <Button className='bg-[#1e3a8a] hover:bg-[#10b981] text-white dark:bg-gray-700 dark:hover:bg-gray-600'>
-                  施術者別クロス店舗分析
-                </Button>
-                <Button
-                  className='bg-[#1e3a8a] hover:bg-[#10b981] text-white dark:bg-gray-700 dark:hover:bg-gray-600'
-                >
-                  レポート生成・共有
-                </Button>
-              </CardContent>
-            </Card>
+          <CardContent>
+            {clinics.length > 0 ? (
+              <div className='overflow-x-auto'>
+                <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                  <thead className='bg-gray-50 dark:bg-gray-700'>
+                    <tr>
+                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
+                        店舗名
+                      </th>
+                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
+                        <button
+                          type='button'
+                          onClick={() => handleSort('revenue')}
+                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
+                        >
+                          収益
+                          {sortField === 'revenue' && (
+                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
+                        <button
+                          type='button'
+                          onClick={() => handleSort('patients')}
+                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
+                        >
+                          患者数
+                          {sortField === 'patients' && (
+                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
+                        <button
+                          type='button'
+                          onClick={() => handleSort('performance')}
+                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
+                        >
+                          パフォーマンス
+                          {sortField === 'performance' && (
+                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
+                          )}
+                        </button>
+                      </th>
+                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
+                        ステータス
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className='bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700'>
+                    {clinics.map((clinic: ClinicWithKPI) => (
+                      <tr key={clinic.id}>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                          {clinic.name}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
+                          {formatCurrency(clinic.kpi?.revenue ?? 0)}円
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
+                          {clinic.kpi?.patients ?? 0}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
+                          {clinic.kpi?.staff_performance_score ?? '-'}
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap text-sm'>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              clinic.is_active
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            }`}
+                          >
+                            {clinic.is_active ? '有効' : '無効'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
+                クリニックデータがありません
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

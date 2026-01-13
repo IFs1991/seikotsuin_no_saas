@@ -5,6 +5,7 @@ import {
   createSuccessResponse,
   logError,
 } from '@/lib/api-helpers';
+import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 
 type ClinicRow = {
   id: string;
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     const normalizedClinicId = clinicParam ?? undefined;
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       clinicId: normalizedClinicId ?? null,
       requireClinicMatch: Boolean(normalizedClinicId),
     });
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
     const { supabase, permissions, auth } = processResult;
 
     let clinicFilter = normalizedClinicId;
-    if (!clinicFilter && permissions.role === 'clinic_manager') {
+    if (!clinicFilter && permissions.role === 'clinic_admin') {
       clinicFilter = permissions.clinic_id ?? undefined;
     }
 

@@ -1,6 +1,15 @@
-import React, { useState, useCallback } from 'react';
+'use client';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import { clsx } from 'clsx';
+import {
+  createMasterData,
+  listMasterData,
+  updateMasterData,
+} from '@/lib/api/admin/master-data-client';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/user-profile';
 
 interface MenuItem {
   id: string;
@@ -15,25 +24,88 @@ interface MasterDataFormProps {
   className?: string;
 }
 
+const MENU_ITEMS_SETTING_KEY = 'menu_items';
+const MENU_ITEMS_CATEGORY = 'menu';
+
+const DEFAULT_MENU_ITEMS: MenuItem[] = [
+  {
+    id: '1',
+    name: '基本施術',
+    price: 3000,
+    duration: 30,
+    category: '一般',
+    isActive: true,
+  },
+  {
+    id: '2',
+    name: '特別施術',
+    price: 5000,
+    duration: 60,
+    category: '特殊',
+    isActive: true,
+  },
+];
+
+const normalizeMenuItems = (raw: unknown): MenuItem[] => {
+  if (!Array.isArray(raw)) return DEFAULT_MENU_ITEMS;
+
+  const items = raw
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const data = entry as Record<string, unknown>;
+      const name = typeof data.name === 'string' ? data.name.trim() : '';
+      const price =
+        typeof data.price === 'number'
+          ? data.price
+          : Number(data.price ?? NaN);
+      const duration =
+        typeof data.duration === 'number'
+          ? data.duration
+          : Number(data.duration ?? NaN);
+      if (!name || !Number.isFinite(price) || !Number.isFinite(duration)) {
+        return null;
+      }
+
+      return {
+        id:
+          typeof data.id === 'string' && data.id.length > 0
+            ? data.id
+            : `imported-${index}`,
+        name,
+        price,
+        duration,
+        category:
+          typeof data.category === 'string' && data.category.length > 0
+            ? data.category
+            : '一般',
+        isActive: typeof data.isActive === 'boolean' ? data.isActive : true,
+      };
+    })
+    .filter((item): item is MenuItem => item !== null);
+
+  return items.length > 0 ? items : DEFAULT_MENU_ITEMS;
+};
+
+const resolveClinicId = (profile: UserProfile | null) => {
+  if (!profile) return undefined;
+  if (profile.role === 'admin') return null;
+  return profile.clinicId ?? null;
+};
+
+const resolveClinicQueryParam = (profile: UserProfile | null) => {
+  if (!profile) return undefined;
+  if (profile.role === 'admin') return 'global';
+  return profile.clinicId ?? undefined;
+};
+
 export function MasterDataForm({ className }: MasterDataFormProps) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([
-    {
-      id: '1',
-      name: '基本施術',
-      price: 3000,
-      duration: 30,
-      category: '一般',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: '特別施術',
-      price: 5000,
-      duration: 60,
-      category: '特殊',
-      isActive: true,
-    },
-  ]);
+  const { profile, loading: profileLoading } = useUserProfile();
+  const [menuItems, setMenuItems] =
+    useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  const [settingId, setSettingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [newItem, setNewItem] = useState<Partial<MenuItem>>({
     name: '',
@@ -42,6 +114,49 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
     category: '一般',
     isActive: true,
   });
+
+  useEffect(() => {
+    if (profileLoading) return;
+
+    let isMounted = true;
+
+    const loadMasterData = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const response = await listMasterData({
+          category: MENU_ITEMS_CATEGORY,
+          clinic_id: resolveClinicQueryParam(profile),
+        });
+        const target = response.items.find(
+          item => item.name === MENU_ITEMS_SETTING_KEY
+        );
+        if (!isMounted) return;
+        if (target) {
+          setSettingId(target.id);
+          setMenuItems(normalizeMenuItems(target.value));
+        } else {
+          setSettingId(null);
+          setMenuItems(DEFAULT_MENU_ITEMS);
+        }
+      } catch (error) {
+        console.error('Failed to load master data', error);
+        if (isMounted) {
+          setLoadError('マスターデータの読み込みに失敗しました');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadMasterData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profileLoading, profile]);
 
   const addMenuItem = useCallback(() => {
     if (!newItem.name || !newItem.price) return;
@@ -80,14 +195,38 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
 
   const handleSave = useCallback(async () => {
     try {
-      // TODO: Supabaseへの保存処理
-      console.log('Saving menu items:', menuItems);
+      setIsSaving(true);
+      const payload = {
+        clinic_id: resolveClinicId(profile),
+        name: MENU_ITEMS_SETTING_KEY,
+        category: MENU_ITEMS_CATEGORY,
+        value: menuItems,
+        data_type: 'array' as const,
+        description: '施術メニュー設定',
+        is_editable: true,
+        is_public: false,
+      };
+
+      if (settingId) {
+        await updateMasterData(settingId, {
+          value: payload.value,
+          data_type: payload.data_type,
+          description: payload.description,
+          is_editable: payload.is_editable,
+          is_public: payload.is_public,
+        });
+      } else {
+        const created = await createMasterData(payload);
+        setSettingId(created.id);
+      }
       alert('マスターデータを保存しました');
     } catch (error) {
       console.error('Save error:', error);
       alert('保存に失敗しました');
+    } finally {
+      setIsSaving(false);
     }
-  }, [menuItems]);
+  }, [menuItems, profile, settingId]);
 
   return (
     <div className={clsx('medical-card p-6', className)}>
@@ -97,12 +236,19 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
         </h2>
         <button
           onClick={handleSave}
-          className='medical-button-primary flex items-center space-x-2'
+          className='medical-button-primary flex items-center space-x-2 disabled:opacity-60'
+          disabled={isLoading || isSaving}
         >
           <Save className='h-4 w-4' />
-          <span>保存</span>
+          <span>{isSaving ? '保存中...' : '保存'}</span>
         </button>
       </div>
+
+      {loadError && (
+        <div className='mb-4 rounded-medical border border-red-200 bg-red-50 p-3 text-sm text-red-700'>
+          {loadError}
+        </div>
+      )}
 
       {/* 新規追加フォーム */}
       <div className='bg-gray-50 rounded-medical p-4 mb-6'>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { generateAIComment } from '../../../api/gemini/ai-analysis-service';
+import { ADMIN_UI_ROLES, type Role } from '@/lib/constants/roles';
 
 const PATH = '/api/chat';
 
@@ -9,35 +10,28 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const sessionId = searchParams.get('session_id');
-    const userId = searchParams.get('user_id');
+    const clinicId = searchParams.get('clinic_id');
 
-    const { supabase, user, permissions } = await ensureClinicAccess(
-      request,
-      PATH,
-      null,
-      { requireClinicMatch: false }
-    );
-
-    const isPrivileged = ['admin', 'clinic_manager'].includes(permissions.role);
-    const effectiveUserId = userId ?? user.id;
-
-    if (effectiveUserId !== user.id && !isPrivileged) {
-      throw new AppError(
-        ERROR_CODES.FORBIDDEN,
-        '他ユーザーのチャット履歴を閲覧する権限がありません',
-        403
+    if (!clinicId) {
+      return NextResponse.json(
+        { error: 'clinic_id is required' },
+        { status: 400 }
       );
     }
+
+    const { supabase } = await ensureClinicAccess(request, PATH, clinicId, {
+      requireClinicMatch: true,
+    });
 
     let query = supabase.from('chat_sessions').select(`
         *,
         chat_messages(*)
       `);
 
+    query = query.eq('clinic_id', clinicId);
+
     if (sessionId) {
       query = query.eq('id', sessionId);
-    } else {
-      query = query.eq('user_id', effectiveUserId);
     }
 
     const { data: sessions, error } = await query
@@ -88,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isPrivileged = ['admin', 'clinic_manager'].includes(permissions.role);
+    const isPrivileged = ADMIN_UI_ROLES.has(permissions.role as Role);
     if (user.id !== user_id && !isPrivileged) {
       throw new AppError(
         ERROR_CODES.FORBIDDEN,

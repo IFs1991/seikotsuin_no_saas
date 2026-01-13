@@ -13,7 +13,11 @@ import {
   Database,
   Archive,
   Trash2,
+  Loader2,
 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
 
 interface ImportSettings {
   csvEncoding: string;
@@ -39,22 +43,43 @@ interface MasterData {
   lastUpdated: string;
 }
 
-export function DataManagementSettings() {
-  const [importSettings, setImportSettings] = useState<ImportSettings>({
+interface DataManagementData {
+  importSettings: ImportSettings;
+  exportSettings: ExportSettings;
+}
+
+const initialData: DataManagementData = {
+  importSettings: {
     csvEncoding: 'UTF-8',
     dateFormat: 'YYYY-MM-DD',
     allowDuplicates: false,
     validateData: true,
     skipFirstRow: true,
-  });
-
-  const [exportSettings, setExportSettings] = useState<ExportSettings>({
+  },
+  exportSettings: {
     defaultFormat: 'csv',
     includeHeaders: true,
     dateFormat: 'YYYY-MM-DD',
     encoding: 'UTF-8',
     maxRecords: 10000,
-  });
+  },
+};
+
+export function DataManagementSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
+
+  const {
+    data: formData,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'data_management',
+    autoLoad: true,
+  } : undefined);
 
   const [masterData] = useState<MasterData[]>([
     {
@@ -87,49 +112,49 @@ export function DataManagementSettings() {
     },
   ]);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('データ管理設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  const importSettings = formData.importSettings;
+  const exportSettings = formData.exportSettings;
+
+  const updateImport = (updates: Partial<ImportSettings>) => {
+    updateData({ importSettings: { ...importSettings, ...updates } });
+  };
+
+  const updateExport = (updates: Partial<ExportSettings>) => {
+    updateData({ exportSettings: { ...exportSettings, ...updates } });
+  };
+
+  const onSave = async () => {
+    await handleSave();
   };
 
   const handleExportData = async (type: string) => {
-    setIsLoading(true);
+    setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      setSavedMessage(`${type}データのエクスポートを完了しました`);
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('エクスポートに失敗しました');
+      // Note: エクスポート完了通知は別途実装が必要
     } finally {
-      setIsLoading(false);
+      setExportLoading(false);
     }
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* データインポート設定 */}
@@ -147,10 +172,7 @@ export function DataManagementSettings() {
             <select
               value={importSettings.csvEncoding}
               onChange={e =>
-                setImportSettings(prev => ({
-                  ...prev,
-                  csvEncoding: e.target.value,
-                }))
+                updateImport({ csvEncoding: e.target.value })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -167,10 +189,7 @@ export function DataManagementSettings() {
             <select
               value={importSettings.dateFormat}
               onChange={e =>
-                setImportSettings(prev => ({
-                  ...prev,
-                  dateFormat: e.target.value,
-                }))
+                updateImport({ dateFormat: e.target.value })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -188,10 +207,7 @@ export function DataManagementSettings() {
               type='checkbox'
               checked={importSettings.skipFirstRow}
               onChange={e =>
-                setImportSettings(prev => ({
-                  ...prev,
-                  skipFirstRow: e.target.checked,
-                }))
+                updateImport({ skipFirstRow: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -205,10 +221,7 @@ export function DataManagementSettings() {
               type='checkbox'
               checked={importSettings.validateData}
               onChange={e =>
-                setImportSettings(prev => ({
-                  ...prev,
-                  validateData: e.target.checked,
-                }))
+                updateImport({ validateData: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -222,10 +235,7 @@ export function DataManagementSettings() {
               type='checkbox'
               checked={importSettings.allowDuplicates}
               onChange={e =>
-                setImportSettings(prev => ({
-                  ...prev,
-                  allowDuplicates: e.target.checked,
-                }))
+                updateImport({ allowDuplicates: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -251,10 +261,7 @@ export function DataManagementSettings() {
             <select
               value={exportSettings.defaultFormat}
               onChange={e =>
-                setExportSettings(prev => ({
-                  ...prev,
-                  defaultFormat: e.target.value as 'csv' | 'excel' | 'pdf',
-                }))
+                updateExport({ defaultFormat: e.target.value as 'csv' | 'excel' | 'pdf' })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -271,10 +278,7 @@ export function DataManagementSettings() {
             <select
               value={exportSettings.encoding}
               onChange={e =>
-                setExportSettings(prev => ({
-                  ...prev,
-                  encoding: e.target.value,
-                }))
+                updateExport({ encoding: e.target.value })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -291,10 +295,7 @@ export function DataManagementSettings() {
             <select
               value={exportSettings.dateFormat}
               onChange={e =>
-                setExportSettings(prev => ({
-                  ...prev,
-                  dateFormat: e.target.value,
-                }))
+                updateExport({ dateFormat: e.target.value })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -313,10 +314,7 @@ export function DataManagementSettings() {
               type='number'
               value={exportSettings.maxRecords}
               onChange={e =>
-                setExportSettings(prev => ({
-                  ...prev,
-                  maxRecords: parseInt(e.target.value),
-                }))
+                updateExport({ maxRecords: parseInt(e.target.value) })
               }
               min='100'
               max='100000'
@@ -331,10 +329,7 @@ export function DataManagementSettings() {
               type='checkbox'
               checked={exportSettings.includeHeaders}
               onChange={e =>
-                setExportSettings(prev => ({
-                  ...prev,
-                  includeHeaders: e.target.checked,
-                }))
+                updateExport({ includeHeaders: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -367,7 +362,7 @@ export function DataManagementSettings() {
                     variant='outline'
                     size='sm'
                     onClick={() => handleExportData(data.name)}
-                    disabled={isLoading}
+                    disabled={exportLoading}
                     className='flex items-center space-x-1'
                   >
                     <Download className='w-4 h-4' />
@@ -447,12 +442,16 @@ export function DataManagementSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

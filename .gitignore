@@ -131,3 +131,8 @@ supabase/.env
 *.db
 *.db-shm
 *.db-wal
+
+# Windows reserved / accidental files
+nul
+.worktrees/
+

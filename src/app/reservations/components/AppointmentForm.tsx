@@ -1,8 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Appointment, MenuItem, MenuOptionItem, SchedulerResource } from '../types';
 
-import { createCustomer, createReservation } from '../api';
+import { createCustomer, createReservation, fetchCustomers } from '../api';
 import { calculateEndTime, timeToMinutes, hasTimeConflict } from '../utils/time';
+
+type CustomAttributeField = {
+  key: string;
+  label: string;
+  type: 'text' | 'textarea';
+  required?: boolean;
+  placeholder?: string;
+};
+
+const CUSTOM_ATTR_TEMPLATE: CustomAttributeField[] = [
+  { key: 'symptom', label: '主な症状', type: 'text', placeholder: '例: 肩こり' },
+  { key: 'visitReason', label: '来院目的', type: 'text', placeholder: '例: 慢性的な腰痛' },
+  { key: 'memo', label: '補足メモ', type: 'textarea', placeholder: '任意' },
+];
+
+const createInitialCustomAttributes = () =>
+  CUSTOM_ATTR_TEMPLATE.reduce<Record<string, string>>((acc, field) => {
+    acc[field.key] = '';
+    return acc;
+  }, {});
 
 interface Props {
   clinicId: string;
@@ -21,6 +41,7 @@ interface Props {
 
 export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, onSuccess, onCancel, initialData, appointments }) => {
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Today's date YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
@@ -37,6 +58,7 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
     phone: '',
     type: 'normal' as const,
     color: 'red' as const,
+    customAttributes: createInitialCustomAttributes(),
   });
 
   useEffect(() => {
@@ -87,6 +109,7 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     
     // Validate conflicts
     const newStartMins = timeToMinutes(formData.startHour, formData.startMinute);
@@ -106,15 +129,34 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
     });
 
     if (hasConflict) {
-        alert('指定された時間帯にはすでに予約が入っています。');
+        setErrorMessage('指定された時間帯にはすでに予約が入っています。');
         return;
     }
 
     const customerName = `${formData.lastName} ${formData.firstName}`.trim();
-    if (!customerName || !formData.phone) {
-      alert('顧客名と電話番号を入力してください');
+    const normalizedPhone = formData.phone.trim();
+    if (!customerName || !normalizedPhone) {
+      setErrorMessage('顧客名と電話番号を入力してください');
       return;
     }
+
+    const missingRequired = CUSTOM_ATTR_TEMPLATE.filter(
+      field =>
+        field.required &&
+        !String(formData.customAttributes[field.key] ?? '').trim()
+    );
+    if (missingRequired.length > 0) {
+      setErrorMessage('必須のカスタム属性を入力してください');
+      return;
+    }
+
+    const customAttributes = Object.fromEntries(
+      Object.entries(formData.customAttributes).filter(
+        ([, value]) => String(value ?? '').trim().length > 0
+      )
+    );
+    const customAttributesPayload =
+      Object.keys(customAttributes).length > 0 ? customAttributes : undefined;
 
     const selectedOption = optionItems.find(o => o.id === formData.optionId);
     const selectedOptions = selectedOption && selectedOption.id !== 'none'
@@ -128,11 +170,16 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
 
     setLoading(true);
     try {
-      const customer = await createCustomer({
-        clinicId,
-        name: customerName,
-        phone: formData.phone,
-      });
+      const customers = await fetchCustomers(clinicId, normalizedPhone);
+      const matchedCustomer = customers.find(customer => customer.phone === normalizedPhone);
+      const customer = matchedCustomer
+        ? { id: matchedCustomer.id, name: matchedCustomer.name }
+        : await createCustomer({
+            clinicId,
+            name: customerName,
+            phone: normalizedPhone,
+            customAttributes: customAttributesPayload,
+          });
 
       const startTime = new Date(formData.date);
       startTime.setHours(formData.startHour, formData.startMinute, 0, 0);
@@ -150,6 +197,7 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
         selectedOptions,
       });
 
+      const displayName = matchedCustomer?.name ?? customerName;
       const resourceName = resources.find(r => r.id === formData.resourceId)?.name;
       const menuName = menus.find(m => m.id === formData.menuId)?.name;
 
@@ -161,7 +209,7 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
         startMinute: formData.startMinute,
         endHour: endTime.hour,
         endMinute: endTime.minute,
-        title: customerName,
+        title: displayName,
         lastName: formData.lastName,
         firstName: formData.firstName,
         menuId: formData.menuId,
@@ -177,7 +225,7 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
         selectedOptions,
       });
     } catch (err) {
-      alert('予約の作成に失敗しました');
+      setErrorMessage(err instanceof Error ? err.message : '\u4e88\u7d04\u306e\u4f5c\u6210\u306b\u5931\u6557\u3057\u307e\u3057\u305f');
     } finally {
       setLoading(false);
     }
@@ -187,9 +235,24 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleCustomAttributeChange = (key: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      customAttributes: {
+        ...prev.customAttributes,
+        [key]: value,
+      },
+    }));
+  };
+
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg border border-gray-200 mt-4 sm:mt-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <h2 className="text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200">新規予約登録</h2>
+      {errorMessage && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          {errorMessage}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="space-y-6">
         
@@ -228,6 +291,37 @@ export const AppointmentForm: React.FC<Props> = ({ clinicId, resources, menus, o
                     placeholder="名 (例: 太郎)"
                 />
              </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">カスタム属性</label>
+          <div className="space-y-3">
+            {CUSTOM_ATTR_TEMPLATE.map(field => (
+              <div key={field.key}>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {field.label}
+                  {field.required ? <span className="text-red-500 ml-1">*</span> : null}
+                </label>
+                {field.type === 'textarea' ? (
+                  <textarea
+                    value={formData.customAttributes[field.key] ?? ''}
+                    onChange={(e) => handleCustomAttributeChange(field.key, e.target.value)}
+                    className="block w-full shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2"
+                    placeholder={field.placeholder}
+                    rows={3}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={formData.customAttributes[field.key] ?? ''}
+                    onChange={(e) => handleCustomAttributeChange(field.key, e.target.value)}
+                    className="block w-full shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2"
+                    placeholder={field.placeholder}
+                  />
+                )}
+              </div>
+            ))}
           </div>
         </div>
 

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRevenue } from '@/hooks/useRevenue';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   Card,
   CardHeader,
@@ -11,6 +12,9 @@ import {
 } from '@/components/ui/card';
 
 const RevenuePage: React.FC = () => {
+  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const clinicId = profile?.clinicId || '';
+
   const {
     dailyRevenue,
     weeklyRevenue,
@@ -25,7 +29,64 @@ const RevenuePage: React.FC = () => {
     revenueForecast,
     costAnalysis,
     staffRevenueContribution,
-  } = useRevenue();
+    loading: revenueLoading,
+    error: revenueError,
+  } = useRevenue(clinicId);
+
+  // プロファイル読み込み中
+  if (profileLoading) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-gray-500'>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // プロファイルエラー
+  if (profileError) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-red-500'>エラー: {profileError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // clinicIdがない場合
+  if (!clinicId) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-yellow-600'>店舗情報が設定されていません</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 収益データ読み込み中
+  if (revenueLoading) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-gray-500'>収益データを読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 収益データエラー
+  if (revenueError) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-red-500'>エラー: {revenueError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='w-full bg-white dark:bg-gray-800 p-4'>
@@ -101,20 +162,24 @@ const RevenuePage: React.FC = () => {
           </CardHeader>
           <CardContent className='bg-card'>
             <div className='space-y-3'>
-              {menuRanking.map((item, index) => (
-                <div
-                  key={index}
-                  className='flex items-center justify-between p-3 bg-gray-50 rounded'
-                >
-                  <span>{item.menu}</span>
-                  <div className='text-right'>
-                    <p className='font-bold'>
-                      {item.revenue.toLocaleString()}
-                    </p>
-                    <p className='text-sm text-gray-500'>{item.count}件</p>
+              {menuRanking.length === 0 ? (
+                <p className='text-gray-500 text-center'>データがありません</p>
+              ) : (
+                menuRanking.map((item, index) => (
+                  <div
+                    key={index}
+                    className='flex items-center justify-between p-3 bg-gray-50 rounded'
+                  >
+                    <span>{item.menu}</span>
+                    <div className='text-right'>
+                      <p className='font-bold'>
+                        {item.revenue.toLocaleString()}
+                      </p>
+                      <p className='text-sm text-gray-500'>{item.count}件</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -135,7 +200,7 @@ const RevenuePage: React.FC = () => {
                   時間帯別収益:
                 </p>
                 <p className='text-lg font-semibold text-purple-600 dark:text-purple-400'>
-                  {hourlyRevenue}
+                  {hourlyRevenue || 'データなし'}
                 </p>
               </div>
               <div className='w-full md:w-1/2'>
@@ -143,7 +208,7 @@ const RevenuePage: React.FC = () => {
                   曜日別収益:
                 </p>
                 <p className='text-lg font-semibold text-orange-600 dark:text-orange-400'>
-                  {dailyRevenueByDayOfWeek}
+                  {dailyRevenueByDayOfWeek || 'データなし'}
                 </p>
               </div>
             </div>
@@ -210,7 +275,7 @@ const RevenuePage: React.FC = () => {
               人件費率:
             </p>
             <p className='text-lg font-semibold text-pink-600 dark:text-pink-400'>
-              {costAnalysis}
+              {costAnalysis || 'データなし'}
             </p>
           </CardContent>
         </Card>
@@ -229,7 +294,7 @@ const RevenuePage: React.FC = () => {
               貢献度:
             </p>
             <p className='text-lg font-semibold text-lime-600 dark:text-lime-400'>
-              {staffRevenueContribution}
+              {staffRevenueContribution || 'データなし'}
             </p>
           </CardContent>
         </Card>

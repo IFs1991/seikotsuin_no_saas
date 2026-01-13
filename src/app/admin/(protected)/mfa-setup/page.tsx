@@ -1,18 +1,73 @@
 /**
  * MFA設定ページ
  * Phase 3B: MFA設定専用管理画面
+ * 認証コンテキスト連携 MVP: profile から userId/clinicId/role を取得
+ * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
  */
 
-import React from 'react';
+'use client';
+
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { MFADashboard } from '@/components/mfa/MFADashboard';
 import { Card } from '@/components/ui/card';
 import { Shield, Info } from 'lucide-react';
+import { useUserProfileContext } from '@/providers/user-profile-context';
+import { ADMIN_UI_ROLES, type Role } from '@/lib/constants/roles';
 
 export default function MFASetupPage() {
-  // TODO: 実際のユーザー認証から取得
-  const userId = 'current-user-id';
-  const clinicId = 'current-clinic-id';
-  const isAdmin = true;
+  const router = useRouter();
+
+  // 認証コンテキストからプロフィールを取得
+  const { profile, loading, error } = useUserProfileContext();
+
+  // プロフィールから値を取得
+  const userId = profile?.id ?? '';
+  const clinicId = profile?.clinicId ?? '';
+  const role = profile?.role ?? '';
+
+  // isAdmin は role 判定で決定
+  const isAdmin = ADMIN_UI_ROLES.has(role as Role);
+
+  // clinicId未割当フラグ
+  const isClinicAssigned = Boolean(clinicId);
+
+  // 権限チェック: admin / clinic_admin 以外は unauthorized へ遷移
+  useEffect(() => {
+    if (!loading && profile) {
+      if (!ADMIN_UI_ROLES.has((profile.role ?? '') as Role)) {
+        router.push('/unauthorized');
+      }
+    } else if (!loading && !profile) {
+      // プロフィールがnullの場合も unauthorized へ
+      router.push('/unauthorized');
+    }
+  }, [loading, profile, router]);
+
+  // プロフィール読み込み中
+  if (loading) {
+    return (
+      <div className='flex items-center justify-center min-h-screen bg-gray-50'>
+        <div className='text-gray-600'>読み込み中...</div>
+      </div>
+    );
+  }
+
+  // プロフィール取得エラー
+  if (error) {
+    return (
+      <div className='flex items-center justify-center min-h-screen bg-gray-50'>
+        <div className='bg-red-50 border border-red-200 rounded-lg p-4'>
+          <p className='text-red-600'>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 権限がない場合は何も表示しない（遷移中）
+  if (!profile || !ADMIN_UI_ROLES.has((profile.role ?? '') as Role)) {
+    return null;
+  }
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -37,6 +92,15 @@ export default function MFASetupPage() {
 
       {/* メインコンテンツ */}
       <div className='max-w-4xl mx-auto px-4 py-8'>
+        {/* clinicId未割当時の案内メッセージ */}
+        {!isClinicAssigned && (
+          <div className='bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4'>
+            <p className='text-yellow-700'>
+              クリニックが割り当てられていません。管理者に権限割当を依頼してください。
+            </p>
+          </div>
+        )}
+
         {/* 情報カード */}
         <Card className='p-6 mb-8 border-blue-200 bg-blue-50'>
           <div className='flex items-start space-x-3'>
@@ -59,7 +123,12 @@ export default function MFASetupPage() {
         </Card>
 
         {/* MFA管理ダッシュボード */}
-        <MFADashboard userId={userId} clinicId={clinicId} isAdmin={isAdmin} />
+        <MFADashboard
+          userId={userId}
+          clinicId={clinicId}
+          isAdmin={isAdmin}
+          data-testid='mfa-dashboard'
+        />
       </div>
     </div>
   );

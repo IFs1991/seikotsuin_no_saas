@@ -4,6 +4,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
+import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -100,6 +101,11 @@ export async function getCurrentUser(client?: SupabaseServerClient) {
 export interface UserPermissions {
   role: string;
   clinic_id: string | null;
+  /**
+   * Parent-scope: Array of clinic IDs user can access (sibling clinics under same parent).
+   * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+   */
+  clinic_scope_ids?: string[];
 }
 
 export async function getUserPermissions(
@@ -113,21 +119,47 @@ export async function getUserPermissions(
     .eq('staff_id', userId)
     .single();
 
-  if (permissions && !error) {
-    return permissions as UserPermissions;
-  }
-
-  const { data: profilePermissions } = await supabase
-    .from('profiles')
-    .select('role, clinic_id')
-    .eq('user_id', userId)
-    .single();
-
-  if (!profilePermissions) {
+  if (error || !permissions) {
     return null;
   }
 
-  return profilePermissions as UserPermissions;
+  // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
+  // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+  let clinic_scope_ids: string[] | undefined;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const scopeIdsFromJwt = session?.user?.app_metadata?.clinic_scope_ids
+      ?? session?.access_token ? JSON.parse(atob(session.access_token.split('.')[1]))?.clinic_scope_ids : undefined;
+
+    if (Array.isArray(scopeIdsFromJwt)) {
+      clinic_scope_ids = scopeIdsFromJwt;
+    }
+  } catch {
+    // JWT parsing failed, fall back to single clinic_id
+  }
+
+  return {
+    ...permissions,
+    clinic_scope_ids,
+  } as UserPermissions;
+}
+
+/**
+ * Check if the user can access the target clinic using parent-scope model.
+ * Priority: clinic_scope_ids array > clinic_id fallback
+ * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+ */
+export function canAccessClinicScope(
+  permissions: UserPermissions,
+  targetClinicId: string
+): boolean {
+  // If clinic_scope_ids is available, use parent-scope check
+  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
+    return permissions.clinic_scope_ids.includes(targetClinicId);
+  }
+
+  // Fallback: single clinic_id comparison
+  return permissions.clinic_id === targetClinicId;
 }
 
 export async function requireAuth(client?: SupabaseServerClient) {
@@ -143,7 +175,9 @@ export async function requireAdminAuth(client?: SupabaseServerClient) {
   const user = await requireAuth(supabase);
   const permissions = await getUserPermissions(user.id, supabase);
 
-  if (!permissions || !['admin', 'clinic_manager'].includes(permissions.role)) {
+  // 互換マッピング適用: clinic_manager → clinic_admin
+  // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
+  if (!permissions || !canAccessAdminUIWithCompat(permissions.role)) {
     throw new Error('管理者権限が必要です');
   }
 

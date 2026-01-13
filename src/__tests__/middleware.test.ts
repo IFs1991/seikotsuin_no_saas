@@ -3,52 +3,78 @@ import { middleware } from '../../middleware';
 
 // Supabase SSRのモック
 jest.mock('@supabase/ssr', () => ({
-  createServerClient: jest.fn(),
+  createServerClient: jest.fn().mockReturnValue({
+    auth: {
+      getUser: jest.fn().mockResolvedValue({
+        data: { user: null },
+        error: null,
+      }),
+    },
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        }),
+      }),
+    }),
+  }),
+}));
+
+// CSPモック
+jest.mock('@/lib/security/csp-config', () => ({
+  CSPConfig: {
+    generateNonce: jest.fn().mockReturnValue('test-nonce'),
+    getGradualRolloutCSP: jest.fn().mockReturnValue({
+      csp: 'default-src self',
+      cspReportOnly: null,
+    }),
+  },
+}));
+
+// レート制限モック
+jest.mock('@/lib/rate-limiting/middleware', () => ({
+  applyRateLimits: jest.fn().mockResolvedValue(null),
+  getPathRateLimit: jest.fn().mockReturnValue([]),
 }));
 
 describe('Middleware', () => {
-  let mockRequest: NextRequest;
+  function createMockRequest(pathname: string): NextRequest {
+    const url = new URL(`http://localhost:3000${pathname}`);
+    const request = new NextRequest(url, {
+      method: 'GET',
+    });
+    return request;
+  }
 
   beforeEach(() => {
-    // NextRequestのモック作成
-    mockRequest = {
-      nextUrl: new URL('http://localhost:3000/admin'),
-      cookies: {
-        get: jest.fn(),
-        set: jest.fn(),
-        delete: jest.fn(),
-      },
-      headers: new Headers(),
-    } as unknown as NextRequest;
-
     jest.clearAllMocks();
   });
 
   it('should handle Supabase client creation correctly', async () => {
-    // このテストは現在失敗するはず（型エラーのため）
-    const result = await middleware(mockRequest);
+    const request = createMockRequest('/admin');
+    const result = await middleware(request);
 
     // middleware が正常に実行されることを確認
     expect(result).toBeDefined();
   });
 
   it('should redirect unauthenticated users from admin routes', async () => {
-    // 認証されていないユーザーがadminルートにアクセスした場合のテスト
-    const adminRequest = {
-      ...mockRequest,
-      nextUrl: new URL('http://localhost:3000/admin/dashboard'),
-    } as NextRequest;
+    const request = createMockRequest('/admin/dashboard');
+    const result = await middleware(request);
 
-    const result = await middleware(adminRequest);
-
-    // リダイレクトまたは適切なレスポンスが返されることを確認
-    expect(result).toBeDefined();
+    // リダイレクトが発生することを確認
+    expect(result.status).toBe(307);
+    expect(result.headers.get('location')).toContain('/admin/login');
   });
 
-  it('should allow authenticated users to access admin routes', async () => {
-    // 認証されたユーザーがadminルートにアクセスした場合のテスト
-    const result = await middleware(mockRequest);
+  it('should allow public routes without authentication', async () => {
+    const request = createMockRequest('/admin/login');
+    const result = await middleware(request);
 
-    expect(result).toBeDefined();
+    // 公開ルートはリダイレクトなし
+    expect(result.status).not.toBe(307);
   });
 });

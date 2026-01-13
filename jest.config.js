@@ -4,6 +4,7 @@ const createJestConfig = nextJest({ dir: './' });
 
 const sharedConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
@@ -13,9 +14,11 @@ const sharedConfig = {
     '<rootDir>/node_modules/',
     '<rootDir>/coverage/',
     '<rootDir>/dist/',
+    '<rootDir>/.worktrees/',
     '<rootDir>/src/__tests__/session-management/penetration-test-prep.ts',
     '<rootDir>/src/__tests__/.*/mocks/.*',
   ],
+  watchPathIgnorePatterns: ['<rootDir>/.worktrees/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   globals: {
     'ts-jest': {
@@ -24,7 +27,6 @@ const sharedConfig = {
       },
     },
   },
-  verbose: true,
 };
 
 const coverageConfig = {
@@ -49,6 +51,7 @@ const createClientConfig = createJestConfig({
   ...sharedConfig,
   displayName: 'client',
   testEnvironment: 'jsdom',
+  setupFiles: ['<rootDir>/jest.setup.messagechannel.ts'],
   testMatch: [
     '<rootDir>/src/__tests__/**/*.test.tsx',
     '<rootDir>/src/__tests__/pages/**/*.test.tsx',

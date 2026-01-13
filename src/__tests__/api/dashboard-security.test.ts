@@ -9,6 +9,9 @@ jest.mock('@/lib/supabase/guards', () => ({
 
 import { GET } from '@/app/api/dashboard/route';
 
+// UUIDフォーマットのテスト用clinic_id
+const TEST_CLINIC_ID = '123e4567-e89b-12d3-a456-426614174000';
+
 describe('Dashboard API security', () => {
   beforeEach(() => {
     ensureClinicAccessMock.mockReset();
@@ -20,7 +23,7 @@ describe('Dashboard API security', () => {
     );
 
     const request = new NextRequest(
-      'http://localhost/api/dashboard?clinic_id=clinic-1'
+      `http://localhost/api/dashboard?clinic_id=${TEST_CLINIC_ID}`
     );
 
     const response = await GET(request);

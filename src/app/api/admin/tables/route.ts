@@ -13,15 +13,17 @@ import {
 import { AuditLogger } from '@/lib/audit-logger';
 import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
 import type { SupabaseServerClient } from '@/lib/supabase';
+import { HQ_ROLES } from '@/lib/constants/roles';
 
 // ================================================================
 // データベーステーブル管理 API - 動的スキーマ版
 // ================================================================
 // テーブル一覧取得エンドポイント (GET /api/admin/tables)
+// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
 export async function GET(request: NextRequest) {
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -167,12 +169,13 @@ async function getTableData(
 }
 
 // POST: 新規データ作成
+// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
 export async function POST(request: NextRequest) {
   try {
     // 認証・認可・サニタイゼーション
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -252,12 +255,13 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT: データ更新
+// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
 export async function PUT(request: NextRequest) {
   try {
     // 認証・認可・サニタイゼーション
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {
@@ -340,11 +344,12 @@ export async function PUT(request: NextRequest) {
 }
 
 // DELETE: データ削除
+// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
 export async function DELETE(request: NextRequest) {
   try {
     // 認証・認可チェック
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
     if (!processResult.success) {

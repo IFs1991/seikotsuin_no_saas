@@ -3,15 +3,16 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { AdminMessage } from './AdminMessage';
 import { AdminSaveButton } from './AdminSaveButton';
 import { AdminCard } from './AdminCard';
 
 interface ClinicBasicData {
-  clinicName: string;
+  name: string;
   zipCode: string;
   address: string;
   phone: string;
@@ -19,7 +20,8 @@ interface ClinicBasicData {
   email: string;
   website: string;
   description: string;
-  logo: File | null;
+  logoUrl: string | null;
+  logo?: File | null; // ローカル用
 }
 
 interface ClinicBasicSettingsProps {
@@ -27,25 +29,43 @@ interface ClinicBasicSettingsProps {
 }
 
 const initialData: ClinicBasicData = {
-  clinicName: '整骨院グループ本店',
-  zipCode: '150-0001',
-  address: '東京都渋谷区神宮前1-1-1',
-  phone: '03-1234-5678',
-  fax: '03-1234-5679',
-  email: 'info@seikotsuin.com',
-  website: 'https://www.seikotsuin.com',
-  description:
-    '地域密着型の整骨院として、患者様一人ひとりに寄り添った治療を心がけています。',
+  name: '',
+  zipCode: '',
+  address: '',
+  phone: '',
+  fax: '',
+  email: '',
+  website: '',
+  description: '',
+  logoUrl: null,
   logo: null,
 };
 
 export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
+
   const {
     data: formData,
     updateData,
     loadingState,
     handleSave,
-  } = useAdminSettings(initialData);
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'clinic_basic',
+    autoLoad: true,
+  } : undefined);
+
+  // プロファイルとデータのローディング中
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
 
   const handleInputChange = (field: keyof ClinicBasicData, value: string) => {
     updateData({ [field]: value });
@@ -58,36 +78,43 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
     }
   };
 
-  const handleSaveClick = () => {
-    handleSave(async data => {
-      if (onSave) {
-        onSave(data);
+  const handleSaveClick = async () => {
+    // clinicIdがない場合はカスタムsave関数を使用（互換性維持）
+    if (!clinicId) {
+      await handleSave(async data => {
+        if (onSave) {
+          onSave(data);
+        }
+        return { success: true, message: '設定を保存しました' };
+      });
+    } else {
+      // clinicIdがある場合はAPI経由で保存
+      const result = await handleSave();
+      if (result.success && onSave) {
+        onSave(formData);
       }
-      return { success: true, message: '設定を保存しました' };
-    });
+    }
   };
 
   return (
     <div className='space-y-6'>
-      <AdminMessage
-        message={loadingState.savedMessage}
-        type={loadingState.error ? 'error' : 'success'}
-      />
+      <AdminMessage message={loadingState.error ?? ''} type='error' />
+      <AdminMessage message={loadingState.savedMessage} type='success' />
 
       <AdminCard title='基本情報'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <div>
             <Label
-              htmlFor='clinicName'
+              htmlFor='name'
               className='block text-sm font-medium text-gray-700 mb-1'
             >
               院名 <span className='text-red-500'>*</span>
             </Label>
             <Input
-              id='clinicName'
+              id='name'
               type='text'
-              value={formData.clinicName}
-              onChange={e => handleInputChange('clinicName', e.target.value)}
+              value={formData.name}
+              onChange={e => handleInputChange('name', e.target.value)}
               placeholder='整骨院名を入力'
               required
             />

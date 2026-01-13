@@ -46,12 +46,14 @@ interface MFADashboardProps {
   userId: string;
   clinicId: string;
   isAdmin?: boolean;
+  'data-testid'?: string;
 }
 
 export const MFADashboard: React.FC<MFADashboardProps> = ({
   userId,
   clinicId,
   isAdmin = false,
+  'data-testid': dataTestId,
 }) => {
   const [mfaStatus, setMFAStatus] = useState<MFAStatus>({
     isEnabled: false,
@@ -223,7 +225,11 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
   const SecurityIcon = securityLevel.icon;
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-6' data-testid={dataTestId}>
+      <div className='sr-only' aria-hidden='true'>
+        <span data-testid='mfa-user-id'>{userId}</span>
+        <span data-testid='mfa-clinic-id'>{clinicId}</span>
+      </div>
       {/* セキュリティ状態カード */}
       <Card className='p-6'>
         <div className='flex items-start justify-between'>

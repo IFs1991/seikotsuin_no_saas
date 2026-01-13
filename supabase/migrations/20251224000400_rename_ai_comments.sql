@@ -20,7 +20,14 @@ DROP TABLE IF EXISTS public.ai_comments CASCADE;
 ALTER TABLE IF EXISTS public.daily_ai_comments RENAME TO ai_comments;
 
 -- =====================================================
--- Step 3: インデックスのリネーム（存在する場合）
+-- Step 3: 制約の削除（インデックス削除前に必要）
+-- =====================================================
+
+-- ユニーク制約を先に削除（これがインデックスを参照している）
+ALTER TABLE public.ai_comments DROP CONSTRAINT IF EXISTS daily_ai_comments_clinic_id_comment_date_key;
+
+-- =====================================================
+-- Step 4: インデックスのリネーム（存在する場合）
 -- =====================================================
 
 -- 既存インデックスを削除して再作成（リネームより確実）
@@ -29,14 +36,13 @@ DROP INDEX IF EXISTS daily_ai_comments_clinic_id_comment_date_key;
 
 -- 新しいインデックス作成
 CREATE INDEX IF NOT EXISTS idx_ai_comments_clinic_date ON public.ai_comments(clinic_id, comment_date);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_comments_clinic_date_unique ON public.ai_comments(clinic_id, comment_date);
 
 -- =====================================================
--- Step 4: 制約のリネーム（存在する場合）
+-- Step 5: 制約の再作成
 -- =====================================================
 
 -- ユニーク制約を再作成
-ALTER TABLE public.ai_comments DROP CONSTRAINT IF EXISTS daily_ai_comments_clinic_id_comment_date_key;
+ALTER TABLE public.ai_comments DROP CONSTRAINT IF EXISTS ai_comments_clinic_id_comment_date_key;
 ALTER TABLE public.ai_comments ADD CONSTRAINT ai_comments_clinic_id_comment_date_key UNIQUE (clinic_id, comment_date);
 
 -- =====================================================

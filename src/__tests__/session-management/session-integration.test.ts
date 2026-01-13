@@ -6,24 +6,35 @@
 import { SessionManager } from '@/lib/session-manager';
 import { SecurityMonitor } from '@/lib/security-monitor';
 import { MultiDeviceManager } from '@/lib/multi-device-manager';
-import { createClient } from '@supabase/supabase-js';
 
-// モック設定
-jest.mock('@supabase/supabase-js');
-
-const mockSupabase = {
+// モック設定: @/lib/supabase をモック（createClient は Promise を返す）
+const createMockSupabase = () => ({
   from: jest.fn().mockReturnThis(),
   select: jest.fn().mockReturnThis(),
   insert: jest.fn().mockReturnThis(),
   update: jest.fn().mockReturnThis(),
   delete: jest.fn().mockReturnThis(),
   eq: jest.fn().mockReturnThis(),
+  neq: jest.fn().mockReturnThis(),
+  in: jest.fn().mockReturnThis(),
+  gte: jest.fn().mockReturnThis(),
+  lt: jest.fn().mockReturnThis(),
+  or: jest.fn().mockReturnThis(),
+  order: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
   single: jest.fn(),
-  data: null,
-  error: null,
-};
+  auth: {
+    getUser: jest.fn(),
+    onAuthStateChange: jest.fn(),
+  },
+});
 
-(createClient as jest.Mock).mockReturnValue(mockSupabase);
+let mockSupabase = createMockSupabase();
+
+jest.mock('@/lib/supabase', () => ({
+  createClient: jest.fn(async () => mockSupabase),
+  createAdminClient: jest.fn(() => mockSupabase),
+}));
 
 describe('セッション管理統合テスト', () => {
   let sessionManager: SessionManager;
@@ -31,6 +42,17 @@ describe('セッション管理統合テスト', () => {
   let multiDeviceManager: MultiDeviceManager;
 
   beforeEach(() => {
+    // mockSupabase をリセット
+    mockSupabase = createMockSupabase();
+
+    // @/lib/supabase のモックを更新
+    const supabaseMock = jest.requireMock('@/lib/supabase') as {
+      createClient: jest.Mock;
+      createAdminClient: jest.Mock;
+    };
+    supabaseMock.createClient.mockResolvedValue(mockSupabase);
+    supabaseMock.createAdminClient.mockReturnValue(mockSupabase);
+
     sessionManager = new SessionManager();
     securityMonitor = new SecurityMonitor();
     multiDeviceManager = new MultiDeviceManager();

@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Save, Mail, MessageCircle, Bell, Edit2 } from 'lucide-react';
+import { Save, Mail, MessageCircle, Bell, Edit2, Loader2 } from 'lucide-react';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AdminMessage } from './AdminMessage';
 
 interface EmailTemplate {
   id: string;
@@ -15,22 +18,42 @@ interface EmailTemplate {
   type: 'booking_confirmation' | 'reminder' | 'cancellation' | 'followup';
 }
 
-interface NotificationSettings {
+interface NotificationChannels {
   emailEnabled: boolean;
   smsEnabled: boolean;
   lineEnabled: boolean;
   pushEnabled: boolean;
-  smtpSettings: {
-    host: string;
-    port: number;
-    username: string;
-    password: string;
-    secure: boolean;
-  };
 }
 
-export function CommunicationSettings() {
-  const [templates, setTemplates] = useState<EmailTemplate[]>([
+interface SmtpSettings {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  secure: boolean;
+}
+
+interface CommunicationData {
+  channels: NotificationChannels;
+  smtpSettings: SmtpSettings;
+  templates: EmailTemplate[];
+}
+
+const initialData: CommunicationData = {
+  channels: {
+    emailEnabled: true,
+    smsEnabled: false,
+    lineEnabled: true,
+    pushEnabled: true,
+  },
+  smtpSettings: {
+    host: 'smtp.gmail.com',
+    port: 587,
+    username: 'noreply@seikotsuin.com',
+    password: '',
+    secure: true,
+  },
+  templates: [
     {
       id: '1',
       name: '予約確認メール',
@@ -45,52 +68,57 @@ export function CommunicationSettings() {
       body: '{{patientName}}様\n\n明日のご予約についてご連絡いたします。\n\n予約日時：{{appointmentDate}} {{appointmentTime}}\n担当者：{{staffName}}\n\n変更・キャンセルの場合はお早めにご連絡ください。\nお待ちしております。',
       type: 'reminder',
     },
-  ]);
+  ],
+};
 
-  const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailEnabled: true,
-    smsEnabled: false,
-    lineEnabled: true,
-    pushEnabled: true,
-    smtpSettings: {
-      host: 'smtp.gmail.com',
-      port: 587,
-      username: 'noreply@seikotsuin.com',
-      password: '',
-      secure: true,
-    },
-  });
+export function CommunicationSettings() {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const clinicId = profile?.clinicId;
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [savedMessage, setSavedMessage] = useState('');
+  const {
+    data: formData,
+    updateData,
+    loadingState,
+    handleSave,
+    isInitialized,
+  } = useAdminSettings(initialData, clinicId ? {
+    clinicId,
+    category: 'communication',
+    autoLoad: true,
+  } : undefined);
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    setSavedMessage('');
+  if (profileLoading || !isInitialized) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      </div>
+    );
+  }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSavedMessage('コミュニケーション設定を保存しました');
-      setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('保存に失敗しました');
-    } finally {
-      setIsLoading(false);
-    }
+  const notifications = formData.channels;
+  const smtpSettings = formData.smtpSettings;
+  const templates = formData.templates;
+
+  const updateChannels = (updates: Partial<NotificationChannels>) => {
+    updateData({ channels: { ...notifications, ...updates } });
+  };
+
+  const updateSmtp = (updates: Partial<SmtpSettings>) => {
+    updateData({ smtpSettings: { ...smtpSettings, ...updates } });
+  };
+
+  const onSave = async () => {
+    await handleSave();
   };
 
   return (
     <div className='space-y-6'>
-      {savedMessage && (
-        <div
-          className={`p-4 rounded-md ${
-            savedMessage.includes('失敗')
-              ? 'bg-red-50 border border-red-200 text-red-700'
-              : 'bg-green-50 border border-green-200 text-green-700'
-          }`}
-        >
-          {savedMessage}
-        </div>
+      {loadingState.error && (
+        <AdminMessage message={loadingState.error} type="error" />
+      )}
+      {loadingState.savedMessage && !loadingState.error && (
+        <AdminMessage message={loadingState.savedMessage} type="success" />
       )}
 
       {/* 通知チャンネル設定 */}
@@ -106,10 +134,7 @@ export function CommunicationSettings() {
               type='checkbox'
               checked={notifications.emailEnabled}
               onChange={e =>
-                setNotifications(prev => ({
-                  ...prev,
-                  emailEnabled: e.target.checked,
-                }))
+                updateChannels({ emailEnabled: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -122,10 +147,7 @@ export function CommunicationSettings() {
               type='checkbox'
               checked={notifications.smsEnabled}
               onChange={e =>
-                setNotifications(prev => ({
-                  ...prev,
-                  smsEnabled: e.target.checked,
-                }))
+                updateChannels({ smsEnabled: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -138,10 +160,7 @@ export function CommunicationSettings() {
               type='checkbox'
               checked={notifications.lineEnabled}
               onChange={e =>
-                setNotifications(prev => ({
-                  ...prev,
-                  lineEnabled: e.target.checked,
-                }))
+                updateChannels({ lineEnabled: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -153,10 +172,7 @@ export function CommunicationSettings() {
               type='checkbox'
               checked={notifications.pushEnabled}
               onChange={e =>
-                setNotifications(prev => ({
-                  ...prev,
-                  pushEnabled: e.target.checked,
-                }))
+                updateChannels({ pushEnabled: e.target.checked })
               }
               className='rounded border-gray-300'
             />
@@ -228,15 +244,9 @@ export function CommunicationSettings() {
                 SMTPホスト
               </Label>
               <Input
-                value={notifications.smtpSettings.host}
+                value={smtpSettings.host}
                 onChange={e =>
-                  setNotifications(prev => ({
-                    ...prev,
-                    smtpSettings: {
-                      ...prev.smtpSettings,
-                      host: e.target.value,
-                    },
-                  }))
+                  updateSmtp({ host: e.target.value })
                 }
                 placeholder='smtp.gmail.com'
               />
@@ -248,15 +258,9 @@ export function CommunicationSettings() {
               </Label>
               <Input
                 type='number'
-                value={notifications.smtpSettings.port}
+                value={smtpSettings.port}
                 onChange={e =>
-                  setNotifications(prev => ({
-                    ...prev,
-                    smtpSettings: {
-                      ...prev.smtpSettings,
-                      port: parseInt(e.target.value),
-                    },
-                  }))
+                  updateSmtp({ port: parseInt(e.target.value) })
                 }
                 placeholder='587'
               />
@@ -267,15 +271,9 @@ export function CommunicationSettings() {
                 ユーザー名
               </Label>
               <Input
-                value={notifications.smtpSettings.username}
+                value={smtpSettings.username}
                 onChange={e =>
-                  setNotifications(prev => ({
-                    ...prev,
-                    smtpSettings: {
-                      ...prev.smtpSettings,
-                      username: e.target.value,
-                    },
-                  }))
+                  updateSmtp({ username: e.target.value })
                 }
                 placeholder='noreply@seikotsuin.com'
               />
@@ -287,15 +285,9 @@ export function CommunicationSettings() {
               </Label>
               <Input
                 type='password'
-                value={notifications.smtpSettings.password}
+                value={smtpSettings.password}
                 onChange={e =>
-                  setNotifications(prev => ({
-                    ...prev,
-                    smtpSettings: {
-                      ...prev.smtpSettings,
-                      password: e.target.value,
-                    },
-                  }))
+                  updateSmtp({ password: e.target.value })
                 }
                 placeholder='••••••••'
               />
@@ -306,15 +298,9 @@ export function CommunicationSettings() {
             <label className='flex items-center space-x-2'>
               <input
                 type='checkbox'
-                checked={notifications.smtpSettings.secure}
+                checked={smtpSettings.secure}
                 onChange={e =>
-                  setNotifications(prev => ({
-                    ...prev,
-                    smtpSettings: {
-                      ...prev.smtpSettings,
-                      secure: e.target.checked,
-                    },
-                  }))
+                  updateSmtp({ secure: e.target.checked })
                 }
                 className='rounded border-gray-300'
               />
@@ -328,12 +314,17 @@ export function CommunicationSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          onClick={handleSave}
-          disabled={isLoading}
+          data-testid="save-settings-button"
+          onClick={onSave}
+          disabled={loadingState.isLoading}
           className='flex items-center space-x-2'
         >
-          <Save className='w-4 h-4' />
-          <span>{isLoading ? '保存中...' : '設定を保存'}</span>
+          {loadingState.isLoading ? (
+            <Loader2 className='w-4 h-4 animate-spin' />
+          ) : (
+            <Save className='w-4 h-4' />
+          )}
+          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
         </Button>
       </div>
     </div>

@@ -98,14 +98,15 @@ export interface WeekSchedule {
 }
 
 export interface BookingSettings {
-  slotDuration: number;
-  maxAdvanceBooking: number;
-  minAdvanceBooking: number;
-  maxSimultaneousBookings: number;
+  slotMinutes: number;
+  maxAdvanceBookingDays: number;
+  minAdvanceBookingHours: number;
+  maxConcurrent: number;
   allowCancellation: boolean;
-  cancellationDeadline: number;
-  weekStartsOn: 0 | 1;
-  defaultView: 'day' | 'week' | 'month';
+  cancellationDeadlineHours: number;
+  weekStartDay: 0 | 1;
+  defaultCalendarView: 'day' | 'week' | 'month';
+  allowOnlineBooking: boolean;
 }
 
 // 通信関連
@@ -409,6 +410,20 @@ export interface UseSystemSettingsReturn {
     data: Partial<MasterDataDetail>
   ) => Promise<void | boolean>;
   deleteMasterData: (id: string) => Promise<void | boolean>;
+  exportMasterData?: (
+    filters?: Partial<FilterState>
+  ) => Promise<
+    | {
+        items: MasterDataDetail[];
+        snapshot_key: string;
+      }
+    | null
+  >;
+  importMasterData?: (
+    items: MasterDataDetail[],
+    clinicId?: string | null
+  ) => Promise<boolean>;
+  rollbackMasterData?: (clinicId?: string | null) => Promise<boolean>;
 
   // フィルター
   updateFilters?: (filter: Partial<FilterState>) => void;

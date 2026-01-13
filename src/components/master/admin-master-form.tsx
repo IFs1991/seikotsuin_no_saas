@@ -22,9 +22,9 @@ interface AdminMasterFormProps {
   ) => Promise<Partial<MasterDataDetail>>;
   onUpdate: (id: string, data: Partial<MasterDataDetail>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onImport: () => void;
-  onExport: () => void;
-  onRollback: () => void;
+  onImport: (items: MasterDataDetail[]) => Promise<boolean>;
+  onExport: () => Promise<{ items: MasterDataDetail[]; snapshot_key: string }>;
+  onRollback: () => Promise<boolean>;
 }
 
 const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
@@ -54,11 +54,56 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
   };
 
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // バルクアップロード処理
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const content = String(reader.result ?? '');
+        const parsed = JSON.parse(content);
+        const items = Array.isArray(parsed) ? parsed : parsed?.items;
+        if (!Array.isArray(items)) {
+          throw new Error('インポート形式が不正です');
+        }
+        await onImport(items);
+      } catch (error) {
+        console.error('インポート失敗:', error);
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
-  const handleRollback = () => {
-    // ロールバック処理
+  const handleRollback = async () => {
+    try {
+      await onRollback();
+    } catch (error) {
+      console.error('ロールバック失敗:', error);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const result = await onExport();
+      const payload = JSON.stringify(result, null, 2);
+      const safeTimestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-');
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `system_settings_export_${safeTimestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('エクスポート失敗:', error);
+    }
   };
 
   return (
@@ -145,6 +190,9 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
                 variant='outline'
               >
                 プレビュー表示
+              </Button>
+              <Button onClick={handleExport} variant='outline'>
+                エクスポート
               </Button>
               <Button onClick={handleRollback} variant='outline'>
                 ロールバック

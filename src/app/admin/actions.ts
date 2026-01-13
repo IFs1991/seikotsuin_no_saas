@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import {
   loginSchema,
   signupSchema,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/schemas/auth';
 import { getServerClient } from '@/lib/supabase/server';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
+import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 
 const INACTIVE_ACCOUNT_MESSAGE =
   'アカウントが無効化されています。管理者にお問い合わせください';
@@ -67,6 +69,8 @@ function extractAuthFormValues(formData: FormData) {
 
 export async function login(_: any, formData: FormData): Promise<AuthResponse> {
   const supabase = await getServerClient();
+  const headerList = await headers();
+  const { ipAddress, userAgent } = getRequestInfoFromHeaders(headerList);
 
   try {
     // 1. 入力値の検証とサニタイズ
@@ -116,6 +120,12 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
       }
 
       console.warn('[Security] Login attempt failed:', warningPayload);
+      await AuditLogger.logFailedLogin(
+        sanitizedEmail,
+        ipAddress,
+        userAgent,
+        errorMessage
+      );
       return {
         success: false,
         errors: {
@@ -135,6 +145,13 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
         },
       };
     }
+
+    await AuditLogger.logLogin(
+      data.user.id,
+      sanitizedEmail,
+      ipAddress,
+      userAgent
+    );
 
     // 5. ユーザー権限の確認
     const profileResult = await supabase
@@ -266,6 +283,8 @@ export async function signup(
  */
 export async function logout(): Promise<void> {
   const supabase = await getServerClient();
+  const headerList = await headers();
+  const { ipAddress } = getRequestInfoFromHeaders(headerList);
 
   try {
     // 現在のユーザー情報を取得（ログ用）
@@ -286,6 +305,11 @@ export async function logout(): Promise<void> {
         email: user.email,
         timestamp: new Date().toISOString(),
       });
+      await AuditLogger.logLogout(
+        user.id,
+        user.email || '',
+        ipAddress
+      );
     }
 
     revalidatePath('/', 'layout');

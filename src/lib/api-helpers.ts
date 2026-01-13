@@ -3,7 +3,6 @@
 // =================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import DOMPurify from 'isomorphic-dompurify';
 import { logger } from '@/lib/logger';
 import { AppError } from '@/lib/error-handler';
 import {
@@ -11,6 +10,8 @@ import {
   type ClinicAccessOptions,
 } from '@/lib/supabase/guards';
 import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
+import { ALLOWED_REDIRECT_ORIGINS } from '@/lib/constants/security';
+import { ADMIN_UI_ROLES, normalizeRole } from '@/lib/constants/roles';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -42,7 +43,7 @@ export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /**
  * 管理者認証・認可チェック
- * admin または clinic_manager ロールを持つユーザーのみ許可
+ * ADMIN_UI_ROLES (admin, clinic_admin) を持つユーザーのみ許可
  */
 export async function verifyAdminAuth(
   request: NextRequest
@@ -55,17 +56,21 @@ export async function verifyAdminAuth(
       path,
       null,
       {
-        allowedRoles: ['admin', 'clinic_manager'],
+        allowedRoles: Array.from(ADMIN_UI_ROLES),
         requireClinicMatch: false,
       }
     );
+
+    // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    const normalizedRole = normalizeRole(permissions.role) ?? permissions.role;
 
     return {
       success: true,
       user: {
         id: user.id,
         email: user.email || '',
-        role: permissions.role,
+        role: normalizedRole,
       },
     };
   } catch (error) {
@@ -93,9 +98,17 @@ const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'];
  * 入力データのサニタイゼーション
  * XSS攻撃とプロトタイプ汚染攻撃を防ぐため、すべての文字列値をサニタイズし、危険なキーをフィルタリング
  */
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 export function sanitizeInput(value: unknown): unknown {
   if (typeof value === 'string') {
-    return DOMPurify.sanitize(value);
+    return escapeHtml(value);
   }
 
   if (Array.isArray(value)) {
@@ -115,6 +128,46 @@ export function sanitizeInput(value: unknown): unknown {
   }
 
   return value;
+}
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function buildAllowedOrigins(requestOrigin: string): Set<string> {
+  const allowed = new Set(ALLOWED_REDIRECT_ORIGINS);
+  allowed.add(requestOrigin);
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrl) {
+    try {
+      allowed.add(new URL(appUrl).origin);
+    } catch (error) {
+      logger.warn('Invalid NEXT_PUBLIC_APP_URL ignored for origin checks', error);
+    }
+  }
+
+  return allowed;
+}
+
+function resolveOriginFromHeaders(request: NextRequest): string | null {
+  const origin = request.headers.get('origin');
+  if (origin && origin.trim().length > 0) {
+    return origin;
+  }
+
+  const referer = request.headers.get('referer');
+  if (referer && referer.trim().length > 0) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function isAllowedOrigin(origin: string, allowed: Set<string>): boolean {
+  return allowed.has(origin);
 }
 
 /**
@@ -190,6 +243,33 @@ export async function processApiRequest(
   const path = new URL(request.url).pathname;
 
   try {
+    const method = request.method.toUpperCase();
+    if (MUTATING_METHODS.has(method)) {
+      const requestOrigin = new URL(request.url).origin;
+      const originHeader = resolveOriginFromHeaders(request);
+
+      if (originHeader) {
+        const allowedOrigins = buildAllowedOrigins(requestOrigin);
+        if (!isAllowedOrigin(originHeader, allowedOrigins)) {
+          logger.warn('Blocked request from disallowed origin', {
+            path,
+            method,
+            origin: originHeader,
+          });
+
+          return {
+            success: false,
+            error: createErrorResponse('不正なリクエスト元です', 403),
+          };
+        }
+      } else if (process.env.NODE_ENV === 'production') {
+        logger.warn('Missing origin headers on state-changing request', {
+          path,
+          method,
+        });
+      }
+    }
+
     const guardOptions: ClinicAccessOptions = {};
     if (options.allowedRoles) {
       guardOptions.allowedRoles = options.allowedRoles;
@@ -221,12 +301,16 @@ export async function processApiRequest(
       }
     }
 
+    // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    const normalizedRoleForAuth = normalizeRole(permissions.role) ?? permissions.role;
+
     return {
       success: true,
       auth: {
         id: user.id,
         email: user.email || '',
-        role: permissions.role,
+        role: normalizedRoleForAuth,
       },
       permissions,
       supabase,

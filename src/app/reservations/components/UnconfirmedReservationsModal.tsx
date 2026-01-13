@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Check, Calendar, User, Scissors } from 'lucide-react';
-import { Appointment, MenuItem, SchedulerResource } from '../types';
+import { Appointment, AppointmentUpdateResult, MenuItem, SchedulerResource } from '../types';
 
 
 interface Props {
@@ -8,16 +8,31 @@ interface Props {
   resources: SchedulerResource[];
   menus: MenuItem[];
   onClose: () => void;
-  onConfirm: (appointment: Appointment) => void;
+  onConfirm: (appointment: Appointment) => Promise<AppointmentUpdateResult>;
 }
 
 export const UnconfirmedReservationsModal: React.FC<Props> = ({ appointments: initialAppointments, resources, menus, onClose, onConfirm }) => {
   // Local state to simulate list reducing as user confirms
   const [list, setList] = useState(initialAppointments);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleConfirm = (appt: Appointment) => {
-    onConfirm(appt); // Inform parent to actually add it
-    setList(prev => prev.filter(a => a.id !== appt.id)); // Remove from UI
+  useEffect(() => {
+    setList(initialAppointments);
+    setErrorMessage(null);
+  }, [initialAppointments]);
+
+  const handleConfirm = async (appt: Appointment) => {
+    setErrorMessage(null);
+    try {
+      const result = await onConfirm(appt);
+      if (result.ok) {
+        setList(prev => prev.filter(a => a.id !== appt.id));
+      } else {
+        setErrorMessage(result.error ?? 'Failed to confirm reservation.');
+      }
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to confirm reservation.');
+    }
   };
 
   const getResourceName = (id: string) => resources.find(r => r.id === id)?.name || '未定';
@@ -50,6 +65,11 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({ appointments: in
 
         {/* Content */}
         <div className="p-0 overflow-y-auto bg-gray-50">
+          {errorMessage && (
+            <div className="px-6 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100">
+              {errorMessage}
+            </div>
+          )}
           {list.length === 0 ? (
             <div className="p-10 text-center text-gray-500">
               未確認の予約はありません。全て処理されました。

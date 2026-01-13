@@ -1,31 +1,39 @@
 /**
  * 販売停止（Block）サービス層
  * F008: 販売停止設定機能
+ * DOD-09: server-only サーバーサイド専用
  */
 
-import { createClient } from '@/lib/supabase';
+import 'server-only';
+
+import { getServerClient, type SupabaseServerClient } from '@/lib/supabase';
 import type { Block, CreateBlockData } from '@/types/reservation';
 
 export class BlockService {
-  private readonly supabasePromise: Promise<any>;
+  private readonly supabase: SupabaseServerClient | null;
 
-  constructor() {
-    this.supabasePromise = createClient();
+  constructor(supabase?: SupabaseServerClient) {
+    this.supabase = supabase ?? null;
   }
 
-  private async getSupabase() {
-    return await this.supabasePromise;
+  private async getSupabase(): Promise<SupabaseServerClient> {
+    if (this.supabase) {
+      return this.supabase;
+    }
+    return await getServerClient();
   }
 
   /**
    * Block作成
    * @param data Block作成データ
+   * @param clinicId クリニックID（テナント境界）
    * @returns 作成されたBlock
    */
-  async createBlock(data: CreateBlockData): Promise<Block> {
+  async createBlock(data: CreateBlockData, clinicId: string): Promise<Block> {
     const supabase = await this.getSupabase();
     const blockData = {
       ...data,
+      clinic_id: clinicId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -46,14 +54,16 @@ export class BlockService {
   /**
    * Block取得（ID指定）
    * @param id BlockID
+   * @param clinicId クリニックID（テナント境界）
    * @returns Block
    */
-  async getBlockById(id: string): Promise<Block> {
+  async getBlockById(id: string, clinicId: string): Promise<Block> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('blocks')
       .select('*')
       .eq('id', id)
+      .eq('clinic_id', clinicId)
       .single();
 
     if (error) {
@@ -70,12 +80,14 @@ export class BlockService {
   /**
    * リソース別Block一覧取得
    * @param resourceId リソースID
+   * @param clinicId クリニックID（テナント境界）
    * @param startDate 開始日
    * @param endDate 終了日
    * @returns Block配列
    */
   async getBlocksByResource(
     resourceId: string,
+    clinicId: string,
     startDate?: Date,
     endDate?: Date
   ): Promise<Block[]> {
@@ -83,7 +95,8 @@ export class BlockService {
     let query = supabase
       .from('blocks')
       .select('*')
-      .eq('resourceId', resourceId);
+      .eq('resourceId', resourceId)
+      .eq('clinic_id', clinicId);
 
     if (startDate) {
       query = query.gte('startTime', startDate.toISOString());
@@ -106,13 +119,19 @@ export class BlockService {
    * 期間内の全Block取得
    * @param startDate 開始日
    * @param endDate 終了日
+   * @param clinicId クリニックID（テナント境界）
    * @returns Block配列
    */
-  async getBlocksByDateRange(startDate: Date, endDate: Date): Promise<Block[]> {
+  async getBlocksByDateRange(
+    startDate: Date,
+    endDate: Date,
+    clinicId: string
+  ): Promise<Block[]> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('blocks')
       .select('*')
+      .eq('clinic_id', clinicId)
       .gte('startTime', startDate.toISOString())
       .lte('endTime', endDate.toISOString())
       .order('startTime', { ascending: true });
@@ -128,17 +147,20 @@ export class BlockService {
    * Block更新
    * @param id BlockID
    * @param updates 更新データ
+   * @param clinicId クリニックID（テナント境界）
    * @returns 更新されたBlock
    */
   async updateBlock(
     id: string,
-    updates: Partial<Omit<Block, 'id' | 'createdAt' | 'createdBy'>>
+    updates: Partial<Omit<Block, 'id' | 'createdAt' | 'createdBy'>>,
+    clinicId: string
   ): Promise<Block> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('blocks')
       .update({ ...updates, updatedAt: new Date() })
       .eq('id', id)
+      .eq('clinic_id', clinicId)
       .select()
       .single();
 
@@ -152,14 +174,16 @@ export class BlockService {
   /**
    * Block削除
    * @param id BlockID
+   * @param clinicId クリニックID（テナント境界）
    * @returns 成功フラグ
    */
-  async deleteBlock(id: string): Promise<boolean> {
+  async deleteBlock(id: string, clinicId: string): Promise<boolean> {
     const supabase = await this.getSupabase();
     const { error } = await supabase
       .from('blocks')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('clinic_id', clinicId);
 
     if (error) {
       throw new Error(error.message);
@@ -173,18 +197,21 @@ export class BlockService {
    * @param resourceId リソースID
    * @param startTime 開始時刻
    * @param endTime 終了時刻
+   * @param clinicId クリニックID（テナント境界）
    * @returns ブロック情報（ブロックされていない場合はnull）
    */
   async checkBlockConflict(
     resourceId: string,
     startTime: Date,
-    endTime: Date
+    endTime: Date,
+    clinicId: string
   ): Promise<Block | null> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('blocks')
       .select('*')
       .eq('resourceId', resourceId)
+      .eq('clinic_id', clinicId)
       .or(`startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`)
       .limit(1)
       .single();

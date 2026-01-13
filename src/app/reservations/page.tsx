@@ -10,7 +10,7 @@ import { AppointmentDetail } from './components/AppointmentDetail';
 import { AppointmentForm } from './components/AppointmentForm';
 import { UnconfirmedReservationsModal } from './components/UnconfirmedReservationsModal';
 import { NotificationsModal } from './components/NotificationsModal';
-import { Appointment, Notification, SchedulerResource, ViewMode } from './types';
+import { Appointment, AppointmentUpdateResult, Notification, SchedulerResource, ViewMode } from './types';
 import { buildTimeSlots } from './constants';
 import { useAppointments } from './hooks/useAppointments';
 import { useReservationFormData } from '@/hooks/useReservationFormData';
@@ -69,6 +69,7 @@ export default function ReservationsPage() {
   const [currentView, setCurrentView] = useState<ViewMode>('timeline');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
@@ -136,15 +137,38 @@ export default function ReservationsPage() {
     setSelectedAppointment(newAppointment);
     setFormInitialValues(undefined);
     setCurrentView('timeline');
+    setUpdateError(null);
   };
 
-  const handleUpdateAppointment = (updatedAppointment: Appointment) => {
-    updateAppointment(updatedAppointment);
-    setSelectedAppointment(updatedAppointment);
+  const handleUpdateAppointment = async (
+    updatedAppointment: Appointment
+  ): Promise<AppointmentUpdateResult> => {
+    setUpdateError(null);
+    const result = await updateAppointment(updatedAppointment);
+    if (result.ok) {
+      setSelectedAppointment(updatedAppointment);
+    } else {
+      setUpdateError(result.error ?? 'Failed to update reservation.');
+    }
+    return result;
   };
 
-  const handleConfirmPending = (appt: Appointment) => {
-    handleUpdateAppointment({
+  const handleMoveAppointment = async (
+    id: string,
+    newResourceId: string,
+    newStartHour: number,
+    newStartMinute: number
+  ): Promise<AppointmentUpdateResult> => {
+    setUpdateError(null);
+    const result = await moveAppointment(id, newResourceId, newStartHour, newStartMinute);
+    if (!result.ok) {
+      setUpdateError(result.error ?? 'Failed to move reservation.');
+    }
+    return result;
+  };
+
+  const handleConfirmPending = async (appt: Appointment) => {
+    return handleUpdateAppointment({
       ...appt,
       status: 'confirmed',
       color: 'blue',
@@ -167,7 +191,7 @@ export default function ReservationsPage() {
             timeSlots={timeSlots}
             onAppointmentClick={setSelectedAppointment}
             onTimeSlotClick={handleTimeSlotClick}
-            onAppointmentMove={moveAppointment}
+            onAppointmentMove={handleMoveAppointment}
           />
         );
       case 'list':
@@ -225,6 +249,11 @@ export default function ReservationsPage() {
           onRefresh={() => loadAppointments(currentDate)}
         />
         <main className="flex-grow overflow-hidden bg-gray-100 relative">
+          {updateError && (
+            <div className="mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {updateError}
+            </div>
+          )}
           {renderContent()}
 
           {(loading || masterLoading) && (

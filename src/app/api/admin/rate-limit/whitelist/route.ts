@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import { z } from 'zod';
 import { processApiRequest } from '@/lib/api-helpers';
+import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 // ホワイトリスト追加スキーマ
 const WhitelistAddSchema = z.object({
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
       requireClinicMatch: false,
     });
     if (!auth.success) {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const auth = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
       requireClinicMatch: false,
     });
     if (!auth.success) {

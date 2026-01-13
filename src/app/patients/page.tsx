@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import {
@@ -24,6 +25,9 @@ export default function PatientsPage() {
   const { data, loading, error } = usePatientAnalysis(clinicId);
 
   const isLoading = profileLoading || loading;
+  const tabBaseClass = 'px-4 py-2 rounded text-sm font-medium';
+  const activeTabClass = `${tabBaseClass} bg-blue-600 text-white`;
+  const inactiveTabClass = `${tabBaseClass} bg-gray-200 text-gray-700 hover:bg-gray-300`;
 
   if (profileError && !profileLoading) {
     return (
@@ -120,6 +124,14 @@ export default function PatientsPage() {
   return (
     <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a]'>
       <div className='max-w-[800px] mx-auto space-y-6'>
+        <div className='flex space-x-2'>
+          <span className={activeTabClass} aria-current='page'>
+            {'\u60a3\u8005\u5206\u6790'}
+          </span>
+          <Link href='/patients/list' className={inactiveTabClass}>
+            {'\u60a3\u8005\u4e00\u89a7'}
+          </Link>
+        </div>
         <Card className='bg-card'>
           <CardHeader>
             <CardTitle>患者フロー分析</CardTitle>

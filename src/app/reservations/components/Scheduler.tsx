@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PIXELS_PER_HOUR, SIDEBAR_WIDTH, GRID_START_HOUR, SNAP_MINUTES, CLICK_SNAP_MINUTES } from '../constants';
 import { AppointmentBlock } from './AppointmentBlock';
-import { Appointment, SchedulerResource, TimeSlot } from '../types';
+import { Appointment, AppointmentUpdateResult, SchedulerResource, TimeSlot } from '../types';
 import { calculateTimeFromX, calculateDuration, calculateEndTime, timeToMinutes, hasTimeConflict } from '../utils/time';
 
 interface Props {
@@ -10,7 +10,12 @@ interface Props {
   timeSlots: TimeSlot[];
   onAppointmentClick: (appointment: Appointment) => void;
   onTimeSlotClick: (resourceId: string, hour: number, minute: number) => void;
-  onAppointmentMove: (id: string, newResourceId: string, newStartHour: number, newStartMinute: number) => void;
+  onAppointmentMove: (
+    id: string,
+    newResourceId: string,
+    newStartHour: number,
+    newStartMinute: number
+  ) => Promise<AppointmentUpdateResult>;
 }
 
 export const Scheduler: React.FC<Props> = ({ 
@@ -47,7 +52,10 @@ export const Scheduler: React.FC<Props> = ({
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetResourceId: string) => {
+  const handleDrop = async (
+    e: React.DragEvent<HTMLDivElement>,
+    targetResourceId: string
+  ) => {
     e.preventDefault();
     const data = e.dataTransfer.getData('application/json');
     
@@ -91,7 +99,7 @@ export const Scheduler: React.FC<Props> = ({
             return;
         }
         
-        onAppointmentMove(id, targetResourceId, newStartHour, newStartMinute);
+        await onAppointmentMove(id, targetResourceId, newStartHour, newStartMinute);
 
     } catch (err) {
         console.error("Failed to parse drag data", err);

@@ -75,18 +75,41 @@ export async function GET(
       throw normalizeSupabaseError(patientError, path);
     }
 
+    const normalizeTextList = (
+      value: string | string[] | null | undefined
+    ): string[] => {
+      if (!value) return [];
+      return Array.isArray(value) ? value.filter(Boolean) : [value];
+    };
+
+    const resolveSuggestions = (comment: Record<string, unknown>) => {
+      const suggestion = comment.suggestion_for_tomorrow;
+      if (suggestion) {
+        return normalizeTextList(suggestion as string | string[]);
+      }
+      const recommendations = comment.recommendations;
+      if (recommendations) {
+        return normalizeTextList(recommendations as string | string[]);
+      }
+      return [];
+    };
+
     // AIコメント取得
-    const { data: aiComment, error: aiError } = await supabase
+    let aiComment: Record<string, unknown> | null = null;
+    const { data: aiCommentData, error: aiError } = await supabase
       .from('ai_comments')
-      .select(
-        'id, summary, good_points, improvement_points, suggestion_for_tomorrow, created_at'
-      )
+      .select('*')
       .eq('clinic_id', resolvedClinicId)
       .eq('comment_date', today)
       .single();
 
     if (aiError && aiError.code !== 'PGRST116') {
-      throw normalizeSupabaseError(aiError, path);
+      logError(new Error('Failed to fetch AI comments'), {
+        clinicId: resolvedClinicId,
+        aiError,
+      });
+    } else {
+      aiComment = aiCommentData as Record<string, unknown> | null;
     }
 
     // 収益トレンドデータ（過去7日）
@@ -190,16 +213,16 @@ export async function GET(
       },
       aiComment: aiComment
         ? {
-            id: aiComment.id,
-            summary: aiComment.summary || '',
-            highlights: aiComment.good_points ? [aiComment.good_points] : [],
-            improvements: aiComment.improvement_points
-              ? [aiComment.improvement_points]
-              : [],
-            suggestions: aiComment.suggestion_for_tomorrow
-              ? [aiComment.suggestion_for_tomorrow]
-              : [],
-            created_at: aiComment.created_at,
+            id: aiComment.id as string,
+            summary: (aiComment.summary as string) || '',
+            highlights: normalizeTextList(
+              aiComment.good_points as string | string[] | null | undefined
+            ),
+            improvements: normalizeTextList(
+              aiComment.improvement_points as string | string[] | null | undefined
+            ),
+            suggestions: resolveSuggestions(aiComment),
+            created_at: aiComment.created_at as string,
           }
         : null,
       revenueChartData:

@@ -69,6 +69,39 @@ export const useAdminMaster = () => {
     return;
   };
 
+  const exportMasterData = async () => {
+    if (!systemSettings.exportMasterData) {
+      throw new Error('エクスポート機能が利用できません');
+    }
+    const result = await systemSettings.exportMasterData();
+    if (!result) {
+      throw new Error(systemSettings.error || 'データのエクスポートに失敗しました');
+    }
+    return result;
+  };
+
+  const importMasterData = async (items: MasterData[]) => {
+    if (!systemSettings.importMasterData) {
+      throw new Error('インポート機能が利用できません');
+    }
+    const success = await systemSettings.importMasterData(items);
+    if (!success) {
+      throw new Error(systemSettings.error || 'データのインポートに失敗しました');
+    }
+    return true;
+  };
+
+  const rollbackMasterData = async () => {
+    if (!systemSettings.rollbackMasterData) {
+      throw new Error('ロールバック機能が利用できません');
+    }
+    const success = await systemSettings.rollbackMasterData();
+    if (!success) {
+      throw new Error(systemSettings.error || 'ロールバックに失敗しました');
+    }
+    return true;
+  };
+
   const createTableData = async (
     tableName: string,
     data: Partial<TableData>
@@ -121,6 +154,9 @@ export const useAdminMaster = () => {
     createMasterData,
     updateMasterData,
     deleteMasterData,
+    exportMasterData,
+    importMasterData,
+    rollbackMasterData,
 
     // テーブルデータ関連
     tableData: tableManager.tableData,

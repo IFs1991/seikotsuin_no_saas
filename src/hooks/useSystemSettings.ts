@@ -220,6 +220,116 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     });
   }, []);
 
+  const exportMasterData = useCallback(
+    async (filters?: Partial<FilterState>) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const params = new URLSearchParams();
+        const currentFilters = { ...filterState, ...filters };
+
+        if (currentFilters.clinicId) {
+          params.append('clinic_id', currentFilters.clinicId);
+        }
+
+        const response = await fetch(
+          `${API_ENDPOINTS.ADMIN.MASTER_DATA_EXPORT}?${params.toString()}`
+        );
+        const result: ApiResponse<{
+          items: MasterDataDetail[];
+          snapshot_key: string;
+        }> = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        return result.data ?? null;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(errorMessage);
+        console.error('マスターデータエクスポートエラー:', err);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filterState]
+  );
+
+  const importMasterData = useCallback(
+    async (items: MasterDataDetail[], clinicId?: string | null) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA_IMPORT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items,
+            clinic_id: clinicId ?? (filterState.clinicId || undefined),
+          }),
+        });
+
+        const result: ApiResponse<{ imported: number }> =
+          await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        return true;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(errorMessage);
+        console.error('マスターデータインポートエラー:', err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filterState.clinicId]
+  );
+
+  const rollbackMasterData = useCallback(
+    async (clinicId?: string | null) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA_ROLLBACK, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinic_id: clinicId ?? (filterState.clinicId || undefined),
+          }),
+        });
+
+        const result: ApiResponse<{ restored: number }> =
+          await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        return true;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(errorMessage);
+        console.error('マスターデータロールバックエラー:', err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filterState.clinicId]
+  );
+
   return {
     // データ状態
     masterData,
@@ -235,6 +345,9 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     createMasterData,
     updateMasterData,
     deleteMasterData,
+    exportMasterData,
+    importMasterData,
+    rollbackMasterData,
 
     // フィルター
     updateFilters: setFilter,

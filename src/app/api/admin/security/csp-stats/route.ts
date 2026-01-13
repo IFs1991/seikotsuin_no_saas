@@ -6,11 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { processApiRequest } from '@/lib/api-helpers';
+import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await processApiRequest(request, {
-      allowedRoles: ['admin', 'clinic_manager', 'manager'],
+      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
       requireClinicMatch: false,
     });
     if (!auth.success) {

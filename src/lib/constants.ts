@@ -3,6 +3,11 @@ export const API_ENDPOINTS = {
   ADMIN: {
     TABLES: '/api/admin/tables',
     MASTER_DATA: '/api/admin/master-data',
+    MASTER_DATA_EXPORT: '/api/admin/master-data/export',
+    MASTER_DATA_IMPORT: '/api/admin/master-data/import',
+    MASTER_DATA_ROLLBACK: '/api/admin/master-data/rollback',
+    TENANTS: '/api/admin/tenants',
+    USERS: '/api/admin/users',
   },
 } as const;
 

@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+/**
+ * 日報管理フック
+ * DOD-09: API経由でdaily_reportsテーブルにアクセス（直接Supabaseアクセス排除）
+ */
 
-// Supabaseクライアントの初期化
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import React, { useState, useEffect, useCallback } from 'react';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 
-// 型定義 (types/index.ts に定義されているものを想定)
+// 型定義
 interface DailyReport {
   id?: number;
   staff_id: number;
@@ -16,7 +16,29 @@ interface DailyReport {
   notes?: string;
 }
 
+interface DailyReportApiResponse {
+  id: number;
+  reportDate: string;
+  staffName: string;
+  totalPatients: number;
+  newPatients: number;
+  totalRevenue: number;
+  insuranceRevenue: number;
+  privateRevenue: number;
+  reportText?: string;
+  createdAt: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
 const useDailyReports = () => {
+  const { profile } = useUserProfileContext();
+  const clinicId = profile?.clinicId ?? null;
+
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,141 +50,219 @@ const useDailyReports = () => {
   });
   const [tempSave, setTempSave] = useState<DailyReport | null>(null);
   const [queue, setQueue] = useState<DailyReport[]>([]);
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [isOnline, setIsOnline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
 
   // フォーム状態の更新
-  const updateFormState = (newState: Partial<DailyReport>) => {
-    setFormState({ ...formState, ...newState });
-  };
+  const updateFormState = useCallback((newState: Partial<DailyReport>) => {
+    setFormState(prev => ({ ...prev, ...newState }));
+  }, []);
 
   // バリデーション
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     if (
       !formState.staff_id ||
       !formState.date ||
-      !formState.treatment_count ||
-      !formState.revenue
+      formState.treatment_count === undefined ||
+      formState.revenue === undefined
     ) {
       setError('すべてのフィールドを入力してください。');
       return false;
     }
     setError(null);
     return true;
-  };
+  }, [formState]);
 
-  // データ取得
-  const fetchReports = async () => {
+  // APIレスポンスをローカル型に変換
+  const mapApiToLocal = useCallback((apiReport: DailyReportApiResponse): DailyReport => {
+    return {
+      id: apiReport.id,
+      staff_id: 0, // APIからはスタッフ名のみ取得できるため
+      date: apiReport.reportDate,
+      treatment_count: apiReport.totalPatients,
+      revenue: apiReport.totalRevenue,
+      notes: apiReport.reportText,
+    };
+  }, []);
+
+  // データ取得（API経由）
+  const fetchReports = useCallback(async () => {
+    if (!clinicId) {
+      setReports([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('daily_reports')
-        .select('*')
-        .order('date', { ascending: false });
+      const response = await fetch(`/api/daily-reports?clinic_id=${clinicId}`, {
+        credentials: 'include',
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '日報の取得に失敗しました');
       }
 
-      setReports(data || []);
-    } catch (err: any) {
-      setError(err.message);
+      const result: ApiResponse<{ reports: DailyReportApiResponse[] }> = await response.json();
+
+      if (result.success && result.data?.reports) {
+        setReports(result.data.reports.map(mapApiToLocal));
+      } else {
+        setReports([]);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '日報の取得に失敗しました';
+      setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId, mapApiToLocal]);
 
-  // データ作成
-  const createReport = async (report: DailyReport) => {
-    try {
-      const { data, error } = await supabase
-        .from('daily_reports')
-        .insert([report])
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      if (data && typeof data === 'object' && 'staff_id' in data) {
-        setReports([...reports, data as DailyReport]);
-      }
-      setFormState({
-        staff_id: 0,
-        date: new Date().toISOString().slice(0, 10),
-        treatment_count: 0,
-        revenue: 0,
-      });
-    } catch (err: any) {
-      setError(err.message);
+  // データ作成（API経由）
+  const createReport = useCallback(async (report: DailyReport) => {
+    if (!clinicId) {
+      setError('クリニックIDが設定されていません');
+      return;
     }
-  };
 
-  // データ更新
-  const updateReport = async (id: number, updates: Partial<DailyReport>) => {
     try {
-      const { data, error } = await supabase
-        .from('daily_reports')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      const response = await fetch('/api/daily-reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          clinic_id: clinicId,
+          staff_id: report.staff_id || null,
+          report_date: report.date,
+          total_patients: report.treatment_count,
+          new_patients: 0,
+          total_revenue: report.revenue,
+          insurance_revenue: 0,
+          private_revenue: report.revenue,
+          report_text: report.notes || null,
+        }),
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '日報の作成に失敗しました');
       }
 
-      if (data && typeof data === 'object') {
-        setReports(
-          reports.map(report =>
-            report.id === id ? { ...report, ...(data as Partial<DailyReport>) } : report
-          )
+      const result: ApiResponse<DailyReportApiResponse> = await response.json();
+
+      if (result.success && result.data) {
+        const newReport = mapApiToLocal(result.data);
+        setReports(prev => [...prev, newReport]);
+        setFormState({
+          staff_id: 0,
+          date: new Date().toISOString().slice(0, 10),
+          treatment_count: 0,
+          revenue: 0,
+        });
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '日報の作成に失敗しました';
+      setError(message);
+    }
+  }, [clinicId, mapApiToLocal]);
+
+  // データ更新（API経由）
+  const updateReport = useCallback(async (id: number, updates: Partial<DailyReport>) => {
+    if (!clinicId) {
+      setError('クリニックIDが設定されていません');
+      return;
+    }
+
+    try {
+      // 現在のレポートデータを取得
+      const currentReport = reports.find(r => r.id === id);
+      if (!currentReport) {
+        throw new Error('更新対象のレポートが見つかりません');
+      }
+
+      const response = await fetch('/api/daily-reports', {
+        method: 'POST', // upsertを使用するためPOST
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          clinic_id: clinicId,
+          staff_id: updates.staff_id ?? currentReport.staff_id ?? null,
+          report_date: updates.date ?? currentReport.date,
+          total_patients: updates.treatment_count ?? currentReport.treatment_count,
+          new_patients: 0,
+          total_revenue: updates.revenue ?? currentReport.revenue,
+          insurance_revenue: 0,
+          private_revenue: updates.revenue ?? currentReport.revenue,
+          report_text: updates.notes ?? currentReport.notes ?? null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '日報の更新に失敗しました');
+      }
+
+      const result: ApiResponse<DailyReportApiResponse> = await response.json();
+
+      if (result.success && result.data) {
+        const updatedReport = mapApiToLocal(result.data);
+        setReports(prev =>
+          prev.map(report => (report.id === id ? { ...report, ...updatedReport } : report))
         );
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '日報の更新に失敗しました';
+      setError(message);
     }
-  };
+  }, [clinicId, reports, mapApiToLocal]);
 
-  // データ削除
-  const deleteReport = async (id: number) => {
+  // データ削除（API経由）
+  const deleteReport = useCallback(async (id: number) => {
     try {
-      const { error } = await supabase
-        .from('daily_reports')
-        .delete()
-        .eq('id', id);
+      const response = await fetch(`/api/daily-reports?id=${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      if (error) {
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '日報の削除に失敗しました');
       }
 
-      setReports(reports.filter(report => report.id !== id));
-    } catch (err: any) {
-      setError(err.message);
+      setReports(prev => prev.filter(report => report.id !== id));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '日報の削除に失敗しました';
+      setError(message);
     }
-  };
+  }, []);
 
   // フォーム送信
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
       if (isOnline) {
         await createReport(formState);
       } else {
-        setQueue([...queue, formState]);
+        setQueue(prev => [...prev, formState]);
       }
     }
-  };
+  }, [validateForm, isOnline, createReport, formState]);
 
   // 一時保存
-  const handleTempSave = () => {
+  const handleTempSave = useCallback(() => {
     setTempSave(formState);
-  };
+  }, [formState]);
 
   // 施術者別集計
-  const getStaffReport = (staffId: number) => {
+  const getStaffReport = useCallback((staffId: number) => {
     return reports.filter(report => report.staff_id === staffId);
-  };
+  }, [reports]);
 
   // オフライン時のキュー処理
   useEffect(() => {
@@ -171,17 +271,20 @@ const useDailyReports = () => {
         try {
           await Promise.all(queue.map(report => createReport(report)));
           setQueue([]);
-        } catch (err: any) {
-          setError(err.message);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : 'キューの処理に失敗しました';
+          setError(message);
         }
       }
     };
 
     processQueue();
-  }, [isOnline, queue]);
+  }, [isOnline, queue, createReport]);
 
   // オンライン状態の監視
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
@@ -196,8 +299,10 @@ const useDailyReports = () => {
 
   // 初期データロード
   useEffect(() => {
-    fetchReports();
-  }, []);
+    if (clinicId) {
+      fetchReports();
+    }
+  }, [clinicId, fetchReports]);
 
   return {
     reports,
@@ -212,6 +317,7 @@ const useDailyReports = () => {
     deleteReport,
     updateReport,
     isOnline,
+    fetchReports,
   };
 };
 

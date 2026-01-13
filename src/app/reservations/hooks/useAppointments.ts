@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Appointment } from '../types';
+import { Appointment, AppointmentUpdateResult } from '../types';
 import { fetchReservations, updateReservation } from '../api';
 import { calculateDuration, calculateEndTime } from '../utils/time';
 
@@ -41,6 +41,9 @@ const statusToColor = (status?: Appointment['status']) => {
       return 'red';
   }
 };
+
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
 
 export const useAppointments = (clinicId: string | null) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -106,12 +109,16 @@ export const useAppointments = (clinicId: string | null) => {
   }, []);
 
   const updateAppointment = useCallback(
-    async (updatedAppointment: Appointment, clinicIdOverride?: string) => {
+    async (
+      updatedAppointment: Appointment,
+      clinicIdOverride?: string
+    ): Promise<AppointmentUpdateResult> => {
       const clinic = clinicIdOverride ?? clinicId;
-      if (!clinic) return;
+      if (!clinic) {
+        return { ok: false, error: 'Clinic is not assigned.' };
+      }
 
       setLoading(true);
-      setError(null);
       try {
         const start = new Date(updatedAppointment.date);
         start.setHours(
@@ -142,8 +149,12 @@ export const useAppointments = (clinicId: string | null) => {
         setAppointments(prev =>
           prev.map(appt => (appt.id === updatedAppointment.id ? updatedAppointment : appt))
         );
+        return { ok: true };
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to update appointment');
+        return {
+          ok: false,
+          error: getErrorMessage(err, 'Failed to update appointment'),
+        };
       } finally {
         setLoading(false);
       }
@@ -152,10 +163,19 @@ export const useAppointments = (clinicId: string | null) => {
   );
 
   const moveAppointment = useCallback(
-    async (id: string, newResourceId: string, newStartHour: number, newStartMinute: number) => {
-      if (!clinicId) return;
+    async (
+      id: string,
+      newResourceId: string,
+      newStartHour: number,
+      newStartMinute: number
+    ): Promise<AppointmentUpdateResult> => {
+      if (!clinicId) {
+        return { ok: false, error: 'Clinic is not assigned.' };
+      }
       const current = appointments.find(appt => appt.id === id);
-      if (!current) return;
+      if (!current) {
+        return { ok: false, error: 'Appointment not found.' };
+      }
 
       const duration = calculateDuration(
         current.startHour,
@@ -184,7 +204,6 @@ export const useAppointments = (clinicId: string | null) => {
       };
 
       setLoading(true);
-      setError(null);
       try {
         await updateReservation({
           clinicId,
@@ -196,8 +215,12 @@ export const useAppointments = (clinicId: string | null) => {
         setAppointments(prev =>
           prev.map(appt => (appt.id === id ? nextAppointment : appt))
         );
+        return { ok: true };
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to move appointment');
+        return {
+          ok: false,
+          error: getErrorMessage(err, 'Failed to move appointment'),
+        };
       } finally {
         setLoading(false);
       }

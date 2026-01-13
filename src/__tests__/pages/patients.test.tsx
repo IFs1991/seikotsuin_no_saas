@@ -131,14 +131,16 @@ describe('PatientsPage', () => {
   });
 
   test('should display LTV ranking', () => {
+    // UI uses toLocaleString() without yen prefix
+    // @spec docs/stabilization/jest-mock-unification-spec-v0.1.md - Error Class 4
     render(<PatientsPage />);
 
     expect(screen.getByText('佐藤次郎')).toBeInTheDocument();
-    expect(screen.getByText('¥150,000')).toBeInTheDocument();
+    expect(screen.getByText('150,000')).toBeInTheDocument();
     expect(screen.getByText('鈴木三郎')).toBeInTheDocument();
-    expect(screen.getByText('¥120,000')).toBeInTheDocument();
+    expect(screen.getByText('120,000')).toBeInTheDocument();
     expect(screen.getByText('高橋四郎')).toBeInTheDocument();
-    expect(screen.getByText('¥95,000')).toBeInTheDocument();
+    expect(screen.getByText('95,000')).toBeInTheDocument();
   });
 
   test('should display follow-up list', () => {

@@ -1,10 +1,13 @@
 /**
  * 予約サービス層のテスト
  * TDD実装 - Phase 1: テスト定義
+ *
+ * Uses unified Supabase mock (jest-test-stabilization-spec.md)
  */
 
 import { ReservationService } from '@/lib/services/reservation-service';
 import type { Reservation, Customer, Menu, Resource, TimeSlot } from '@/types/reservation';
+import { createSupabaseMock, type SupabaseMock } from '../../../test-utils/supabaseMock';
 
 // モックデータ
 const mockCustomer: Customer = {
@@ -61,70 +64,81 @@ const mockReservation: Reservation = {
   createdBy: 'user1',
 };
 
-// モック関数
-const mockSupabaseClient = {
-  from: jest.fn(() => ({
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        single: jest.fn(() => Promise.resolve({ data: mockReservation, error: null })),
-        order: jest.fn(() => Promise.resolve({ data: [mockReservation], error: null })),
-      })),
-      gte: jest.fn(() => ({
-        lte: jest.fn(() => Promise.resolve({ data: [mockReservation], error: null })),
-      })),
-      insert: jest.fn(() => Promise.resolve({ data: mockReservation, error: null })),
-      update: jest.fn(() => Promise.resolve({ data: mockReservation, error: null })),
-      delete: jest.fn(() => Promise.resolve({ data: null, error: null })),
-    })),
-  })),
-};
+// 統一モック
+let mockSupabase: SupabaseMock;
 
-// ReservationServiceのモック実装
 jest.mock('@/lib/supabase', () => ({
-  createClient: () => mockSupabaseClient,
+  createClient: () => Promise.resolve(mockSupabase.client),
 }));
 
 describe('ReservationService', () => {
   let reservationService: ReservationService;
 
   beforeEach(() => {
+    mockSupabase = createSupabaseMock();
     reservationService = new ReservationService();
     jest.clearAllMocks();
+
+    // Default results
+    mockSupabase.setResult(
+      { table: 'reservations', op: 'select' },
+      { data: [mockReservation], error: null }
+    );
+    mockSupabase.setResult(
+      { table: 'reservations', op: 'insert' },
+      { data: mockReservation, error: null }
+    );
+    mockSupabase.setResult(
+      { table: 'reservations', op: 'update' },
+      { data: mockReservation, error: null }
+    );
+    mockSupabase.setResult(
+      { table: 'reservations', op: 'delete' },
+      { data: null, error: null }
+    );
+    mockSupabase.setResult(
+      { table: 'staff', op: 'select' },
+      { data: mockStaff, error: null }
+    );
+    mockSupabase.setResult(
+      { table: 'blocks', op: 'select' },
+      { data: [], error: null }
+    );
   });
 
   describe('予約検索・取得機能', () => {
     test('ID指定で予約を取得できる', async () => {
       const result = await reservationService.getReservationById('res1');
-      
+
       expect(result).toEqual(mockReservation);
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('reservations');
+      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('日付範囲で予約を検索できる', async () => {
       const startDate = new Date('2025-10-25T00:00:00');
       const endDate = new Date('2025-10-25T23:59:59');
-      
+
       const result = await reservationService.getReservationsByDateRange(startDate, endDate);
-      
+
       expect(result).toEqual([mockReservation]);
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('reservations');
+      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('スタッフIDで予約を検索できる', async () => {
       const result = await reservationService.getReservationsByStaff('staff1', new Date('2025-10-25'));
-      
+
       expect(result).toEqual([mockReservation]);
     });
 
     test('顧客IDで予約履歴を取得できる', async () => {
       const result = await reservationService.getCustomerReservations('cust1');
-      
+
       expect(result).toEqual([mockReservation]);
     });
 
     test('ステータス別で予約を検索できる', async () => {
       const result = await reservationService.getReservationsByStatus('confirmed');
-      
+
       expect(result).toEqual([mockReservation]);
     });
   });
@@ -194,21 +208,32 @@ describe('ReservationService', () => {
 
   describe('予約作成機能', () => {
     test('新規予約を作成できる', async () => {
+      // Use a Friday date (2025-10-24 is a Friday)
       const newReservationData = {
         customerId: 'cust1',
         menuId: 'menu1',
         staffId: 'staff1',
-        startTime: new Date('2025-10-26T14:00:00'),
-        endTime: new Date('2025-10-26T15:00:00'),
+        startTime: new Date('2025-10-24T14:00:00'), // Friday 14:00
+        endTime: new Date('2025-10-24T15:00:00'),   // Friday 15:00
         channel: 'phone' as const,
         notes: '新規予約です',
         createdBy: 'user1',
       };
 
+      // Mock validateTimeSlot to return valid
+      jest.spyOn(reservationService, 'validateTimeSlot')
+        .mockResolvedValue({ isValid: true });
+
+      // Mock successful insert
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'insert' },
+        { data: mockReservation, error: null }
+      );
+
       const result = await reservationService.createReservation(newReservationData);
 
       expect(result).toEqual(mockReservation);
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('reservations');
+      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('時間重複チェックが動作する', async () => {
@@ -270,7 +295,7 @@ describe('ReservationService', () => {
       const result = await reservationService.updateReservationStatus('res1', 'arrived');
 
       expect(result).toEqual(mockReservation);
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('reservations');
+      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('予約時間を変更できる', async () => {
@@ -300,7 +325,7 @@ describe('ReservationService', () => {
       const result = await reservationService.cancelReservation('res1', '顧客都合による');
 
       expect(result).toBe(true);
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('reservations');
+      expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('予約を削除できる', async () => {
@@ -450,26 +475,20 @@ describe('ReservationService', () => {
 
   describe('エラーハンドリング', () => {
     test('データベースエラーが適切に処理される', async () => {
-      mockSupabaseClient.from.mockReturnValue({
-        select: () => ({
-          eq: () => ({
-            single: () => Promise.resolve({ data: null, error: { message: 'Database error' } }),
-          }),
-        }),
-      });
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'select' },
+        { data: null, error: { message: 'Database error' } }
+      );
 
       await expect(reservationService.getReservationById('invalid-id'))
         .rejects.toThrow('Database error');
     });
 
     test('存在しない予約IDでエラーが発生する', async () => {
-      mockSupabaseClient.from.mockReturnValue({
-        select: () => ({
-          eq: () => ({
-            single: () => Promise.resolve({ data: null, error: null }),
-          }),
-        }),
-      });
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'select' },
+        { data: null, error: null }
+      );
 
       await expect(reservationService.getReservationById('nonexistent'))
         .rejects.toThrow('予約が見つかりません');
@@ -494,40 +513,120 @@ describe('ReservationService', () => {
   describe('パフォーマンス要件', () => {
     test('予約検索が十分高速である', async () => {
       const startTime = performance.now();
-      
+
       await reservationService.getReservationsByDateRange(
         new Date('2025-10-25T00:00:00'),
         new Date('2025-10-25T23:59:59')
       );
-      
+
       const endTime = performance.now();
       const operationTime = endTime - startTime;
-      
+
       // 1秒以内での応答を確認
       expect(operationTime).toBeLessThan(1000);
     });
 
     test('利用可能時間取得が十分高速である', async () => {
       const startTime = performance.now();
-      
+
       // モック関数を設定
       jest.spyOn(reservationService, 'getAvailableTimeSlots')
         .mockResolvedValue([
           { time: '09:00', available: true },
           { time: '09:30', available: true },
         ]);
-      
+
       await reservationService.getAvailableTimeSlots(
         'staff1',
         new Date('2025-10-25'),
         60
       );
-      
+
       const endTime = performance.now();
       const operationTime = endTime - startTime;
-      
+
       // 500ms以内での応答を確認
       expect(operationTime).toBeLessThan(500);
     });
+  });
+});
+
+describe('workingHours null safety', () => {
+  let reservationService: ReservationService;
+
+  beforeEach(() => {
+    // Use the same mockSupabase from outer scope (referenced by jest.mock)
+    mockSupabase = createSupabaseMock();
+    reservationService = new ReservationService();
+    jest.clearAllMocks();
+  });
+
+  test('workingHours: undefined のスタッフでも例外が出ない', async () => {
+    const staffWithNoWorkingHours: Resource = {
+      ...mockStaff,
+      workingHours: undefined as any,
+    };
+
+    // Set result for staff lookup - actual implementation will be tested
+    mockSupabase.setResult(
+      { table: 'staff', op: 'select' },
+      { data: staffWithNoWorkingHours, error: null }
+    );
+
+    // Test actual implementation (no spy) - should not throw
+    const result = await reservationService.validateBusinessHours(
+      'staff1',
+      new Date('2025-10-25T10:00:00')
+    );
+
+    // Implementation should return isValid: false with reason '営業時間外です'
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toBe('営業時間外です');
+  });
+
+  test('曜日キー欠損でも例外が出ない', async () => {
+    const staffWithPartialWorkingHours: Resource = {
+      ...mockStaff,
+      workingHours: {
+        monday: { start: '09:00', end: '18:00' },
+        // Other days missing - saturday is not defined
+      } as any,
+    };
+
+    mockSupabase.setResult(
+      { table: 'staff', op: 'select' },
+      { data: staffWithPartialWorkingHours, error: null }
+    );
+
+    // Saturday (2025-10-25) is missing from workingHours
+    const result = await reservationService.validateBusinessHours(
+      'staff1',
+      new Date('2025-10-25T10:00:00')
+    );
+
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toBe('営業時間外です');
+  });
+
+  test('getAvailableTimeSlots: workingHours undefined でも例外が出ない', async () => {
+    const staffWithNoWorkingHours: Resource = {
+      ...mockStaff,
+      workingHours: undefined as any,
+    };
+
+    mockSupabase.setResult(
+      { table: 'staff', op: 'select' },
+      { data: staffWithNoWorkingHours, error: null }
+    );
+
+    // Test actual implementation - should not throw
+    const result = await reservationService.getAvailableTimeSlots(
+      'staff1',
+      new Date('2025-10-25'),
+      60
+    );
+
+    // Should return unavailable slot instead of throwing
+    expect(result).toEqual([{ time: '09:00', available: false, conflictReason: '営業時間外' }]);
   });
 });

@@ -7,7 +7,7 @@ import {
   type SetStateAction,
   type ReactNode,
 } from 'react';
-import type { UserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/user-profile';
 
 interface UserProfileContextValue {
   profile: UserProfile | null;
@@ -36,6 +36,12 @@ export function UserProfileProvider({
       {children}
     </UserProfileContext.Provider>
   );
+}
+
+export function useOptionalUserProfileContext():
+  | UserProfileContextValue
+  | undefined {
+  return useContext(UserProfileContext);
 }
 
 export function useUserProfileContext(): UserProfileContextValue {

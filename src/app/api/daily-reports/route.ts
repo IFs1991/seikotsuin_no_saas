@@ -316,10 +316,41 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { supabase } = await ensureClinicAccess(request, PATH, null, {
+    // DOD-09: テナント境界の強制 - permissions.clinic_id を取得
+    const { supabase, permissions } = await ensureClinicAccess(request, PATH, null, {
       allowedRoles: ['manager'],
       requireClinicMatch: false,
     });
+
+    const clinicId = permissions.clinic_id;
+    if (!clinicId) {
+      return NextResponse.json(
+        { error: 'clinic_id is required' },
+        { status: 400 }
+      );
+    }
+
+    // DOD-09: 削除対象の日報がこのクリニックに属しているか確認
+    const { data: report, error: fetchError } = await supabase
+      .from('daily_reports')
+      .select('id, clinic_id')
+      .eq('id', reportId)
+      .single();
+
+    if (fetchError || !report) {
+      return NextResponse.json(
+        { error: 'Report not found' },
+        { status: 404 }
+      );
+    }
+
+    // テナント境界チェック
+    if (report.clinic_id !== clinicId) {
+      return NextResponse.json(
+        { error: 'Access denied: This report belongs to another clinic' },
+        { status: 403 }
+      );
+    }
 
     const { error } = await supabase
       .from('daily_reports')

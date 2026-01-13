@@ -23,14 +23,22 @@ export async function GET(request: Request) {
         // ユーザー情報を取得して適切なリダイレクト先を決定
         const { data: profile } = await supabase
           .from('profiles')
-          .select<'role', ProfileRow>('role')
+          .select<'role, clinic_id', Pick<ProfileRow, 'role' | 'clinic_id'>>('role, clinic_id')
           .eq('user_id', data.user.id)
           .maybeSingle();
 
         const userRole = profile?.role ?? 'staff';
-        const finalRedirectPath = safeRedirectUrl
-          ? new URL(safeRedirectUrl).pathname
-          : getDefaultRedirect(userRole);
+        const hasClinic = !!profile?.clinic_id;
+
+        // clinic_idがない場合はオンボーディングへ
+        let finalRedirectPath: string;
+        if (!hasClinic) {
+          finalRedirectPath = '/onboarding';
+        } else if (safeRedirectUrl) {
+          finalRedirectPath = new URL(safeRedirectUrl).pathname;
+        } else {
+          finalRedirectPath = getDefaultRedirect(userRole);
+        }
 
         // 成功ログ
         console.info(

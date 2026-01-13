@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient, type SupabaseServerClient } from '@/lib/supabase';
+import {
+  createClient,
+  getUserPermissions,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
+import { canManageClinicSettingsWithCompat, normalizeRole } from '@/lib/constants/roles';
 
-const ADMIN_ROLES = new Set(['admin', 'clinic_manager', 'manager']);
-
-type ProfileRow = {
-  role: string | null;
-  clinic_id: string | null;
+type ProfileStatusRow = {
   is_active: boolean | null;
 } | null;
 
@@ -18,13 +19,13 @@ interface ProfileResponse {
   isAdmin: boolean;
 }
 
-async function fetchProfileRole(
+async function fetchProfileStatus(
   supabase: SupabaseServerClient,
   userId: string
-): Promise<ProfileRow> {
+): Promise<ProfileStatusRow> {
   const profileQuery = await supabase
     .from('profiles')
-    .select('role, clinic_id, is_active')
+    .select('is_active')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -34,7 +35,7 @@ async function fetchProfileRole(
 
   const fallbackQuery = await supabase
     .from('profiles')
-    .select('role, clinic_id, is_active')
+    .select('is_active')
     .eq('id', userId)
     .maybeSingle();
 
@@ -60,32 +61,25 @@ export async function GET() {
       );
     }
 
-    const profile = await fetchProfileRole(supabase, user.id);
+    const permissions = await getUserPermissions(user.id, supabase);
+    const profileStatus = await fetchProfileStatus(supabase, user.id);
 
-    let role: string | null = profile?.role ?? null;
-    let clinicId: string | null = profile?.clinic_id ?? null;
-    const isActive = profile?.is_active ?? true;
+    // 互換マッピング適用: clinic_manager → clinic_admin
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
+    const rawRole = permissions?.role ?? null;
+    const role = normalizeRole(rawRole);
+    const clinicId = permissions?.clinic_id ?? null;
+    const isActive = profileStatus?.is_active ?? true;
 
-    if (!role) {
-      const permissions = await supabase
-        .from('user_permissions')
-        .select('role, clinic_id')
-        .eq('staff_id', user.id)
-        .maybeSingle();
-
-      if (permissions.data) {
-        role = permissions.data.role ?? role;
-        clinicId = permissions.data.clinic_id ?? clinicId;
-      }
-    }
-
+    // Q4決定: isAdmin に manager を含める（統一）
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     const response: ProfileResponse = {
       id: user.id,
       email: user.email ?? null,
       role,
       clinicId,
       isActive: Boolean(isActive),
-      isAdmin: role ? ADMIN_ROLES.has(role) : false,
+      isAdmin: canManageClinicSettingsWithCompat(role),
     };
 
     return NextResponse.json({ success: true, data: response });
