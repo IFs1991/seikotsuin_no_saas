@@ -174,7 +174,7 @@ describe('useDashboard', () => {
       expect(mockLocation.href).toBe('/daily-reports');
     });
 
-    it('should navigate to patients page', async () => {
+    it('should navigate to reservations page', async () => {
       (mockApi.api.dashboard.get as jest.Mock).mockResolvedValueOnce({
         success: true,
         data: mockDashboardData,
@@ -190,7 +190,7 @@ describe('useDashboard', () => {
         result.current.handleQuickAction('appointments');
       });
 
-      expect(mockLocation.href).toBe('/patients');
+      expect(mockLocation.href).toBe('/reservations');
     });
 
     it('should navigate to chat page', async () => {

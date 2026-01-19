@@ -9,6 +9,8 @@ import { ReservationService } from '@/lib/services/reservation-service';
 import type { Reservation, Customer, Menu, Resource, TimeSlot } from '@/types/reservation';
 import { createSupabaseMock, type SupabaseMock } from '../../../test-utils/supabaseMock';
 
+const TEST_CLINIC_ID = 'test-clinic-id';
+
 // モックデータ
 const mockCustomer: Customer = {
   id: 'cust1',
@@ -67,16 +69,12 @@ const mockReservation: Reservation = {
 // 統一モック
 let mockSupabase: SupabaseMock;
 
-jest.mock('@/lib/supabase', () => ({
-  createClient: () => Promise.resolve(mockSupabase.client),
-}));
-
 describe('ReservationService', () => {
   let reservationService: ReservationService;
 
   beforeEach(() => {
     mockSupabase = createSupabaseMock();
-    reservationService = new ReservationService();
+    reservationService = new ReservationService(TEST_CLINIC_ID, mockSupabase.client);
     jest.clearAllMocks();
 
     // Default results
@@ -555,9 +553,9 @@ describe('workingHours null safety', () => {
   let reservationService: ReservationService;
 
   beforeEach(() => {
-    // Use the same mockSupabase from outer scope (referenced by jest.mock)
+    // Reset supabase mock for each test
     mockSupabase = createSupabaseMock();
-    reservationService = new ReservationService();
+    reservationService = new ReservationService(TEST_CLINIC_ID, mockSupabase.client);
     jest.clearAllMocks();
   });
 

@@ -246,10 +246,11 @@ describe('認証と権限制御 Middleware', () => {
     });
 
     /**
-     * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-     * clinic_manager is deprecated, should not have admin access
+     * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
+     * clinic_manager is deprecated but temporarily mapped to clinic_admin via canAccessAdminUIWithCompat
+     * This allows clinic_manager to access /admin/** until Phase 3 migration is complete.
      */
-    test('非推奨の clinic_manager ロールは /admin/** にアクセスできない', async () => {
+    test('非推奨の clinic_manager ロールは互換モードにより /admin/** にアクセス可能（Option B-1）', async () => {
       const deprecatedUser = { id: 'deprecated-user-123', email: 'deprecated@example.com' };
       const deprecatedProfile = { role: 'clinic_manager', clinic_id: 'clinic-123', is_active: true };
 
@@ -260,9 +261,8 @@ describe('認証と権限制御 Middleware', () => {
       const request = createMockRequest('/admin/settings');
       const response = await middleware(request);
 
-      expect(response.status).toBe(307);
-      const location = response.headers.get('location');
-      expect(location).toContain('/unauthorized');
+      // Option B-1: clinic_manager は clinic_admin にマッピングされるため、アクセス可能
+      expect(response.status).not.toBe(307);
     });
   });
 

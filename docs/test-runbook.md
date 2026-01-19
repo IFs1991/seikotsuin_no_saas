@@ -13,6 +13,12 @@
 npm run test
 ```
 
+Windows (EPERM workaround):
+```bash
+npm run test:windows
+npm run test:windows:md
+```
+
 Optional:
 ```bash
 npm run test:coverage

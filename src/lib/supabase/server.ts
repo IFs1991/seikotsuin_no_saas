@@ -112,12 +112,17 @@ export async function getUserPermissions(
   userId: string,
   client?: SupabaseServerClient
 ): Promise<UserPermissions | null> {
-  const supabase = client ?? (await getServerClient());
-  const { data: permissions, error } = await supabase
+  // Use Service Role to bypass RLS for reading user's own permissions.
+  // This is safe because:
+  // 1. This function is only called server-side after authentication
+  // 2. It only reads the authenticated user's own permission data
+  // 3. RLS on user_permissions table can cause performance issues during auth flow
+  const adminClient = createAdminClient();
+  const { data: permissions, error } = await adminClient
     .from('user_permissions')
     .select('role, clinic_id')
     .eq('staff_id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !permissions) {
     return null;
@@ -125,11 +130,21 @@ export async function getUserPermissions(
 
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+  // Use normal client for JWT session access (not RLS-protected)
+  const supabase = client ?? (await getServerClient());
   let clinic_scope_ids: string[] | undefined;
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    const scopeIdsFromJwt = session?.user?.app_metadata?.clinic_scope_ids
-      ?? session?.access_token ? JSON.parse(atob(session.access_token.split('.')[1]))?.clinic_scope_ids : undefined;
+    const scopeIdsFromMetadata = session?.user?.app_metadata?.clinic_scope_ids;
+    let scopeIdsFromJwt: unknown = scopeIdsFromMetadata;
+
+    if (!Array.isArray(scopeIdsFromJwt)) {
+      const accessToken = session?.access_token;
+      if (accessToken) {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        scopeIdsFromJwt = payload?.clinic_scope_ids;
+      }
+    }
 
     if (Array.isArray(scopeIdsFromJwt)) {
       clinic_scope_ids = scopeIdsFromJwt;

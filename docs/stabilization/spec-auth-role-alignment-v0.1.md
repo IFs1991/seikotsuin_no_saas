@@ -318,6 +318,12 @@ Remaining `clinic_manager` references (acceptable):
 - CHECK constraint on `public.staff_invites` no longer references `clinic_manager`.
 - `20260110000100_dod08_clinic_manager_complete_fix.sql` failed locally because `public.invitations` does not exist.
 
+**Hotfix (2026-01-15)**
+- Scope: `supabase/migrations/20260110000100_dod08_clinic_manager_complete_fix.sql` の invitations セクションを `public.staff_invites` に変更（制約: `staff_invites_role_check`、ポリシー: `staff_invites_clinic_admin_select`）。
+- Scope: `mfa_usage_stats` は `user_id` カラムを持たないため、`mfa_usage_stats_select_policy` の `user_id = auth.uid()` を削除し、clinic_adminスコープのみに限定。
+- Rollback: 該当セクションを `public.invitations` / `invitations_role_check` / `invitations_select_policy` に戻す（git revert も可）。
+  - `mfa_usage_stats_select_policy` は `user_id = auth.uid()` 条件を復元。
+
 **Update Log (2026-01-10)**
 - Created local preflight data and recorded counts (auth.users/profiles/user_permissions).
 - Executed `20260109000100_migrate_clinic_manager_to_clinic_admin.sql` locally.

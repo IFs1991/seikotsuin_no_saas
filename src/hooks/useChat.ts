@@ -86,10 +86,16 @@ export const useChat = (clinicId: string | null) => {
    * チャット履歴を取得
    */
   const fetchHistory = useCallback(async () => {
+    // clinicIdがnullの場合はAPIを呼び出さない
+    if (!clinicId) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const response = await api.chat.getHistory(clinicId ?? undefined);
+      const response = await api.chat.getHistory(clinicId);
 
       if (isSuccessResponse(response)) {
         const sessions = response.data as ChatSession[];

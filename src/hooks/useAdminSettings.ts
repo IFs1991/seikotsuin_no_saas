@@ -36,6 +36,7 @@ export function useAdminSettings<T>(
   const category = persistOptions?.category ?? null;
   const autoLoad = persistOptions?.autoLoad;
   const hasPersist = Boolean(clinicId && category);
+  const FETCH_TIMEOUT_MS = 8000;
   const [data, setData] = useState<T>(initialData);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState>({
@@ -51,6 +52,11 @@ export function useAdminSettings<T>(
       return;
     }
 
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(
+      () => abortController.abort(),
+      FETCH_TIMEOUT_MS
+    );
     setIsInitialized(false);
 
     setLoadingState(prev => ({
@@ -61,7 +67,8 @@ export function useAdminSettings<T>(
 
     try {
       const response = await fetch(
-        `/api/admin/settings?clinic_id=${clinicId}&category=${category}`
+        `/api/admin/settings?clinic_id=${clinicId}&category=${category}`,
+        { signal: abortController.signal }
       );
 
       if (!response.ok) {
@@ -77,13 +84,19 @@ export function useAdminSettings<T>(
       setIsInitialized(true);
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : '設定の取得に失敗しました';
+        error instanceof Error && error.name === 'AbortError'
+          ? '設定の取得がタイムアウトしました'
+          : error instanceof Error
+            ? error.message
+            : '設定の取得に失敗しました';
       setLoadingState(prev => ({
         ...prev,
         error: errorMessage,
         savedMessage: '',
       }));
       setIsInitialized(true);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }, [clinicId, category, hasPersist]);
 

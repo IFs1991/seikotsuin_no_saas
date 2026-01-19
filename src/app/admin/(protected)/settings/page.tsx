@@ -229,7 +229,7 @@ export default function AdminSettings() {
   // ローディング表示
   const LoadingCard = () => (
     <Card className='p-6'>
-      <div className='text-center py-12 text-gray-500'>読み込み中...</div>
+      <div className='text-center py-12 text-gray-500'>設定を読み込み中...</div>
     </Card>
   );
 
@@ -349,7 +349,7 @@ export default function AdminSettings() {
 
         {/* ナビゲーション */}
         <div className='flex-1 overflow-y-auto p-4'>
-          <nav className='space-y-1'>
+          <nav className='space-y-1' data-testid='admin-settings-nav'>
             {filteredCategories.map(category => (
               <div key={category.id}>
                 <button
@@ -408,7 +408,7 @@ export default function AdminSettings() {
 
       {/* メインコンテンツ */}
       <div className='flex-1 overflow-y-auto'>
-        <div className='p-8'>
+        <div className='p-8' data-testid='admin-settings-content'>
           {currentItem ? (
             <div>
               <div className='mb-8'>

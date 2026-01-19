@@ -6,7 +6,7 @@
 - One task = one PR.
 - Priority: **High**
 - Risk: **Data save failures in production**
-- Status: Implemented (booking calendar + system security + selectors + persistence hook stability + profile fallback)
+- Status: Implemented (booking calendar + system security + selectors + persistence hook stability + profile fallback + audit log best-effort)
 
 ## Evidence (Prior Behavior)
 
@@ -126,6 +126,14 @@ await expect(
 ).toBeVisible();
 ```
 
+Reload wait (Windows/Next.js dev):
+
+```typescript
+// load が不安定なため DOMContentLoaded まで待機し、UIのロード完了を別途確認
+await page.reload({ waitUntil: 'domcontentloaded' });
+await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+```
+
 ### 5. useAdminSettings persistOptions stabilization (P1, Done)
 
 Problem: persistOptions object was created inline per render, which retriggered
@@ -163,6 +171,28 @@ Save button stabilization:
 setLoadingState(prev => ({ ...prev, error: null, savedMessage: '' }));
 ```
 
+Fetch timeout guard:
+
+```typescript
+const FETCH_TIMEOUT_MS = 8000;
+const abortController = new AbortController();
+const timeoutId = setTimeout(() => abortController.abort(), FETCH_TIMEOUT_MS);
+const response = await fetch(url, { signal: abortController.signal });
+```
+
+### 5.1. Admin settings save does not block on audit logging (P1, Done)
+
+Problem: `AuditLogger.logAdminAction` can fail or hang (e.g., missing `audit_logs` table
+or service-role availability), preventing the `PUT /api/admin/settings` response and
+keeping the UI in "保存中..." state (DOD-06).
+
+Resolution: make audit logging best-effort so saves return immediately.
+
+```typescript
+// src/app/api/admin/settings/route.ts
+void AuditLogger.logAdminAction(/* ... */);
+```
+
 ### 6. Shared profile context reuse (P1, Done)
 
 Problem: admin settings components called `useUserProfile` directly, which
@@ -187,13 +217,20 @@ Problem: `/api/auth/profile` fetch can stall in Playwright, leaving `profileLoad
 true and admin settings stuck at "設定を読み込み中..." (DOD-06).
 
 Resolution: `useUserProfile` seeds profile from the auth cookie on initial render,
-falls back to Supabase session metadata when needed, and aborts the profile fetch
-after a short timeout to avoid infinite loading.
+falls back to Supabase session metadata when needed, times out the session fetch
+to avoid hangs, and aborts the profile fetch after a short timeout to avoid
+infinite loading.
 
 ```typescript
 const PROFILE_FETCH_TIMEOUT_MS = 8000;
-const { data } = await supabase.auth.getSession();
-if (data.session?.user) setProfile(buildProfileFromUser(data.session.user));
+const SESSION_FETCH_TIMEOUT_MS = 2000;
+const sessionResult = await Promise.race([
+  supabase.auth.getSession(),
+  new Promise<null>(resolve => setTimeout(resolve, SESSION_FETCH_TIMEOUT_MS)),
+]);
+if (sessionResult?.data?.session?.user) {
+  setProfile(buildProfileFromUser(sessionResult.data.session.user));
+}
 
 const res = await fetch('/api/auth/profile', { signal: abortController.signal });
 ```
@@ -247,6 +284,12 @@ npm run test:e2e:pw -- src/__tests__/e2e-playwright/admin-settings.spec.ts
 
 Expected: save/reload scenarios complete without timeouts or data loss.
 
+## Handoff Note (2026-01-18)
+
+- 次のチームにエラー解消を引き継ぐ。
+- 直近のテスト結果: `admin-settings.spec.ts` で UI系が一部失敗。API系の `GET`/`clinic_id` エラーは通過。
+- 調査・修正の対象: `admin-settings.spec.ts` の SMTP/セキュリティ/予約枠、`PUT /api/admin/settings` の安定性。
+
 ## Files Updated
 - src/components/admin/booking-calendar-settings.tsx
 - src/components/admin/system-settings.tsx
@@ -262,6 +305,7 @@ Expected: save/reload scenarios complete without timeouts or data loss.
 - src/types/user-profile.ts
 - src/components/navigation/header.tsx
 - src/components/master/master-data-form.tsx
+- src/app/admin/(protected)/settings/page.tsx
 
 ## Migration Notes
 

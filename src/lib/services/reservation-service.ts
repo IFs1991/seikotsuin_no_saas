@@ -3,7 +3,9 @@
  * TDD実装 - Phase 2: 実装
  */
 
-import { createClient } from '@/lib/supabase';
+import 'server-only';
+
+import { getServerClient, type SupabaseServerClient } from '@/lib/supabase';
 import type {
   Reservation,
   Customer,
@@ -19,14 +21,22 @@ import type {
 } from '@/types/reservation';
 
 export class ReservationService {
-  private readonly supabasePromise: Promise<any>;
+  private readonly clinicId: string;
+  private readonly supabase: SupabaseServerClient | null;
 
-  constructor() {
-    this.supabasePromise = createClient();
+  constructor(clinicId: string, supabase?: SupabaseServerClient) {
+    if (!clinicId) {
+      throw new Error('clinicId is required for ReservationService');
+    }
+    this.clinicId = clinicId;
+    this.supabase = supabase ?? null;
   }
 
-  private async getSupabase() {
-    return await this.supabasePromise;
+  private async getSupabase(): Promise<SupabaseServerClient> {
+    if (this.supabase) {
+      return this.supabase;
+    }
+    return await getServerClient();
   }
 
   // 予約検索・取得機能
@@ -35,6 +45,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .single();
 
@@ -54,6 +65,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .gte('startTime', startDate.toISOString())
       .lte('startTime', endDate.toISOString())
       .order('startTime', { ascending: true });
@@ -76,6 +88,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .eq('staffId', staffId)
       .gte('startTime', startOfDay.toISOString())
       .lte('startTime', endOfDay.toISOString())
@@ -93,6 +106,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .eq('customerId', customerId)
       .order('startTime', { ascending: false });
 
@@ -108,6 +122,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .eq('status', status)
       .order('startTime', { ascending: true });
 
@@ -206,6 +221,7 @@ export class ReservationService {
 
     const reservationData = {
       ...data,
+      clinic_id: this.clinicId,
       status: 'unconfirmed',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -257,6 +273,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .update({ status, updatedAt: new Date() })
+      .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
       .single();
@@ -273,6 +290,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .update({ startTime, endTime, updatedAt: new Date() })
+      .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
       .single();
@@ -289,6 +307,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .update({ staffId, updatedAt: new Date() })
+      .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
       .single();
@@ -305,6 +324,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .update({ notes, updatedAt: new Date() })
+      .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
       .single();
@@ -326,6 +346,7 @@ export class ReservationService {
         notes: reason,
         updatedAt: new Date() 
       })
+      .eq('clinic_id', this.clinicId)
       .eq('id', id);
 
     if (error) {
@@ -340,6 +361,7 @@ export class ReservationService {
     const { error } = await supabase
       .from('reservations')
       .delete()
+      .eq('clinic_id', this.clinicId)
       .eq('id', id);
 
     if (error) {
@@ -355,6 +377,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .update({ status, updatedAt: new Date() })
+      .eq('clinic_id', this.clinicId)
       .in('id', reservationIds)
       .select();
 
@@ -370,6 +393,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('reservations')
       .delete()
+      .eq('clinic_id', this.clinicId)
       .in('id', reservationIds)
       .select();
 
@@ -445,6 +469,7 @@ export class ReservationService {
       const { data: blocks, error } = await supabase
         .from('blocks')
         .select('*')
+        .eq('clinic_id', this.clinicId)
         .eq('resourceId', staffId)
         .or(`startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`);
 
@@ -511,6 +536,7 @@ export class ReservationService {
     const { data, error } = await supabase
       .from('staff')
       .select('*')
+      .eq('clinic_id', this.clinicId)
       .eq('id', staffId)
       .single();
 

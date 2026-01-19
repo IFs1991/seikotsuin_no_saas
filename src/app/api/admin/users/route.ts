@@ -7,6 +7,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { createAdminClient } from '@/lib/supabase/server';
 
 const ROLE_VALUES = [
   'admin',
@@ -50,12 +51,14 @@ export async function GET(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, permissions, auth } = processResult;
+    const { permissions, auth } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    let query = supabase
+    const adminSupabase = createAdminClient();
+
+    let query = adminSupabase
       .from('user_permissions')
       .select('id, staff_id, role, clinic_id, created_at, username, clinics(name)')
       .order('created_at', { ascending: false });
@@ -93,7 +96,7 @@ export async function GET(request: NextRequest) {
     >();
 
     if (staffIds.length > 0) {
-      const { data: profiles, error: profileError } = await supabase
+      const { data: profiles, error: profileError } = await adminSupabase
         .from('profiles')
         .select('user_id, email, full_name')
         .in('user_id', staffIds);
@@ -164,10 +167,12 @@ export async function POST(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
+    const { auth, permissions, body } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
+
+    const adminSupabase = createAdminClient();
 
     const parsed = AssignPermissionSchema.safeParse(body);
     if (!parsed.success) {
@@ -184,7 +189,7 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('clinic_id が必須です', 400);
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
       .select('email')
       .eq('user_id', user_id)
@@ -206,7 +211,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingPermission, error: existingError } = await supabase
+    const { data: existingPermission, error: existingError } = await adminSupabase
       .from('user_permissions')
       .select('id, hashed_password, username')
       .eq('staff_id', user_id)
@@ -226,7 +231,7 @@ export async function POST(request: NextRequest) {
 
     let result;
     if (existingPermission) {
-      result = await supabase
+      result = await adminSupabase
         .from('user_permissions')
         .update({
           role,
@@ -238,7 +243,7 @@ export async function POST(request: NextRequest) {
         .select('id, staff_id, role, clinic_id, username, created_at')
         .single();
     } else {
-      result = await supabase
+      result = await adminSupabase
         .from('user_permissions')
         .insert({
           staff_id: user_id,

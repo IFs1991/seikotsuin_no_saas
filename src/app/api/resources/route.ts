@@ -4,6 +4,8 @@ import {
   AppError,
   createApiError,
   ERROR_CODES,
+  getStatusCodeFromErrorCode,
+  isApiError,
   normalizeSupabaseError,
   logError,
 } from '@/lib/error-handler';
@@ -51,8 +53,12 @@ export async function GET(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else if (error && typeof error === 'object' && 'code' in error) {
       apiError = normalizeSupabaseError(error, PATH);
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Resources fetch failed', undefined, PATH);
     }
@@ -80,6 +86,9 @@ export async function POST(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Resource creation failed', undefined, PATH);
     }
@@ -98,7 +107,7 @@ export async function PATCH(request: NextRequest) {
     const guard = await processApiRequest(request, { clinicId: dto.clinic_id, requireClinicMatch: true });
     if (!guard.success) return guard.error;
     const updatePayload = mapResourceUpdateToRow(dto);
-    const { data, error } = await guard.supabase.from('resources').update(updatePayload).eq('id', dto.id).select().single();
+    const { data, error } = await guard.supabase.from('resources').update(updatePayload).eq('id', dto.id).eq('clinic_id', dto.clinic_id).select().single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data);
   } catch (error) {
@@ -107,6 +116,9 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Resource update failed', undefined, PATH);
     }
@@ -122,8 +134,16 @@ export async function DELETE(request: NextRequest) {
     if (!clinicId || !id) return createErrorResponse('clinic_id と id は必須です', 400);
     const guard = await processApiRequest(request, { clinicId, requireClinicMatch: true });
     if (!guard.success) return guard.error;
-    const { error } = await guard.supabase.from('resources').update({ is_deleted: true }).eq('id', id);
+    const { data, error } = await guard.supabase
+      .from('resources')
+      .update({ is_deleted: true })
+      .eq('id', id)
+      .eq('clinic_id', clinicId)
+      .select('id');
     if (error) throw normalizeSupabaseError(error, PATH);
+    if (!data || data.length === 0) {
+      return createErrorResponse('リソースが見つかりません', 404);
+    }
     return createSuccessResponse({ deleted: true });
   } catch (error) {
     let apiError;
@@ -131,6 +151,9 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Resource delete failed', undefined, PATH);
     }

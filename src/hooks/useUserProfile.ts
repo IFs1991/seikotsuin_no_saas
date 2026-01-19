@@ -18,6 +18,7 @@ interface ProfileState {
 // CLINIC_ADMIN_ROLES = admin, clinic_admin, manager
 const ADMIN_ROLES = CLINIC_ADMIN_ROLES;
 const PROFILE_FETCH_TIMEOUT_MS = 8000;
+const SESSION_FETCH_TIMEOUT_MS = 2000;
 
 const resolveRole = (user: User): string | null => {
   const appMeta = user.app_metadata as Record<string, unknown> | null | undefined;
@@ -167,9 +168,25 @@ export function useUserProfile(): ProfileState {
     let hasSessionFallback = hasInitialProfile;
 
     const loadSessionProfile = async () => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
       try {
-        const { data, error: sessionError } =
-          await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<null>(resolve => {
+          timeoutId = setTimeout(
+            () => resolve(null),
+            SESSION_FETCH_TIMEOUT_MS
+          );
+        });
+        const sessionResult = await Promise.race([
+          sessionPromise,
+          timeoutPromise,
+        ]);
+
+        if (!sessionResult) {
+          return loadProfileFromCookie();
+        }
+
+        const { data, error: sessionError } = sessionResult;
         if (sessionError || !data.session?.user) {
           return loadProfileFromCookie();
         }
@@ -177,6 +194,10 @@ export function useUserProfile(): ProfileState {
       } catch (err) {
         console.error('useUserProfile session error', err);
         return loadProfileFromCookie();
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
       }
     };
 

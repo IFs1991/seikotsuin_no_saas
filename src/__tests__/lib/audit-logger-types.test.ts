@@ -1,3 +1,12 @@
+// Mock Supabase before importing AuditLogger
+jest.mock('@/lib/supabase', () => ({
+  createAdminClient: jest.fn(() => ({
+    from: jest.fn(() => ({
+      insert: jest.fn().mockResolvedValue({ error: null }),
+    })),
+  })),
+}));
+
 import { AuditLogger } from '@/lib/audit-logger';
 
 describe('AuditLogger - Type Safety Tests', () => {

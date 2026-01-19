@@ -16,22 +16,29 @@ export const STAFF_PASSWORD = 'Staff#12345';
 export const CLINIC_B_EMAIL = 'e2e-clinic-b@clinic.local';
 export const CLINIC_B_PASSWORD = 'Staff#12345';
 
+// Parent-scope model:
+// - CLINIC_A_ID: HQ for Parent A (parent_id IS NULL, acts as its own parent)
+// - CLINIC_B_ID: HQ for Parent B (parent_id IS NULL, acts as its own parent)
+// This enables cross-parent isolation testing: Admin of Parent A cannot access Parent B data
+// @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
 export const FIXTURE_CLINICS = [
   {
     id: CLINIC_A_ID,
-    name: 'E2E Clinic A',
+    name: 'E2E Clinic A (HQ)',
     address: 'E2E Address A',
     phone_number: '03-0000-0001',
     opening_date: '2024-01-01',
     is_active: true,
+    parent_id: null, // HQ - acts as its own parent for scope calculation
   },
   {
     id: CLINIC_B_ID,
-    name: 'E2E Clinic B',
+    name: 'E2E Clinic B (HQ)',
     address: 'E2E Address B',
     phone_number: '03-0000-0002',
     opening_date: '2024-01-01',
     is_active: true,
+    parent_id: null, // HQ - acts as its own parent for scope calculation
   },
 ];
 
@@ -59,6 +66,9 @@ export const RESOURCE_IDS = [
 ];
 
 // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+// @spec docs/stabilization/spec-rls-tenant-boundary-v0.1.md (parent-scope model)
+// Note: Admin is assigned to CLINIC_A_ID for parent-scope testing
+// custom_access_token_hook will compute clinic_scope_ids based on permissions_clinic_id
 export const FIXTURE_USERS = [
   {
     id: USER_ADMIN_ID,
@@ -66,8 +76,8 @@ export const FIXTURE_USERS = [
     password: ADMIN_PASSWORD,
     role: 'admin',
     full_name: 'E2E Admin',
-    clinic_id: null, // HQ admin has no clinic
-    permissions_clinic_id: null,
+    clinic_id: CLINIC_A_ID, // Admin belongs to Clinic A HQ for parent-scope
+    permissions_clinic_id: CLINIC_A_ID, // Required for clinic_scope_ids JWT claim
   },
   {
     id: USER_MANAGER_ID,

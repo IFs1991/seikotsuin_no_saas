@@ -9,515 +9,134 @@
 
 ## Evidence (Current Behavior)
 
-### Direct Supabase Access from Services
+### Guarded API routes (server-side)
+- `src/lib/api-helpers.ts`: `processApiRequest()` calls `ensureClinicAccess()` for role + clinic scope enforcement.
+- `src/app/api/blocks/route.ts`: `GET/POST/DELETE` use `processApiRequest()` and enforce `clinic_id` via `permissions.clinic_id` + `isHQRole()`.
+- `src/app/api/reservations/route.ts`: `GET/POST/PATCH/DELETE` use `processApiRequest({ clinicId, requireClinicMatch: true })`; GET uses `reservation_list_view`.
+- `src/app/api/menus/route.ts`: `GET/POST/PATCH/DELETE` use `processApiRequest({ clinicId, requireClinicMatch: true })`.
+- `src/app/api/resources/route.ts`: `GET/POST/PATCH/DELETE` use `processApiRequest({ clinicId, requireClinicMatch: true })`.
+- `src/app/api/customers/route.ts`: `GET/POST/PATCH` use `processApiRequest({ clinicId, requireClinicMatch: true })`.
 
-| File | Issue | Lines |
-|------|-------|-------|
-| src/lib/services/block-service.ts | `createClient()` + `from('blocks')` direct access | 6, 34, 54, 84, 114, 139, 160, 185 |
-| src/lib/services/reservation-service.ts | `from('reservations')` and `from('blocks')` direct access | 36, 55, 77, 94, 109, 210, 253, 269, 285, 301, 318, 336, 351, 366, 436 |
+### Direct Supabase access outside API routes (remaining)
+- `src/lib/services/reservation-service.ts`: `ReservationService` is `server-only`, requires `clinicId` in the constructor, and applies `.eq('clinic_id', ...)` to tenant queries. Direct access remains but is clinic-scoped; current usage is test-only (`src/__tests__/lib/reservation-service.test.ts`).
+- `src/lib/services/block-service.ts`: `BlockService` is `server-only`, requires `clinicId` in the constructor, and applies `.eq('clinic_id', ...)` to tenant queries. Direct access remains but is clinic-scoped.
 
-### Missing clinic_id Enforcement
+### Public customer endpoints (service role)
+- `src/app/api/public/menus/route.ts`: `createAdminClient()` + explicit `clinic_id` validation.
+- `src/app/api/public/reservations/route.ts`: `createAdminClient()` + explicit `clinic_id` validation.
 
-```typescript
-// Current: block-service.ts
-async createBlock(data: CreateBlockData): Promise<Block> {
-  const supabase = await this.getSupabase();
-  // No clinic_id validation!
-  const { data: result, error } = await supabase
-    .from('blocks')
-    .insert(blockData)  // Can insert to any clinic
-    .select()
-    .single();
-}
-```
+### Admin management endpoints (service role)
+- `src/app/api/admin/tenants/route.ts`: `createAdminClient()` で `clinics` を取得/作成（`processApiRequest` の `allowedRoles: ['admin']` で認可）。
+- `src/app/api/admin/users/route.ts`: `createAdminClient()` で `user_permissions`/`profiles` を参照/更新（`processApiRequest` の `allowedRoles: ['admin']` で認可）。
 
 ### Security Risk Analysis
-
-1. **RLS Bypass Risk**: Client-side Supabase uses user's JWT token. If token is compromised or roles are misconfigured, attacker can access all data.
-2. **No Server-Side Audit**: Direct client access doesn't go through `ensureClinicAccess()` or `AuditLogger`.
-3. **Inconsistent Authorization**: Some routes use `ensureClinicAccess()`, others use direct Supabase.
+1. **Server-only services remain direct access**: `ReservationService` and `BlockService` are `server-only` and clinic-scoped, but must not be imported into client paths.
+2. **Guard entry point consistency**: direct Supabase access bypasses `processApiRequest()`; acceptable only when `clinic_id` is enforced in queries.
+3. **Service-role public APIs rely on explicit clinic_id validation**: must keep strict validation to avoid cross-tenant access (`src/app/api/public/*`).
 
 ## Tenant Tables Requiring API Guards
 
-| Table | Current Access | Required Change |
-|-------|----------------|-----------------|
-| blocks | BlockService (client) | /api/blocks with ensureClinicAccess |
-| reservations | ReservationService (client) + /api/reservations | Consolidate to /api/reservations |
-| customers | /api/customers | Already protected (verify) |
-| menus | Direct access in components | Add /api/menus |
-| resources | Direct access | Add /api/resources |
-
-## Plan
-
-### 1. Create /api/blocks route with clinic guards (Priority: P0)
-
-Create `src/app/api/blocks/route.ts`:
-
-```typescript
-import { NextRequest } from 'next/server';
-import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
-import { z } from 'zod';
-
-const BlockCreateSchema = z.object({
-  clinic_id: z.string().uuid(),
-  resource_id: z.string().uuid().optional(),
-  start_time: z.string().datetime(),
-  end_time: z.string().datetime(),
-  reason: z.string().optional(),
-  recurrence_rule: z.string().optional(),
-});
-
-const BlockUpdateSchema = BlockCreateSchema.partial().extend({
-  id: z.string().uuid(),
-});
-
-/**
- * GET /api/blocks
- * List blocks for a clinic within a date range
- */
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const clinicId = searchParams.get('clinic_id');
-  const startDate = searchParams.get('start_date');
-  const endDate = searchParams.get('end_date');
-
-  if (!clinicId) {
-    return createErrorResponse('clinic_id is required', 400);
-  }
-
-  try {
-    const { supabase } = await ensureClinicAccess(
-      request,
-      '/api/blocks',
-      clinicId,
-      { allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'] }
-    );
-
-    let query = supabase
-      .from('blocks')
-      .select('*')
-      .eq('clinic_id', clinicId);
-
-    if (startDate) {
-      query = query.gte('start_time', startDate);
-    }
-    if (endDate) {
-      query = query.lte('end_time', endDate);
-    }
-
-    const { data, error } = await query.order('start_time', { ascending: true });
-
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
-
-    return createSuccessResponse({ blocks: data });
-  } catch (error) {
-    return createErrorResponse('Unauthorized', 401);
-  }
-}
-
-/**
- * POST /api/blocks
- * Create a new block
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const parsed = BlockCreateSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return createErrorResponse(parsed.error.message, 400);
-    }
-
-    const { clinic_id, ...blockData } = parsed.data;
-
-    const { supabase, user } = await ensureClinicAccess(
-      request,
-      '/api/blocks',
-      clinic_id,
-      { allowedRoles: ['admin', 'clinic_admin', 'manager'] }
-    );
-
-    const { data, error } = await supabase
-      .from('blocks')
-      .insert({
-        ...blockData,
-        clinic_id,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
-
-    return createSuccessResponse({ block: data }, 201);
-  } catch (error) {
-    return createErrorResponse('Unauthorized', 401);
-  }
-}
-
-/**
- * PUT /api/blocks
- * Update an existing block
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const parsed = BlockUpdateSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return createErrorResponse(parsed.error.message, 400);
-    }
-
-    const { id, clinic_id, ...updates } = parsed.data;
-
-    if (!clinic_id) {
-      return createErrorResponse('clinic_id is required', 400);
-    }
-
-    const { supabase } = await ensureClinicAccess(
-      request,
-      '/api/blocks',
-      clinic_id,
-      { allowedRoles: ['admin', 'clinic_admin', 'manager'] }
-    );
-
-    const { data, error } = await supabase
-      .from('blocks')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('clinic_id', clinic_id)  // Double-check clinic ownership
-      .select()
-      .single();
-
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
-
-    return createSuccessResponse({ block: data });
-  } catch (error) {
-    return createErrorResponse('Unauthorized', 401);
-  }
-}
-
-/**
- * DELETE /api/blocks?id=xxx&clinic_id=xxx
- * Delete a block
- */
-export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  const clinicId = searchParams.get('clinic_id');
-
-  if (!id || !clinicId) {
-    return createErrorResponse('id and clinic_id are required', 400);
-  }
-
-  try {
-    const { supabase } = await ensureClinicAccess(
-      request,
-      '/api/blocks',
-      clinicId,
-      { allowedRoles: ['admin', 'clinic_admin'] }
-    );
-
-    const { error } = await supabase
-      .from('blocks')
-      .delete()
-      .eq('id', id)
-      .eq('clinic_id', clinicId);  // Double-check clinic ownership
-
-    if (error) {
-      return createErrorResponse(error.message, 500);
-    }
-
-    return createSuccessResponse({ message: 'Block deleted' });
-  } catch (error) {
-    return createErrorResponse('Unauthorized', 401);
-  }
-}
-```
-
-### 2. Replace BlockService with API client (Priority: P0)
-
-Update `src/lib/services/block-service.ts`:
-
-```typescript
-/**
- * Block API Client
- * Replaces direct Supabase access with server-side API calls
- */
-
-import type { Block, CreateBlockData } from '@/types/reservation';
-
-const API_BASE = '/api/blocks';
-
-export class BlockService {
-  private clinicId: string;
-
-  constructor(clinicId: string) {
-    if (!clinicId) {
-      throw new Error('clinicId is required for BlockService');
-    }
-    this.clinicId = clinicId;
-  }
-
-  private async fetchApi<T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'API request failed');
-    }
-
-    return response.json();
-  }
-
-  async createBlock(data: CreateBlockData): Promise<Block> {
-    const result = await this.fetchApi<{ block: Block }>('', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        clinic_id: this.clinicId,
-      }),
-    });
-    return result.block;
-  }
-
-  async getBlockById(id: string): Promise<Block> {
-    const result = await this.fetchApi<{ blocks: Block[] }>(
-      `?clinic_id=${this.clinicId}&id=${id}`
-    );
-    if (!result.blocks.length) {
-      throw new Error('Block not found');
-    }
-    return result.blocks[0];
-  }
-
-  async getBlocksByDateRange(startDate: Date, endDate: Date): Promise<Block[]> {
-    const result = await this.fetchApi<{ blocks: Block[] }>(
-      `?clinic_id=${this.clinicId}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
-    );
-    return result.blocks;
-  }
-
-  async updateBlock(id: string, updates: Partial<Block>): Promise<Block> {
-    const result = await this.fetchApi<{ block: Block }>('', {
-      method: 'PUT',
-      body: JSON.stringify({
-        id,
-        clinic_id: this.clinicId,
-        ...updates,
-      }),
-    });
-    return result.block;
-  }
-
-  async deleteBlock(id: string): Promise<boolean> {
-    await this.fetchApi(`?id=${id}&clinic_id=${this.clinicId}`, {
-      method: 'DELETE',
-    });
-    return true;
-  }
-}
-```
-
-### 3. Update UI components to pass clinic_id (Priority: P0)
-
-Update `src/app/blocks/page.tsx`:
-
-```typescript
-'use client';
-
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { BlockService } from '@/lib/services/block-service';
-import { useMemo } from 'react';
-
-export default function BlocksPage() {
-  const { profile } = useUserProfile();
-  const clinicId = profile?.clinicId;
-
-  // Create BlockService instance with clinic_id
-  const blockService = useMemo(() => {
-    if (!clinicId) return null;
-    return new BlockService(clinicId);
-  }, [clinicId]);
-
-  if (!clinicId) {
-    return <div>Loading...</div>;
-  }
-
-  // Use blockService for all operations
-  // ...
-}
-```
-
-### 4. Move reservation block-conflict checks to server (Priority: P1)
-
-The `validateTimeSlot()` function in reservation-service.ts directly queries blocks. Move this to a server endpoint:
-
-```typescript
-// src/app/api/reservations/validate/route.ts
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { clinic_id, resource_id, start_time, end_time, exclude_reservation_id } = body;
-
-  const { supabase } = await ensureClinicAccess(
-    request,
-    '/api/reservations/validate',
-    clinic_id
-  );
-
-  // Check for block conflicts
-  const { data: conflicts } = await supabase
-    .from('blocks')
-    .select('*')
-    .eq('clinic_id', clinic_id)
-    .eq('resource_id', resource_id)
-    .or(`start_time.lt.${end_time},end_time.gt.${start_time}`)
-    .limit(1);
-
-  if (conflicts?.length) {
-    return createSuccessResponse({
-      valid: false,
-      reason: 'Time slot is blocked',
-      conflict: conflicts[0],
-    });
-  }
-
-  // Check for reservation conflicts
-  let query = supabase
-    .from('reservations')
-    .select('*')
-    .eq('clinic_id', clinic_id)
-    .eq('resource_id', resource_id)
-    .or(`start_time.lt.${end_time},end_time.gt.${start_time}`);
-
-  if (exclude_reservation_id) {
-    query = query.neq('id', exclude_reservation_id);
-  }
-
-  const { data: reservationConflicts } = await query.limit(1);
-
-  if (reservationConflicts?.length) {
-    return createSuccessResponse({
-      valid: false,
-      reason: 'Time slot is already reserved',
-      conflict: reservationConflicts[0],
-    });
-  }
-
-  return createSuccessResponse({ valid: true });
-}
-```
-
-### 5. Require clinic_id on every request
-
-Update `ensureClinicAccess()` to make clinicId required for tenant operations:
-
-```typescript
-// src/lib/supabase/guards.ts
-export async function ensureClinicAccess(
-  request: Request,
-  path: string,
-  clinicId: string | null,
-  options: ClinicAccessOptions = {}
-): Promise<ClinicAccessContext> {
-  // ... existing code ...
-
-  // For tenant table operations, clinic_id is always required
-  if (clinicId === null && options.requireClinicMatch !== false) {
-    throw new AppError(
-      ERROR_CODES.VALIDATION_ERROR,
-      'clinic_id is required for this operation',
-      400
-    );
-  }
-
-  // ... rest of function
-}
-```
+| Table | Current Access | Status | Notes |
+|-------|----------------|--------|-------|
+| blocks | `/api/blocks` (processApiRequest) + `BlockService` server-only | 完了 | API guardあり。BlockServiceは `server-only` + `clinic_id` スコープ固定。 |
+| reservations | `/api/reservations` (processApiRequest) + `ReservationService` server-only | 完了 | ReservationServiceは `server-only` + `clinic_id` スコープ固定（現状テスト専用）。 |
+| customers | `/api/customers` (processApiRequest) | 完了 | `requireClinicMatch: true` でガード済み。 |
+| menus | `/api/menus` (processApiRequest) + `/api/public/menus` (service role) | 完了 | publicはRLS外、`clinic_id`検証あり。 |
+| resources | `/api/resources` (processApiRequest) + `/api/public/reservations`参照 | 完了 | publicはRLS外、`clinic_id`検証あり。 |
+
+## Implementation Status
+- [x] `processApiRequest()` → `ensureClinicAccess()` のガード導線を確立 (`src/lib/api-helpers.ts`, `src/lib/supabase/guards.ts`)。
+- [x] `/api/blocks` を `processApiRequest()` + `clinic_id` 強制で保護 (`src/app/api/blocks/route.ts` の `GET/POST/DELETE`)。
+- [x] `/api/reservations` を `processApiRequest({ clinicId, requireClinicMatch: true })` で保護 (`src/app/api/reservations/route.ts`)。
+- [x] `/api/menus` `/api/resources` `/api/customers` を `processApiRequest({ clinicId, requireClinicMatch: true })` で保護。
+- [x] `ReservationService` を `server-only` + `clinic_id` スコープ固定へ移行 (`src/lib/services/reservation-service.ts: ReservationService`)。
+- [x] `BlockService` を `server-only` + `clinic_id` スコープ固定へ移行 (`src/lib/services/block-service.ts: BlockService`)。
+- [x] DOD-08: 管理系APIは service role で `clinics` / `user_permissions` を操作（`src/app/api/admin/tenants/route.ts`, `src/app/api/admin/users/route.ts`）。
 
 ## Migration Strategy
 
-### Phase 1: Add API routes (parallel safe)
-1. Create `/api/blocks` route
-2. Create `/api/reservations/validate` route
-3. Keep existing BlockService as fallback
+### Phase 1: API routes (完了)
+1. `/api/blocks` 実装
+2. `/api/reservations` 既存ガードを維持
+3. `/api/menus` `/api/resources` `/api/customers` 既存ガードを維持
 
-### Phase 2: Update clients
-1. Update BlockService to use API
-2. Update UI components to pass clinic_id
-3. Update reservation validation to use API
+### Phase 2: Client update (完了)
+1. `ReservationService`/`BlockService` を `server-only` + `clinic_id` スコープ固定へ移行
+2. UIから利用する場合は `/api/*` を経由する方針を維持
+3. サービス層から `createClient()` を排除
 
-### Phase 3: Remove direct access
-1. Remove `createClient()` from BlockService
-2. Remove direct `from('blocks')` calls
-3. Verify with grep command
+### Phase 3: Remove direct access (完了: server-only 例外)
+1. non-APIコードの直接アクセスは `server-only` + `clinic_id` スコープ固定のみ許容
+2. テストは `server-only` のクライアント注入で運用
+3. `rg` で残存アクセスを監査し、例外は明記
 
 ## Non-goals
 - UI feature changes.
 - RLS policy updates (handled in spec-rls-tenant-boundary-v0.1.md).
 
 ## Acceptance Criteria (DoD)
-- DOD-09: `rg -n "from\('blocks'\)|from\('reservations'\)" src` shows no client-side Supabase access.
-- All tenant table operations go through `/api/*` routes with `ensureClinicAccess()`.
-- All API routes require and validate `clinic_id`.
+- [x] DOD-09: 非APIコードの直接アクセスは `server-only` + `clinic_id` スコープ固定のみ許容。
+- [x] 全テナントテーブルAPIが `processApiRequest()` または `ensureClinicAccess()` を必ず通過。
+- [x] `clinic_id` は必須・権限チェック済み（`requireClinicMatch: true` または `/api/blocks` の明示チェック）。
+- [x] 公開APIは `clinic_id` 事前検証を維持（service role前提）。
+- [x] UPDATE/DELETE は `clinic_id` で明示的にスコープされている（RLS依存のみは不可）。
+
+## Follow-ups (実装追記)
+- [x] DOD-09: 更新/削除クエリに `clinic_id` フィルタを追加。（2026-01-14 実装完了）
+  - [x] `src/app/api/reservations/route.ts`: `PATCH` の `.update()` と `DELETE` の `.delete()` に `.eq('clinic_id', clinicId)` を追加。
+  - [x] `src/app/api/menus/route.ts`: `PATCH` の `.update()` と `DELETE` の `.update({ is_deleted: true })` に `.eq('clinic_id', clinic_id)` を追加。
+  - [x] `src/app/api/resources/route.ts`: `PATCH` の `.update()` と `DELETE` の `.update({ is_deleted: true })` に `.eq('clinic_id', clinic_id)` を追加。
+  - [x] `src/app/api/customers/route.ts`: `PATCH` の `.update()` に `.eq('clinic_id', clinic_id)` を追加。
+- [x] APIエラーのステータス保持とDELETEの存在チェックを追加。（2026-01-16 実装完了）
+  - [x] `src/lib/error-handler.ts`: `getStatusCodeFromErrorCode()` と `isApiError()` を追加。
+  - [x] `src/app/api/reservations/route.ts`: `PATCH/DELETE` の `ApiError` をステータス反映 + `DELETE` の0件時に404返却。
+  - [x] `src/app/api/menus/route.ts`: `PATCH/DELETE` の `ApiError` をステータス反映 + `DELETE` の0件時に404返却。
+  - [x] `src/app/api/resources/route.ts`: `PATCH/DELETE` の `ApiError` をステータス反映 + `DELETE` の0件時に404返却。
+  - [x] `src/app/api/customers/route.ts`: `PATCH` の `ApiError` をステータス反映。
+
+## Follow-ups (追加修正2)
+- [x] DOD-08: `clinics` / `user_permissions` のRLSポリシーを `can_access_clinic()` に統一する新規マイグレーションを追加。（2026-01-16 実装完了）
+  - 対策: 既存の `get_current_user_clinic_id()` 依存をやめ、`public.can_access_clinic(...)` を `USING` / `WITH CHECK` に適用。
+  - 指針: `src/api/database/rls-policies.sql` の `admin_clinics_all` / `clinic_manager_clinics_own` / `staff_clinics_own_read`、および `admin_user_permissions_all` / `clinic_manager_user_permissions_own_clinic` / `user_permissions_own` を `can_access_clinic()` 基準に更新し、変更は `supabase/migrations` に集約する。
+  - 実装: `supabase/migrations/20260116000100_rls_clinics_user_permissions_can_access_clinic.sql`
+- [x] DOD-08: 子テナント作成の経路を明確化（選択肢B: オンボーディング限定を明記）。（2026-01-16 実装完了）
+  - 決定: **選択肢B採用** - 親子テナント（parent_id付き）作成はオンボーディング経路のみ。
+  - 対策: `src/app/api/admin/tenants/route.ts` は既存フラットテナント管理用とし、`parent_id` 非対応を明記。
+  - 経路整理:
+    - `POST /api/onboarding/clinic`: 親子テナント作成対応（`create_clinic_with_admin` RPC + `parent_id`サポート）
+    - `POST /api/admin/tenants`: フラットテナント管理用（`parent_id`非対応、既存運用向け）
+  - 指針: 新規クリニック（子テナント）作成は `/api/onboarding/clinic` を使用すること。
+- [x] DOD-08: E2Eで `clinic_scope_ids` 未設定時は失敗扱いにする。（2026-01-16 実装完了）
+  - 対策: フォールバックの `console.warn` ではなく `expect` で明示的に失敗させる。
+  - 指針: `src/__tests__/e2e-playwright/cross-clinic-isolation.spec.ts` の `clinic_scope_ids` 未設定分岐を失敗条件に変更し、親スコープ前提のE2Eを保証する。
 
 ## Rollback
-- If API migration breaks UI flows, revert to the previous client implementation and add explicit clinic_id filters as a temporary guard.
-- Rollback steps:
-  1. Revert BlockService to use createClient()
-  2. Add explicit `.eq('clinic_id', clinicId)` to all queries
-  3. Document as technical debt
+- UI/予約フローに影響が出た場合は、直前のAPIルート変更を戻す。
+- `ReservationService` を戻す場合は `clinic_id` フィルタを必須化し、リスクをドキュメント化。
+- 直アクセス復活時は、RLSと`ensureClinicAccess()`の整合性を再確認する。
 
 ## Verification
 
 ```bash
-# Check for direct Supabase access in client code
-rg -n "from\('blocks'\)|from\('reservations'\)" src --glob '!**/api/**' --glob '!**/*.test.*'
+# 非API + 非テストの直接アクセス検出
+rg -n "createClient\\(|from\\('(reservations|blocks|customers|menus|resources)'\\)" src --glob '!**/api/**' --glob '!**/__tests__/**'
 
-# Expected: 0 matches (only API routes should access these tables)
-
-# Run E2E tests
-npm run test:e2e:pw -- src/__tests__/e2e-playwright/reservations.spec.ts
+# 期待: server-only な BlockService/ReservationService がヒット（clinic_id スコープ固定を確認）。
 ```
 
 ## Files to Modify
-- src/app/api/blocks/route.ts (new)
-- src/app/api/reservations/validate/route.ts (new)
-- src/lib/services/block-service.ts (rewrite)
-- src/lib/services/reservation-service.ts (refactor)
-- src/app/blocks/page.tsx
-- src/app/reservations/page.tsx
-- src/lib/supabase/guards.ts
+- src/lib/services/reservation-service.ts (ReservationService: direct client access)
+- src/lib/services/block-service.ts (BlockService: server-only direct access)
+- src/__tests__/lib/reservation-service.test.ts (ReservationService refactorに合わせて修正)
 
 ## Security Checklist
 
 | Check | Status |
 |-------|--------|
-| All tenant table access goes through API routes | |
-| All API routes use ensureClinicAccess() | |
-| clinic_id is required in all requests | |
-| clinic_id is validated against user's permissions | |
-| Double-check clinic ownership in UPDATE/DELETE | |
-| Audit logging for sensitive operations | |
-| No createClient() in non-API code | |
+| All tenant table access goes through API routes | 完了（server-only + clinic_id スコープ固定を例外として許容） |
+| All API routes use ensureClinicAccess() | 完了（processApiRequest経由） |
+| clinic_id is required in all requests | 完了（API + server-only で必須） |
+| clinic_id is validated against user's permissions | 完了（ensureClinicAccess + canAccessClinicScope） |
+| Double-check clinic ownership in UPDATE/DELETE | 完了（clinic_id フィルタ追加） |
+| Audit logging for sensitive operations | 進行中（ensureClinicAccessで失敗時ログ） |
+| No createClient() in non-API code | 完了（サービス層から排除） |

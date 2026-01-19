@@ -147,6 +147,57 @@ export function getErrorCodeFromStatus(status: number): string {
 }
 
 /**
+ * エラーコードからHTTPステータスコードを取得する
+ */
+export function getStatusCodeFromErrorCode(code: string): number {
+  switch (code) {
+    case ERROR_CODES.VALIDATION_ERROR:
+    case ERROR_CODES.REQUIRED_FIELD_MISSING:
+    case ERROR_CODES.INVALID_FORMAT:
+    case ERROR_CODES.INVALID_VALUE:
+    case ERROR_CODES.INVALID_DATE_RANGE:
+    case ERROR_CODES.CONSTRAINT_VIOLATION:
+      return 400;
+    case ERROR_CODES.UNAUTHORIZED:
+    case ERROR_CODES.INVALID_CREDENTIALS:
+    case ERROR_CODES.TOKEN_EXPIRED:
+      return 401;
+    case ERROR_CODES.FORBIDDEN:
+      return 403;
+    case ERROR_CODES.RESOURCE_NOT_FOUND:
+    case ERROR_CODES.CLINIC_NOT_FOUND:
+    case ERROR_CODES.PATIENT_NOT_FOUND:
+    case ERROR_CODES.STAFF_NOT_FOUND:
+      return 404;
+    case ERROR_CODES.RESOURCE_CONFLICT:
+    case ERROR_CODES.UNIQUE_CONSTRAINT_VIOLATION:
+    case ERROR_CODES.DUPLICATE_DAILY_REPORT:
+      return 409;
+    case ERROR_CODES.NETWORK_ERROR:
+    case ERROR_CODES.INTERNAL_SERVER_ERROR:
+    case ERROR_CODES.DATABASE_CONNECTION_ERROR:
+    case ERROR_CODES.EXTERNAL_SERVICE_ERROR:
+    case ERROR_CODES.AI_SERVICE_ERROR:
+    case ERROR_CODES.RESOURCE_EXPIRED:
+    case ERROR_CODES.UNKNOWN_ERROR:
+    default:
+      return 500;
+  }
+}
+
+/**
+ * ApiError型かどうかを判定する
+ */
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    !!error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    'message' in error
+  );
+}
+
+/**
  * エラーオブジェクトからApiErrorを作成する
  */
 export function normalizeError(error: unknown, path?: string): ApiError {

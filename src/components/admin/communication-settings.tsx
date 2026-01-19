@@ -240,10 +240,11 @@ export function CommunicationSettings() {
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <div>
-              <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              <Label htmlFor='smtp-host' className='block text-sm font-medium text-gray-700 mb-1'>
                 SMTPホスト
               </Label>
               <Input
+                id='smtp-host'
                 value={smtpSettings.host}
                 onChange={e =>
                   updateSmtp({ host: e.target.value })

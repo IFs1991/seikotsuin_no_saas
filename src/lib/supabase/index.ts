@@ -8,6 +8,7 @@ export {
   requireAdminAuth,
   setSupabaseClientFactory,
   resetSupabaseClientFactory,
+  canAccessClinicScope,
 } from './server';
 
 export type { SupabaseServerClient, UserPermissions } from './server';

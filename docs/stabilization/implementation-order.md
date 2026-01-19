@@ -10,9 +10,9 @@
 | 順番 | 仕様書                                  | 状態 | 理由                                               |
 |------|-----------------------------------------|------|----------------------------------------------------|
 | 1    | spec-auth-role-alignment-v0.1.md        | ✅ 完了 | 全ての基盤。ロール定義が統一されないと他が動かない |
-| 2    | spec-rls-tenant-boundary-v0.1.md        | 未着手 | RLSがPhase 1のロール定義とJWT claimsに依存         |
-| 3    | spec-tenant-table-api-guard-v0.1.md     | 未着手 | RLSと並行可能だが、同じロール定数を使う            |
-| 4    | spec-admin-settings-contract-v0.1.md    | 未着手 | セキュリティ修正後に機能修正                       |
+| 2    | spec-rls-tenant-boundary-v0.1.md        | 完了 | 親スコープ対応と追加修正作業３まで反映済み |
+| 3    | spec-tenant-table-api-guard-v0.1.md     | ほぼ完了 | RLSと並行可能だが、同じロール定数を使う            |
+| 4    | spec-admin-settings-contract-v0.1.md    | ⚠️ 実装済・E2E失敗 | UI実装済だがE2Eテスト6件失敗（セレクター/タイムアウト） |
 | 5    | spec-e2e-preflight-fixtures-v0.1.md     | 未着手 | 新ロール名でフィクスチャ更新                       |
 | 6    | spec-playwright-baseurl-windows-v0.1.md | 未着手 | 独立、いつでもOK                                   |
 | 7    | spec-organization-multi-clinic-v0.1.md  | 未着手 | Stabilization完了後の新機能                        |
@@ -25,11 +25,13 @@
          ├──────────────────┐
          ↓                  ↓
 [2] RLS Tenant          [3] API Guard
-    Boundary                (並行可能)
+    Boundary                ほぼ完了
+    完了                    │
          │                  │
          └────────┬─────────┘
                   ↓
         [4] Admin Settings
+            ⚠️ 実装済・E2E失敗
                   │
                   ↓
         [5] E2E Fixtures
@@ -66,17 +68,32 @@ rg "clinic_manager" src --type ts  # 残存チェック
 
 **仕様書**: `spec-rls-tenant-boundary-v0.1.md`
 
-**実装タスク**:
-- [ ] RLSポリシーの`clinic_id`スコープ確認
-- [ ] `get_current_clinic_id()`ヘルパー関数の統一
-- [ ] JWT claimsからのclinic_id取得
-- [ ] テナントテーブルのRLSポリシー更新
+**完了項目**:
+- [x] 親スコープマイグレーション作成
+- [x] `can_access_clinic()` 親スコープ実装
+- [x] `custom_access_token_hook` に `clinic_scope_ids` 付与
+- [x] chat_sessions/chat_messages RLS
+- [x] 非認証顧客向けAPI（public/menus, public/reservations）
+- [x] オンボーディング `parent_id` 対応
+- [x] `clinic_settings`/`staff_shifts`/`staff_preferences` RLS統一
+- [x] `reservation_history_insert_for_all` の `can_access_clinic` 制限
+- [x] `clinic_scope_ids` 取得優先順位の修正（JWTメタデータ優先）
+
+**追加修正作業３（完了）**:
+- [x] `clinics` RLSポリシーを `can_access_clinic(id)` に統一
+- [x] `user_permissions` RLSポリシーを `can_access_clinic(clinic_id)` に統一
+- [x] `clinic_scope_ids` がJWTに正しく設定されるよう修正
+- [x] admin-settings E2Eテストのセレクタ曖昧性をスコープ化で解消
 
 **依存**: Phase 1完了必須
 
 **検証コマンド**:
 ```bash
-supabase db query --local "SELECT tablename, policyname, qual FROM pg_policies WHERE schemaname='public';"
+# RLSポリシー確認
+psql "postgresql://postgres:postgres@127.0.0.1:54332/postgres" -c "SELECT tablename, policyname, qual FROM pg_policies WHERE schemaname='public' AND tablename IN ('clinics', 'user_permissions');"
+
+# 親スコープE2Eテスト
+npx playwright test cross-clinic-isolation.spec.ts --reporter=line
 ```
 
 ---
@@ -86,15 +103,19 @@ supabase db query --local "SELECT tablename, policyname, qual FROM pg_policies W
 **仕様書**: `spec-tenant-table-api-guard-v0.1.md`
 
 **実装タスク**:
-- [ ] `ensureClinicAccess()`の全API適用確認
-- [ ] クライアントからの直接テーブルアクセス排除
-- [ ] `requireClinicMatch`オプションの適切な使用
+- [x] `/api/blocks` を `processApiRequest` + `clinic_id` 強制で保護
+- [x] `/api/reservations` を `processApiRequest` + `requireClinicMatch` で保護
+- [x] `/api/menus` `/api/resources` `/api/customers` を `processApiRequest` + `requireClinicMatch` で保護
+- [x] `ReservationService` を `server-only` + `clinic_id` スコープ固定
+- [x] `BlockService` を `server-only` + `clinic_id` スコープ固定
+- [ ] 既存APIの `requireClinicMatch` 適用状況を再点検
 
 **依存**: Phase 1完了必須、Phase 2と並行可能
 
 **検証コマンド**:
 ```bash
-rg -n "from\('(reservations|blocks|customers|menus|resources)'\)" src
+rg -n "from\('(reservations|blocks|customers|menus|resources)'\)" src --glob '!**/api/**' --glob '!**/__tests__/**'
+# 期待: server-only の services に限定されていること
 ```
 
 ---
@@ -103,12 +124,28 @@ rg -n "from\('(reservations|blocks|customers|menus|resources)'\)" src
 
 **仕様書**: `spec-admin-settings-contract-v0.1.md`
 
-**実装タスク**:
-- [ ] 管理設定APIのスキーマ定義
-- [ ] 設定の永続化・取得ロジック
-- [ ] 権限チェック（CLINIC_ADMIN_ROLES）
+**状態**: ⚠️ 実装済・E2Eテスト失敗
+
+**完了項目**:
+- [x] 管理設定APIのスキーマ定義（BookingCalendarSchema等）
+- [x] 設定の永続化・取得ロジック
+- [x] 権限チェック（CLINIC_ADMIN_ROLES）
+- [x] UI/API契約の整合（slotMinutes, maxConcurrent等）
+- [x] data-testid属性の追加
+- [x] useAdminSettings persistOptions安定化
+- [x] プロファイルコンテキスト再利用
+
+**E2Eテスト失敗（追加修正作業３で対応）**:
+- [ ] セレクター不一致の修正（`booking-calendar-settings.tsx`等）
+- [ ] タイムアウト対策（ローディング待機処理改善）
+- [ ] 全 admin-settings E2Eテストの通過（現状: 2成功/6失敗/1スキップ）
 
 **依存**: Phase 2, 3完了後
+
+**検証コマンド**:
+```bash
+npx playwright test admin-settings.spec.ts --reporter=line
+```
 
 ---
 
@@ -223,3 +260,10 @@ npm run test:e2e:pw -- --grep="organization"
 | 2026-01-08 | Phase 1 (DOD-08, DOD-09) 完了 |
 | 2026-01-08 | Phase 7 仕様書追加 |
 | 2026-01-08 | 初版作成 |
+| 2026-01-15 | Phase 2 追加修正（RLS insert制限/JWT scope取得） |
+| 2026-01-15 | Phase 3 進行状況更新（API guard適用範囲の反映） |
+| 2026-01-15 | Phase 3 Reservation/Block service clinic_id スコープ固定 |
+| 2026-01-16 | Phase 2 追加修正作業３追加（clinics/user_permissions RLS、JWT修正、admin-settings E2E） |
+| 2026-01-16 | Phase 4 状態更新（実装済・E2Eテスト失敗） |
+
+

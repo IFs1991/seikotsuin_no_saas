@@ -44,10 +44,14 @@ describe('高度セキュリティ機能テスト', () => {
   let securityMonitor: SecurityMonitor;
   let sessionManager: SessionManager;
   let multiDeviceManager: MultiDeviceManager;
+  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     // mockSupabase をリセット
     mockSupabase = createMockSupabase();
+
+    // console.warnをスパイ
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     // @/lib/supabase のモックを更新
     const supabaseMock = jest.requireMock('@/lib/supabase') as {
@@ -66,6 +70,10 @@ describe('高度セキュリティ機能テスト', () => {
       data: null,
       error: null,
     });
+  });
+
+  afterEach(() => {
+    consoleWarnSpy?.mockRestore();
   });
 
   describe('多層防御セキュリティ', () => {
@@ -670,8 +678,8 @@ describe('高度セキュリティ機能テスト', () => {
       const result = await sessionManager.validateSession('fallback-token');
       expect(result.isValid).toBe(true);
 
-      // 警告がログされる
-      expect(console.warn).toHaveBeenCalled();
+      // 警告がログされる（spyを使用）
+      expect(consoleWarnSpy).toHaveBeenCalled();
     });
   });
 });

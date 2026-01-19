@@ -81,7 +81,7 @@ describe('ClinicBasicSettings', () => {
         })
       );
 
-    render(<ClinicBasicSettings />);
+    const { container } = render(<ClinicBasicSettings />);
 
     await screen.findByDisplayValue('Test Clinic');
 

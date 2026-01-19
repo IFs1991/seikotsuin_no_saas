@@ -71,6 +71,11 @@ export const clinicCreateSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, '日付はYYYY-MM-DD形式で入力してください')
     .optional(),
+  /**
+   * Parent clinic ID for parent-child hierarchy (Option 2)
+   * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+   */
+  parent_id: z.string().uuid('親クリニックIDは有効なUUIDである必要があります').optional(),
 });
 
 export type ClinicCreateDTO = z.infer<typeof clinicCreateSchema>;

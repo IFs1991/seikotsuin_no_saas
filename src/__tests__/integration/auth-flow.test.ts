@@ -63,6 +63,10 @@ jest.mock('@/lib/audit-logger', () => ({
     ipAddress: '127.0.0.1',
     userAgent: 'jest',
   })),
+  getRequestInfoFromHeaders: jest.fn(() => ({
+    ipAddress: '127.0.0.1',
+    userAgent: 'jest',
+  })),
 }));
 
 let profileQueryBuilder = createProfileQueryBuilder();

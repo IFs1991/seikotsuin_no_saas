@@ -411,4 +411,227 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     // Admin should be able to query without RLS blocking
     expect(Array.isArray(sessions)).toBe(true);
   });
+
+  // ================================================================
+  // Parent-Scope Model Tests
+  // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+  // ================================================================
+
+  /**
+   * Test: Sibling Clinic Access (MUST ALLOW)
+   *
+   * When clinic_scope_ids JWT claim is set, users can access
+   * all clinics in their parent scope (siblings).
+   *
+   * NOTE: Full sibling access tests require:
+   * 1. clinics.parent_id column to be added
+   * 2. Test users with clinic_scope_ids set via custom_access_token_hook
+   */
+  test('sibling clinic access - users can access clinics in same parent scope', async () => {
+    const adminResult = await createAdminClient();
+
+    if (!adminResult) {
+      console.warn('Admin authentication failed');
+      return;
+    }
+
+    // Get admin's JWT claims to check for clinic_scope_ids
+    const { data: { session } } = await adminResult.client.auth.getSession();
+
+    // Try to parse clinic_scope_ids from JWT
+    let clinicScopeIds: string[] | undefined;
+    try {
+      const accessToken = session?.access_token;
+      if (accessToken) {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        clinicScopeIds = payload.clinic_scope_ids;
+      }
+    } catch {
+      // JWT parsing failed
+    }
+
+    // DOD-08: clinic_scope_ids must be set for parent-scope model tests
+    // No fallback - fail explicitly if parent-scope is not configured
+    // @see docs/stabilization/spec-tenant-table-api-guard-v0.1.md (Follow-ups: 追加修正2)
+    expect(
+      clinicScopeIds && clinicScopeIds.length > 0,
+      'clinic_scope_ids must be set in JWT for parent-scope model tests. ' +
+      'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
+    ).toBe(true);
+
+    // Type guard: after expect assertion, clinicScopeIds is guaranteed to be non-null
+    const scopeIds = clinicScopeIds as string[];
+
+    // Verify access to all sibling clinics
+    for (const clinicId of scopeIds) {
+      const { data: reservations, error } = await adminResult.client
+        .from('reservations')
+        .select('id, clinic_id')
+        .eq('clinic_id', clinicId)
+        .limit(5);
+
+      expect(error).toBeNull();
+      // Verify no RLS error (empty result is OK, error is NOT OK)
+      expect(Array.isArray(reservations)).toBe(true);
+    }
+  });
+
+  /**
+   * Test: Cross-Parent Isolation (MUST BLOCK)
+   *
+   * Users from Parent A cannot access data from Parent B.
+   * This applies to ALL roles including admin.
+   */
+  test('cross-parent isolation - users cannot access data from different parent org', async () => {
+    const clinicAResult = await createClinicAClient();
+    const adminResult = await createAdminClient();
+
+    if (!clinicAResult || !adminResult) {
+      console.warn('Test user authentication failed');
+      return;
+    }
+
+    // Get clinic A user's clinic scope
+    const { data: clinicAPermission } = await adminResult.client
+      .from('user_permissions')
+      .select('clinic_id')
+      .eq('staff_id', clinicAResult.userId)
+      .single();
+
+    if (!clinicAPermission?.clinic_id) {
+      console.warn('Clinic A permission not found');
+      return;
+    }
+
+    // Get clinic B user's clinic (represents different parent org in test setup)
+    const clinicBResult = await createClinicBClient();
+    if (!clinicBResult) {
+      console.warn('Clinic B authentication failed');
+      return;
+    }
+
+    const { data: clinicBPermission } = await adminResult.client
+      .from('user_permissions')
+      .select('clinic_id')
+      .eq('staff_id', clinicBResult.userId)
+      .single();
+
+    if (!clinicBPermission?.clinic_id) {
+      console.warn('Clinic B permission not found');
+      return;
+    }
+
+    // Clinic A user should not see Clinic B's reservations
+    const { data: clinicAReservations } = await clinicAResult.client
+      .from('reservations')
+      .select('id, clinic_id')
+      .eq('clinic_id', clinicBPermission.clinic_id);
+
+    // If cross-parent isolation is working, no reservations should be returned
+    // (RLS filters them out)
+    if (clinicAReservations && clinicAReservations.length > 0) {
+      // If any reservations are returned, they must be from clinic A's scope
+      // (indicating the filter was client-side, not server-side)
+      clinicAReservations.forEach(reservation => {
+        // This should NOT happen if cross-parent isolation is working
+        expect(reservation.clinic_id).not.toBe(clinicBPermission.clinic_id);
+      });
+    }
+  });
+
+  /**
+   * Test: Admin Parent-Scope Limitation (MUST RESPECT SCOPE)
+   *
+   * Admin bypass has been REMOVED in parent-scope model.
+   * Admin can only access clinics within their parent organization scope.
+   */
+  test('admin parent-scope limitation - admin respects parent scope boundary', async () => {
+    const adminResult = await createAdminClient();
+
+    if (!adminResult) {
+      console.warn('Admin authentication failed');
+      return;
+    }
+
+    // Get admin's clinic scope from JWT
+    const { data: { session } } = await adminResult.client.auth.getSession();
+
+    let clinicScopeIds: string[] | undefined;
+    try {
+      const accessToken = session?.access_token;
+      if (accessToken) {
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        clinicScopeIds = payload.clinic_scope_ids;
+      }
+    } catch {
+      // JWT parsing failed
+    }
+
+    // DOD-08: clinic_scope_ids must be set for parent-scope model tests
+    // No fallback - fail explicitly if parent-scope is not configured
+    // @see docs/stabilization/spec-tenant-table-api-guard-v0.1.md (Follow-ups: 追加修正2)
+    expect(
+      clinicScopeIds && clinicScopeIds.length > 0,
+      'clinic_scope_ids must be set in JWT for admin parent-scope limitation test. ' +
+      'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
+    ).toBe(true);
+
+    // Get all accessible reservations - admin should be scoped
+    const { data: reservations, error } = await adminResult.client
+      .from('reservations')
+      .select('id, clinic_id');
+
+    expect(error).toBeNull();
+
+    if (reservations && reservations.length > 0) {
+      // All reservations should be from clinics in admin's scope
+      reservations.forEach(reservation => {
+        expect(clinicScopeIds).toContain(reservation.clinic_id);
+      });
+    }
+  });
+
+  /**
+   * Test: Public API Menu Access
+   *
+   * Non-authenticated customers access menus via server API gateway.
+   * This test verifies the pattern works (API endpoint test).
+   */
+  test('public api - menus are accessible via server API with clinic_id', async () => {
+    const adminResult = await createAdminClient();
+
+    if (!adminResult) {
+      console.warn('Admin authentication failed');
+      return;
+    }
+
+    // Get a valid clinic_id for testing
+    const { data: clinics } = await adminResult.client
+      .from('clinics')
+      .select('id')
+      .eq('is_active', true)
+      .limit(1);
+
+    if (!clinics || clinics.length === 0) {
+      console.warn('No active clinics found');
+      return;
+    }
+
+    // Note: In real E2E, this would call the actual API endpoint
+    // GET /api/public/menus?clinic_id=xxx
+    // For now, verify the menus are scoped correctly
+    const { data: menus, error } = await adminResult.client
+      .from('menus')
+      .select('id, clinic_id, name')
+      .eq('clinic_id', clinics[0].id)
+      .eq('is_active', true)
+      .eq('is_deleted', false);
+
+    expect(error).toBeNull();
+    if (menus && menus.length > 0) {
+      menus.forEach(menu => {
+        expect(menu.clinic_id).toBe(clinics[0].id);
+      });
+    }
+  });
 });

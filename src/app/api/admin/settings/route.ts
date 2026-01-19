@@ -380,8 +380,8 @@ export async function PUT(request: NextRequest) {
       return createErrorResponse('設定の保存に失敗しました', 500);
     }
 
-    // 監査ログ出力
-    await AuditLogger.logAdminAction(
+    // 監査ログはベストエフォートで実行し、レスポンスをブロックしない。
+    void AuditLogger.logAdminAction(
       auth.id,
       auth.email,
       'update_settings',

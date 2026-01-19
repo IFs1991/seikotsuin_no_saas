@@ -7,7 +7,7 @@
 -- Purpose: Complete the clinic_manager migration by covering:
 --   1. auth.users.raw_app_meta_data (role/user_role keys)
 --   2. auth.users.raw_user_meta_data.user_role key
---   3. RLS policies in clinic_settings, staff_shifts/preferences, invitations, mfa tables
+--   3. RLS policies in clinic_settings, staff_shifts/preferences, staff_invites, mfa tables
 --
 -- Dependency: 20260109000100_migrate_clinic_manager_to_clinic_admin.sql
 -- ================================================================
@@ -190,25 +190,25 @@ CREATE POLICY "staff_preferences_upsert_policy" ON public.staff_preferences
     );
 
 -- ================================================================
--- 5. Fix CHECK constraint in invitations table
+-- 5. Fix CHECK constraint in staff_invites table
 -- ================================================================
 -- Source: 20251225000100_onboarding_tables.sql
 
 -- Drop existing constraint
-ALTER TABLE public.invitations DROP CONSTRAINT IF EXISTS invitations_role_check;
+ALTER TABLE public.staff_invites DROP CONSTRAINT IF EXISTS staff_invites_role_check;
 
 -- Recreate with clinic_admin instead of clinic_manager
-ALTER TABLE public.invitations ADD CONSTRAINT invitations_role_check
+ALTER TABLE public.staff_invites ADD CONSTRAINT staff_invites_role_check
     CHECK (role IN ('admin', 'clinic_admin', 'therapist', 'staff', 'manager'));
 
 -- ================================================================
--- 6. Fix RLS policy in invitations table
+-- 6. Fix RLS policy in staff_invites table
 -- ================================================================
 
-DROP POLICY IF EXISTS "invitations_select_policy" ON public.invitations;
+DROP POLICY IF EXISTS "staff_invites_clinic_admin_select" ON public.staff_invites;
 
 -- Recreate with clinic_admin instead of clinic_manager
-CREATE POLICY "invitations_select_policy" ON public.invitations
+CREATE POLICY "staff_invites_clinic_admin_select" ON public.staff_invites
     FOR SELECT USING (
         clinic_id IN (
             SELECT p.clinic_id FROM public.profiles p
@@ -239,8 +239,7 @@ CREATE POLICY "user_mfa_settings_select_policy" ON public.user_mfa_settings
 
 CREATE POLICY "mfa_usage_stats_select_policy" ON public.mfa_usage_stats
     FOR SELECT USING (
-        user_id = auth.uid()
-        OR EXISTS (
+        EXISTS (
             SELECT 1 FROM profiles p
             WHERE p.user_id = auth.uid()
             AND p.clinic_id = mfa_usage_stats.clinic_id
@@ -293,8 +292,8 @@ COMMIT;
 -- -- Note: Use Point-in-Time Recovery for full rollback
 --
 -- -- 1. Restore CHECK constraint
--- ALTER TABLE public.invitations DROP CONSTRAINT IF EXISTS invitations_role_check;
--- ALTER TABLE public.invitations ADD CONSTRAINT invitations_role_check
+-- ALTER TABLE public.staff_invites DROP CONSTRAINT IF EXISTS staff_invites_role_check;
+-- ALTER TABLE public.staff_invites ADD CONSTRAINT staff_invites_role_check
 --     CHECK (role IN ('admin', 'clinic_manager', 'therapist', 'staff', 'manager'));
 --
 -- -- 2. Restore RLS policies (reference original migration files)

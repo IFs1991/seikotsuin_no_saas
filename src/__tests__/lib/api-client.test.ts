@@ -18,10 +18,10 @@ describe('ApiClient', () => {
   let apiClient: ApiClient;
 
   beforeEach(() => {
-    // リトライを無効化してタイムアウトを短縮
+    // リトライを最小化してタイムアウトを短縮（retryCount:1で1回のみ実行）
     apiClient = new ApiClient({
       baseUrl: 'https://test.example.com',
-      retryCount: 0,
+      retryCount: 1,
       timeout: 5000,
     });
     mockFetch.mockClear();
@@ -80,6 +80,14 @@ describe('ApiClient', () => {
     });
 
     it('should handle network errors with retry', async () => {
+      // このテストはリトライ機能をテストするため、retryCount: 3のクライアントを作成
+      const retryClient = new ApiClient({
+        baseUrl: 'https://test.example.com',
+        retryCount: 3,
+        timeout: 5000,
+        retryDelay: 10, // テスト高速化のため短縮
+      });
+
       const networkError = new Error('Network error');
       networkError.name = 'TypeError';
 
@@ -87,7 +95,7 @@ describe('ApiClient', () => {
       mockFetch.mockRejectedValueOnce(networkError);
       mockFetch.mockRejectedValueOnce(networkError);
 
-      const result = await apiClient.get('/api/test');
+      const result = await retryClient.get('/api/test');
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(result.success).toBe(false);

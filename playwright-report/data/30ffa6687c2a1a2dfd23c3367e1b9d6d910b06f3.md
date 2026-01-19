@@ -1,0 +1,257 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e6] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e7]:
+      - img [ref=e8]
+    - generic [ref=e11]:
+      - button "Open issues overlay" [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: "0"
+          - generic [ref=e15]: "1"
+        - generic [ref=e16]: Issue
+      - button "Collapse issues badge" [ref=e17]:
+        - img [ref=e18]
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - button "メニューを開閉" [ref=e23] [cursor=pointer]: ☰
+        - button "トップページへ移動" [ref=e24] [cursor=pointer]:
+          - generic [ref=e25]: 骨
+          - generic [ref=e26]:
+            - generic [ref=e27]: ティラミス
+            - generic [ref=e28]: e2e-admin@clinic.local / admin
+      - generic [ref=e29]:
+        - combobox [ref=e30]:
+          - option "00000000-0000-0000-0000-0000000000a1" [selected]
+          - option "本店"
+          - option "新宿店"
+          - option "渋谷店"
+          - option "池袋店"
+          - option "横浜店"
+        - button "3 通知" [ref=e32] [cursor=pointer]:
+          - generic [ref=e33]: "3"
+          - text: 通知
+        - button "管理メニュー ▾" [ref=e35] [cursor=pointer]:
+          - text: 管理メニュー
+          - generic [ref=e36]: ▾
+        - button "☀️" [ref=e37] [cursor=pointer]
+        - button "ユーザー" [ref=e39] [cursor=pointer]
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - heading "整骨院管理" [level=1] [ref=e43]
+          - button "←" [ref=e44] [cursor=pointer]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - paragraph [ref=e47]: メインメニュー
+            - generic [ref=e48]:
+              - link "● トップ" [ref=e50] [cursor=pointer]:
+                - /url: /
+                - button "● トップ" [ref=e51]:
+                  - generic [ref=e52]: ●
+                  - text: トップ
+              - link "● ダッシュボード" [ref=e54] [cursor=pointer]:
+                - /url: /dashboard
+                - button "● ダッシュボード" [ref=e55]:
+                  - generic [ref=e56]: ●
+                  - text: ダッシュボード
+              - link "● 日報管理" [ref=e58] [cursor=pointer]:
+                - /url: /daily-reports
+                - button "● 日報管理" [ref=e59]:
+                  - generic [ref=e60]: ●
+                  - text: 日報管理
+              - link "● 予約管理" [ref=e62] [cursor=pointer]:
+                - /url: /reservations
+                - button "● 予約管理" [ref=e63]:
+                  - generic [ref=e64]: ●
+                  - text: 予約管理
+              - link "● 患者分析" [ref=e66] [cursor=pointer]:
+                - /url: /patients
+                - button "● 患者分析" [ref=e67]:
+                  - generic [ref=e68]: ●
+                  - text: 患者分析
+              - link "● 収益分析" [ref=e70] [cursor=pointer]:
+                - /url: /revenue
+                - button "● 収益分析" [ref=e71]:
+                  - generic [ref=e72]: ●
+                  - text: 収益分析
+              - link "● スタッフ管理" [ref=e74] [cursor=pointer]:
+                - /url: /staff
+                - button "● スタッフ管理" [ref=e75]:
+                  - generic [ref=e76]: ●
+                  - text: スタッフ管理
+              - link "● AI分析" [ref=e78] [cursor=pointer]:
+                - /url: /ai-insights
+                - button "● AI分析" [ref=e79]:
+                  - generic [ref=e80]: ●
+                  - text: AI分析
+          - generic [ref=e82]:
+            - heading "クイックアクセス" [level=2] [ref=e83]
+            - link "日報入力" [ref=e84] [cursor=pointer]:
+              - /url: /daily-reports/input
+              - button "日報入力" [ref=e85]
+            - link "新規予約" [ref=e86] [cursor=pointer]:
+              - /url: /reservations?view=register
+              - button "新規予約" [ref=e87]
+            - link "患者検索" [ref=e88] [cursor=pointer]:
+              - /url: /patients
+              - button "患者検索" [ref=e89]
+            - link "収益レポート" [ref=e90] [cursor=pointer]:
+              - /url: /revenue
+              - button "収益レポート" [ref=e91]
+          - generic [ref=e93]:
+            - heading "管理セクション" [level=2] [ref=e94]
+            - link "管理ダッシュボード" [ref=e95] [cursor=pointer]:
+              - /url: /admin
+              - button "管理ダッシュボード" [ref=e96]
+            - link "マスタ管理" [ref=e97] [cursor=pointer]:
+              - /url: /admin/master
+              - button "マスタ管理" [ref=e98]
+            - link "セキュリティ監視" [ref=e99] [cursor=pointer]:
+              - /url: /admin/security-dashboard
+              - button "セキュリティ監視" [ref=e100]
+            - link "セッション管理" [ref=e101] [cursor=pointer]:
+              - /url: /admin/session-management
+              - button "セッション管理" [ref=e102]
+            - link "システム設定" [ref=e103] [cursor=pointer]:
+              - /url: /admin/settings
+              - button "システム設定" [ref=e104]
+            - link "AIアシスタント" [ref=e105] [cursor=pointer]:
+              - /url: /admin/chat
+              - button "AIアシスタント" [ref=e106]
+            - link "マルチ店舗分析" [ref=e107] [cursor=pointer]:
+              - /url: /multi-store
+              - button "マルチ店舗分析" [ref=e108]
+      - main [ref=e109]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - generic [ref=e117]: 骨
+                - generic [ref=e118]:
+                  - heading "システム設定" [level=1] [ref=e119]
+                  - paragraph [ref=e120]: "管理者: admin"
+              - generic [ref=e121]:
+                - img [ref=e122]
+                - textbox "設定項目を検索..." [ref=e125]
+            - navigation [ref=e127]:
+              - generic [ref=e128]:
+                - button "店舗管理" [ref=e129] [cursor=pointer]:
+                  - generic [ref=e130]:
+                    - img [ref=e131]
+                    - generic [ref=e134]: 店舗管理
+                  - img [ref=e135]
+                - generic [ref=e137]:
+                  - button "基本情報" [active] [ref=e138] [cursor=pointer]
+                  - button "診療時間・休診日" [ref=e139] [cursor=pointer]
+                  - button "設備・ベッド管理" [ref=e140] [cursor=pointer]
+              - button "スタッフ管理" [ref=e142] [cursor=pointer]:
+                - generic [ref=e143]:
+                  - img [ref=e144]
+                  - generic [ref=e149]: スタッフ管理
+                - img [ref=e150]
+              - button "サービス・料金" [ref=e153] [cursor=pointer]:
+                - generic [ref=e154]:
+                  - img [ref=e155]
+                  - generic [ref=e159]: サービス・料金
+                - img [ref=e160]
+              - button "保険・請求" [ref=e163] [cursor=pointer]:
+                - generic [ref=e164]:
+                  - img [ref=e165]
+                  - generic [ref=e167]: 保険・請求
+                - img [ref=e168]
+              - button "予約・カレンダー" [ref=e171] [cursor=pointer]:
+                - generic [ref=e172]:
+                  - img [ref=e173]
+                  - generic [ref=e175]: 予約・カレンダー
+                - img [ref=e176]
+              - button "患者コミュニケーション" [ref=e179] [cursor=pointer]:
+                - generic [ref=e180]:
+                  - img [ref=e181]
+                  - generic [ref=e183]: 患者コミュニケーション
+                - img [ref=e184]
+              - button "システム設定" [ref=e187] [cursor=pointer]:
+                - generic [ref=e188]:
+                  - img [ref=e189]
+                  - generic [ref=e192]: システム設定
+                - img [ref=e193]
+              - button "データ管理" [ref=e196] [cursor=pointer]:
+                - generic [ref=e197]:
+                  - img [ref=e198]
+                  - generic [ref=e202]: データ管理
+                - img [ref=e203]
+            - button "ログアウト" [ref=e206] [cursor=pointer]:
+              - img [ref=e207]
+              - generic [ref=e210]: ログアウト
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - generic [ref=e215]:
+                - generic [ref=e216]: 店舗管理
+                - img [ref=e217]
+                - generic [ref=e219]: 基本情報
+              - heading "基本情報" [level=1] [ref=e220]
+              - paragraph [ref=e221]: 院名、住所、電話番号、ロゴ画像の設定
+            - generic [ref=e222]:
+              - generic [ref=e223]:
+                - heading "基本情報" [level=3] [ref=e224]
+                - generic [ref=e225]:
+                  - generic [ref=e226]:
+                    - generic [ref=e227]: 院名*
+                    - textbox "院名*" [ref=e228]:
+                      - /placeholder: 整骨院名を入力
+                      - text: API経由テスト院_更新
+                  - generic [ref=e229]:
+                    - generic [ref=e230]: 電話番号*
+                    - textbox "電話番号*" [ref=e231]:
+                      - /placeholder: 03-1234-5678
+                      - text: 03-0000-0000
+                  - generic [ref=e232]:
+                    - generic [ref=e233]: 郵便番号
+                    - textbox "郵便番号" [ref=e234]:
+                      - /placeholder: 150-0001
+                      - text: 100-0001
+                  - generic [ref=e235]:
+                    - generic [ref=e236]: FAX番号
+                    - textbox "FAX番号" [ref=e237]:
+                      - /placeholder: 03-1234-5679
+                - generic [ref=e238]:
+                  - generic [ref=e239]: 住所*
+                  - textbox "住所*" [ref=e240]:
+                    - /placeholder: 東京都渋谷区神宮前1-1-1
+                    - text: テスト住所
+                - generic [ref=e241]:
+                  - generic [ref=e242]:
+                    - generic [ref=e243]: メールアドレス
+                    - textbox "メールアドレス" [ref=e244]:
+                      - /placeholder: info@seikotsuin.com
+                      - text: api-test@test.com
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: ウェブサイト
+                    - textbox "ウェブサイト" [ref=e247]:
+                      - /placeholder: https://www.seikotsuin.com
+              - generic [ref=e248]:
+                - heading "ロゴ画像" [level=3] [ref=e249]
+                - generic [ref=e250]:
+                  - img [ref=e252]
+                  - generic [ref=e255]:
+                    - button "ロゴを選択" [ref=e257] [cursor=pointer]:
+                      - img [ref=e258]
+                      - text: ロゴを選択
+                    - paragraph [ref=e261]: "推奨サイズ: 200x200px、PNG/JPG形式、最大2MB"
+              - generic [ref=e262]:
+                - heading "院の紹介" [level=3] [ref=e263]
+                - generic [ref=e264]:
+                  - generic [ref=e265]: 紹介文
+                  - textbox "紹介文" [ref=e266]:
+                    - /placeholder: 院の特色やアピールポイントを入力してください
+                    - text: APIテスト用
+                  - paragraph [ref=e267]: 患者向けサイトやアプリで表示される紹介文です（最大500文字）
+              - generic [ref=e268]:
+                - button "キャンセル" [ref=e269] [cursor=pointer]
+                - button "設定を保存" [ref=e270] [cursor=pointer]:
+                  - img [ref=e271]
+                  - generic [ref=e275]: 設定を保存
+  - alert [ref=e276]
+```

@@ -7,12 +7,26 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { createAdminClient } from '@/lib/supabase/server';
 
+/**
+ * Clinic Create Schema for admin tenant management.
+ *
+ * NOTE (DOD-08): Parent-child tenant creation is NOT supported via this endpoint.
+ * - This endpoint is for managing EXISTING flat clinics without parent-child hierarchy.
+ * - For parent-child tenant creation with admin setup, use:
+ *   POST /api/onboarding/clinic (supports parent_id via create_clinic_with_admin RPC)
+ *
+ * @see docs/stabilization/spec-tenant-table-api-guard-v0.1.md (Follow-ups: 追加修正2)
+ * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Parent-scope model)
+ */
 const ClinicCreateSchema = z.object({
   name: z.string().min(1, 'クリニック名は必須です').max(255),
   address: z.string().max(500).optional(),
   phone_number: z.string().max(50).optional(),
   is_active: z.boolean().optional(),
+  // NOTE: parent_id is intentionally NOT included.
+  // Parent-child tenant creation should use /api/onboarding/clinic endpoint.
 });
 
 const requireAdmin = (role: string) => role === 'admin';
@@ -158,12 +172,14 @@ export async function GET(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, permissions, auth } = processResult;
+    const { permissions, auth } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    let query = supabase
+    const adminSupabase = createAdminClient();
+
+    let query = adminSupabase
       .from('clinics')
       .select('id, name, address, phone_number, is_active, created_at')
       .order('created_at', { ascending: false });
@@ -192,7 +208,7 @@ export async function GET(request: NextRequest) {
     // KPIデータが要求された場合
     if (includeKpi && items.length > 0) {
       const clinicIds = items.map((c) => c.id);
-      const kpiMap = await fetchClinicKPIData(supabase, clinicIds);
+      const kpiMap = await fetchClinicKPIData(adminSupabase, clinicIds);
 
       items = items.map((clinic) => ({
         ...clinic,
@@ -230,10 +246,12 @@ export async function POST(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
+    const { auth, permissions, body } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
+
+    const adminSupabase = createAdminClient();
 
     const parsed = ClinicCreateSchema.safeParse(body);
     if (!parsed.success) {
@@ -246,7 +264,7 @@ export async function POST(request: NextRequest) {
 
     const { name, address, phone_number, is_active } = parsed.data;
 
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from('clinics')
       .insert({
         name,

@@ -30,7 +30,7 @@ Each item includes a command, expected success condition, and representative fai
 
 - [ ] DOD-06 Playwright baseURL and webServer are aligned and stable.
   - Command: set `PLAYWRIGHT_BASE_URL=http://localhost:3000` (or the agreed port), then `npm run test:e2e:pw -- --project=chromium`
-  - Success: webServer starts on the expected port within timeout; no fallback ports; tests start reliably.
+  - Success: webServer starts on the expected port within timeout; no fallback ports; tests start reliably; reload flows wait for `設定を読み込み中...` to be hidden after `page.reload({ waitUntil: 'domcontentloaded' })`.
   - Failure: `Port #### is in use` fallback, timeout, `TypeError: Cannot read properties of undefined (reading '/_app')`, missing `.next` artifacts, or `ECONNRESET` during startup.
 
 - [ ] DOD-07 Playwright runs on Windows without `spawn EPERM`.
@@ -55,6 +55,7 @@ Each item includes a command, expected success condition, and representative fai
 
 - [ ] DOD-11 Jest regression suite runs without EPERM on Windows.
   - Command: `npm run test -- --ci --testPathIgnorePatterns=e2e`
+  - Windows alternative: `npm run test:windows`
   - Success: tests complete with exit 0.
   - Failure: `spawn EPERM` or unexpected test failures.
 

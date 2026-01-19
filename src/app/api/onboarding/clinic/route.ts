@@ -45,9 +45,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, address, phone_number, opening_date } = parsed.data;
+    const { name, address, phone_number, opening_date, parent_id } = parsed.data;
 
     // RPC関数でトランザクション内で一括処理
+    // parent_id support: @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Option 2)
     const { data: result, error: rpcError } = await supabase.rpc(
       'create_clinic_with_admin',
       {
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
         p_address: address ?? null,
         p_phone_number: phone_number ?? null,
         p_opening_date: opening_date ?? null,
+        p_parent_id: parent_id ?? null,
       }
     );
 

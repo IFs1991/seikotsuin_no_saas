@@ -67,14 +67,18 @@ export interface DeviceSecurityAlert {
 // ================================================================
 
 export class MultiDeviceManager {
-  private supabase;
+  private readonly supabasePromise;
   private sessionManager: SessionManager;
   private securityMonitor: SecurityMonitor;
 
   constructor() {
-    this.supabase = createClient();
+    this.supabasePromise = createClient();
     this.sessionManager = new SessionManager();
     this.securityMonitor = new SecurityMonitor();
+  }
+
+  private async getSupabase() {
+    return await this.supabasePromise;
   }
 
   /**
@@ -86,7 +90,8 @@ export class MultiDeviceManager {
     deviceFingerprint: string
   ): Promise<boolean> {
     try {
-      const query = this.supabase
+      const supabase = await this.getSupabase();
+      const query = supabase
         .from('registered_devices')
         .select('is_trusted, trust_score, trust_level, device_fingerprint')
         .eq('user_id', userId)
@@ -137,7 +142,8 @@ export class MultiDeviceManager {
     clinicId: string
   ): Promise<DeviceSession[]> {
     try {
-      const { data: sessions, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: sessions, error } = await supabase
         .from('user_sessions')
         .select(
           `
@@ -404,7 +410,8 @@ export class MultiDeviceManager {
   private async getMultiDeviceConfig(
     clinicId: string
   ): Promise<MultiDeviceConfig> {
-    const { data: policy } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data: policy } = await supabase
       .from('session_policies')
       .select('*')
       .eq('clinic_id', clinicId)
@@ -440,7 +447,8 @@ export class MultiDeviceManager {
     userId: string,
     deviceInfo: DeviceInfo
   ): Promise<boolean> {
-    const { count } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { count } = await supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
@@ -459,7 +467,8 @@ export class MultiDeviceManager {
     userId: string,
     currentIP: string
   ): Promise<boolean> {
-    const { data: recentSessions } = await this.supabase
+    const supabase = await this.getSupabase();
+    const { data: recentSessions } = await supabase
       .from('user_sessions')
       .select('ip_address, geolocation')
       .eq('user_id', userId)
@@ -518,7 +527,8 @@ export class MultiDeviceManager {
     message: string;
   }> {
     // registered_devicesテーブルに登録
-    const { error } = await this.supabase.from('registered_devices').upsert({
+    const supabase = await this.getSupabase();
+    const { error } = await supabase.from('registered_devices').upsert({
       user_id: userId,
       clinic_id: clinicId,
       device_fingerprint: deviceId,
@@ -542,7 +552,8 @@ export class MultiDeviceManager {
     clinicId: string,
     reason?: string
   ): Promise<{ success: boolean; message: string }> {
-    const { error } = await this.supabase.from('registered_devices').upsert({
+    const supabase = await this.getSupabase();
+    const { error } = await supabase.from('registered_devices').upsert({
       user_id: userId,
       clinic_id: clinicId,
       device_fingerprint: deviceId,
@@ -559,7 +570,7 @@ export class MultiDeviceManager {
     }
 
     // 該当デバイスのセッションを無効化
-    await this.supabase
+    await supabase
       .from('user_sessions')
       .update({
         is_active: false,
@@ -606,7 +617,8 @@ export class MultiDeviceManager {
     keepSessionId?: string
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const { data: sessions } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data: sessions } = await supabase
         .from('user_sessions')
         .select('id')
         .eq('user_id', userId)

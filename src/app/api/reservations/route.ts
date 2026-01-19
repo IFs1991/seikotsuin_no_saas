@@ -4,6 +4,8 @@ import {
   AppError,
   createApiError,
   ERROR_CODES,
+  getStatusCodeFromErrorCode,
+  isApiError,
   normalizeSupabaseError,
   logError,
 } from '@/lib/error-handler';
@@ -136,8 +138,12 @@ export async function GET(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else if (error && typeof error === 'object' && 'code' in error) {
       apiError = normalizeSupabaseError(error, PATH);
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation fetch failed', undefined, PATH);
     }
@@ -192,6 +198,9 @@ export async function POST(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation creation failed', undefined, PATH);
     }
@@ -251,6 +260,7 @@ export async function PATCH(request: NextRequest) {
       .from('reservations')
       .update(updatePayload)
       .eq('id', dto.id)
+      .eq('clinic_id', dto.clinic_id)
       .select()
       .single();
 
@@ -265,6 +275,9 @@ export async function PATCH(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation update failed', undefined, PATH);
     }
@@ -287,8 +300,16 @@ export async function DELETE(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
-    const { error } = await guard.supabase.from('reservations').delete().eq('id', id);
+    const { data, error } = await guard.supabase
+      .from('reservations')
+      .delete()
+      .eq('id', id)
+      .eq('clinic_id', clinicId)
+      .select('id');
     if (error) throw normalizeSupabaseError(error, PATH);
+    if (!data || data.length === 0) {
+      return createErrorResponse('予約が見つかりません', 404);
+    }
 
     return createSuccessResponse({ deleted: true });
   } catch (error) {
@@ -297,6 +318,9 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof AppError) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
+    } else if (isApiError(error)) {
+      apiError = error;
+      statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
       apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation delete failed', undefined, PATH);
     }

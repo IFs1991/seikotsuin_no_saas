@@ -208,10 +208,11 @@ export function SystemSettings() {
             </h4>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <Label className='block text-sm text-gray-700 mb-1'>
-                  最小文字数
+                <Label htmlFor='password-min-length' className='block text-sm text-gray-700 mb-1'>
+                  パスワード最小文字数
                 </Label>
                 <Input
+                  id='password-min-length'
                   type='number'
                   value={security.passwordPolicy.minLength}
                   onChange={e =>

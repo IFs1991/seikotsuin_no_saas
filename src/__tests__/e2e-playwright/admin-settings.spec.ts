@@ -26,6 +26,8 @@ test.describe('管理設定永続化', () => {
     test('基本情報を変更して保存後、再読み込みで値が保持される', async ({
       page,
     }) => {
+      const adminSettingsNav = page.getByTestId('admin-settings-nav');
+      const adminSettingsContent = page.getByTestId('admin-settings-content');
       // 設定画面へ移動
       await page.goto('/admin/settings');
       await expect(
@@ -33,9 +35,11 @@ test.describe('管理設定永続化', () => {
       ).toBeVisible();
 
       // 「基本情報」を選択
-      await page.getByRole('button', { name: '店舗管理' }).click();
-      await page.getByRole('button', { name: '基本情報' }).click();
-      await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
+      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
       await expect(page.getByLabel('院名')).toBeVisible();
 
       // テスト用のユニークな値を生成
@@ -59,13 +63,18 @@ test.describe('管理設定永続化', () => {
         '設定を保存しました'
       );
 
-      // ページを再読み込み
-      await page.reload();
+      // Next.js dev環境で load が安定しないため、DOMContentLoadedまで待機
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
 
       // 設定画面を再度表示
-      await page.getByRole('button', { name: '店舗管理' }).click();
-      await page.getByRole('button', { name: '基本情報' }).click();
-      await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
+      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
       await expect(page.getByLabel('院名')).toBeVisible();
 
       // 保存した値が復元されていることを確認
@@ -76,10 +85,15 @@ test.describe('管理設定永続化', () => {
     test('必須項目が空の場合にバリデーションエラーが表示される', async ({
       page,
     }) => {
+      const adminSettingsNav = page.getByTestId('admin-settings-nav');
+      const adminSettingsContent = page.getByTestId('admin-settings-content');
       await page.goto('/admin/settings');
 
-      await page.getByRole('button', { name: '店舗管理' }).click();
-      await page.getByRole('button', { name: '基本情報' }).click();
+      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
+      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
 
       // 院名を空にする
       await page.getByLabel('院名').clear();
@@ -99,12 +113,16 @@ test.describe('管理設定永続化', () => {
     test('SMTP設定を変更して保存後、APIで同じ設定が返る', async ({
       page,
     }) => {
+      const adminSettingsNav = page.getByTestId('admin-settings-nav');
+      const adminSettingsContent = page.getByTestId('admin-settings-content');
       await page.goto('/admin/settings');
 
       // コミュニケーション設定を選択
-      await page.getByRole('button', { name: '患者コミュニケーション' }).click();
-      await page.getByRole('button', { name: '自動通知メール' }).click();
-      await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+      await adminSettingsNav.getByRole('button', { name: '患者コミュニケーション' }).click();
+      await adminSettingsNav.getByRole('button', { name: '自動通知メール' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
       await expect(
         page.getByRole('heading', { name: '自動通知メール', level: 1 })
       ).toBeVisible();
@@ -139,12 +157,16 @@ test.describe('管理設定永続化', () => {
     test('セキュリティポリシーを変更して保存後、再訪で反映される', async ({
       page,
     }) => {
+      const adminSettingsNav = page.getByTestId('admin-settings-nav');
+      const adminSettingsContent = page.getByTestId('admin-settings-content');
       await page.goto('/admin/settings');
 
       // システム設定を選択
-      await page.getByRole('button', { name: 'システム設定' }).click();
-      await page.getByRole('button', { name: 'セキュリティ' }).click();
-      await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+      await adminSettingsNav.getByRole('button', { name: 'システム設定' }).click();
+      await adminSettingsNav.getByRole('button', { name: 'セキュリティ' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
       await expect(
         page.getByRole('heading', { name: 'セキュリティ', level: 1 })
       ).toBeVisible();
@@ -172,12 +194,15 @@ test.describe('管理設定永続化', () => {
         '設定を保存しました'
       );
 
-      // ページを再読み込み
-      await page.reload();
+      // Next.js dev環境で load が安定しないため、DOMContentLoadedまで待機
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
 
       // 設定画面を再度表示
-      await page.getByRole('button', { name: 'システム設定' }).click();
-      await page.getByRole('button', { name: 'セキュリティ' }).click();
+      await adminSettingsNav.getByRole('button', { name: 'システム設定' }).click();
+      await adminSettingsNav.getByRole('button', { name: 'セキュリティ' }).click();
 
       // 保存した値が復元されていることを確認
       const minLengthInputAfter = page.getByLabel(/パスワード最小文字数|最小長/);
@@ -197,12 +222,16 @@ test.describe('管理設定永続化', () => {
 
   test.describe('予約・カレンダー設定', () => {
     test('予約枠設定を変更して保存後、値が保持される', async ({ page }) => {
+      const adminSettingsNav = page.getByTestId('admin-settings-nav');
+      const adminSettingsContent = page.getByTestId('admin-settings-content');
       await page.goto('/admin/settings');
 
       // 予約設定を選択
-      await page.getByRole('button', { name: '予約・カレンダー' }).click();
-      await page.getByRole('button', { name: '予約枠設定' }).click();
-      await expect(page.getByText('設定を読み込み中...')).toBeHidden();
+      await adminSettingsNav.getByRole('button', { name: '予約・カレンダー' }).click();
+      await adminSettingsNav.getByRole('button', { name: '予約枠設定' }).click();
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
 
       // 予約枠時間を変更
       const slotMinutesSelect = page.getByTestId('booking-calendar-slot-minutes-select');
@@ -224,12 +253,15 @@ test.describe('管理設定永続化', () => {
         '設定を保存しました'
       );
 
-      // ページを再読み込み
-      await page.reload();
+      // Next.js dev環境で load が安定しないため、DOMContentLoadedまで待機
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(
+        adminSettingsContent.getByText('設定を読み込み中...')
+      ).toBeHidden();
 
       // 設定画面を再度表示
-      await page.getByRole('button', { name: '予約・カレンダー' }).click();
-      await page.getByRole('button', { name: '予約枠設定' }).click();
+      await adminSettingsNav.getByRole('button', { name: '予約・カレンダー' }).click();
+      await adminSettingsNav.getByRole('button', { name: '予約枠設定' }).click();
 
       // 値が保持されていることを確認
       const slotMinutesAfter = page.getByTestId('booking-calendar-slot-minutes-select');

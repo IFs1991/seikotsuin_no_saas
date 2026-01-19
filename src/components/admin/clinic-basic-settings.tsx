@@ -106,9 +106,10 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
           <div>
             <Label
               htmlFor='name'
+              variant='required'
               className='block text-sm font-medium text-gray-700 mb-1'
             >
-              院名 <span className='text-red-500'>*</span>
+              院名
             </Label>
             <Input
               id='name'
@@ -123,9 +124,10 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
           <div>
             <Label
               htmlFor='phone'
+              variant='required'
               className='block text-sm font-medium text-gray-700 mb-1'
             >
-              電話番号 <span className='text-red-500'>*</span>
+              電話番号
             </Label>
             <Input
               id='phone'
@@ -173,9 +175,10 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
         <div className='mt-6'>
           <Label
             htmlFor='address'
+            variant='required'
             className='block text-sm font-medium text-gray-700 mb-1'
           >
-            住所 <span className='text-red-500'>*</span>
+            住所
           </Label>
           <Input
             id='address'

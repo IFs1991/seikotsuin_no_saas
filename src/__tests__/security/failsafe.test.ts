@@ -65,10 +65,17 @@ jest.mock('@/lib/supabase', () => ({
 jest.setTimeout(30000);
 
 describe('フェイルセーフ動作テスト', () => {
+  let consoleWarnSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
     jest.clearAllMocks();
     mockSupabase = createMockSupabase();
+
+    // console.warn/errorをスパイ（実装がconsole.warnを使用するため）
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const supabaseSSR = jest.requireMock('@supabase/ssr') as {
       createServerClient: jest.Mock;
@@ -77,6 +84,11 @@ describe('フェイルセーフ動作テスト', () => {
 
     supabaseSSR.createServerClient.mockReturnValue(mockSupabase);
     supabaseSSR.createBrowserClient.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    consoleWarnSpy?.mockRestore();
+    consoleErrorSpy?.mockRestore();
   });
 
   describe('SessionManager フェイルセーフ', () => {
@@ -103,8 +115,8 @@ describe('フェイルセーフ動作テスト', () => {
       expect(result.token).toBeDefined();
       expect(result.session.user_id).toBe('user-123');
 
-      // 警告ログが出力される
-      expect(logger.warn).toHaveBeenCalledWith(
+      // 実装はconsole.warnを使用してフォールバックをログ
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
         'createSession fallback:',
         expect.any(Error)
       );
@@ -122,8 +134,8 @@ describe('フェイルセーフ動作テスト', () => {
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('not_found');
 
-      // エラーログが記録される
-      expect(logger.warn).toHaveBeenCalled();
+      // エラーログが記録される（実装はconsole.warnを使用）
+      expect(consoleWarnSpy).toHaveBeenCalled();
     });
 
     it('セッション更新失敗時にエラーを吞み込む', async () => {
@@ -138,7 +150,8 @@ describe('フェイルセーフ動作テスト', () => {
 
       // 失敗を返すが例外は投げない
       expect(result).toBe(false);
-      expect(logger.error).toHaveBeenCalled();
+      // 実装はconsole.warnを使用
+      expect(consoleWarnSpy).toHaveBeenCalled();
     });
 
     it('大量セッション操作時でもエラーが伝播しない', async () => {
@@ -173,9 +186,9 @@ describe('フェイルセーフ動作テスト', () => {
 
   describe('AuditLogger フェイルセーフ', () => {
     it('DB障害時に監査ログが構造化ログとして出力される', async () => {
-      // DB書き込みエラーをシミュレート
-      mockSupabase.insert.mockRejectedValue(
-        new Error('audit_logs table unavailable')
+      // DB書き込みエラーをシミュレート（insertメソッドがPromiseで{error}を返す）
+      mockSupabase.insert.mockReturnValue(
+        Promise.resolve({ error: new Error('audit_logs table unavailable') })
       );
 
       await AuditLogger.logLogin(
@@ -185,7 +198,7 @@ describe('フェイルセーフ動作テスト', () => {
         'Mozilla/5.0'
       );
 
-      // エラーログが出力されるが例外は投げない
+      // エラーログが出力されるが例外は投げない（loggerモジュールをモック済み）
       expect(logger.error).toHaveBeenCalledWith(
         '監査ログDB書き込み失敗 - フォールバック出力',
         expect.objectContaining({
@@ -199,7 +212,10 @@ describe('フェイルセーフ動作テスト', () => {
     });
 
     it('ログ記録失敗が連続してもシステムは動作継続', async () => {
-      mockSupabase.insert.mockRejectedValue(new Error('Persistent DB failure'));
+      // insertが{error}を返すようにモック
+      mockSupabase.insert.mockReturnValue(
+        Promise.resolve({ error: new Error('Persistent DB failure') })
+      );
 
       // 10回連続でログ記録を試行
       for (let i = 0; i < 10; i++) {
