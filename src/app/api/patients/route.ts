@@ -25,6 +25,14 @@ interface PatientVisitSummaryRow {
   visit_category: string | null;
 }
 
+/**
+ * @deprecated Use GET /api/customers/analysis instead.
+ * This endpoint will be removed after MVP shadow operation stabilizes.
+ *
+ * Migration path:
+ * - Old: api.patients.getAnalysis(clinicId)
+ * - New: api.customers.getAnalysis(clinicId)
+ */
 export async function GET(request: NextRequest) {
   const path = '/api/patients';
   const { ipAddress, userAgent } = getRequestInfo(request);
