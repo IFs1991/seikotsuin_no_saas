@@ -325,6 +325,12 @@ export const api = {
     create: (data: any) => apiClient.post('/api/patients', data),
   },
 
+  // 顧客分析
+  customers: {
+    getAnalysis: (clinicId: string) =>
+      apiClient.get('/api/customers/analysis', { clinic_id: clinicId }),
+  },
+
   // 収益分析
   revenue: {
     getAnalysis: (clinicId: string, period?: string) =>
