@@ -1,19 +1,11 @@
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { AuditLogger } from '@/lib/audit-logger';
+import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
 }));
 
-jest.mock('@/lib/audit-logger', () => ({
-  AuditLogger: {
-    logDataAccess: jest.fn(),
-  },
-  getRequestInfo: jest.fn(() => ({
-    ipAddress: '127.0.0.1',
-    userAgent: 'test-agent',
-  })),
-}));
+jest.mock('@/lib/audit-logger');
 
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -26,6 +18,7 @@ jest.mock('next/server', () => ({
 }));
 
 const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
+const getRequestInfoMock = getRequestInfo as jest.Mock;
 
 let getHandler: (request: {
   nextUrl: { searchParams: URLSearchParams };
@@ -48,6 +41,10 @@ const createGetRequest = (clinicId: string) => ({
 describe('🔴 Red: GET /api/customers/analysis', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    getRequestInfoMock.mockReturnValue({
+      ipAddress: '127.0.0.1',
+      userAgent: 'test-agent',
+    });
   });
 
   it('clinic_idが無効な場合はバリデーションエラーを返す', async () => {
