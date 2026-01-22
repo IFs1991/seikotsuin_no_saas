@@ -83,7 +83,7 @@ export const usePatientAnalysis = (
         setLoading(true);
         setError(null);
 
-        const res = await api.patients.getAnalysis(clinicId);
+        const res = await api.customers.getAnalysis(clinicId);
         if (isSuccessResponse(res)) {
           const d = res.data as PatientAnalysisData;
 
