@@ -19,7 +19,7 @@ describe('usePatientAnalysis', () => {
       (response: any) => response?.success === false
     );
     mockApi.handleApiError.mockImplementation((error: any) => error?.message);
-    (mockApi.api.patients.getAnalysis as jest.Mock).mockReset();
+    (mockApi.api.customers.getAnalysis as jest.Mock).mockReset();
   });
 
   it('returns idle state when clinic id is missing', () => {
@@ -28,11 +28,11 @@ describe('usePatientAnalysis', () => {
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
-    expect(mockApi.api.patients.getAnalysis).not.toHaveBeenCalled();
+    expect(mockApi.api.customers.getAnalysis).not.toHaveBeenCalled();
   });
 
-  it('fetches patient analysis data successfully', async () => {
-    (mockApi.api.patients.getAnalysis as jest.Mock).mockResolvedValueOnce({
+  it('🔴 Red: calls api.customers.getAnalysis instead of api.patients.getAnalysis', async () => {
+    (mockApi.api.customers.getAnalysis as jest.Mock).mockResolvedValueOnce({
       success: true,
       data: {
         conversionData: {
@@ -90,7 +90,7 @@ describe('usePatientAnalysis', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(mockApi.api.patients.getAnalysis).toHaveBeenCalledWith(clinicId);
+    expect(mockApi.api.customers.getAnalysis).toHaveBeenCalledWith(clinicId);
     expect(result.current.error).toBeNull();
     expect(result.current.data).not.toBeNull();
     expect(result.current.data?.conversionData.stages[0].percentage).toBe(100);
@@ -98,7 +98,7 @@ describe('usePatientAnalysis', () => {
   });
 
   it('handles API error responses', async () => {
-    (mockApi.api.patients.getAnalysis as jest.Mock).mockResolvedValueOnce({
+    (mockApi.api.customers.getAnalysis as jest.Mock).mockResolvedValueOnce({
       success: false,
       error: { code: 'FORBIDDEN', message: 'アクセス拒否' },
     });
@@ -115,7 +115,7 @@ describe('usePatientAnalysis', () => {
   });
 
   it('handles network errors gracefully', async () => {
-    (mockApi.api.patients.getAnalysis as jest.Mock).mockRejectedValueOnce(
+    (mockApi.api.customers.getAnalysis as jest.Mock).mockRejectedValueOnce(
       new Error('Network error')
     );
 
