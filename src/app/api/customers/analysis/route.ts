@@ -19,7 +19,7 @@ const analysisQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   const path = '/api/customers/analysis';
-  const { ipAddress, userAgent } = getRequestInfo(request);
+  const { ipAddress } = getRequestInfo(request);
 
   try {
     const rawParams = {

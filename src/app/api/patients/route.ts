@@ -26,7 +26,7 @@ import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service
  */
 export async function GET(request: NextRequest) {
   const path = '/api/patients';
-  const { ipAddress, userAgent } = getRequestInfo(request);
+  const { ipAddress } = getRequestInfo(request);
 
   try {
     const rawParams = {
