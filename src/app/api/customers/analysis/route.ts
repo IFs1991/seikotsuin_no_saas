@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { PatientAnalysisData, PatientRiskScore } from '@/types/api';
 import {
   normalizeSupabaseError,
   createApiError,
@@ -11,15 +10,7 @@ import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
 import { z } from 'zod';
-
-interface PatientVisitSummaryRow {
-  patient_id: string;
-  patient_name: string;
-  visit_count: number;
-  total_revenue: number;
-  last_visit_date: string | null;
-  visit_category: string | null;
-}
+import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service';
 
 const analysisQuerySchema = z.object({
   clinic_id: z.string().uuid('clinic_id はUUID形式で指定してください'),
@@ -69,137 +60,11 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { data: patients, error: patientsError } = await supabase
-      .from('patient_visit_summary')
-      .select('*')
-      .eq('clinic_id', clinic_id);
-
-    if (patientsError) {
-      throw normalizeSupabaseError(patientsError, path);
-    }
-
-    const typedPatients = (patients as PatientVisitSummaryRow[]) ?? [];
-
-    const conversionAnalysis = () => {
-      const newPatients = typedPatients.filter(p => p.visit_count === 1);
-      const returnPatients = typedPatients.filter(p => p.visit_count > 1);
-      const total = newPatients.length + returnPatients.length;
-      const conversionRate =
-        total > 0
-          ? Math.round((returnPatients.length / total) * 100 * 100) / 100
-          : 0;
-
-      return {
-        newPatients: newPatients.length,
-        returnPatients: returnPatients.length,
-        conversionRate,
-        stages: [
-          { name: '初回来院', value: total },
-          { name: '2回目来院', value: returnPatients.length },
-          {
-            name: '継続通院',
-            value: typedPatients.filter(p => p.visit_count >= 5).length,
-          },
-        ],
-      };
-    };
-
-    const ltvRanking = await Promise.all(
-      typedPatients.slice(0, 20).map(async patient => {
-        const { data: ltv } = await supabase.rpc('calculate_patient_ltv', {
-          patient_uuid: patient.patient_id,
-        });
-
-        return {
-          patient_id: patient.patient_id,
-          name: patient.patient_name,
-          ltv: ltv || 0,
-          visit_count: patient.visit_count,
-          total_revenue: patient.total_revenue,
-        };
-      })
+    // 共有ヘルパーを使用して分析データを生成
+    const patientAnalysisData = await generatePatientAnalysis(
+      supabase,
+      clinic_id
     );
-
-    const riskScores = await Promise.all(
-      typedPatients.map(async patient => {
-        const { data: riskScore } = await supabase.rpc(
-          'calculate_churn_risk_score',
-          { patient_uuid: patient.patient_id }
-        );
-
-        const score = Number(riskScore) || 0;
-        return {
-          patient_id: patient.patient_id,
-          name: patient.patient_name,
-          riskScore: score,
-          lastVisit: patient.last_visit_date,
-          category: score > 75 ? 'high' : score > 50 ? 'medium' : 'low',
-        } satisfies PatientRiskScore;
-      })
-    );
-
-    const segmentAnalysis = () => {
-      const total = typedPatients.length;
-      if (total === 0) return {};
-
-      const visitSegments = {
-        初診のみ: typedPatients.filter(p => p.visit_category === '初診のみ')
-          .length,
-        軽度リピート: typedPatients.filter(
-          p => p.visit_category === '軽度リピート'
-        ).length,
-        中度リピート: typedPatients.filter(
-          p => p.visit_category === '中度リピート'
-        ).length,
-        高度リピート: typedPatients.filter(
-          p => p.visit_category === '高度リピート'
-        ).length,
-      };
-
-      return {
-        visit: Object.entries(visitSegments).map(([label, value]) => ({
-          label,
-          value,
-        })),
-      };
-    };
-
-    const followUpList = riskScores
-      .filter(patient => patient.riskScore > 60)
-      .sort((a, b) => b.riskScore - a.riskScore)
-      .slice(0, 10)
-      .map(patient => ({
-        patient_id: patient.patient_id,
-        name: patient.name,
-        reason: `${patient.riskScore}%の離脱リスク`,
-        lastVisit: patient.lastVisit,
-        action: '電話フォロー推奨',
-      }));
-
-    const visitCounts = {
-      average:
-        typedPatients.length > 0
-          ? Math.round(
-              (typedPatients.reduce((sum, p) => sum + p.visit_count, 0) /
-                typedPatients.length) *
-                100
-            ) / 100
-          : 0,
-      monthlyChange: 5.2,
-    };
-
-    const patientAnalysisData: PatientAnalysisData = {
-      conversionData: conversionAnalysis(),
-      visitCounts,
-      riskScores: riskScores
-        .sort((a, b) => b.riskScore - a.riskScore)
-        .slice(0, 20),
-      ltvRanking: ltvRanking.sort((a, b) => b.ltv - a.ltv),
-      segmentData: segmentAnalysis(),
-      followUpList,
-      totalPatients: typedPatients.length,
-      activePatients: typedPatients.filter(p => p.visit_count > 1).length,
-    };
 
     return createSuccessResponse(patientAnalysisData);
   } catch (error) {
