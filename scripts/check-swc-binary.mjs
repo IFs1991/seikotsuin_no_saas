@@ -20,10 +20,6 @@ if (!fs.existsSync(swcBaseDir)) {
   process.exit(0);
 }
 
-const expectedPackageSuffix =
-  platform === 'win32' ? 'swc-win32-x64-msvc' : 'swc-linux-x64-gnu';
-const expectedPath = path.join(swcBaseDir, expectedPackageSuffix);
-
 const knownPackages = [
   'swc-win32-ia32-msvc',
   'swc-win32-x64-msvc',
@@ -40,15 +36,32 @@ const installedPackages = knownPackages.filter(pkg =>
   fs.existsSync(path.join(swcBaseDir, pkg))
 );
 
+const allowedPackages =
+  platform === 'win32'
+    ? [
+        'swc-win32-ia32-msvc',
+        'swc-win32-x64-msvc',
+        'swc-win32-arm64-msvc',
+      ]
+    : [
+        'swc-linux-x64-gnu',
+        'swc-linux-x64-musl',
+        'swc-linux-arm64-gnu',
+        'swc-linux-arm64-musl',
+      ];
+
 const mismatchedPackages = installedPackages.filter(
-  pkg => pkg !== expectedPackageSuffix
+  pkg => !allowedPackages.includes(pkg)
 );
 
 const issues = [];
 
-if (!fs.existsSync(expectedPath) && installedPackages.length > 0) {
+if (
+  installedPackages.length > 0 &&
+  !installedPackages.some(pkg => allowedPackages.includes(pkg))
+) {
   issues.push(
-    `Expected SWC binary '@next/${expectedPackageSuffix}' is not installed for the current environment.`
+    `Expected SWC binary for the current environment is not installed.`
   );
 }
 
