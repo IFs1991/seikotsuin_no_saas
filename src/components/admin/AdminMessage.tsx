@@ -27,8 +27,8 @@ export function AdminMessage({
     (type === 'success'
       ? 'success-message'
       : type === 'error'
-      ? 'error-message'
-      : undefined);
+        ? 'error-message'
+        : undefined);
 
   return (
     <div

@@ -8,11 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import {
-  SessionManager,
-  parseUserAgent,
-  getGeolocationFromIP,
-} from '@/lib/session-manager';
+import { SessionManager, parseUserAgent } from '@/lib/session-manager';
 import { useSessionTimeout } from '@/lib/session-timeout';
 
 interface SessionManagementConfig {

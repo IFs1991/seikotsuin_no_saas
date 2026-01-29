@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     // クエリ構築
     let query = supabase
       .from('user_sessions')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         clinic_id,
@@ -60,7 +61,8 @@ export async function GET(request: NextRequest) {
         is_revoked,
         max_idle_minutes,
         max_session_hours
-      `)
+      `
+      )
       .eq('clinic_id', clinicId)
       .eq('is_active', true)
       .eq('is_revoked', false)
@@ -85,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ユーザー情報を取得
-    const userIds = [...new Set(sessions?.map((s) => s.user_id) || [])];
+    const userIds = [...new Set(sessions?.map(s => s.user_id) || [])];
     let userMap: Record<string, { email?: string; name?: string }> = {};
 
     if (userIds.length > 0) {
@@ -109,14 +111,13 @@ export async function GET(request: NextRequest) {
     }
 
     // セッション情報を拡張
-    const enrichedSessions = (sessions || []).map((session) => {
+    const enrichedSessions = (sessions || []).map(session => {
       const user = userMap[session.user_id] || {};
       const deviceInfo = session.device_info || {};
 
       // リスクレベル計算
       let riskLevel: 'low' | 'medium' | 'high' = 'low';
-      const sessionAge =
-        Date.now() - new Date(session.created_at).getTime();
+      const sessionAge = Date.now() - new Date(session.created_at).getTime();
       const maxAge = (session.max_session_hours || 8) * 60 * 60 * 1000;
 
       if (sessionAge > maxAge * 0.9) {

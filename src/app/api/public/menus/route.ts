@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 import { menusQuerySchema } from '../schema';
 
 export async function GET(request: NextRequest) {
@@ -63,7 +63,9 @@ export async function GET(request: NextRequest) {
     // Build menus query with clinic_id scope
     let query = supabase
       .from('menus')
-      .select('id, name, description, price, duration_minutes, category, is_insurance_applicable')
+      .select(
+        'id, name, description, price, duration_minutes, category, is_insurance_applicable'
+      )
       .eq('clinic_id', clinic_id)
       .eq('is_active', true)
       .eq('is_deleted', false)

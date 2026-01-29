@@ -7,7 +7,9 @@ import {
 } from '../e2e/helpers/test-auth';
 
 const isTestEnvironmentReady = validateTestEnvironment();
-const describeOrSkip = isTestEnvironmentReady ? test.describe : test.describe.skip;
+const describeOrSkip = isTestEnvironmentReady
+  ? test.describe
+  : test.describe.skip;
 
 describeOrSkip('Onboarding RLS policies', () => {
   let adminUserId: string | null = null;
@@ -203,10 +205,7 @@ describeOrSkip('Onboarding RLS policies', () => {
     expect(data?.created_by).toBe(adminResult.userId);
 
     if (data?.id) {
-      await adminResult.client
-        .from('staff_invites')
-        .delete()
-        .eq('id', data.id);
+      await adminResult.client.from('staff_invites').delete().eq('id', data.id);
     }
   });
 

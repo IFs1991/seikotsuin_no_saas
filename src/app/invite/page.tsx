@@ -12,8 +12,12 @@ import {
   loginAndAcceptInvite,
   type InviteInfo,
 } from './actions';
-import { signupSchema, loginSchema, getPasswordStrength } from '@/lib/schemas/auth';
-import type { AuthResponse } from '@/lib/schemas/auth';
+import {
+  signupSchema,
+  loginSchema,
+  getPasswordStrength,
+  type AuthResponse,
+} from '@/lib/schemas/auth';
 import { createClient } from '@/lib/supabase/client';
 
 /**
@@ -140,7 +144,7 @@ export default function InvitePage() {
       const normalizedErrors = Object.fromEntries(
         Object.entries(state.errors).map(([key, value]) => [
           key,
-          Array.isArray(value) ? value[0] ?? '' : value ?? '',
+          Array.isArray(value) ? (value[0] ?? '') : (value ?? ''),
         ])
       );
       setClientErrors(normalizedErrors);
@@ -257,9 +261,7 @@ export default function InvitePage() {
           <div className='w-16 h-16 bg-teal-600 rounded-full flex items-center justify-center mx-auto mb-4'>
             <span className='text-white font-bold text-2xl'>骨</span>
           </div>
-          <h1 className='text-2xl font-bold text-gray-900 mb-2'>
-            招待を受諾
-          </h1>
+          <h1 className='text-2xl font-bold text-gray-900 mb-2'>招待を受諾</h1>
           <p className='text-gray-600'>
             {invite?.clinic_name} への招待があります
           </p>

@@ -128,7 +128,12 @@ const eslintConfig = [
 
   // テストファイル向けのルール緩和
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**', 'src/**/e2e/**'],
+    files: [
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/__tests__/**',
+      'src/**/e2e/**',
+    ],
     rules: {
       '@typescript-eslint/no-var-requires': 'off',
       'no-console': 'off',

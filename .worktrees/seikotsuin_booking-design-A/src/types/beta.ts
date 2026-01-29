@@ -56,7 +56,12 @@ export interface BetaFeedback {
   userName: string;
 
   // フィードバック内容
-  category: 'feature_request' | 'bug_report' | 'usability' | 'performance' | 'other';
+  category:
+    | 'feature_request'
+    | 'bug_report'
+    | 'usability'
+    | 'performance'
+    | 'other';
   severity: 'critical' | 'high' | 'medium' | 'low';
   title: string;
   description: string;
@@ -92,7 +97,12 @@ export interface ImprovementBacklog {
   // バックログ情報
   title: string;
   description: string;
-  category: 'feature' | 'enhancement' | 'bug_fix' | 'technical_debt' | 'documentation';
+  category:
+    | 'feature'
+    | 'enhancement'
+    | 'bug_fix'
+    | 'technical_debt'
+    | 'documentation';
 
   // 優先度・見積もり
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -127,7 +137,12 @@ export interface CriticalIncident {
   title: string;
   description: string;
   severity: 'p0' | 'p1' | 'p2' | 'p3';
-  category: 'security' | 'data_loss' | 'service_outage' | 'performance' | 'other';
+  category:
+    | 'security'
+    | 'data_loss'
+    | 'service_outage'
+    | 'performance'
+    | 'other';
 
   // 影響範囲
   affectedClinics: string[];
@@ -135,7 +150,12 @@ export interface CriticalIncident {
   impactDescription: string;
 
   // 対応状況
-  status: 'detected' | 'investigating' | 'mitigating' | 'resolved' | 'post_mortem';
+  status:
+    | 'detected'
+    | 'investigating'
+    | 'mitigating'
+    | 'resolved'
+    | 'post_mortem';
   detectedAt: string;
   acknowledgedAt?: string;
   resolvedAt?: string;

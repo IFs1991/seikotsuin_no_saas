@@ -14,6 +14,9 @@
 |------|--------|------|
 | Migration file | ✅ | `supabase/migrations/20260112000100_add_clinics_parent_id.sql` |
 | Rollback file | ✅ | `supabase/migrations/20260112000101_add_clinics_parent_id_rollback.sql.backup` |
+| Self-reference guard (parent_id != id) | ✅ | `supabase/migrations/20260127000100_clinics_parent_id_self_check.sql` |
+| Self-reference guard rollback | ✅ | `supabase/migrations/20260127000101_clinics_parent_id_self_check_rollback.sql.backup` |
+| Self-reference guard validation | ✅ | `supabase/migrations/20260127000200_clinics_parent_id_self_check_validate.sql` |
 
 ## Current State
 
@@ -112,6 +115,38 @@ COMMENT ON COLUMN public.clinics.parent_id IS
 COMMIT;
 ```
 
+### Phase 1.1: Minimal Integrity Guard (parent_id != id)
+
+```sql
+-- File: supabase/migrations/20260127000100_clinics_parent_id_self_check.sql
+
+BEGIN;
+
+-- Prevent self-reference (A -> A). Use NOT VALID for safe rollout on existing data.
+ALTER TABLE public.clinics
+ADD CONSTRAINT clinics_parent_id_not_self
+CHECK (parent_id IS NULL OR parent_id <> id)
+NOT VALID;
+
+COMMIT;
+
+-- Optional: validate later after confirming no legacy self-references.
+-- ALTER TABLE public.clinics VALIDATE CONSTRAINT clinics_parent_id_not_self;
+```
+
+### Phase 1.2: Validate Guard (after data check)
+
+```sql
+-- File: supabase/migrations/20260127000200_clinics_parent_id_self_check_validate.sql
+
+BEGIN;
+
+ALTER TABLE public.clinics
+VALIDATE CONSTRAINT clinics_parent_id_not_self;
+
+COMMIT;
+```
+
 ### Phase 2: Data Migration (if needed)
 
 ```sql
@@ -142,6 +177,21 @@ COMMIT;
 
 **Note**: ロールバックファイルは `.backup` 拡張子のため自動適用されません。
 ロールバックが必要な場合は `.sql` にリネームして適用してください。
+
+### Phase 3.1: Minimal Guard Rollback
+
+```sql
+-- File: supabase/migrations/20260127000101_clinics_parent_id_self_check_rollback.sql.backup
+
+BEGIN;
+
+ALTER TABLE public.clinics
+DROP CONSTRAINT IF EXISTS clinics_parent_id_not_self;
+
+COMMIT;
+```
+
+**Note**: Validationの取り消しは同じロールバック（制約削除）で対応します。
 
 ## Impact on existing code
 

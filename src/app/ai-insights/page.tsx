@@ -52,7 +52,9 @@ const AiInsightsPage: React.FC = () => {
         const json = await res.json();
         if (!res.ok || !json?.success) {
           throw new Error(
-            json?.error?.message || json?.error || 'AIインサイトの取得に失敗しました'
+            json?.error?.message ||
+              json?.error ||
+              'AIインサイトの取得に失敗しました'
           );
         }
         const insights = json.data as AiInsightsResponse;
@@ -62,7 +64,9 @@ const AiInsightsPage: React.FC = () => {
       } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : 'AIインサイトの取得に失敗しました'
+            err instanceof Error
+              ? err.message
+              : 'AIインサイトの取得に失敗しました'
           );
           setData(null);
         }
@@ -147,7 +151,9 @@ const AiInsightsPage: React.FC = () => {
   if (!data) {
     return (
       <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
-        <div className='text-gray-500'>表示できるAIインサイトがありません。</div>
+        <div className='text-gray-500'>
+          表示できるAIインサイトがありません。
+        </div>
       </div>
     );
   }

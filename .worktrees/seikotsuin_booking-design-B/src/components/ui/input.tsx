@@ -1,13 +1,12 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
-  variant?: 
-    | 'default' 
-    | 'medical' 
-    | 'patient' 
-    | 'admin' 
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  variant?:
+    | 'default'
+    | 'medical'
+    | 'patient'
+    | 'admin'
     | 'clinical'
     | 'emergency'
     | 'search';
@@ -19,7 +18,7 @@ export interface InputProps
 const inputVariants = {
   variant: {
     default: 'border-input bg-background',
-    
+
     // 医療系バリアント (Atlassian Design準拠)
     medical:
       'border-gray-300 bg-white focus:border-medical-blue-600 focus:ring-medical-blue-500 focus:ring-1',
@@ -43,22 +42,25 @@ const inputVariants = {
   },
   state: {
     default: '',
-    error: 'border-red-500 bg-red-50 text-red-900 focus:border-red-600 focus:ring-red-500',
-    success: 'border-green-500 bg-green-50 text-green-900 focus:border-green-600 focus:ring-green-500',
-    warning: 'border-yellow-500 bg-yellow-50 text-yellow-900 focus:border-yellow-600 focus:ring-yellow-500',
+    error:
+      'border-red-500 bg-red-50 text-red-900 focus:border-red-600 focus:ring-red-500',
+    success:
+      'border-green-500 bg-green-50 text-green-900 focus:border-green-600 focus:ring-green-500',
+    warning:
+      'border-yellow-500 bg-yellow-50 text-yellow-900 focus:border-yellow-600 focus:ring-yellow-500',
   },
 };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { 
-      className, 
-      type, 
-      variant = 'default', 
-      inputSize = 'default', 
+    {
+      className,
+      type,
+      variant = 'default',
+      inputSize = 'default',
       state = 'default',
       medical = false,
-      ...props 
+      ...props
     },
     ref
   ) => {

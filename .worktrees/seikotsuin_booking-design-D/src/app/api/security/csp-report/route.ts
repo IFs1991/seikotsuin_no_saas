@@ -235,9 +235,8 @@ function calculateThreatScore(report: Record<string, any>): number {
 async function notifyHighSeverityViolation(violation: any): Promise<void> {
   try {
     // 通知システムをインポート（動的インポートでエラー回避）
-    const { securityNotificationManager } = await import(
-      '@/lib/notifications/security-alerts'
-    );
+    const { securityNotificationManager } =
+      await import('@/lib/notifications/security-alerts');
 
     // 通知頻度制限チェック（スパム防止）
     const shouldNotify = await securityNotificationManager.shouldNotify(

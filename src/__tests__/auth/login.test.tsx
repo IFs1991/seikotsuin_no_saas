@@ -4,10 +4,6 @@
  * @spec docs/認証と権限制御_MVP仕様書.md
  */
 
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-
 // モックの設定
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({
@@ -104,7 +100,11 @@ describe('院向けログインページ', () => {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
             single: jest.fn().mockResolvedValue({
-              data: { role: 'staff', is_active: false, clinic_id: 'clinic-123' },
+              data: {
+                role: 'staff',
+                is_active: false,
+                clinic_id: 'clinic-123',
+              },
               error: null,
             }),
           }),

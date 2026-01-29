@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     }
 
     // レスポンス形式に変換
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const formattedPreferences = (preferences || []).map((pref: any) => {
       // Supabaseのリレーションは配列または単一オブジェクトで返される
       const resource = Array.isArray(pref.resources)

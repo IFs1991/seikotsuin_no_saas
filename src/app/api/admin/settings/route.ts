@@ -16,7 +16,11 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { CLINIC_ADMIN_ROLES, STAFF_ROLES, type Role } from '@/lib/constants/roles';
+import {
+  CLINIC_ADMIN_ROLES,
+  STAFF_ROLES,
+  type Role,
+} from '@/lib/constants/roles';
 
 // カテゴリ一覧
 const VALID_CATEGORIES = [
@@ -119,9 +123,20 @@ const ClinicBasicSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   fax: z.string().optional(),
-  email: z.string().email('有効なメールアドレスを入力してください').optional().or(z.literal('')),
-  website: z.string().url('有効なURLを入力してください').optional().or(z.literal('')),
-  description: z.string().max(500, '紹介文は500文字以内で入力してください').optional(),
+  email: z
+    .string()
+    .email('有効なメールアドレスを入力してください')
+    .optional()
+    .or(z.literal('')),
+  website: z
+    .string()
+    .url('有効なURLを入力してください')
+    .optional()
+    .or(z.literal('')),
+  description: z
+    .string()
+    .max(500, '紹介文は500文字以内で入力してください')
+    .optional(),
   logoUrl: z.string().nullable().optional(),
 });
 
@@ -132,8 +147,16 @@ const ClinicHoursSchema = z.object({
 });
 
 const BookingCalendarSchema = z.object({
-  slotMinutes: z.number().min(5, '予約枠は5分以上にしてください').max(180, '予約枠は180分以内にしてください').optional(),
-  maxConcurrent: z.number().min(1, '同時予約数は1以上にしてください').max(100).optional(),
+  slotMinutes: z
+    .number()
+    .min(5, '予約枠は5分以上にしてください')
+    .max(180, '予約枠は180分以内にしてください')
+    .optional(),
+  maxConcurrent: z
+    .number()
+    .min(1, '同時予約数は1以上にしてください')
+    .max(100)
+    .optional(),
   weekStartDay: z.number().min(0).max(6).optional(),
   allowOnlineBooking: z.boolean().optional(),
   maxAdvanceBookingDays: z.number().min(1).max(365).optional(),
@@ -148,22 +171,26 @@ const CommunicationSchema = z.object({
   smsEnabled: z.boolean().optional(),
   lineEnabled: z.boolean().optional(),
   pushEnabled: z.boolean().optional(),
-  smtpSettings: z.object({
-    host: z.string().optional(),
-    port: z.number().min(1).max(65535).optional(),
-    user: z.string().optional(),
-    password: z.string().optional(),
-  }).optional(),
+  smtpSettings: z
+    .object({
+      host: z.string().optional(),
+      port: z.number().min(1).max(65535).optional(),
+      user: z.string().optional(),
+      password: z.string().optional(),
+    })
+    .optional(),
   templates: z.array(z.unknown()).optional(),
 });
 
 const SystemSecuritySchema = z.object({
-  passwordPolicy: z.object({
-    minLength: z.number().min(4).max(128).optional(),
-    requireUppercase: z.boolean().optional(),
-    requireNumbers: z.boolean().optional(),
-    requireSymbols: z.boolean().optional(),
-  }).optional(),
+  passwordPolicy: z
+    .object({
+      minLength: z.number().min(4).max(128).optional(),
+      requireUppercase: z.boolean().optional(),
+      requireNumbers: z.boolean().optional(),
+      requireSymbols: z.boolean().optional(),
+    })
+    .optional(),
   twoFactorEnabled: z.boolean().optional(),
   sessionTimeout: z.number().min(5).max(480).optional(),
   loginAttempts: z.number().min(1).max(10).optional(),
@@ -271,7 +298,8 @@ export async function GET(request: NextRequest) {
     }
 
     // データがなければデフォルト値を返す
-    const settings = data?.settings ?? DEFAULT_SETTINGS[category as SettingsCategory];
+    const settings =
+      data?.settings ?? DEFAULT_SETTINGS[category as SettingsCategory];
 
     return createSuccessResponse({
       settings,
@@ -298,7 +326,9 @@ export async function PUT(request: NextRequest) {
     try {
       const previewBody = await request.clone().json();
       clinicIdForAuth =
-        typeof previewBody?.clinic_id === 'string' ? previewBody.clinic_id : null;
+        typeof previewBody?.clinic_id === 'string'
+          ? previewBody.clinic_id
+          : null;
     } catch {
       clinicIdForAuth = null;
     }
@@ -353,9 +383,10 @@ export async function PUT(request: NextRequest) {
 
     if (!parseResult.success) {
       const errors = parseResult.error.flatten();
-      const firstError = Object.values(errors.fieldErrors)[0]?.[0] ?? 
-                          errors.formErrors[0] ?? 
-                          '入力値にエラーがあります';
+      const firstError =
+        Object.values(errors.fieldErrors)[0]?.[0] ??
+        errors.formErrors[0] ??
+        '入力値にエラーがあります';
       return createErrorResponse(firstError, 400, errors);
     }
 

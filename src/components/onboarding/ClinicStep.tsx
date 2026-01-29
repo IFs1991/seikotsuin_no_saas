@@ -4,7 +4,13 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import type { ClinicFormData, ClinicCreateResponse } from '@/types/onboarding';
 
 interface ClinicStepProps {
@@ -63,7 +69,7 @@ export function ClinicStep({ onSubmit }: ClinicStepProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
+    <Card className='w-full max-w-lg mx-auto'>
       <CardHeader>
         <CardTitle>クリニック情報の入力</CardTitle>
         <CardDescription>
@@ -71,70 +77,59 @@ export function ClinicStep({ onSubmit }: ClinicStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <FormField
-            label="クリニック名"
-            required
-            error={errors.name}
-          >
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          <FormField label='クリニック名' required error={errors.name}>
             <Input
-              type="text"
+              type='text'
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="〇〇整骨院"
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder='〇〇整骨院'
               disabled={isSubmitting}
             />
           </FormField>
 
-          <FormField
-            label="住所"
-            error={errors.address}
-          >
+          <FormField label='住所' error={errors.address}>
             <Input
-              type="text"
+              type='text'
               value={formData.address || ''}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="東京都渋谷区〇〇1-2-3"
+              onChange={e =>
+                setFormData({ ...formData, address: e.target.value })
+              }
+              placeholder='東京都渋谷区〇〇1-2-3'
               disabled={isSubmitting}
             />
           </FormField>
 
-          <FormField
-            label="電話番号"
-            error={errors.phone_number}
-          >
+          <FormField label='電話番号' error={errors.phone_number}>
             <Input
-              type="tel"
+              type='tel'
               value={formData.phone_number || ''}
-              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-              placeholder="03-1234-5678"
+              onChange={e =>
+                setFormData({ ...formData, phone_number: e.target.value })
+              }
+              placeholder='03-1234-5678'
               disabled={isSubmitting}
             />
           </FormField>
 
-          <FormField
-            label="開院日"
-            error={errors.opening_date}
-          >
+          <FormField label='開院日' error={errors.opening_date}>
             <Input
-              type="date"
+              type='date'
               value={formData.opening_date || ''}
-              onChange={(e) => setFormData({ ...formData, opening_date: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, opening_date: e.target.value })
+              }
               disabled={isSubmitting}
             />
           </FormField>
 
           {apiError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{apiError}</p>
+            <div className='p-3 bg-red-50 border border-red-200 rounded-md'>
+              <p className='text-sm text-red-600'>{apiError}</p>
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button type='submit' className='w-full' disabled={isSubmitting}>
             {isSubmitting ? '作成中...' : '次へ進む'}
           </Button>
         </form>

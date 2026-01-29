@@ -42,6 +42,11 @@
 - [ ] ファイルアップロード機能（未実装の場合スキップ）
 - [ ] 外部APIパラメータ改ざん試行
 
+### 2.4 LLM Prompt Injection (if enabled)
+- [ ] System prompt extraction attempt (e.g. "ignore previous instructions")
+- [ ] Secret/key exfiltration attempt via chat prompts
+- [ ] Cross-tenant data exfiltration attempt via prompts
+
 **検証ツール**: OWASP ZAP, XSStrike
 
 ---

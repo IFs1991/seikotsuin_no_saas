@@ -3,11 +3,11 @@ import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => ({
   processApiRequest: jest.fn(),
-  createSuccessResponse: jest.fn((data) =>
-    new Response(JSON.stringify(data), { status: 200 })
+  createSuccessResponse: jest.fn(
+    data => new Response(JSON.stringify(data), { status: 200 })
   ),
-  createErrorResponse: jest.fn((msg, status) =>
-    new Response(JSON.stringify({ error: msg }), { status })
+  createErrorResponse: jest.fn(
+    (msg, status) => new Response(JSON.stringify({ error: msg }), { status })
   ),
   logError: jest.fn(),
 }));
@@ -78,7 +78,10 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
 
   it('permissions.clinic_idが未設定の場合は403を返す', async () => {
     const mockSupabase = createMockSupabase();
-    const { processApiRequest, createErrorResponse } = require('@/lib/api-helpers');
+    const {
+      processApiRequest,
+      createErrorResponse,
+    } = require('@/lib/api-helpers');
 
     // clinic_idがpermissionsに含まれていない
     processApiRequest.mockResolvedValue({

@@ -28,13 +28,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // 認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized metrics access attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // プロフィール取得
@@ -45,10 +45,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
     // クエリパラメータ検証
@@ -125,13 +122,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // 認証チェック（システムまたは管理者のみ）
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized metrics recording attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 管理者権限チェック
@@ -161,7 +158,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 期間内のメトリクスを計算
-    const metrics = await calculateMetrics(supabase, clinicId, periodStart, periodEnd);
+    const metrics = await calculateMetrics(
+      supabase,
+      clinicId,
+      periodStart,
+      periodEnd
+    );
 
     // メトリクス保存
     const { data: savedMetrics, error: insertError } = await supabase
@@ -193,10 +195,7 @@ export async function POST(request: NextRequest) {
       metricsId: savedMetrics.id,
     });
 
-    return NextResponse.json(
-      { metrics: savedMetrics },
-      { status: 201 }
-    );
+    return NextResponse.json({ metrics: savedMetrics }, { status: 201 });
   } catch (error) {
     logger.error('Unexpected error in POST /api/beta/metrics', { error });
     return NextResponse.json(
@@ -225,7 +224,7 @@ async function calculateMetrics(
     .lte('created_at', periodEnd);
 
   const loginCount = loginEvents?.length || 0;
-  const uniqueUsers = new Set(loginEvents?.map((e) => e.user_id)).size;
+  const uniqueUsers = new Set(loginEvents?.map(e => e.user_id)).size;
 
   // ダッシュボード閲覧数
   const { data: dashboardViews } = await supabase
@@ -270,7 +269,7 @@ async function calculateMetrics(
 
   let totalSessionDuration = 0;
   if (sessions && sessions.length > 0) {
-    sessions.forEach((session) => {
+    sessions.forEach(session => {
       const start = new Date(session.created_at).getTime();
       const end = new Date(session.last_activity).getTime();
       totalSessionDuration += (end - start) / 1000 / 60; // 分単位
@@ -282,23 +281,41 @@ async function calculateMetrics(
 
   // 日次アクティブ率の計算（簡易版）
   const periodDays = Math.ceil(
-    (new Date(periodEnd).getTime() - new Date(periodStart).getTime()) / (1000 * 60 * 60 * 24)
+    (new Date(periodEnd).getTime() - new Date(periodStart).getTime()) /
+      (1000 * 60 * 60 * 24)
   );
-  const dailyActiveRate = uniqueUsers > 0 ? (loginCount / periodDays / uniqueUsers) * 100 : 0;
+  const dailyActiveRate =
+    uniqueUsers > 0 ? (loginCount / periodDays / uniqueUsers) * 100 : 0;
 
   // 機能採用率（ダミーデータ - 実際は各機能の利用ユーザー数を計算）
   const featureAdoptionRate = {
-    dashboard: dashboardViewCount > 0 ? (uniqueUsers > 0 ? (dashboardViewCount / uniqueUsers) * 100 : 0) : 0,
-    dailyReports: dailyReportSubmissions > 0 ? (uniqueUsers > 0 ? (dailyReportSubmissions / uniqueUsers) * 100 : 0) : 0,
-    patientAnalysis: patientAnalysisViewCount > 0 ? (uniqueUsers > 0 ? (patientAnalysisViewCount / uniqueUsers) * 100 : 0) : 0,
+    dashboard:
+      dashboardViewCount > 0
+        ? uniqueUsers > 0
+          ? (dashboardViewCount / uniqueUsers) * 100
+          : 0
+        : 0,
+    dailyReports:
+      dailyReportSubmissions > 0
+        ? uniqueUsers > 0
+          ? (dailyReportSubmissions / uniqueUsers) * 100
+          : 0
+        : 0,
+    patientAnalysis:
+      patientAnalysisViewCount > 0
+        ? uniqueUsers > 0
+          ? (patientAnalysisViewCount / uniqueUsers) * 100
+          : 0
+        : 0,
     aiInsights: 0, // AIインサイトはMVPではモックなので0
   };
 
   // 日報完了率（簡易版 - 営業日数と実際の日報数を比較）
   const expectedDailyReports = periodDays; // 簡易版では全日を営業日とする
-  const dailyReportCompletionRate = expectedDailyReports > 0
-    ? (dailyReportSubmissions / expectedDailyReports) * 100
-    : 0;
+  const dailyReportCompletionRate =
+    expectedDailyReports > 0
+      ? (dailyReportSubmissions / expectedDailyReports) * 100
+      : 0;
 
   return {
     login_count: loginCount,
@@ -309,7 +326,8 @@ async function calculateMetrics(
     average_session_duration: Math.round(averageSessionDuration * 100) / 100,
     daily_active_rate: Math.round(dailyActiveRate * 100) / 100,
     feature_adoption_rate: featureAdoptionRate,
-    daily_report_completion_rate: Math.round(dailyReportCompletionRate * 100) / 100,
+    daily_report_completion_rate:
+      Math.round(dailyReportCompletionRate * 100) / 100,
     data_accuracy: 95.0, // データ精度はマニュアル確認が必要なのでダミー値
     average_load_time: 500, // 平均ロード時間はパフォーマンスモニタリングから取得（ダミー値）
     error_rate: 0.5, // エラー率も同様（ダミー値）

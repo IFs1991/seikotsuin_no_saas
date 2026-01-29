@@ -12,7 +12,11 @@ import {
 } from '@/components/ui/card';
 
 const RevenuePage: React.FC = () => {
-  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfile();
   const clinicId = profile?.clinicId || '';
 
   const {

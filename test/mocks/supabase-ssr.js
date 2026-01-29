@@ -26,7 +26,10 @@ const mockSupabase = {
   rpc: jest.fn(async () => ({ data: null, error: null })),
   auth: {
     signOut: jest.fn(async () => ({ error: null })),
-    signInWithPassword: jest.fn(async () => ({ data: { session: null, user: null }, error: null })),
+    signInWithPassword: jest.fn(async () => ({
+      data: { session: null, user: null },
+      error: null,
+    })),
     getUser: jest.fn(async () => ({ data: { user: null }, error: null })),
   },
   channel: jest.fn(() => {

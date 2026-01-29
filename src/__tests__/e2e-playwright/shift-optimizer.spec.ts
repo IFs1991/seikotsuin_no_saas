@@ -72,7 +72,11 @@ async function mockStaffAnalysisApi(page: Page) {
       body: JSON.stringify({
         success: true,
         data: {
-          staffMetrics: { dailyPatients: 0, totalRevenue: 0, averageSatisfaction: 0 },
+          staffMetrics: {
+            dailyPatients: 0,
+            totalRevenue: 0,
+            averageSatisfaction: 0,
+          },
           revenueRanking: [],
           satisfactionCorrelation: [],
           performanceTrends: {},
@@ -219,7 +223,9 @@ test.describe('シフト最適化 - 実データ化', () => {
     await mockStaffAnalysisApi(page);
   });
 
-  test('シフトデータあり: 実データのスタッフ名が表示される', async ({ page }) => {
+  test('シフトデータあり: 実データのスタッフ名が表示される', async ({
+    page,
+  }) => {
     await mockShiftOptimizerDataApis(page, formatDateJst(new Date()));
 
     await page.goto('/staff');
@@ -249,7 +255,9 @@ test.describe('シフト最適化 - 実データ化', () => {
 
     await expect(page.getByText('シフトデータがありません')).toBeVisible();
     await expect(page.getByText('需要予測データがありません')).toBeVisible();
-    await expect(page.getByText('スタッフ希望データがありません')).toBeVisible();
+    await expect(
+      page.getByText('スタッフ希望データがありません')
+    ).toBeVisible();
   });
 
   test('需要予測が予約データに基づいて表示される', async ({ page }) => {
@@ -261,20 +269,19 @@ test.describe('シフト最適化 - 実データ化', () => {
     await waitForStaffPageReady(page);
     await openShiftOptimizerTab(page);
 
-    await expect(
-      page.getByRole('heading', { name: '需要予測' })
-    ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole('heading', { name: '需要予測' })).toBeVisible({
+      timeout: 20000,
+    });
 
     const forecastDate = page.getByText(todayJst).first();
     await expect(forecastDate).toBeVisible();
-    await expect(
-      page.locator('p', { hasText: '予測:' }).first()
-    ).toBeVisible();
+    await expect(page.locator('p', { hasText: '予測:' }).first()).toBeVisible();
   });
 
   test('APIエラー時にエラーメッセージが表示される', async ({ page }) => {
-    await page.route(/\/api\/staff\/(shifts|preferences|demand-forecast)/, route =>
-      route.abort()
+    await page.route(
+      /\/api\/staff\/(shifts|preferences|demand-forecast)/,
+      route => route.abort()
     );
 
     await page.goto('/staff');

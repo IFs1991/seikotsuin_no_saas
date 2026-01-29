@@ -36,7 +36,7 @@ export function useOnboarding() {
   // ステータス取得
   const fetchStatus = useCallback(async () => {
     try {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       const res = await fetch('/api/onboarding/status', {
         credentials: 'include',
@@ -44,7 +44,11 @@ export function useOnboarding() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          setState((prev) => ({ ...prev, error: '認証が必要です', status: null }));
+          setState(prev => ({
+            ...prev,
+            error: '認証が必要です',
+            status: null,
+          }));
           return;
         }
         throw new Error('ステータス取得に失敗しました');
@@ -53,146 +57,173 @@ export function useOnboarding() {
       const json: OnboardingStatusResponse = await res.json();
 
       if (json.success && json.data) {
-        setState((prev) => ({ ...prev, status: json.data ?? null, error: null }));
+        setState(prev => ({ ...prev, status: json.data ?? null, error: null }));
       } else {
-        setState((prev) => ({ ...prev, error: json.error || 'エラーが発生しました' }));
+        setState(prev => ({
+          ...prev,
+          error: json.error || 'エラーが発生しました',
+        }));
       }
     } catch (err) {
       console.error('useOnboarding fetchStatus error:', err);
-      setState((prev) => ({
+      setState(prev => ({
         ...prev,
         error: err instanceof Error ? err.message : String(err),
       }));
     } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   // プロフィール更新
-  const updateProfile = useCallback(async (data: ProfileFormData): Promise<ProfileUpdateResponse> => {
-    try {
-      const res = await fetch('/api/onboarding/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+  const updateProfile = useCallback(
+    async (data: ProfileFormData): Promise<ProfileUpdateResponse> => {
+      try {
+        const res = await fetch('/api/onboarding/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
 
-      const json: ProfileUpdateResponse = await res.json();
+        const json: ProfileUpdateResponse = await res.json();
 
-      if (json.success && json.data) {
-        setState((prev) => ({
-          ...prev,
-          status: prev.status ? { ...prev.status, current_step: json.data!.next_step } : null,
-        }));
+        if (json.success && json.data) {
+          setState(prev => ({
+            ...prev,
+            status: prev.status
+              ? { ...prev.status, current_step: json.data!.next_step }
+              : null,
+          }));
+        }
+
+        return json;
+      } catch (err) {
+        console.error('updateProfile error:', err);
+        return {
+          success: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : 'プロフィール更新に失敗しました',
+        };
       }
-
-      return json;
-    } catch (err) {
-      console.error('updateProfile error:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'プロフィール更新に失敗しました',
-      };
-    }
-  }, []);
+    },
+    []
+  );
 
   // クリニック作成
-  const createClinic = useCallback(async (data: ClinicFormData): Promise<ClinicCreateResponse> => {
-    try {
-      const res = await fetch('/api/onboarding/clinic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+  const createClinic = useCallback(
+    async (data: ClinicFormData): Promise<ClinicCreateResponse> => {
+      try {
+        const res = await fetch('/api/onboarding/clinic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
 
-      const json: ClinicCreateResponse = await res.json();
+        const json: ClinicCreateResponse = await res.json();
 
-      if (json.success && json.data) {
-        setState((prev) => ({
-          ...prev,
-          status: prev.status
-            ? {
-                ...prev.status,
-                current_step: json.data!.next_step,
-                clinic_id: json.data!.clinic_id,
-              }
-            : null,
-        }));
+        if (json.success && json.data) {
+          setState(prev => ({
+            ...prev,
+            status: prev.status
+              ? {
+                  ...prev.status,
+                  current_step: json.data!.next_step,
+                  clinic_id: json.data!.clinic_id,
+                }
+              : null,
+          }));
+        }
+
+        return json;
+      } catch (err) {
+        console.error('createClinic error:', err);
+        return {
+          success: false,
+          error:
+            err instanceof Error ? err.message : 'クリニック作成に失敗しました',
+        };
       }
-
-      return json;
-    } catch (err) {
-      console.error('createClinic error:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'クリニック作成に失敗しました',
-      };
-    }
-  }, []);
+    },
+    []
+  );
 
   // スタッフ招待
-  const inviteStaff = useCallback(async (data: InvitesFormData): Promise<InvitesResponse> => {
-    try {
-      const res = await fetch('/api/onboarding/invites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+  const inviteStaff = useCallback(
+    async (data: InvitesFormData): Promise<InvitesResponse> => {
+      try {
+        const res = await fetch('/api/onboarding/invites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
 
-      const json: InvitesResponse = await res.json();
+        const json: InvitesResponse = await res.json();
 
-      if (json.success && json.data) {
-        setState((prev) => ({
-          ...prev,
-          status: prev.status ? { ...prev.status, current_step: json.data!.next_step } : null,
-        }));
+        if (json.success && json.data) {
+          setState(prev => ({
+            ...prev,
+            status: prev.status
+              ? { ...prev.status, current_step: json.data!.next_step }
+              : null,
+          }));
+        }
+
+        return json;
+      } catch (err) {
+        console.error('inviteStaff error:', err);
+        return {
+          success: false,
+          error:
+            err instanceof Error ? err.message : 'スタッフ招待に失敗しました',
+        };
       }
-
-      return json;
-    } catch (err) {
-      console.error('inviteStaff error:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'スタッフ招待に失敗しました',
-      };
-    }
-  }, []);
+    },
+    []
+  );
 
   // 初期マスタ投入
-  const seedMaster = useCallback(async (data: SeedFormData): Promise<SeedResponse> => {
-    try {
-      const res = await fetch('/api/onboarding/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+  const seedMaster = useCallback(
+    async (data: SeedFormData): Promise<SeedResponse> => {
+      try {
+        const res = await fetch('/api/onboarding/seed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(data),
+        });
 
-      const json: SeedResponse = await res.json();
+        const json: SeedResponse = await res.json();
 
-      if (json.success && json.data?.completed) {
-        setState((prev) => ({
-          ...prev,
-          status: prev.status ? { ...prev.status, current_step: 'completed', completed: true } : null,
-        }));
+        if (json.success && json.data?.completed) {
+          setState(prev => ({
+            ...prev,
+            status: prev.status
+              ? { ...prev.status, current_step: 'completed', completed: true }
+              : null,
+          }));
+        }
+
+        return json;
+      } catch (err) {
+        console.error('seedMaster error:', err);
+        return {
+          success: false,
+          error:
+            err instanceof Error ? err.message : '初期マスタ投入に失敗しました',
+        };
       }
-
-      return json;
-    } catch (err) {
-      console.error('seedMaster error:', err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : '初期マスタ投入に失敗しました',
-      };
-    }
-  }, []);
+    },
+    []
+  );
 
   // ステップへ移動（UI用）
   const goToStep = useCallback((step: OnboardingStep) => {
-    setState((prev) => ({
+    setState(prev => ({
       ...prev,
       status: prev.status ? { ...prev.status, current_step: step } : null,
     }));

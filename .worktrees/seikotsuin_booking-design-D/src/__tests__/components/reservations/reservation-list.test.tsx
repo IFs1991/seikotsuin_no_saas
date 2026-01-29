@@ -64,7 +64,9 @@ describe('ReservationListPage', () => {
     test('ページタイトルが正しく表示される', () => {
       render(<ReservationListPage />);
       expect(screen.getByText('予約一覧・管理')).toBeInTheDocument();
-      expect(screen.getByText('予約の検索、フィルタリング、一括操作が可能です')).toBeInTheDocument();
+      expect(
+        screen.getByText('予約の検索、フィルタリング、一括操作が可能です')
+      ).toBeInTheDocument();
     });
 
     test('検索・フィルタセクションが表示される', () => {
@@ -81,7 +83,9 @@ describe('ReservationListPage', () => {
   describe('検索・フィルタ機能', () => {
     test('検索フィールドが表示される', () => {
       render(<ReservationListPage />);
-      expect(screen.getByPlaceholderText('顧客名・電話・予約ID')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('顧客名・電話・予約ID')
+      ).toBeInTheDocument();
     });
 
     test('ステータスフィルタが表示される', () => {
@@ -114,10 +118,10 @@ describe('ReservationListPage', () => {
     test('検索機能が動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const searchInput = screen.getByPlaceholderText('顧客名・電話・予約ID');
       await user.type(searchInput, '山田');
-      
+
       // 検索結果が絞り込まれることを確認
       await waitFor(() => {
         expect(screen.getByText('山田太郎')).toBeInTheDocument();
@@ -127,17 +131,17 @@ describe('ReservationListPage', () => {
     test('ステータスフィルタが動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       // ステータスフィルタを開く
       const statusFilter = screen.getByLabelText('ステータス');
       await user.click(statusFilter);
-      
+
       // 「確定」を選択
       await waitFor(() => {
         const confirmedOption = screen.getByText('確定');
         return user.click(confirmedOption);
       });
-      
+
       // フィルタされた結果が表示される
       await waitFor(() => {
         expect(screen.getByText('山田太郎')).toBeInTheDocument();
@@ -147,20 +151,22 @@ describe('ReservationListPage', () => {
     test('フィルタクリア機能が動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       // 検索を行う
       const searchInput = screen.getByPlaceholderText('顧客名・電話・予約ID');
       await user.type(searchInput, '存在しない名前');
-      
+
       // 結果が見つからない場合のメッセージを確認
       await waitFor(() => {
-        expect(screen.getByText('条件に一致する予約が見つかりません')).toBeInTheDocument();
+        expect(
+          screen.getByText('条件に一致する予約が見つかりません')
+        ).toBeInTheDocument();
       });
-      
+
       // フィルタをクリア
       const clearButton = screen.getByText('フィルタをクリア');
       await user.click(clearButton);
-      
+
       // 全件が再表示される
       await waitFor(() => {
         expect(screen.getByText('山田太郎')).toBeInTheDocument();
@@ -173,15 +179,15 @@ describe('ReservationListPage', () => {
     test('並び順を変更できる', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const sortSelect = screen.getByDisplayValue('予約日時');
       await user.click(sortSelect);
-      
+
       await waitFor(() => {
         const customerNameOption = screen.getByText('顧客名');
         return user.click(customerNameOption);
       });
-      
+
       await waitFor(() => {
         expect(screen.getByDisplayValue('顧客名')).toBeInTheDocument();
       });
@@ -190,10 +196,10 @@ describe('ReservationListPage', () => {
     test('昇順・降順を切り替えできる', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const sortOrderButton = screen.getByText('昇順');
       await user.click(sortOrderButton);
-      
+
       await waitFor(() => {
         expect(screen.getByText('降順')).toBeInTheDocument();
       });
@@ -257,10 +263,10 @@ describe('ReservationListPage', () => {
     test('ステータス更新が動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const confirmButton = screen.getByText('確定');
       await user.click(confirmButton);
-      
+
       // ステータスが更新されることを確認
       await waitFor(() => {
         // 確定ボタンが来院ボタンに変わる
@@ -279,12 +285,12 @@ describe('ReservationListPage', () => {
     test('個別選択ができる', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const checkboxes = screen.getAllByRole('checkbox');
       const firstCheckbox = checkboxes[1]; // 最初は全選択なので2番目
-      
+
       await user.click(firstCheckbox);
-      
+
       await waitFor(() => {
         expect(screen.getByText(/件選択中/)).toBeInTheDocument();
       });
@@ -293,12 +299,12 @@ describe('ReservationListPage', () => {
     test('一括操作メニューが表示される', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const checkboxes = screen.getAllByRole('checkbox');
       const firstCheckbox = checkboxes[1];
-      
+
       await user.click(firstCheckbox);
-      
+
       await waitFor(() => {
         expect(screen.getByText('一括確定')).toBeInTheDocument();
         expect(screen.getByText('一括キャンセル')).toBeInTheDocument();
@@ -309,20 +315,20 @@ describe('ReservationListPage', () => {
     test('一括確定が動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       // 未確認の予約を選択
       const checkboxes = screen.getAllByRole('checkbox');
       const secondCheckbox = checkboxes[2]; // 田中花子の予約（未確認）
-      
+
       await user.click(secondCheckbox);
-      
+
       await waitFor(() => {
         expect(screen.getByText('一括確定')).toBeInTheDocument();
       });
-      
+
       const bulkConfirmButton = screen.getByText('一括確定');
       await user.click(bulkConfirmButton);
-      
+
       // ステータスが更新されることを確認
       await waitFor(() => {
         expect(screen.getByText('確定')).toBeInTheDocument();
@@ -332,10 +338,10 @@ describe('ReservationListPage', () => {
     test('全選択機能が動作する', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       const selectAllCheckbox = screen.getAllByRole('checkbox')[0];
       await user.click(selectAllCheckbox);
-      
+
       await waitFor(() => {
         expect(screen.getByText(/件選択中/)).toBeInTheDocument();
       });
@@ -345,7 +351,7 @@ describe('ReservationListPage', () => {
   describe('統計サマリー', () => {
     test('ステータス別件数が表示される', () => {
       render(<ReservationListPage />);
-      
+
       // 各ステータスの件数カードが表示される
       const summaryCards = screen.getAllByText(/^\d+$/);
       expect(summaryCards.length).toBeGreaterThan(0);
@@ -353,7 +359,7 @@ describe('ReservationListPage', () => {
 
     test('ステータスラベルが表示される', () => {
       render(<ReservationListPage />);
-      
+
       // ステータスラベルが表示される
       expect(screen.getByText('仮予約')).toBeInTheDocument();
       expect(screen.getByText('確定')).toBeInTheDocument();
@@ -365,8 +371,10 @@ describe('ReservationListPage', () => {
   describe('レスポンシブ対応', () => {
     test('テーブルが横スクロール可能', () => {
       render(<ReservationListPage />);
-      
-      const scrollContainer = screen.getByRole('table').closest('.overflow-x-auto');
+
+      const scrollContainer = screen
+        .getByRole('table')
+        .closest('.overflow-x-auto');
       expect(scrollContainer).toBeInTheDocument();
     });
   });
@@ -375,13 +383,13 @@ describe('ReservationListPage', () => {
     test('大量データでの表示性能', () => {
       const startTime = performance.now();
       render(<ReservationListPage />);
-      
+
       // 基本要素の表示を確認
       expect(screen.getByText('予約一覧・管理')).toBeInTheDocument();
-      
+
       const endTime = performance.now();
       const renderTime = endTime - startTime;
-      
+
       // 高速な描画を確認
       expect(renderTime).toBeLessThan(1000); // 1秒以内
     });
@@ -389,15 +397,15 @@ describe('ReservationListPage', () => {
     test('フィルタ操作の応答性', async () => {
       const user = userEvent.setup();
       const startTime = performance.now();
-      
+
       render(<ReservationListPage />);
-      
+
       const searchInput = screen.getByPlaceholderText('顧客名・電話・予約ID');
       await user.type(searchInput, '山田');
-      
+
       const endTime = performance.now();
       const operationTime = endTime - startTime;
-      
+
       // 高速なフィルタリングを確認
       expect(operationTime).toBeLessThan(500); // 0.5秒以内
     });
@@ -406,17 +414,17 @@ describe('ReservationListPage', () => {
   describe('アクセシビリティ', () => {
     test('テーブルに適切なセマンティクスが設定されている', () => {
       render(<ReservationListPage />);
-      
+
       const table = screen.getByRole('table');
       expect(table).toBeInTheDocument();
-      
+
       const columnHeaders = screen.getAllByRole('columnheader');
       expect(columnHeaders.length).toBeGreaterThan(0);
     });
 
     test('チェックボックスに適切なラベルが設定されている', () => {
       render(<ReservationListPage />);
-      
+
       const checkboxes = screen.getAllByRole('checkbox');
       checkboxes.forEach(checkbox => {
         expect(checkbox).toBeInTheDocument();
@@ -425,7 +433,7 @@ describe('ReservationListPage', () => {
 
     test('ボタンに適切な名前が設定されている', () => {
       render(<ReservationListPage />);
-      
+
       const buttons = screen.getAllByRole('button');
       buttons.forEach(button => {
         expect(button).toHaveTextContent(/.+/); // 空でないテキストを持つ
@@ -435,7 +443,7 @@ describe('ReservationListPage', () => {
     test('キーボードナビゲーションが可能', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       // Tabキーでナビゲーション
       await user.tab();
       expect(document.activeElement).toBeInTheDocument();
@@ -449,26 +457,28 @@ describe('ReservationListPage', () => {
         const EmptyPage = ReservationListPage;
         return <EmptyPage />;
       };
-      
+
       render(React.createElement(emptyComponent));
-      
+
       // フィルタクリアボタンが表示される状況を作る
       const user = userEvent.setup();
-      
+
       // 検索で結果をゼロにする
       const searchInput = screen.getByPlaceholderText('顧客名・電話・予約ID');
       user.type(searchInput, '存在しない検索語');
-      
+
       // メッセージが表示される
       setTimeout(() => {
-        expect(screen.getByText('条件に一致する予約が見つかりません')).toBeInTheDocument();
+        expect(
+          screen.getByText('条件に一致する予約が見つかりません')
+        ).toBeInTheDocument();
       }, 100);
     });
 
     test('無効な操作の防止', async () => {
       const user = userEvent.setup();
       render(<ReservationListPage />);
-      
+
       // 何も選択せずに一括操作を試行
       // この場合、一括操作ボタンが表示されないことを確認
       expect(screen.queryByText('一括確定')).not.toBeInTheDocument();

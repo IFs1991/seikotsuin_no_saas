@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { runIntegrationTests, TestResult } from '@/lib/integration-tests';
 
 interface QualityMetrics {
@@ -217,5 +217,3 @@ function generateRecommendations(
 
   return recommendations;
 }
-
-import { useMemo } from 'react';

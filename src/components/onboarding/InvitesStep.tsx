@@ -4,9 +4,20 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { InvitesFormData, InvitesResponse, StaffInvite, StaffRole } from '@/types/onboarding';
-import { ROLE_LABELS } from '@/types/onboarding';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import {
+  type InvitesFormData,
+  type InvitesResponse,
+  type StaffInvite,
+  type StaffRole,
+  ROLE_LABELS,
+} from '@/types/onboarding';
 
 interface InvitesStepProps {
   onSubmit: (data: InvitesFormData) => Promise<InvitesResponse>;
@@ -14,7 +25,12 @@ interface InvitesStepProps {
 }
 
 // オンボーディングで選択可能なロール（adminは自分なので除外）
-const AVAILABLE_ROLES: StaffRole[] = ['clinic_admin', 'therapist', 'staff', 'manager'];
+const AVAILABLE_ROLES: StaffRole[] = [
+  'clinic_admin',
+  'therapist',
+  'staff',
+  'manager',
+];
 
 export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
   const [invites, setInvites] = useState<StaffInvite[]>([]);
@@ -42,7 +58,7 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
       return;
     }
 
-    if (invites.some((i) => i.email === newEmail)) {
+    if (invites.some(i => i.email === newEmail)) {
       setEmailError('このメールアドレスは既に追加されています');
       return;
     }
@@ -53,7 +69,7 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
   };
 
   const handleRemoveInvite = (email: string) => {
-    setInvites(invites.filter((i) => i.email !== email));
+    setInvites(invites.filter(i => i.email !== email));
   };
 
   const handleSubmit = async () => {
@@ -86,7 +102,7 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
+    <Card className='w-full max-w-lg mx-auto'>
       <CardHeader>
         <CardTitle>スタッフを招待</CardTitle>
         <CardDescription>
@@ -94,31 +110,31 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
+        <div className='space-y-6'>
           {/* 招待フォーム */}
-          <div className="space-y-4">
-            <FormField label="メールアドレス" error={emailError ?? undefined}>
+          <div className='space-y-4'>
+            <FormField label='メールアドレス' error={emailError ?? undefined}>
               <Input
-                type="email"
+                type='email'
                 value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="staff@example.com"
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder='staff@example.com'
                 disabled={isSubmitting}
               />
             </FormField>
 
-            <div className="flex gap-4 items-end">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div className='flex gap-4 items-end'>
+              <div className='flex-1'>
+                <label className='block text-sm font-medium text-gray-700 mb-1'>
                   役割
                 </label>
                 <select
                   value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as StaffRole)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={e => setNewRole(e.target.value as StaffRole)}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
                   disabled={isSubmitting}
                 >
-                  {AVAILABLE_ROLES.map((role) => (
+                  {AVAILABLE_ROLES.map(role => (
                     <option key={role} value={role}>
                       {ROLE_LABELS[role]}
                     </option>
@@ -126,8 +142,8 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
                 </select>
               </div>
               <Button
-                type="button"
-                variant="outline"
+                type='button'
+                variant='outline'
                 onClick={handleAddInvite}
                 disabled={isSubmitting}
               >
@@ -138,22 +154,22 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
 
           {/* 招待リスト */}
           {invites.length > 0 && (
-            <div className="border rounded-md divide-y">
-              {invites.map((invite) => (
+            <div className='border rounded-md divide-y'>
+              {invites.map(invite => (
                 <div
                   key={invite.email}
-                  className="flex items-center justify-between p-3"
+                  className='flex items-center justify-between p-3'
                 >
                   <div>
-                    <p className="font-medium">{invite.email}</p>
-                    <p className="text-sm text-gray-500">
+                    <p className='font-medium'>{invite.email}</p>
+                    <p className='text-sm text-gray-500'>
                       {ROLE_LABELS[invite.role]}
                     </p>
                   </div>
                   <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
+                    type='button'
+                    variant='ghost'
+                    size='sm'
                     onClick={() => handleRemoveInvite(invite.email)}
                     disabled={isSubmitting}
                   >
@@ -165,25 +181,25 @@ export function InvitesStep({ onSubmit, onSkip }: InvitesStepProps) {
           )}
 
           {apiError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{apiError}</p>
+            <div className='p-3 bg-red-50 border border-red-200 rounded-md'>
+              <p className='text-sm text-red-600'>{apiError}</p>
             </div>
           )}
 
           {/* アクションボタン */}
-          <div className="flex gap-4">
+          <div className='flex gap-4'>
             <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
+              type='button'
+              variant='outline'
+              className='flex-1'
               onClick={handleSkip}
               disabled={isSubmitting}
             >
               スキップ
             </Button>
             <Button
-              type="button"
-              className="flex-1"
+              type='button'
+              className='flex-1'
               onClick={handleSubmit}
               disabled={isSubmitting || invites.length === 0}
             >

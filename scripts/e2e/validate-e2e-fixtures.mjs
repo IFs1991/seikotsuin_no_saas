@@ -9,6 +9,7 @@ import {
   STAFF_SHIFT_IDS,
   STAFF_PREFERENCE_IDS,
 } from './fixtures.mjs';
+import { waitForSupabaseReady } from './preflight.mjs';
 
 function loadEnvFile(fileName) {
   const envPath = path.resolve(process.cwd(), fileName);
@@ -69,6 +70,9 @@ async function validateDatabaseState() {
       persistSession: false,
     },
   });
+
+  // Wait for Supabase to be ready before running queries
+  await waitForSupabaseReady(supabase);
 
   const clinicIds = FIXTURE_CLINICS.map(clinic => clinic.id);
   const { data: clinics, error: clinicError } = await supabase
@@ -146,7 +150,9 @@ async function validateDatabaseState() {
     .in('staff_id', userIds);
 
   permissions?.forEach(permission => {
-    const expected = FIXTURE_USERS.find(user => user.id === permission.staff_id);
+    const expected = FIXTURE_USERS.find(
+      user => user.id === permission.staff_id
+    );
     if (!expected) return;
     if (expected.permissions_clinic_id !== permission.clinic_id) {
       throw new Error(

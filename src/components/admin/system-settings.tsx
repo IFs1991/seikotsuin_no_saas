@@ -83,11 +83,16 @@ export function SystemSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialSecurityData, clinicId ? {
-    clinicId,
-    category: 'system_security',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialSecurityData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'system_security',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   const [systemInfo] = useState<SystemInfo>({
     version: '2.1.0',
@@ -101,9 +106,9 @@ export function SystemSettings() {
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -134,10 +139,10 @@ export function SystemSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* システム情報 */}
@@ -208,7 +213,10 @@ export function SystemSettings() {
             </h4>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <Label htmlFor='password-min-length' className='block text-sm text-gray-700 mb-1'>
+                <Label
+                  htmlFor='password-min-length'
+                  className='block text-sm text-gray-700 mb-1'
+                >
                   パスワード最小文字数
                 </Label>
                 <Input
@@ -216,7 +224,9 @@ export function SystemSettings() {
                   type='number'
                   value={security.passwordPolicy.minLength}
                   onChange={e =>
-                    updatePasswordPolicy({ minLength: parseInt(e.target.value) })
+                    updatePasswordPolicy({
+                      minLength: parseInt(e.target.value),
+                    })
                   }
                   min='4'
                   max='32'
@@ -231,7 +241,9 @@ export function SystemSettings() {
                   type='number'
                   value={security.passwordPolicy.expiryDays}
                   onChange={e =>
-                    updatePasswordPolicy({ expiryDays: parseInt(e.target.value) })
+                    updatePasswordPolicy({
+                      expiryDays: parseInt(e.target.value),
+                    })
                   }
                   min='0'
                   max='365'
@@ -289,7 +301,7 @@ export function SystemSettings() {
                   セッションタイムアウト（分）
                 </Label>
                 <Input
-                  data-testid="session-timeout-input"
+                  data-testid='session-timeout-input'
                   type='number'
                   value={security.sessionTimeout}
                   onChange={e =>
@@ -323,7 +335,9 @@ export function SystemSettings() {
                   type='number'
                   value={security.lockoutDuration}
                   onChange={e =>
-                    updateSecurity({ lockoutDuration: parseInt(e.target.value) })
+                    updateSecurity({
+                      lockoutDuration: parseInt(e.target.value),
+                    })
                   }
                   min='5'
                   max='1440'
@@ -334,7 +348,7 @@ export function SystemSettings() {
             <div className='mt-4 flex items-center space-x-2'>
               <Switch
                 id='two-factor-toggle'
-                data-testid="2fa-toggle"
+                data-testid='2fa-toggle'
                 checked={security.twoFactorEnabled}
                 onCheckedChange={checked =>
                   updateSecurity({ twoFactorEnabled: checked })
@@ -364,9 +378,7 @@ export function SystemSettings() {
               <input
                 type='checkbox'
                 checked={backup.autoBackup}
-                onChange={e =>
-                  updateBackup({ autoBackup: e.target.checked })
-                }
+                onChange={e => updateBackup({ autoBackup: e.target.checked })}
                 className='rounded border-gray-300'
               />
               <span className='text-sm font-medium text-gray-700'>
@@ -405,9 +417,7 @@ export function SystemSettings() {
                   <Input
                     type='time'
                     value={backup.backupTime}
-                    onChange={e =>
-                      updateBackup({ backupTime: e.target.value })
-                    }
+                    onChange={e => updateBackup({ backupTime: e.target.value })}
                   />
                 </div>
 
@@ -434,9 +444,7 @@ export function SystemSettings() {
               <input
                 type='checkbox'
                 checked={backup.cloudStorage}
-                onChange={e =>
-                  updateBackup({ cloudStorage: e.target.checked })
-                }
+                onChange={e => updateBackup({ cloudStorage: e.target.checked })}
                 className='rounded border-gray-300'
               />
               <span className='text-sm font-medium text-gray-700'>
@@ -477,7 +485,9 @@ export function SystemSettings() {
             >
               <Download className='w-4 h-4' />
               <span>
-                {loadingState.isLoading ? 'バックアップ中...' : '今すぐバックアップ'}
+                {loadingState.isLoading
+                  ? 'バックアップ中...'
+                  : '今すぐバックアップ'}
               </span>
             </Button>
 
@@ -493,7 +503,7 @@ export function SystemSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          data-testid="save-settings-button"
+          data-testid='save-settings-button'
           onClick={onSave}
           disabled={loadingState.isLoading}
           className='flex items-center space-x-2'

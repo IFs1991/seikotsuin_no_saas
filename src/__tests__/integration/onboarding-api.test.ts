@@ -63,7 +63,10 @@ function createMockRequest(
   return new NextRequest(`http://localhost${url}`, requestInit);
 }
 
-function createQueryBuilder(mockData: unknown = null, mockError: unknown = null) {
+function createQueryBuilder(
+  mockData: unknown = null,
+  mockError: unknown = null
+) {
   const builder: Record<string, jest.Mock> = {};
 
   builder.select = jest.fn(() => builder);
@@ -72,8 +75,12 @@ function createQueryBuilder(mockData: unknown = null, mockError: unknown = null)
   builder.upsert = jest.fn(() => builder);
   builder.delete = jest.fn(() => builder);
   builder.eq = jest.fn(() => builder);
-  builder.single = jest.fn(() => Promise.resolve({ data: mockData, error: mockError }));
-  builder.maybeSingle = jest.fn(() => Promise.resolve({ data: mockData, error: mockError }));
+  builder.single = jest.fn(() =>
+    Promise.resolve({ data: mockData, error: mockError })
+  );
+  builder.maybeSingle = jest.fn(() =>
+    Promise.resolve({ data: mockData, error: mockError })
+  );
 
   return builder;
 }
@@ -295,9 +302,7 @@ describe('Onboarding API Integration', () => {
       const request = createMockRequest('/api/onboarding/invites', {
         method: 'POST',
         body: {
-          invites: [
-            { email: 'staff1@example.com', role: 'staff' },
-          ],
+          invites: [{ email: 'staff1@example.com', role: 'staff' }],
         },
       });
 
@@ -337,7 +342,9 @@ describe('Onboarding API Integration', () => {
 
     test('クリニック未作成時は400エラー', async () => {
       // clinic_idがnull
-      mockSupabaseClient.from.mockReturnValue(createQueryBuilder({ clinic_id: null }));
+      mockSupabaseClient.from.mockReturnValue(
+        createQueryBuilder({ clinic_id: null })
+      );
 
       const { POST } = await import('@/app/api/onboarding/invites/route');
 
@@ -373,9 +380,7 @@ describe('Onboarding API Integration', () => {
       const request = createMockRequest('/api/onboarding/seed', {
         method: 'POST',
         body: {
-          treatment_menus: [
-            { name: '肩こり治療', price: 3000 },
-          ],
+          treatment_menus: [{ name: '肩こり治療', price: 3000 }],
           payment_methods: ['現金'],
           patient_types: ['初診'],
         },
@@ -409,7 +414,9 @@ describe('Onboarding API Integration', () => {
     });
 
     test('クリニック未作成時は400エラー', async () => {
-      mockSupabaseClient.from.mockReturnValue(createQueryBuilder({ clinic_id: null }));
+      mockSupabaseClient.from.mockReturnValue(
+        createQueryBuilder({ clinic_id: null })
+      );
 
       const { POST } = await import('@/app/api/onboarding/seed/route');
 

@@ -13,10 +13,7 @@
 
 import { test, expect, Page } from '@playwright/test';
 import {
-  CLINIC_A_ID,
   USER_ADMIN_ID,
-  USER_STAFF_ID,
-  USER_NO_CLINIC_ID,
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
   STAFF_EMAIL,
@@ -52,7 +49,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
    * - 履歴が表示される
    */
   test.describe('Chat ページ - 正常系', () => {
-    test('Adminでログイン → /chat で入力が有効で送信できる', async ({ page }) => {
+    test('Adminでログイン → /chat で入力が有効で送信できる', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.goto('/chat');
 
@@ -69,13 +68,17 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await expect(sendButton).toBeEnabled();
     });
 
-    test('/api/chat が clinic_id を含むリクエストで実行される', async ({ page }) => {
+    test('/api/chat が clinic_id を含むリクエストで実行される', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.goto('/chat');
 
       // APIリクエストをインターセプト
-      const chatRequest = page.waitForRequest((request) => {
-        return request.url().includes('/api/chat') && request.method() === 'POST';
+      const chatRequest = page.waitForRequest(request => {
+        return (
+          request.url().includes('/api/chat') && request.method() === 'POST'
+        );
       });
 
       // メッセージを送信
@@ -97,7 +100,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
    * - 権限割当の案内が表示される
    */
   test.describe('Chat ページ - clinic未割当', () => {
-    test('clinic未割当ユーザーで /chat を開く → 入力が無効', async ({ page }) => {
+    test('clinic未割当ユーザーで /chat を開く → 入力が無効', async ({
+      page,
+    }) => {
       await loginAsNoClinicUser(page);
       await page.goto('/chat');
 
@@ -110,12 +115,16 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await expect(sendButton).toBeDisabled();
     });
 
-    test('clinic未割当ユーザーで /chat を開く → 権限割当の案内が表示される', async ({ page }) => {
+    test('clinic未割当ユーザーで /chat を開く → 権限割当の案内が表示される', async ({
+      page,
+    }) => {
       await loginAsNoClinicUser(page);
       await page.goto('/chat');
 
       // 権限割当の案内が表示される
-      await expect(page.locator('text=管理者に権限割当を依頼してください')).toBeVisible();
+      await expect(
+        page.locator('text=管理者に権限割当を依頼してください')
+      ).toBeVisible();
     });
   });
 
@@ -124,7 +133,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
    * - unauthorized へ遷移する
    */
   test.describe('MFA設定ページ - 権限チェック', () => {
-    test('非管理者（staff）で /admin/mfa-setup を開く → unauthorized へ遷移', async ({ page }) => {
+    test('非管理者（staff）で /admin/mfa-setup を開く → unauthorized へ遷移', async ({
+      page,
+    }) => {
       await login(page, STAFF_EMAIL, STAFF_PASSWORD);
       await page.goto('/admin/mfa-setup');
 
@@ -140,7 +151,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
    * - userId はプロフィール由来である
    */
   test.describe('MFA設定ページ - 正常系', () => {
-    test('管理者で /admin/mfa-setup を開く → MFAダッシュボードが表示される', async ({ page }) => {
+    test('管理者で /admin/mfa-setup を開く → MFAダッシュボードが表示される', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.goto('/admin/mfa-setup');
 
@@ -151,7 +164,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await expect(page.locator('[data-testid="mfa-dashboard"]')).toBeVisible();
     });
 
-    test('MFAダッシュボードの userId がプロフィール由来（ハードコードされていない）', async ({ page }) => {
+    test('MFAダッシュボードの userId がプロフィール由来（ハードコードされていない）', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.goto('/admin/mfa-setup');
 
@@ -171,7 +186,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
    * - 作成者が profile.userId で保存される
    */
   test.describe('Blocks ページ - 販売停止作成', () => {
-    test('管理者で /blocks を開く → 販売停止設定ページが表示される', async ({ page }) => {
+    test('管理者で /blocks を開く → 販売停止設定ページが表示される', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.goto('/blocks');
 
@@ -179,12 +196,16 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await expect(page.locator('text=販売停止設定')).toBeVisible();
     });
 
-    test('リソースがAPIから取得される（sampleResourcesではない）', async ({ page }) => {
+    test('リソースがAPIから取得される（sampleResourcesではない）', async ({
+      page,
+    }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
 
       // APIリクエストをインターセプト
-      const resourcesRequest = page.waitForRequest((request) => {
-        return request.url().includes('/api/resources') && request.method() === 'GET';
+      const resourcesRequest = page.waitForRequest(request => {
+        return (
+          request.url().includes('/api/resources') && request.method() === 'GET'
+        );
       });
 
       await page.goto('/blocks');
@@ -212,7 +233,7 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await page.fill('input[type="time"]:last-of-type', '10:00');
 
       // 保存リクエストをインターセプト
-      const saveRequest = page.waitForRequest((request) => {
+      const saveRequest = page.waitForRequest(request => {
         const url = request.url();
         return (
           request.method() === 'POST' &&
@@ -233,7 +254,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
       expect(createdBy).not.toBe('current-user-id'); // ハードコードされていない
     });
 
-    test('clinic未割当ユーザーで /blocks を開く → 新規作成が無効', async ({ page }) => {
+    test('clinic未割当ユーザーで /blocks を開く → 新規作成が無効', async ({
+      page,
+    }) => {
       await loginAsNoClinicUser(page);
       await page.goto('/blocks');
 
@@ -242,7 +265,9 @@ test.describe('認証コンテキスト連携 E2E', () => {
       await expect(createButton).toBeDisabled();
 
       // 権限割当の案内が表示される
-      await expect(page.locator('text=管理者に権限割当を依頼してください')).toBeVisible();
+      await expect(
+        page.locator('text=管理者に権限割当を依頼してください')
+      ).toBeVisible();
     });
   });
 });

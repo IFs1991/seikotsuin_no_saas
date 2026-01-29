@@ -212,7 +212,10 @@ export class SecurityNotificationManager {
     };
 
     // Use type assertion for dynamic log level access
-    (logger as Record<string, (msg: string, data: unknown) => void>)[logLevel]('Security Alert:', logMessage);
+    (logger as Record<string, (msg: string, data: unknown) => void>)[logLevel](
+      'Security Alert:',
+      logMessage
+    );
   }
 
   /**

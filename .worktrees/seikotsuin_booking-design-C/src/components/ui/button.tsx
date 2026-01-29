@@ -1,8 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | 'default'
     | 'destructive'
@@ -35,7 +34,7 @@ const buttonVariants = {
     secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
     ghost: 'hover:bg-accent hover:text-accent-foreground',
     link: 'text-primary underline-offset-4 hover:underline',
-    
+
     // 医療系専用バリアント (WCAG 2.2対応 + Atlassian Design準拠)
     'medical-primary':
       'bg-medical-blue-600 hover:bg-medical-blue-700 text-white border-0 shadow-medical',
@@ -49,13 +48,13 @@ const buttonVariants = {
       'bg-yellow-500 hover:bg-yellow-600 text-yellow-950 border-0 font-medium shadow-medical',
     'medical-neutral':
       'bg-gray-500 hover:bg-gray-600 text-white border-0 shadow-medical',
-    
+
     // 管理者専用バリアント
     'admin-primary':
       'bg-admin-600 hover:bg-admin-700 text-white border-0 shadow-medical',
     'admin-secondary':
       'bg-admin-100 hover:bg-admin-200 text-admin-800 border border-admin-300 shadow-medical',
-    
+
     // 患者向けバリアント（温かみのある色調）
     'patient-primary':
       'bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-medical',
@@ -76,14 +75,17 @@ const buttonVariants = {
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ 
-    className, 
-    variant = 'default', 
-    size = 'default', 
-    priority, 
-    role, 
-    ...props 
-  }, ref) => {
+  (
+    {
+      className,
+      variant = 'default',
+      size = 'default',
+      priority,
+      role,
+      ...props
+    },
+    ref
+  ) => {
     // 優先度に基づく追加スタイル
     const getPriorityStyles = (priority?: string) => {
       switch (priority) {
@@ -139,7 +141,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         ref={ref}
         // アクセシビリティ属性 (医療従事者支援)
-        aria-label={priority === 'urgent' ? `緊急: ${props.children}` : undefined}
+        aria-label={
+          priority === 'urgent' ? `緊急: ${props.children}` : undefined
+        }
         data-priority={priority}
         data-role={role}
         {...props}

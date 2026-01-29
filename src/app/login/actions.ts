@@ -8,7 +8,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
-import { getServerClient, getUserPermissions } from '@/lib/supabase/server';
+import { getServerClient, getUserPermissions } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 import { isHQRole } from '@/lib/constants/roles';
 
@@ -159,7 +159,8 @@ export async function clinicLogin(
       .eq('user_id', data.user.id)
       .single();
 
-    const isActive = (profileData as { is_active?: boolean } | null)?.is_active ?? true;
+    const isActive =
+      (profileData as { is_active?: boolean } | null)?.is_active ?? true;
 
     // is_active チェック
     if (!isActive) {
@@ -205,11 +206,14 @@ export async function clinicLogin(
         .eq('user_id', data.user.id);
 
       // 5. 成功ログ
-      console.info('[Auth] Successful clinic login (no clinic assigned, redirecting to onboarding):', {
-        email: sanitizedEmail,
-        role: permissions?.role,
-        timestamp: new Date().toISOString(),
-      });
+      console.info(
+        '[Auth] Successful clinic login (no clinic assigned, redirecting to onboarding):',
+        {
+          email: sanitizedEmail,
+          role: permissions?.role,
+          timestamp: new Date().toISOString(),
+        }
+      );
 
       // 6. パス再検証とリダイレクト
       revalidatePath('/', 'layout');
@@ -273,11 +277,7 @@ export async function clinicLogout(): Promise<void> {
         email: user.email,
         timestamp: new Date().toISOString(),
       });
-      await AuditLogger.logLogout(
-        user.id,
-        user.email || '',
-        ipAddress
-      );
+      await AuditLogger.logLogout(user.id, user.email || '', ipAddress);
     }
 
     revalidatePath('/', 'layout');

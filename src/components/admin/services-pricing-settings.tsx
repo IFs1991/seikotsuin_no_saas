@@ -3,7 +3,16 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Save, Plus, Edit, Trash2, Clock, Package, Ticket, Loader2 } from 'lucide-react';
+import {
+  Save,
+  Plus,
+  Edit,
+  Trash2,
+  Clock,
+  Package,
+  Ticket,
+  Loader2,
+} from 'lucide-react';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { AdminMessage } from './AdminMessage';
@@ -115,11 +124,16 @@ export function ServicesPricingSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'services_pricing',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'services_pricing',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   const [activeTab, setActiveTab] = useState<
     'services' | 'products' | 'packages'
@@ -137,9 +151,9 @@ export function ServicesPricingSettings() {
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -183,10 +197,10 @@ export function ServicesPricingSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* タブナビゲーション */}

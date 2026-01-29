@@ -33,6 +33,7 @@ export type AvatarImageProps = React.ImgHTMLAttributes<HTMLImageElement>;
 
 export const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
   ({ className, ...props }, ref) => (
+    /* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */
     <img
       ref={ref}
       className={cn('aspect-square h-full w-full object-cover', className)}

@@ -383,14 +383,18 @@ export class PenetrationTestRunner {
       const validStart = performance.now();
       try {
         await this.sessionManager.validateSession(validToken);
-      } catch {}
+      } catch {
+        // Expected error for timing measurement
+      }
       const validTime = performance.now() - validStart;
 
       // 無効セッション検証時間
       const invalidStart = performance.now();
       try {
         await this.sessionManager.validateSession(invalidToken);
-      } catch {}
+      } catch {
+        // Expected error for timing measurement
+      }
       const invalidTime = performance.now() - invalidStart;
 
       timingResults.push(Math.abs(validTime - invalidTime));
@@ -600,7 +604,9 @@ export class PenetrationTestRunner {
 
             try {
               await this.sessionManager.validateSession(`perf-token-${i}`);
-            } catch {}
+            } catch {
+              // Expected error for performance measurement
+            }
 
             const endTime = performance.now();
             measurements.push(endTime - startTime);
@@ -636,7 +642,9 @@ export class PenetrationTestRunner {
                 ipAddress: '192.168.1.100',
                 userAgent: 'TestBrowser/1.0',
               });
-            } catch {}
+            } catch {
+              // Expected error for performance measurement
+            }
 
             const endTime = performance.now();
             measurements.push(endTime - startTime);

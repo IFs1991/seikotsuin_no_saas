@@ -5,7 +5,7 @@
  */
 
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
+import { getRequestInfo } from '@/lib/audit-logger';
 
 jest.mock('@/lib/supabase/guards');
 jest.mock('@/lib/audit-logger');
@@ -29,9 +29,8 @@ let getCustomersAnalysisHandler: (request: {
 
 beforeAll(async () => {
   const patientsModule = await import('@/app/api/patients/route');
-  const customersAnalysisModule = await import(
-    '@/app/api/customers/analysis/route'
-  );
+  const customersAnalysisModule =
+    await import('@/app/api/customers/analysis/route');
   getPatientsHandler = patientsModule.GET as typeof getPatientsHandler;
   getCustomersAnalysisHandler =
     customersAnalysisModule.GET as typeof getCustomersAnalysisHandler;
@@ -132,10 +131,7 @@ describe('🔴 Red: Analysis Endpoint Parity', () => {
     );
 
     // 必須フィールドの存在を確認
-    const requiredFields = [
-      'success',
-      'data',
-    ];
+    const requiredFields = ['success', 'data'];
 
     requiredFields.forEach(field => {
       expect(customersAnalysisData).toHaveProperty(field);

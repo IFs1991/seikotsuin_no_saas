@@ -12,7 +12,9 @@ jest.mock('@/hooks/useRevenue');
 jest.mock('@/hooks/useUserProfile');
 
 const mockUseRevenue = useRevenue as jest.MockedFunction<typeof useRevenue>;
-const mockUseUserProfile = useUserProfile as jest.MockedFunction<typeof useUserProfile>;
+const mockUseUserProfile = useUserProfile as jest.MockedFunction<
+  typeof useUserProfile
+>;
 
 // Mock data
 const mockClinicId = '123e4567-e89b-12d3-a456-426614174000';
@@ -75,7 +77,9 @@ describe('RevenuePage', () => {
         screen.getByText('時間帯別・曜日別収益パターン')
       ).toBeInTheDocument();
       expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
-      expect(screen.getByText('収益予測とシミュレーション')).toBeInTheDocument();
+      expect(
+        screen.getByText('収益予測とシミュレーション')
+      ).toBeInTheDocument();
       expect(screen.getByText('コスト分析')).toBeInTheDocument();
       expect(screen.getByText('施術者別収益貢献度')).toBeInTheDocument();
     });
@@ -193,7 +197,9 @@ describe('RevenuePage', () => {
 
       render(<RevenuePage />);
 
-      expect(screen.getByText('エラー: 収益データの取得に失敗しました')).toBeInTheDocument();
+      expect(
+        screen.getByText('エラー: 収益データの取得に失敗しました')
+      ).toBeInTheDocument();
     });
 
     test('should display message when clinicId is not set', () => {
@@ -212,7 +218,9 @@ describe('RevenuePage', () => {
 
       render(<RevenuePage />);
 
-      expect(screen.getByText('店舗情報が設定されていません')).toBeInTheDocument();
+      expect(
+        screen.getByText('店舗情報が設定されていません')
+      ).toBeInTheDocument();
     });
   });
 

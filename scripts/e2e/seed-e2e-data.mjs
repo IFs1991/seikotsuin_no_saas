@@ -13,6 +13,7 @@ import {
   STAFF_SHIFT_IDS,
   STAFF_PREFERENCE_IDS,
 } from './fixtures.mjs';
+import { runPreflight, tableExists } from './preflight.mjs';
 
 function loadEnvFile(fileName) {
   const envPath = path.resolve(process.cwd(), fileName);
@@ -49,7 +50,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -437,7 +438,9 @@ async function seedReservationData() {
       menu_id: MENU_IDS[0],
       staff_id: RESOURCE_IDS[0],
       start_time: nextWeekAfternoon.toISOString(),
-      end_time: new Date(nextWeekAfternoon.getTime() + 60 * 60000).toISOString(),
+      end_time: new Date(
+        nextWeekAfternoon.getTime() + 60 * 60000
+      ).toISOString(),
       status: 'confirmed',
       channel: 'line',
       price: 6000,
@@ -615,8 +618,8 @@ async function seedAnalyticsData() {
     Array.isArray(value) ? value.filter(Boolean).join('\n') : value;
   const toArrayLiteral = value => {
     if (!Array.isArray(value)) return value;
-    const escaped = value.map(entry =>
-      `"${String(entry).replace(/"/g, '\"')}"`
+    const escaped = value.map(
+      entry => `"${String(entry).replace(/"/g, '\"')}"`
     );
     return `{${escaped.join(',')}}`;
   };
@@ -680,30 +683,28 @@ async function seedAnalyticsData() {
 async function seedSecurityData() {
   const nowIso = new Date().toISOString();
 
-  const { error: sessionError } = await supabase
-    .from('user_sessions')
-    .upsert(
-      [
-        {
-          id: USER_SESSION_ID,
-          user_id: USER_ADMIN_ID,
-          clinic_id: CLINIC_A_ID,
-          session_token: 'e2e-session-admin',
-          device_info: { device: 'desktop', os: 'Windows', browser: 'Chrome' },
-          ip_address: '127.0.0.1',
-          user_agent: 'E2E Agent',
-          created_at: nowIso,
-          last_activity: nowIso,
-          expires_at: addDays(new Date(), 1).toISOString(),
-          is_active: true,
-          is_revoked: false,
-          max_idle_minutes: 30,
-          max_session_hours: 8,
-          remember_device: false,
-        },
-      ],
-      { onConflict: 'id' }
-    );
+  const { error: sessionError } = await supabase.from('user_sessions').upsert(
+    [
+      {
+        id: USER_SESSION_ID,
+        user_id: USER_ADMIN_ID,
+        clinic_id: CLINIC_A_ID,
+        session_token: 'e2e-session-admin',
+        device_info: { device: 'desktop', os: 'Windows', browser: 'Chrome' },
+        ip_address: '127.0.0.1',
+        user_agent: 'E2E Agent',
+        created_at: nowIso,
+        last_activity: nowIso,
+        expires_at: addDays(new Date(), 1).toISOString(),
+        is_active: true,
+        is_revoked: false,
+        max_idle_minutes: 30,
+        max_session_hours: 8,
+        remember_device: false,
+      },
+    ],
+    { onConflict: 'id' }
+  );
   if (sessionError) {
     throw new Error(`User sessions upsert failed: ${sessionError.message}`);
   }
@@ -750,37 +751,35 @@ async function seedSecurityData() {
     throw new Error(`Security events upsert failed: ${securityError.message}`);
   }
 
-  const { error: auditError } = await supabase
-    .from('audit_logs')
-    .upsert(
-      [
-        {
-          id: AUDIT_LOG_IDS[0],
-          event_type: 'failed_login',
-          user_id: USER_ADMIN_ID,
-          user_email: ADMIN_EMAIL,
-          clinic_id: CLINIC_A_ID,
-          ip_address: '127.0.0.1',
-          user_agent: 'E2E Agent',
-          success: false,
-          error_message: 'E2E invalid password',
-          created_at: nowIso,
-        },
-        {
-          id: AUDIT_LOG_IDS[1],
-          event_type: 'unauthorized_access',
-          user_id: USER_ADMIN_ID,
-          user_email: ADMIN_EMAIL,
-          clinic_id: CLINIC_A_ID,
-          ip_address: '127.0.0.1',
-          user_agent: 'E2E Agent',
-          success: false,
-          error_message: 'E2E forbidden',
-          created_at: nowIso,
-        },
-      ],
-      { onConflict: 'id' }
-    );
+  const { error: auditError } = await supabase.from('audit_logs').upsert(
+    [
+      {
+        id: AUDIT_LOG_IDS[0],
+        event_type: 'failed_login',
+        user_id: USER_ADMIN_ID,
+        user_email: ADMIN_EMAIL,
+        clinic_id: CLINIC_A_ID,
+        ip_address: '127.0.0.1',
+        user_agent: 'E2E Agent',
+        success: false,
+        error_message: 'E2E invalid password',
+        created_at: nowIso,
+      },
+      {
+        id: AUDIT_LOG_IDS[1],
+        event_type: 'unauthorized_access',
+        user_id: USER_ADMIN_ID,
+        user_email: ADMIN_EMAIL,
+        clinic_id: CLINIC_A_ID,
+        ip_address: '127.0.0.1',
+        user_agent: 'E2E Agent',
+        success: false,
+        error_message: 'E2E forbidden',
+        created_at: nowIso,
+      },
+    ],
+    { onConflict: 'id' }
+  );
 
   if (auditError) {
     throw new Error(`Audit logs upsert failed: ${auditError.message}`);
@@ -851,12 +850,20 @@ async function seedShiftData() {
 }
 
 export async function seedE2EData() {
-  const { error: clinicSettingsError } = await supabase
-    .from('clinic_settings')
-    .delete()
-    .in('clinic_id', [CLINIC_A_ID, CLINIC_B_ID]);
-  if (clinicSettingsError) {
-    console.warn(`clinic_settings cleanup warning: ${clinicSettingsError.message}`);
+  // Run preflight checks (skipped if E2E_SKIP_DB_CHECK=1)
+  await runPreflight(supabase);
+
+  // Clean up clinic_settings (optional table)
+  if (await tableExists(supabase, 'clinic_settings')) {
+    const { error: clinicSettingsError } = await supabase
+      .from('clinic_settings')
+      .delete()
+      .in('clinic_id', [CLINIC_A_ID, CLINIC_B_ID]);
+    if (clinicSettingsError) {
+      console.warn(
+        `clinic_settings cleanup warning: ${clinicSettingsError.message}`
+      );
+    }
   }
 
   await upsertClinics();
@@ -869,7 +876,12 @@ export async function seedE2EData() {
   await seedReservationData();
   await seedAnalyticsData();
   await seedSecurityData();
-  await seedShiftData();
+
+  // Seed shift data only if optional tables exist
+  if (await tableExists(supabase, 'staff_shifts')) {
+    await seedShiftData();
+  }
+
   console.log('E2E seed data ready.');
 }
 

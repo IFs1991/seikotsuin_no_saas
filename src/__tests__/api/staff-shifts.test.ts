@@ -56,9 +56,8 @@ beforeAll(async () => {
   shiftsGetHandler = shiftsModule.GET;
   const preferencesModule = await import('@/app/api/staff/preferences/route');
   preferencesGetHandler = preferencesModule.GET;
-  const demandForecastModule = await import(
-    '@/app/api/staff/demand-forecast/route'
-  );
+  const demandForecastModule =
+    await import('@/app/api/staff/demand-forecast/route');
   demandForecastGetHandler = demandForecastModule.GET;
 });
 

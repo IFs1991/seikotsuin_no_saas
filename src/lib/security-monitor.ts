@@ -3,13 +3,9 @@
  * Phase 3A: 異常検知・セキュリティイベント監視機能
  */
 
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 import { logger } from '@/lib/logger';
-import {
-  SessionManager,
-  type UserSession,
-  type DeviceInfo,
-} from './session-manager';
+import { SessionManager, type UserSession } from './session-manager';
 
 // ================================================================
 // 型定義
@@ -17,11 +13,11 @@ import {
 
 export interface SecurityThreat {
   threatType:
-  | 'suspicious_login'
-  | 'multiple_devices'
-  | 'location_anomaly'
-  | 'session_hijack'
-  | 'brute_force';
+    | 'suspicious_login'
+    | 'multiple_devices'
+    | 'location_anomaly'
+    | 'session_hijack'
+    | 'brute_force';
   severity: 'low' | 'medium' | 'high' | 'critical';
   description: string;
   evidence: unknown;
@@ -237,7 +233,7 @@ export class SecurityMonitor {
     clinicId: string,
     limit: number = 50
   ): Promise<SecurityAlert[]> {
-    const supabase = await this.supabase;
+    const supabase = this.supabase;
     const { data: events, error } = await supabase
       .from('security_events')
       .select('*')
@@ -282,7 +278,7 @@ export class SecurityMonitor {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const supabase = await this.supabase;
+    const supabase = this.supabase;
     const { data: events, error } = await supabase
       .from('security_events')
       .select('*')
@@ -360,7 +356,7 @@ export class SecurityMonitor {
     const timeWindow = 15 * 60 * 1000; // 15分
     const maxAttempts = 5;
 
-    const supabase = await this.supabase;
+    const supabase = this.supabase;
     const { count, error } = await supabase
       .from('security_events')
       .select('*', { count: 'exact' })
@@ -403,7 +399,7 @@ export class SecurityMonitor {
     ipAddress: string
   ): Promise<AnomalyDetectionResult> {
     // 過去30日間の正常なログイン場所を取得
-    const supabase = await this.supabase;
+    const supabase = this.supabase;
     const { data: recentSessions, error } = await supabase
       .from('user_sessions')
       .select('ip_address, geolocation')
@@ -454,7 +450,7 @@ export class SecurityMonitor {
     const timeWindow = 30 * 60 * 1000; // 30分
     const startTime = new Date(Date.now() - timeWindow);
 
-    const supabase = await this.supabase;
+    const supabase = this.supabase;
     const { data: recentSessions, error } = await supabase
       .from('user_sessions')
       .select('user_agent, device_info, created_at')
@@ -637,7 +633,7 @@ export class SecurityMonitor {
     source_component: string;
   }): Promise<void> {
     try {
-      const supabase = await this.supabase;
+      const supabase = this.supabase;
       await supabase.from('security_events').insert({
         ...event,
         event_data: event.event_data || {},

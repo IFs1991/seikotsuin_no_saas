@@ -16,7 +16,10 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { ADMIN_UI_ROLES, canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  ADMIN_UI_ROLES,
+  canAccessAdminUIWithCompat,
+} from '@/lib/constants/roles';
 
 // ステータス定義
 const VALID_STATUSES = [

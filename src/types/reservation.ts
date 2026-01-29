@@ -77,7 +77,15 @@ export interface Reservation {
   staffId: string;
   startTime: Date;
   endTime: Date;
-  status: 'tentative' | 'confirmed' | 'arrived' | 'completed' | 'cancelled' | 'no_show' | 'unconfirmed' | 'trial';
+  status:
+    | 'tentative'
+    | 'confirmed'
+    | 'arrived'
+    | 'completed'
+    | 'cancelled'
+    | 'no_show'
+    | 'unconfirmed'
+    | 'trial';
   channel: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
   selectedOptions?: ReservationOptionSelection[];

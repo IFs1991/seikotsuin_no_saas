@@ -274,8 +274,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
           }),
         });
 
-        const result: ApiResponse<{ imported: number }> =
-          await response.json();
+        const result: ApiResponse<{ imported: number }> = await response.json();
 
         if (!result.success) {
           throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
@@ -309,8 +308,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
           }),
         });
 
-        const result: ApiResponse<{ restored: number }> =
-          await response.json();
+        const result: ApiResponse<{ restored: number }> = await response.json();
 
         if (!result.success) {
           throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);

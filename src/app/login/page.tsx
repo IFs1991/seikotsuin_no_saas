@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { clinicLogin } from './actions';
-import { loginSchema } from '@/lib/schemas/auth';
-import type { AuthResponse } from '@/lib/schemas/auth';
+import { loginSchema, type AuthResponse } from '@/lib/schemas/auth';
 
 /**
  * @file page.tsx
@@ -70,11 +69,15 @@ export default function ClinicLoginPage() {
       const normalizedErrors = Object.fromEntries(
         Object.entries(loginState.errors).map(([key, value]) => [
           key,
-          Array.isArray(value) ? value[0] ?? '' : value ?? '',
+          Array.isArray(value) ? (value[0] ?? '') : (value ?? ''),
         ])
       );
       setClientErrors(normalizedErrors);
-    } else if (loginState.success && 'message' in loginState && loginState.message) {
+    } else if (
+      loginState.success &&
+      'message' in loginState &&
+      loginState.message
+    ) {
       setClientErrors({ _success: loginState.message });
     }
   }, [loginState]);
@@ -114,7 +117,9 @@ export default function ClinicLoginPage() {
                   try {
                     loginSchema.shape.email.parse(e.target.value);
                     setClientErrors(prev => ({ ...prev, email: '' }));
-                  } catch {}
+                  } catch {
+                    // Zod validation error intentionally ignored
+                  }
                 }
               }}
               placeholder='staff@clinic.com'
@@ -142,7 +147,9 @@ export default function ClinicLoginPage() {
                     try {
                       loginSchema.shape.password.parse(e.target.value);
                       setClientErrors(prev => ({ ...prev, password: '' }));
-                    } catch {}
+                    } catch {
+                      // Zod validation error intentionally ignored
+                    }
                   }
                 }}
                 placeholder='パスワードを入力'
@@ -154,7 +161,9 @@ export default function ClinicLoginPage() {
                 type='button'
                 onClick={() => setShowPassword(!showPassword)}
                 className='absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600'
-                aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+                aria-label={
+                  showPassword ? 'パスワードを隠す' : 'パスワードを表示'
+                }
               >
                 {showPassword ? '🙈' : '👁️'}
               </button>

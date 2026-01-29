@@ -305,7 +305,7 @@ describe('useChat Hook (API Integration)', () => {
 
       let resolvePromise: (value: any) => void;
       mockSendMessage.mockReturnValue(
-        new Promise((resolve) => {
+        new Promise(resolve => {
           resolvePromise = resolve;
         })
       );
@@ -329,7 +329,11 @@ describe('useChat Hook (API Integration)', () => {
           success: true,
           data: {
             session_id: 'session-1',
-            user_message: { id: 'msg-1', sender: 'user', message_text: 'テスト' },
+            user_message: {
+              id: 'msg-1',
+              sender: 'user',
+              message_text: 'テスト',
+            },
             ai_message: { id: 'msg-2', sender: 'ai', message_text: '応答' },
           },
         });

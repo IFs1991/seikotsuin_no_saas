@@ -37,9 +37,7 @@ export function ReservationForm({
   >(initialCustomerId);
   const [selectedMenuId, setSelectedMenuId] = useState<string | undefined>();
   const [selectedStaffId, setSelectedStaffId] = useState<string | undefined>();
-  const [date, setDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<
@@ -60,8 +58,7 @@ export function ReservationForm({
     [resources, selectedStaffId]
   );
 
-  const availableOptions =
-    selectedMenu?.options?.filter(o => o.isActive) ?? [];
+  const availableOptions = selectedMenu?.options?.filter(o => o.isActive) ?? [];
 
   const handleToggleOption = (option: any) => {
     setSelectedOptions(prev => {
@@ -171,7 +168,8 @@ export function ReservationForm({
                   .filter(m => m.isActive)
                   .map(m => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.name}（{m.durationMinutes}分 / {m.price.toLocaleString()}円）
+                      {m.name}（{m.durationMinutes}分 /{' '}
+                      {m.price.toLocaleString()}円）
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -226,9 +224,7 @@ export function ReservationForm({
             <Label>オプション</Label>
             <div className='flex flex-wrap gap-2 mt-2'>
               {availableOptions.map(opt => {
-                const active = selectedOptions.some(
-                  o => o.optionId === opt.id
-                );
+                const active = selectedOptions.some(o => o.optionId === opt.id);
                 return (
                   <Button
                     key={opt.id}

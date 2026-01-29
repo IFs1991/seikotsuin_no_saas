@@ -6,19 +6,19 @@ import { RevenueChartPoint } from '@/types/api';
 // Rechartsモック
 jest.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div className="recharts-responsive-container">{children}</div>
+    <div className='recharts-responsive-container'>{children}</div>
   ),
   LineChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="line-chart">{children}</div>
+    <div data-testid='line-chart'>{children}</div>
   ),
   Line: ({ dataKey }: { dataKey: string }) => (
-    <div className="recharts-line" data-testid={`line-${dataKey}`} />
+    <div className='recharts-line' data-testid={`line-${dataKey}`} />
   ),
-  XAxis: () => <div data-testid="x-axis" />,
-  YAxis: () => <div data-testid="y-axis" />,
-  CartesianGrid: () => <div data-testid="grid" />,
-  Tooltip: () => <div data-testid="tooltip" />,
-  Legend: () => <div data-testid="legend" />,
+  XAxis: () => <div data-testid='x-axis' />,
+  YAxis: () => <div data-testid='y-axis' />,
+  CartesianGrid: () => <div data-testid='grid' />,
+  Tooltip: () => <div data-testid='tooltip' />,
+  Legend: () => <div data-testid='legend' />,
 }));
 
 describe('RevenueChart', () => {
@@ -30,14 +30,14 @@ describe('RevenueChart', () => {
 
   it('should render chart when data is provided', () => {
     render(<RevenueChart data={mockData} />);
-    
+
     expect(screen.getByTestId('line-chart')).toBeInTheDocument();
     expect(screen.getByText('収益トレンド')).toBeInTheDocument();
   });
 
   it('should render 3 lines for 総売上, 保険診療, 自費診療', () => {
     render(<RevenueChart data={mockData} />);
-    
+
     expect(screen.getByTestId('line-総売上')).toBeInTheDocument();
     expect(screen.getByTestId('line-保険診療')).toBeInTheDocument();
     expect(screen.getByTestId('line-自費診療')).toBeInTheDocument();
@@ -45,20 +45,20 @@ describe('RevenueChart', () => {
 
   it('should show empty state when data is empty', () => {
     render(<RevenueChart data={[]} />);
-    
+
     expect(screen.getByText('データがありません')).toBeInTheDocument();
     expect(screen.queryByTestId('line-chart')).not.toBeInTheDocument();
   });
 
   it('should show empty state when data is undefined', () => {
     render(<RevenueChart data={undefined} />);
-    
+
     expect(screen.getByText('データがありません')).toBeInTheDocument();
   });
 
   it('should not contain mock placeholder text', () => {
     render(<RevenueChart data={mockData} />);
-    
+
     expect(screen.queryByText('Chart Placeholder')).not.toBeInTheDocument();
     expect(screen.queryByText(/Insurance Data:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Self-Pay Data:/)).not.toBeInTheDocument();

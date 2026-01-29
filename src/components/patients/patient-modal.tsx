@@ -125,7 +125,10 @@ export function PatientModal({
       }
       return { value: parsed as Record<string, unknown> };
     } catch {
-      return { error: 'JSON\u5f62\u5f0f\u304c\u6b63\u3057\u304f\u3042\u308a\u307e\u305b\u3093' };
+      return {
+        error:
+          'JSON\u5f62\u5f0f\u304c\u6b63\u3057\u304f\u3042\u308a\u307e\u305b\u3093',
+      };
     }
   };
 

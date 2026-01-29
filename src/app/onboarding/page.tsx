@@ -35,10 +35,10 @@ export default function OnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto' />
+          <p className='mt-4 text-gray-600'>読み込み中...</p>
         </div>
       </div>
     );
@@ -46,11 +46,13 @@ export default function OnboardingPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg max-w-md">
-            <h2 className="text-lg font-medium text-red-800 mb-2">エラーが発生しました</h2>
-            <p className="text-sm text-red-600">{error}</p>
+      <div className='min-h-screen flex items-center justify-center bg-gray-50'>
+        <div className='text-center'>
+          <div className='p-4 bg-red-50 border border-red-200 rounded-lg max-w-md'>
+            <h2 className='text-lg font-medium text-red-800 mb-2'>
+              エラーが発生しました
+            </h2>
+            <p className='text-sm text-red-600'>{error}</p>
           </div>
         </div>
       </div>
@@ -77,29 +79,27 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className='min-h-screen bg-gray-50 py-8 px-4'>
+      <div className='max-w-4xl mx-auto'>
         {/* ヘッダー */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className='text-center mb-8'>
+          <h1 className='text-2xl font-bold text-gray-900'>
             クリニックセットアップ
           </h1>
-          <p className="mt-2 text-gray-600">
+          <p className='mt-2 text-gray-600'>
             初期設定を完了して、システムを使い始めましょう
           </p>
         </div>
 
         {/* 進捗インジケータ */}
         {currentStep !== 'completed' && (
-          <div className="mb-8">
+          <div className='mb-8'>
             <OnboardingProgress currentStep={currentStep} />
           </div>
         )}
 
         {/* ステップコンテンツ */}
-        <div className="mb-8">
-          {renderStep()}
-        </div>
+        <div className='mb-8'>{renderStep()}</div>
       </div>
     </div>
   );

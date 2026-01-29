@@ -180,10 +180,13 @@ export type SignupFormDataInput = z.infer<typeof signupFormDataSchema>;
  * 入力値サニタイゼーション関数
  */
 export function sanitizeAuthInput(input: string): string {
-  return input
-    .trim()
-    .replace(/[\x00-\x1F\x7F]/g, '') // 制御文字を除去
-    .substring(0, 1000); // 最大1000文字に制限
+  return (
+    input
+      .trim()
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1F\x7F]/g, '') // 制御文字を除去
+      .substring(0, 1000)
+  ); // 最大1000文字に制限
 }
 
 /**

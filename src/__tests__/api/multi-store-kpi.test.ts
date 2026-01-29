@@ -27,8 +27,9 @@ function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
     order: jest.fn().mockReturnThis(),
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    then: jest.fn((resolve: (value: { data: unknown; error: unknown }) => void) =>
-      resolve({ data: finalData, error: finalError })
+    then: jest.fn(
+      (resolve: (value: { data: unknown; error: unknown }) => void) =>
+        resolve({ data: finalData, error: finalError })
     ),
   };
   // Promise-like behavior
@@ -83,8 +84,16 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
   ];
 
   const mockStaffPerformanceData = [
-    { clinic_id: 'clinic-1', total_revenue_generated: 500000, total_visits: 150 },
-    { clinic_id: 'clinic-2', total_revenue_generated: 300000, total_visits: 100 },
+    {
+      clinic_id: 'clinic-1',
+      total_revenue_generated: 500000,
+      total_visits: 150,
+    },
+    {
+      clinic_id: 'clinic-2',
+      total_revenue_generated: 300000,
+      total_visits: 100,
+    },
   ];
 
   beforeEach(() => {
@@ -106,7 +115,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('admin以外のロールでは403を返す', async () => {
-      supabaseFromMock.mockImplementation(() => createQueryBuilder(mockClinicData));
+      supabaseFromMock.mockImplementation(() =>
+        createQueryBuilder(mockClinicData)
+      );
       ensureClinicAccessMock.mockResolvedValue({
         supabase: { from: supabaseFromMock },
         user: mockUser,
@@ -123,7 +134,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('adminロールでアクセス可能', async () => {
-      supabaseFromMock.mockImplementation(() => createQueryBuilder(mockClinicData));
+      supabaseFromMock.mockImplementation(() =>
+        createQueryBuilder(mockClinicData)
+      );
       ensureClinicAccessMock.mockResolvedValue({
         supabase: { from: supabaseFromMock },
         user: mockUser,
@@ -164,7 +177,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
         return createQueryBuilder([]);
       });
 
-      const request = new NextRequest('http://localhost/api/admin/tenants?include_kpi=true');
+      const request = new NextRequest(
+        'http://localhost/api/admin/tenants?include_kpi=true'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(200);
@@ -173,7 +188,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
       expect(payload.data.items).toBeDefined();
 
       // KPIデータが含まれていることを確認
-      const clinic1 = payload.data.items.find((c: { id: string }) => c.id === 'clinic-1');
+      const clinic1 = payload.data.items.find(
+        (c: { id: string }) => c.id === 'clinic-1'
+      );
       expect(clinic1).toBeDefined();
       expect(clinic1.kpi).toBeDefined();
       expect(clinic1.kpi.revenue).toBe(500000);
@@ -211,13 +228,17 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
         return createQueryBuilder([]);
       });
 
-      const request = new NextRequest('http://localhost/api/admin/tenants?include_kpi=true');
+      const request = new NextRequest(
+        'http://localhost/api/admin/tenants?include_kpi=true'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const payload = await response.json();
 
-      const clinic3 = payload.data.items.find((c: { id: string }) => c.id === 'clinic-3');
+      const clinic3 = payload.data.items.find(
+        (c: { id: string }) => c.id === 'clinic-3'
+      );
       expect(clinic3).toBeDefined();
       expect(clinic3.kpi.revenue).toBe(0);
       expect(clinic3.kpi.patients).toBe(0);
@@ -226,7 +247,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
   describe('既存機能との互換性', () => {
     beforeEach(() => {
-      supabaseFromMock.mockImplementation(() => createQueryBuilder(mockClinicData));
+      supabaseFromMock.mockImplementation(() =>
+        createQueryBuilder(mockClinicData)
+      );
       ensureClinicAccessMock.mockResolvedValue({
         supabase: { from: supabaseFromMock },
         user: mockUser,
@@ -246,9 +269,13 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('検索フィルタは引き続き動作する', async () => {
-      supabaseFromMock.mockImplementation(() => createQueryBuilder([mockClinicData[0]]));
+      supabaseFromMock.mockImplementation(() =>
+        createQueryBuilder([mockClinicData[0]])
+      );
 
-      const request = new NextRequest('http://localhost/api/admin/tenants?search=テスト');
+      const request = new NextRequest(
+        'http://localhost/api/admin/tenants?search=テスト'
+      );
       const response = await GET(request);
 
       expect(response.status).toBe(200);

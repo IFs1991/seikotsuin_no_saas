@@ -1,5 +1,6 @@
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
+import unusedImports from 'eslint-plugin-unused-imports';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -58,12 +59,19 @@ const eslintConfig = [
       '@next/next/no-html-link-for-pages': 'error',
 
       // アクセシビリティルール（医療系システムのため重要）
+      // ARIA関連は error（必須）
       'jsx-a11y/alt-text': 'error',
       'jsx-a11y/aria-props': 'error',
       'jsx-a11y/aria-proptypes': 'error',
       'jsx-a11y/aria-unsupported-elements': 'error',
       'jsx-a11y/role-has-required-aria-props': 'error',
       'jsx-a11y/role-supports-aria-props': 'error',
+      // フォーム/インタラクション関連は warn（段階的改善対象）
+      'jsx-a11y/label-has-associated-control': 'warn',
+      'jsx-a11y/no-static-element-interactions': 'warn',
+      'jsx-a11y/click-events-have-key-events': 'warn',
+      'jsx-a11y/heading-has-content': 'warn',
+      'jsx-a11y/aria-role': 'warn',
 
       // セキュリティ関連（医療系システムのため厳格に）
       'no-eval': 'error',
@@ -112,6 +120,31 @@ const eslintConfig = [
     },
   }),
 
+  // unused-imports プラグイン設定（未使用importを--fixで自動削除）
+  {
+    plugins: {
+      'unused-imports': unusedImports,
+    },
+    rules: {
+      // 未使用 import を --fix で自動削除
+      'unused-imports/no-unused-imports': 'error',
+
+      // 未使用変数は警告、_ prefix は許可
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+        },
+      ],
+
+      // 二重報告防止（typescript-eslint側をoff）
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+
   // ファイル固有の設定
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -135,10 +168,15 @@ const eslintConfig = [
       '@typescript-eslint/no-require-imports': 'off',
       'no-script-url': 'off',
       '@typescript-eslint/ban-ts-comment': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
+      // unused-imports に寄せているため off
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-vars': 'off',
+      // テストでは any 許容（テストの速度/記述自由度を優先）
+      '@typescript-eslint/no-explicit-any': 'off',
+      // テストで誤爆しやすい a11y を緩める
+      'jsx-a11y/label-has-associated-control': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/click-events-have-key-events': 'off',
     },
   },
 
@@ -170,6 +208,19 @@ const eslintConfig = [
     files: ['jest.setup.js'],
     rules: {
       'no-console': 'off',
+    },
+  },
+  // Legacy コード向けの緩和（段階的改善対象）
+  {
+    files: ['src/legacy/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-console': 'off',
+      '@next/next/no-img-element': 'off',
+      'jsx-a11y/label-has-associated-control': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/click-events-have-key-events': 'off',
+      'no-case-declarations': 'off',
     },
   },
 

@@ -41,9 +41,7 @@ describe('ShiftOptimizer コンポーネント', () => {
     test('シフト取得APIが空配列を返す時、UIが空状態を表示する', async () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/api/staff/shifts')) {
-          return Promise.resolve(
-            createMockResponse({ shifts: [], total: 0 })
-          );
+          return Promise.resolve(createMockResponse({ shifts: [], total: 0 }));
         }
         if (url.includes('/api/staff/preferences')) {
           return Promise.resolve(
@@ -188,7 +186,9 @@ describe('ShiftOptimizer コンポーネント', () => {
       await waitFor(
         () => {
           DUMMY_DATES.forEach(date => {
-            expect(screen.queryByText(new RegExp(date))).not.toBeInTheDocument();
+            expect(
+              screen.queryByText(new RegExp(date))
+            ).not.toBeInTheDocument();
           });
         },
         { timeout: 5000 }
@@ -275,7 +275,7 @@ describe('ShiftOptimizer コンポーネント', () => {
       );
     });
 
-  test('APIから取得した需要予測が正しく表示される', async () => {
+    test('APIから取得した需要予測が正しく表示される', async () => {
       // 今日の日付を使用（JST基準）
       const today = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Tokyo',
@@ -290,7 +290,10 @@ describe('ShiftOptimizer コンポーネント', () => {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('/api/staff/demand-forecast')) {
           return Promise.resolve(
-            createMockResponse({ forecasts: mockForecasts, hourlyDistribution: [] })
+            createMockResponse({
+              forecasts: mockForecasts,
+              hourlyDistribution: [],
+            })
           );
         }
         if (url.includes('/api/staff/shifts')) {

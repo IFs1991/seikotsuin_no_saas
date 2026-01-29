@@ -12,7 +12,10 @@ import { BlockService } from '@/lib/services/block-service';
 import type { Block, CreateBlockData } from '@/types/reservation';
 
 // 通知関数
-const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+const showNotification = (
+  message: string,
+  type: 'success' | 'error' = 'success'
+) => {
   console.log(`[${type.toUpperCase()}] ${message}`);
   if (type === 'error') {
     alert(message);
@@ -117,7 +120,10 @@ export default function BlockManagementPage() {
       endOfMonth.setDate(0);
       endOfMonth.setHours(23, 59, 59, 999);
 
-      const fetchedBlocks = await blockService.getBlocksByDateRange(startOfMonth, endOfMonth);
+      const fetchedBlocks = await blockService.getBlocksByDateRange(
+        startOfMonth,
+        endOfMonth
+      );
       setBlocks(fetchedBlocks);
     } catch (error) {
       console.error('Block fetch error:', error);
@@ -141,18 +147,20 @@ export default function BlockManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className='min-h-screen bg-gray-50 p-4'>
+      <div className='max-w-6xl mx-auto'>
         {/* ヘッダー */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className='mb-6 flex items-center justify-between'>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">販売停止設定 (F008)</h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <h1 className='text-2xl font-bold text-gray-800'>
+              販売停止設定 (F008)
+            </h1>
+            <p className='text-sm text-gray-600 mt-1'>
               スタッフや施術室の利用不可時間を設定します
             </p>
           </div>
           <Button
-            className="bg-blue-600 hover:bg-blue-700"
+            className='bg-blue-600 hover:bg-blue-700'
             onClick={() => setShowCreateForm(!showCreateForm)}
           >
             {showCreateForm ? '閉じる' : '+ 新規作成'}
@@ -161,14 +169,14 @@ export default function BlockManagementPage() {
 
         {/* Block作成フォーム */}
         {showCreateForm && (
-          <Card className="mb-6">
+          <Card className='mb-6'>
             <CardHeader>
               <CardTitle>販売停止設定</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className='space-y-4'>
               <div>
                 <Label>対象リソース</Label>
-                <div className="grid grid-cols-4 gap-2 mt-2">
+                <div className='grid grid-cols-4 gap-2 mt-2'>
                   {sampleResources.map(resource => (
                     <div
                       key={resource.id}
@@ -180,8 +188,8 @@ export default function BlockManagementPage() {
                       )}
                       onClick={() => setSelectedResource(resource.id)}
                     >
-                      <div className="font-medium">{resource.name}</div>
-                      <Badge variant="outline" className="mt-1 text-xs">
+                      <div className='font-medium'>{resource.name}</div>
+                      <Badge variant='outline' className='mt-1 text-xs'>
                         {resource.type === 'staff' ? 'スタッフ' : '施術室'}
                       </Badge>
                     </div>
@@ -189,95 +197,95 @@ export default function BlockManagementPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <Label htmlFor="start-date">開始日時</Label>
-                  <div className="flex gap-2 mt-2">
+                  <Label htmlFor='start-date'>開始日時</Label>
+                  <div className='flex gap-2 mt-2'>
                     <Input
-                      id="start-date"
-                      type="date"
+                      id='start-date'
+                      type='date'
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={e => setStartDate(e.target.value)}
                     />
                     <Input
-                      type="time"
+                      type='time'
                       value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
+                      onChange={e => setStartTime(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="end-date">終了日時</Label>
-                  <div className="flex gap-2 mt-2">
+                  <Label htmlFor='end-date'>終了日時</Label>
+                  <div className='flex gap-2 mt-2'>
                     <Input
-                      id="end-date"
-                      type="date"
+                      id='end-date'
+                      type='date'
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                      onChange={e => setEndDate(e.target.value)}
                     />
                     <Input
-                      type="time"
+                      type='time'
                       value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
+                      onChange={e => setEndTime(e.target.value)}
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
+              <div className='flex items-center space-x-4'>
+                <div className='flex items-center space-x-2'>
                   <input
-                    type="checkbox"
-                    id="recurring"
+                    type='checkbox'
+                    id='recurring'
                     checked={isRecurring}
-                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    onChange={e => setIsRecurring(e.target.checked)}
                   />
-                  <label htmlFor="recurring" className="text-sm font-medium">
+                  <label htmlFor='recurring' className='text-sm font-medium'>
                     繰り返し設定（毎週）
                   </label>
                 </div>
 
                 {isRecurring && (
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="count" className="text-sm">
+                  <div className='flex items-center space-x-2'>
+                    <Label htmlFor='count' className='text-sm'>
                       繰り返し回数:
                     </Label>
                     <Input
-                      id="count"
-                      type="number"
-                      min="2"
-                      max="52"
+                      id='count'
+                      type='number'
+                      min='2'
+                      max='52'
                       value={recurringCount}
-                      onChange={(e) => setRecurringCount(Number(e.target.value))}
-                      className="w-20"
+                      onChange={e => setRecurringCount(Number(e.target.value))}
+                      className='w-20'
                     />
-                    <span className="text-sm text-gray-600">週</span>
+                    <span className='text-sm text-gray-600'>週</span>
                   </div>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="reason">理由（任意）</Label>
+                <Label htmlFor='reason'>理由（任意）</Label>
                 <Textarea
-                  id="reason"
-                  placeholder="休暇、研修、設備メンテナンスなど"
+                  id='reason'
+                  placeholder='休暇、研修、設備メンテナンスなど'
                   value={reason}
-                  onChange={(e) => setReason(e.target.value)}
+                  onChange={e => setReason(e.target.value)}
                   rows={3}
                 />
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div className='flex justify-end space-x-2'>
                 <Button
-                  variant="outline"
+                  variant='outline'
                   onClick={() => setShowCreateForm(false)}
                   disabled={isSubmitting}
                 >
                   キャンセル
                 </Button>
                 <Button
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className='bg-blue-600 hover:bg-blue-700'
                   onClick={handleCreateBlock}
                   disabled={isSubmitting || !selectedResource}
                 >
@@ -291,63 +299,71 @@ export default function BlockManagementPage() {
         {/* Block一覧 */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className='flex items-center justify-between'>
               <CardTitle>設定済み販売停止</CardTitle>
-              <Button variant="outline" size="sm" onClick={refreshBlocks}>
+              <Button variant='outline' size='sm' onClick={refreshBlocks}>
                 更新
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {blocks.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className='text-center py-12 text-gray-500'>
                 <p>販売停止設定がありません</p>
-                <p className="text-sm mt-1">「+ 新規作成」ボタンから設定を追加してください</p>
+                <p className='text-sm mt-1'>
+                  「+ 新規作成」ボタンから設定を追加してください
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className='space-y-3'>
                 {blocks.map(block => {
-                  const resource = sampleResources.find(r => r.id === block.resourceId);
+                  const resource = sampleResources.find(
+                    r => r.id === block.resourceId
+                  );
                   return (
                     <div
                       key={block.id}
-                      className="p-4 border rounded-lg hover:bg-gray-50 transition"
+                      className='p-4 border rounded-lg hover:bg-gray-50 transition'
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Badge variant="secondary">{resource?.name || '不明'}</Badge>
+                      <div className='flex items-start justify-between'>
+                        <div className='flex-1'>
+                          <div className='flex items-center space-x-2 mb-2'>
+                            <Badge variant='secondary'>
+                              {resource?.name || '不明'}
+                            </Badge>
                             {block.recurrenceRule && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant='outline' className='text-xs'>
                                 繰り返し
                               </Badge>
                             )}
                           </div>
-                          <div className="text-sm space-y-1">
+                          <div className='text-sm space-y-1'>
                             <div>
-                              <span className="font-medium">期間: </span>
-                              {new Date(block.startTime).toLocaleString('ja-JP')}
+                              <span className='font-medium'>期間: </span>
+                              {new Date(block.startTime).toLocaleString(
+                                'ja-JP'
+                              )}
                               {' 〜 '}
                               {new Date(block.endTime).toLocaleString('ja-JP')}
                             </div>
                             {block.reason && (
                               <div>
-                                <span className="font-medium">理由: </span>
+                                <span className='font-medium'>理由: </span>
                                 {block.reason}
                               </div>
                             )}
                             {block.recurrenceRule && (
-                              <div className="text-xs text-gray-500">
-                                <span className="font-medium">繰り返し: </span>
+                              <div className='text-xs text-gray-500'>
+                                <span className='font-medium'>繰り返し: </span>
                                 {block.recurrenceRule}
                               </div>
                             )}
                           </div>
                         </div>
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50"
+                          variant='outline'
+                          size='sm'
+                          className='text-red-600 hover:bg-red-50'
                           onClick={() => handleDeleteBlock(block.id)}
                         >
                           削除

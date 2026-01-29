@@ -141,7 +141,10 @@ function buildAllowedOrigins(requestOrigin: string): Set<string> {
     try {
       allowed.add(new URL(appUrl).origin);
     } catch (error) {
-      logger.warn('Invalid NEXT_PUBLIC_APP_URL ignored for origin checks', error);
+      logger.warn(
+        'Invalid NEXT_PUBLIC_APP_URL ignored for origin checks',
+        error
+      );
     }
   }
 
@@ -303,7 +306,8 @@ export async function processApiRequest(
 
     // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const normalizedRoleForAuth = normalizeRole(permissions.role) ?? permissions.role;
+    const normalizedRoleForAuth =
+      normalizeRole(permissions.role) ?? permissions.role;
 
     return {
       success: true,

@@ -10,7 +10,13 @@ import { AppointmentDetail } from './components/AppointmentDetail';
 import { AppointmentForm } from './components/AppointmentForm';
 import { UnconfirmedReservationsModal } from './components/UnconfirmedReservationsModal';
 import { NotificationsModal } from './components/NotificationsModal';
-import { Appointment, AppointmentUpdateResult, Notification, SchedulerResource, ViewMode } from './types';
+import {
+  Appointment,
+  AppointmentUpdateResult,
+  Notification,
+  SchedulerResource,
+  ViewMode,
+} from './types';
 import { buildTimeSlots } from './constants';
 import { useAppointments } from './hooks/useAppointments';
 import { useReservationFormData } from '@/hooks/useReservationFormData';
@@ -30,7 +36,10 @@ export default function ReservationsPage() {
     error: masterError,
   } = useReservationFormData(clinicId);
 
-  const menus = useMemo(() => (rawMenus ?? []).filter(menu => menu.isActive), [rawMenus]);
+  const menus = useMemo(
+    () => (rawMenus ?? []).filter(menu => menu.isActive),
+    [rawMenus]
+  );
 
   const resources = useMemo<SchedulerResource[]>(
     () =>
@@ -47,7 +56,15 @@ export default function ReservationsPage() {
   );
 
   const options = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; priceDelta: number; durationDeltaMinutes: number }>();
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        priceDelta: number;
+        durationDeltaMinutes: number;
+      }
+    >();
     for (const menu of menus) {
       for (const option of (menu.options ?? []).filter(item => item.isActive)) {
         if (!map.has(option.id)) {
@@ -61,14 +78,20 @@ export default function ReservationsPage() {
       }
     }
     return [
-      { id: 'none', name: '\u306a\u3057', priceDelta: 0, durationDeltaMinutes: 0 },
+      {
+        id: 'none',
+        name: '\u306a\u3057',
+        priceDelta: 0,
+        durationDeltaMinutes: 0,
+      },
       ...Array.from(map.values()),
     ];
   }, [menus]);
 
   const [currentView, setCurrentView] = useState<ViewMode>('timeline');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<Appointment | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [showPendingModal, setShowPendingModal] = useState(false);
@@ -99,7 +122,11 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
-    if (viewParam === 'list' || viewParam === 'register' || viewParam === 'timeline') {
+    if (
+      viewParam === 'list' ||
+      viewParam === 'register' ||
+      viewParam === 'timeline'
+    ) {
       setCurrentView(viewParam as ViewMode);
     }
   }, [searchParams]);
@@ -110,7 +137,11 @@ export default function ReservationsPage() {
     }
   }, [clinicId, currentDate, loadAppointments]);
 
-  const handleTimeSlotClick = (resourceId: string, hour: number, minute: number) => {
+  const handleTimeSlotClick = (
+    resourceId: string,
+    hour: number,
+    minute: number
+  ) => {
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const day = String(currentDate.getDate()).padStart(2, '0');
@@ -160,7 +191,12 @@ export default function ReservationsPage() {
     newStartMinute: number
   ): Promise<AppointmentUpdateResult> => {
     setUpdateError(null);
-    const result = await moveAppointment(id, newResourceId, newStartHour, newStartMinute);
+    const result = await moveAppointment(
+      id,
+      newResourceId,
+      newStartHour,
+      newStartMinute
+    );
     if (!result.ok) {
       setUpdateError(result.error ?? 'Failed to move reservation.');
     }
@@ -179,7 +215,11 @@ export default function ReservationsPage() {
 
   const renderContent = () => {
     if (error) {
-      return <div className="flex justify-center items-center h-full text-red-500">Error: {error}</div>;
+      return (
+        <div className='flex justify-center items-center h-full text-red-500'>
+          Error: {error}
+        </div>
+      );
     }
 
     switch (currentView) {
@@ -223,24 +263,24 @@ export default function ReservationsPage() {
   };
 
   if (profileLoading) {
-    return <div className="p-6">Loading profile...</div>;
+    return <div className='p-6'>Loading profile...</div>;
   }
 
   if (!clinicId) {
-    return <div className="p-6">Clinic is not assigned.</div>;
+    return <div className='p-6'>Clinic is not assigned.</div>;
   }
 
   if (masterError) {
-    return <div className="p-6 text-red-600">{masterError}</div>;
+    return <div className='p-6 text-red-600'>{masterError}</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className='min-h-screen bg-gray-100 flex flex-col'>
       <Header
         onOpenReservations={() => setShowPendingModal(true)}
         onOpenNotifications={() => setShowNotificationsModal(true)}
       />
-      <div className="flex-grow flex flex-col h-[calc(100vh-64px)]">
+      <div className='flex-grow flex flex-col h-[calc(100vh-64px)]'>
         <ControlBar
           currentView={currentView}
           onViewChange={handleViewChange}
@@ -248,18 +288,18 @@ export default function ReservationsPage() {
           onDateChange={setCurrentDate}
           onRefresh={() => loadAppointments(currentDate)}
         />
-        <main className="flex-grow overflow-hidden bg-gray-100 relative">
+        <main className='flex-grow overflow-hidden bg-gray-100 relative'>
           {updateError && (
-            <div className="mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className='mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
               {updateError}
             </div>
           )}
           {renderContent()}
 
           {(loading || masterLoading) && (
-            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center animate-in fade-in duration-200">
-              <div className="bg-white p-4 rounded-full shadow-lg">
-                <Loader2 className="w-8 h-8 text-sky-600 animate-spin" />
+            <div className='absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center animate-in fade-in duration-200'>
+              <div className='bg-white p-4 rounded-full shadow-lg'>
+                <Loader2 className='w-8 h-8 text-sky-600 animate-spin' />
               </div>
             </div>
           )}

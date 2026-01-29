@@ -10,7 +10,10 @@ import {
   type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
-import { canAccessCrossClinicWithCompat, normalizeRole } from '@/lib/constants/roles';
+import {
+  canAccessCrossClinicWithCompat,
+  normalizeRole,
+} from '@/lib/constants/roles';
 
 export interface ClinicAccessOptions {
   /**

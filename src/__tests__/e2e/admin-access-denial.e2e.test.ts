@@ -98,7 +98,7 @@ describeOrSkip('E2E-2: non-admin の /admin アクセス拒否', () => {
         // therapistの権限は自分のstaff_idのみ
         if (therapistPermissions.length > 0) {
           const uniqueStaffIds = new Set(
-            therapistPermissions.map((p) => p.staff_id)
+            therapistPermissions.map(p => p.staff_id)
           );
           expect(uniqueStaffIds.size).toBe(1);
           expect(uniqueStaffIds.has(therapistResult.userId)).toBe(true);

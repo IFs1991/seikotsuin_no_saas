@@ -47,17 +47,17 @@ export async function GET(request: NextRequest) {
         );
       }
 
-        return NextResponse.json({
-          success: true,
-          data: {
-            id: report.id,
-            reportDate: report.report_date,
-            staffName: (report.staff as any)?.name || '未設定',
-            totalPatients: report.total_patients,
-            newPatients: report.new_patients,
-            totalRevenue: parseFloat(report.total_revenue || '0'),
-            insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
-            privateRevenue: parseFloat(report.private_revenue || '0'),
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: report.id,
+          reportDate: report.report_date,
+          staffName: (report.staff as any)?.name || '未設定',
+          totalPatients: report.total_patients,
+          newPatients: report.new_patients,
+          totalRevenue: parseFloat(report.total_revenue || '0'),
+          insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
+          privateRevenue: parseFloat(report.private_revenue || '0'),
           reportText: report.report_text,
           createdAt: report.created_at,
         },
@@ -317,10 +317,15 @@ export async function DELETE(request: NextRequest) {
     }
 
     // DOD-09: テナント境界の強制 - permissions.clinic_id を取得
-    const { supabase, permissions } = await ensureClinicAccess(request, PATH, null, {
-      allowedRoles: ['manager'],
-      requireClinicMatch: false,
-    });
+    const { supabase, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      null,
+      {
+        allowedRoles: ['manager'],
+        requireClinicMatch: false,
+      }
+    );
 
     const clinicId = permissions.clinic_id;
     if (!clinicId) {
@@ -338,10 +343,7 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (fetchError || !report) {
-      return NextResponse.json(
-        { error: 'Report not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
     // テナント境界チェック

@@ -7,7 +7,9 @@ import {
 } from '../e2e/helpers/test-auth';
 
 const isTestEnvironmentReady = validateTestEnvironment();
-const describeOrSkip = isTestEnvironmentReady ? test.describe : test.describe.skip;
+const describeOrSkip = isTestEnvironmentReady
+  ? test.describe
+  : test.describe.skip;
 
 /**
  * Cross-Clinic Isolation Tests
@@ -389,7 +391,9 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
       sessions.forEach(session => {
         // Session must belong to user OR be in their clinic (for admins)
         const isOwnSession = session.user_id === clinicAResult.userId;
-        const isInClinic = session.clinic_id === null || session.clinic_id === clinicAPermission?.clinic_id;
+        const isInClinic =
+          session.clinic_id === null ||
+          session.clinic_id === clinicAPermission?.clinic_id;
         expect(isOwnSession || isInClinic).toBe(true);
       });
     }
@@ -436,7 +440,9 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     }
 
     // Get admin's JWT claims to check for clinic_scope_ids
-    const { data: { session } } = await adminResult.client.auth.getSession();
+    const {
+      data: { session },
+    } = await adminResult.client.auth.getSession();
 
     // Try to parse clinic_scope_ids from JWT
     let clinicScopeIds: string[] | undefined;
@@ -456,7 +462,7 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     expect(
       clinicScopeIds && clinicScopeIds.length > 0,
       'clinic_scope_ids must be set in JWT for parent-scope model tests. ' +
-      'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
+        'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
     ).toBe(true);
 
     // Type guard: after expect assertion, clinicScopeIds is guaranteed to be non-null
@@ -554,7 +560,9 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     }
 
     // Get admin's clinic scope from JWT
-    const { data: { session } } = await adminResult.client.auth.getSession();
+    const {
+      data: { session },
+    } = await adminResult.client.auth.getSession();
 
     let clinicScopeIds: string[] | undefined;
     try {
@@ -573,7 +581,7 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     expect(
       clinicScopeIds && clinicScopeIds.length > 0,
       'clinic_scope_ids must be set in JWT for admin parent-scope limitation test. ' +
-      'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
+        'Ensure custom_access_token_hook is configured and clinics.parent_id is populated.'
     ).toBe(true);
 
     // Get all accessible reservations - admin should be scoped

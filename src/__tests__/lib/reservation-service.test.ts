@@ -6,8 +6,17 @@
  */
 
 import { ReservationService } from '@/lib/services/reservation-service';
-import type { Reservation, Customer, Menu, Resource, TimeSlot } from '@/types/reservation';
-import { createSupabaseMock, type SupabaseMock } from '../../../test-utils/supabaseMock';
+import type {
+  Reservation,
+  Customer,
+  Menu,
+  Resource,
+  TimeSlot,
+} from '@/types/reservation';
+import {
+  createSupabaseMock,
+  type SupabaseMock,
+} from '../../../test-utils/supabaseMock';
 
 const TEST_CLINIC_ID = 'test-clinic-id';
 
@@ -74,7 +83,10 @@ describe('ReservationService', () => {
 
   beforeEach(() => {
     mockSupabase = createSupabaseMock();
-    reservationService = new ReservationService(TEST_CLINIC_ID, mockSupabase.client);
+    reservationService = new ReservationService(
+      TEST_CLINIC_ID,
+      mockSupabase.client
+    );
     jest.clearAllMocks();
 
     // Default results
@@ -116,14 +128,20 @@ describe('ReservationService', () => {
       const startDate = new Date('2025-10-25T00:00:00');
       const endDate = new Date('2025-10-25T23:59:59');
 
-      const result = await reservationService.getReservationsByDateRange(startDate, endDate);
+      const result = await reservationService.getReservationsByDateRange(
+        startDate,
+        endDate
+      );
 
       expect(result).toEqual([mockReservation]);
       expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
     test('スタッフIDで予約を検索できる', async () => {
-      const result = await reservationService.getReservationsByStaff('staff1', new Date('2025-10-25'));
+      const result = await reservationService.getReservationsByStaff(
+        'staff1',
+        new Date('2025-10-25')
+      );
 
       expect(result).toEqual([mockReservation]);
     });
@@ -135,7 +153,8 @@ describe('ReservationService', () => {
     });
 
     test('ステータス別で予約を検索できる', async () => {
-      const result = await reservationService.getReservationsByStatus('confirmed');
+      const result =
+        await reservationService.getReservationsByStatus('confirmed');
 
       expect(result).toEqual([mockReservation]);
     });
@@ -151,7 +170,8 @@ describe('ReservationService', () => {
       ];
 
       // モック関数を設定
-      const getAvailableTimeSlots = jest.spyOn(reservationService, 'getAvailableTimeSlots')
+      const getAvailableTimeSlots = jest
+        .spyOn(reservationService, 'getAvailableTimeSlots')
         .mockResolvedValue(mockTimeSlots);
 
       const result = await reservationService.getAvailableTimeSlots(
@@ -161,7 +181,11 @@ describe('ReservationService', () => {
       );
 
       expect(result).toEqual(mockTimeSlots);
-      expect(getAvailableTimeSlots).toHaveBeenCalledWith('staff1', new Date('2025-10-25'), 60);
+      expect(getAvailableTimeSlots).toHaveBeenCalledWith(
+        'staff1',
+        new Date('2025-10-25'),
+        60
+      );
     });
 
     test('営業時間外の時間は利用不可として返される', async () => {
@@ -171,7 +195,8 @@ describe('ReservationService', () => {
         { time: '18:00', available: false, conflictReason: '営業時間外' },
       ];
 
-      const getAvailableTimeSlots = jest.spyOn(reservationService, 'getAvailableTimeSlots')
+      const getAvailableTimeSlots = jest
+        .spyOn(reservationService, 'getAvailableTimeSlots')
         .mockResolvedValue(mockTimeSlots);
 
       const result = await reservationService.getAvailableTimeSlots(
@@ -186,12 +211,21 @@ describe('ReservationService', () => {
     test('既存予約と重複する時間は利用不可として返される', async () => {
       const mockTimeSlots: TimeSlot[] = [
         { time: '09:30', available: true },
-        { time: '10:00', available: false, conflictReason: '予約済み: 山田太郎様' },
-        { time: '10:30', available: false, conflictReason: '予約済み: 山田太郎様' },
+        {
+          time: '10:00',
+          available: false,
+          conflictReason: '予約済み: 山田太郎様',
+        },
+        {
+          time: '10:30',
+          available: false,
+          conflictReason: '予約済み: 山田太郎様',
+        },
         { time: '11:00', available: true },
       ];
 
-      const getAvailableTimeSlots = jest.spyOn(reservationService, 'getAvailableTimeSlots')
+      const getAvailableTimeSlots = jest
+        .spyOn(reservationService, 'getAvailableTimeSlots')
         .mockResolvedValue(mockTimeSlots);
 
       const result = await reservationService.getAvailableTimeSlots(
@@ -212,14 +246,15 @@ describe('ReservationService', () => {
         menuId: 'menu1',
         staffId: 'staff1',
         startTime: new Date('2025-10-24T14:00:00'), // Friday 14:00
-        endTime: new Date('2025-10-24T15:00:00'),   // Friday 15:00
+        endTime: new Date('2025-10-24T15:00:00'), // Friday 15:00
         channel: 'phone' as const,
         notes: '新規予約です',
         createdBy: 'user1',
       };
 
       // Mock validateTimeSlot to return valid
-      jest.spyOn(reservationService, 'validateTimeSlot')
+      jest
+        .spyOn(reservationService, 'validateTimeSlot')
         .mockResolvedValue({ isValid: true });
 
       // Mock successful insert
@@ -228,7 +263,8 @@ describe('ReservationService', () => {
         { data: mockReservation, error: null }
       );
 
-      const result = await reservationService.createReservation(newReservationData);
+      const result =
+        await reservationService.createReservation(newReservationData);
 
       expect(result).toEqual(mockReservation);
       expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
@@ -246,11 +282,13 @@ describe('ReservationService', () => {
       };
 
       // 重複チェックが失敗する場合のモック
-      const validateTimeSlot = jest.spyOn(reservationService, 'validateTimeSlot')
+      const validateTimeSlot = jest
+        .spyOn(reservationService, 'validateTimeSlot')
         .mockResolvedValue({ isValid: false, reason: '時間が重複しています' });
 
-      await expect(reservationService.createReservation(conflictingData))
-        .rejects.toThrow('時間が重複しています');
+      await expect(
+        reservationService.createReservation(conflictingData)
+      ).rejects.toThrow('時間が重複しています');
 
       expect(validateTimeSlot).toHaveBeenCalled();
     });
@@ -278,19 +316,27 @@ describe('ReservationService', () => {
         { ...mockReservation, id: 'res3' },
       ];
 
-      const createMultipleReservations = jest.spyOn(reservationService, 'createMultipleReservations')
+      const createMultipleReservations = jest
+        .spyOn(reservationService, 'createMultipleReservations')
         .mockResolvedValue(expectedReservations);
 
-      const result = await reservationService.createMultipleReservations(multipleReservationData);
+      const result = await reservationService.createMultipleReservations(
+        multipleReservationData
+      );
 
       expect(result).toEqual(expectedReservations);
-      expect(createMultipleReservations).toHaveBeenCalledWith(multipleReservationData);
+      expect(createMultipleReservations).toHaveBeenCalledWith(
+        multipleReservationData
+      );
     });
   });
 
   describe('予約更新機能', () => {
     test('予約ステータスを更新できる', async () => {
-      const result = await reservationService.updateReservationStatus('res1', 'arrived');
+      const result = await reservationService.updateReservationStatus(
+        'res1',
+        'arrived'
+      );
 
       expect(result).toEqual(mockReservation);
       expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
@@ -300,19 +346,29 @@ describe('ReservationService', () => {
       const newStartTime = new Date('2025-10-25T15:00:00');
       const newEndTime = new Date('2025-10-25T16:00:00');
 
-      const result = await reservationService.updateReservationTime('res1', newStartTime, newEndTime);
+      const result = await reservationService.updateReservationTime(
+        'res1',
+        newStartTime,
+        newEndTime
+      );
 
       expect(result).toEqual(mockReservation);
     });
 
     test('予約担当者を変更できる', async () => {
-      const result = await reservationService.updateReservationStaff('res1', 'staff2');
+      const result = await reservationService.updateReservationStaff(
+        'res1',
+        'staff2'
+      );
 
       expect(result).toEqual(mockReservation);
     });
 
     test('予約メモを更新できる', async () => {
-      const result = await reservationService.updateReservationNotes('res1', '症状が改善されています');
+      const result = await reservationService.updateReservationNotes(
+        'res1',
+        '症状が改善されています'
+      );
 
       expect(result).toEqual(mockReservation);
     });
@@ -320,7 +376,10 @@ describe('ReservationService', () => {
 
   describe('予約削除機能', () => {
     test('予約をキャンセルできる', async () => {
-      const result = await reservationService.cancelReservation('res1', '顧客都合による');
+      const result = await reservationService.cancelReservation(
+        'res1',
+        '顧客都合による'
+      );
 
       expect(result).toBe(true);
       expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
@@ -338,10 +397,14 @@ describe('ReservationService', () => {
       const reservationIds = ['res1', 'res2', 'res3'];
       const newStatus = 'confirmed';
 
-      const bulkUpdateStatus = jest.spyOn(reservationService, 'bulkUpdateStatus')
+      const bulkUpdateStatus = jest
+        .spyOn(reservationService, 'bulkUpdateStatus')
         .mockResolvedValue(3);
 
-      const result = await reservationService.bulkUpdateStatus(reservationIds, newStatus);
+      const result = await reservationService.bulkUpdateStatus(
+        reservationIds,
+        newStatus
+      );
 
       expect(result).toBe(3);
       expect(bulkUpdateStatus).toHaveBeenCalledWith(reservationIds, newStatus);
@@ -350,10 +413,12 @@ describe('ReservationService', () => {
     test('複数予約を一括削除できる', async () => {
       const reservationIds = ['res1', 'res2'];
 
-      const bulkDeleteReservations = jest.spyOn(reservationService, 'bulkDeleteReservations')
+      const bulkDeleteReservations = jest
+        .spyOn(reservationService, 'bulkDeleteReservations')
         .mockResolvedValue(2);
 
-      const result = await reservationService.bulkDeleteReservations(reservationIds);
+      const result =
+        await reservationService.bulkDeleteReservations(reservationIds);
 
       expect(result).toBe(2);
       expect(bulkDeleteReservations).toHaveBeenCalledWith(reservationIds);
@@ -362,7 +427,8 @@ describe('ReservationService', () => {
 
   describe('バリデーション機能', () => {
     test('営業時間内チェックが動作する', async () => {
-      const validateBusinessHours = jest.spyOn(reservationService, 'validateBusinessHours')
+      const validateBusinessHours = jest
+        .spyOn(reservationService, 'validateBusinessHours')
         .mockResolvedValue({ isValid: true });
 
       const result = await reservationService.validateBusinessHours(
@@ -374,7 +440,8 @@ describe('ReservationService', () => {
     });
 
     test('営業時間外の場合はエラーが返される', async () => {
-      const validateBusinessHours = jest.spyOn(reservationService, 'validateBusinessHours')
+      const validateBusinessHours = jest
+        .spyOn(reservationService, 'validateBusinessHours')
         .mockResolvedValue({ isValid: false, reason: '営業時間外です' });
 
       const result = await reservationService.validateBusinessHours(
@@ -387,19 +454,30 @@ describe('ReservationService', () => {
     });
 
     test('スタッフの対応メニューチェックが動作する', async () => {
-      const validateStaffMenu = jest.spyOn(reservationService, 'validateStaffMenu')
+      const validateStaffMenu = jest
+        .spyOn(reservationService, 'validateStaffMenu')
         .mockResolvedValue({ isValid: true });
 
-      const result = await reservationService.validateStaffMenu('staff1', 'menu1');
+      const result = await reservationService.validateStaffMenu(
+        'staff1',
+        'menu1'
+      );
 
       expect(result.isValid).toBe(true);
     });
 
     test('対応外メニューの場合はエラーが返される', async () => {
-      const validateStaffMenu = jest.spyOn(reservationService, 'validateStaffMenu')
-        .mockResolvedValue({ isValid: false, reason: 'このスタッフは対応できないメニューです' });
+      const validateStaffMenu = jest
+        .spyOn(reservationService, 'validateStaffMenu')
+        .mockResolvedValue({
+          isValid: false,
+          reason: 'このスタッフは対応できないメニューです',
+        });
 
-      const result = await reservationService.validateStaffMenu('staff1', 'menu999');
+      const result = await reservationService.validateStaffMenu(
+        'staff1',
+        'menu999'
+      );
 
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('このスタッフは対応できないメニューです');
@@ -416,7 +494,8 @@ describe('ReservationService', () => {
         averageUtilization: 0.75,
       };
 
-      const getReservationStats = jest.spyOn(reservationService, 'getReservationStats')
+      const getReservationStats = jest
+        .spyOn(reservationService, 'getReservationStats')
         .mockResolvedValue(mockStats);
 
       const result = await reservationService.getReservationStats(
@@ -433,7 +512,8 @@ describe('ReservationService', () => {
         { staffId: 'staff2', staffName: '佐藤先生', utilizationRate: 0.72 },
       ];
 
-      const getStaffUtilization = jest.spyOn(reservationService, 'getStaffUtilization')
+      const getStaffUtilization = jest
+        .spyOn(reservationService, 'getStaffUtilization')
         .mockResolvedValue(mockUtilization);
 
       const result = await reservationService.getStaffUtilization(
@@ -459,7 +539,8 @@ describe('ReservationService', () => {
         },
       };
 
-      const getNoShowAnalysis = jest.spyOn(reservationService, 'getNoShowAnalysis')
+      const getNoShowAnalysis = jest
+        .spyOn(reservationService, 'getNoShowAnalysis')
         .mockResolvedValue(mockNoShowAnalysis);
 
       const result = await reservationService.getNoShowAnalysis(
@@ -478,8 +559,9 @@ describe('ReservationService', () => {
         { data: null, error: { message: 'Database error' } }
       );
 
-      await expect(reservationService.getReservationById('invalid-id'))
-        .rejects.toThrow('Database error');
+      await expect(
+        reservationService.getReservationById('invalid-id')
+      ).rejects.toThrow('Database error');
     });
 
     test('存在しない予約IDでエラーが発生する', async () => {
@@ -488,8 +570,9 @@ describe('ReservationService', () => {
         { data: null, error: null }
       );
 
-      await expect(reservationService.getReservationById('nonexistent'))
-        .rejects.toThrow('予約が見つかりません');
+      await expect(
+        reservationService.getReservationById('nonexistent')
+      ).rejects.toThrow('予約が見つかりません');
     });
 
     test('無効なデータでの予約作成がエラーになる', async () => {
@@ -503,8 +586,9 @@ describe('ReservationService', () => {
         createdBy: '',
       };
 
-      await expect(reservationService.createReservation(invalidData))
-        .rejects.toThrow();
+      await expect(
+        reservationService.createReservation(invalidData)
+      ).rejects.toThrow();
     });
   });
 
@@ -528,7 +612,8 @@ describe('ReservationService', () => {
       const startTime = performance.now();
 
       // モック関数を設定
-      jest.spyOn(reservationService, 'getAvailableTimeSlots')
+      jest
+        .spyOn(reservationService, 'getAvailableTimeSlots')
         .mockResolvedValue([
           { time: '09:00', available: true },
           { time: '09:30', available: true },
@@ -555,7 +640,10 @@ describe('workingHours null safety', () => {
   beforeEach(() => {
     // Reset supabase mock for each test
     mockSupabase = createSupabaseMock();
-    reservationService = new ReservationService(TEST_CLINIC_ID, mockSupabase.client);
+    reservationService = new ReservationService(
+      TEST_CLINIC_ID,
+      mockSupabase.client
+    );
     jest.clearAllMocks();
   });
 
@@ -625,6 +713,8 @@ describe('workingHours null safety', () => {
     );
 
     // Should return unavailable slot instead of throwing
-    expect(result).toEqual([{ time: '09:00', available: false, conflictReason: '営業時間外' }]);
+    expect(result).toEqual([
+      { time: '09:00', available: false, conflictReason: '営業時間外' },
+    ]);
   });
 });

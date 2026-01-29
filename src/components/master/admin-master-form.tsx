@@ -89,9 +89,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
     try {
       const result = await onExport();
       const payload = JSON.stringify(result, null, 2);
-      const safeTimestamp = new Date()
-        .toISOString()
-        .replace(/[:.]/g, '-');
+      const safeTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const blob = new Blob([payload], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

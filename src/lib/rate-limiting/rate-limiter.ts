@@ -105,10 +105,10 @@ export class RateLimiter {
       const window = customConfig?.window || config.WINDOW;
       const limit =
         customConfig?.limit ||
-        (('MAX_ATTEMPTS' in config && config.MAX_ATTEMPTS) ||
-          ('MAX_CALLS' in config && config.MAX_CALLS) ||
-          ('MAX_SESSIONS' in config && config.MAX_SESSIONS) ||
-          0);
+        ('MAX_ATTEMPTS' in config && config.MAX_ATTEMPTS) ||
+        ('MAX_CALLS' in config && config.MAX_CALLS) ||
+        ('MAX_SESSIONS' in config && config.MAX_SESSIONS) ||
+        0;
 
       const key = this.generateKey(type, identifier);
       const blockKey = `${key}:block`;

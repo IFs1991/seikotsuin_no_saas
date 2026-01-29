@@ -5,7 +5,7 @@
  * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // Supabase SSRのモック
@@ -50,9 +50,15 @@ describe('認証と権限制御 Middleware', () => {
    * Create mock Supabase client that handles both user_permissions and profiles queries
    * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - user_permissions is single source of truth
    */
-  function createMockSupabase(user: any, profile: any, userPermissions: any = null) {
+  function createMockSupabase(
+    user: any,
+    profile: any,
+    userPermissions: any = null
+  ) {
     // If userPermissions is not provided, derive from profile for backward compatibility
-    const permissions = userPermissions ?? (profile ? { role: profile.role, clinic_id: profile.clinic_id } : null);
+    const permissions =
+      userPermissions ??
+      (profile ? { role: profile.role, clinic_id: profile.clinic_id } : null);
 
     return {
       auth: {
@@ -149,18 +155,20 @@ describe('認証と権限制御 Middleware', () => {
     });
 
     describe('公開ルートへのアクセス', () => {
-      const publicRoutes = ['/admin/login', '/admin/callback', '/login', '/invite'];
+      const publicRoutes = [
+        '/admin/login',
+        '/admin/callback',
+        '/login',
+        '/invite',
+      ];
 
-      test.each(publicRoutes)(
-        '未認証でも %s にアクセス可能',
-        async route => {
-          const request = createMockRequest(route);
-          const response = await middleware(request);
+      test.each(publicRoutes)('未認証でも %s にアクセス可能', async route => {
+        const request = createMockRequest(route);
+        const response = await middleware(request);
 
-          // リダイレクトではなく通過
-          expect(response.status).not.toBe(307);
-        }
-      );
+        // リダイレクトではなく通過
+        expect(response.status).not.toBe(307);
+      });
     });
   });
 
@@ -210,28 +218,42 @@ describe('認証と権限制御 Middleware', () => {
      */
     const adminUIRoles = ['admin', 'clinic_admin'];
 
-    test.each(adminUIRoles)('ADMIN_UI_ROLES (%s) は /admin/** にアクセス可能', async role => {
-      const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
-      const adminProfile = { role, clinic_id: role === 'admin' ? null : 'clinic-123', is_active: true };
+    test.each(adminUIRoles)(
+      'ADMIN_UI_ROLES (%s) は /admin/** にアクセス可能',
+      async role => {
+        const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
+        const adminProfile = {
+          role,
+          clinic_id: role === 'admin' ? null : 'clinic-123',
+          is_active: true,
+        };
 
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(adminUser, adminProfile) as any
-      );
+        mockCreateServerClient.mockReturnValue(
+          createMockSupabase(adminUser, adminProfile) as any
+        );
 
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
+        const request = createMockRequest('/admin/settings');
+        const response = await middleware(request);
 
-      // リダイレクトではなく通過
-      expect(response.status).not.toBe(307);
-    });
+        // リダイレクトではなく通過
+        expect(response.status).not.toBe(307);
+      }
+    );
 
     /**
      * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
      * manager role should NOT be able to access /admin/** (only ADMIN_UI_ROLES)
      */
     test('manager ロールは /admin/** にアクセスできない', async () => {
-      const managerUser = { id: 'manager-user-123', email: 'manager@example.com' };
-      const managerProfile = { role: 'manager', clinic_id: 'clinic-123', is_active: true };
+      const managerUser = {
+        id: 'manager-user-123',
+        email: 'manager@example.com',
+      };
+      const managerProfile = {
+        role: 'manager',
+        clinic_id: 'clinic-123',
+        is_active: true,
+      };
 
       mockCreateServerClient.mockReturnValue(
         createMockSupabase(managerUser, managerProfile) as any
@@ -251,8 +273,15 @@ describe('認証と権限制御 Middleware', () => {
      * This allows clinic_manager to access /admin/** until Phase 3 migration is complete.
      */
     test('非推奨の clinic_manager ロールは互換モードにより /admin/** にアクセス可能（Option B-1）', async () => {
-      const deprecatedUser = { id: 'deprecated-user-123', email: 'deprecated@example.com' };
-      const deprecatedProfile = { role: 'clinic_manager', clinic_id: 'clinic-123', is_active: true };
+      const deprecatedUser = {
+        id: 'deprecated-user-123',
+        email: 'deprecated@example.com',
+      };
+      const deprecatedProfile = {
+        role: 'clinic_manager',
+        clinic_id: 'clinic-123',
+        is_active: true,
+      };
 
       mockCreateServerClient.mockReturnValue(
         createMockSupabase(deprecatedUser, deprecatedProfile) as any

@@ -4,9 +4,6 @@
  * @spec docs/認証と権限制御_MVP仕様書.md
  */
 
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-
 // モックの設定
 const mockRouter = {
   push: jest.fn(),

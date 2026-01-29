@@ -1,11 +1,17 @@
-import { customersQuerySchema, searchQuerySchema } from '@/app/api/customers/schema';
+import {
+  customersQuerySchema,
+  searchQuerySchema,
+} from '@/app/api/customers/schema';
 
 describe('customersQuerySchema', () => {
   describe('検索クエリ (q) バリデーション', () => {
     it('有効な検索クエリを受け入れる', () => {
       const validCases = [
         { clinic_id: '550e8400-e29b-41d4-a716-446655440000', q: '田中' },
-        { clinic_id: '550e8400-e29b-41d4-a716-446655440000', q: '090-1234-5678' },
+        {
+          clinic_id: '550e8400-e29b-41d4-a716-446655440000',
+          q: '090-1234-5678',
+        },
         { clinic_id: '550e8400-e29b-41d4-a716-446655440000', q: 'tanaka' },
         { clinic_id: '550e8400-e29b-41d4-a716-446655440000', q: '田中 太郎' },
         { clinic_id: '550e8400-e29b-41d4-a716-446655440000' }, // qはオプション
@@ -62,7 +68,9 @@ describe('customersQuerySchema', () => {
 
 describe('searchQuerySchema', () => {
   it('日本語文字を許可する', () => {
-    expect(searchQuerySchema.safeParse('漢字ひらがなカタカナ').success).toBe(true);
+    expect(searchQuerySchema.safeParse('漢字ひらがなカタカナ').success).toBe(
+      true
+    );
   });
 
   it('英数字を許可する', () => {

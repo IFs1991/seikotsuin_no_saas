@@ -1,7 +1,3 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-
 // モックデータ
 const mockCustomers = [
   {
@@ -177,7 +173,9 @@ describe('患者一覧ページ', () => {
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ data: [updatedCustomer, ...mockCustomers.slice(1)] }),
+          json: async () => ({
+            data: [updatedCustomer, ...mockCustomers.slice(1)],
+          }),
         });
 
       // TODO: 実装後に有効化

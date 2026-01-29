@@ -1,5 +1,9 @@
 import { NextRequest } from 'next/server';
-import { createErrorResponse, createSuccessResponse, processApiRequest } from '@/lib/api-helpers';
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  processApiRequest,
+} from '@/lib/api-helpers';
 import {
   AppError,
   createApiError,
@@ -59,7 +63,11 @@ export async function GET(request: NextRequest) {
       staff_id: request.nextUrl.searchParams.get('staff_id') ?? undefined,
     });
     if (!parsedQuery.success) {
-      return createErrorResponse('入力値にエラーがあります', 400, parsedQuery.error.flatten());
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedQuery.error.flatten()
+      );
     }
 
     const { clinic_id, id, start_date, end_date, staff_id } = parsedQuery.data;
@@ -109,7 +117,9 @@ export async function GET(request: NextRequest) {
     if (end_date) query.lte('start_time', end_date);
     if (staff_id) query.eq('staff_id', staff_id);
 
-    const { data, error } = await query.order('start_time', { ascending: true });
+    const { data, error } = await query.order('start_time', {
+      ascending: true,
+    });
 
     if (error) {
       throw normalizeSupabaseError(error, PATH);
@@ -145,9 +155,16 @@ export async function GET(request: NextRequest) {
       apiError = normalizeSupabaseError(error, PATH);
       statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
-      apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation fetch failed', undefined, PATH);
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Reservation fetch failed',
+        undefined,
+        PATH
+      );
     }
-    logError(error instanceof Error ? error : new Error(String(error)), { path: PATH });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
     return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }
@@ -159,7 +176,11 @@ export async function POST(request: NextRequest) {
 
     const parsedBody = reservationInsertSchema.safeParse(auth.body);
     if (!parsedBody.success) {
-      return createErrorResponse('入力値にエラーがあります', 400, parsedBody.error.flatten());
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedBody.error.flatten()
+      );
     }
 
     const dto = parsedBody.data;
@@ -202,9 +223,16 @@ export async function POST(request: NextRequest) {
       apiError = error;
       statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
-      apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation creation failed', undefined, PATH);
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Reservation creation failed',
+        undefined,
+        PATH
+      );
     }
-    logError(error instanceof Error ? error : new Error(String(error)), { path: PATH });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
     return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }
@@ -216,7 +244,11 @@ export async function PATCH(request: NextRequest) {
 
     const parsedBody = reservationUpdateSchema.safeParse(auth.body);
     if (!parsedBody.success) {
-      return createErrorResponse('入力値にエラーがあります', 400, parsedBody.error.flatten());
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedBody.error.flatten()
+      );
     }
 
     const dto = parsedBody.data;
@@ -279,9 +311,16 @@ export async function PATCH(request: NextRequest) {
       apiError = error;
       statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
-      apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation update failed', undefined, PATH);
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Reservation update failed',
+        undefined,
+        PATH
+      );
     }
-    logError(error instanceof Error ? error : new Error(String(error)), { path: PATH });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
     return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }
@@ -322,9 +361,16 @@ export async function DELETE(request: NextRequest) {
       apiError = error;
       statusCode = getStatusCodeFromErrorCode(apiError.code);
     } else {
-      apiError = createApiError(ERROR_CODES.INTERNAL_SERVER_ERROR, 'Reservation delete failed', undefined, PATH);
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'Reservation delete failed',
+        undefined,
+        PATH
+      );
     }
-    logError(error instanceof Error ? error : new Error(String(error)), { path: PATH });
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
     return createErrorResponse(apiError.message, statusCode, apiError);
   }
 }

@@ -12,13 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Save, X } from 'lucide-react';
@@ -108,13 +102,14 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
           return `${field.label}は数値で入力してください`;
         }
         break;
-      case 'uuid':
+      case 'uuid': {
         const uuidRegex =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         if (typeof value === 'string' && value && !uuidRegex.test(value)) {
           return `${field.label}は正しいUUID形式で入力してください`;
         }
         break;
+      }
     }
 
     // 長さチェック

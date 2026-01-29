@@ -44,7 +44,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
       }
 
       // clinicAユーザーでclinicBの患者を参照しようとする
-      const clinicBPatientIds = clinicBPatients.map((p) => p.id);
+      const clinicBPatientIds = clinicBPatients.map(p => p.id);
 
       const { data: accessiblePatients } = await clinicAResult.client
         .from('patients')
@@ -62,7 +62,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
           .single();
 
         if (clinicAPermission?.clinic_id) {
-          accessiblePatients.forEach((patient) => {
+          accessiblePatients.forEach(patient => {
             expect(patient.clinic_id).toBe(clinicAPermission.clinic_id);
           });
         }
@@ -97,7 +97,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
 
       // 取得できた患者は全て自分のクリニックの患者
       if (patients && patients.length > 0) {
-        patients.forEach((patient) => {
+        patients.forEach(patient => {
           expect(patient.clinic_id).toBe(permission.clinic_id);
         });
       }
@@ -133,7 +133,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
 
       // 取得できた来院記録は全て自分のクリニックのもの
       if (visits && visits.length > 0) {
-        visits.forEach((visit) => {
+        visits.forEach(visit => {
           expect(visit.clinic_id).toBe(permission.clinic_id);
         });
       }
@@ -169,7 +169,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
 
       // 取得できた売上データは全て自分のクリニックのもの
       if (revenues && revenues.length > 0) {
-        revenues.forEach((revenue) => {
+        revenues.forEach(revenue => {
           expect(revenue.clinic_id).toBe(permission.clinic_id);
         });
       }
@@ -218,7 +218,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
 
       // 複数のクリニックが存在する場合、全て参照できることを確認
       if (clinics && clinics.length > 1) {
-        const uniqueClinicIds = new Set(clinics.map((c) => c.id));
+        const uniqueClinicIds = new Set(clinics.map(c => c.id));
         expect(uniqueClinicIds.size).toBeGreaterThan(1);
       }
     });
@@ -241,7 +241,7 @@ describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間�
       // 複数のクリニックの患者が存在する場合、全て参照できることを確認
       if (patients && patients.length > 0) {
         const uniqueClinicIds = new Set(
-          patients.map((p) => p.clinic_id).filter(Boolean)
+          patients.map(p => p.clinic_id).filter(Boolean)
         );
 
         // 複数クリニックのデータがあれば、adminは全て参照できる

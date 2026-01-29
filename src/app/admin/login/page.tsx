@@ -10,8 +10,8 @@ import {
   loginSchema,
   signupSchema,
   getPasswordStrength,
+  type AuthResponse,
 } from '@/lib/schemas/auth';
-import type { AuthResponse } from '@/lib/schemas/auth';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -91,7 +91,7 @@ export default function AdminLogin() {
       const normalizedErrors = Object.fromEntries(
         Object.entries(state.errors).map(([key, value]) => [
           key,
-          Array.isArray(value) ? value[0] ?? '' : value ?? '',
+          Array.isArray(value) ? (value[0] ?? '') : (value ?? ''),
         ])
       );
       setClientErrors(normalizedErrors);
@@ -153,7 +153,9 @@ export default function AdminLogin() {
                     const schema = isSignUp ? signupSchema : loginSchema;
                     schema.shape.email.parse(e.target.value);
                     setClientErrors(prev => ({ ...prev, email: '' }));
-                  } catch {}
+                  } catch {
+                    // Zod validation error intentionally ignored
+                  }
                 }
               }}
               placeholder='admin@clinic.com'
@@ -171,10 +173,10 @@ export default function AdminLogin() {
               パスワード <span className='text-red-500'>*</span>
             </label>
             <div className='relative'>
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              name='password'
-              value={password}
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                name='password'
+                value={password}
                 onChange={e => {
                   setPassword(e.target.value);
                   // リアルタイム検証
@@ -183,7 +185,9 @@ export default function AdminLogin() {
                       const schema = isSignUp ? signupSchema : loginSchema;
                       schema.shape.password.parse(e.target.value);
                       setClientErrors(prev => ({ ...prev, password: '' }));
-                    } catch {}
+                    } catch {
+                      // Zod validation error intentionally ignored
+                    }
                   }
                 }}
                 placeholder={

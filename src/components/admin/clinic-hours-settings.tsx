@@ -91,18 +91,23 @@ export function ClinicHoursSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'clinic_hours',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'clinic_hours',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   // ローディング中
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -126,7 +131,9 @@ export function ClinicHoursSettings() {
       [day]: {
         ...schedule[day],
         isOpen: !schedule[day].isOpen,
-        timeSlots: !schedule[day].isOpen ? [{ start: '09:00', end: '17:00' }] : [],
+        timeSlots: !schedule[day].isOpen
+          ? [{ start: '09:00', end: '17:00' }]
+          : [],
       },
     };
     updateData({ hoursByDay: newSchedule });
@@ -137,7 +144,10 @@ export function ClinicHoursSettings() {
       ...schedule,
       [day]: {
         ...schedule[day],
-        timeSlots: [...schedule[day].timeSlots, { start: '09:00', end: '17:00' }],
+        timeSlots: [
+          ...schedule[day].timeSlots,
+          { start: '09:00', end: '17:00' },
+        ],
       },
     };
     updateData({ hoursByDay: newSchedule });
@@ -211,10 +221,10 @@ export function ClinicHoursSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* 通常営業時間 */}

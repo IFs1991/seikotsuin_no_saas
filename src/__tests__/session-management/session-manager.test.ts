@@ -7,7 +7,9 @@
 jest.mock('@/lib/supabase', () => {
   const createMockBuilder = () => {
     const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-    const mockMaybeSingle = jest.fn().mockResolvedValue({ data: null, error: null });
+    const mockMaybeSingle = jest
+      .fn()
+      .mockResolvedValue({ data: null, error: null });
 
     const builder: Record<string, jest.Mock> = {
       select: jest.fn(),
@@ -35,7 +37,9 @@ jest.mock('@/lib/supabase', () => {
 
   const mockBuilder = createMockBuilder();
   const mockFrom = jest.fn(() => mockBuilder);
-  const mockGetUser = jest.fn().mockResolvedValue({ data: { user: null }, error: null });
+  const mockGetUser = jest
+    .fn()
+    .mockResolvedValue({ data: { user: null }, error: null });
 
   return {
     createClient: jest.fn().mockResolvedValue({
@@ -258,7 +262,8 @@ describe('SessionManager', () => {
 
       // 存在しないトークン（モックでnullを返す）
       mockBuilder.single.mockResolvedValue({ data: null, error: null });
-      const invalidResult = await sessionManager.validateSession('invalid-token');
+      const invalidResult =
+        await sessionManager.validateSession('invalid-token');
       expect(invalidResult.isValid).toBe(false);
       expect(invalidResult.reason).toBe('session_not_found');
     });
@@ -293,7 +298,10 @@ describe('SessionManager', () => {
         error: null,
       });
 
-      const result = await sessionManager.revokeSession(mockSessionId, mockReason);
+      const result = await sessionManager.revokeSession(
+        mockSessionId,
+        mockReason
+      );
       expect(result).toBe(false);
     });
   });
@@ -340,11 +348,15 @@ describe('SessionManager', () => {
 
       // orderメソッドの後にデータを返す
       mockBuilder.order.mockReturnValueOnce({
-        then: (resolve: (result: { data: typeof mockSessions; error: null }) => void) =>
-          Promise.resolve(resolve({ data: mockSessions, error: null })),
+        then: (
+          resolve: (result: { data: typeof mockSessions; error: null }) => void
+        ) => Promise.resolve(resolve({ data: mockSessions, error: null })),
       });
 
-      const result = await sessionManager.getUserSessions(mockUserId, mockClinicId);
+      const result = await sessionManager.getUserSessions(
+        mockUserId,
+        mockClinicId
+      );
 
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);

@@ -7,7 +7,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -60,7 +60,7 @@ async function fetchClinicKPIData(
   const kpiMap = new Map<string, ClinicKPI>();
 
   // 初期値を設定
-  clinicIds.forEach((id) => {
+  clinicIds.forEach(id => {
     kpiMap.set(id, { revenue: 0, patients: 0, staff_performance_score: null });
   });
 
@@ -207,10 +207,10 @@ export async function GET(request: NextRequest) {
 
     // KPIデータが要求された場合
     if (includeKpi && items.length > 0) {
-      const clinicIds = items.map((c) => c.id);
+      const clinicIds = items.map(c => c.id);
       const kpiMap = await fetchClinicKPIData(adminSupabase, clinicIds);
 
-      items = items.map((clinic) => ({
+      items = items.map(clinic => ({
         ...clinic,
         kpi: kpiMap.get(clinic.id) ?? {
           revenue: 0,

@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { loginAsStaff } from './helpers/auth';
-import { CLINIC_A_ID } from './fixtures';
 
 test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,9 +11,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
     await page.waitForLoadState('networkidle');
 
     // ページタイトルが表示される
-    await expect(
-      page.getByRole('heading', { name: '患者一覧' })
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: '患者一覧' })).toBeVisible();
 
     // 患者一覧テーブルが表示される
     await expect(page.locator('[data-testid="patients-table"]')).toBeVisible();
@@ -39,7 +36,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
 
     // API呼び出しを監視
     const apiPromise = page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.url().includes('q=') &&
         response.status() === 200
@@ -70,7 +67,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
 
     // API応答を待つ
     await page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.url().includes('q=') &&
         response.status() === 200
@@ -85,7 +82,9 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
     await page.waitForLoadState('networkidle');
 
     // 編集ボタンをクリック（最初の患者）
-    const editButton = page.locator('[data-testid="edit-patient-button"]').first();
+    const editButton = page
+      .locator('[data-testid="edit-patient-button"]')
+      .first();
     await editButton.click();
 
     // 編集モーダルが表示される
@@ -99,7 +98,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
 
     // PATCH APIの呼び出しを監視
     const patchPromise = page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.request().method() === 'PATCH' &&
         response.status() === 200
@@ -139,7 +138,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
 
     // POST APIの呼び出しを監視
     const postPromise = page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.request().method() === 'POST' &&
         response.status() === 201
@@ -170,14 +169,16 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
     await searchInput.fill('Customer 5');
 
     await page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.url().includes('q=') &&
         response.status() === 200
     );
 
     // 編集ボタンをクリック
-    const editButton = page.locator('[data-testid="edit-patient-button"]').first();
+    const editButton = page
+      .locator('[data-testid="edit-patient-button"]')
+      .first();
     await editButton.click();
 
     // モーダルが表示される
@@ -195,7 +196,7 @@ test.describe('患者一覧 - 患者マスタ管理 MVP', () => {
 
     // 保存
     const patchPromise = page.waitForResponse(
-      (response) =>
+      response =>
         response.url().includes('/api/customers') &&
         response.request().method() === 'PATCH' &&
         response.status() === 200

@@ -4,7 +4,7 @@ import {
   resetSupabaseClientFactory,
   setSupabaseClientFactory,
   type SupabaseServerClient,
-} from '@/lib/supabase/server';
+} from '@/lib/supabase';
 
 type QueryResult<TData = unknown> = {
   data: TData;

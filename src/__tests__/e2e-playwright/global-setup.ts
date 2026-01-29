@@ -13,12 +13,20 @@ const staffStorageStatePath = path.resolve(
 );
 
 export default async function globalSetup(config: FullConfig) {
-  const { validateE2EFixtures } = await import(
-    '../../../scripts/e2e/validate-e2e-fixtures.mjs'
-  );
-  const { seedE2EData } = await import(
-    '../../../scripts/e2e/seed-e2e-data.mjs'
-  );
+  const { waitForSupabaseReady, assertTablesExist, REQUIRED_TABLES } =
+    await import('../../../scripts/e2e/preflight.mjs');
+  const { validateE2EFixtures } =
+    await import('../../../scripts/e2e/validate-e2e-fixtures.mjs');
+  const { seedE2EData, supabase } =
+    await import('../../../scripts/e2e/seed-e2e-data.mjs');
+
+  // Run preflight checks (skipped if E2E_SKIP_DB_CHECK=1)
+  if (process.env.E2E_SKIP_DB_CHECK !== '1') {
+    await waitForSupabaseReady(supabase);
+    await assertTablesExist(supabase, REQUIRED_TABLES);
+  } else {
+    console.log('[Preflight] Skipped (E2E_SKIP_DB_CHECK=1)');
+  }
 
   await validateE2EFixtures();
   await seedE2EData();

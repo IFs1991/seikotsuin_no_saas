@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { generateAIComment } from '../../../api/gemini/ai-analysis-service';
 import { ADMIN_UI_ROLES, type Role } from '@/lib/constants/roles';
 
 const PATH = '/api/chat';

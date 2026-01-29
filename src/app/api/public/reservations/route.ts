@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 import { reservationCreateSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -92,7 +92,9 @@ export async function POST(request: NextRequest) {
 
     // Calculate end_time from menu duration
     const startDate = new Date(start_time);
-    const endDate = new Date(startDate.getTime() + (menu.duration_minutes ?? 60) * 60 * 1000);
+    const endDate = new Date(
+      startDate.getTime() + (menu.duration_minutes ?? 60) * 60 * 1000
+    );
 
     // If resource_id is provided, verify it exists and belongs to the clinic
     if (resource_id) {

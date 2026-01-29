@@ -121,8 +121,8 @@ export class MultiDeviceManager {
 
       return Boolean(
         record.is_trusted === true ||
-          record.trust_level === 'trusted' ||
-          (typeof record.trust_score === 'number' && record.trust_score >= 80)
+        record.trust_level === 'trusted' ||
+        (typeof record.trust_score === 'number' && record.trust_score >= 80)
       );
     } catch (_) {
       return false;

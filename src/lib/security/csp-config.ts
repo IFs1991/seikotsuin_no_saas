@@ -299,6 +299,7 @@ export class CSPConfig {
     // クリティカル: script-src違反でjavascript:スキーム
     if (
       violatedDirective.includes('script-src') &&
+      // eslint-disable-next-line no-script-url
       blockedUri.startsWith('javascript:')
     ) {
       return 'critical';

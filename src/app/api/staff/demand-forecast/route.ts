@@ -90,8 +90,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 日付・時間帯別に予約数を集計
-    const forecastMap: Map<string, { date: string; hour: number; count: number }> =
-      new Map();
+    const forecastMap: Map<
+      string,
+      { date: string; hour: number; count: number }
+    > = new Map();
 
     (reservations || []).forEach(reservation => {
       const startTime = new Date(reservation.start_time);

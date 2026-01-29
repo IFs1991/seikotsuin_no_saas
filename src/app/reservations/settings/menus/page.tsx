@@ -121,7 +121,9 @@ export default function MenuSettingsPage() {
             <Label>メニュー名</Label>
             <Input
               value={newMenu.name}
-              onChange={e => setNewMenu(prev => ({ ...prev, name: e.target.value }))}
+              onChange={e =>
+                setNewMenu(prev => ({ ...prev, name: e.target.value }))
+              }
             />
           </div>
           <div>
@@ -181,7 +183,9 @@ export default function MenuSettingsPage() {
         </CardHeader>
         <CardContent className='space-y-3'>
           {menus.length === 0 && (
-            <div className='text-sm text-muted-foreground'>メニューがありません</div>
+            <div className='text-sm text-muted-foreground'>
+              メニューがありません
+            </div>
           )}
           {menus.map(menu => (
             <div
@@ -190,7 +194,8 @@ export default function MenuSettingsPage() {
             >
               <div>
                 <div className='font-medium'>
-                  {menu.name}（{menu.durationMinutes}分 / {menu.price.toLocaleString()}円）
+                  {menu.name}（{menu.durationMinutes}分 /{' '}
+                  {menu.price.toLocaleString()}円）
                 </div>
                 <div className='text-xs text-muted-foreground'>
                   {menu.description}

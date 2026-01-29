@@ -16,7 +16,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // scrollIntoViewのモック
@@ -94,7 +94,9 @@ describe('ChatPage Component', () => {
     it('メッセージ入力フィールドが表示される', () => {
       render(<ChatPage />);
 
-      expect(screen.getByPlaceholderText(/メッセージを入力/i)).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText(/メッセージを入力/i)
+      ).toBeInTheDocument();
     });
 
     it('送信ボタンが表示される', () => {
@@ -106,7 +108,9 @@ describe('ChatPage Component', () => {
     it('新規チャットボタンが表示される', () => {
       render(<ChatPage />);
 
-      expect(screen.getByRole('button', { name: /新規チャット/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /新規チャット/i })
+      ).toBeInTheDocument();
     });
   });
 
@@ -239,10 +243,18 @@ describe('ChatPage Component', () => {
     it('クイック質問ボタンが表示される', () => {
       render(<ChatPage />);
 
-      expect(screen.getByRole('button', { name: /売上分析/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /患者動向/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /スタッフ評価/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /経営アドバイス/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /売上分析/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /患者動向/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /スタッフ評価/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /経営アドバイス/i })
+      ).toBeInTheDocument();
     });
 
     it('クイック質問をクリックするとメッセージが送信される', async () => {
@@ -263,7 +275,9 @@ describe('ChatPage Component', () => {
       const user = userEvent.setup();
       render(<ChatPage />);
 
-      const newChatButton = screen.getByRole('button', { name: /新規チャット/i });
+      const newChatButton = screen.getByRole('button', {
+        name: /新規チャット/i,
+      });
       await user.click(newChatButton);
 
       expect(mockStartNewSession).toHaveBeenCalled();
@@ -279,7 +293,9 @@ describe('ChatPage Component', () => {
 
       render(<ChatPage />);
 
-      expect(screen.getByText(/チャットを有効にしてください/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/チャットを有効にしてください/i)
+      ).toBeInTheDocument();
     });
 
     it('チャットが無効の場合は入力フィールドが無効', () => {
@@ -315,7 +331,9 @@ describe('ChatPage Component', () => {
 
       render(<ChatPage />);
 
-      expect(screen.getByText(/メッセージを入力して会話を開始/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/メッセージを入力して会話を開始/i)
+      ).toBeInTheDocument();
     });
   });
 
@@ -398,7 +416,9 @@ describe('ChatPage Component', () => {
 
       render(<ChatPage />);
 
-      expect(screen.getByText(/管理者に権限割当を依頼してください/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/管理者に権限割当を依頼してください/i)
+      ).toBeInTheDocument();
     });
 
     it('プロフィール読み込み中はローディング表示', () => {
@@ -424,7 +444,9 @@ describe('ChatPage Component', () => {
 
       render(<ChatPage />);
 
-      expect(screen.getByText(/プロフィール取得に失敗しました/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/プロフィール取得に失敗しました/i)
+      ).toBeInTheDocument();
     });
   });
 });

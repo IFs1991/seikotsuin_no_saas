@@ -9,7 +9,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 
 /**
@@ -116,7 +116,10 @@ export async function acceptInvite(
     }
 
     if (!data?.success) {
-      return { success: false, error: data?.error || '招待の受諾に失敗しました' };
+      return {
+        success: false,
+        error: data?.error || '招待の受諾に失敗しました',
+      };
     }
 
     console.info('[Auth] Invite accepted:', {
@@ -215,7 +218,10 @@ export async function signupAndAcceptInvite(
       );
 
       if (acceptError || !acceptData?.success) {
-        console.error('[Invite] Accept invite after signup error:', acceptError);
+        console.error(
+          '[Invite] Accept invite after signup error:',
+          acceptError
+        );
         // サインアップは成功しているので、後で招待を受諾できるようにメッセージを返す
         return {
           success: true,

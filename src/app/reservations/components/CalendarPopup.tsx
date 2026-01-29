@@ -7,7 +7,11 @@ interface Props {
   onClose: () => void;
 }
 
-export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onClose }) => {
+export const CalendarPopup: React.FC<Props> = ({
+  selectedDate,
+  onSelectDate,
+  onClose,
+}) => {
   const [viewDate, setViewDate] = useState(new Date(selectedDate));
 
   const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
@@ -36,7 +40,7 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
     const days = [];
 
     for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<div key={`empty-${i}`} className="h-8 w-8" />);
+      days.push(<div key={`empty-${i}`} className='h-8 w-8' />);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -56,11 +60,12 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
           key={day}
           onClick={() => handleDateClick(day)}
           className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors
-            ${isSelected
-              ? 'bg-sky-600 text-white'
-              : isToday
-                ? 'bg-gray-100 text-sky-600 font-bold hover:bg-gray-200'
-                : 'text-gray-700 hover:bg-gray-100'
+            ${
+              isSelected
+                ? 'bg-sky-600 text-white'
+                : isToday
+                  ? 'bg-gray-100 text-sky-600 font-bold hover:bg-gray-200'
+                  : 'text-gray-700 hover:bg-gray-100'
             }`}
         >
           {day}
@@ -72,26 +77,26 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-xl border border-gray-200 w-72 select-none">
-      <div className="flex items-center justify-between mb-4">
+    <div className='bg-white p-4 rounded-lg shadow-xl border border-gray-200 w-72 select-none'>
+      <div className='flex items-center justify-between mb-4'>
         <button
           onClick={handlePrevMonth}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
+          className='p-1 hover:bg-gray-100 rounded text-gray-600'
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className='w-5 h-5' />
         </button>
-        <span className="font-bold text-gray-800">
+        <span className='font-bold text-gray-800'>
           {`${year}年 ${month + 1}月`}
         </span>
         <button
           onClick={handleNextMonth}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
+          className='p-1 hover:bg-gray-100 rounded text-gray-600'
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className='w-5 h-5' />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 mb-2">
+      <div className='grid grid-cols-7 mb-2'>
         {daysOfWeek.map((day, index) => (
           <div
             key={day}
@@ -102,7 +107,7 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-y-1 justify-items-center">
+      <div className='grid grid-cols-7 gap-y-1 justify-items-center'>
         {renderDays()}
       </div>
     </div>

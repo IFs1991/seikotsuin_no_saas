@@ -31,7 +31,8 @@ function formatDurationMs(testResults) {
     const stats = result?.perfStats;
     if (!stats) continue;
     if (typeof stats.start === 'number') {
-      earliest = earliest === null ? stats.start : Math.min(earliest, stats.start);
+      earliest =
+        earliest === null ? stats.start : Math.min(earliest, stats.start);
     }
     if (typeof stats.end === 'number') {
       latest = latest === null ? stats.end : Math.max(latest, stats.end);
@@ -107,12 +108,17 @@ function renderMarkdown(jsonData, runResult) {
   }
 
   for (const [file, fileFailures] of grouped.entries()) {
-    const relative = file ? path.relative(rootDir, file).replace(/\\/g, '/') : file;
+    const relative = file
+      ? path.relative(rootDir, file).replace(/\\/g, '/')
+      : file;
     lines.push(`File: ${relative || file}`);
     lines.push('');
     for (const failure of fileFailures) {
       lines.push(`Test: ${failure.name}`);
-      const messages = failure.messages.length > 0 ? failure.messages : ['No failure message provided.'];
+      const messages =
+        failure.messages.length > 0
+          ? failure.messages
+          : ['No failure message provided.'];
       for (const message of messages) {
         lines.push('```text');
         lines.push(sanitizeFence(String(message)));

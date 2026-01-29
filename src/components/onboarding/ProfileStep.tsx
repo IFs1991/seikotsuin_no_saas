@@ -4,8 +4,17 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import type { ProfileFormData, ProfileUpdateResponse } from '@/types/onboarding';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import type {
+  ProfileFormData,
+  ProfileUpdateResponse,
+} from '@/types/onboarding';
 
 interface ProfileStepProps {
   onSubmit: (data: ProfileFormData) => Promise<ProfileUpdateResponse>;
@@ -57,7 +66,7 @@ export function ProfileStep({ onSubmit }: ProfileStepProps) {
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
+    <Card className='w-full max-w-lg mx-auto'>
       <CardHeader>
         <CardTitle>管理者情報の入力</CardTitle>
         <CardDescription>
@@ -65,46 +74,42 @@ export function ProfileStep({ onSubmit }: ProfileStepProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <FormField
-            label="氏名"
-            required
-            error={errors.full_name}
-          >
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          <FormField label='氏名' required error={errors.full_name}>
             <Input
-              type="text"
+              type='text'
               value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              placeholder="山田 太郎"
+              onChange={e =>
+                setFormData({ ...formData, full_name: e.target.value })
+              }
+              placeholder='山田 太郎'
               disabled={isSubmitting}
             />
           </FormField>
 
           <FormField
-            label="電話番号"
+            label='電話番号'
             error={errors.phone_number}
-            help="任意入力です"
+            help='任意入力です'
           >
             <Input
-              type="tel"
+              type='tel'
               value={formData.phone_number || ''}
-              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-              placeholder="090-1234-5678"
+              onChange={e =>
+                setFormData({ ...formData, phone_number: e.target.value })
+              }
+              placeholder='090-1234-5678'
               disabled={isSubmitting}
             />
           </FormField>
 
           {apiError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{apiError}</p>
+            <div className='p-3 bg-red-50 border border-red-200 rounded-md'>
+              <p className='text-sm text-red-600'>{apiError}</p>
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
+          <Button type='submit' className='w-full' disabled={isSubmitting}>
             {isSubmitting ? '保存中...' : '次へ進む'}
           </Button>
         </form>

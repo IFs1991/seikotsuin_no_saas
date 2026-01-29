@@ -12,7 +12,11 @@ if (!global.TextDecoder) {
 }
 
 // Web Streams API - undiciより前に定義が必要
-const { ReadableStream, TransformStream, WritableStream } = require('stream/web');
+const {
+  ReadableStream,
+  TransformStream,
+  WritableStream,
+} = require('stream/web');
 if (!global.ReadableStream) {
   global.ReadableStream = ReadableStream;
 }
@@ -40,7 +44,9 @@ if (!globalThis.__DISABLE_MESSAGEPORT__ && !global.MessagePort) {
   });
   // undici がグローバル識別子として参照するため
   // eslint-disable-next-line no-eval
-  eval('var MessageChannel = global.MessageChannel; var MessagePort = global.MessagePort;');
+  eval(
+    'var MessageChannel = global.MessageChannel; var MessagePort = global.MessagePort;'
+  );
 }
 
 // NOTE: MessageChannel/MessagePort は jest.setup.messagechannel.ts で

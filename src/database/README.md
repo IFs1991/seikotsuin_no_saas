@@ -114,7 +114,13 @@ psql -h [your-supabase-host] -U postgres -d postgres -f seed_data/01_initial_dat
 
 ### トランザクション
 
-- **appointments**: 予約管理
+- **reservations**: 予約管理 (**SSOT** - Single Source of Truth)
+  - 全ての予約データの正（マスター）
+  - `/api/reservations` 経由で読み書き
+- **appointments**: 予約管理 (**LEGACY** - 読み取り専用)
+  - レガシーデータ参照用
+  - INSERT/UPDATE/DELETE は禁止
+  - 新規予約は `reservations` に作成すること
 - **treatments**: 施術記録
 - **revenues**: 売上管理
 - **daily_reports**: 日報

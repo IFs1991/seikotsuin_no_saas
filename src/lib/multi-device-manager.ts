@@ -3,13 +3,8 @@
  * Phase 3A: セッション管理強化の一環としての複数デバイス管理
  */
 
-import { createClient } from '@/lib/supabase';
-import { createBrowserClient } from '@supabase/ssr';
-import {
-  SessionManager,
-  type UserSession,
-  type DeviceInfo,
-} from './session-manager';
+import { createClient } from '@/lib/supabase-browser';
+import { SessionManager, type DeviceInfo } from './session-manager';
 import { SecurityMonitor } from './security-monitor';
 import { logger } from '@/lib/logger';
 
@@ -51,10 +46,10 @@ export interface DeviceManagementAction {
 
 export interface DeviceSecurityAlert {
   type:
-  | 'new_device'
-  | 'suspicious_activity'
-  | 'concurrent_limit'
-  | 'location_change';
+    | 'new_device'
+    | 'suspicious_activity'
+    | 'concurrent_limit'
+    | 'location_change';
   severity: 'low' | 'medium' | 'high';
   message: string;
   deviceInfo: DeviceInfo;
@@ -67,18 +62,18 @@ export interface DeviceSecurityAlert {
 // ================================================================
 
 export class MultiDeviceManager {
-  private readonly supabasePromise;
+  private readonly supabase;
   private sessionManager: SessionManager;
   private securityMonitor: SecurityMonitor;
 
   constructor() {
-    this.supabasePromise = createClient();
+    this.supabase = createClient();
     this.sessionManager = new SessionManager();
     this.securityMonitor = new SecurityMonitor();
   }
 
-  private async getSupabase() {
-    return await this.supabasePromise;
+  private getSupabase() {
+    return this.supabase;
   }
 
   /**
@@ -98,6 +93,7 @@ export class MultiDeviceManager {
         .eq('device_fingerprint', deviceFingerprint)
         .limit(1);
 
+      // eslint-disable-next-line prefer-const
       let { data, error } = await query.single();
 
       // single() が未設定（thenableのみ）の場合にも対応

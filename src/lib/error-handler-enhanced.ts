@@ -200,7 +200,12 @@ export class SecurityErrorHandler {
       await this.securityMonitor.logSecurityEvent({
         event_type: 'system_error',
         event_category: 'security_violation',
-        severity_level: errorData.severity === 'critical' ? 'critical' : errorData.severity === 'high' ? 'error' : 'warning',
+        severity_level:
+          errorData.severity === 'critical'
+            ? 'critical'
+            : errorData.severity === 'high'
+              ? 'error'
+              : 'warning',
         event_description: error.message,
         user_id: context.userId || 'anonymous',
         clinic_id: context.clinicId || 'unknown',

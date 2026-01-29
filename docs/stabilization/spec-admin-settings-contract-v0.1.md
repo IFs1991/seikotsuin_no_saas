@@ -1,49 +1,51 @@
 # Admin Settings Contract and E2E Selector Spec v0.1
 
 ## Overview
+
 - Purpose: Align admin settings UI payloads with the persistence API and stabilize E2E selectors.
 - DoD: DOD-06 (docs/stabilization/DoD-v0.1.md).
 - One task = one PR.
 - Priority: **High**
 - Risk: **Data save failures in production**
-- Status: Implemented (booking calendar + system security + selectors + persistence hook stability + profile fallback + audit log best-effort)
+- Status: ✅ Completed (booking calendar + system security + selectors + persistence hook stability + profile fallback + audit log best-effort + staff invite E2E)
 
 ## Evidence (Prior Behavior)
 
 ### Critical: UI/API Schema Mismatch (Resolved)
 
-| Field | UI (src/components/admin/booking-calendar-settings.tsx) | API (src/app/api/admin/settings/route.ts BookingCalendarSchema) |
-|-------|---------------------------------------------------------|------------------------------------------------------------------|
-| Slot duration | slotDuration | slotMinutes |
-| Max bookings | maxSimultaneousBookings | maxConcurrent |
-| Week start | weekStartsOn | weekStartDay |
+| Field         | UI (src/components/admin/booking-calendar-settings.tsx) | API (src/app/api/admin/settings/route.ts BookingCalendarSchema) |
+| ------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
+| Slot duration | slotDuration                                            | slotMinutes                                                     |
+| Max bookings  | maxSimultaneousBookings                                 | maxConcurrent                                                   |
+| Week start    | weekStartsOn                                            | weekStartDay                                                    |
 
 Impact: UI payload keys were rejected by the API schema, causing data loss on save.
 Resolution: UI keys aligned to API contract and API schema extended for missing booking fields.
 
 ### E2E Selector Issues (Resolved)
+
 - src/components/admin/system-settings.tsx: 2FA used a checkbox input (no switch role)
-- src/__tests__/e2e-playwright/admin-settings.spec.ts: expected getByRole('switch') for 2FA
+- src/**tests**/e2e-playwright/admin-settings.spec.ts: expected getByRole('switch') for 2FA
 - Save button label differed between UI and test expectations
-Resolution: data-testid hooks added and E2E updated to use them.
+  Resolution: data-testid hooks added and E2E updated to use them.
 
 ## Booking Calendar Contract (Current)
 
 Decision: Align UI to API schema (API is the source of truth).
 
-| BookingSettings key | Persisted in API | Notes |
-|---------------------|------------------|-------|
-| slotMinutes | yes | booking calendar slot length |
-| maxConcurrent | yes | max concurrent bookings |
-| weekStartDay | yes | 0 = Sunday, 1 = Monday |
-| maxAdvanceBookingDays | yes | days in advance |
-| minAdvanceBookingHours | yes | hours in advance |
-| allowCancellation | yes | toggle for cancellation |
-| cancellationDeadlineHours | yes | deadline in hours |
-| defaultCalendarView | yes | day/week/month |
-| allowOnlineBooking | yes | toggle only |
-| online.* | no | local-only until API support |
-| notifications.* | no | local-only until API support |
+| BookingSettings key       | Persisted in API | Notes                        |
+| ------------------------- | ---------------- | ---------------------------- |
+| slotMinutes               | yes              | booking calendar slot length |
+| maxConcurrent             | yes              | max concurrent bookings      |
+| weekStartDay              | yes              | 0 = Sunday, 1 = Monday       |
+| maxAdvanceBookingDays     | yes              | days in advance              |
+| minAdvanceBookingHours    | yes              | hours in advance             |
+| allowCancellation         | yes              | toggle for cancellation      |
+| cancellationDeadlineHours | yes              | deadline in hours            |
+| defaultCalendarView       | yes              | day/week/month               |
+| allowOnlineBooking        | yes              | toggle only                  |
+| online.\*                 | no               | local-only until API support |
+| notifications.\*          | no               | local-only until API support |
 
 ## Implementation (Applied)
 
@@ -190,7 +192,7 @@ Resolution: make audit logging best-effort so saves return immediately.
 
 ```typescript
 // src/app/api/admin/settings/route.ts
-void AuditLogger.logAdminAction(/* ... */);
+void (AuditLogger.logAdminAction(/* ... */));
 ```
 
 ### 6. Shared profile context reuse (P1, Done)
@@ -207,7 +209,11 @@ fetching again.
 // useUserProfile.ts
 const context = useOptionalUserProfileContext();
 if (context) {
-  return { profile: context.profile, loading: context.loading, error: context.error };
+  return {
+    profile: context.profile,
+    loading: context.loading,
+    error: context.error,
+  };
 }
 ```
 
@@ -232,35 +238,51 @@ if (sessionResult?.data?.session?.user) {
   setProfile(buildProfileFromUser(sessionResult.data.session.user));
 }
 
-const res = await fetch('/api/auth/profile', { signal: abortController.signal });
+const res = await fetch('/api/auth/profile', {
+  signal: abortController.signal,
+});
 ```
 
 ## Required data-testid List
 
-| Component | Element | data-testid |
-|-----------|---------|-------------|
-| BookingCalendarSettings | Slot duration select | slot-duration-select |
-| BookingCalendarSettings | Max concurrent input | max-concurrent-input |
-| BookingCalendarSettings | Week start select | week-start-select |
-| BookingCalendarSettings | Save button | save-settings-button |
-| SystemSettings | 2FA toggle | 2fa-toggle |
-| SystemSettings | Session timeout input | session-timeout-input |
-| SystemSettings | Save button | save-settings-button |
-| CommunicationSettings | Save button | save-settings-button |
-| AdminSaveButton (e.g., ClinicBasicSettings) | Save button | save-settings-button |
-| AdminMessage (all settings pages) | Success message | success-message |
-| AdminMessage (all settings pages) | Error message | error-message |
+| Component                                   | Element               | data-testid                |
+| ------------------------------------------- | --------------------- | -------------------------- |
+| BookingCalendarSettings                     | Slot duration select  | slot-duration-select       |
+| BookingCalendarSettings                     | Max concurrent input  | max-concurrent-input       |
+| BookingCalendarSettings                     | Week start select     | week-start-select          |
+| BookingCalendarSettings                     | Save button           | save-settings-button       |
+| SystemSettings                              | 2FA toggle            | 2fa-toggle                 |
+| SystemSettings                              | Session timeout input | session-timeout-input      |
+| SystemSettings                              | Save button           | save-settings-button       |
+| CommunicationSettings                       | Save button           | save-settings-button       |
+| AdminSaveButton (e.g., ClinicBasicSettings) | Save button           | save-settings-button       |
+| AdminMessage (all settings pages)           | Success message       | success-message            |
+| AdminMessage (all settings pages)           | Error message         | error-message              |
+| StaffManagementSettings                     | Invite form container | staff-invite-form          |
+| StaffManagementSettings                     | Name input            | staff-invite-name-input    |
+| StaffManagementSettings                     | Email input           | staff-invite-email-input   |
+| StaffManagementSettings                     | Role select           | staff-invite-role-select   |
+| StaffManagementSettings                     | Cancel button         | staff-invite-cancel-button |
+| StaffManagementSettings                     | Submit button         | staff-invite-submit-button |
 
 ## Non-goals
+
 - Persisting online booking detail fields and notification settings (remain local-only).
 - Schema or migration changes (settings stored as JSONB).
 
 ## Acceptance Criteria (DoD)
-- DOD-06: src/__tests__/e2e-playwright/admin-settings.spec.ts completes without selector or validation failures.
+
+- DOD-06: src/**tests**/e2e-playwright/admin-settings.spec.ts completes without selector or validation failures.
 - Booking calendar saves/loads with API-aligned keys without key mismatch errors.
 - Interactive elements in scope expose stable data-testid attributes.
+- ✅ Staff invite E2E stabilized (2026-01-21):
+  - Backend API: ✅ Working
+  - Frontend UI: ✅ Working
+  - E2E Tests: ✅ Stable (3 consecutive passes)
+  - Resolution: See `docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md`
 
 ## Rollback
+
 - If UI changes regress layout, revert UI changes and stabilize tests via data-testid as a temporary measure.
 - Rollback steps:
   1. Revert key renaming in src/components/admin/booking-calendar-settings.tsx
@@ -291,13 +313,16 @@ Expected: save/reload scenarios complete without timeouts or data loss.
 - 調査・修正の対象: `admin-settings.spec.ts` の SMTP/セキュリティ/予約枠、`PUT /api/admin/settings` の安定性。
 
 ## Files Updated
+
 - src/components/admin/booking-calendar-settings.tsx
 - src/components/admin/system-settings.tsx
 - src/components/admin/communication-settings.tsx
+- src/components/admin/staff-management-settings.tsx (2025-01-21: staff invite feature)
 - src/components/admin/AdminMessage.tsx
 - src/components/admin/AdminSaveButton.tsx
 - src/app/api/admin/settings/route.ts
-- src/__tests__/e2e-playwright/admin-settings.spec.ts
+- src/app/api/admin/staff/invites/route.ts (2025-01-21: new, staff invite API)
+- src/**tests**/e2e-playwright/admin-settings.spec.ts
 - src/types/admin.ts
 - src/hooks/useAdminSettings.ts
 - src/hooks/useUserProfile.ts
@@ -350,3 +375,61 @@ WHERE category = 'booking_calendar'
 ```
 
 Note: allowOnlineBooking previously lived under online.isEnabled in the UI and was never persisted.
+
+## Related Documents
+
+- **E2E Follow-up**: `docs/stabilization/admin-settings-contract-e2e-followup-v0.1.md`
+  - E2Eテストのタイムアウトエラー修正（2025-01-21完了）
+  - Status: 8 passed, 1 skipped
+- **Staff Invite TODO**: `docs/stabilization/admin-settings-staff-invite-todo.md`
+  - スタッフ招待機能の実装プラン
+  - Status: ✅ 実装完了（2025-01-21）
+  - Implementation: Backend API + Frontend UI + E2E Tests
+- **Technical Debt**: `docs/technical-debt.md`
+  - **TD-001**: スタッフ招待機能のE2Eテスト不安定 → ✅ Resolved (2026-01-21)
+  - 解決方法: `docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md` 参照
+- **Staff Invite E2E Stability**: `docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md`
+  - Status: ✅ Completed (2026-01-21)
+  - E2E安定化策（タイムアウトガード、E2Eスキップモード、3回連続パス確認）
+- **DoD**: `docs/stabilization/DoD-v0.1.md`
+  - DOD-06: E2E test stability requirements
+
+## Completed Features
+
+### Staff Invite Feature (✅ Implemented - 2025-01-21)
+
+- **Location**: `/admin/settings` → スタッフ管理 → スタッフ一覧・招待
+- **Status**: ✅ Implementation complete, ✅ E2E stable (2026-01-21)
+- **Backend API**: `POST /api/admin/staff/invites`
+  - Admin-only authentication (admin, clinic_admin)
+  - Email validation with Zod
+  - Duplicate invitation check
+  - Supabase Auth email invitation (with timeout guard)
+  - E2E skip mode for deterministic testing
+  - Database record in `staff_invites` table
+  - Audit logging for compliance
+- **Frontend UI**: `src/components/admin/staff-management-settings.tsx`
+  - Role definitions aligned with DB schema (receptionist → staff)
+  - API integration for staff invitations
+  - Success/error message handling
+  - Stable data-testid attributes for E2E
+- **E2E Tests**: `src/__tests__/e2e-playwright/admin-settings.spec.ts`
+  - Test 1: スタッフを招待して一覧に表示される ✅
+  - Test 2: 無効なメールアドレスでエラーが表示される ✅
+- **E2E Stability**: See `docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md`
+- **Implementation Details**: See `docs/stabilization/admin-settings-staff-invite-todo.md`
+- **Files Modified**:
+  - `src/app/api/admin/staff/invites/route.ts` (new)
+  - `src/components/admin/staff-management-settings.tsx`
+  - `src/__tests__/e2e-playwright/admin-settings.spec.ts`
+
+### data-testid Added for Staff Invite
+
+| Component               | Element               | data-testid                |
+| ----------------------- | --------------------- | -------------------------- |
+| StaffManagementSettings | Invite form container | staff-invite-form          |
+| StaffManagementSettings | Name input            | staff-invite-name-input    |
+| StaffManagementSettings | Email input           | staff-invite-email-input   |
+| StaffManagementSettings | Role select           | staff-invite-role-select   |
+| StaffManagementSettings | Cancel button         | staff-invite-cancel-button |
+| StaffManagementSettings | Submit button         | staff-invite-submit-button |

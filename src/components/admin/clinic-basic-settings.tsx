@@ -51,18 +51,23 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'clinic_basic',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'clinic_basic',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   // プロファイルとデータのローディング中
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -229,6 +234,7 @@ export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
         <div className='flex items-center space-x-4'>
           <div className='w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300'>
             {formData.logo ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={URL.createObjectURL(formData.logo)}
                 alt='ロゴプレビュー'

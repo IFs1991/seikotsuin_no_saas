@@ -156,6 +156,7 @@ function calculateViolationSeverity(
   // クリティカル: inline javascript実行試行
   if (
     violatedDirective.includes('script-src') &&
+    // eslint-disable-next-line no-script-url
     blockedUri.startsWith('javascript:')
   ) {
     return 'critical';
@@ -213,6 +214,7 @@ function calculateThreatScore(report: Record<string, any>): number {
   if (violatedDirective.includes('style-src')) score += 15;
 
   // URI別スコア
+  // eslint-disable-next-line no-script-url
   if (blockedUri.startsWith('javascript:')) score += 35;
   if (blockedUri.startsWith('data:')) score += 20;
   if (blockedUri.match(/^https?:\/\//)) score += 15;
@@ -235,9 +237,8 @@ function calculateThreatScore(report: Record<string, any>): number {
 async function notifyHighSeverityViolation(violation: any): Promise<void> {
   try {
     // 通知システムをインポート（動的インポートでエラー回避）
-    const { securityNotificationManager } = await import(
-      '@/lib/notifications/security-alerts'
-    );
+    const { securityNotificationManager } =
+      await import('@/lib/notifications/security-alerts');
 
     // 通知頻度制限チェック（スパム防止）
     const shouldNotify = await securityNotificationManager.shouldNotify(

@@ -150,7 +150,8 @@ export function validateTestEnvironment(): {
     return {
       isValid: true,
       shouldSkip: true,
-      reason: 'E2E RLSテストはスキップされます。実行するには E2E_RLS_ENABLED=true を設定してください。',
+      reason:
+        'E2E RLSテストはスキップされます。実行するには E2E_RLS_ENABLED=true を設定してください。',
     };
   }
 

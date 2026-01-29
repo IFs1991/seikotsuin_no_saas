@@ -83,9 +83,7 @@ describe('admin master data operations', () => {
       supabase,
     });
 
-    const { GET } = await import(
-      '@/app/api/admin/master-data/export/route'
-    );
+    const { GET } = await import('@/app/api/admin/master-data/export/route');
 
     const response = await GET({
       url: 'https://example.com/api/admin/master-data/export?clinic_id=global',
@@ -139,9 +137,7 @@ describe('admin master data operations', () => {
       },
     });
 
-    const { POST } = await import(
-      '@/app/api/admin/master-data/import/route'
-    );
+    const { POST } = await import('@/app/api/admin/master-data/import/route');
 
     const response = await POST({
       url: 'https://example.com/api/admin/master-data/import',
@@ -210,9 +206,7 @@ describe('admin master data operations', () => {
       body: {},
     });
 
-    const { POST } = await import(
-      '@/app/api/admin/master-data/rollback/route'
-    );
+    const { POST } = await import('@/app/api/admin/master-data/rollback/route');
 
     const response = await POST({
       url: 'https://example.com/api/admin/master-data/rollback',

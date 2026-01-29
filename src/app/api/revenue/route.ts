@@ -119,17 +119,17 @@ export async function GET(request: NextRequest) {
     // 前年同期比較
     const lastYear = new Date();
     lastYear.setFullYear(lastYear.getFullYear() - 1);
-      const { data: lastYearData, error: lastYearError } = await supabase
-        .from('revenues')
-        .select('amount')
-        .eq('clinic_id', clinicId)
-        .gte('revenue_date', lastYear.toISOString().slice(0, 10))
-        .lte(
-          'revenue_date',
-          new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0)
-            .toISOString()
-            .slice(0, 10)
-        );
+    const { data: lastYearData, error: lastYearError } = await supabase
+      .from('revenues')
+      .select('amount')
+      .eq('clinic_id', clinicId)
+      .gte('revenue_date', lastYear.toISOString().slice(0, 10))
+      .lte(
+        'revenue_date',
+        new Date(lastYear.getFullYear(), lastYear.getMonth() + 1, 0)
+          .toISOString()
+          .slice(0, 10)
+      );
 
     const currentTotal =
       revenueData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;

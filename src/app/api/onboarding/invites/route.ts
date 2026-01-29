@@ -5,7 +5,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerClient, getCurrentUser, createAdminClient } from '@/lib/supabase/server';
+import {
+  getServerClient,
+  getCurrentUser,
+  createAdminClient,
+} from '@/lib/supabase';
 import { staffInviteSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -59,7 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { invites } = parsed.data;
-    const results: Array<{ email: string; success: boolean; error?: string }> = [];
+    const results: Array<{ email: string; success: boolean; error?: string }> =
+      [];
 
     // 招待がある場合のみ処理
     if (invites.length > 0) {

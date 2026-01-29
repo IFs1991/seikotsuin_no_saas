@@ -32,9 +32,27 @@ const mockStaffData = {
     averageSatisfaction: 4.5,
   },
   revenueRanking: [
-    { staff_id: 'staff-1', name: '田中', revenue: 120000, patients: 50, satisfaction: 4.5 },
-    { staff_id: 'staff-2', name: '佐藤', revenue: 110000, patients: 45, satisfaction: 4.2 },
-    { staff_id: 'staff-3', name: '山田', revenue: 95000, patients: 40, satisfaction: 4.0 },
+    {
+      staff_id: 'staff-1',
+      name: '田中',
+      revenue: 120000,
+      patients: 50,
+      satisfaction: 4.5,
+    },
+    {
+      staff_id: 'staff-2',
+      name: '佐藤',
+      revenue: 110000,
+      patients: 45,
+      satisfaction: 4.2,
+    },
+    {
+      staff_id: 'staff-3',
+      name: '山田',
+      revenue: 95000,
+      patients: 40,
+      satisfaction: 4.0,
+    },
   ],
   satisfactionCorrelation: [
     { name: '田中', satisfaction: 4.5, revenue: 120000, patients: 50 },
@@ -42,7 +60,10 @@ const mockStaffData = {
   ],
   performanceTrends: {},
   shiftAnalysis: {
-    hourlyReservations: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: i >= 9 && i <= 18 ? 5 : 0 })),
+    hourlyReservations: Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      count: i >= 9 && i <= 18 ? 5 : 0,
+    })),
     utilizationRate: 65,
     recommendations: [
       'ピーク時間帯は10時、14時、16時です。この時間帯にスタッフを増員することを検討してください。',

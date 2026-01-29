@@ -9,7 +9,7 @@ const mockE2ETest = {
   async runDashboardTests(): Promise<void> {
     // Placeholder for E2E tests - actual tests run via Jest
     logger.log('Mock E2E tests executed');
-  }
+  },
 };
 
 export interface TestResult {

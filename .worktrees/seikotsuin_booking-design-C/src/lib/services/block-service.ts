@@ -146,10 +146,7 @@ export class BlockService {
    * @returns 成功フラグ
    */
   async deleteBlock(id: string): Promise<boolean> {
-    const { error } = await this.supabase
-      .from('blocks')
-      .delete()
-      .eq('id', id);
+    const { error } = await this.supabase.from('blocks').delete().eq('id', id);
 
     if (error) {
       throw new Error(error.message);
@@ -174,11 +171,14 @@ export class BlockService {
       .from('blocks')
       .select('*')
       .eq('resourceId', resourceId)
-      .or(`startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`)
+      .or(
+        `startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`
+      )
       .limit(1)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = No rows found
       throw new Error(error.message);
     }
 

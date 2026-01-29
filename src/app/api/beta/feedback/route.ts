@@ -8,13 +8,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 // バリデーションスキーマ
 const feedbackSubmitSchema = z.object({
-  category: z.enum(['feature_request', 'bug_report', 'usability', 'performance', 'other']),
+  category: z.enum([
+    'feature_request',
+    'bug_report',
+    'usability',
+    'performance',
+    'other',
+  ]),
   severity: z.enum(['critical', 'high', 'medium', 'low']),
   title: z.string().min(5).max(200),
   description: z.string().min(10).max(5000),
@@ -27,7 +33,9 @@ const feedbackSubmitSchema = z.object({
 
 const feedbackUpdateSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(['new', 'acknowledged', 'in_progress', 'resolved', 'closed']).optional(),
+  status: z
+    .enum(['new', 'acknowledged', 'in_progress', 'resolved', 'closed'])
+    .optional(),
   priority: z.enum(['p0', 'p1', 'p2', 'p3']).optional(),
   assignedTo: z.string().uuid().optional(),
   resolution: z.string().optional(),
@@ -43,13 +51,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // 認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized feedback access attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // プロフィール取得
@@ -60,10 +68,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (!profile) {
-      return NextResponse.json(
-        { error: 'Profile not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
     // クエリパラメータ
@@ -130,13 +135,13 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // 認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized feedback submission attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // プロフィール取得
@@ -191,7 +196,12 @@ export async function POST(request: NextRequest) {
         actual_behavior: data.actualBehavior,
         attachments: data.attachments || [],
         status: 'new',
-        priority: data.severity === 'critical' ? 'p0' : data.severity === 'high' ? 'p1' : 'p3',
+        priority:
+          data.severity === 'critical'
+            ? 'p0'
+            : data.severity === 'high'
+              ? 'p1'
+              : 'p3',
       })
       .select()
       .single();
@@ -214,10 +224,7 @@ export async function POST(request: NextRequest) {
       severity: data.severity,
     });
 
-    return NextResponse.json(
-      { feedback: newFeedback },
-      { status: 201 }
-    );
+    return NextResponse.json({ feedback: newFeedback }, { status: 201 });
   } catch (error) {
     logger.error('Unexpected error in POST /api/beta/feedback', { error });
     return NextResponse.json(
@@ -236,13 +243,13 @@ export async function PATCH(request: NextRequest) {
     const supabase = await createClient();
 
     // 認証チェック
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (authError || !user) {
       logger.warn('Unauthorized feedback update attempt');
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // 管理者権限チェック

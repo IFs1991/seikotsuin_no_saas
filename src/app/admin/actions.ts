@@ -9,7 +9,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
-import { getServerClient } from '@/lib/supabase/server';
+import { getServerClient } from '@/lib/supabase';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 
@@ -305,11 +305,7 @@ export async function logout(): Promise<void> {
         email: user.email,
         timestamp: new Date().toISOString(),
       });
-      await AuditLogger.logLogout(
-        user.id,
-        user.email || '',
-        ipAddress
-      );
+      await AuditLogger.logLogout(user.id, user.email || '', ipAddress);
     }
 
     revalidatePath('/', 'layout');

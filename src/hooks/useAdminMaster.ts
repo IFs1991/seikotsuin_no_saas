@@ -50,10 +50,7 @@ export const useAdminMaster = () => {
     return data;
   };
 
-  const updateMasterData = async (
-    id: string,
-    updates: Partial<MasterData>
-  ) => {
+  const updateMasterData = async (id: string, updates: Partial<MasterData>) => {
     const success = await systemSettings.updateMasterData(id, updates);
     if (!success) {
       throw new Error(systemSettings.error || 'データの更新に失敗しました');
@@ -75,7 +72,9 @@ export const useAdminMaster = () => {
     }
     const result = await systemSettings.exportMasterData();
     if (!result) {
-      throw new Error(systemSettings.error || 'データのエクスポートに失敗しました');
+      throw new Error(
+        systemSettings.error || 'データのエクスポートに失敗しました'
+      );
     }
     return result;
   };
@@ -86,7 +85,9 @@ export const useAdminMaster = () => {
     }
     const success = await systemSettings.importMasterData(items);
     if (!success) {
-      throw new Error(systemSettings.error || 'データのインポートに失敗しました');
+      throw new Error(
+        systemSettings.error || 'データのインポートに失敗しました'
+      );
     }
     return true;
   };

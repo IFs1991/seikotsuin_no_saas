@@ -231,7 +231,9 @@ export const ResponsiveTable = React.forwardRef<
               >
                 {columns.map(column => (
                   <TableCell key={column.key} className={column.className}>
-                    {column.accessor ? column.accessor(item) : (item[column.key] as React.ReactNode)}
+                    {column.accessor
+                      ? column.accessor(item)
+                      : (item[column.key] as React.ReactNode)}
                   </TableCell>
                 ))}
               </TableRow>

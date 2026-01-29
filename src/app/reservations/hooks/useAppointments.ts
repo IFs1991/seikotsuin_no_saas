@@ -96,7 +96,9 @@ export const useAppointments = (clinicId: string | null) => {
 
         setAppointments(mapped);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load appointments');
+        setError(
+          err instanceof Error ? err.message : 'Failed to load appointments'
+        );
       } finally {
         setLoading(false);
       }
@@ -147,7 +149,9 @@ export const useAppointments = (clinicId: string | null) => {
         });
 
         setAppointments(prev =>
-          prev.map(appt => (appt.id === updatedAppointment.id ? updatedAppointment : appt))
+          prev.map(appt =>
+            appt.id === updatedAppointment.id ? updatedAppointment : appt
+          )
         );
         return { ok: true };
       } catch (err) {

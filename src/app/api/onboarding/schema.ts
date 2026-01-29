@@ -75,7 +75,10 @@ export const clinicCreateSchema = z.object({
    * Parent clinic ID for parent-child hierarchy (Option 2)
    * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
    */
-  parent_id: z.string().uuid('親クリニックIDは有効なUUIDである必要があります').optional(),
+  parent_id: z
+    .string()
+    .uuid('親クリニックIDは有効なUUIDである必要があります')
+    .optional(),
 });
 
 export type ClinicCreateDTO = z.infer<typeof clinicCreateSchema>;

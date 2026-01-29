@@ -10,8 +10,7 @@ import {
 import { AuditLogger } from '@/lib/audit-logger';
 import type { Database } from '@/types/supabase';
 
-type SystemSettingRow =
-  Database['public']['Tables']['system_settings']['Row'];
+type SystemSettingRow = Database['public']['Tables']['system_settings']['Row'];
 
 const parseSettingValue = (raw: unknown) => {
   if (typeof raw !== 'string') {
@@ -41,7 +40,6 @@ const formatSystemSetting = (row: SystemSettingRow) => ({
   updated_at: row.updated_at ?? undefined,
   updated_by: row.updated_by ?? undefined,
 });
-
 
 // ================================================================
 // マスターデータ管理 API - リファクタリング版
@@ -215,8 +213,7 @@ export async function POST(request: NextRequest) {
         : null);
 
     // system_settingsテーブルに挿入
-    const { data, error } = await (supabase
-      .from('system_settings') as any)
+    const { data, error } = await (supabase.from('system_settings') as any)
       .insert([
         {
           clinic_id: targetClinicId,
@@ -320,8 +317,7 @@ export async function PUT(request: NextRequest) {
     if (is_public !== undefined) updateData.is_public = is_public;
     if (clinic_id !== undefined) updateData.clinic_id = clinic_id;
 
-    const { data, error } = await (supabase
-      .from('system_settings') as any)
+    const { data, error } = await (supabase.from('system_settings') as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -395,8 +391,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 削除前に対象データを取得（編集可能チェック）
-    const { data: existingData, error: fetchError } = await (supabase
-      .from('system_settings') as any)
+    const { data: existingData, error: fetchError } = await (
+      supabase.from('system_settings') as any
+    )
       .select('is_editable, clinic_id')
       .eq('id', id)
       .maybeSingle();

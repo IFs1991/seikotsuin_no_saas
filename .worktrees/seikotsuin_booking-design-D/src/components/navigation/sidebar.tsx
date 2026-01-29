@@ -38,8 +38,16 @@ const CORE_MENU: SidebarMenuItem[] = [
     label: '予約管理',
     href: '/reservations',
     subItems: [
-      { id: 'reservation-timeline', label: 'タイムライン', href: '/reservations' },
-      { id: 'reservation-register', label: '新規予約', href: '/reservations/register' },
+      {
+        id: 'reservation-timeline',
+        label: 'タイムライン',
+        href: '/reservations',
+      },
+      {
+        id: 'reservation-register',
+        label: '新規予約',
+        href: '/reservations/register',
+      },
       { id: 'reservation-list', label: '予約一覧', href: '/reservations/list' },
     ],
   },
@@ -69,7 +77,11 @@ const ADMIN_MENU: SidebarMenuItem[] = [
 
 const QUICK_ACCESS: SidebarMenuItem[] = [
   { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
-  { id: 'quick-reservation', label: '新規予約', href: '/reservations/register' },
+  {
+    id: 'quick-reservation',
+    label: '新規予約',
+    href: '/reservations/register',
+  },
   { id: 'quick-patient', label: '患者検索', href: '/patients' },
   { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
 ];

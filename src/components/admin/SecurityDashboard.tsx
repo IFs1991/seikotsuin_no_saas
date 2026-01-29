@@ -29,7 +29,6 @@ import {
 import {
   Shield,
   ShieldAlert,
-  AlertTriangle,
   Users,
   Activity,
   Clock,
@@ -42,7 +41,6 @@ import {
   Wifi,
   CheckCircle,
   Search,
-  XCircle,
 } from 'lucide-react';
 
 interface SecurityMetrics {
@@ -112,7 +110,9 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
   const [refreshing, setRefreshing] = useState(false);
 
   // イベント更新用モーダル
-  const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(
+    null
+  );
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventStatus, setEventStatus] = useState<string>('');
   const [resolutionNotes, setResolutionNotes] = useState('');
@@ -222,7 +222,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
     const csvContent = [
       'イベントタイプ,重要度,説明,IPアドレス,日時,ステータス,解決メモ',
       ...securityEvents.map(
-        (event) =>
+        event =>
           `${event.event_type},${event.severity_level},"${event.event_description}",${event.ip_address || ''},${new Date(event.created_at).toLocaleString()},${event.status},"${event.resolution_notes || ''}"`
       ),
     ].join('\n');
@@ -472,9 +472,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         <TabsContent value='events'>
           <Card className='p-6'>
             <div className='flex items-center justify-between mb-4'>
-              <h3 className='text-lg font-semibold'>
-                セキュリティイベント
-              </h3>
+              <h3 className='text-lg font-semibold'>セキュリティイベント</h3>
               <div className='flex items-center gap-2'>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className='w-40'>
@@ -497,7 +495,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
                   セキュリティイベントはありません
                 </p>
               ) : (
-                securityEvents.map((event) => (
+                securityEvents.map(event => (
                   <div
                     key={event.id}
                     data-testid='security-event-item'
@@ -506,7 +504,9 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
                     <div className='flex items-start justify-between'>
                       <div className='flex-1'>
                         <div className='flex items-center space-x-2 mb-2'>
-                          <span className='font-medium'>{event.event_type}</span>
+                          <span className='font-medium'>
+                            {event.event_type}
+                          </span>
                           <span className='text-sm px-2 py-1 bg-white rounded-full'>
                             {event.severity_level}
                           </span>
@@ -517,7 +517,9 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
                           </span>
                         </div>
 
-                        <p className='text-sm mb-2'>{event.event_description}</p>
+                        <p className='text-sm mb-2'>
+                          {event.event_description}
+                        </p>
 
                         <div className='flex items-center space-x-4 text-xs'>
                           {event.ip_address && (
@@ -589,7 +591,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
                   アクティブなセッションはありません
                 </p>
               ) : (
-                activeSessions.map((session) => (
+                activeSessions.map(session => (
                   <div
                     key={session.id}
                     className='p-4 border rounded-lg hover:bg-gray-50'
@@ -657,7 +659,10 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
                 {Object.entries(metrics.eventsByType)
                   .slice(0, 5)
                   .map(([type, count]) => (
-                    <div key={type} className='flex items-center justify-between'>
+                    <div
+                      key={type}
+                      className='flex items-center justify-between'
+                    >
                       <span className='text-sm'>{type}</span>
                       <div className='flex items-center'>
                         <div className='w-24 bg-gray-200 rounded-full h-2 mr-2'>
@@ -683,7 +688,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
             <Card className='p-6'>
               <h3 className='text-lg font-semibold mb-4'>日別イベント数</h3>
               <div className='space-y-2'>
-                {metrics.eventsByDay.slice(-7).map((item) => (
+                {metrics.eventsByDay.slice(-7).map(item => (
                   <div key={item.date} className='flex items-center gap-4'>
                     <span className='text-sm text-gray-600 w-24'>
                       {item.date}
@@ -747,7 +752,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
               <Label>解決メモ</Label>
               <Textarea
                 value={resolutionNotes}
-                onChange={(e) => setResolutionNotes(e.target.value)}
+                onChange={e => setResolutionNotes(e.target.value)}
                 placeholder='対応内容を記録してください'
                 rows={4}
               />

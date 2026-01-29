@@ -6,7 +6,6 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import type { Database } from '@/types/supabase';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 
 // TODO: system_settings テーブルは clinic_settings に統合されたため、
@@ -24,6 +23,7 @@ type SystemSettingRow = {
   display_order?: number;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 };
 
 const parseSettingValue = (raw: unknown) => {
@@ -128,21 +128,21 @@ export async function GET(request: NextRequest) {
       clinic_id: effectiveClinicId ?? null,
     };
 
-    const { error: snapshotError } = await (supabase
-      .from('temporary_data') as any)
-      .upsert(
-        [
-          {
-            key: snapshotKey,
-            data: snapshotPayload,
-            data_type: 'system_settings_snapshot',
-            clinic_id: effectiveClinicId ?? null,
-            user_id: auth.id,
-            description: 'system_settings export snapshot',
-          },
-        ],
-        { onConflict: 'key' }
-      );
+    const { error: snapshotError } = await (
+      supabase.from('temporary_data') as any
+    ).upsert(
+      [
+        {
+          key: snapshotKey,
+          data: snapshotPayload,
+          data_type: 'system_settings_snapshot',
+          clinic_id: effectiveClinicId ?? null,
+          user_id: auth.id,
+          description: 'system_settings export snapshot',
+        },
+      ],
+      { onConflict: 'key' }
+    );
 
     if (snapshotError) {
       logError(snapshotError, {

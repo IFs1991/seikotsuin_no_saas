@@ -63,8 +63,9 @@ export async function POST(request: NextRequest) {
         : null);
 
     const snapshotKey = buildSnapshotKey(effectiveClinicId ?? null);
-    const { data: snapshotRow, error: snapshotError } = await (supabase
-      .from('temporary_data') as any)
+    const { data: snapshotRow, error: snapshotError } = await (
+      supabase.from('temporary_data') as any
+    )
       .select('data')
       .eq('key', snapshotKey)
       .maybeSingle();
@@ -85,7 +86,10 @@ export async function POST(request: NextRequest) {
     const items = snapshotPayload?.items;
 
     if (!Array.isArray(items)) {
-      return createErrorResponse('復元対象のスナップショットが見つかりません', 404);
+      return createErrorResponse(
+        '復元対象のスナップショットが見つかりません',
+        404
+      );
     }
 
     let deleteQuery = (supabase.from('system_settings') as any).delete();
@@ -120,9 +124,9 @@ export async function POST(request: NextRequest) {
     }));
 
     if (rows.length > 0) {
-      const { error: insertError } = await (supabase
-        .from('system_settings') as any)
-        .insert(rows);
+      const { error: insertError } = await (
+        supabase.from('system_settings') as any
+      ).insert(rows);
 
       if (insertError) {
         logError(insertError, {

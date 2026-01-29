@@ -108,7 +108,9 @@ describe('useMultiStore', () => {
     let consoleErrorSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -155,7 +157,7 @@ describe('useMultiStore', () => {
   describe('ローディング状態', () => {
     it('データ取得中はloadingがtrue', async () => {
       let resolvePromise: (value: unknown) => void;
-      const pendingPromise = new Promise((resolve) => {
+      const pendingPromise = new Promise(resolve => {
         resolvePromise = resolve;
       });
 

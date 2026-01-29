@@ -219,7 +219,11 @@ export async function GET(
               aiComment.good_points as string | string[] | null | undefined
             ),
             improvements: normalizeTextList(
-              aiComment.improvement_points as string | string[] | null | undefined
+              aiComment.improvement_points as
+                | string
+                | string[]
+                | null
+                | undefined
             ),
             suggestions: resolveSuggestions(aiComment),
             created_at: aiComment.created_at as string,

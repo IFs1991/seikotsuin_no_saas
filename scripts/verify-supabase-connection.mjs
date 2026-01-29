@@ -18,7 +18,7 @@ function loadEnv(envFileName = '.env') {
 
   if (!fs.existsSync(envPath)) {
     console.warn(
-      `⚠️ ${envFileName} が見つかりませんでした（${envPath}）。process.env の既存値を使用します。`,
+      `⚠️ ${envFileName} が見つかりませんでした（${envPath}）。process.env の既存値を使用します。`
     );
     return;
   }
@@ -54,12 +54,12 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ Missing Supabase environment variables.');
   console.error(
-    '   Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in .env.',
+    '   Ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in .env.'
   );
   console.error(
     `   現在の値: NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}, SUPABASE_SERVICE_ROLE_KEY=${
       SUPABASE_SERVICE_ROLE_KEY ? '[set]' : 'undefined'
-    }`,
+    }`
   );
   process.exit(1);
 }
@@ -94,7 +94,10 @@ async function checkConnection() {
     // 2. 任意: patients テーブル
     let patients = null;
     try {
-      const { data, error } = await supabase.from('patients').select('id').limit(1);
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id')
+        .limit(1);
       if (error) {
         console.warn(`⚠️ patients table query warning: ${error.message}`);
       } else {
@@ -102,13 +105,19 @@ async function checkConnection() {
         results.push('✅ patients table reachable');
       }
     } catch (e) {
-      console.warn('⚠️ patients table check skipped due to unexpected error:', e);
+      console.warn(
+        '⚠️ patients table check skipped due to unexpected error:',
+        e
+      );
     }
 
     // 3. 任意: revenues テーブル
     let revenues = null;
     try {
-      const { data, error } = await supabase.from('revenues').select('id').limit(1);
+      const { data, error } = await supabase
+        .from('revenues')
+        .select('id')
+        .limit(1);
       if (error) {
         console.warn(`⚠️ revenues table query warning: ${error.message}`);
       } else {
@@ -116,15 +125,20 @@ async function checkConnection() {
         results.push('✅ revenues table reachable');
       }
     } catch (e) {
-      console.warn('⚠️ revenues table check skipped due to unexpected error:', e);
+      console.warn(
+        '⚠️ revenues table check skipped due to unexpected error:',
+        e
+      );
     }
 
     // サマリ表示
     console.log('--- Supabase verification summary ---');
-    results.forEach((line) => console.log(line));
+    results.forEach(line => console.log(line));
 
     if (!clinics || clinics.length === 0) {
-      console.warn('⚠️ clinics table returned no rows. Seed data may be missing.');
+      console.warn(
+        '⚠️ clinics table returned no rows. Seed data may be missing.'
+      );
     }
     if (patients && patients.length === 0) {
       console.warn('⚠️ patients table returned no rows.');

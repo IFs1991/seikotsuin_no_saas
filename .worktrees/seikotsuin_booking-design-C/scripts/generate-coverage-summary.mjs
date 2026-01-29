@@ -31,4 +31,3 @@ try {
   console.error('Failed to generate coverage summary:', error.message);
   process.exit(1);
 }
-

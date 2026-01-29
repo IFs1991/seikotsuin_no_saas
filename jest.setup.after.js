@@ -60,14 +60,27 @@ const __MOCK_DB = {
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      getSession: jest.fn().mockResolvedValue({ data: { session: null }, error: null }),
-      getUser: jest.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      signIn: jest.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
-      signInWithPassword: jest.fn().mockResolvedValue({
-        data: { user: { id: 'mock-user-id', email: 'test@example.com' }, session: {} },
+      getSession: jest
+        .fn()
+        .mockResolvedValue({ data: { session: null }, error: null }),
+      getUser: jest
+        .fn()
+        .mockResolvedValue({ data: { user: null }, error: null }),
+      signIn: jest.fn().mockResolvedValue({
+        data: { user: null, session: null },
         error: null,
       }),
-      signUp: jest.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
+      signInWithPassword: jest.fn().mockResolvedValue({
+        data: {
+          user: { id: 'mock-user-id', email: 'test@example.com' },
+          session: {},
+        },
+        error: null,
+      }),
+      signUp: jest.fn().mockResolvedValue({
+        data: { user: null, session: null },
+        error: null,
+      }),
       signOut: jest.fn().mockResolvedValue({ error: null }),
       onAuthStateChange: jest.fn(),
     },

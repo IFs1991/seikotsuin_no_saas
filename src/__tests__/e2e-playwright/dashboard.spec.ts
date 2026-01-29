@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 import { loginAsStaff } from './helpers/auth';
 
 const phase = (process.env.E2E_PHASE || 'phase1').toLowerCase();
-const isPhase2Enabled =
-  phase === 'phase2' || phase === '2' || phase === 'all';
+const isPhase2Enabled = phase === 'phase2' || phase === '2' || phase === 'all';
 
 test.describe('Dashboard - 実データ表示', () => {
   test.beforeEach(async ({ page }) => {
@@ -102,7 +101,9 @@ if (isPhase2Enabled) {
       await page.waitForLoadState('networkidle');
     });
 
-    test('転換率表示がAPIデータに一致する（先頭100%基準）', async ({ page }) => {
+    test('転換率表示がAPIデータに一致する（先頭100%基準）', async ({
+      page,
+    }) => {
       // 転換ファネルコンポーネントが表示される
       await expect(page.getByText('新患→再診転換ファネル')).toBeVisible();
 

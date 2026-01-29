@@ -91,34 +91,21 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
     async (
       data: Partial<MasterDataDetail>
     ): Promise<Partial<MasterDataDetail>> => {
-      try {
-        const result = await createMutation.mutateAsync(data);
-        return result;
-      } catch (error) {
-        throw error;
-      }
+      return await createMutation.mutateAsync(data);
     },
     [createMutation]
   );
 
   const updateMasterData = useCallback(
     async (id: string, updates: Partial<MasterDataDetail>): Promise<void> => {
-      try {
-        await updateMutation.mutateAsync({ id, data: updates });
-      } catch (error) {
-        throw error;
-      }
+      await updateMutation.mutateAsync({ id, data: updates });
     },
     [updateMutation]
   );
 
   const deleteMasterData = useCallback(
     async (id: string): Promise<void> => {
-      try {
-        await deleteMutation.mutateAsync(id);
-      } catch (error) {
-        throw error;
-      }
+      await deleteMutation.mutateAsync(id);
     },
     [deleteMutation]
   );

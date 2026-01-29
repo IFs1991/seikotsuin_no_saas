@@ -111,7 +111,7 @@ export default function AdminTenantsPage() {
     }
   };
 
-  const handleEdit = (clinic: typeof clinics[number]) => {
+  const handleEdit = (clinic: (typeof clinics)[number]) => {
     setEditingId(clinic.id);
     setFormState({
       name: clinic.name,
@@ -122,14 +122,16 @@ export default function AdminTenantsPage() {
     setNotice(null);
   };
 
-  const handleToggleActive = async (clinic: typeof clinics[number]) => {
+  const handleToggleActive = async (clinic: (typeof clinics)[number]) => {
     setNotice(null);
     const updated = await updateClinic(clinic.id, {
       is_active: !clinic.is_active,
     });
     if (updated) {
       setNotice(
-        clinic.is_active ? 'クリニックを無効化しました' : 'クリニックを有効化しました'
+        clinic.is_active
+          ? 'クリニックを無効化しました'
+          : 'クリニックを有効化しました'
       );
       fetchClinics(currentFilters);
     }
@@ -201,11 +203,11 @@ export default function AdminTenantsPage() {
                 </div>
               </div>
               <div className='flex flex-wrap items-center gap-2'>
-                <Button type="submit" disabled={loading}>
+                <Button type='submit' disabled={loading}>
                   {editingId ? '更新する' : '作成する'}
                 </Button>
                 {editingId && (
-                  <Button type="button" variant="outline" onClick={resetForm}>
+                  <Button type='button' variant='outline' onClick={resetForm}>
                     編集をキャンセル
                   </Button>
                 )}
@@ -286,7 +288,9 @@ export default function AdminTenantsPage() {
                         </Button>
                         <Button
                           size='sm'
-                          variant={clinic.is_active ? 'destructive' : 'secondary'}
+                          variant={
+                            clinic.is_active ? 'destructive' : 'secondary'
+                          }
                           onClick={() => handleToggleActive(clinic)}
                         >
                           {clinic.is_active ? '無効化' : '有効化'}

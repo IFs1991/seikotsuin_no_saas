@@ -13,7 +13,11 @@ import {
   staffInsertSchema,
   staffQuerySchema,
 } from './schema';
-import { ADMIN_UI_ROLES, STAFF_ROLES, canAccessCrossClinicWithCompat } from '@/lib/constants/roles';
+import {
+  ADMIN_UI_ROLES,
+  STAFF_ROLES,
+  canAccessCrossClinicWithCompat,
+} from '@/lib/constants/roles';
 
 const PATH = '/api/staff';
 
@@ -35,10 +39,15 @@ export async function GET(request: NextRequest) {
 
     // Q3決定: 一般スタッフも閲覧可能（自院限定）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const { supabase, permissions } = await ensureClinicAccess(request, PATH, queryClinicId, {
-      allowedRoles: Array.from(STAFF_ROLES),
-      requireClinicMatch: true,
-    });
+    const { supabase, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      queryClinicId,
+      {
+        allowedRoles: Array.from(STAFF_ROLES),
+        requireClinicMatch: true,
+      }
+    );
 
     // DOD-09: テナント境界の明示 - permissions.clinic_idでスコープし、欠落時は拒否
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
@@ -203,7 +212,7 @@ export async function GET(request: NextRequest) {
           if (dayHours && dayHours.start && dayHours.end) {
             const [startH, startM] = dayHours.start.split(':').map(Number);
             const [endH, endM] = dayHours.end.split(':').map(Number);
-            const dailyMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            const dailyMinutes = endH * 60 + endM - (startH * 60 + startM);
             weeklyMinutes += dailyMinutes;
           }
         });
@@ -265,7 +274,10 @@ export async function GET(request: NextRequest) {
       .map(h => h.hour);
 
     if (lowHours.length > 0) {
-      const lowHourLabels = lowHours.slice(0, 3).map(h => `${h}時`).join('、');
+      const lowHourLabels = lowHours
+        .slice(0, 3)
+        .map(h => `${h}時`)
+        .join('、');
       recommendations.push(
         `${lowHourLabels}は予約が少ない傾向があります。この時間帯限定の割引を検討してください。`
       );

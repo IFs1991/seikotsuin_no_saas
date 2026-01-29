@@ -35,7 +35,12 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    if (profileError || !profile || !profile.clinic_id || profile.is_active === false) {
+    if (
+      profileError ||
+      !profile ||
+      !profile.clinic_id ||
+      profile.is_active === false
+    ) {
       return NextResponse.json(
         { error: 'プロフィール情報の取得に失敗しました' },
         { status: 403 }

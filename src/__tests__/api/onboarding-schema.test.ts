@@ -12,10 +12,6 @@ import {
   clinicCreateSchema,
   staffInviteSchema,
   seedMasterSchema,
-  type ProfileUpdateDTO,
-  type ClinicCreateDTO,
-  type StaffInviteDTO,
-  type SeedMasterDTO,
 } from '@/app/api/onboarding/schema';
 
 describe('Onboarding Schemas', () => {
@@ -260,7 +256,10 @@ describe('Onboarding Schemas', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.payment_methods).toEqual(['現金', 'クレジットカード']);
+        expect(result.data.payment_methods).toEqual([
+          '現金',
+          'クレジットカード',
+        ]);
       }
     });
 

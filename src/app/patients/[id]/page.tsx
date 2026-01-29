@@ -63,7 +63,9 @@ export default function PatientDetailPage() {
         const json = await res.json();
 
         if (!res.ok || !json?.success) {
-          throw new Error(json?.error?.message || json?.error || '取得に失敗しました');
+          throw new Error(
+            json?.error?.message || json?.error || '取得に失敗しました'
+          );
         }
 
         if (!cancelled) {
@@ -91,7 +93,9 @@ export default function PatientDetailPage() {
 
   const customAttributes = useMemo(() => {
     if (!data?.customAttributes) return [];
-    return Object.entries(data.customAttributes).filter(([, value]) => value !== null && value !== undefined);
+    return Object.entries(data.customAttributes).filter(
+      ([, value]) => value !== null && value !== undefined
+    );
   }, [data]);
 
   if (profileError && !profileLoading) {

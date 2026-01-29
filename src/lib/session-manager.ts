@@ -3,7 +3,8 @@
  * Phase 3A: セッション管理強化の中核機能
  */
 
-import { createClient, type SupabaseServerClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import type { Database } from '@/types/supabase';
 import type { SessionValidationResult } from '@/types/security';
@@ -13,10 +14,11 @@ import type { SessionValidationResult } from '@/types/security';
 // ================================================================
 
 // Supabase行型の定義
-type SupabaseClient = SupabaseServerClient;
 type UserSessionRow = Database['public']['Tables']['user_sessions']['Row'];
-type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
-type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
+type UserSessionInsert =
+  Database['public']['Tables']['user_sessions']['Insert'];
+type UserSessionUpdate =
+  Database['public']['Tables']['user_sessions']['Update'];
 type SecurityEventInsert =
   Database['public']['Tables']['security_events']['Insert'];
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -80,23 +82,21 @@ export interface CreateSessionOptions {
   };
 }
 
-type SessionUser = NonNullable<
-  SessionValidationResult<UserSession>['user']
->;
+type SessionUser = NonNullable<SessionValidationResult<UserSession>['user']>;
 
 // ================================================================
 // セッション管理クラス
 // ================================================================
 
 export class SessionManager {
-  private readonly supabasePromise: Promise<SupabaseClient>;
+  private readonly supabase: SupabaseClient;
 
   constructor() {
-    this.supabasePromise = createClient();
+    this.supabase = createClient();
   }
 
-  private async getSupabase() {
-    return await this.supabasePromise;
+  private getSupabase() {
+    return this.supabase;
   }
 
   /**
@@ -150,7 +150,8 @@ export class SessionManager {
         : 'unknown';
 
     const browserVersionCandidate =
-      typeof record.browserVersion === 'string' && record.browserVersion.length > 0
+      typeof record.browserVersion === 'string' &&
+      record.browserVersion.length > 0
         ? record.browserVersion
         : typeof record.version === 'string' && record.version.length > 0
           ? record.version
@@ -244,7 +245,9 @@ export class SessionManager {
       payload.longitude = geolocation.longitude;
     }
 
-    return Object.keys(payload).length > 0 ? (payload as Exclude<UserSessionInsert['geolocation'], undefined>) : null;
+    return Object.keys(payload).length > 0
+      ? (payload as Exclude<UserSessionInsert['geolocation'], undefined>)
+      : null;
   }
 
   private async resolveUserContext(
@@ -252,7 +255,7 @@ export class SessionManager {
     clinicId: string
   ): Promise<SessionUser> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       const { data } = await supabase
         .from('profiles')
         .select('*')
@@ -368,7 +371,7 @@ export class SessionManager {
       const idleTimeoutIso = idleTimeoutAt.toISOString();
       const absoluteTimeoutIso = absoluteTimeoutAt.toISOString();
 
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
 
       // セッションデータベース挿入
       const sessionData: UserSessionInsert = {
@@ -418,18 +421,19 @@ export class SessionManager {
               ...(typeof options.userAgent === 'string'
                 ? { userAgent: options.userAgent }
                 : {}),
-              ...(options.geolocation ? { geolocation: options.geolocation } : {}),
+              ...(options.geolocation
+                ? { geolocation: options.geolocation }
+                : {}),
               createdAt: sessionRow?.created_at ?? nowIso,
               lastActivity: sessionRow?.last_activity ?? nowIso,
               expiresAt: sessionRow?.expires_at ?? absoluteTimeoutIso,
-              idleTimeoutAt:
-                sessionRow?.idle_timeout_at ?? idleTimeoutIso,
+              idleTimeoutAt: sessionRow?.idle_timeout_at ?? idleTimeoutIso,
               absoluteTimeoutAt:
                 sessionRow?.absolute_timeout_at ?? absoluteTimeoutIso,
               maxIdleMinutes: sessionRow?.max_idle_minutes ?? idleMinutes,
               maxSessionHours: sessionRow?.max_session_hours ?? sessionHours,
               rememberDevice:
-                sessionRow?.remember_device ?? (options.rememberDevice ?? false),
+                sessionRow?.remember_device ?? options.rememberDevice ?? false,
               isActive: sessionRow?.is_active ?? true,
               isRevoked: sessionRow?.is_revoked ?? false,
             });
@@ -474,8 +478,12 @@ export class SessionManager {
         clinicId,
         sessionToken,
         deviceInfo,
-        ...(typeof options.ipAddress === 'string' ? { ipAddress: options.ipAddress } : {}),
-        ...(typeof options.userAgent === 'string' ? { userAgent: options.userAgent } : {}),
+        ...(typeof options.ipAddress === 'string'
+          ? { ipAddress: options.ipAddress }
+          : {}),
+        ...(typeof options.userAgent === 'string'
+          ? { userAgent: options.userAgent }
+          : {}),
         ...(options.geolocation ? { geolocation: options.geolocation } : {}),
         createdAt: nowIso,
         lastActivity: nowIso,
@@ -489,7 +497,12 @@ export class SessionManager {
 
       const user = await this.resolveUserContext(userId, clinicId);
 
-      return { isValid: true, session: fallbackSession, user, token: sessionToken };
+      return {
+        isValid: true,
+        session: fallbackSession,
+        user,
+        token: sessionToken,
+      };
     }
   }
 
@@ -504,7 +517,7 @@ export class SessionManager {
     }
 
     try {
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       const { data: sessionRow, error } = await supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
@@ -585,7 +598,7 @@ export class SessionManager {
         last_activity: now.toISOString(),
         idle_timeout_at: newIdleTimeoutAt.toISOString(),
       };
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       const { error } = await supabase
         .from('user_sessions')
         .update(updateData)
@@ -611,7 +624,7 @@ export class SessionManager {
     revokedBy?: string
   ): Promise<boolean> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       const { data: sessionRow, error: fetchError } = await supabase
         .from('user_sessions')
         .select<'*', UserSessionRow>()
@@ -669,7 +682,7 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<UserSession[]> {
-    const supabase = await this.getSupabase();
+    const supabase = this.getSupabase();
     const { data: sessions, error } = await supabase
       .from('user_sessions')
       .select<'*', UserSessionRow>()
@@ -692,7 +705,7 @@ export class SessionManager {
     userId: string,
     clinicId: string
   ): Promise<number> {
-    const supabase = await this.getSupabase();
+    const supabase = this.getSupabase();
     const { count, error } = await supabase
       .from('user_sessions')
       .select('*', { count: 'exact' })
@@ -718,7 +731,7 @@ export class SessionManager {
     clinicId: string
   ): Promise<number> {
     try {
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       const { data: sessions, error: fetchError } = await supabase
         .from('user_sessions')
         .select('id')
@@ -760,7 +773,7 @@ export class SessionManager {
     clinicId: string,
     role?: string
   ): Promise<SessionPolicy> {
-    const supabase = await this.getSupabase();
+    const supabase = this.getSupabase();
     const { data: policy, error } = await supabase
       .from('session_policies')
       .select('*')
@@ -795,7 +808,7 @@ export class SessionManager {
     clinicId: string,
     policy: SessionPolicy
   ): Promise<void> {
-    const supabase = await this.getSupabase();
+    const supabase = this.getSupabase();
     const activeCount = await this.getActiveSessionCount(userId, clinicId);
 
     if (activeCount >= policy.max_concurrent_sessions) {
@@ -881,7 +894,7 @@ export class SessionManager {
         correlation_id: event.correlation_id ?? null,
       };
 
-      const supabase = await this.getSupabase();
+      const supabase = this.getSupabase();
       await supabase.from('security_events').insert(payload);
     } catch (error) {
       console.error('セキュリティイベントログ記録エラー:', error);
@@ -902,7 +915,11 @@ export function parseUserAgent(userAgent: string): DeviceInfo {
 
   // デバイス判定
   let device: string = 'Unknown';
-  if (ua.includes('mobile') || ua.includes('iphone') || ua.includes('android')) {
+  if (
+    ua.includes('mobile') ||
+    ua.includes('iphone') ||
+    ua.includes('android')
+  ) {
     device = 'mobile';
   } else if (ua.includes('tablet') || ua.includes('ipad')) {
     device = 'tablet';

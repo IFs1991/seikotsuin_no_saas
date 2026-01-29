@@ -554,7 +554,9 @@ describe('settings default values', () => {
 
     categories.forEach(category => {
       expect(DEFAULT_SETTINGS).toHaveProperty(category);
-      expect(DEFAULT_SETTINGS[category as keyof typeof DEFAULT_SETTINGS]).toBeDefined();
+      expect(
+        DEFAULT_SETTINGS[category as keyof typeof DEFAULT_SETTINGS]
+      ).toBeDefined();
     });
   });
 });

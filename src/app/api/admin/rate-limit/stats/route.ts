@@ -10,7 +10,12 @@ import { z } from 'zod';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 const QuerySchema = z.object({
-  type: z.enum(['login_attempts', 'api_calls', 'session_creation', 'mfa_attempts']),
+  type: z.enum([
+    'login_attempts',
+    'api_calls',
+    'session_creation',
+    'mfa_attempts',
+  ]),
   identifier: z.string().min(1),
 });
 

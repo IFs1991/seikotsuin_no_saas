@@ -30,10 +30,14 @@ export function useReservationFormData(clinicId: string | null) {
           throw new Error(custJson?.error || '顧客データの取得に失敗しました');
         }
         if (!menuRes.ok || !menuJson.success) {
-          throw new Error(menuJson?.error || 'メニューデータの取得に失敗しました');
+          throw new Error(
+            menuJson?.error || 'メニューデータの取得に失敗しました'
+          );
         }
         if (!resRes.ok || !resJson.success) {
-          throw new Error(resJson?.error || 'リソースデータの取得に失敗しました');
+          throw new Error(
+            resJson?.error || 'リソースデータの取得に失敗しました'
+          );
         }
 
         setCustomers(custJson.data ?? []);

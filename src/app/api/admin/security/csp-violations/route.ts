@@ -187,7 +187,9 @@ export async function PATCH(request: NextRequest) {
     const body = auth.body as Record<string, unknown> | undefined;
     const violationId =
       body && typeof body.violationId === 'string' ? body.violationId : '';
-    const is_false_positive = body ? (body as any).is_false_positive : undefined;
+    const is_false_positive = body
+      ? (body as any).is_false_positive
+      : undefined;
     const notes = body ? (body as any).notes : undefined;
 
     if (!violationId) {

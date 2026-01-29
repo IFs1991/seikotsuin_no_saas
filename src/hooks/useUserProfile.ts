@@ -21,8 +21,14 @@ const PROFILE_FETCH_TIMEOUT_MS = 8000;
 const SESSION_FETCH_TIMEOUT_MS = 2000;
 
 const resolveRole = (user: User): string | null => {
-  const appMeta = user.app_metadata as Record<string, unknown> | null | undefined;
-  const userMeta = user.user_metadata as Record<string, unknown> | null | undefined;
+  const appMeta = user.app_metadata as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const userMeta = user.user_metadata as
+    | Record<string, unknown>
+    | null
+    | undefined;
   const roleCandidate =
     appMeta?.user_role ??
     appMeta?.role ??
@@ -34,8 +40,14 @@ const resolveRole = (user: User): string | null => {
 };
 
 const resolveClinicId = (user: User): string | null => {
-  const appMeta = user.app_metadata as Record<string, unknown> | null | undefined;
-  const userMeta = user.user_metadata as Record<string, unknown> | null | undefined;
+  const appMeta = user.app_metadata as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const userMeta = user.user_metadata as
+    | Record<string, unknown>
+    | null
+    | undefined;
   const clinicCandidate = appMeta?.clinic_id ?? userMeta?.clinic_id ?? null;
 
   return typeof clinicCandidate === 'string' ? clinicCandidate : null;
@@ -172,10 +184,7 @@ export function useUserProfile(): ProfileState {
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise<null>(resolve => {
-          timeoutId = setTimeout(
-            () => resolve(null),
-            SESSION_FETCH_TIMEOUT_MS
-          );
+          timeoutId = setTimeout(() => resolve(null), SESSION_FETCH_TIMEOUT_MS);
         });
         const sessionResult = await Promise.race([
           sessionPromise,

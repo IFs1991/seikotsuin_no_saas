@@ -2,11 +2,11 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 
-    | 'default' 
-    | 'medical' 
-    | 'dashboard' 
-    | 'patient' 
+  variant?:
+    | 'default'
+    | 'medical'
+    | 'dashboard'
+    | 'patient'
     | 'admin'
     | 'emergency'
     | 'clinical'
@@ -21,22 +21,30 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 const cardVariants = {
   variant: {
     default: 'rounded-lg border bg-card text-card-foreground shadow-sm',
-    
+
     // 医療系バリアント (Atlassian Design準拠)
-    medical: 'rounded-medical border border-gray-300 bg-white shadow-medical text-gray-900',
+    medical:
+      'rounded-medical border border-gray-300 bg-white shadow-medical text-gray-900',
     dashboard:
       'rounded-medical border border-gray-200 bg-white shadow-medical hover:shadow-medical-lg transition-all duration-200',
-    patient: 'rounded-medical border border-blue-200 bg-blue-50 shadow-medical text-blue-900',
-    
+    patient:
+      'rounded-medical border border-blue-200 bg-blue-50 shadow-medical text-blue-900',
+
     // 管理者・緊急時バリアント
-    admin: 'rounded-medical border border-admin-200 bg-admin-50 shadow-medical text-admin-900',
-    emergency: 'rounded-medical border-l-4 border-l-red-500 border border-red-200 bg-red-50 shadow-medical-lg text-red-900',
-    
+    admin:
+      'rounded-medical border border-admin-200 bg-admin-50 shadow-medical text-admin-900',
+    emergency:
+      'rounded-medical border-l-4 border-l-red-500 border border-red-200 bg-red-50 shadow-medical-lg text-red-900',
+
     // 機能別バリアント
-    clinical: 'rounded-medical border border-medical-blue-200 bg-medical-blue-50 shadow-medical text-medical-blue-900',
-    report: 'rounded-medical border border-green-200 bg-green-50 shadow-medical text-green-900',
-    security: 'rounded-medical border border-yellow-200 bg-yellow-50 shadow-medical text-yellow-900',
-    analytics: 'rounded-medical border border-purple-200 bg-purple-50 shadow-medical text-purple-900',
+    clinical:
+      'rounded-medical border border-medical-blue-200 bg-medical-blue-50 shadow-medical text-medical-blue-900',
+    report:
+      'rounded-medical border border-green-200 bg-green-50 shadow-medical text-green-900',
+    security:
+      'rounded-medical border border-yellow-200 bg-yellow-50 shadow-medical text-yellow-900',
+    analytics:
+      'rounded-medical border border-purple-200 bg-purple-50 shadow-medical text-purple-900',
   },
   elevation: {
     none: 'shadow-none',
@@ -57,14 +65,17 @@ const cardVariants = {
 };
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ 
-    className, 
-    variant = 'default', 
-    priority, 
-    interactive = false, 
-    elevation = 'low',
-    ...props 
-  }, ref) => (
+  (
+    {
+      className,
+      variant = 'default',
+      priority,
+      interactive = false,
+      elevation = 'low',
+      ...props
+    },
+    ref
+  ) => (
     <div
       ref={ref}
       className={cn(
@@ -73,7 +84,9 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         // 影の深さ
         cardVariants.elevation[elevation],
         // インタラクティブ要素
-        cardVariants.interactive[interactive.toString() as keyof typeof cardVariants.interactive],
+        cardVariants.interactive[
+          interactive.toString() as keyof typeof cardVariants.interactive
+        ],
         // 優先度スタイル
         priority && cardVariants.priority[priority],
         className

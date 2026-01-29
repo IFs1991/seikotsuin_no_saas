@@ -22,17 +22,20 @@ interface OnboardingProgressProps {
   className?: string;
 }
 
-export function OnboardingProgress({ currentStep, className }: OnboardingProgressProps) {
+export function OnboardingProgress({
+  currentStep,
+  className,
+}: OnboardingProgressProps) {
   const getCurrentIndex = () => {
     if (currentStep === 'completed') return STEPS.length;
-    return STEPS.findIndex((s) => s.key === currentStep);
+    return STEPS.findIndex(s => s.key === currentStep);
   };
 
   const currentIndex = getCurrentIndex();
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="flex items-center justify-between">
+      <div className='flex items-center justify-between'>
         {STEPS.map((step, index) => {
           const isCompleted = index < currentIndex;
           const isCurrent = step.key === currentStep;
@@ -40,7 +43,7 @@ export function OnboardingProgress({ currentStep, className }: OnboardingProgres
           return (
             <React.Fragment key={step.key}>
               {/* ステップインジケータ */}
-              <div className="flex flex-col items-center">
+              <div className='flex flex-col items-center'>
                 <div
                   className={cn(
                     'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
@@ -50,8 +53,18 @@ export function OnboardingProgress({ currentStep, className }: OnboardingProgres
                   )}
                 >
                   {isCompleted ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className='w-5 h-5'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M5 13l4 4L19 7'
+                      />
                     </svg>
                   ) : (
                     step.shortLabel

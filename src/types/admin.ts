@@ -197,14 +197,14 @@ export interface PaginationState {
 // テーブル設定型
 export interface TableColumn {
   type:
-  | 'string'
-  | 'integer'
-  | 'decimal'
-  | 'boolean'
-  | 'text'
-  | 'timestamp'
-  | 'uuid'
-  | 'json';
+    | 'string'
+    | 'integer'
+    | 'decimal'
+    | 'boolean'
+    | 'text'
+    | 'timestamp'
+    | 'uuid'
+    | 'json';
   label?: string;
   required?: boolean;
   readonly?: boolean;
@@ -404,21 +404,18 @@ export interface UseSystemSettingsReturn {
 
   // アクション
   fetchMasterData: (filters?: Partial<FilterState>) => void | Promise<void>;
-  createMasterData: (data: Partial<MasterDataDetail>) => Promise<Partial<MasterDataDetail> | boolean>;
+  createMasterData: (
+    data: Partial<MasterDataDetail>
+  ) => Promise<Partial<MasterDataDetail> | boolean>;
   updateMasterData: (
     id: string,
     data: Partial<MasterDataDetail>
   ) => Promise<void | boolean>;
   deleteMasterData: (id: string) => Promise<void | boolean>;
-  exportMasterData?: (
-    filters?: Partial<FilterState>
-  ) => Promise<
-    | {
-        items: MasterDataDetail[];
-        snapshot_key: string;
-      }
-    | null
-  >;
+  exportMasterData?: (filters?: Partial<FilterState>) => Promise<{
+    items: MasterDataDetail[];
+    snapshot_key: string;
+  } | null>;
   importMasterData?: (
     items: MasterDataDetail[],
     clinicId?: string | null

@@ -125,10 +125,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const reportRows: DailyReportRow[] =
-      (dailyReports ?? []) as DailyReportRow[];
-    const performanceRows: StaffPerformanceRow[] =
-      (staffPerformance ?? []) as StaffPerformanceRow[];
+    const reportRows: DailyReportRow[] = (dailyReports ??
+      []) as DailyReportRow[];
+    const performanceRows: StaffPerformanceRow[] = (staffPerformance ??
+      []) as StaffPerformanceRow[];
 
     const aggregatedMap = new Map<string, AggregatedClinicData>();
 
@@ -145,9 +145,10 @@ export async function GET(request: NextRequest) {
     reportRows.forEach(report => {
       const entry = aggregatedMap.get(report.clinic_id);
       if (!entry) return;
-      const revenue = typeof report.total_revenue === 'number'
-        ? report.total_revenue
-        : Number(report.total_revenue ?? 0);
+      const revenue =
+        typeof report.total_revenue === 'number'
+          ? report.total_revenue
+          : Number(report.total_revenue ?? 0);
       entry.totalRevenue += revenue;
       entry.totalPatientCount += report.total_patients ?? 0;
     });

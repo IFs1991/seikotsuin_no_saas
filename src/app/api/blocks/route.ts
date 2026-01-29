@@ -10,7 +10,11 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-helpers';
-import { STAFF_ROLES, CLINIC_ADMIN_ROLES, isHQRole } from '@/lib/constants/roles';
+import {
+  STAFF_ROLES,
+  CLINIC_ADMIN_ROLES,
+  isHQRole,
+} from '@/lib/constants/roles';
 
 // ===== GET: Block一覧取得 =====
 export async function GET(request: NextRequest) {
@@ -42,7 +46,10 @@ export async function GET(request: NextRequest) {
     clinicId = permissions.clinic_id;
     // リクエストされたclinic_idが自分のものと異なる場合は拒否
     if (requestedClinicId && requestedClinicId !== permissions.clinic_id) {
-      return createErrorResponse('他のクリニックのデータにはアクセスできません', 403);
+      return createErrorResponse(
+        '他のクリニックのデータにはアクセスできません',
+        403
+      );
     }
   }
 
@@ -55,10 +62,12 @@ export async function GET(request: NextRequest) {
     // 直接blocksテーブルにclinic_idがない場合、resourcesテーブルと結合
     let query = supabase
       .from('blocks')
-      .select(`
+      .select(
+        `
         *,
         resources!inner(clinic_id)
-      `)
+      `
+      )
       .eq('resources.clinic_id', clinicId);
 
     if (resourceId) {
@@ -94,7 +103,9 @@ export async function GET(request: NextRequest) {
         fallbackQuery.lte('endTime', endDate);
       }
 
-      const fallbackResult = await fallbackQuery.order('startTime', { ascending: true });
+      const fallbackResult = await fallbackQuery.order('startTime', {
+        ascending: true,
+      });
 
       if (fallbackResult.error) {
         console.error('Blocks fetch error:', fallbackResult.error);
@@ -156,7 +167,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (resource.clinic_id !== clinicId) {
-      return createErrorResponse('このリソースへのアクセス権限がありません', 403);
+      return createErrorResponse(
+        'このリソースへのアクセス権限がありません',
+        403
+      );
     }
 
     const insertData = {
@@ -231,17 +245,18 @@ export async function DELETE(request: NextRequest) {
       return createErrorResponse('このBlockへのアクセス権限がありません', 403);
     }
 
-    const { error } = await supabase
-      .from('blocks')
-      .delete()
-      .eq('id', blockId);
+    const { error } = await supabase.from('blocks').delete().eq('id', blockId);
 
     if (error) {
       console.error('Block deletion error:', error);
       return createErrorResponse('Block削除に失敗しました', 500);
     }
 
-    return createSuccessResponse({ deleted: true }, 200, 'Block削除に成功しました');
+    return createSuccessResponse(
+      { deleted: true },
+      200,
+      'Block削除に成功しました'
+    );
   } catch (error) {
     console.error('Blocks DELETE error:', error);
     return createErrorResponse('サーバーエラーが発生しました', 500);

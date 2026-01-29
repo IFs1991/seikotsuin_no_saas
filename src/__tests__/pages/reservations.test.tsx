@@ -8,8 +8,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, waitFor, act } from '@testing-library/react';
 
 // モック設定
 jest.mock('next/navigation', () => ({
@@ -30,7 +29,9 @@ jest.mock('@/app/reservations/api', () => ({
   fetchReservations: jest.fn().mockResolvedValue([]),
   createReservation: jest.fn().mockResolvedValue({ id: 'new-1' }),
   updateReservation: jest.fn().mockResolvedValue({ id: 'updated-1' }),
-  createCustomer: jest.fn().mockResolvedValue({ id: 'customer-1', name: 'Test Customer' }),
+  createCustomer: jest
+    .fn()
+    .mockResolvedValue({ id: 'customer-1', name: 'Test Customer' }),
 }));
 
 // UserProfileContextのモック
@@ -48,11 +49,15 @@ jest.mock('@/providers/user-profile-context', () => ({
 // useReservationFormDataのモック
 jest.mock('@/hooks/useReservationFormData', () => ({
   useReservationFormData: () => ({
-    menus: [
-      { id: 'menu-1', name: 'Test Menu', isActive: true, options: [] },
-    ],
+    menus: [{ id: 'menu-1', name: 'Test Menu', isActive: true, options: [] }],
     resources: [
-      { id: 'resource-1', name: 'Staff 1', isActive: true, type: 'staff', maxConcurrent: 1 },
+      {
+        id: 'resource-1',
+        name: 'Staff 1',
+        isActive: true,
+        type: 'staff',
+        maxConcurrent: 1,
+      },
     ],
     loading: false,
     error: null,
@@ -61,7 +66,7 @@ jest.mock('@/hooks/useReservationFormData', () => ({
 
 // 動的インポート用のモック
 jest.mock('lucide-react', () => ({
-  Loader2: () => <div data-testid="loader" />,
+  Loader2: () => <div data-testid='loader' />,
   ChevronLeft: () => <span>&lt;</span>,
   ChevronRight: () => <span>&gt;</span>,
   Calendar: () => <span>Cal</span>,
@@ -120,7 +125,10 @@ describe('予約UI統合テスト', () => {
       try {
         const fs = require('fs');
         const path = require('path');
-        const oldApiPath = path.join(getProjectRoot(), 'src/app/Reservation/api.ts');
+        const oldApiPath = path.join(
+          getProjectRoot(),
+          'src/app/Reservation/api.ts'
+        );
         oldApiExists = fs.existsSync(oldApiPath);
       } catch {
         oldApiExists = false;
@@ -137,7 +145,10 @@ describe('予約UI統合テスト', () => {
       // hooks/useAppointments.tsのソースコードを確認
       const fs = require('fs');
       const path = require('path');
-      const hookPath = path.join(getProjectRoot(), 'src/app/reservations/hooks/useAppointments.ts');
+      const hookPath = path.join(
+        getProjectRoot(),
+        'src/app/reservations/hooks/useAppointments.ts'
+      );
 
       const source = fs.readFileSync(hookPath, 'utf-8');
 
@@ -154,7 +165,10 @@ describe('予約UI統合テスト', () => {
     it('/reservations パスが存在すること', () => {
       const fs = require('fs');
       const path = require('path');
-      const pagePath = path.join(getProjectRoot(), 'src/app/reservations/page.tsx');
+      const pagePath = path.join(
+        getProjectRoot(),
+        'src/app/reservations/page.tsx'
+      );
 
       expect(fs.existsSync(pagePath)).toBe(true);
     });

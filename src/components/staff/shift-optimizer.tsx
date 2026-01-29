@@ -70,11 +70,12 @@ const formatDateJst = (value: Date | string): string => {
 };
 
 const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
-
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [demandForecasts, setDemandForecasts] = useState<DemandForecast[]>([]);
-  const [hourlyDistribution, setHourlyDistribution] = useState<HourlyDistribution[]>([]);
+  const [hourlyDistribution, setHourlyDistribution] = useState<
+    HourlyDistribution[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -116,9 +117,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
         fetch(
           `/api/staff/shifts?clinic_id=${clinicId}&start=${start}&end=${end}`
         ),
-        fetch(
-          `/api/staff/preferences?clinic_id=${clinicId}&active_only=true`
-        ),
+        fetch(`/api/staff/preferences?clinic_id=${clinicId}&active_only=true`),
         fetch(
           `/api/staff/demand-forecast?clinic_id=${clinicId}&start=${start}&end=${end}`
         ),
@@ -141,9 +140,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
       setHourlyDistribution(demandData.data?.hourlyDistribution || []);
     } catch (err) {
       console.error('Shift optimizer data fetch error:', err);
-      setError(
-        err instanceof Error ? err.message : 'データ取得に失敗しました'
-      );
+      setError(err instanceof Error ? err.message : 'データ取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -236,8 +233,18 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
 
   // 月の名前を取得
   const monthNames = [
-    '1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月',
+    '1月',
+    '2月',
+    '3月',
+    '4月',
+    '5月',
+    '6月',
+    '7月',
+    '8月',
+    '9月',
+    '10月',
+    '11月',
+    '12月',
   ];
 
   return (
@@ -349,8 +356,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
               {days.map(day => {
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const dayShifts = shifts.filter(
-                  s =>
-                    formatDateJst(s.start_time) === dateStr
+                  s => formatDateJst(s.start_time) === dateStr
                 );
 
                 return (
@@ -431,8 +437,11 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                           {forecast.date} {forecast.hour}:00-
                           {forecast.hour + 1}:00
                         </p>
-                        <p className={`text-sm font-semibold ${getLevelColor(forecast.level)}`}>
-                          予測: {getLevelLabel(forecast.level)} ({forecast.count}件)
+                        <p
+                          className={`text-sm font-semibold ${getLevelColor(forecast.level)}`}
+                        >
+                          予測: {getLevelLabel(forecast.level)} (
+                          {forecast.count}件)
                         </p>
                       </div>
                     ))

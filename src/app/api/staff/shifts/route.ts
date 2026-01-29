@@ -9,7 +9,11 @@ import {
   logError,
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { ADMIN_UI_ROLES, STAFF_ROLES, canAccessCrossClinicWithCompat } from '@/lib/constants/roles';
+import {
+  ADMIN_UI_ROLES,
+  STAFF_ROLES,
+  canAccessCrossClinicWithCompat,
+} from '@/lib/constants/roles';
 
 const PATH = '/api/staff/shifts';
 
@@ -42,10 +46,15 @@ export async function GET(request: NextRequest) {
 
     // Q3決定: 一般スタッフも閲覧可能（自院限定）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const { supabase, permissions } = await ensureClinicAccess(request, PATH, queryClinicId, {
-      allowedRoles: Array.from(STAFF_ROLES),
-      requireClinicMatch: true,
-    });
+    const { supabase, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      queryClinicId,
+      {
+        allowedRoles: Array.from(STAFF_ROLES),
+        requireClinicMatch: true,
+      }
+    );
 
     // DOD-09: テナント境界の明示 - permissions.clinic_idでスコープし、欠落時は拒否
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
@@ -94,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // レスポンス形式に変換
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const formattedShifts = (shifts || []).map((shift: any) => {
       // Supabaseのリレーションは配列または単一オブジェクトで返される
       const resource = Array.isArray(shift.resources)

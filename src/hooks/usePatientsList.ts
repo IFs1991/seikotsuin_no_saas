@@ -118,7 +118,9 @@ export function usePatientsList(): UsePatientsListResult {
 
     if (!clinicId) {
       setIsLoading(false);
-      setError('\u30af\u30ea\u30cb\u30c3\u30af\u60c5\u5831\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093');
+      setError(
+        '\u30af\u30ea\u30cb\u30c3\u30af\u60c5\u5831\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093'
+      );
       setPatients([]);
       return;
     }

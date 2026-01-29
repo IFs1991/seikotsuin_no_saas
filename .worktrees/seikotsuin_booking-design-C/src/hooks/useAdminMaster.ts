@@ -50,10 +50,7 @@ export const useAdminMaster = () => {
     return data;
   };
 
-  const updateMasterData = async (
-    id: string,
-    updates: Partial<MasterData>
-  ) => {
+  const updateMasterData = async (id: string, updates: Partial<MasterData>) => {
     const success = await systemSettings.updateMasterData(id, updates);
     if (!success) {
       throw new Error(systemSettings.error || 'データの更新に失敗しました');

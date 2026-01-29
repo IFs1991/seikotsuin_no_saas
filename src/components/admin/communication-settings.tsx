@@ -81,17 +81,22 @@ export function CommunicationSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'communication',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'communication',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -115,10 +120,10 @@ export function CommunicationSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* 通知チャンネル設定 */}
@@ -133,9 +138,7 @@ export function CommunicationSettings() {
             <input
               type='checkbox'
               checked={notifications.emailEnabled}
-              onChange={e =>
-                updateChannels({ emailEnabled: e.target.checked })
-              }
+              onChange={e => updateChannels({ emailEnabled: e.target.checked })}
               className='rounded border-gray-300'
             />
             <Mail className='w-4 h-4' />
@@ -146,9 +149,7 @@ export function CommunicationSettings() {
             <input
               type='checkbox'
               checked={notifications.smsEnabled}
-              onChange={e =>
-                updateChannels({ smsEnabled: e.target.checked })
-              }
+              onChange={e => updateChannels({ smsEnabled: e.target.checked })}
               className='rounded border-gray-300'
             />
             <MessageCircle className='w-4 h-4' />
@@ -159,9 +160,7 @@ export function CommunicationSettings() {
             <input
               type='checkbox'
               checked={notifications.lineEnabled}
-              onChange={e =>
-                updateChannels({ lineEnabled: e.target.checked })
-              }
+              onChange={e => updateChannels({ lineEnabled: e.target.checked })}
               className='rounded border-gray-300'
             />
             <span className='text-sm text-gray-700'>LINE</span>
@@ -171,9 +170,7 @@ export function CommunicationSettings() {
             <input
               type='checkbox'
               checked={notifications.pushEnabled}
-              onChange={e =>
-                updateChannels({ pushEnabled: e.target.checked })
-              }
+              onChange={e => updateChannels({ pushEnabled: e.target.checked })}
               className='rounded border-gray-300'
             />
             <span className='text-sm text-gray-700'>プッシュ通知</span>
@@ -225,8 +222,9 @@ export function CommunicationSettings() {
               </div>
 
               <div className='mt-3 text-xs text-gray-500'>
-                利用可能な変数: {'{{ patientName }}'}, {'{{ appointmentDate }}'},{' '}
-                {'{{ appointmentTime }}'}, {'{{ staffName }}'}, {'{{ serviceName }}'}
+                利用可能な変数: {'{{ patientName }}'}, {'{{ appointmentDate }}'}
+                , {'{{ appointmentTime }}'}, {'{{ staffName }}'},{' '}
+                {'{{ serviceName }}'}
               </div>
             </div>
           ))}
@@ -240,15 +238,16 @@ export function CommunicationSettings() {
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <div>
-              <Label htmlFor='smtp-host' className='block text-sm font-medium text-gray-700 mb-1'>
+              <Label
+                htmlFor='smtp-host'
+                className='block text-sm font-medium text-gray-700 mb-1'
+              >
                 SMTPホスト
               </Label>
               <Input
                 id='smtp-host'
                 value={smtpSettings.host}
-                onChange={e =>
-                  updateSmtp({ host: e.target.value })
-                }
+                onChange={e => updateSmtp({ host: e.target.value })}
                 placeholder='smtp.gmail.com'
               />
             </div>
@@ -260,9 +259,7 @@ export function CommunicationSettings() {
               <Input
                 type='number'
                 value={smtpSettings.port}
-                onChange={e =>
-                  updateSmtp({ port: parseInt(e.target.value) })
-                }
+                onChange={e => updateSmtp({ port: parseInt(e.target.value) })}
                 placeholder='587'
               />
             </div>
@@ -273,9 +270,7 @@ export function CommunicationSettings() {
               </Label>
               <Input
                 value={smtpSettings.username}
-                onChange={e =>
-                  updateSmtp({ username: e.target.value })
-                }
+                onChange={e => updateSmtp({ username: e.target.value })}
                 placeholder='noreply@seikotsuin.com'
               />
             </div>
@@ -287,9 +282,7 @@ export function CommunicationSettings() {
               <Input
                 type='password'
                 value={smtpSettings.password}
-                onChange={e =>
-                  updateSmtp({ password: e.target.value })
-                }
+                onChange={e => updateSmtp({ password: e.target.value })}
                 placeholder='••••••••'
               />
             </div>
@@ -300,9 +293,7 @@ export function CommunicationSettings() {
               <input
                 type='checkbox'
                 checked={smtpSettings.secure}
-                onChange={e =>
-                  updateSmtp({ secure: e.target.checked })
-                }
+                onChange={e => updateSmtp({ secure: e.target.checked })}
                 className='rounded border-gray-300'
               />
               <span className='text-sm text-gray-700'>SSL/TLS暗号化を使用</span>
@@ -315,7 +306,7 @@ export function CommunicationSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          data-testid="save-settings-button"
+          data-testid='save-settings-button'
           onClick={onSave}
           disabled={loadingState.isLoading}
           className='flex items-center space-x-2'

@@ -7,7 +7,9 @@ import {
 } from '../e2e/helpers/test-auth';
 
 const isTestEnvironmentReady = validateTestEnvironment();
-const describeOrSkip = isTestEnvironmentReady ? test.describe : test.describe.skip;
+const describeOrSkip = isTestEnvironmentReady
+  ? test.describe
+  : test.describe.skip;
 
 describeOrSkip('E2E-1: admin clinic management', () => {
   let testClinicId: string | null = null;

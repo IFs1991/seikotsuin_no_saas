@@ -13,14 +13,14 @@ import {
   Mail,
   UserCheck,
   Shield,
-  Clock,
 } from 'lucide-react';
+import { StaffRole } from '@/types/onboarding';
 
 interface Staff {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'therapist' | 'receptionist' | 'manager';
+  role: StaffRole;
   status: 'active' | 'inactive' | 'pending';
   joinDate: string;
   permissions: string[];
@@ -57,23 +57,17 @@ export function StaffManagementSettings() {
       id: '3',
       name: '山田 次郎',
       email: 'yamada@seikotsuin.com',
-      role: 'receptionist',
+      role: 'staff',
       status: 'pending',
       joinDate: '2024-01-10',
       permissions: ['appointments', 'basic_info'],
     },
   ]);
 
-  const [roles, setRoles] = useState<Role[]>([
-    {
-      id: 'admin',
-      name: '管理者',
-      description: 'システム全体の管理権限',
-      permissions: ['all'],
-    },
+  const roles: Role[] = [
     {
       id: 'manager',
-      name: '院長/マネージャー',
+      name: 'マネージャー',
       description: '店舗の管理権限',
       permissions: [
         'staff_management',
@@ -89,32 +83,33 @@ export function StaffManagementSettings() {
       permissions: ['patient_management', 'appointments', 'medical_records'],
     },
     {
-      id: 'receptionist',
-      name: '受付スタッフ',
+      id: 'staff',
+      name: 'スタッフ',
       description: '受付業務・予約管理を担当',
       permissions: ['appointments', 'basic_info', 'payments'],
     },
-  ]);
+  ];
 
   const [newStaff, setNewStaff] = useState<{
     name: string;
     email: string;
-    role: Staff['role'];
+    role: StaffRole;
   }>({
     name: '',
     email: '',
-    role: 'receptionist',
+    role: 'staff',
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
 
-  const roleNames = {
+  const roleNames: Record<StaffRole, string> = {
     admin: '管理者',
-    manager: '院長/マネージャー',
+    clinic_admin: 'クリニック管理者',
+    manager: 'マネージャー',
     therapist: '施術スタッフ',
-    receptionist: '受付スタッフ',
+    staff: 'スタッフ',
   };
 
   const statusNames = {
@@ -130,30 +125,57 @@ export function StaffManagementSettings() {
   };
 
   const handleInviteStaff = async () => {
+    if (!newStaff.email || !newStaff.role) {
+      setSavedMessage('メールアドレスと役職を入力してください');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const staffId = Date.now().toString();
-      const role = roles.find(r => r.id === newStaff.role);
+      const response = await fetch('/api/admin/staff/invites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: newStaff.email,
+          role: newStaff.role,
+          full_name: newStaff.name || undefined,
+        }),
+      });
 
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || '招待の送信に失敗しました');
+      }
+
+      // 招待成功時、リストに追加
       setStaff(prev => [
         ...prev,
         {
-          id: staffId,
-          name: newStaff.name,
+          id: result.data.invite_id,
+          name: newStaff.name || newStaff.email.split('@')[0],
           email: newStaff.email,
           role: newStaff.role,
           status: 'pending',
           joinDate: new Date().toISOString().split('T')[0],
-          permissions: role?.permissions || [],
+          permissions:
+            roles.find(r => r.id === newStaff.role)?.permissions || [],
         },
       ]);
 
-      setNewStaff({ name: '', email: '', role: 'receptionist' });
+      setNewStaff({ name: '', email: '', role: 'staff' });
       setShowInviteForm(false);
-      setSavedMessage('スタッフに招待メールを送信しました');
+      setSavedMessage(
+        result.data.message || 'スタッフに招待メールを送信しました'
+      );
       setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
-      setSavedMessage('招待の送信に失敗しました');
+    } catch (err) {
+      setSavedMessage(
+        err instanceof Error ? err.message : '招待の送信に失敗しました'
+      );
+      setTimeout(() => setSavedMessage(''), 5000);
     } finally {
       setIsLoading(false);
     }
@@ -182,7 +204,7 @@ export function StaffManagementSettings() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       setSavedMessage('スタッフ設定を保存しました');
       setTimeout(() => setSavedMessage(''), 3000);
-    } catch (error) {
+    } catch {
       setSavedMessage('保存に失敗しました');
     } finally {
       setIsLoading(false);
@@ -217,24 +239,27 @@ export function StaffManagementSettings() {
         </div>
 
         {showInviteForm && (
-          <div className='p-4 bg-gray-50 rounded-lg space-y-4'>
+          <div
+            className='p-4 bg-gray-50 rounded-lg space-y-4'
+            data-testid='staff-invite-form'
+          >
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
               <div>
                 <Label
                   htmlFor='staffName'
                   className='block text-sm font-medium text-gray-700 mb-1'
                 >
-                  氏名 <span className='text-red-500'>*</span>
+                  氏名
                 </Label>
                 <Input
                   id='staffName'
+                  data-testid='staff-invite-name-input'
                   type='text'
                   value={newStaff.name}
                   onChange={e =>
                     setNewStaff(prev => ({ ...prev, name: e.target.value }))
                   }
                   placeholder='田中 太郎'
-                  required
                 />
               </div>
 
@@ -247,6 +272,7 @@ export function StaffManagementSettings() {
                 </Label>
                 <Input
                   id='staffEmail'
+                  data-testid='staff-invite-email-input'
                   type='email'
                   value={newStaff.email}
                   onChange={e =>
@@ -266,11 +292,12 @@ export function StaffManagementSettings() {
                 </Label>
                 <select
                   id='staffRole'
+                  data-testid='staff-invite-role-select'
                   value={newStaff.role}
                   onChange={e =>
                     setNewStaff(prev => ({
                       ...prev,
-                      role: e.target.value as Staff['role'],
+                      role: e.target.value as StaffRole,
                     }))
                   }
                   className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -288,12 +315,14 @@ export function StaffManagementSettings() {
               <Button
                 variant='outline'
                 onClick={() => setShowInviteForm(false)}
+                data-testid='staff-invite-cancel-button'
               >
                 キャンセル
               </Button>
               <Button
                 onClick={handleInviteStaff}
-                disabled={!newStaff.name || !newStaff.email || isLoading}
+                disabled={!newStaff.email || isLoading}
+                data-testid='staff-invite-submit-button'
                 className='flex items-center space-x-2'
               >
                 <Mail className='w-4 h-4' />

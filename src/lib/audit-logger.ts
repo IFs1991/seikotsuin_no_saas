@@ -306,14 +306,13 @@ function extractForwardedIp(value: string | null): string | null {
 }
 
 export function getRequestInfoFromHeaders(headers: Headers) {
-  const cfConnectingIp = normalizeHeaderValue(
-    headers.get('cf-connecting-ip')
-  );
+  const cfConnectingIp = normalizeHeaderValue(headers.get('cf-connecting-ip'));
   const realIp = normalizeHeaderValue(headers.get('x-real-ip'));
   const forwardedIp = extractForwardedIp(headers.get('x-forwarded-for'));
 
   const ipAddress = cfConnectingIp || realIp || forwardedIp || 'unknown';
-  const userAgent = normalizeHeaderValue(headers.get('user-agent')) || 'unknown';
+  const userAgent =
+    normalizeHeaderValue(headers.get('user-agent')) || 'unknown';
 
   return { ipAddress, userAgent };
 }

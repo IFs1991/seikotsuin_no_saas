@@ -122,10 +122,7 @@ export class BlockService {
    * @param endDate 終了日
    * @returns Block配列
    */
-  async getBlocksByDateRange(
-    startDate: Date,
-    endDate: Date
-  ): Promise<Block[]> {
+  async getBlocksByDateRange(startDate: Date, endDate: Date): Promise<Block[]> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('blocks')
@@ -206,11 +203,14 @@ export class BlockService {
       .select('*')
       .eq('resourceId', resourceId)
       .eq('clinic_id', this.clinicId)
-      .or(`startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`)
+      .or(
+        `startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`
+      )
       .limit(1)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = No rows found
       throw new Error(error.message);
     }
 

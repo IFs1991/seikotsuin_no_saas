@@ -69,6 +69,7 @@ describe('フェイルセーフ動作テスト', () => {
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    // eslint-disable-next-line no-restricted-syntax
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'mock-service-role-key';
     jest.clearAllMocks();
     mockSupabase = createMockSupabase();

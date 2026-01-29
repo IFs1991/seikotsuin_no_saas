@@ -3,8 +3,10 @@ import { cn } from '@/lib/utils';
 import { Label } from './label';
 import { Input } from './input';
 
-export interface FormFieldProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
+export interface FormFieldProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'children'
+> {
   label: string;
   required?: boolean;
   error?: string;

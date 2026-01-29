@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerClient, getCurrentUser } from '@/lib/supabase/server';
+import { getServerClient, getCurrentUser } from '@/lib/supabase';
 import { seedMasterSchema } from '../schema';
 
 export async function POST(request: NextRequest) {

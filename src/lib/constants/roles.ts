@@ -20,7 +20,10 @@ export const HQ_ROLES: ReadonlySet<Role> = new Set(['admin']);
 /**
  * Admin UI roles - can access /admin/** routes
  */
-export const ADMIN_UI_ROLES: ReadonlySet<Role> = new Set(['admin', 'clinic_admin']);
+export const ADMIN_UI_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+  'clinic_admin',
+]);
 
 /**
  * Cross-clinic roles - can view data across clinics (HQ view)
@@ -30,12 +33,22 @@ export const CROSS_CLINIC_ROLES: ReadonlySet<Role> = new Set(['admin']);
 /**
  * Clinic admin roles - can manage clinic settings
  */
-export const CLINIC_ADMIN_ROLES: ReadonlySet<Role> = new Set(['admin', 'clinic_admin', 'manager']);
+export const CLINIC_ADMIN_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+  'clinic_admin',
+  'manager',
+]);
 
 /**
  * Staff roles - can view/edit patient and reservation data
  */
-export const STAFF_ROLES: ReadonlySet<Role> = new Set(['admin', 'clinic_admin', 'manager', 'therapist', 'staff']);
+export const STAFF_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+  'clinic_admin',
+  'manager',
+  'therapist',
+  'staff',
+]);
 
 /**
  * Check if role has HQ (headquarters) privileges
@@ -48,21 +61,29 @@ export function isHQRole(role: string | null | undefined): boolean {
  * Check if role can access admin UI
  */
 export function canAccessAdminUI(role: string | null | undefined): boolean {
-  return role !== null && role !== undefined && ADMIN_UI_ROLES.has(role as Role);
+  return (
+    role !== null && role !== undefined && ADMIN_UI_ROLES.has(role as Role)
+  );
 }
 
 /**
  * Check if role can access cross-clinic data
  */
 export function canAccessCrossClinic(role: string | null | undefined): boolean {
-  return role !== null && role !== undefined && CROSS_CLINIC_ROLES.has(role as Role);
+  return (
+    role !== null && role !== undefined && CROSS_CLINIC_ROLES.has(role as Role)
+  );
 }
 
 /**
  * Check if role can manage clinic settings
  */
-export function canManageClinicSettings(role: string | null | undefined): boolean {
-  return role !== null && role !== undefined && CLINIC_ADMIN_ROLES.has(role as Role);
+export function canManageClinicSettings(
+  role: string | null | undefined
+): boolean {
+  return (
+    role !== null && role !== undefined && CLINIC_ADMIN_ROLES.has(role as Role)
+  );
 }
 
 /**
@@ -97,7 +118,9 @@ export function normalizeRole(role: string | null | undefined): string | null {
 /**
  * Check if role can access admin UI (with compatibility mapping)
  */
-export function canAccessAdminUIWithCompat(role: string | null | undefined): boolean {
+export function canAccessAdminUIWithCompat(
+  role: string | null | undefined
+): boolean {
   const normalized = normalizeRole(role);
   return normalized !== null && ADMIN_UI_ROLES.has(normalized as Role);
 }
@@ -105,7 +128,9 @@ export function canAccessAdminUIWithCompat(role: string | null | undefined): boo
 /**
  * Check if role can access cross-clinic data (with compatibility mapping)
  */
-export function canAccessCrossClinicWithCompat(role: string | null | undefined): boolean {
+export function canAccessCrossClinicWithCompat(
+  role: string | null | undefined
+): boolean {
   const normalized = normalizeRole(role);
   return normalized !== null && CROSS_CLINIC_ROLES.has(normalized as Role);
 }
@@ -113,7 +138,9 @@ export function canAccessCrossClinicWithCompat(role: string | null | undefined):
 /**
  * Check if role can manage clinic settings (with compatibility mapping)
  */
-export function canManageClinicSettingsWithCompat(role: string | null | undefined): boolean {
+export function canManageClinicSettingsWithCompat(
+  role: string | null | undefined
+): boolean {
   const normalized = normalizeRole(role);
   return normalized !== null && CLINIC_ADMIN_ROLES.has(normalized as Role);
 }

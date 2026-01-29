@@ -51,77 +51,83 @@ export function useAdminTenants() {
     }
   }, []);
 
-  const createClinic = useCallback(async (payload: {
-    name: string;
-    address?: string;
-    phone_number?: string;
-    is_active?: boolean;
-  }) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(API_ENDPOINTS.ADMIN.TENANTS, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-      }
-
-      return result.data as ClinicSummary;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-      setError(message);
-      console.error('Failed to create clinic', err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateClinic = useCallback(async (
-    clinicId: string,
-    payload: {
-      name?: string;
-      address?: string | null;
-      phone_number?: string | null;
+  const createClinic = useCallback(
+    async (payload: {
+      name: string;
+      address?: string;
+      phone_number?: string;
       is_active?: boolean;
-    }
-  ) => {
-    try {
-      setLoading(true);
-      setError(null);
+    }) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await fetch(
-        `${API_ENDPOINTS.ADMIN.TENANTS}/${clinicId}`,
-        {
-          method: 'PATCH',
+        const response = await fetch(API_ENDPOINTS.ADMIN.TENANTS, {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
         }
-      );
 
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        return result.data as ClinicSummary;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(message);
+        console.error('Failed to create clinic', err);
+        return null;
+      } finally {
+        setLoading(false);
       }
+    },
+    []
+  );
 
-      return result.data as ClinicSummary;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-      setError(message);
-      console.error('Failed to update clinic', err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const updateClinic = useCallback(
+    async (
+      clinicId: string,
+      payload: {
+        name?: string;
+        address?: string | null;
+        phone_number?: string | null;
+        is_active?: boolean;
+      }
+    ) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `${API_ENDPOINTS.ADMIN.TENANTS}/${clinicId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+        }
+
+        return result.data as ClinicSummary;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(message);
+        console.error('Failed to update clinic', err);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   return {
     clinics,

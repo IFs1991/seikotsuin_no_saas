@@ -8,15 +8,12 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import {
   Shield,
   ShieldCheck,
   ShieldAlert,
   Key,
   Smartphone,
-  Download,
   RefreshCw,
   AlertTriangle,
   CheckCircle,

@@ -54,7 +54,10 @@ interface UseStaffAnalysisReturn {
 }
 
 const defaultShiftAnalysis: ShiftAnalysis = {
-  hourlyReservations: Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 })),
+  hourlyReservations: Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    count: 0,
+  })),
   utilizationRate: 0,
   recommendations: [],
 };
@@ -93,7 +96,9 @@ export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
 
       if (!response.ok || !json?.success) {
         throw new Error(
-          json?.error?.message || json?.error || 'スタッフ分析データの取得に失敗しました'
+          json?.error?.message ||
+            json?.error ||
+            'スタッフ分析データの取得に失敗しました'
         );
       }
 
@@ -117,7 +122,10 @@ export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
       setData(prev => ({
         ...prev,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'スタッフ分析データの取得に失敗しました',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'スタッフ分析データの取得に失敗しました',
       }));
     }
   }, [clinicId]);

@@ -6,7 +6,10 @@
  */
 
 import { SecurityMonitor } from '@/lib/security-monitor';
-import { createSupabaseMock, type SupabaseMock } from '../../../test-utils/supabaseMock';
+import {
+  createSupabaseMock,
+  type SupabaseMock,
+} from '../../../test-utils/supabaseMock';
 
 // Supabase モック - 統一モックを使用
 let mockSupabase: SupabaseMock;

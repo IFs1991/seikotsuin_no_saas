@@ -58,7 +58,11 @@ export function useAdminUsers() {
   );
 
   const assignPermission = useCallback(
-    async (payload: { user_id: string; clinic_id?: string | null; role: string }) => {
+    async (payload: {
+      user_id: string;
+      clinic_id?: string | null;
+      role: string;
+    }) => {
       try {
         setLoading(true);
         setError(null);

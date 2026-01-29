@@ -45,7 +45,10 @@ export const reservationCreateSchema = z.object({
   resource_id: z.string().uuid('resource_id must be a valid UUID').optional(),
   start_time: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, 'start_time must be ISO 8601 format'),
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
+      'start_time must be ISO 8601 format'
+    ),
   notes: z
     .string()
     .max(1000, 'notes must be 1000 characters or less')

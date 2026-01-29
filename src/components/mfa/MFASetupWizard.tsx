@@ -5,10 +5,9 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -273,6 +272,7 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
                 <div className='text-center'>
                   <div className='bg-white p-4 border rounded-lg inline-block'>
                     {setupData?.qrCodeUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={setupData.qrCodeUrl}
                         alt='MFA Setup QR Code'

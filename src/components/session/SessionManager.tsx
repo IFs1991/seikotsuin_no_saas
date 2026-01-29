@@ -16,11 +16,9 @@ import {
   Smartphone,
   Monitor,
   Tablet,
-  MapPin,
   Clock,
   AlertTriangle,
   CheckCircle,
-  X,
   RefreshCw,
   LogOut,
 } from 'lucide-react';

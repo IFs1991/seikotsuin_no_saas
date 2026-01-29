@@ -56,7 +56,10 @@ export async function GET(request: NextRequest) {
       request,
       '/api/admin/security/stats',
       clinicId,
-      { requireClinicMatch: clinicId !== null, allowedRoles: Array.from(ADMIN_UI_ROLES) }
+      {
+        requireClinicMatch: clinicId !== null,
+        allowedRoles: Array.from(ADMIN_UI_ROLES),
+      }
     );
 
     const resolvedClinicId = clinicId ?? permissions.clinic_id ?? undefined;

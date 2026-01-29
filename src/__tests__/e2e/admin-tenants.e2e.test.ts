@@ -56,7 +56,9 @@ describeOrSkip('E2E-1: admin によるクリニック管理', () => {
       const result = await createAdminClient();
 
       if (!result) {
-        console.warn('adminユーザーでの認証に失敗 - テストユーザーが設定されていない可能性があります');
+        console.warn(
+          'adminユーザーでの認証に失敗 - テストユーザーが設定されていない可能性があります'
+        );
         return;
       }
 
@@ -191,7 +193,9 @@ describeOrSkip('E2E-1: admin によるクリニック管理', () => {
       const result = await createTherapistClient();
 
       if (!result) {
-        console.warn('therapistユーザーでの認証に失敗 - テストユーザーが設定されていない可能性があります');
+        console.warn(
+          'therapistユーザーでの認証に失敗 - テストユーザーが設定されていない可能性があります'
+        );
         return;
       }
 

@@ -6,7 +6,9 @@ import {
 } from '../e2e/helpers/test-auth';
 
 const isTestEnvironmentReady = validateTestEnvironment();
-const describeOrSkip = isTestEnvironmentReady ? test.describe : test.describe.skip;
+const describeOrSkip = isTestEnvironmentReady
+  ? test.describe
+  : test.describe.skip;
 
 describeOrSkip('E2E-2: non-admin access denial', () => {
   test('therapist cannot read full clinic list', async () => {

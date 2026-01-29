@@ -5,7 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
@@ -142,16 +148,21 @@ const sampleReservations: ExtendedReservation[] = [
 ];
 
 export default function ReservationListPage() {
-  const [reservations, setReservations] = useState<ExtendedReservation[]>(sampleReservations);
+  const [reservations, setReservations] =
+    useState<ExtendedReservation[]>(sampleReservations);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterStaff, setFilterStaff] = useState<string>('');
   const [filterChannel, setFilterChannel] = useState<string>('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
-  const [sortBy, setSortBy] = useState<'startTime' | 'createdAt' | 'customerName'>('startTime');
+  const [sortBy, setSortBy] = useState<
+    'startTime' | 'createdAt' | 'customerName'
+  >('startTime');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [selectedReservations, setSelectedReservations] = useState<string[]>([]);
+  const [selectedReservations, setSelectedReservations] = useState<string[]>(
+    []
+  );
 
   // フィルタリング処理
   const filteredReservations = reservations.filter(reservation => {
@@ -193,7 +204,7 @@ export default function ReservationListPage() {
   // ソート処理
   const sortedReservations = [...filteredReservations].sort((a, b) => {
     let aValue: any, bValue: any;
-    
+
     switch (sortBy) {
       case 'startTime':
         aValue = a.startTime.getTime();
@@ -219,9 +230,12 @@ export default function ReservationListPage() {
   });
 
   // ステータス更新
-  const updateReservationStatus = (reservationId: string, newStatus: Reservation['status']) => {
-    setReservations(prev => 
-      prev.map(res => 
+  const updateReservationStatus = (
+    reservationId: string,
+    newStatus: Reservation['status']
+  ) => {
+    setReservations(prev =>
+      prev.map(res =>
         res.id === reservationId ? { ...res, status: newStatus } : res
       )
     );
@@ -233,21 +247,25 @@ export default function ReservationListPage() {
 
     switch (action) {
       case 'confirm':
-        setReservations(prev => 
-          prev.map(res => 
-            selectedReservations.includes(res.id) ? { ...res, status: 'confirmed' } : res
+        setReservations(prev =>
+          prev.map(res =>
+            selectedReservations.includes(res.id)
+              ? { ...res, status: 'confirmed' }
+              : res
           )
         );
         break;
       case 'cancel':
-        setReservations(prev => 
-          prev.map(res => 
-            selectedReservations.includes(res.id) ? { ...res, status: 'cancelled' } : res
+        setReservations(prev =>
+          prev.map(res =>
+            selectedReservations.includes(res.id)
+              ? { ...res, status: 'cancelled' }
+              : res
           )
         );
         break;
       case 'delete':
-        setReservations(prev => 
+        setReservations(prev =>
           prev.filter(res => !selectedReservations.includes(res.id))
         );
         break;
@@ -256,121 +274,132 @@ export default function ReservationListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">予約一覧・管理</h1>
-          <p className="text-gray-600 mt-1">予約の検索、フィルタリング、一括操作が可能です</p>
+    <div className='min-h-screen bg-gray-50 p-4'>
+      <div className='max-w-7xl mx-auto'>
+        <div className='mb-6'>
+          <h1 className='text-2xl font-bold text-gray-800'>予約一覧・管理</h1>
+          <p className='text-gray-600 mt-1'>
+            予約の検索、フィルタリング、一括操作が可能です
+          </p>
         </div>
 
         {/* フィルタ・検索セクション */}
-        <Card className="mb-6">
+        <Card className='mb-6'>
           <CardHeader>
             <CardTitle>検索・フィルタ</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className='grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4'>
               <div>
-                <Label htmlFor="search">検索</Label>
+                <Label htmlFor='search'>検索</Label>
                 <Input
-                  id="search"
-                  placeholder="顧客名・電話・予約ID"
+                  id='search'
+                  placeholder='顧客名・電話・予約ID'
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery(e.target.value)}
                 />
               </div>
 
               <div>
-                <Label htmlFor="status">ステータス</Label>
+                <Label htmlFor='status'>ステータス</Label>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="全て" />
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='全て' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全て</SelectItem>
+                    <SelectItem value=''>全て</SelectItem>
                     {Object.entries(STATUS_LABELS).map(([status, label]) => (
-                      <SelectItem key={status} value={status}>{label}</SelectItem>
+                      <SelectItem key={status} value={status}>
+                        {label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="staff">スタッフ</Label>
+                <Label htmlFor='staff'>スタッフ</Label>
                 <Select value={filterStaff} onValueChange={setFilterStaff}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="全て" />
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='全て' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全て</SelectItem>
-                    <SelectItem value="staff1">田中先生</SelectItem>
-                    <SelectItem value="staff2">佐藤先生</SelectItem>
-                    <SelectItem value="staff3">鈴木先生</SelectItem>
+                    <SelectItem value=''>全て</SelectItem>
+                    <SelectItem value='staff1'>田中先生</SelectItem>
+                    <SelectItem value='staff2'>佐藤先生</SelectItem>
+                    <SelectItem value='staff3'>鈴木先生</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="channel">予約チャネル</Label>
+                <Label htmlFor='channel'>予約チャネル</Label>
                 <Select value={filterChannel} onValueChange={setFilterChannel}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="全て" />
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='全て' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全て</SelectItem>
+                    <SelectItem value=''>全て</SelectItem>
                     {Object.entries(CHANNEL_LABELS).map(([channel, label]) => (
-                      <SelectItem key={channel} value={channel}>{label}</SelectItem>
+                      <SelectItem key={channel} value={channel}>
+                        {label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <Label htmlFor="date-from">開始日</Label>
+                <Label htmlFor='date-from'>開始日</Label>
                 <Input
-                  id="date-from"
-                  type="date"
+                  id='date-from'
+                  type='date'
                   value={filterDateFrom}
-                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  onChange={e => setFilterDateFrom(e.target.value)}
                 />
               </div>
 
               <div>
-                <Label htmlFor="date-to">終了日</Label>
+                <Label htmlFor='date-to'>終了日</Label>
                 <Input
-                  id="date-to"
-                  type="date"
+                  id='date-to'
+                  type='date'
                   value={filterDateTo}
-                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  onChange={e => setFilterDateTo(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
+            <div className='flex items-center justify-between mt-4'>
+              <div className='flex items-center space-x-4'>
+                <div className='flex items-center space-x-2'>
                   <Label>並び順:</Label>
-                  <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                    <SelectTrigger className="w-full">
+                  <Select
+                    value={sortBy}
+                    onValueChange={(value: any) => setSortBy(value)}
+                  >
+                    <SelectTrigger className='w-full'>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="startTime">予約日時</SelectItem>
-                      <SelectItem value="createdAt">作成日時</SelectItem>
-                      <SelectItem value="customerName">顧客名</SelectItem>
+                      <SelectItem value='startTime'>予約日時</SelectItem>
+                      <SelectItem value='createdAt'>作成日時</SelectItem>
+                      <SelectItem value='customerName'>顧客名</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))
+                    }
                   >
                     {sortOrder === 'asc' ? '昇順' : '降順'}
                   </Button>
                 </div>
               </div>
 
-              <div className="text-sm text-gray-600">
+              <div className='text-sm text-gray-600'>
                 {filteredReservations.length}件 / 全{reservations.length}件
               </div>
             </div>
@@ -379,20 +408,28 @@ export default function ReservationListPage() {
 
         {/* 一括操作 */}
         {selectedReservations.length > 0 && (
-          <Card className="mb-4 bg-blue-50 border-blue-200">
-            <CardContent className="py-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">
+          <Card className='mb-4 bg-blue-50 border-blue-200'>
+            <CardContent className='py-3'>
+              <div className='flex items-center justify-between'>
+                <span className='text-sm font-medium'>
                   {selectedReservations.length}件選択中
                 </span>
-                <div className="space-x-2">
-                  <Button size="sm" onClick={() => handleBulkAction('confirm')}>
+                <div className='space-x-2'>
+                  <Button size='sm' onClick={() => handleBulkAction('confirm')}>
                     一括確定
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleBulkAction('cancel')}>
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    onClick={() => handleBulkAction('cancel')}
+                  >
                     一括キャンセル
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleBulkAction('delete')}>
+                  <Button
+                    size='sm'
+                    variant='destructive'
+                    onClick={() => handleBulkAction('delete')}
+                  >
                     一括削除
                   </Button>
                 </div>
@@ -403,100 +440,161 @@ export default function ReservationListPage() {
 
         {/* 予約一覧テーブル */}
         <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+          <CardContent className='p-0'>
+            <div className='overflow-x-auto'>
+              <table className='w-full'>
+                <thead className='bg-gray-50 border-b'>
                   <tr>
-                    <th className="p-3 text-left">
+                    <th className='p-3 text-left'>
                       <input
-                        type="checkbox"
-                        checked={selectedReservations.length === sortedReservations.length && sortedReservations.length > 0}
-                        onChange={(e) => {
+                        type='checkbox'
+                        checked={
+                          selectedReservations.length ===
+                            sortedReservations.length &&
+                          sortedReservations.length > 0
+                        }
+                        onChange={e => {
                           if (e.target.checked) {
-                            setSelectedReservations(sortedReservations.map(r => r.id));
+                            setSelectedReservations(
+                              sortedReservations.map(r => r.id)
+                            );
                           } else {
                             setSelectedReservations([]);
                           }
                         }}
                       />
                     </th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">予約ID</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">予約日時</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">顧客情報</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">メニュー</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">担当</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">ステータス</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">チャネル</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">作成日時</th>
-                    <th className="p-3 text-left text-sm font-medium text-gray-600">操作</th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      予約ID
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      予約日時
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      顧客情報
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      メニュー
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      担当
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      ステータス
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      チャネル
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      作成日時
+                    </th>
+                    <th className='p-3 text-left text-sm font-medium text-gray-600'>
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedReservations.map((reservation, index) => (
-                    <tr key={reservation.id} className={cn(
-                      'border-b hover:bg-gray-50',
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                    )}>
-                      <td className="p-3">
+                    <tr
+                      key={reservation.id}
+                      className={cn(
+                        'border-b hover:bg-gray-50',
+                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      )}
+                    >
+                      <td className='p-3'>
                         <input
-                          type="checkbox"
-                          checked={selectedReservations.includes(reservation.id)}
-                          onChange={(e) => {
+                          type='checkbox'
+                          checked={selectedReservations.includes(
+                            reservation.id
+                          )}
+                          onChange={e => {
                             if (e.target.checked) {
-                              setSelectedReservations(prev => [...prev, reservation.id]);
+                              setSelectedReservations(prev => [
+                                ...prev,
+                                reservation.id,
+                              ]);
                             } else {
-                              setSelectedReservations(prev => prev.filter(id => id !== reservation.id));
+                              setSelectedReservations(prev =>
+                                prev.filter(id => id !== reservation.id)
+                              );
                             }
                           }}
                         />
                       </td>
-                      <td className="p-3 text-sm font-mono">{reservation.id}</td>
-                      <td className="p-3">
-                        <div className="text-sm">
+                      <td className='p-3 text-sm font-mono'>
+                        {reservation.id}
+                      </td>
+                      <td className='p-3'>
+                        <div className='text-sm'>
                           {reservation.startTime.toLocaleDateString('ja-JP')}
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {reservation.startTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                        <div className='text-sm text-gray-600'>
+                          {reservation.startTime.toLocaleTimeString('ja-JP', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                           -
-                          {reservation.endTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                          {reservation.endTime.toLocaleTimeString('ja-JP', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </div>
                       </td>
-                      <td className="p-3">
-                        <div className="text-sm font-medium">{reservation.customerName}</div>
-                        <div className="text-sm text-gray-600">{reservation.customerPhone}</div>
+                      <td className='p-3'>
+                        <div className='text-sm font-medium'>
+                          {reservation.customerName}
+                        </div>
+                        <div className='text-sm text-gray-600'>
+                          {reservation.customerPhone}
+                        </div>
                       </td>
-                      <td className="p-3 text-sm">{reservation.menuName}</td>
-                      <td className="p-3 text-sm">{reservation.staffName}</td>
-                      <td className="p-3">
+                      <td className='p-3 text-sm'>{reservation.menuName}</td>
+                      <td className='p-3 text-sm'>{reservation.staffName}</td>
+                      <td className='p-3'>
                         <Badge className={STATUS_COLORS[reservation.status]}>
                           {STATUS_LABELS[reservation.status]}
                         </Badge>
                       </td>
-                      <td className="p-3 text-sm">{CHANNEL_LABELS[reservation.channel]}</td>
-                      <td className="p-3 text-sm text-gray-600">
+                      <td className='p-3 text-sm'>
+                        {CHANNEL_LABELS[reservation.channel]}
+                      </td>
+                      <td className='p-3 text-sm text-gray-600'>
                         {reservation.createdAt.toLocaleDateString('ja-JP')}
                         <br />
-                        {reservation.createdAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+                        {reservation.createdAt.toLocaleTimeString('ja-JP', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </td>
-                      <td className="p-3">
-                        <div className="flex space-x-1">
-                          <Button size="sm" variant="outline">
+                      <td className='p-3'>
+                        <div className='flex space-x-1'>
+                          <Button size='sm' variant='outline'>
                             編集
                           </Button>
                           {reservation.status === 'unconfirmed' && (
-                            <Button 
-                              size="sm" 
-                              onClick={() => updateReservationStatus(reservation.id, 'confirmed')}
+                            <Button
+                              size='sm'
+                              onClick={() =>
+                                updateReservationStatus(
+                                  reservation.id,
+                                  'confirmed'
+                                )
+                              }
                             >
                               確定
                             </Button>
                           )}
                           {reservation.status === 'confirmed' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => updateReservationStatus(reservation.id, 'arrived')}
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() =>
+                                updateReservationStatus(
+                                  reservation.id,
+                                  'arrived'
+                                )
+                              }
                             >
                               来院
                             </Button>
@@ -510,16 +608,19 @@ export default function ReservationListPage() {
             </div>
 
             {sortedReservations.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
+              <div className='text-center py-12 text-gray-500'>
                 <p>条件に一致する予約が見つかりません</p>
-                <Button className="mt-4" onClick={() => {
-                  setSearchQuery('');
-                  setFilterStatus('');
-                  setFilterStaff('');
-                  setFilterChannel('');
-                  setFilterDateFrom('');
-                  setFilterDateTo('');
-                }}>
+                <Button
+                  className='mt-4'
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterStatus('');
+                    setFilterStaff('');
+                    setFilterChannel('');
+                    setFilterDateFrom('');
+                    setFilterDateTo('');
+                  }}
+                >
                   フィルタをクリア
                 </Button>
               </div>
@@ -528,14 +629,18 @@ export default function ReservationListPage() {
         </Card>
 
         {/* 統計サマリー */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className='mt-6 grid grid-cols-2 md:grid-cols-4 gap-4'>
           {Object.entries(STATUS_LABELS).map(([status, label]) => {
-            const count = filteredReservations.filter(r => r.status === status).length;
+            const count = filteredReservations.filter(
+              r => r.status === status
+            ).length;
             return (
               <Card key={status}>
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-gray-800">{count}</div>
-                  <div className="text-sm text-gray-600">{label}</div>
+                <CardContent className='p-4 text-center'>
+                  <div className='text-2xl font-bold text-gray-800'>
+                    {count}
+                  </div>
+                  <div className='text-sm text-gray-600'>{label}</div>
                 </CardContent>
               </Card>
             );

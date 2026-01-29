@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerClient, getCurrentUser } from '@/lib/supabase/server';
+import { getServerClient, getCurrentUser } from '@/lib/supabase';
 import { clinicCreateSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, address, phone_number, opening_date, parent_id } = parsed.data;
+    const { name, address, phone_number, opening_date, parent_id } =
+      parsed.data;
 
     // RPC関数でトランザクション内で一括処理
     // parent_id support: @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Option 2)
@@ -69,12 +70,19 @@ export async function POST(request: NextRequest) {
     }
 
     // RPC関数の結果を確認
-    const rpcResult = result as { success: boolean; clinic_id?: string; error?: string };
+    const rpcResult = result as {
+      success: boolean;
+      clinic_id?: string;
+      error?: string;
+    };
 
     if (!rpcResult.success) {
       console.error('Clinic creation failed:', rpcResult.error);
       return NextResponse.json(
-        { success: false, error: rpcResult.error || 'クリニックの作成に失敗しました' },
+        {
+          success: false,
+          error: rpcResult.error || 'クリニックの作成に失敗しました',
+        },
         { status: 500 }
       );
     }

@@ -131,7 +131,7 @@ describeOrSkip('Onboarding RLS Policies', () => {
       expect(error).toBeNull();
       expect(data).not.toBeNull();
       expect(data?.length).toBeGreaterThan(0);
-      expect(data?.every((row) => row.user_id === adminResult.userId)).toBe(true);
+      expect(data?.every(row => row.user_id === adminResult.userId)).toBe(true);
 
       // クリーンアップ
       if (inserted?.id) {

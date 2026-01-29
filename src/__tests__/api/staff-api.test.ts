@@ -16,7 +16,9 @@ jest.mock('next/server', () => ({
 
 const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
 
-let getHandler: (request: { nextUrl: { searchParams: URLSearchParams } }) => Promise<{
+let getHandler: (request: {
+  nextUrl: { searchParams: URLSearchParams };
+}) => Promise<{
   status: number;
   json: () => Promise<unknown>;
 }>;
@@ -193,7 +195,9 @@ describe('GET /api/staff', () => {
       expect(payload.data.staffMetrics).toBeDefined();
       expect(typeof payload.data.staffMetrics.dailyPatients).toBe('number');
       expect(typeof payload.data.staffMetrics.totalRevenue).toBe('number');
-      expect(typeof payload.data.staffMetrics.averageSatisfaction).toBe('number');
+      expect(typeof payload.data.staffMetrics.averageSatisfaction).toBe(
+        'number'
+      );
     });
 
     it('returns revenueRanking with correct structure', async () => {
@@ -317,7 +321,10 @@ describe('GET /api/staff', () => {
       };
 
       // trainingHistoryが存在しないか、ハードコードされた値でないことを確認
-      if (payload.data.trainingHistory && payload.data.trainingHistory.length > 0) {
+      if (
+        payload.data.trainingHistory &&
+        payload.data.trainingHistory.length > 0
+      ) {
         const hardcodedTitles = ['基礎施術研修', 'コミュニケーション研修'];
         const hasHardcodedData = payload.data.trainingHistory.some(item =>
           hardcodedTitles.includes(item.title)
@@ -470,7 +477,9 @@ describe('shift analysis', () => {
     };
 
     expect(payload.data.shiftAnalysis).toBeDefined();
-    expect(Array.isArray(payload.data.shiftAnalysis?.hourlyReservations)).toBe(true);
+    expect(Array.isArray(payload.data.shiftAnalysis?.hourlyReservations)).toBe(
+      true
+    );
   });
 
   it('returns shiftAnalysis with utilizationRate', async () => {
@@ -488,8 +497,12 @@ describe('shift analysis', () => {
 
     expect(payload.data.shiftAnalysis).toBeDefined();
     expect(typeof payload.data.shiftAnalysis?.utilizationRate).toBe('number');
-    expect(payload.data.shiftAnalysis?.utilizationRate).toBeGreaterThanOrEqual(0);
-    expect(payload.data.shiftAnalysis?.utilizationRate).toBeLessThanOrEqual(100);
+    expect(payload.data.shiftAnalysis?.utilizationRate).toBeGreaterThanOrEqual(
+      0
+    );
+    expect(payload.data.shiftAnalysis?.utilizationRate).toBeLessThanOrEqual(
+      100
+    );
   });
 
   it('returns shiftAnalysis with recommendation comments', async () => {
@@ -506,6 +519,8 @@ describe('shift analysis', () => {
     };
 
     expect(payload.data.shiftAnalysis).toBeDefined();
-    expect(Array.isArray(payload.data.shiftAnalysis?.recommendations)).toBe(true);
+    expect(Array.isArray(payload.data.shiftAnalysis?.recommendations)).toBe(
+      true
+    );
   });
 });

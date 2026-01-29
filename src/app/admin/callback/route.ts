@@ -23,7 +23,10 @@ export async function GET(request: Request) {
         // ユーザー情報を取得して適切なリダイレクト先を決定
         const { data: profile } = await supabase
           .from('profiles')
-          .select<'role, clinic_id', Pick<ProfileRow, 'role' | 'clinic_id'>>('role, clinic_id')
+          .select<
+            'role, clinic_id',
+            Pick<ProfileRow, 'role' | 'clinic_id'>
+          >('role, clinic_id')
           .eq('user_id', data.user.id)
           .maybeSingle();
 

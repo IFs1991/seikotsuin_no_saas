@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
-import {
-  CLINIC_A_ID,
-  USER_ADMIN_ID,
-  SECURITY_EVENT_IDS,
-  USER_SESSION_ID,
-} from './fixtures';
+import { CLINIC_A_ID, USER_ADMIN_ID, SECURITY_EVENT_IDS } from './fixtures';
 
 const adminStorageStatePath = path.resolve(
   process.cwd(),
@@ -89,9 +84,7 @@ test.describe('セキュリティ監視運用', () => {
       expect(event.status).toBe('investigating');
     });
 
-    test('UI上でイベントステータスを解決済みに更新できる', async ({
-      page,
-    }) => {
+    test('UI上でイベントステータスを解決済みに更新できる', async ({ page }) => {
       await page.goto('/admin/security-monitor');
 
       // イベント一覧が表示されるまで待機
@@ -295,9 +288,7 @@ test.describe('セキュリティ監視運用', () => {
       expect(response.status()).toBe(400);
     });
 
-    test('存在しないイベントIDでPATCHするとエラーが返る', async ({
-      page,
-    }) => {
+    test('存在しないイベントIDでPATCHするとエラーが返る', async ({ page }) => {
       const response = await page.request.patch('/api/admin/security/events', {
         data: {
           id: '00000000-0000-0000-0000-nonexistent01',

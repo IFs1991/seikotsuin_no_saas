@@ -22,11 +22,19 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 // MFADashboardコンポーネントをモック
 jest.mock('@/components/mfa/MFADashboard', () => ({
-  MFADashboard: ({ userId, clinicId, isAdmin }: { userId: string; clinicId: string; isAdmin: boolean }) => (
-    <div data-testid="mfa-dashboard">
-      <span data-testid="mfa-user-id">{userId}</span>
-      <span data-testid="mfa-clinic-id">{clinicId}</span>
-      <span data-testid="mfa-is-admin">{isAdmin ? 'true' : 'false'}</span>
+  MFADashboard: ({
+    userId,
+    clinicId,
+    isAdmin,
+  }: {
+    userId: string;
+    clinicId: string;
+    isAdmin: boolean;
+  }) => (
+    <div data-testid='mfa-dashboard'>
+      <span data-testid='mfa-user-id'>{userId}</span>
+      <span data-testid='mfa-clinic-id'>{clinicId}</span>
+      <span data-testid='mfa-is-admin'>{isAdmin ? 'true' : 'false'}</span>
     </div>
   ),
 }));
@@ -84,7 +92,9 @@ describe('MFASetupPage Component', () => {
     it('MFAについての説明が表示される', () => {
       render(<MFASetupPage />);
 
-      expect(screen.getByText(/不正アクセスのリスクを99.9%削減/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/不正アクセスのリスクを99.9%削減/i)
+      ).toBeInTheDocument();
     });
   });
 
@@ -252,7 +262,9 @@ describe('MFASetupPage Component', () => {
 
       render(<MFASetupPage />);
 
-      expect(screen.getByText(/プロフィール取得に失敗しました/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/プロフィール取得に失敗しました/i)
+      ).toBeInTheDocument();
     });
 
     it('プロフィールが null の場合、unauthorized ページへ遷移する', async () => {
@@ -283,7 +295,9 @@ describe('MFASetupPage Component', () => {
 
       render(<MFASetupPage />);
 
-      expect(screen.getByText(/管理者に権限割当を依頼してください/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/管理者に権限割当を依頼してください/i)
+      ).toBeInTheDocument();
     });
   });
 });

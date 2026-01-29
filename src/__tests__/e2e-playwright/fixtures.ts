@@ -39,8 +39,7 @@ export const USER_SESSION_ID = '00000000-0000-0000-0000-000000sess01';
 
 export const ADMIN_EMAIL =
   process.env.TEST_ADMIN_EMAIL || 'e2e-admin@clinic.local';
-export const ADMIN_PASSWORD =
-  process.env.TEST_ADMIN_PASSWORD || 'Admin#12345';
+export const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin#12345';
 export const MANAGER_EMAIL =
   process.env.TEST_CLINIC_A_EMAIL || 'e2e-manager@clinic.local';
 export const MANAGER_PASSWORD =

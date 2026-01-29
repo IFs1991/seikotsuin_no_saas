@@ -32,13 +32,15 @@ export function useReservations(clinicId: string | null, date: Date) {
         if (!res.ok || !json.success) {
           throw new Error(json.error || '予約の取得に失敗しました');
         }
-        const mapped: ReservationListItem[] = (json.data ?? []).map((r: any) => ({
-          ...r,
-          startTime: new Date(r.startTime),
-          endTime: new Date(r.endTime),
-          createdAt: r.createdAt ? new Date(r.createdAt) : new Date(),
-          updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(),
-        }));
+        const mapped: ReservationListItem[] = (json.data ?? []).map(
+          (r: any) => ({
+            ...r,
+            startTime: new Date(r.startTime),
+            endTime: new Date(r.endTime),
+            createdAt: r.createdAt ? new Date(r.createdAt) : new Date(),
+            updatedAt: r.updatedAt ? new Date(r.updatedAt) : new Date(),
+          })
+        );
         setReservations(mapped);
       } catch (e) {
         setReservations([]);

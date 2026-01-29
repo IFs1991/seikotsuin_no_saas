@@ -75,11 +75,16 @@ export function DataManagementSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'data_management',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'data_management',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   const [masterData] = useState<MasterData[]>([
     {
@@ -116,9 +121,9 @@ export function DataManagementSettings() {
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -151,10 +156,10 @@ export function DataManagementSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* データインポート設定 */}
@@ -171,9 +176,7 @@ export function DataManagementSettings() {
             </Label>
             <select
               value={importSettings.csvEncoding}
-              onChange={e =>
-                updateImport({ csvEncoding: e.target.value })
-              }
+              onChange={e => updateImport({ csvEncoding: e.target.value })}
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
               <option value='UTF-8'>UTF-8</option>
@@ -188,9 +191,7 @@ export function DataManagementSettings() {
             </Label>
             <select
               value={importSettings.dateFormat}
-              onChange={e =>
-                updateImport({ dateFormat: e.target.value })
-              }
+              onChange={e => updateImport({ dateFormat: e.target.value })}
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
               <option value='YYYY-MM-DD'>YYYY-MM-DD (2024-08-14)</option>
@@ -206,9 +207,7 @@ export function DataManagementSettings() {
             <input
               type='checkbox'
               checked={importSettings.skipFirstRow}
-              onChange={e =>
-                updateImport({ skipFirstRow: e.target.checked })
-              }
+              onChange={e => updateImport({ skipFirstRow: e.target.checked })}
               className='rounded border-gray-300'
             />
             <span className='text-sm text-gray-700'>
@@ -220,9 +219,7 @@ export function DataManagementSettings() {
             <input
               type='checkbox'
               checked={importSettings.validateData}
-              onChange={e =>
-                updateImport({ validateData: e.target.checked })
-              }
+              onChange={e => updateImport({ validateData: e.target.checked })}
               className='rounded border-gray-300'
             />
             <span className='text-sm text-gray-700'>
@@ -261,7 +258,9 @@ export function DataManagementSettings() {
             <select
               value={exportSettings.defaultFormat}
               onChange={e =>
-                updateExport({ defaultFormat: e.target.value as 'csv' | 'excel' | 'pdf' })
+                updateExport({
+                  defaultFormat: e.target.value as 'csv' | 'excel' | 'pdf',
+                })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -277,9 +276,7 @@ export function DataManagementSettings() {
             </Label>
             <select
               value={exportSettings.encoding}
-              onChange={e =>
-                updateExport({ encoding: e.target.value })
-              }
+              onChange={e => updateExport({ encoding: e.target.value })}
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
               <option value='UTF-8'>UTF-8</option>
@@ -294,9 +291,7 @@ export function DataManagementSettings() {
             </Label>
             <select
               value={exportSettings.dateFormat}
-              onChange={e =>
-                updateExport({ dateFormat: e.target.value })
-              }
+              onChange={e => updateExport({ dateFormat: e.target.value })}
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
               <option value='YYYY-MM-DD'>YYYY-MM-DD</option>
@@ -328,9 +323,7 @@ export function DataManagementSettings() {
             <input
               type='checkbox'
               checked={exportSettings.includeHeaders}
-              onChange={e =>
-                updateExport({ includeHeaders: e.target.checked })
-              }
+              onChange={e => updateExport({ includeHeaders: e.target.checked })}
               className='rounded border-gray-300'
             />
             <span className='text-sm text-gray-700'>ヘッダー行を含める</span>

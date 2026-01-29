@@ -8,7 +8,6 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import type { Database } from '@/types/supabase';
 import { ADMIN_UI_ROLES, isHQRole } from '@/lib/constants/roles';
 
 // TODO: system_settings テーブルは clinic_settings に統合されたため、
@@ -26,6 +25,7 @@ type SystemSettingRow = {
   display_order?: number;
   created_at: string;
   updated_at: string;
+  updated_by?: string;
 };
 
 const parseSettingValue = (raw: unknown) => {
@@ -56,7 +56,6 @@ const formatSystemSetting = (row: SystemSettingRow) => ({
   updated_at: row.updated_at ?? undefined,
   updated_by: row.updated_by ?? undefined,
 });
-
 
 // ================================================================
 // マスターデータ管理 API - リファクタリング版
@@ -239,8 +238,7 @@ export async function POST(request: NextRequest) {
     }
 
     // system_settingsテーブルに挿入
-    const { data, error } = await (supabase
-      .from('system_settings') as any)
+    const { data, error } = await (supabase.from('system_settings') as any)
       .insert([
         {
           clinic_id: targetClinicId,
@@ -344,8 +342,7 @@ export async function PUT(request: NextRequest) {
     if (is_public !== undefined) updateData.is_public = is_public;
     if (clinic_id !== undefined) updateData.clinic_id = clinic_id;
 
-    const { data, error } = await (supabase
-      .from('system_settings') as any)
+    const { data, error } = await (supabase.from('system_settings') as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -428,8 +425,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 削除前に対象データを取得（編集可能チェック）
-    const { data: existingData, error: fetchError } = await (supabase
-      .from('system_settings') as any)
+    const { data: existingData, error: fetchError } = await (
+      supabase.from('system_settings') as any
+    )
       .select('is_editable, clinic_id')
       .eq('id', id)
       .maybeSingle();

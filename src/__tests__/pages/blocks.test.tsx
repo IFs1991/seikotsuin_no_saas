@@ -107,13 +107,17 @@ describe('BlockManagementPage Component', () => {
       const { container } = render(<BlockManagementPage />);
 
       // h1要素を特定して確認
-      expect(screen.getByRole('heading', { level: 1, name: /販売停止設定.*F008/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { level: 1, name: /販売停止設定.*F008/i })
+      ).toBeInTheDocument();
     });
 
     it('新規作成ボタンが表示される', async () => {
       const { container } = render(<BlockManagementPage />);
 
-      expect(screen.getByRole('button', { name: /新規作成/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /新規作成/i })
+      ).toBeInTheDocument();
     });
   });
 
@@ -272,7 +276,9 @@ describe('BlockManagementPage Component', () => {
 
       const { container } = render(<BlockManagementPage />);
 
-      expect(screen.getByText(/管理者に権限割当を依頼してください/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/管理者に権限割当を依頼してください/i)
+      ).toBeInTheDocument();
     });
 
     it('clinicId が null の場合、リソース取得APIが呼ばれない', async () => {
@@ -319,7 +325,9 @@ describe('BlockManagementPage Component', () => {
 
       render(<BlockManagementPage />);
 
-      expect(screen.getByText(/プロフィール取得に失敗しました/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/プロフィール取得に失敗しました/i)
+      ).toBeInTheDocument();
     });
 
     it('リソース取得エラー時は空状態と再読み込み導線を表示', async () => {
@@ -331,7 +339,9 @@ describe('BlockManagementPage Component', () => {
       render(<BlockManagementPage />);
 
       await waitFor(() => {
-        expect(screen.getByText(/リソースの取得に失敗しました/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(/リソースの取得に失敗しました/i)
+        ).toBeInTheDocument();
       });
     });
   });

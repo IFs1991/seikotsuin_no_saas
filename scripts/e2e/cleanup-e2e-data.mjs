@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import { CLINIC_A_ID, CLINIC_B_ID, FIXTURE_USERS } from './fixtures.mjs';
+import { runPreflight, tableExists } from './preflight.mjs';
 
 function loadEnvFile(fileName) {
   const envPath = path.resolve(process.cwd(), fileName);
@@ -51,7 +52,10 @@ const clinicIds = [CLINIC_A_ID, CLINIC_B_ID];
 const userIds = FIXTURE_USERS.map(user => user.id);
 
 async function deleteByClinic(table) {
-  const { error } = await supabase.from(table).delete().in('clinic_id', clinicIds);
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .in('clinic_id', clinicIds);
   if (error) {
     console.warn(`${table} cleanup warning: ${error.message}`);
   }
@@ -65,12 +69,26 @@ async function deleteByUser(table, column = 'user_id') {
 }
 
 export async function cleanupE2EData() {
-  // シフト関連のデータを先に削除（外部キー制約のため）
-  await deleteByClinic('staff_shifts');
-  await deleteByClinic('staff_preferences');
-  await deleteByClinic('clinic_settings');
+  // Run preflight checks (skipped if E2E_SKIP_DB_CHECK=1)
+  await runPreflight(supabase);
 
-  await deleteByClinic('reservation_history');
+  // Optional tables - skip silently if missing
+  const optionalTables = [
+    'staff_shifts',
+    'staff_preferences',
+    'reservation_history',
+    'daily_reports',
+    'ai_comments',
+  ];
+
+  for (const table of optionalTables) {
+    if (await tableExists(supabase, table)) {
+      await deleteByClinic(table);
+    }
+  }
+
+  // Required tables
+  await deleteByClinic('clinic_settings');
   await deleteByClinic('reservations');
   await deleteByClinic('blocks');
   await deleteByClinic('resources');
@@ -79,8 +97,6 @@ export async function cleanupE2EData() {
   await deleteByClinic('revenues');
   await deleteByClinic('visits');
   await deleteByClinic('patients');
-  await deleteByClinic('daily_reports');
-  await deleteByClinic('ai_comments');
   await deleteByClinic('security_events');
   await deleteByClinic('audit_logs');
   await deleteByClinic('user_sessions');

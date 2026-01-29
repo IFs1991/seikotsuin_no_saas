@@ -36,7 +36,8 @@ export function useAdminSettings<T>(
   const category = persistOptions?.category ?? null;
   const autoLoad = persistOptions?.autoLoad;
   const hasPersist = Boolean(clinicId && category);
-  const FETCH_TIMEOUT_MS = 8000;
+  // E2E環境（dev環境）でのSupabase接続遅延に対応するためタイムアウトを延長
+  const FETCH_TIMEOUT_MS = 12000;
   const [data, setData] = useState<T>(initialData);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState>({
@@ -127,7 +128,10 @@ export function useAdminSettings<T>(
   const saveToApi = useCallback(
     async (settingsData: T): Promise<SaveResult> => {
       if (!hasPersist) {
-        return { success: false, message: '永続化オプションが設定されていません' };
+        return {
+          success: false,
+          message: '永続化オプションが設定されていません',
+        };
       }
 
       const response = await fetch('/api/admin/settings', {

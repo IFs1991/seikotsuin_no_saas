@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { mockServerClient, supabaseMock } from './mocks/supabase-server.mock';
 import { login } from '@/app/admin/actions';
 

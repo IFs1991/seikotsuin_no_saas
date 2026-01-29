@@ -9,11 +9,7 @@ import {
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
-import {
-  patientInsertSchema,
-  patientQuerySchema,
-  mapPatientInsertToRow,
-} from './schema';
+import { patientQuerySchema } from './schema';
 import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service';
 
 /**
@@ -102,76 +98,59 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const path = '/api/patients';
-
-  try {
-    let rawBody: unknown;
-    try {
-      rawBody = await request.json();
-    } catch {
-      return createErrorResponse('無効なJSONデータです', 400);
+/**
+ * @deprecated POST /api/patients is no longer supported.
+ * Use POST /api/customers instead.
+ *
+ * This endpoint is disabled to enforce SSOT on public.customers.
+ * See: docs/stabilization/spec-customers-ssot-step1-v0.1.md
+ */
+export async function POST(_request: NextRequest) {
+  return createErrorResponse(
+    'POST /api/patients は廃止されました。POST /api/customers を使用してください。',
+    405,
+    {
+      code: 'METHOD_NOT_ALLOWED',
+      message:
+        'POST /api/patients is deprecated. Use POST /api/customers instead.',
+      alternative: '/api/customers',
+      path: '/api/patients',
     }
+  );
+}
 
-    const parsedBody = patientInsertSchema.safeParse(rawBody);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
+/**
+ * @deprecated PATCH /api/patients is not supported.
+ * Use PATCH /api/customers instead.
+ */
+export async function PATCH(_request: NextRequest) {
+  return createErrorResponse(
+    'PATCH /api/patients は廃止されました。PATCH /api/customers を使用してください。',
+    405,
+    {
+      code: 'METHOD_NOT_ALLOWED',
+      message:
+        'PATCH /api/patients is deprecated. Use PATCH /api/customers instead.',
+      alternative: '/api/customers',
+      path: '/api/patients',
     }
+  );
+}
 
-    const dto = parsedBody.data;
-
-    const { supabase } = await ensureClinicAccess(
-      request,
-      path,
-      dto.clinic_id,
-      {
-        requireClinicMatch: true,
-      }
-    );
-
-    const insertPayload = mapPatientInsertToRow(dto);
-    const registrationDate = new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('patients')
-      .insert({
-        ...insertPayload,
-        registration_date: registrationDate,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw normalizeSupabaseError(error, path);
+/**
+ * @deprecated DELETE /api/patients is not supported.
+ * Use DELETE /api/customers instead.
+ */
+export async function DELETE(_request: NextRequest) {
+  return createErrorResponse(
+    'DELETE /api/patients は廃止されました。DELETE /api/customers を使用してください。',
+    405,
+    {
+      code: 'METHOD_NOT_ALLOWED',
+      message:
+        'DELETE /api/patients is deprecated. Use DELETE /api/customers instead.',
+      alternative: '/api/customers',
+      path: '/api/patients',
     }
-
-    return createSuccessResponse(data, 201);
-  } catch (error) {
-    let apiError;
-    let statusCode = 500;
-
-    if (error instanceof AppError) {
-      apiError = error.toApiError(path);
-      statusCode = error.statusCode;
-    } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = normalizeSupabaseError(error, path);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Patient creation failed',
-        undefined,
-        path
-      );
-    }
-
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path,
-    });
-
-    return createErrorResponse(apiError.message, statusCode, apiError);
-  }
+  );
 }

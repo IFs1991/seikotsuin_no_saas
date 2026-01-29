@@ -10,7 +10,13 @@
  * - Result queue for sequential calls
  */
 
-type OperationType = 'select' | 'insert' | 'update' | 'upsert' | 'delete' | 'rpc';
+type OperationType =
+  | 'select'
+  | 'insert'
+  | 'update'
+  | 'upsert'
+  | 'delete'
+  | 'rpc';
 
 interface SupabaseResult {
   data: unknown;
@@ -185,7 +191,8 @@ export function createSupabaseMock(config: MockConfig = {}) {
   const fixedResults = new Map<string, SupabaseResult>();
   const resultQueues = new Map<string, SupabaseResult[]>();
   const builders = new Map<string, ReturnType<typeof createQueryBuilder>>();
-  const callHistory: Array<{ table: string; method: string; args: unknown[] }> = [];
+  const callHistory: Array<{ table: string; method: string; args: unknown[] }> =
+    [];
 
   const defaultResult: SupabaseResult = config.defaultResult ?? {
     data: [],
@@ -227,7 +234,11 @@ export function createSupabaseMock(config: MockConfig = {}) {
 
   // The from() function that returns a builder
   const from = jest.fn((tableName: string) => {
-    const builder = createQueryBuilder(tableName, getResult, trackCall(tableName));
+    const builder = createQueryBuilder(
+      tableName,
+      getResult,
+      trackCall(tableName)
+    );
     builders.set(tableName, builder);
     return builder;
   });
@@ -240,11 +251,19 @@ export function createSupabaseMock(config: MockConfig = {}) {
 
   // Auth mock
   const auth = {
-    getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
-    getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
-    signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: null, session: null }, error: null })),
+    getUser: jest.fn(() =>
+      Promise.resolve({ data: { user: null }, error: null })
+    ),
+    getSession: jest.fn(() =>
+      Promise.resolve({ data: { session: null }, error: null })
+    ),
+    signInWithPassword: jest.fn(() =>
+      Promise.resolve({ data: { user: null, session: null }, error: null })
+    ),
     signOut: jest.fn(() => Promise.resolve({ error: null })),
-    onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    onAuthStateChange: jest.fn(() => ({
+      data: { subscription: { unsubscribe: jest.fn() } },
+    })),
   };
 
   // The mock client
@@ -268,8 +287,12 @@ export function createSupabaseMock(config: MockConfig = {}) {
     /**
      * Set a fixed result for a table/operation combination
      */
-    setResult: (config: ResultConfig | { table: string }, result: SupabaseResult) => {
-      const key = 'op' in config ? getKey(config.table, config.op) : `${config.table}:*`;
+    setResult: (
+      config: ResultConfig | { table: string },
+      result: SupabaseResult
+    ) => {
+      const key =
+        'op' in config ? getKey(config.table, config.op) : `${config.table}:*`;
       fixedResults.set(key, result);
     },
 

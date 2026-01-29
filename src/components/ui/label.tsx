@@ -2,8 +2,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export interface LabelProps
-  extends React.LabelHTMLAttributes<HTMLLabelElement> {
+export interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   variant?: 'default' | 'medical' | 'required';
   size?: 'default' | 'sm' | 'lg';
 }

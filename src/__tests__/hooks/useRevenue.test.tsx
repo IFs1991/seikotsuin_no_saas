@@ -21,7 +21,11 @@ describe('useRevenue', () => {
     selfPayRevenue: 1680000,
     menuRanking: [
       { menu_name: '整体', total_revenue: 1200000, transaction_count: 120 },
-      { menu_name: 'マッサージ', total_revenue: 800000, transaction_count: 160 },
+      {
+        menu_name: 'マッサージ',
+        total_revenue: 800000,
+        transaction_count: 160,
+      },
       { menu_name: '鍼灸', total_revenue: 600000, transaction_count: 60 },
     ],
     hourlyRevenue: [
@@ -59,7 +63,9 @@ describe('useRevenue', () => {
     });
 
     it('clinicIdがnullの場合はAPIを呼ばずエラー状態になる', async () => {
-      const { result } = renderHook(() => useRevenue(null as unknown as string));
+      const { result } = renderHook(() =>
+        useRevenue(null as unknown as string)
+      );
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -70,7 +76,9 @@ describe('useRevenue', () => {
     });
 
     it('clinicIdがundefinedの場合はAPIを呼ばずエラー状態になる', async () => {
-      const { result } = renderHook(() => useRevenue(undefined as unknown as string));
+      const { result } = renderHook(() =>
+        useRevenue(undefined as unknown as string)
+      );
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -101,7 +109,9 @@ describe('useRevenue', () => {
       expect(result.current.monthlyRevenue).toBe(4200000);
       expect(result.current.insuranceRevenue).toBe(2520000);
       expect(result.current.selfPayRevenue).toBe(1680000);
-      expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledWith(mockClinicId);
+      expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledWith(
+        mockClinicId
+      );
     });
 
     it('menuRankingが正しくマッピングされる', async () => {

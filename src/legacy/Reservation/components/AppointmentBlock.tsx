@@ -10,10 +10,19 @@ interface Props {
   onClick: (appointment: Appointment) => void;
 }
 
-export const AppointmentBlock: React.FC<Props> = ({ appointment, pixelsPerHour, startHourOfGrid, onClick }) => {
-  const startOffsetMinutes = (appointment.startHour - startHourOfGrid) * 60 + appointment.startMinute;
-  const durationMinutes = (appointment.endHour * 60 + appointment.endMinute) - (appointment.startHour * 60 + appointment.startMinute);
-  
+export const AppointmentBlock: React.FC<Props> = ({
+  appointment,
+  pixelsPerHour,
+  startHourOfGrid,
+  onClick,
+}) => {
+  const startOffsetMinutes =
+    (appointment.startHour - startHourOfGrid) * 60 + appointment.startMinute;
+  const durationMinutes =
+    appointment.endHour * 60 +
+    appointment.endMinute -
+    (appointment.startHour * 60 + appointment.startMinute);
+
   // Calculate position and width
   const leftPos = (startOffsetMinutes / 60) * pixelsPerHour;
   const width = (durationMinutes / 60) * pixelsPerHour;
@@ -27,10 +36,13 @@ export const AppointmentBlock: React.FC<Props> = ({ appointment, pixelsPerHour, 
   const timeString = `${String(appointment.startHour).padStart(2, '0')}:${String(appointment.startMinute).padStart(2, '0')}-${String(appointment.endHour).padStart(2, '0')}:${String(appointment.endMinute).padStart(2, '0')}`;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    e.dataTransfer.setData('application/json', JSON.stringify({
+    e.dataTransfer.setData(
+      'application/json',
+      JSON.stringify({
         id: appointment.id,
-        originalResource: appointment.resourceId
-    }));
+        originalResource: appointment.resourceId,
+      })
+    );
     e.dataTransfer.effectAllowed = 'move';
     // Optional: Set a custom drag image or style here
   };
@@ -39,7 +51,7 @@ export const AppointmentBlock: React.FC<Props> = ({ appointment, pixelsPerHour, 
     <div
       draggable={true}
       onDragStart={handleDragStart}
-      onClick={(e) => {
+      onClick={e => {
         e.stopPropagation();
         onClick(appointment);
       }}
@@ -51,16 +63,20 @@ export const AppointmentBlock: React.FC<Props> = ({ appointment, pixelsPerHour, 
         height: 'calc(100% - 4px)',
       }}
     >
-      <div className="flex items-center gap-1 font-mono opacity-90 text-[10px] whitespace-nowrap pointer-events-none">
-        {appointment.icon && <div className="bg-white/30 p-0.5 rounded-sm"><MessageCircle size={8} /></div>}
+      <div className='flex items-center gap-1 font-mono opacity-90 text-[10px] whitespace-nowrap pointer-events-none'>
+        {appointment.icon && (
+          <div className='bg-white/30 p-0.5 rounded-sm'>
+            <MessageCircle size={8} />
+          </div>
+        )}
         {timeString}
       </div>
-      <div className="font-bold truncate text-[11px] mt-0.5 pointer-events-none">
+      <div className='font-bold truncate text-[11px] mt-0.5 pointer-events-none'>
         {appointment.title}
       </div>
       {appointment.subTitle && (
-        <div className="mt-1 inline-flex pointer-events-none">
-          <span className="bg-rose-600/80 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold truncate">
+        <div className='mt-1 inline-flex pointer-events-none'>
+          <span className='bg-rose-600/80 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold truncate'>
             {appointment.subTitle}
           </span>
         </div>

@@ -55,9 +55,7 @@ const normalizeMenuItems = (raw: unknown): MenuItem[] => {
       const data = entry as Record<string, unknown>;
       const name = typeof data.name === 'string' ? data.name.trim() : '';
       const price =
-        typeof data.price === 'number'
-          ? data.price
-          : Number(data.price ?? NaN);
+        typeof data.price === 'number' ? data.price : Number(data.price ?? NaN);
       const duration =
         typeof data.duration === 'number'
           ? data.duration
@@ -100,8 +98,7 @@ const resolveClinicQueryParam = (profile: UserProfile | null) => {
 
 export function MasterDataForm({ className }: MasterDataFormProps) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const [menuItems, setMenuItems] =
-    useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
   const [settingId, setSettingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

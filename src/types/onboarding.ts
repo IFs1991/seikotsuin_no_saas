@@ -3,7 +3,12 @@
  */
 
 // オンボーディングステップ
-export type OnboardingStep = 'profile' | 'clinic' | 'invites' | 'seed' | 'completed';
+export type OnboardingStep =
+  | 'profile'
+  | 'clinic'
+  | 'invites'
+  | 'seed'
+  | 'completed';
 
 // オンボーディング状態
 export interface OnboardingState {
@@ -95,7 +100,12 @@ export interface ClinicFormData {
 }
 
 // ロール定義（スキーマと一致）
-export type StaffRole = 'admin' | 'clinic_admin' | 'therapist' | 'staff' | 'manager';
+export type StaffRole =
+  | 'admin'
+  | 'clinic_admin'
+  | 'therapist'
+  | 'staff'
+  | 'manager';
 
 // ロール表示名マッピング
 export const ROLE_LABELS: Record<StaffRole, string> = {

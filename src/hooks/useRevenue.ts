@@ -111,7 +111,8 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
           });
         } else {
           // APIエラー時はサンプル値にフォールバックせずエラー状態にする
-          const errorMessage = res.error?.message || '収益データの取得に失敗しました';
+          const errorMessage =
+            res.error?.message || '収益データの取得に失敗しました';
           setError(errorMessage);
           setData(INITIAL_DATA);
         }

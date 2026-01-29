@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
-    const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
+    const date =
+      searchParams.get('date') ?? new Date().toISOString().slice(0, 10);
 
     if (!clinicId) {
       return NextResponse.json(

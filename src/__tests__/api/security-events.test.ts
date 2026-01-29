@@ -9,16 +9,31 @@
 describe('security events API - schema validation', () => {
   describe('UpdateEventSchema', () => {
     it('有効なステータス値を受け入れる', () => {
-      const validStatuses = ['new', 'investigating', 'resolved', 'false_positive'];
-      validStatuses.forEach((status) => {
-        expect(['new', 'investigating', 'resolved', 'false_positive']).toContain(status);
+      const validStatuses = [
+        'new',
+        'investigating',
+        'resolved',
+        'false_positive',
+      ];
+      validStatuses.forEach(status => {
+        expect([
+          'new',
+          'investigating',
+          'resolved',
+          'false_positive',
+        ]).toContain(status);
       });
     });
 
     it('無効なステータス値を識別できる', () => {
       const invalidStatuses = ['pending', 'closed', 'open'];
-      const validStatuses = ['new', 'investigating', 'resolved', 'false_positive'];
-      invalidStatuses.forEach((status) => {
+      const validStatuses = [
+        'new',
+        'investigating',
+        'resolved',
+        'false_positive',
+      ];
+      invalidStatuses.forEach(status => {
         expect(validStatuses).not.toContain(status);
       });
     });
@@ -27,7 +42,7 @@ describe('security events API - schema validation', () => {
   describe('severity levels', () => {
     it('有効な重要度レベルを受け入れる', () => {
       const validSeverities = ['info', 'warning', 'error', 'critical'];
-      validSeverities.forEach((severity) => {
+      validSeverities.forEach(severity => {
         expect(['info', 'warning', 'error', 'critical']).toContain(severity);
       });
     });
@@ -110,7 +125,7 @@ describe('security metrics calculation', () => {
       { status: 'new' },
     ];
     const unresolvedCount = events.filter(
-      (e) => e.status !== 'resolved' && e.status !== 'false_positive'
+      e => e.status !== 'resolved' && e.status !== 'false_positive'
     ).length;
     expect(unresolvedCount).toBe(3);
   });
@@ -123,7 +138,7 @@ describe('security metrics calculation', () => {
       { severity_level: 'info' },
     ];
     const highSeverityCount = events.filter(
-      (e) => e.severity_level === 'critical' || e.severity_level === 'error'
+      e => e.severity_level === 'critical' || e.severity_level === 'error'
     ).length;
     expect(highSeverityCount).toBe(2);
   });
@@ -140,7 +155,9 @@ describe('notification title mapping', () => {
     expect(titleMap['threat_detected_brute_force']).toBe(
       'ブルートフォース攻撃を検知しました'
     );
-    expect(titleMap['unauthorized_access']).toBe('権限外アクセスを検知しました');
+    expect(titleMap['unauthorized_access']).toBe(
+      '権限外アクセスを検知しました'
+    );
   });
 
   it('未知のイベントタイプにはデフォルトタイトルを使用', () => {

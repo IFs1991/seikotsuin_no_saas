@@ -15,8 +15,10 @@ import type { SessionValidationResult } from '@/types/security';
 // Supabase行型の定義
 type SupabaseClient = ReturnType<typeof createClient>;
 type UserSessionRow = Database['public']['Tables']['user_sessions']['Row'];
-type UserSessionInsert = Database['public']['Tables']['user_sessions']['Insert'];
-type UserSessionUpdate = Database['public']['Tables']['user_sessions']['Update'];
+type UserSessionInsert =
+  Database['public']['Tables']['user_sessions']['Insert'];
+type UserSessionUpdate =
+  Database['public']['Tables']['user_sessions']['Update'];
 type SecurityEventInsert =
   Database['public']['Tables']['security_events']['Insert'];
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -80,9 +82,7 @@ export interface CreateSessionOptions {
   };
 }
 
-type SessionUser = NonNullable<
-  SessionValidationResult<UserSession>['user']
->;
+type SessionUser = NonNullable<SessionValidationResult<UserSession>['user']>;
 
 // ================================================================
 // セッション管理クラス
@@ -146,7 +146,8 @@ export class SessionManager {
         : 'unknown';
 
     const browserVersionCandidate =
-      typeof record.browserVersion === 'string' && record.browserVersion.length > 0
+      typeof record.browserVersion === 'string' &&
+      record.browserVersion.length > 0
         ? record.browserVersion
         : typeof record.version === 'string' && record.version.length > 0
           ? record.version
@@ -411,14 +412,13 @@ export class SessionManager {
               createdAt: sessionRow?.created_at ?? nowIso,
               lastActivity: sessionRow?.last_activity ?? nowIso,
               expiresAt: sessionRow?.expires_at ?? absoluteTimeoutIso,
-              idleTimeoutAt:
-                sessionRow?.idle_timeout_at ?? idleTimeoutIso,
+              idleTimeoutAt: sessionRow?.idle_timeout_at ?? idleTimeoutIso,
               absoluteTimeoutAt:
                 sessionRow?.absolute_timeout_at ?? absoluteTimeoutIso,
               maxIdleMinutes: sessionRow?.max_idle_minutes ?? idleMinutes,
               maxSessionHours: sessionRow?.max_session_hours ?? sessionHours,
               rememberDevice:
-                sessionRow?.remember_device ?? (options.rememberDevice ?? false),
+                sessionRow?.remember_device ?? options.rememberDevice ?? false,
               isActive: sessionRow?.is_active ?? true,
               isRevoked: sessionRow?.is_revoked ?? false,
             });
@@ -478,7 +478,12 @@ export class SessionManager {
 
       const user = await this.resolveUserContext(userId, clinicId);
 
-      return { isValid: true, session: fallbackSession, user, token: sessionToken };
+      return {
+        isValid: true,
+        session: fallbackSession,
+        user,
+        token: sessionToken,
+      };
     }
   }
 

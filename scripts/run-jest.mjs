@@ -23,12 +23,17 @@ function injectRunInBand(args) {
   if (markerIndex === -1) {
     return [...args, '--runInBand'];
   }
-  return [...args.slice(0, markerIndex), '--runInBand', ...args.slice(markerIndex)];
+  return [
+    ...args.slice(0, markerIndex),
+    '--runInBand',
+    ...args.slice(markerIndex),
+  ];
 }
 
 const { command, argsPrefix } = resolveJestCommand();
 const userArgs = process.argv.slice(2);
-const args = process.platform === 'win32' ? injectRunInBand(userArgs) : userArgs;
+const args =
+  process.platform === 'win32' ? injectRunInBand(userArgs) : userArgs;
 
 const child = spawn(command, [...argsPrefix, ...args], { stdio: 'inherit' });
 child.on('error', error => {

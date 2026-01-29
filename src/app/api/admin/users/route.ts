@@ -7,7 +7,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase';
 
 const ROLE_VALUES = [
   'admin',
@@ -32,7 +32,7 @@ type PermissionRow = {
   clinic_id: string | null;
   created_at: string | null;
   username: string;
-  clinics?: { name: string | null } | null;
+  clinics?: { name: string | null }[] | { name: string | null } | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -60,7 +60,9 @@ export async function GET(request: NextRequest) {
 
     let query = adminSupabase
       .from('user_permissions')
-      .select('id, staff_id, role, clinic_id, created_at, username, clinics(name)')
+      .select(
+        'id, staff_id, role, clinic_id, created_at, username, clinics(name)'
+      )
       .order('created_at', { ascending: false });
 
     if (role) {
@@ -117,17 +119,32 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    let items = rows.map(row => ({
-      id: row.id,
-      user_id: row.staff_id,
-      role: row.role,
-      clinic_id: row.clinic_id,
-      clinic_name: row.clinics?.name ?? null,
-      username: row.username,
-      profile_email: row.staff_id ? profileMap.get(row.staff_id)?.email : null,
-      profile_name: row.staff_id ? profileMap.get(row.staff_id)?.full_name : null,
-      created_at: row.created_at,
-    }));
+    let items = rows.map(row => {
+      const clinicsData = row.clinics;
+      let clinicName: string | null = null;
+      if (clinicsData) {
+        if (Array.isArray(clinicsData)) {
+          clinicName = clinicsData[0]?.name ?? null;
+        } else {
+          clinicName = clinicsData.name ?? null;
+        }
+      }
+      return {
+        id: row.id,
+        user_id: row.staff_id,
+        role: row.role,
+        clinic_id: row.clinic_id,
+        clinic_name: clinicName,
+        username: row.username,
+        profile_email: row.staff_id
+          ? profileMap.get(row.staff_id)?.email
+          : null,
+        profile_name: row.staff_id
+          ? profileMap.get(row.staff_id)?.full_name
+          : null,
+        created_at: row.created_at,
+      };
+    });
 
     if (search) {
       const lowered = search.toLowerCase();
@@ -211,11 +228,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingPermission, error: existingError } = await adminSupabase
-      .from('user_permissions')
-      .select('id, hashed_password, username')
-      .eq('staff_id', user_id)
-      .maybeSingle();
+    const { data: existingPermission, error: existingError } =
+      await adminSupabase
+        .from('user_permissions')
+        .select('id, hashed_password, username')
+        .eq('staff_id', user_id)
+        .maybeSingle();
 
     if (existingError) {
       logError(existingError, {
@@ -227,7 +245,7 @@ export async function POST(request: NextRequest) {
     }
 
     const username = profile.email;
-    const targetClinicId = role === 'admin' ? null : clinic_id ?? null;
+    const targetClinicId = role === 'admin' ? null : (clinic_id ?? null);
 
     let result;
     if (existingPermission) {

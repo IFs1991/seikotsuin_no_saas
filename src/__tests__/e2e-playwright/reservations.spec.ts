@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
-  CLINIC_A_ID,
-} from './fixtures';
+import { ADMIN_EMAIL, ADMIN_PASSWORD, CLINIC_A_ID } from './fixtures';
 
 /**
  * 予約UI統合 E2Eテスト
@@ -36,7 +32,9 @@ test.describe('予約UI統合テスト', () => {
 
     // 予約UIの主要要素が表示されることを確認
     // ControlBar（ビュー切り替え）が表示される
-    await expect(page.getByRole('button', { name: /タイムライン|timeline/i })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: /タイムライン|timeline/i })
+    ).toBeVisible();
 
     // Schedulerまたはリスト表示が存在することを確認
     const scheduler = page.locator('[data-testid="scheduler"]');
@@ -64,7 +62,9 @@ test.describe('予約UI統合テスト', () => {
     await page.goto('/reservations');
 
     // 新規登録ボタンまたは登録ビューへの切り替え
-    const registerButton = page.getByRole('button', { name: /新規|登録|register/i });
+    const registerButton = page.getByRole('button', {
+      name: /新規|登録|register/i,
+    });
     if (await registerButton.isVisible()) {
       await registerButton.click();
 
@@ -88,7 +88,9 @@ test.describe('予約UI統合テスト', () => {
       // Next.jsは404でも200を返す場合があるため、ページ内容も確認
       const is404Response = response.status() === 404;
       const has404Content =
-        (await page.getByText(/404|not found|ページが見つかりません/i).isVisible()) ||
+        (await page
+          .getByText(/404|not found|ページが見つかりません/i)
+          .isVisible()) ||
         (await page.getByRole('heading', { name: /404/i }).isVisible());
 
       // 404レスポンスまたは404コンテンツのいずれかであればOK
@@ -102,9 +104,12 @@ test.describe('予約UI統合テスト', () => {
     // APIリクエストを監視
     const apiCalls: string[] = [];
 
-    page.on('request', (request) => {
+    page.on('request', request => {
       const url = request.url();
-      if (url.includes('/api/reservations') || url.includes('/Reservation/api')) {
+      if (
+        url.includes('/api/reservations') ||
+        url.includes('/Reservation/api')
+      ) {
         apiCalls.push(url);
       }
     });
@@ -116,8 +121,8 @@ test.describe('予約UI統合テスト', () => {
     await page.waitForLoadState('networkidle');
 
     // 現行APIへのリクエストがあること、旧モックAPIへのリクエストがないことを確認
-    const hasNewApi = apiCalls.some((url) => url.includes('/api/reservations'));
-    const hasOldApi = apiCalls.some((url) => url.includes('/Reservation/api'));
+    const hasNewApi = apiCalls.some(url => url.includes('/api/reservations'));
+    const hasOldApi = apiCalls.some(url => url.includes('/Reservation/api'));
 
     // 旧モックAPIが呼ばれていないことを確認
     expect(hasOldApi).toBeFalsy();

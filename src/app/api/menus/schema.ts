@@ -68,4 +68,3 @@ export function mapMenuUpdateToRow(
     options: dto.options,
   } as any;
 }
-

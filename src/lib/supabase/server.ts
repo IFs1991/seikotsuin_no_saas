@@ -36,7 +36,9 @@ async function createSupabaseClient() {
   );
 }
 
-export type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseClient>>;
+export type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseClient>
+>;
 type SupabaseServerClientFactory = () => Promise<SupabaseServerClient>;
 
 const FACTORY_KEY = Symbol.for('@@supabaseServerFactory');
@@ -134,7 +136,9 @@ export async function getUserPermissions(
   const supabase = client ?? (await getServerClient());
   let clinic_scope_ids: string[] | undefined;
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const scopeIdsFromMetadata = session?.user?.app_metadata?.clinic_scope_ids;
     let scopeIdsFromJwt: unknown = scopeIdsFromMetadata;
 

@@ -40,9 +40,27 @@ const mockReservations = [
 ];
 
 const mockResources = [
-  { id: 'staff1', name: '田中先生', type: 'staff' as const, workingHours: { start: '09:00', end: '18:00' }, isActive: true },
-  { id: 'staff2', name: '佐藤先生', type: 'staff' as const, workingHours: { start: '10:00', end: '19:00' }, isActive: true },
-  { id: 'staff3', name: '鈴木先生', type: 'staff' as const, workingHours: { start: '09:00', end: '21:00' }, isActive: true },
+  {
+    id: 'staff1',
+    name: '田中先生',
+    type: 'staff' as const,
+    workingHours: { start: '09:00', end: '18:00' },
+    isActive: true,
+  },
+  {
+    id: 'staff2',
+    name: '佐藤先生',
+    type: 'staff' as const,
+    workingHours: { start: '10:00', end: '19:00' },
+    isActive: true,
+  },
+  {
+    id: 'staff3',
+    name: '鈴木先生',
+    type: 'staff' as const,
+    workingHours: { start: '09:00', end: '21:00' },
+    isActive: true,
+  },
 ];
 
 describe('ReservationTimelinePage', () => {
@@ -61,11 +79,11 @@ describe('ReservationTimelinePage', () => {
 
     test('現在の日付が表示される', () => {
       render(<ReservationTimelinePage />);
-      const today = new Date().toLocaleDateString('ja-JP', { 
-        year: 'numeric', 
-        month: 'long', 
+      const today = new Date().toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
         day: 'numeric',
-        weekday: 'long'
+        weekday: 'long',
       });
       expect(screen.getByText(today)).toBeInTheDocument();
     });
@@ -84,7 +102,9 @@ describe('ReservationTimelinePage', () => {
   describe('フィルタ・検索機能', () => {
     test('検索フィールドが表示される', () => {
       render(<ReservationTimelinePage />);
-      expect(screen.getByPlaceholderText('顧客名・電話番号で検索')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText('顧客名・電話番号で検索')
+      ).toBeInTheDocument();
     });
 
     test('スタッフフィルタが表示される', () => {
@@ -139,21 +159,21 @@ describe('ReservationTimelinePage', () => {
     test('前日ボタンクリックで日付が変更される', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       const prevButton = screen.getByText('← 前日');
       await user.click(prevButton);
-      
-      const expectedDate = yesterday.toLocaleDateString('ja-JP', { 
-        year: 'numeric', 
-        month: 'long', 
+
+      const expectedDate = yesterday.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
         day: 'numeric',
-        weekday: 'long'
+        weekday: 'long',
       });
-      
+
       await waitFor(() => {
         expect(screen.getByText(expectedDate)).toBeInTheDocument();
       });
@@ -162,21 +182,21 @@ describe('ReservationTimelinePage', () => {
     test('翌日ボタンクリックで日付が変更される', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       const today = new Date();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
       const nextButton = screen.getByText('翌日 →');
       await user.click(nextButton);
-      
-      const expectedDate = tomorrow.toLocaleDateString('ja-JP', { 
-        year: 'numeric', 
-        month: 'long', 
+
+      const expectedDate = tomorrow.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
         day: 'numeric',
-        weekday: 'long'
+        weekday: 'long',
       });
-      
+
       await waitFor(() => {
         expect(screen.getByText(expectedDate)).toBeInTheDocument();
       });
@@ -185,22 +205,22 @@ describe('ReservationTimelinePage', () => {
     test('今日ボタンクリックで今日の日付に戻る', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       // まず前日に移動
       const prevButton = screen.getByText('← 前日');
       await user.click(prevButton);
-      
+
       // 今日ボタンをクリック
       const todayButton = screen.getByText('今日');
       await user.click(todayButton);
-      
-      const today = new Date().toLocaleDateString('ja-JP', { 
-        year: 'numeric', 
-        month: 'long', 
+
+      const today = new Date().toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
         day: 'numeric',
-        weekday: 'long'
+        weekday: 'long',
       });
-      
+
       await waitFor(() => {
         expect(screen.getByText(today)).toBeInTheDocument();
       });
@@ -211,14 +231,14 @@ describe('ReservationTimelinePage', () => {
     test('時間間隔が変更できる', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       // デフォルトは10分刻み
       const timeGranularitySelect = screen.getByDisplayValue('10分');
       expect(timeGranularitySelect).toBeInTheDocument();
-      
+
       // 15分に変更
       await user.selectOptions(timeGranularitySelect, '15');
-      
+
       await waitFor(() => {
         expect(screen.getByDisplayValue('15分')).toBeInTheDocument();
       });
@@ -235,10 +255,10 @@ describe('ReservationTimelinePage', () => {
     test('縦表示に切り替えできる', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       const verticalButton = screen.getByText('縦表示');
       await user.click(verticalButton);
-      
+
       await waitFor(() => {
         expect(verticalButton).toHaveClass('bg-blue-600');
       });
@@ -249,12 +269,12 @@ describe('ReservationTimelinePage', () => {
     test('色覚サポートモードの切り替えができる', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       const colorBlindButton = screen.getByText('色覚サポート');
       expect(colorBlindButton).toHaveClass('border-input'); // 非アクティブ状態
-      
+
       await user.click(colorBlindButton);
-      
+
       await waitFor(() => {
         expect(colorBlindButton).toHaveClass('bg-blue-600'); // アクティブ状態
       });
@@ -279,7 +299,9 @@ describe('ReservationTimelinePage', () => {
   describe('通知バナー', () => {
     test('未確認予約の通知が表示される', () => {
       render(<ReservationTimelinePage />);
-      expect(screen.getByText(/未確認の予約が.*件あります/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/未確認の予約が.*件あります/)
+      ).toBeInTheDocument();
       expect(screen.getByText('確認する')).toBeInTheDocument();
     });
   });
@@ -288,15 +310,15 @@ describe('ReservationTimelinePage', () => {
     test('初期描画が2秒以内に完了する', async () => {
       const startTime = performance.now();
       render(<ReservationTimelinePage />);
-      
+
       // 主要要素の表示を待つ
       await waitFor(() => {
         expect(screen.getByText('予約管理 - タイムライン')).toBeInTheDocument();
       });
-      
+
       const endTime = performance.now();
       const renderTime = endTime - startTime;
-      
+
       expect(renderTime).toBeLessThan(2000); // 2秒以内
     });
   });
@@ -305,7 +327,7 @@ describe('ReservationTimelinePage', () => {
     test('キーボードナビゲーションが可能', async () => {
       const user = userEvent.setup();
       render(<ReservationTimelinePage />);
-      
+
       // Tabキーでナビゲーション
       await user.tab();
       expect(document.activeElement).toHaveAttribute('type', 'button');
@@ -313,11 +335,11 @@ describe('ReservationTimelinePage', () => {
 
     test('ARIA属性が適切に設定されている', () => {
       render(<ReservationTimelinePage />);
-      
+
       // ボタンにはroleが設定されている
       const buttons = screen.getAllByRole('button');
       expect(buttons.length).toBeGreaterThan(0);
-      
+
       // セレクトボックスにはcomboboxロールが設定されている
       const selects = screen.getAllByRole('combobox');
       expect(selects.length).toBeGreaterThan(0);
@@ -328,7 +350,7 @@ describe('ReservationTimelinePage', () => {
 describe('予約カードコンポーネント', () => {
   test('予約カードの必須情報が表示される', () => {
     render(<ReservationTimelinePage />);
-    
+
     // サンプルデータの予約が表示されることを確認
     expect(screen.getByText('山田太郎')).toBeInTheDocument();
     expect(screen.getByText('整体60分')).toBeInTheDocument();
@@ -336,17 +358,17 @@ describe('予約カードコンポーネント', () => {
 
   test('ステータスに応じた色が適用される', () => {
     render(<ReservationTimelinePage />);
-    
+
     // 確定ステータスのバッジが表示される
     expect(screen.getByText('確定')).toBeInTheDocument();
-    
+
     // 来院ステータスのバッジが表示される
     expect(screen.getByText('来院')).toBeInTheDocument();
   });
 
   test('予約チャネルが表示される', () => {
     render(<ReservationTimelinePage />);
-    
+
     expect(screen.getByText('LINE')).toBeInTheDocument();
     expect(screen.getByText('電話')).toBeInTheDocument();
   });
@@ -357,9 +379,10 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
     render(<ReservationTimelinePage />);
 
     // 予約カードがdraggable属性を持つ
-    const reservationCards = screen.getAllByText('山田太郎').map(el =>
-      el.closest('[draggable="true"]')
-    ).filter(Boolean);
+    const reservationCards = screen
+      .getAllByText('山田太郎')
+      .map(el => el.closest('[draggable="true"]'))
+      .filter(Boolean);
 
     expect(reservationCards.length).toBeGreaterThan(0);
   });
@@ -367,7 +390,9 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
   test('ドラッグ開始時に予約IDが保存される', async () => {
     render(<ReservationTimelinePage />);
 
-    const dragElement = screen.getByText('山田太郎').closest('[draggable="true"]');
+    const dragElement = screen
+      .getByText('山田太郎')
+      .closest('[draggable="true"]');
     expect(dragElement).toBeInTheDocument();
 
     if (dragElement) {
@@ -385,7 +410,9 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
   test('ドラッグオーバー時にドロップゾーンがハイライトされる', async () => {
     render(<ReservationTimelinePage />);
 
-    const dragElement = screen.getByText('山田太郎').closest('[draggable="true"]');
+    const dragElement = screen
+      .getByText('山田太郎')
+      .closest('[draggable="true"]');
 
     if (dragElement) {
       fireEvent.dragStart(dragElement);
@@ -397,9 +424,12 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
         fireEvent.dragOver(slot);
 
         // ハイライトが適用される
-        await waitFor(() => {
-          expect(slot).toHaveClass('bg-blue-100');
-        }, { timeout: 1000 });
+        await waitFor(
+          () => {
+            expect(slot).toHaveClass('bg-blue-100');
+          },
+          { timeout: 1000 }
+        );
       }
 
       fireEvent.dragEnd(dragElement);
@@ -409,7 +439,9 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
   test('ドロップ時に予約時刻が更新される（楽観的更新）', async () => {
     render(<ReservationTimelinePage />);
 
-    const dragElement = screen.getByText('山田太郎').closest('[draggable="true"]');
+    const dragElement = screen
+      .getByText('山田太郎')
+      .closest('[draggable="true"]');
 
     if (dragElement) {
       fireEvent.dragStart(dragElement);
@@ -425,10 +457,13 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
       fireEvent.dragEnd(dragElement);
 
       // 楽観的更新により即座にUI反映される（300ms以内）
-      await waitFor(() => {
-        // 更新が完了するのを待つ
-        expect(dragElement).not.toHaveClass('opacity-50');
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          // 更新が完了するのを待つ
+          expect(dragElement).not.toHaveClass('opacity-50');
+        },
+        { timeout: 500 }
+      );
     }
   });
 
@@ -439,13 +474,17 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
       // モックのコンソールログを設定
       const consoleLogSpy = jest.spyOn(console, 'log');
 
-      const dragElement = screen.getByText('山田太郎').closest('[draggable="true"]');
+      const dragElement = screen
+        .getByText('山田太郎')
+        .closest('[draggable="true"]');
 
       if (dragElement) {
         fireEvent.dragStart(dragElement);
 
         // 既存予約と同じ時刻にドロップを試みる
-        const timeSlots = document.querySelectorAll('[class*="border-gray-100"]');
+        const timeSlots = document.querySelectorAll(
+          '[class*="border-gray-100"]'
+        );
         if (timeSlots.length > 0) {
           fireEvent.drop(timeSlots[0]);
         }
@@ -453,11 +492,14 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
         fireEvent.dragEnd(dragElement);
 
         // エラーメッセージが表示される
-        await waitFor(() => {
-          expect(consoleLogSpy).toHaveBeenCalledWith(
-            expect.stringContaining('[ERROR]')
-          );
-        }, { timeout: 1000 });
+        await waitFor(
+          () => {
+            expect(consoleLogSpy).toHaveBeenCalledWith(
+              expect.stringContaining('[ERROR]')
+            );
+          },
+          { timeout: 1000 }
+        );
       }
 
       consoleLogSpy.mockRestore();
@@ -468,14 +510,18 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
     test('D&D操作のUI反映が300ms以内に完了する', async () => {
       render(<ReservationTimelinePage />);
 
-      const dragElement = screen.getByText('山田太郎').closest('[draggable="true"]');
+      const dragElement = screen
+        .getByText('山田太郎')
+        .closest('[draggable="true"]');
 
       if (dragElement) {
         const startTime = performance.now();
 
         fireEvent.dragStart(dragElement);
 
-        const timeSlots = document.querySelectorAll('[class*="border-gray-100"]');
+        const timeSlots = document.querySelectorAll(
+          '[class*="border-gray-100"]'
+        );
         if (timeSlots.length > 10) {
           fireEvent.dragOver(timeSlots[10]);
           fireEvent.drop(timeSlots[10]);
@@ -502,7 +548,9 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
       if (dragElement) {
         fireEvent.dragStart(dragElement);
 
-        const timeSlots = document.querySelectorAll('[class*="border-gray-100"]');
+        const timeSlots = document.querySelectorAll(
+          '[class*="border-gray-100"]'
+        );
         if (timeSlots.length > 10) {
           fireEvent.drop(timeSlots[10]);
         }
@@ -510,9 +558,12 @@ describe('ドラッグ&ドロップ機能 (F002)', () => {
         fireEvent.dragEnd(dragElement);
 
         // エラー発生時でも元のデータが表示される
-        await waitFor(() => {
-          expect(screen.getByText('山田太郎')).toBeInTheDocument();
-        }, { timeout: 1000 });
+        await waitFor(
+          () => {
+            expect(screen.getByText('山田太郎')).toBeInTheDocument();
+          },
+          { timeout: 1000 }
+        );
       }
     });
   });

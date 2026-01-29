@@ -38,9 +38,7 @@ export default function SecurityDashboardPage() {
           <h2 className='text-xl font-semibold text-gray-700 mb-2'>
             {profileError || 'アクセス権限がありません'}
           </h2>
-          <p className='text-gray-500'>
-            管理者としてログインしてください。
-          </p>
+          <p className='text-gray-500'>管理者としてログインしてください。</p>
         </div>
       </div>
     );

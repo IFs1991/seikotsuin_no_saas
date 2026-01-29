@@ -36,19 +36,17 @@ describe('ClinicBasicSettings', () => {
   });
 
   it('loads saved settings on mount', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValueOnce(
-        buildResponse({
-          success: true,
-          data: {
-            settings: {
-              name: 'Test Clinic',
-              phone: '03-1111-2222',
-            },
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      buildResponse({
+        success: true,
+        data: {
+          settings: {
+            name: 'Test Clinic',
+            phone: '03-1111-2222',
           },
-        })
-      );
+        },
+      })
+    );
 
     const { container } = render(<ClinicBasicSettings />);
 

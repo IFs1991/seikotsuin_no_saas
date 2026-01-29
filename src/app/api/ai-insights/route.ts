@@ -230,8 +230,8 @@ async function requestAiInsights(
     if (parsed.success) {
       return {
         summary: parsed.data.summary,
-        insights: parsed.data.insights,
-        anomalies: parsed.data.anomalies ?? [],
+        insights: parsed.data.insights as AiInsightItem[],
+        anomalies: (parsed.data.anomalies ?? []) as AiInsightAnomaly[],
       };
     }
   } catch (error) {

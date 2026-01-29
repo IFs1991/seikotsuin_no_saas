@@ -61,7 +61,7 @@ export function useMultiStore() {
   }, []);
 
   const sortByRevenue = useCallback((direction: SortDirection) => {
-    setClinics((prev) =>
+    setClinics(prev =>
       [...prev].sort((a, b) => {
         const aRevenue = a.kpi?.revenue ?? 0;
         const bRevenue = b.kpi?.revenue ?? 0;
@@ -71,7 +71,7 @@ export function useMultiStore() {
   }, []);
 
   const sortByPatients = useCallback((direction: SortDirection) => {
-    setClinics((prev) =>
+    setClinics(prev =>
       [...prev].sort((a, b) => {
         const aPatients = a.kpi?.patients ?? 0;
         const bPatients = b.kpi?.patients ?? 0;
@@ -83,7 +83,7 @@ export function useMultiStore() {
   }, []);
 
   const sortByPerformance = useCallback((direction: SortDirection) => {
-    setClinics((prev) =>
+    setClinics(prev =>
       [...prev].sort((a, b) => {
         const aScore = a.kpi?.staff_performance_score ?? 0;
         const bScore = b.kpi?.staff_performance_score ?? 0;
@@ -105,7 +105,7 @@ export function useMultiStore() {
 
   const averagePerformanceScore = useMemo(() => {
     const scores = clinics
-      .map((c) => c.kpi?.staff_performance_score)
+      .map(c => c.kpi?.staff_performance_score)
       .filter((s): s is number => s !== null && s !== undefined);
     if (scores.length === 0) return null;
     return scores.reduce((sum, s) => sum + s, 0) / scores.length;

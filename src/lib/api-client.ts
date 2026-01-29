@@ -318,17 +318,29 @@ export const api = {
       apiClient.get('/api/dashboard', { clinic_id: clinicId }),
   },
 
-  // 患者分析
+  // 患者分析（読み取り専用 - レガシー）
+  // @deprecated Use api.customers instead for write operations
   patients: {
+    /** @deprecated Use api.customers.getAnalysis instead */
     getAnalysis: (clinicId: string) =>
       apiClient.get('/api/patients', { clinic_id: clinicId }),
-    create: (data: any) => apiClient.post('/api/patients', data),
+    /**
+     * @deprecated Use api.customers.create instead.
+     * POST /api/patients is disabled. This redirects to /api/customers.
+     */
+    create: (data: any) => apiClient.post('/api/customers', data),
   },
 
-  // 顧客分析
+  // 顧客（SSOT - Single Source of Truth）
   customers: {
     getAnalysis: (clinicId: string) =>
       apiClient.get('/api/customers/analysis', { clinic_id: clinicId }),
+    getList: (clinicId: string, q?: string) =>
+      apiClient.get('/api/customers', { clinic_id: clinicId, ...(q && { q }) }),
+    getById: (clinicId: string, id: string) =>
+      apiClient.get('/api/customers', { clinic_id: clinicId, id }),
+    create: (data: any) => apiClient.post('/api/customers', data),
+    update: (data: any) => apiClient.patch('/api/customers', data),
   },
 
   // 収益分析

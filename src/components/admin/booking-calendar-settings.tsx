@@ -82,11 +82,16 @@ export function BookingCalendarSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialBookingData, clinicId ? {
-    clinicId,
-    category: 'booking_calendar',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialBookingData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'booking_calendar',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   // Online/notification settings remain local until API support is added.
   const [onlineSettings, setOnlineSettings] =
@@ -96,9 +101,9 @@ export function BookingCalendarSettings() {
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -122,14 +127,14 @@ export function BookingCalendarSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* 基本予約設定 */}
-      <Card className='p-6' data-testid="booking-calendar-settings-card">
+      <Card className='p-6' data-testid='booking-calendar-settings-card'>
         <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
           <Clock className='w-5 h-5 mr-2' />
           基本予約設定
@@ -141,7 +146,7 @@ export function BookingCalendarSettings() {
               予約時間間隔（分）
             </Label>
             <select
-              data-testid="booking-calendar-slot-minutes-select"
+              data-testid='booking-calendar-slot-minutes-select'
               value={bookingSettings.slotMinutes}
               onChange={e =>
                 updateBooking({ slotMinutes: parseInt(e.target.value) })
@@ -163,7 +168,7 @@ export function BookingCalendarSettings() {
               同時予約可能数
             </Label>
             <Input
-              data-testid="booking-calendar-max-concurrent-input"
+              data-testid='booking-calendar-max-concurrent-input'
               type='number'
               value={bookingSettings.maxConcurrent}
               onChange={e =>
@@ -182,11 +187,13 @@ export function BookingCalendarSettings() {
               最大事前予約日数
             </Label>
             <Input
-              data-testid="booking-calendar-max-advance-days-input"
+              data-testid='booking-calendar-max-advance-days-input'
               type='number'
               value={bookingSettings.maxAdvanceBookingDays}
               onChange={e =>
-                updateBooking({ maxAdvanceBookingDays: parseInt(e.target.value) })
+                updateBooking({
+                  maxAdvanceBookingDays: parseInt(e.target.value),
+                })
               }
               min='1'
               max='365'
@@ -201,11 +208,13 @@ export function BookingCalendarSettings() {
               最小事前予約時間
             </Label>
             <Input
-              data-testid="booking-calendar-min-advance-hours-input"
+              data-testid='booking-calendar-min-advance-hours-input'
               type='number'
               value={bookingSettings.minAdvanceBookingHours}
               onChange={e =>
-                updateBooking({ minAdvanceBookingHours: parseInt(e.target.value) })
+                updateBooking({
+                  minAdvanceBookingHours: parseInt(e.target.value),
+                })
               }
               min='0'
               max='48'
@@ -220,7 +229,7 @@ export function BookingCalendarSettings() {
           <div>
             <label className='flex items-center space-x-2'>
               <input
-                data-testid="booking-calendar-cancellation-allowed-checkbox"
+                data-testid='booking-calendar-cancellation-allowed-checkbox'
                 type='checkbox'
                 checked={bookingSettings.allowCancellation}
                 onChange={e =>
@@ -238,11 +247,13 @@ export function BookingCalendarSettings() {
                   キャンセル締切時間（予約の何時間前まで）
                 </Label>
                 <Input
-                  data-testid="booking-calendar-cancellation-deadline-input"
+                  data-testid='booking-calendar-cancellation-deadline-input'
                   type='number'
                   value={bookingSettings.cancellationDeadlineHours}
                   onChange={e =>
-                    updateBooking({ cancellationDeadlineHours: parseInt(e.target.value) })
+                    updateBooking({
+                      cancellationDeadlineHours: parseInt(e.target.value),
+                    })
                   }
                   className='w-32'
                   min='0'
@@ -267,10 +278,12 @@ export function BookingCalendarSettings() {
               週の開始曜日
             </Label>
             <select
-              data-testid="booking-calendar-week-start-select"
+              data-testid='booking-calendar-week-start-select'
               value={bookingSettings.weekStartDay}
               onChange={e =>
-                updateBooking({ weekStartDay: parseInt(e.target.value) as 0 | 1 })
+                updateBooking({
+                  weekStartDay: parseInt(e.target.value) as 0 | 1,
+                })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
@@ -284,11 +297,14 @@ export function BookingCalendarSettings() {
               デフォルト表示
             </Label>
             <select
-              data-testid="booking-calendar-default-view-select"
+              data-testid='booking-calendar-default-view-select'
               value={bookingSettings.defaultCalendarView}
               onChange={e =>
                 updateBooking({
-                  defaultCalendarView: e.target.value as 'day' | 'week' | 'month',
+                  defaultCalendarView: e.target.value as
+                    | 'day'
+                    | 'week'
+                    | 'month',
                 })
               }
               className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -312,7 +328,7 @@ export function BookingCalendarSettings() {
           <div>
             <label className='flex items-center space-x-2'>
               <input
-                data-testid="booking-calendar-online-booking-checkbox"
+                data-testid='booking-calendar-online-booking-checkbox'
                 type='checkbox'
                 checked={bookingSettings.allowOnlineBooking}
                 onChange={e =>
@@ -334,9 +350,7 @@ export function BookingCalendarSettings() {
                 </Label>
                 <Input
                   value={onlineSettings.publicUrl}
-                  onChange={e =>
-                    updateOnline({ publicUrl: e.target.value })
-                  }
+                  onChange={e => updateOnline({ publicUrl: e.target.value })}
                   placeholder='https://booking.seikotsuin.com/honten'
                 />
                 <p className='text-xs text-gray-500 mt-1'>
@@ -518,7 +532,9 @@ export function BookingCalendarSettings() {
                 type='number'
                 value={notifications.reminderTime}
                 onChange={e =>
-                  updateNotifications({ reminderTime: parseInt(e.target.value) })
+                  updateNotifications({
+                    reminderTime: parseInt(e.target.value),
+                  })
                 }
                 className='w-32'
                 min='1'
@@ -533,7 +549,7 @@ export function BookingCalendarSettings() {
       <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
         <Button variant='outline'>キャンセル</Button>
         <Button
-          data-testid="save-settings-button"
+          data-testid='save-settings-button'
           onClick={onSave}
           disabled={loadingState.isLoading}
           className='flex items-center space-x-2'

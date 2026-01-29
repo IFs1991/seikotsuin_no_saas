@@ -104,7 +104,7 @@ export default function AdminLogin() {
       const normalizedErrors = Object.fromEntries(
         Object.entries(state.errors).map(([key, value]) => [
           key,
-          Array.isArray(value) ? value[0] ?? '' : value ?? '',
+          Array.isArray(value) ? (value[0] ?? '') : (value ?? ''),
         ])
       );
       setClientErrors(normalizedErrors);

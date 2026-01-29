@@ -1,20 +1,26 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from './alert';
-import { 
-  AlertTriangle, 
-  Info, 
-  CheckCircle, 
-  XCircle, 
+import {
+  AlertTriangle,
+  Info,
+  CheckCircle,
+  XCircle,
   Clock,
   Shield,
-  Heart,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { Button } from './button';
 
 export interface MedicalBannerProps {
-  type: 'emergency' | 'urgent' | 'warning' | 'info' | 'success' | 'security' | 'maintenance';
+  type:
+    | 'emergency'
+    | 'urgent'
+    | 'warning'
+    | 'info'
+    | 'success'
+    | 'security'
+    | 'maintenance';
   title: string;
   description?: string;
   actions?: {
@@ -81,20 +87,26 @@ const bannerConfig = {
   },
 };
 
-export const MedicalBanner = React.forwardRef<HTMLDivElement, MedicalBannerProps>(
-  ({
-    type,
-    title,
-    description,
-    actions,
-    dismissible = true,
-    onDismiss,
-    autoHideDuration,
-    showTimestamp = true,
-    patientId,
-    staffRole,
-    ...props
-  }, ref) => {
+export const MedicalBanner = React.forwardRef<
+  HTMLDivElement,
+  MedicalBannerProps
+>(
+  (
+    {
+      type,
+      title,
+      description,
+      actions,
+      dismissible = true,
+      onDismiss,
+      autoHideDuration,
+      showTimestamp = true,
+      patientId,
+      staffRole,
+      ...props
+    },
+    ref
+  ) => {
     const config = bannerConfig[type];
     const Icon = config.icon;
     const [timestamp] = React.useState(new Date());
@@ -126,39 +138,37 @@ export const MedicalBanner = React.forwardRef<HTMLDivElement, MedicalBannerProps
           // スタッフロール別の境界線
           staffRole === 'doctor' && 'border-l-8 border-l-blue-600',
           staffRole === 'nurse' && 'border-l-8 border-l-green-600',
-          staffRole === 'admin' && 'border-l-8 border-l-purple-600',
+          staffRole === 'admin' && 'border-l-8 border-l-purple-600'
         )}
         data-patient-id={patientId}
         data-staff-role={staffRole}
         {...props}
       >
         <Icon className={cn('w-5 h-5', config.iconClass)} />
-        
-        <div className="flex-1">
+
+        <div className='flex-1'>
           <AlertTitle className={cn('mb-1', config.titleClass)}>
             {title}
             {type === 'emergency' && (
-              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-200 text-red-900 animate-pulse">
+              <span className='ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-bold bg-red-200 text-red-900 animate-pulse'>
                 緊急
               </span>
             )}
             {patientId && (
-              <span className="ml-2 text-sm font-normal text-gray-600">
+              <span className='ml-2 text-sm font-normal text-gray-600'>
                 患者ID: {patientId}
               </span>
             )}
           </AlertTitle>
-          
+
           {description && (
-            <AlertDescription className="mb-3">
-              {description}
-            </AlertDescription>
+            <AlertDescription className='mb-3'>{description}</AlertDescription>
           )}
 
           {/* タイムスタンプ */}
           {showTimestamp && (
-            <div className="flex items-center text-xs text-gray-500 mb-3">
-              <Clock className="w-3 h-3 mr-1" />
+            <div className='flex items-center text-xs text-gray-500 mb-3'>
+              <Clock className='w-3 h-3 mr-1' />
               {timestamp.toLocaleString('ja-JP', {
                 year: 'numeric',
                 month: '2-digit',
@@ -172,21 +182,23 @@ export const MedicalBanner = React.forwardRef<HTMLDivElement, MedicalBannerProps
 
           {/* アクションボタン */}
           {actions && (
-            <div className="flex items-center space-x-2">
+            <div className='flex items-center space-x-2'>
               {actions.primary && (
                 <Button
-                  variant={type === 'emergency' ? 'medical-urgent' : 'medical-primary'}
+                  variant={
+                    type === 'emergency' ? 'medical-urgent' : 'medical-primary'
+                  }
                   size={type === 'emergency' ? 'emergency' : 'default'}
                   onClick={actions.primary.onClick}
-                  className="mr-2"
+                  className='mr-2'
                 >
                   {actions.primary.label}
                 </Button>
               )}
               {actions.secondary && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant='outline'
+                  size='sm'
                   onClick={actions.secondary.onClick}
                 >
                   {actions.secondary.label}
@@ -207,15 +219,15 @@ export const MedicalBannerExamples = () => {
   const [showBanner, setShowBanner] = React.useState(true);
 
   return (
-    <div className="space-y-4 p-4">
+    <div className='space-y-4 p-4'>
       {/* 緊急アラート */}
       {showBanner && (
         <MedicalBanner
-          type="emergency"
-          title="患者の容態が急変しました"
-          description="田中太郎様（患者ID: P-2024-001）のバイタルサインに異常値を検出"
-          patientId="P-2024-001"
-          staffRole="doctor"
+          type='emergency'
+          title='患者の容態が急変しました'
+          description='田中太郎様（患者ID: P-2024-001）のバイタルサインに異常値を検出'
+          patientId='P-2024-001'
+          staffRole='doctor'
           actions={{
             primary: {
               label: '即座に対応',
@@ -232,10 +244,10 @@ export const MedicalBannerExamples = () => {
 
       {/* セキュリティ警告 */}
       <MedicalBanner
-        type="security"
-        title="不正アクセスを検出"
-        description="外部IPアドレスからの複数回ログイン試行が検出されました"
-        staffRole="admin"
+        type='security'
+        title='不正アクセスを検出'
+        description='外部IPアドレスからの複数回ログイン試行が検出されました'
+        staffRole='admin'
         actions={{
           primary: {
             label: 'セキュリティ対応',
@@ -251,19 +263,19 @@ export const MedicalBannerExamples = () => {
 
       {/* 成功メッセージ */}
       <MedicalBanner
-        type="success"
-        title="データバックアップが完了しました"
-        description="本日分の患者データと診療記録のバックアップが正常に完了"
-        staffRole="admin"
+        type='success'
+        title='データバックアップが完了しました'
+        description='本日分の患者データと診療記録のバックアップが正常に完了'
+        staffRole='admin'
         showTimestamp={true}
         dismissible={true}
       />
 
       {/* 保守メンテナンス */}
       <MedicalBanner
-        type="maintenance"
-        title="システムメンテナンスのお知らせ"
-        description="本日23:00-24:00にシステムメンテナンスを実施します"
+        type='maintenance'
+        title='システムメンテナンスのお知らせ'
+        description='本日23:00-24:00にシステムメンテナンスを実施します'
         actions={{
           primary: {
             label: '詳細を確認',

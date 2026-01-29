@@ -5,13 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import {
-  Save,
-  FileText,
-  CreditCard,
-  Settings,
-  Loader2,
-} from 'lucide-react';
+import { Save, FileText, CreditCard, Settings, Loader2 } from 'lucide-react';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { AdminMessage } from './AdminMessage';
@@ -51,11 +45,46 @@ interface InsuranceBillingData {
 
 const initialData: InsuranceBillingData = {
   insuranceTypes: [
-    { id: '1', name: '社会保険', code: 'SHAKAI', isEnabled: true, coPaymentRate: 30, maxAmount: undefined },
-    { id: '2', name: '国民健康保険', code: 'KOKUHO', isEnabled: true, coPaymentRate: 30, maxAmount: undefined },
-    { id: '3', name: '労災保険', code: 'ROUSAI', isEnabled: true, coPaymentRate: 0, maxAmount: undefined },
-    { id: '4', name: '交通事故（自賠責）', code: 'JIBAI', isEnabled: true, coPaymentRate: 0, maxAmount: 120000 },
-    { id: '5', name: '後期高齢者医療', code: 'KOUKI', isEnabled: true, coPaymentRate: 10, maxAmount: undefined },
+    {
+      id: '1',
+      name: '社会保険',
+      code: 'SHAKAI',
+      isEnabled: true,
+      coPaymentRate: 30,
+      maxAmount: undefined,
+    },
+    {
+      id: '2',
+      name: '国民健康保険',
+      code: 'KOKUHO',
+      isEnabled: true,
+      coPaymentRate: 30,
+      maxAmount: undefined,
+    },
+    {
+      id: '3',
+      name: '労災保険',
+      code: 'ROUSAI',
+      isEnabled: true,
+      coPaymentRate: 0,
+      maxAmount: undefined,
+    },
+    {
+      id: '4',
+      name: '交通事故（自賠責）',
+      code: 'JIBAI',
+      isEnabled: true,
+      coPaymentRate: 0,
+      maxAmount: 120000,
+    },
+    {
+      id: '5',
+      name: '後期高齢者医療',
+      code: 'KOUKI',
+      isEnabled: true,
+      coPaymentRate: 10,
+      maxAmount: undefined,
+    },
   ],
   billingConfig: {
     receiptPrefix: 'RC',
@@ -85,11 +114,16 @@ export function InsuranceBillingSettings() {
     loadingState,
     handleSave,
     isInitialized,
-  } = useAdminSettings(initialData, clinicId ? {
-    clinicId,
-    category: 'insurance_billing',
-    autoLoad: true,
-  } : undefined);
+  } = useAdminSettings(
+    initialData,
+    clinicId
+      ? {
+          clinicId,
+          category: 'insurance_billing',
+          autoLoad: true,
+        }
+      : undefined
+  );
 
   const paymentMethodNames: Record<string, string> = {
     cash: '現金',
@@ -100,9 +134,9 @@ export function InsuranceBillingSettings() {
 
   if (profileLoading || !isInitialized) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <span className="ml-2 text-gray-600">設定を読み込み中...</span>
+      <div className='flex items-center justify-center py-12'>
+        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
@@ -159,10 +193,10 @@ export function InsuranceBillingSettings() {
   return (
     <div className='space-y-6'>
       {loadingState.error && (
-        <AdminMessage message={loadingState.error} type="error" />
+        <AdminMessage message={loadingState.error} type='error' />
       )}
       {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type="success" />
+        <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
 
       {/* 取扱保険種別 */}
@@ -266,9 +300,7 @@ export function InsuranceBillingSettings() {
             </Label>
             <Input
               value={clinicInfo.directorName}
-              onChange={e =>
-                updateClinicInfo({ directorName: e.target.value })
-              }
+              onChange={e => updateClinicInfo({ directorName: e.target.value })}
             />
           </div>
 
@@ -290,9 +322,7 @@ export function InsuranceBillingSettings() {
             </Label>
             <Input
               value={clinicInfo.receiptPhone}
-              onChange={e =>
-                updateClinicInfo({ receiptPhone: e.target.value })
-              }
+              onChange={e => updateClinicInfo({ receiptPhone: e.target.value })}
             />
           </div>
 
@@ -356,7 +386,9 @@ export function InsuranceBillingSettings() {
                   type='number'
                   value={billingConfig.receiptStartNumber}
                   onChange={e =>
-                    updateBilling({ receiptStartNumber: parseInt(e.target.value) })
+                    updateBilling({
+                      receiptStartNumber: parseInt(e.target.value),
+                    })
                   }
                   min='1'
                 />

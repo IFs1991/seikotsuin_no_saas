@@ -1,4 +1,8 @@
-import { sanitizePostgrestValue, buildSafeSearchFilter, isValidSearchInput } from '@/lib/postgrest-sanitizer';
+import {
+  sanitizePostgrestValue,
+  buildSafeSearchFilter,
+  isValidSearchInput,
+} from '@/lib/postgrest-sanitizer';
 
 describe('PostgREST Sanitizer (Allowlist方式)', () => {
   describe('sanitizePostgrestValue', () => {
@@ -16,7 +20,9 @@ describe('PostgREST Sanitizer (Allowlist方式)', () => {
     it('ピリオドは許可する（メールアドレス用）', () => {
       // ピリオドはメールアドレス検索で必要なため許可
       expect(sanitizePostgrestValue('test.injection')).toBe('test.injection');
-      expect(sanitizePostgrestValue('user@example.com')).toBe('user@example.com');
+      expect(sanitizePostgrestValue('user@example.com')).toBe(
+        'user@example.com'
+      );
     });
 
     it('パーセント記号を削除する', () => {
@@ -55,7 +61,9 @@ describe('PostgREST Sanitizer (Allowlist方式)', () => {
     });
 
     it('全角文字を正しく処理する', () => {
-      expect(sanitizePostgrestValue('０９０ー１２３４ー５６７８')).toBe('０９０ー１２３４ー５６７８');
+      expect(sanitizePostgrestValue('０９０ー１２３４ー５６７８')).toBe(
+        '０９０ー１２３４ー５６７８'
+      );
     });
   });
 

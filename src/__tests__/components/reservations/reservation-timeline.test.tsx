@@ -43,12 +43,22 @@ jest.mock('@/providers/user-profile-context', () => ({
 // useReservationFormDataをモック
 jest.mock('@/hooks/useReservationFormData', () => ({
   useReservationFormData: () => ({
-    menus: [
-      { id: 'menu1', name: '整体60分', isActive: true, options: [] },
-    ],
+    menus: [{ id: 'menu1', name: '整体60分', isActive: true, options: [] }],
     resources: [
-      { id: 'staff1', name: '田中先生', isActive: true, type: 'staff', maxConcurrent: 1 },
-      { id: 'staff2', name: '佐藤先生', isActive: true, type: 'staff', maxConcurrent: 1 },
+      {
+        id: 'staff1',
+        name: '田中先生',
+        isActive: true,
+        type: 'staff',
+        maxConcurrent: 1,
+      },
+      {
+        id: 'staff2',
+        name: '佐藤先生',
+        isActive: true,
+        type: 'staff',
+        maxConcurrent: 1,
+      },
     ],
     loading: false,
     error: null,

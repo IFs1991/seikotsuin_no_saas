@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // useMultiStore フックをモック
@@ -45,7 +45,9 @@ jest.mock('@/hooks/useMultiStore', () => ({
 import MultiStorePage from '@/app/multi-store/page';
 import { useMultiStore } from '@/hooks/useMultiStore';
 
-const mockUseMultiStore = useMultiStore as jest.MockedFunction<typeof useMultiStore>;
+const mockUseMultiStore = useMultiStore as jest.MockedFunction<
+  typeof useMultiStore
+>;
 
 describe('MultiStorePage Component', () => {
   const mockClinicData = [
@@ -88,7 +90,9 @@ describe('MultiStorePage Component', () => {
     it('ページタイトルが表示される', () => {
       render(<MultiStorePage />);
 
-      expect(screen.getByRole('heading', { name: /多店舗分析/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /多店舗分析/i })
+      ).toBeInTheDocument();
     });
 
     it('初回レンダリング時にデータを取得する', () => {
@@ -212,7 +216,9 @@ describe('MultiStorePage Component', () => {
 
       render(<MultiStorePage />);
 
-      expect(screen.getByTestId('average-performance')).toHaveTextContent('4.35');
+      expect(screen.getByTestId('average-performance')).toHaveTextContent(
+        '4.35'
+      );
     });
   });
 
@@ -265,7 +271,9 @@ describe('MultiStorePage Component', () => {
       const user = userEvent.setup();
       render(<MultiStorePage />);
 
-      const performanceHeader = screen.getByRole('button', { name: /パフォーマンス/i });
+      const performanceHeader = screen.getByRole('button', {
+        name: /パフォーマンス/i,
+      });
       await user.click(performanceHeader);
 
       expect(mockSortByPerformance).toHaveBeenCalledWith('desc');
@@ -295,7 +303,9 @@ describe('MultiStorePage Component', () => {
 
       render(<MultiStorePage />);
 
-      expect(screen.getByText(/クリニックデータがありません/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/クリニックデータがありません/i)
+      ).toBeInTheDocument();
     });
   });
 });

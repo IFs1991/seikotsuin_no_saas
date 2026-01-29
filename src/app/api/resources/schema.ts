@@ -61,4 +61,3 @@ export function mapResourceUpdateToRow(
     is_active: dto.isActive,
   } as any;
 }
-

@@ -43,38 +43,36 @@ describe('MasterDataForm', () => {
   });
 
   it('loads menu items from master data', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
-      .mockResolvedValueOnce(
-        buildResponse({
-          success: true,
-          data: {
-            items: [
-              {
-                id: 'setting-1',
-                clinic_id: null,
-                name: 'menu_items',
-                category: 'menu',
-                value: [
-                  {
-                    id: 'item-1',
-                    name: 'カスタム施術',
-                    price: 4200,
-                    duration: 45,
-                    category: '一般',
-                    isActive: true,
-                  },
-                ],
-                data_type: 'array',
-                is_editable: true,
-                is_public: false,
-                updated_at: new Date().toISOString(),
-              },
-            ],
-            total: 1,
-          },
-        })
-      );
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+      buildResponse({
+        success: true,
+        data: {
+          items: [
+            {
+              id: 'setting-1',
+              clinic_id: null,
+              name: 'menu_items',
+              category: 'menu',
+              value: [
+                {
+                  id: 'item-1',
+                  name: 'カスタム施術',
+                  price: 4200,
+                  duration: 45,
+                  category: '一般',
+                  isActive: true,
+                },
+              ],
+              data_type: 'array',
+              is_editable: true,
+              is_public: false,
+              updated_at: new Date().toISOString(),
+            },
+          ],
+          total: 1,
+        },
+      })
+    );
 
     render(<MasterDataForm />);
 
@@ -85,9 +83,7 @@ describe('MasterDataForm', () => {
       );
     });
 
-    expect(
-      await screen.findByDisplayValue('カスタム施術')
-    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue('カスタム施術')).toBeInTheDocument();
   });
 
   it('creates a new master data entry when none exists', async () => {
@@ -129,9 +125,7 @@ describe('MasterDataForm', () => {
     });
 
     const request = fetchMock.mock.calls[1];
-    const requestBody = JSON.parse(
-      (request[1] as RequestInit).body as string
-    );
+    const requestBody = JSON.parse((request[1] as RequestInit).body as string);
 
     expect(request[0]).toBe('/api/admin/master-data');
     expect((request[1] as RequestInit).method).toBe('POST');
@@ -208,9 +202,7 @@ describe('MasterDataForm', () => {
     });
 
     const request = fetchMock.mock.calls[1];
-    const requestBody = JSON.parse(
-      (request[1] as RequestInit).body as string
-    );
+    const requestBody = JSON.parse((request[1] as RequestInit).body as string);
 
     expect(request[0]).toBe('/api/admin/master-data');
     expect((request[1] as RequestInit).method).toBe('PUT');

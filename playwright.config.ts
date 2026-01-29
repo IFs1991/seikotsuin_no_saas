@@ -56,8 +56,15 @@ export default defineConfig({
     ? {
         command: 'npm run dev',
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        // E2E_INVITE_MODE などの環境変数を反映するため、常に新しいサーバーを起動
+        // @see docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md
+        reuseExistingServer: false,
         timeout: 120_000,
+        // E2E専用環境変数をwebServerに渡す
+        env: {
+          ...process.env,
+          E2E_INVITE_MODE: process.env.E2E_INVITE_MODE || 'skip',
+        },
       }
     : undefined,
   globalSetup: './src/__tests__/e2e-playwright/global-setup.ts',

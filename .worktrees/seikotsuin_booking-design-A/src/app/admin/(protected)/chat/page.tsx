@@ -18,13 +18,8 @@ import { Separator } from '@/components/ui/separator';
 type StoreFilter = 'all' | 'area';
 
 const AdminChatPage: React.FC = () => {
-  const {
-    messages,
-    sendMessage,
-    isLoading,
-    exportChat,
-    error,
-  } = useAdminChat();
+  const { messages, sendMessage, isLoading, exportChat, error } =
+    useAdminChat();
   const [selectedStore, setSelectedStore] = useState<StoreFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
 

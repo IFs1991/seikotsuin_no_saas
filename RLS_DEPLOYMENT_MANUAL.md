@@ -1,10 +1,30 @@
 # RLS デプロイメント 実行手順書
 
-## 🔐 エンタープライズレベル Row Level Security 実装
+## 🔐 Supabase Row Level Security 実装（現行運用版）
 
 **作成日**: 2025年8月23日  
+**最終更新**: 2026年1月27日  
 **対象**: 整骨院管理SaaS  
-**実行環境**: Supabase Database
+**実行環境**: Supabase Database  
+**ソース・オブ・トゥルース**: `supabase/migrations/*.sql`（RLS/スキーマ）
+
+---
+
+## 📌 重要な前提（最新構成）
+
+- **RLS/スキーマの正**は `supabase/migrations/*.sql`。  
+  `src/api/database/schema.sql` / `src/api/database/rls-policies.sql` は**レガシー参照用**。
+- **JWT クレーム前提**: `clinic_id` / `user_role` / `clinic_scope_ids`（親子スコープ）  
+  `public.custom_access_token_hook()` により付与。
+- **RLS 共通関数（public schema）**:
+  - `public.get_current_role()`
+  - `public.get_current_clinic_id()`
+  - `public.jwt_clinic_id()`
+  - `public.jwt_is_admin()`
+  - `public.can_access_clinic(uuid)`
+  - `public.custom_access_token_hook(jsonb)`
+  - `public.user_role()`（レガシー互換）
+- **DoD 連動**: DOD-01 / 02 / 03 / 04 / 08（`docs/stabilization/DoD-v0.1.md`）
 
 ---
 
@@ -12,13 +32,13 @@
 
 ### 1. Supabase プロジェクト確認
 
-- [ ] Supabaseプロジェクトが作成済み
-- [ ] データベース接続情報を確認済み
-- [ ] SQL Editor へのアクセス権限確認済み
+- [ ] Supabase プロジェクト作成済み
+- [ ] DB 接続情報確認済み
+- [ ] SQL Editor / CLI の権限確認済み
 
 ### 2. 環境変数更新
 
-`.env.local` ファイルを実際のSupabase情報で更新:
+`.env.local` に Supabase 情報を設定:
 
 ```bash
 # Supabase設定（実際の値に更新）
@@ -26,11 +46,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-actual-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_actual_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_actual_service_role_key
 
-# データベース直接接続用（RLS実行用）
+# DB直接接続（検証用）
 SUPABASE_DB_URL=postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
 ```
 
-### 3. バックアップ実行
+### 3. バックアップ実行（本番）
 
 ```sql
 -- 重要: 本番データがある場合は必ずバックアップを取得
@@ -39,216 +59,187 @@ pg_dump "postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/post
 
 ---
 
-## 🚀 RLS実装ステップ
+## 🧭 現行スキーマ / RLS 概要（2026-01-27 時点）
 
-### Step 1: データベーススキーマ確認
+### 主要テナント系テーブル（RLS 有効）
 
-Supabase SQL Editor で以下を実行:
+- **基盤**: `clinics`, `user_permissions`, `profiles`
+- **予約系**: `reservations`, `blocks`, `customers`, `menus`, `resources`, `reservation_history`
+- **レガシー業務**: `staff`, `patients`, `visits`, `revenues`, `staff_performance`, `daily_reports`, `ai_comments`, `appointments`
+- **運用/管理**: `clinic_settings`, `staff_shifts`, `staff_preferences`, `chat_sessions`, `chat_messages`
+- **監査/セキュリティ**: `audit_logs`, `encryption_keys`, `security_events`, `notifications`, `staff_invites`
+
+### 重要な挙動
+
+- **親子スコープ**: `clinics.parent_id` + JWT の `clinic_scope_ids` で親子スコープを制御。
+- **customer 自己アクセス**: 予約/顧客は**Server API 経由のみ**（RLS から自己アクセスを削除）。
+- **appointments**: **読み取り専用**（SSOTは `reservations`）。
+- **audit_logs / encryption_keys**: **厳格制御**（更新/削除なし、service role での挿入のみ）。
+
+---
+
+## 🚀 RLS 適用手順（推奨フロー）
+
+### Step 1: ローカル確認（DoD-01/02/03/04）
+
+```bash
+supabase start
+supabase status
+node scripts/verify-supabase-connection.mjs
+
+# マイグレーションの再現性確認
+supabase db reset --local --no-seed
+supabase db reset --local
+
+# スキーマ差分の確認
+supabase db push --local --dry-run
+```
+
+### Step 2: Auth Hook 設定確認
+
+`supabase/config.toml` の設定が有効であることを確認:
+
+```toml
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+```
+
+> Hosted Supabase の場合は Dashboard → Auth → Hooks で同設定を有効化。
+
+### Step 3: 本番適用（マイグレーション）
+
+- **推奨**: `supabase db push` で `supabase/migrations` を反映  
+- **禁止**: `src/api/database/rls-policies.sql` を SQL Editor で手動実行
+
+---
+
+## ✅ 検証クエリ（DoD-08 対応）
+
+### 1. RLS 有効化確認
 
 ```sql
--- 1. 現在のテーブル構成を確認
-SELECT schemaname, tablename, rowsecurity as rls_enabled
+SELECT schemaname, tablename, rowsecurity AS rls_enabled
 FROM pg_tables
 WHERE schemaname = 'public'
+  AND tablename IN (
+    'clinics','user_permissions','profiles',
+    'reservations','blocks','customers','menus','resources','reservation_history',
+    'staff','patients','visits','revenues','staff_performance','daily_reports','ai_comments','appointments',
+    'clinic_settings','staff_shifts','staff_preferences',
+    'chat_sessions','chat_messages',
+    'audit_logs','encryption_keys','security_events','notifications','staff_invites'
+  )
 ORDER BY tablename;
+```
 
--- 2. 既存のポリシー確認
-SELECT schemaname, tablename, policyname, cmd, roles
+### 2. 主要ポリシーのスコープ確認（can_access_clinic）
+
+```sql
+SELECT tablename, policyname, qual, with_check
 FROM pg_policies
 WHERE schemaname = 'public'
+  AND tablename IN (
+    'reservations','blocks','customers','menus','resources','reservation_history','ai_comments',
+    'clinic_settings','staff_shifts','staff_preferences',
+    'clinics','user_permissions',
+    'staff','patients','visits','revenues','staff_performance','daily_reports',
+    'appointments','staff_invites'
+  )
 ORDER BY tablename, policyname;
 ```
 
-### Step 2: 基本スキーマ適用
-
-まず、基本スキーマが適用されていることを確認:
+### 3. RLS ヘルパー関数の存在確認
 
 ```sql
--- src/api/database/schema.sql の内容を実行
--- （既に適用済みの場合はスキップ）
-```
-
-### Step 3: RLS ポリシー適用
-
-以下のファイル内容をSupabase SQL Editorで実行:
-
-**ファイル**: `src/api/database/rls-policies.sql`
-
-```sql
--- 🔧 実行方法:
--- 1. Supabase Dashboard → SQL Editor に移動
--- 2. 以下の内容をコピー&ペーストして実行
--- 3. エラーが出た場合は、段階的に実行（セクション別）
-```
-
-**実行順序**:
-
-1. **セキュリティ関数作成** (行 1-120)
-2. **RLS有効化** (行 121-140)
-3. **基本ポリシー適用** (行 141-350)
-4. **監査ログトリガー** (行 351-400)
-5. **パフォーマンス最適化** (行 401-450)
-
-### Step 4: 実行結果確認
-
-```sql
--- 1. RLS有効化確認
-SELECT * FROM security_policy_status
-WHERE tablename IN ('patients', 'staff', 'visits', 'revenues', 'clinics', 'audit_logs')
-ORDER BY tablename;
-
--- 2. セキュリティ関数確認
-SELECT routine_name, routine_type
+SELECT routine_schema, routine_name
 FROM information_schema.routines
-WHERE routine_schema = 'auth'
-  AND routine_name LIKE '%current%'
+WHERE routine_schema = 'public'
+  AND routine_name IN (
+    'get_current_role',
+    'get_current_clinic_id',
+    'jwt_clinic_id',
+    'jwt_is_admin',
+    'can_access_clinic',
+    'custom_access_token_hook',
+    'user_role'
+  )
 ORDER BY routine_name;
+```
 
--- 3. インデックス確認
-SELECT schemaname, tablename, indexname
-FROM pg_indexes
-WHERE schemaname = 'public'
-  AND indexname LIKE 'idx_%clinic_id%'
-ORDER BY tablename, indexname;
+### 4. JWT クレーム確認（ログイン後）
 
--- 4. 監査トリガー確認
-SELECT event_object_table, trigger_name, event_manipulation
-FROM information_schema.triggers
-WHERE trigger_schema = 'public'
-  AND trigger_name LIKE 'audit_%'
-ORDER BY event_object_table;
+```sql
+SELECT
+  current_setting('request.jwt.claims', true)::jsonb->>'clinic_id' AS clinic_id,
+  current_setting('request.jwt.claims', true)::jsonb->>'user_role' AS user_role,
+  current_setting('request.jwt.claims', true)::jsonb->'clinic_scope_ids' AS clinic_scope_ids;
+```
+
+### 5. appointments が読み取り専用であることを確認
+
+```sql
+SELECT policyname, cmd
+FROM pg_policies
+WHERE tablename = 'appointments'
+ORDER BY policyname;
 ```
 
 ---
 
-## 🧪 動作テスト手順
-
-### Test 1: 基本認証機能テスト
+## 🧪 動作テスト（最小）
 
 ```sql
--- デバッグ情報確認
-SELECT * FROM debug_current_user_info();
-
--- 現在のユーザー情報確認
 SELECT
-    auth.uid() as current_user_id,
-    auth.email() as current_email,
-    auth.get_current_role() as current_role,
-    auth.get_current_clinic_id() as current_clinic_id;
-```
-
-### Test 2: テーブルアクセステスト
-
-```sql
--- 各テーブルへのアクセス可能レコード数をテスト
-SELECT * FROM test_rls_access('patients');
-SELECT * FROM test_rls_access('staff');
-SELECT * FROM test_rls_access('visits');
-SELECT * FROM test_rls_access('revenues');
-```
-
-### Test 3: 監査ログテスト
-
-```sql
--- テストデータ作成（監査ログが生成されるか確認）
-INSERT INTO clinics (name, address)
-VALUES ('テスト整骨院', 'テスト住所');
-
--- 監査ログ確認
-SELECT user_id, user_role, clinic_id, operation_type, table_name, timestamp
-FROM audit_logs
-ORDER BY timestamp DESC
-LIMIT 10;
+  public.get_current_role() AS current_role,
+  public.get_current_clinic_id() AS current_clinic_id,
+  public.jwt_is_admin() AS is_admin;
 ```
 
 ---
 
 ## 🔧 トラブルシューティング
 
-### エラー1: 関数作成失敗
+### エラー1: 関数が見つからない
 
 ```
-ERROR: function auth.get_current_clinic_id() does not exist
+ERROR: function public.get_current_role() does not exist
 ```
 
-**解決策**: Supabaseのauth.uid()関数が利用可能か確認。必要に応じてauth schema権限を確認。
+**解決策**: `supabase/migrations/20251224001000_auth_helper_functions.sql` が適用されているか確認。
 
-### エラー2: RLS適用失敗
+### エラー2: can_access_clinic の判定が常に false
 
-```
-ERROR: table "patients" does not exist
-```
+**原因候補**:
+- `custom_access_token_hook` が無効
+- JWT に `clinic_scope_ids` / `clinic_id` が未付与
 
-**解決策**: 先にschema.sqlを実行してテーブルを作成。
+**解決策**: `supabase/config.toml` の `[auth.hook.custom_access_token]` 設定を確認し、再ログインで JWT を再発行。
 
-### エラー3: インデックス作成失敗
+### エラー3: appointments への INSERT が失敗
 
-```
-ERROR: relation "patients" already has index
-```
+**説明**: `appointments` は read-only 仕様。  
+**対応**: `public.reservations` + `/api/reservations` を使用。
 
-**解決策**: `CREATE INDEX IF NOT EXISTS`を使用。既存インデックスとの競合を確認。
+### エラー4: menus の public 参照が不可
 
-### エラー4: トリガー作成失敗
-
-```
-ERROR: trigger "audit_patients_trigger" already exists
-```
-
-**解決策**: `DROP TRIGGER IF EXISTS`を先に実行してから作成。
+**説明**: `menus_select_public` は削除済み。  
+**対応**: Server API 経由でメニューを提供。
 
 ---
 
-## 📊 実装完了確認項目
+## 📊 実装完了チェック（DoD 紐づけ）
 
-### セキュリティチェック ✅
-
-- [ ] **テナント分離**: 各クリニックのデータが完全分離されている
-- [ ] **ロールベース制御**: 管理者・施術者・スタッフの権限が適切に分離
-- [ ] **患者データ保護**: 患者情報に適切なアクセス制限がかかっている
-- [ ] **監査ログ**: 全データ変更が記録されている
-
-### パフォーマンスチェック ⚡
-
-- [ ] **インデックス**: clinic_id等のRLS条件にインデックスが適用
-- [ ] **関数最適化**: セキュリティ関数がSTABLEでキャッシュされている
-- [ ] **クエリ応答**: SELECT文の応答時間が基準内（<100ms）
-
-### 機能チェック 🎯
-
-```sql
--- 最終確認用クエリ
-SELECT
-    'RLS実装完了' as status,
-    COUNT(*) as total_policies
-FROM pg_policies
-WHERE schemaname = 'public';
-
-SELECT
-    'セキュリティレベル' as metric,
-    'B+評価 (エンタープライズ準拠)' as achievement;
-```
+- [ ] DOD-01: ローカル Supabase 起動確認  
+- [ ] DOD-02: マイグレーションが冪等  
+- [ ] DOD-03: Seed 再現性  
+- [ ] DOD-04: スキーマ差分なし  
+- [ ] DOD-08: RLS テナント境界が一貫（`can_access_clinic`）
 
 ---
 
-## 🎯 実装後の次ステップ
+## 🎯 次ステップ（運用）
 
-1. **APIエンドポイント統合**
-   - 残りのAPI Route (staff, revenue, daily-reports) の認証強化
-   - JWTトークンにclinic_id、user_roleの含める設定
-
-2. **フロントエンド統合**
-   - ロールベースUI制御の実装
-   - 権限エラーハンドリングの追加
-
-3. **本格運用準備**
-   - 本番環境でのペネトレーションテスト
-   - 医療データ保護法規制への最終準拠確認
-
----
-
-**🔐 RLS実装により達成されるセキュリティレベル**:
-**D評価 → B+評価 (エンタープライズレベル)**
-
-**推定実行時間**: 30-45分  
-**必要権限**: Supabase プロジェクト管理者権限
+1. **Server API 経由の権限制御を維持**
+2. **JWT claims の整合性監視（clinic_scope_ids）**
+3. **RLS 変更は必ず `supabase/migrations` へ**

@@ -5,7 +5,10 @@ import {
   getPathRateLimit,
 } from '@/lib/rate-limiting/middleware';
 import { CSPConfig } from '@/lib/security/csp-config';
-import { normalizeRole, canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  normalizeRole,
+  canAccessAdminUIWithCompat,
+} from '@/lib/constants/roles';
 
 /**
  * 保護対象ルート（認証必須）
@@ -165,7 +168,8 @@ export async function middleware(request: NextRequest) {
         .select('is_active')
         .eq('user_id', user.id)
         .single();
-      isActive = (profileActive as { is_active?: boolean } | null)?.is_active ?? true;
+      isActive =
+        (profileActive as { is_active?: boolean } | null)?.is_active ?? true;
     } else {
       // フォールバック: profiles テーブルから取得
       const { data: profile } = await supabase
@@ -175,8 +179,15 @@ export async function middleware(request: NextRequest) {
         .single();
 
       if (profile) {
-        const typedProfile = profile as { role: string; clinic_id: string | null; is_active: boolean };
-        permissions = { role: typedProfile.role, clinic_id: typedProfile.clinic_id };
+        const typedProfile = profile as {
+          role: string;
+          clinic_id: string | null;
+          is_active: boolean;
+        };
+        permissions = {
+          role: typedProfile.role,
+          clinic_id: typedProfile.clinic_id,
+        };
         isActive = typedProfile.is_active;
       }
     }

@@ -82,7 +82,11 @@ describe('Chat API', () => {
           created_at: '2025-01-01T00:00:00Z',
           chat_messages: [
             { id: 'msg-1', sender: 'user', message_text: 'こんにちは' },
-            { id: 'msg-2', sender: 'ai', message_text: '何かお手伝いできますか？' },
+            {
+              id: 'msg-2',
+              sender: 'ai',
+              message_text: '何かお手伝いできますか？',
+            },
           ],
         },
       ];
@@ -187,7 +191,8 @@ describe('Chat API', () => {
         message_text: '今月の売上についてお答えします...',
       };
 
-      const insertMock = jest.fn()
+      const insertMock = jest
+        .fn()
         .mockReturnValueOnce({
           select: jest.fn().mockReturnValue({
             single: jest.fn().mockResolvedValue({
@@ -260,7 +265,8 @@ describe('Chat API', () => {
         message_text: '続きの情報です...',
       };
 
-      const insertMock = jest.fn()
+      const insertMock = jest
+        .fn()
         .mockReturnValueOnce({
           select: jest.fn().mockReturnValue({
             single: jest.fn().mockResolvedValue({

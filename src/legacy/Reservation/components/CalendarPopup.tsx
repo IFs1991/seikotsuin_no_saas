@@ -7,7 +7,11 @@ interface Props {
   onClose: () => void;
 }
 
-export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onClose }) => {
+export const CalendarPopup: React.FC<Props> = ({
+  selectedDate,
+  onSelectDate,
+  onClose,
+}) => {
   // State to track which month is currently being viewed (independent of selected date)
   const [viewDate, setViewDate] = useState(new Date(selectedDate));
 
@@ -38,21 +42,21 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
 
   const renderDays = () => {
     const days = [];
-    
+
     // Empty cells for days before the 1st
     for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<div key={`empty-${i}`} className="h-8 w-8" />);
+      days.push(<div key={`empty-${i}`} className='h-8 w-8' />);
     }
 
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
-      const isSelected = 
+      const isSelected =
         currentDate.getDate() === selectedDate.getDate() &&
         currentDate.getMonth() === selectedDate.getMonth() &&
         currentDate.getFullYear() === selectedDate.getFullYear();
-      
-      const isToday = 
+
+      const isToday =
         new Date().getDate() === day &&
         new Date().getMonth() === month &&
         new Date().getFullYear() === year;
@@ -62,11 +66,12 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
           key={day}
           onClick={() => handleDateClick(day)}
           className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors
-            ${isSelected 
-              ? 'bg-sky-600 text-white' 
-              : isToday 
-                ? 'bg-gray-100 text-sky-600 font-bold hover:bg-gray-200'
-                : 'text-gray-700 hover:bg-gray-100'
+            ${
+              isSelected
+                ? 'bg-sky-600 text-white'
+                : isToday
+                  ? 'bg-gray-100 text-sky-600 font-bold hover:bg-gray-200'
+                  : 'text-gray-700 hover:bg-gray-100'
             }`}
         >
           {day}
@@ -78,31 +83,31 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-xl border border-gray-200 w-72 select-none">
+    <div className='bg-white p-4 rounded-lg shadow-xl border border-gray-200 w-72 select-none'>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <button 
+      <div className='flex items-center justify-between mb-4'>
+        <button
           onClick={handlePrevMonth}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
+          className='p-1 hover:bg-gray-100 rounded text-gray-600'
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className='w-5 h-5' />
         </button>
-        <span className="font-bold text-gray-800">
+        <span className='font-bold text-gray-800'>
           {year}年 {month + 1}月
         </span>
-        <button 
+        <button
           onClick={handleNextMonth}
-          className="p-1 hover:bg-gray-100 rounded text-gray-600"
+          className='p-1 hover:bg-gray-100 rounded text-gray-600'
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className='w-5 h-5' />
         </button>
       </div>
 
       {/* Days of Week */}
-      <div className="grid grid-cols-7 mb-2">
+      <div className='grid grid-cols-7 mb-2'>
         {daysOfWeek.map((day, index) => (
-          <div 
-            key={day} 
+          <div
+            key={day}
             className={`text-center text-xs font-bold ${index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-500'}`}
           >
             {day}
@@ -111,7 +116,7 @@ export const CalendarPopup: React.FC<Props> = ({ selectedDate, onSelectDate, onC
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-y-1 justify-items-center">
+      <div className='grid grid-cols-7 gap-y-1 justify-items-center'>
         {renderDays()}
       </div>
     </div>

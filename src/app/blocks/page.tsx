@@ -169,7 +169,9 @@ export default function BlockManagementPage() {
         return;
       }
 
-      const blockData: Omit<CreateBlockData, 'createdBy'> & { recurrenceRule?: string } = {
+      const blockData: Omit<CreateBlockData, 'createdBy'> & {
+        recurrenceRule?: string;
+      } = {
         resourceId: selectedResource,
         startTime: startDateTime,
         endTime: endDateTime,

@@ -4,7 +4,10 @@ import {
   getUserPermissions,
   type SupabaseServerClient,
 } from '@/lib/supabase';
-import { canManageClinicSettingsWithCompat, normalizeRole } from '@/lib/constants/roles';
+import {
+  canManageClinicSettingsWithCompat,
+  normalizeRole,
+} from '@/lib/constants/roles';
 
 type ProfileStatusRow = {
   is_active: boolean | null;
