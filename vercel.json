@@ -3,7 +3,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm ci",
   "framework": "nextjs",
-  "regions": ["nrt1"],
   "env": {
     "NODE_ENV": "production",
     "CSP_ROLLOUT_PHASE": "full-enforce"
