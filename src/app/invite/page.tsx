@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useActionState } from 'react';
+import React, { Suspense, useState, useEffect, useActionState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ import { createClient } from '@/lib/supabase/client';
  * @description 招待受諾ページ
  * @spec docs/認証と権限制御_MVP仕様書.md
  */
-export default function InvitePage() {
+function InvitePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get('token');
@@ -423,5 +423,19 @@ export default function InvitePage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function InvitePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-gradient-to-br from-green-50 to-teal-100 flex items-center justify-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600' />
+        </div>
+      }
+    >
+      <InvitePageContent />
+    </Suspense>
   );
 }

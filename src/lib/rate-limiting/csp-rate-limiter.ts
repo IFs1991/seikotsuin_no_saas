@@ -46,18 +46,27 @@ export interface CSPRateLimitResult {
 }
 
 export class CSPRateLimiter {
-  private redis: Redis;
+  private redis: Redis | null = null;
   private config: CSPRateLimitConfig;
 
   constructor() {
-    this.redis = Redis.fromEnv();
-
     // 環境に応じた設定選択
     const env = process.env.NODE_ENV || 'development';
     this.config =
       env === 'development'
         ? CSP_RATE_LIMITS.development
         : CSP_RATE_LIMITS.normal;
+  }
+
+  /**
+   * Redis接続の遅延初期化
+   * 最初の使用時にのみ接続を確立
+   */
+  private getRedis(): Redis {
+    if (!this.getRedis()) {
+      this.redis = Redis.fromEnv();
+    }
+    return this.getRedis();
   }
 
   /**
@@ -70,7 +79,7 @@ export class CSPRateLimiter {
 
     try {
       // ブロック状態のチェック
-      const blockInfo = await this.redis.get(blockKey);
+      const blockInfo = await this.getRedis().get(blockKey);
       if (blockInfo) {
         const blockData = JSON.parse(blockInfo as string);
         if (blockData.blockedUntil > now) {
@@ -84,12 +93,12 @@ export class CSPRateLimiter {
         }
 
         // ブロック期間終了時のクリーンアップ
-        await this.redis.del(blockKey);
+        await this.getRedis().del(blockKey);
       }
 
       // スライディングウィンドウでのリクエスト数カウント
       const windowStart = now - this.config.windowMs;
-      const pipeline = this.redis.pipeline();
+      const pipeline = this.getRedis().pipeline();
 
       // 古いエントリを削除
       pipeline.zremrangebyscore(key, 0, windowStart);
@@ -156,7 +165,7 @@ export class CSPRateLimiter {
       reason: 'CSP report rate limit exceeded',
     };
 
-    await this.redis.setex(
+    await this.getRedis().setex(
       blockKey,
       Math.ceil(this.config.blockDurationMs / 1000),
       JSON.stringify(blockInfo)
@@ -178,7 +187,7 @@ export class CSPRateLimiter {
 
     // 厳格モードの期限を設定
     const strictModeKey = 'csp_strict_mode';
-    await this.redis.setex(
+    await this.getRedis().setex(
       strictModeKey,
       Math.ceil(duration / 1000),
       JSON.stringify({
@@ -207,13 +216,13 @@ export class CSPRateLimiter {
 
     try {
       // ブロックされたIPの一覧を取得
-      const blockedIPKeys = await this.redis.keys('csp_blocked:*');
+      const blockedIPKeys = await this.getRedis().keys('csp_blocked:*');
       const blockedIPs = blockedIPKeys.map(key =>
         key.replace('csp_blocked:', '')
       );
 
       // 統計情報の取得（簡易版）
-      const rateLimitKeys = await this.redis.keys('csp_rate_limit:*');
+      const rateLimitKeys = await this.getRedis().keys('csp_rate_limit:*');
       let totalRequests = 0;
       const ipRequestCounts: Record<string, number> = {};
 
@@ -221,7 +230,11 @@ export class CSPRateLimiter {
       for (const key of rateLimitKeys.slice(0, 100)) {
         // 最大100IP分
         const ip = key.replace('csp_rate_limit:', '');
-        const requestCount = await this.redis.zcount(key, windowStart, now);
+        const requestCount = await this.getRedis().zcount(
+          key,
+          windowStart,
+          now
+        );
 
         totalRequests += requestCount;
         ipRequestCounts[ip] = requestCount;
@@ -257,8 +270,8 @@ export class CSPRateLimiter {
       const rateLimitKey = `csp_rate_limit:${clientIP}`;
 
       await Promise.all([
-        this.redis.del(blockKey),
-        this.redis.del(rateLimitKey),
+        this.getRedis().del(blockKey),
+        this.getRedis().del(rateLimitKey),
       ]);
 
       console.info('CSP Rate Limit: IP manually unblocked', { ip: clientIP });
@@ -270,5 +283,23 @@ export class CSPRateLimiter {
   }
 }
 
-// シングルトンインスタンス
-export const cspRateLimiter = new CSPRateLimiter();
+// シングルトンインスタンス（遅延初期化）
+let _cspRateLimiter: CSPRateLimiter | null = null;
+
+/**
+ * CSPRateLimiterシングルトンを取得
+ */
+export function getCSPRateLimiter(): CSPRateLimiter {
+  if (!_cspRateLimiter) {
+    _cspRateLimiter = new CSPRateLimiter();
+  }
+  return _cspRateLimiter;
+}
+
+// 後方互換性のためのProxy（既存のcspRateLimiterインポートを維持）
+export const cspRateLimiter: CSPRateLimiter = new Proxy({} as CSPRateLimiter, {
+  get(_, prop: keyof CSPRateLimiter) {
+    const instance = getCSPRateLimiter();
+    return (instance as unknown as Record<string, unknown>)[prop as string];
+  },
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useActionState, useEffect } from 'react';
+import React, { Suspense, useState, useActionState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import {
   type AuthResponse,
 } from '@/lib/schemas/auth';
 
-export default function AdminLogin() {
+function AdminLoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
@@ -300,5 +300,19 @@ export default function AdminLogin() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function AdminLogin() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600' />
+        </div>
+      }
+    >
+      <AdminLoginContent />
+    </Suspense>
   );
 }

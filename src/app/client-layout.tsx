@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/navigation/sidebar';
 import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { UserProfileProvider } from '@/providers/user-profile-context';
+import { QueryProvider } from '@/providers/query-provider';
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -60,52 +61,54 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   };
 
   return (
-    <UserProfileProvider
-      value={{ profile, loading: profileLoading, error: profileError }}
-    >
-      <div
-        className='min-h-screen'
-        style={{ backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb' }}
+    <QueryProvider>
+      <UserProfileProvider
+        value={{ profile, loading: profileLoading, error: profileError }}
       >
-        <Header
-          onToggleSidebar={toggleSidebar}
-          onToggleDarkMode={toggleDarkMode}
-          isDarkMode={isDarkMode}
-          profile={profile}
-          profileLoading={profileLoading}
-          isAdmin={isAdmin}
-        />
-
-        <div className='flex' style={{ paddingTop: '64px' }}>
-          <Sidebar
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            isAdmin={isAdmin}
+        <div
+          className='min-h-screen'
+          style={{ backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb' }}
+        >
+          <Header
+            onToggleSidebar={toggleSidebar}
+            onToggleDarkMode={toggleDarkMode}
+            isDarkMode={isDarkMode}
+            profile={profile}
             profileLoading={profileLoading}
+            isAdmin={isAdmin}
           />
 
-          <main
-            className={`flex-1 transition-all duration-300 ${
-              isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-            }`}
-            style={{
-              backgroundColor: isDarkMode ? '#111827' : '#ffffff',
-              minHeight: 'calc(100vh - 64px)',
-            }}
-          >
-            <div className='p-6 lg:p-8'>
-              <div
-                className='mx-auto max-w-7xl'
-                style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}
-              >
-                {children}
-              </div>
-            </div>
-          </main>
-        </div>
+          <div className='flex' style={{ paddingTop: '64px' }}>
+            <Sidebar
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
+              isAdmin={isAdmin}
+              profileLoading={profileLoading}
+            />
 
-        <MobileBottomNav isAdmin={isAdmin} />
-      </div>
-    </UserProfileProvider>
+            <main
+              className={`flex-1 transition-all duration-300 ${
+                isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
+              }`}
+              style={{
+                backgroundColor: isDarkMode ? '#111827' : '#ffffff',
+                minHeight: 'calc(100vh - 64px)',
+              }}
+            >
+              <div className='p-6 lg:p-8'>
+                <div
+                  className='mx-auto max-w-7xl'
+                  style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}
+                >
+                  {children}
+                </div>
+              </div>
+            </main>
+          </div>
+
+          <MobileBottomNav isAdmin={isAdmin} />
+        </div>
+      </UserProfileProvider>
+    </QueryProvider>
   );
 }

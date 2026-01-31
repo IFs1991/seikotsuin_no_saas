@@ -50,10 +50,12 @@ export interface BackupCodeUsage {
  * 高度なセキュリティを持つワンタイムコード生成・検証・管理
  */
 export class BackupCodeManager {
-  private supabase;
-
-  constructor() {
-    this.supabase = createClient();
+  /**
+   * Supabaseクライアントの遅延取得
+   * リクエストスコープ内でのみcookies()が呼ばれるようにする
+   */
+  private async getSupabase() {
+    return await createClient();
   }
 
   /**
@@ -111,7 +113,7 @@ export class BackupCodeManager {
       }
 
       // 現在のMFA設定取得
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -145,7 +147,7 @@ export class BackupCodeManager {
       updatedBackupCodes.splice(codeIndex, 1);
 
       // データベース更新
-      const supabase2 = await this.supabase;
+      const supabase2 = await this.getSupabase();
       await supabase2
         .from('user_mfa_settings')
         .update({
@@ -187,7 +189,7 @@ export class BackupCodeManager {
    */
   async getBackupCodeUsage(userId: string): Promise<BackupCodeUsage> {
     try {
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -234,7 +236,7 @@ export class BackupCodeManager {
       const newBackupCodes = this.generateBackupCodes();
 
       // データベース更新
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from('user_mfa_settings')
         .update({
@@ -275,10 +277,10 @@ export class BackupCodeManager {
   }> {
     try {
       // MFA有効ユーザー統計
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaUsers, error } = await supabase
         .from('user_mfa_settings')
-        .select('backup_codes, last_used_at')
+        .select('user_id, backup_codes, last_used_at')
         .eq('clinic_id', clinicId)
         .eq('is_enabled', true);
 
@@ -312,7 +314,7 @@ export class BackupCodeManager {
 
       // 最近のバックアップコード使用回数（直近7日間）
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const supabase2 = await this.supabase;
+      const supabase2 = await this.getSupabase();
       const { count: recentUsageCount } = await supabase2
         .from('security_events')
         .select('*', { count: 'exact', head: true })
@@ -414,7 +416,7 @@ export class BackupCodeManager {
     details: Record<string, unknown>
   ): Promise<void> {
     try {
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       await supabase.from('security_events').insert({
         event_type: `mfa_backup_${eventType}`,
         user_id: userId,
@@ -431,5 +433,26 @@ export class BackupCodeManager {
   }
 }
 
-// シングルトンインスタンス
-export const backupCodeManager = new BackupCodeManager();
+// シングルトンインスタンス（遅延初期化）
+let _backupCodeManager: BackupCodeManager | null = null;
+
+/**
+ * BackupCodeManagerシングルトンを取得
+ */
+export function getBackupCodeManager(): BackupCodeManager {
+  if (!_backupCodeManager) {
+    _backupCodeManager = new BackupCodeManager();
+  }
+  return _backupCodeManager;
+}
+
+// 後方互換性のためのProxy（既存のbackupCodeManagerインポートを維持）
+export const backupCodeManager: BackupCodeManager = new Proxy(
+  {} as BackupCodeManager,
+  {
+    get(_, prop: keyof BackupCodeManager) {
+      const instance = getBackupCodeManager();
+      return (instance as unknown as Record<string, unknown>)[prop as string];
+    },
+  }
+);

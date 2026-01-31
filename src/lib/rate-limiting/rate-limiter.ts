@@ -77,14 +77,20 @@ export type RateLimitRule = z.infer<typeof RateLimitRuleSchema>;
  * 分散環境での一貫性とパフォーマンスを両立
  */
 export class RateLimiter {
-  private redis: Redis;
+  private redis: Redis | null = null;
 
-  constructor() {
-    // Upstash Redis接続（環境変数から設定取得）
-    this.redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL || '',
-      token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-    });
+  /**
+   * Redis接続の遅延初期化
+   * 最初の使用時にのみ接続を確立
+   */
+  private getRedis(): Redis {
+    if (!this.getRedis()) {
+      this.redis = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL || '',
+        token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+      });
+    }
+    return this.getRedis();
   }
 
   /**
@@ -118,7 +124,7 @@ export class RateLimiter {
       const windowStart = now - window;
 
       // ブロック状態チェック
-      const blockInfo = await this.redis.get(blockKey);
+      const blockInfo = await this.getRedis().get(blockKey);
       if (blockInfo) {
         const blockData = JSON.parse(blockInfo as string);
         const unblockTime = blockData.unblockTime;
@@ -134,12 +140,12 @@ export class RateLimiter {
           };
         } else {
           // ブロック期間終了
-          await this.redis.del(blockKey);
+          await this.getRedis().del(blockKey);
         }
       }
 
       // スライディングウィンドウでのカウント取得
-      const pipeline = this.redis.pipeline();
+      const pipeline = this.getRedis().pipeline();
 
       // 古いエントリを削除
       pipeline.zremrangebyscore(key, 0, windowStart);
@@ -210,7 +216,7 @@ export class RateLimiter {
     now: number
   ): Promise<{ level: number; blockDuration: number }> {
     // 現在のエスカレーションレベル取得
-    const escalationData = await this.redis.get(escalationKey);
+    const escalationData = await this.getRedis().get(escalationKey);
     let level = 0;
 
     if (escalationData) {
@@ -239,7 +245,7 @@ export class RateLimiter {
     const unblockTime = now + blockDuration;
 
     // ブロック情報を保存
-    await this.redis.setex(
+    await this.getRedis().setex(
       blockKey,
       blockDuration + 60, // 少し余裕を持たせる
       JSON.stringify({
@@ -252,7 +258,7 @@ export class RateLimiter {
     );
 
     // エスカレーション情報を更新
-    await this.redis.setex(
+    await this.getRedis().setex(
       escalationKey,
       86400, // 24時間保持
       JSON.stringify({
@@ -286,7 +292,7 @@ export class RateLimiter {
       const blockKey = `${key}:block`;
       const escalationKey = `${key}:escalation`;
 
-      const pipeline = this.redis.pipeline();
+      const pipeline = this.getRedis().pipeline();
       pipeline.del(key);
       pipeline.del(blockKey);
       pipeline.del(escalationKey);
@@ -320,9 +326,9 @@ export class RateLimiter {
       const whitelistKey = `whitelist:${type}:${identifier}`;
 
       if (ttl) {
-        await this.redis.setex(whitelistKey, ttl, '1');
+        await this.getRedis().setex(whitelistKey, ttl, '1');
       } else {
-        await this.redis.set(whitelistKey, '1');
+        await this.getRedis().set(whitelistKey, '1');
       }
 
       return true;
@@ -341,7 +347,7 @@ export class RateLimiter {
   ): Promise<boolean> {
     try {
       const whitelistKey = `whitelist:${type}:${identifier}`;
-      const result = await this.redis.exists(whitelistKey);
+      const result = await this.getRedis().exists(whitelistKey);
       return result === 1;
     } catch (error) {
       console.error('ホワイトリストチェックエラー:', error);
@@ -371,10 +377,10 @@ export class RateLimiter {
       const windowStart = now - window;
 
       // 現在のカウント取得
-      const currentCount = await this.redis.zcount(key, windowStart, now);
+      const currentCount = await this.getRedis().zcount(key, windowStart, now);
 
       // ブロック状態チェック
-      const blockInfo = await this.redis.get(blockKey);
+      const blockInfo = await this.getRedis().get(blockKey);
       let isBlocked = false;
       let blockLevel: number | undefined;
 
@@ -459,5 +465,23 @@ export class RateLimiter {
   }
 }
 
-// シングルトンインスタンス
-export const rateLimiter = new RateLimiter();
+// シングルトンインスタンス（遅延初期化）
+let _rateLimiter: RateLimiter | null = null;
+
+/**
+ * RateLimiterシングルトンを取得
+ */
+export function getRateLimiter(): RateLimiter {
+  if (!_rateLimiter) {
+    _rateLimiter = new RateLimiter();
+  }
+  return _rateLimiter;
+}
+
+// 後方互換性のためのProxy（既存のrateLimiterインポートを維持）
+export const rateLimiter: RateLimiter = new Proxy({} as RateLimiter, {
+  get(_, prop: keyof RateLimiter) {
+    const instance = getRateLimiter();
+    return (instance as unknown as Record<string, unknown>)[prop as string];
+  },
+});

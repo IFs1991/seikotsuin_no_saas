@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from './components/Header';
 import { ControlBar } from './components/ControlBar';
@@ -23,7 +23,7 @@ import { useReservationFormData } from '@/hooks/useReservationFormData';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { Loader2 } from 'lucide-react';
 
-export default function ReservationsPage() {
+function ReservationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading } = useUserProfileContext();
@@ -334,5 +334,19 @@ export default function ReservationsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ReservationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-gray-100 flex items-center justify-center'>
+          <Loader2 className='w-8 h-8 text-sky-600 animate-spin' />
+        </div>
+      }
+    >
+      <ReservationsPageContent />
+    </Suspense>
   );
 }

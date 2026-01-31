@@ -51,10 +51,12 @@ export interface MFAStatus {
  * TOTP（Time-based One-Time Password）認証の完全実装
  */
 export class MFAManager {
-  private supabase;
-
-  constructor() {
-    this.supabase = createClient();
+  /**
+   * Supabaseクライアントの遅延取得
+   * リクエストスコープ内でのみcookies()が呼ばれるようにする
+   */
+  private async getSupabase() {
+    return await createClient();
   }
 
   /**
@@ -93,7 +95,7 @@ export class MFAManager {
       const backupCodes = this.generateBackupCodes();
 
       // データベースに一時保存（セットアップ完了まで）
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       await supabase.from('mfa_setup_sessions').insert({
         user_id: validatedData.userId,
         clinic_id: validatedData.clinicId,
@@ -129,7 +131,7 @@ export class MFAManager {
       });
 
       // セットアップセッション取得
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: setupSession, error } = await supabase
         .from('mfa_setup_sessions')
         .select('*')
@@ -158,7 +160,7 @@ export class MFAManager {
       }
 
       // MFA設定を正式に有効化
-      const supabase2 = await this.supabase;
+      const supabase2 = await this.getSupabase();
       await supabase2.from('user_mfa_settings').upsert({
         user_id: validatedVerification.userId,
         clinic_id: setupSession.clinic_id,
@@ -202,7 +204,7 @@ export class MFAManager {
       });
 
       // MFA設定取得
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -224,7 +226,7 @@ export class MFAManager {
 
       if (isValid) {
         // 最終使用日時更新
-        const supabase2 = await this.supabase;
+        const supabase2 = await this.getSupabase();
         await supabase2
           .from('user_mfa_settings')
           .update({ last_used_at: new Date().toISOString() })
@@ -268,7 +270,7 @@ export class MFAManager {
       });
 
       // MFA設定取得
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -297,7 +299,7 @@ export class MFAManager {
       const updatedBackupCodes = [...backupCodes];
       updatedBackupCodes.splice(codeIndex, 1);
 
-      const supabase2 = await this.supabase;
+      const supabase2 = await this.getSupabase();
       await supabase2
         .from('user_mfa_settings')
         .update({
@@ -338,7 +340,7 @@ export class MFAManager {
    */
   async getMFAStatus(userId: string): Promise<MFAStatus> {
     try {
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { data: mfaSettings, error } = await supabase
         .from('user_mfa_settings')
         .select('*')
@@ -376,7 +378,7 @@ export class MFAManager {
   async disableMFA(userId: string, adminUserId?: string): Promise<boolean> {
     try {
       // MFA設定を無効化
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from('user_mfa_settings')
         .update({
@@ -417,7 +419,7 @@ export class MFAManager {
       const newBackupCodes = this.generateBackupCodes();
 
       // データベース更新
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       const { error } = await supabase
         .from('user_mfa_settings')
         .update({
@@ -501,7 +503,7 @@ export class MFAManager {
     details?: Record<string, any>;
   }): Promise<void> {
     try {
-      const supabase = await this.supabase;
+      const supabase = await this.getSupabase();
       await supabase.from('security_events').insert({
         event_type: `mfa_${event.eventType}`,
         user_id: event.userId,
@@ -517,5 +519,23 @@ export class MFAManager {
   }
 }
 
-// シングルトンインスタンス
-export const mfaManager = new MFAManager();
+// シングルトンインスタンス（遅延初期化）
+let _mfaManager: MFAManager | null = null;
+
+/**
+ * MFAManagerシングルトンを取得
+ */
+export function getMFAManager(): MFAManager {
+  if (!_mfaManager) {
+    _mfaManager = new MFAManager();
+  }
+  return _mfaManager;
+}
+
+// 後方互換性のためのProxy（既存のmfaManagerインポートを維持）
+export const mfaManager: MFAManager = new Proxy({} as MFAManager, {
+  get(_, prop: keyof MFAManager) {
+    const instance = getMFAManager();
+    return (instance as unknown as Record<string, unknown>)[prop as string];
+  },
+});

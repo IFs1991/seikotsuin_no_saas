@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useActionState, useEffect } from 'react';
+import React, { Suspense, useState, useActionState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { loginSchema, type AuthResponse } from '@/lib/schemas/auth';
  * @description 院向けログインページ
  * @spec docs/認証と権限制御_MVP仕様書.md
  */
-export default function ClinicLoginPage() {
+function ClinicLoginPageContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
@@ -223,5 +223,19 @@ export default function ClinicLoginPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function ClinicLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className='min-h-screen bg-gradient-to-br from-green-50 to-teal-100 flex items-center justify-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600' />
+        </div>
+      }
+    >
+      <ClinicLoginPageContent />
+    </Suspense>
   );
 }
