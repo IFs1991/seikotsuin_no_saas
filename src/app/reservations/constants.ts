@@ -27,3 +27,12 @@ export const COLORS = {
   purple: 'bg-indigo-600 border-indigo-700 text-white',
   grey: 'bg-gray-300 border-gray-400 text-gray-700',
 };
+
+export const COLORS_LEFT_BORDER: Record<string, string> = {
+  red: 'border-l-4 border-rose-500',
+  pink: 'border-l-4 border-pink-400',
+  blue: 'border-l-4 border-sky-500',
+  orange: 'border-l-4 border-orange-500',
+  purple: 'border-l-4 border-indigo-700',
+  grey: 'border-l-4 border-gray-400',
+};
