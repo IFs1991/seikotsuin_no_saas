@@ -20,6 +20,7 @@ import {
   mapReservationInsertToRow,
   mapReservationUpdateToRow,
 } from './schema';
+import { STAFF_ROLES } from '@/lib/constants/roles';
 
 const PATH = '/api/reservations';
 
@@ -255,6 +256,7 @@ export async function PATCH(request: NextRequest) {
     const guard = await processApiRequest(request, {
       clinicId: dto.clinic_id,
       requireClinicMatch: true,
+      allowedRoles: Array.from(STAFF_ROLES),
     });
     if (!guard.success) return guard.error;
 
@@ -325,52 +327,9 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const clinicId = request.nextUrl.searchParams.get('clinic_id');
-    const id = request.nextUrl.searchParams.get('id');
-    if (!clinicId || !id) {
-      return createErrorResponse('clinic_id と id は必須です', 400);
-    }
-
-    const guard = await processApiRequest(request, {
-      clinicId,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-
-    const { data, error } = await guard.supabase
-      .from('reservations')
-      .delete()
-      .eq('id', id)
-      .eq('clinic_id', clinicId)
-      .select('id');
-    if (error) throw normalizeSupabaseError(error, PATH);
-    if (!data || data.length === 0) {
-      return createErrorResponse('予約が見つかりません', 404);
-    }
-
-    return createSuccessResponse({ deleted: true });
-  } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Reservation delete failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
-  }
+export async function DELETE(_request: NextRequest) {
+  return createErrorResponse(
+    "予約の物理削除はサポートしていません。PATCH /api/reservations で status='cancelled' を指定してください。",
+    405
+  );
 }
