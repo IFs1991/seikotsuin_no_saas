@@ -194,6 +194,7 @@ export const useAppointments = (clinicId: string | null) => {
           staffId: newResourceId,
           startTime: start,
           endTime: end,
+          notes: current.memo,
         });
         setAppointments(prev =>
           prev.map(appt => (appt.id === id ? nextAppointment : appt))
@@ -228,11 +229,7 @@ export const useAppointments = (clinicId: string | null) => {
 
       setLoading(true);
       try {
-        await updateReservation({
-          clinicId,
-          id,
-          status: 'cancelled',
-        });
+        await cancelReservation({ clinicId, id });
 
         setAppointments(prev =>
           prev.map(appt =>

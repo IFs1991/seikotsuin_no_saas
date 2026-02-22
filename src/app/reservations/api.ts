@@ -155,3 +155,14 @@ export const updateReservation = async (payload: {
   });
   return handleJson(res);
 };
+
+export const cancelReservation = async (payload: {
+  clinicId: string;
+  id: string;
+}): Promise<ReservationApiItem> => {
+  return updateReservation({
+    clinicId: payload.clinicId,
+    id: payload.id,
+    status: 'cancelled',
+  });
+};
