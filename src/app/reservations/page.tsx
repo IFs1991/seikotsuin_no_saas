@@ -28,6 +28,7 @@ function ReservationsPageContent() {
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
+  const role = profile?.role ?? null;
 
   const {
     menus: rawMenus,
@@ -106,6 +107,7 @@ function ReservationsPageContent() {
     addAppointment,
     updateAppointment,
     moveAppointment,
+    cancelAppointment,
   } = useAppointments(clinicId);
 
   const timeSlots = useMemo(() => buildTimeSlots(), []);
@@ -203,6 +205,21 @@ function ReservationsPageContent() {
     return result;
   };
 
+  const canCancelReservation =
+    role !== null &&
+    ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'].includes(role);
+
+  const handleCancelAppointment = async (
+    id: string
+  ): Promise<AppointmentUpdateResult> => {
+    setUpdateError(null);
+    const result = await cancelAppointment(id);
+    if (!result.ok) {
+      setUpdateError(result.error ?? 'Failed to cancel reservation.');
+    }
+    return result;
+  };
+
   const handleConfirmPending = async (appt: Appointment) => {
     return handleUpdateAppointment({
       ...appt,
@@ -232,6 +249,7 @@ function ReservationsPageContent() {
             onAppointmentClick={setSelectedAppointment}
             onTimeSlotClick={handleTimeSlotClick}
             onAppointmentMove={handleMoveAppointment}
+            onMoveError={msg => setUpdateError(msg)}
           />
         );
       case 'list':
@@ -277,6 +295,8 @@ function ReservationsPageContent() {
   return (
     <div className='min-h-screen bg-gray-100 flex flex-col'>
       <Header
+        pendingCount={pendingAppointments.length}
+        notificationCount={notifications.length}
         onOpenReservations={() => setShowPendingModal(true)}
         onOpenNotifications={() => setShowNotificationsModal(true)}
       />
@@ -312,6 +332,9 @@ function ReservationsPageContent() {
               options={options}
               onClose={() => setSelectedAppointment(null)}
               onUpdate={handleUpdateAppointment}
+              onCancelAppointment={
+                canCancelReservation ? handleCancelAppointment : undefined
+              }
             />
           )}
 

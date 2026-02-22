@@ -5,7 +5,7 @@ import {
   MenuOptionItem,
   SchedulerResource,
 } from '../types';
-import { COLORS } from '../constants';
+import { COLORS_LEFT_BORDER } from '../constants';
 import { Calendar, User, Scissors, Edit, MessageCircle } from 'lucide-react';
 
 interface Props {
@@ -37,10 +37,7 @@ export const AppointmentSummary: React.FC<Props> = ({
     appointment.selectedOptions?.[0]?.name ||
     options.find(o => o.id === appointment.optionId)?.name;
 
-  const colorClass = COLORS[appointment.color].replace(
-    'border-',
-    'border-l-4 border-'
-  );
+  const colorClass = COLORS_LEFT_BORDER[appointment.color] ?? '';
 
   const fullName =
     appointment.lastName && appointment.firstName

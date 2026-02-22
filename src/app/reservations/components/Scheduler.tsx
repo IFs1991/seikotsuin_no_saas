@@ -3,6 +3,7 @@ import {
   PIXELS_PER_HOUR,
   SIDEBAR_WIDTH,
   GRID_START_HOUR,
+  GRID_END_HOUR,
   SNAP_MINUTES,
   CLICK_SNAP_MINUTES,
 } from '../constants';
@@ -33,6 +34,7 @@ interface Props {
     newStartHour: number,
     newStartMinute: number
   ) => Promise<AppointmentUpdateResult>;
+  onMoveError?: (message: string) => void;
 }
 
 export const Scheduler: React.FC<Props> = ({
@@ -42,6 +44,7 @@ export const Scheduler: React.FC<Props> = ({
   onAppointmentClick,
   onTimeSlotClick,
   onAppointmentMove,
+  onMoveError,
 }) => {
   const [now, setNow] = useState(new Date());
 
@@ -128,7 +131,7 @@ export const Scheduler: React.FC<Props> = ({
       });
 
       if (hasConflict) {
-        alert('予約が重複しているため移動できません。');
+        onMoveError?.('予約が重複しているため移動できません。');
         return;
       }
 
@@ -212,7 +215,7 @@ export const Scheduler: React.FC<Props> = ({
               >
                 {/* Resource Header */}
                 <div
-                  className={`sticky left-0 flex-shrink-0 z-30 border-r border-gray-400 p-2 flex flex-col justify-center text-sm ${isFacility ? 'bg-slate-600' : 'bg-slate-600'} text-white shadow-[2px_0_5px_rgba(0,0,0,0.1)]`}
+                  className='sticky left-0 flex-shrink-0 z-30 border-r border-gray-400 p-2 flex flex-col justify-center text-sm bg-slate-600 text-white shadow-[2px_0_5px_rgba(0,0,0,0.1)]'
                   style={{ width: `${SIDEBAR_WIDTH}px` }}
                 >
                   <div className='font-bold flex items-center gap-1'>
@@ -230,7 +233,7 @@ export const Scheduler: React.FC<Props> = ({
                   )}
                   {!isFacility && resource.name !== '指名なし' && (
                     <div className='text-[9px] text-gray-400 mt-0.5'>
-                      09:00-23:00
+                      {String(GRID_START_HOUR).padStart(2, '0')}:00-{String(GRID_END_HOUR).padStart(2, '0')}:00
                     </div>
                   )}
                 </div>
