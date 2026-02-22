@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Appointment, AppointmentUpdateResult } from '../types';
-import { fetchReservations, updateReservation } from '../api';
+import { fetchReservations, updateReservation, cancelReservation } from '../api';
 import { calculateDuration, calculateEndTime } from '../utils/time';
+import { statusToColor } from './statusToColor';
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
@@ -18,28 +19,6 @@ const splitName = (name?: string) => {
     return { lastName: parts[0], firstName: parts.slice(1).join(' ') };
   }
   return { lastName: name, firstName: undefined };
-};
-
-const statusToColor = (status?: Appointment['status']) => {
-  switch (status) {
-    case 'confirmed':
-      return 'blue';
-    case 'arrived':
-      return 'purple';
-    case 'completed':
-      return 'purple';
-    case 'unconfirmed':
-      return 'orange';
-    case 'tentative':
-      return 'pink';
-    case 'trial':
-      return 'pink';
-    case 'cancelled':
-    case 'no_show':
-      return 'grey';
-    default:
-      return 'red';
-  }
 };
 
 const getErrorMessage = (err: unknown, fallback: string) =>
@@ -232,6 +211,49 @@ export const useAppointments = (clinicId: string | null) => {
     [appointments, clinicId]
   );
 
+  const cancelAppointment = useCallback(
+    async (id: string): Promise<AppointmentUpdateResult> => {
+      if (!clinicId) {
+        return { ok: false, error: 'Clinic is not assigned.' };
+      }
+
+      const target = appointments.find(appt => appt.id === id);
+      if (!target) {
+        return { ok: false, error: 'Appointment not found.' };
+      }
+
+      if (target.status === 'cancelled') {
+        return { ok: true };
+      }
+
+      setLoading(true);
+      try {
+        await updateReservation({
+          clinicId,
+          id,
+          status: 'cancelled',
+        });
+
+        setAppointments(prev =>
+          prev.map(appt =>
+            appt.id === id
+              ? { ...appt, status: 'cancelled', color: 'grey' }
+              : appt
+          )
+        );
+        return { ok: true };
+      } catch (err) {
+        return {
+          ok: false,
+          error: getErrorMessage(err, 'Failed to cancel appointment'),
+        };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appointments, clinicId]
+  );
+
   const pendingAppointments = useMemo(
     () => appointments.filter(appt => appt.status === 'unconfirmed'),
     [appointments]
@@ -246,5 +268,6 @@ export const useAppointments = (clinicId: string | null) => {
     addAppointment,
     updateAppointment,
     moveAppointment,
+    cancelAppointment,
   };
 };
