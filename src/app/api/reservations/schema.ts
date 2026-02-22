@@ -80,17 +80,14 @@ export function mapReservationInsertToRow(
 export function mapReservationUpdateToRow(
   dto: ReservationUpdateDTO
 ): Database['public']['Tables']['reservations']['Update'] {
-  const row: Record<string, unknown> = {
-    status: dto.status,
-    start_time: dto.startTime,
-    end_time: dto.endTime,
-    staff_id: dto.staffId,
-    selected_options: dto.selectedOptions,
-  };
+  const row: Record<string, unknown> = {};
 
-  if (dto.notes !== undefined) {
-    row.notes = dto.notes;
-  }
+  if (dto.status !== undefined) row.status = dto.status;
+  if (dto.startTime !== undefined) row.start_time = dto.startTime;
+  if (dto.endTime !== undefined) row.end_time = dto.endTime;
+  if (dto.staffId !== undefined) row.staff_id = dto.staffId;
+  if (dto.notes !== undefined) row.notes = dto.notes;
+  if (dto.selectedOptions !== undefined) row.selected_options = dto.selectedOptions;
 
   return row as any;
 }

@@ -195,6 +195,7 @@ export const useAppointments = (clinicId: string | null) => {
           startTime: start,
           endTime: end,
           notes: current.memo,
+          selectedOptions: current.selectedOptions,
         });
         setAppointments(prev =>
           prev.map(appt => (appt.id === id ? nextAppointment : appt))
@@ -223,7 +224,7 @@ export const useAppointments = (clinicId: string | null) => {
         return { ok: false, error: 'Appointment not found.' };
       }
 
-      if (target.status === 'cancelled') {
+      if (target.status === 'cancelled' || target.status === 'no_show') {
         return { ok: true };
       }
 
