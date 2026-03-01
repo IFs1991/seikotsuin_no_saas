@@ -1,5 +1,6 @@
 // API エンドポイント
 export const API_ENDPOINTS = {
+  CLINICS: '/api/clinics',
   ADMIN: {
     TABLES: '/api/admin/tables',
     MASTER_DATA: '/api/admin/master-data',

@@ -1,0 +1,518 @@
+
+> seikotsuin-management-saas@0.1.0 prebuild
+> node scripts/check-swc-binary.mjs
+
+
+> seikotsuin-management-saas@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.9
+   - Environments: .env.local, .env.production
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 28.3s
+   Linting and checking validity of types ...
+
+ ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+
+./src/api/database/supabase-client.ts
+25:23  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+41:5  Warning: Unexpected console statement.  no-console
+47:28  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+94:45  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+107:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+121:5  Warning: Unexpected console statement.  no-console
+
+./src/api/gemini/ai-analysis-service.ts
+141:5  Warning: Unexpected console statement.  no-console
+230:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+276:5  Warning: Unexpected console statement.  no-console
+328:31  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+329:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+336:31  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+337:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+338:24  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+417:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+430:5  Warning: Unexpected console statement.  no-console
+
+./src/app/admin/(protected)/beta-monitoring/page.tsx
+78:6  Warning: React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/admin/(protected)/tenants/page.tsx
+153:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+166:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+181:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/admin/(protected)/users/page.tsx
+166:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+180:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+202:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/admin/actions.ts
+70:32  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+83:7  Warning: Unexpected console statement.  no-console
+122:7  Warning: Unexpected console statement.  no-console
+178:5  Warning: Unexpected console statement.  no-console
+192:5  Warning: Unexpected console statement.  no-console
+207:6  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+219:5  Warning: Unexpected console statement.  no-console
+239:7  Warning: Unexpected console statement.  no-console
+257:5  Warning: Unexpected console statement.  no-console
+271:5  Warning: Unexpected console statement.  no-console
+298:7  Warning: Unexpected console statement.  no-console
+304:7  Warning: Unexpected console statement.  no-console
+317:5  Warning: Unexpected console statement.  no-console
+
+./src/app/admin/callback/route.ts
+47:9  Warning: Unexpected console statement.  no-console
+54:9  Warning: Unexpected console statement.  no-console
+62:7  Warning: Unexpected console statement.  no-console
+65:5  Warning: Unexpected console statement.  no-console
+72:3  Warning: Unexpected console statement.  no-console
+
+./src/app/admin/login/page.tsx
+70:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+71:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+141:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+172:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/api/admin/security/csp-violations/route.ts
+114:11  Warning: 'statsQuery' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/admin/security/metrics/route.ts
+37:23  Warning: 'auth' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/ai-comments/route.ts
+225:9  Warning: 'weeklyAvgPatients' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/mfa/backup-codes/usage/route.ts
+10:27  Warning: 'request' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/mfa/disable/route.ts
+30:13  Warning: 'reason' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/mfa/status/route.ts
+10:27  Warning: 'request' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/api/revenue/route.ts
+114:41  Warning: 'hourlyError' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+122:40  Warning: 'lastYearError' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/app/blocks/page.tsx
+24:3  Warning: Unexpected console statement.  no-console
+46:9  Warning: 'userId' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+91:7  Warning: Unexpected console statement.  no-console
+142:7  Warning: Unexpected console statement.  no-console
+219:7  Warning: Unexpected console statement.  no-console
+249:7  Warning: Unexpected console statement.  no-console
+340:23  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+340:23  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/daily-reports/edit/[id]/page.tsx
+95:19  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+96:9  Warning: Unexpected console statement.  no-console
+154:18  Warning: 'parseError' is defined but never used.  unused-imports/no-unused-vars
+166:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+167:7  Warning: Unexpected console statement.  no-console
+
+./src/app/daily-reports/input/page.tsx
+153:18  Warning: 'parseError' is defined but never used.  unused-imports/no-unused-vars
+165:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+166:7  Warning: Unexpected console statement.  no-console
+
+./src/app/daily-reports/page.tsx
+66:30  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+66:44  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+69:17  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+85:16  Warning: 'e' is defined but never used.  unused-imports/no-unused-vars
+
+./src/app/invite/actions.ts
+74:7  Warning: Unexpected console statement.  no-console
+84:5  Warning: Unexpected console statement.  no-console
+114:7  Warning: Unexpected console statement.  no-console
+125:5  Warning: Unexpected console statement.  no-console
+134:5  Warning: Unexpected console statement.  no-console
+183:7  Warning: Unexpected console statement.  no-console
+221:9  Warning: Unexpected console statement.  no-console
+233:7  Warning: Unexpected console statement.  no-console
+253:5  Warning: Unexpected console statement.  no-console
+303:7  Warning: Unexpected console statement.  no-console
+340:7  Warning: Unexpected console statement.  no-console
+353:5  Warning: Unexpected console statement.  no-console
+366:5  Warning: Unexpected console statement.  no-console
+
+./src/app/invite/page.tsx
+125:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+126:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+290:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+309:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/login/actions.ts
+26:7  Warning: 'NO_CLINIC_ASSIGNED_MESSAGE' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+96:7  Warning: Unexpected console statement.  no-console
+114:7  Warning: Unexpected console statement.  no-console
+187:7  Warning: Unexpected console statement.  no-console
+209:7  Warning: Unexpected console statement.  no-console
+230:5  Warning: Unexpected console statement.  no-console
+244:5  Warning: Unexpected console statement.  no-console
+271:7  Warning: Unexpected console statement.  no-console
+276:7  Warning: Unexpected console statement.  no-console
+289:5  Warning: Unexpected console statement.  no-console
+
+./src/app/login/page.tsx
+51:21  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+52:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+107:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+136:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/master-data/page.tsx
+55:7  Warning: Unexpected console statement.  no-console
+85:15  Warning: Unexpected console statement.  no-console
+101:15  Warning: Unexpected console statement.  no-console
+147:9  Warning: 'activeItems' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+168:7  Warning: Unexpected console statement.  no-console
+
+./src/app/reservations/components/AppointmentBlock.tsx
+51:5  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+51:5  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/components/AppointmentDetail.tsx
+43:63  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+132:7  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+132:7  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/components/AppointmentEditForm.tsx
+16:47  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+61:9  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+87:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+98:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+131:9  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+152:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+169:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+191:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+232:9  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+244:9  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/reservations/components/AppointmentForm.tsx
+294:52  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+325:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+338:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+366:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+406:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+420:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+441:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+457:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+477:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+506:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+532:11  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/app/reservations/components/AppointmentList.tsx
+69:6  Warning: React Hook useMemo has a missing dependency: 'getResourceName'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/reservations/components/AppointmentSummary.tsx
+156:9  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+156:9  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/components/NotificationsModal.tsx
+17:7  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+17:7  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/components/Scheduler.tsx
+142:7  Warning: Unexpected console statement.  no-console
+239:17  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+239:17  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/components/UnconfirmedReservationsModal.tsx
+58:7  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+58:7  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/app/reservations/settings/menus/page.tsx
+41:6  Warning: React Hook useEffect has a missing dependency: 'loadMenus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+45:18  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/app/reservations/settings/resources/page.tsx
+55:6  Warning: React Hook useEffect has a missing dependency: 'loadResources'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+60:38  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/components/admin/data-form-dialog.tsx
+81:13  Warning: 'name' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/components/admin/data-management-settings.tsx
+146:35  Warning: 'type' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/components/admin/data-table.tsx
+173:19  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+173:19  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/components/admin/improved-table-editor.tsx
+29:5  Warning: 'filterState' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+100:7  Warning: Unexpected console statement.  no-console
+122:9  Warning: Unexpected console statement.  no-console
+
+./src/components/admin/SecurityDashboard.tsx
+135:7  Warning: Unexpected console statement.  no-console
+152:7  Warning: Unexpected console statement.  no-console
+167:7  Warning: Unexpected console statement.  no-console
+206:7  Warning: Unexpected console statement.  no-console
+255:7  Warning: Unexpected console statement.  no-console
+332:6  Warning: React Hook useEffect has a missing dependency: 'handleRefresh'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/chat/chat-interface.tsx
+39:25  Warning: Unexpected console statement.  no-console
+
+./src/components/examples/design-system-showcase.tsx
+53:30  Warning: Unexpected console statement.  no-console
+105:47  Warning: Elements with ARIA roles must use a valid, non-abstract ARIA role.  jsx-a11y/aria-role
+108:49  Warning: Elements with ARIA roles must use a valid, non-abstract ARIA role.  jsx-a11y/aria-role
+111:49  Warning: Elements with ARIA roles must use a valid, non-abstract ARIA role.  jsx-a11y/aria-role
+114:48  Warning: Elements with ARIA roles must use a valid, non-abstract ARIA role.  jsx-a11y/aria-role
+
+./src/components/layout/responsive-layout.tsx
+40:11  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+40:11  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+
+./src/components/master/admin-master-form.tsx
+31:3  Warning: 'masterData' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+32:3  Warning: 'onCreate' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+33:3  Warning: 'onUpdate' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+34:3  Warning: 'onDelete' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+48:26  Warning: 'setImpactedStores' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+49:25  Warning: 'setNeedsApproval' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+72:9  Warning: Unexpected console statement.  no-console
+84:7  Warning: Unexpected console statement.  no-console
+103:7  Warning: Unexpected console statement.  no-console
+
+./src/components/master/master-data-form.tsx
+140:9  Warning: Unexpected console statement.  no-console
+221:7  Warning: Unexpected console statement.  no-console
+255:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+269:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+283:13  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/components/mfa/MFADashboard.tsx
+74:7  Warning: Unexpected console statement.  no-console
+91:7  Warning: Unexpected console statement.  no-console
+180:6  Warning: React Hook useEffect has a missing dependency: 'fetchMFAStatus'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+186:6  Warning: React Hook useEffect has a missing dependency: 'fetchBackupCodeUsage'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/components/mfa/MFASetupWizard.tsx
+147:7  Warning: Unexpected console statement.  no-console
+295:19  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+349:15  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/components/onboarding/InvitesStep.tsx
+128:17  Warning: A form label must be associated with a control.  jsx-a11y/label-has-associated-control
+
+./src/components/patients/patient-modal.tsx
+160:7  Warning: Unexpected console statement.  no-console
+
+./src/components/session/DeviceCard.tsx
+100:7  Warning: Unexpected console statement.  no-console
+
+./src/components/session/SecurityAlerts.tsx
+63:6  Warning: React Hook useEffect has a missing dependency: 'loadSecurityData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+90:7  Warning: Unexpected console statement.  no-console
+
+./src/components/session/SessionManager.tsx
+93:9  Warning: 'getDeviceIcon' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/components/staff/shift-optimizer.tsx
+76:10  Warning: 'hourlyDistribution' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+142:7  Warning: Unexpected console statement.  no-console
+225:9  Warning: 'selectedDayShifts' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/components/ui/alert-dialog.tsx
+100:7  Warning: Visible, non-interactive elements with click handlers must have at least one keyboard listener.  jsx-a11y/click-events-have-key-events
+100:7  Warning: Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element.  jsx-a11y/no-static-element-interactions
+142:3  Warning: Headings must have content and the content must be accessible by a screen reader.  jsx-a11y/heading-has-content
+
+./src/components/ui/alert.tsx
+163:3  Warning: Headings must have content and the content must be accessible by a screen reader.  jsx-a11y/heading-has-content
+
+./src/components/ui/medical-banner.tsx
+234:30  Warning: Unexpected console statement.  no-console
+238:30  Warning: Unexpected console statement.  no-console
+254:28  Warning: Unexpected console statement.  no-console
+258:28  Warning: Unexpected console statement.  no-console
+282:28  Warning: Unexpected console statement.  no-console
+
+./src/components/ui/medical-icons.tsx
+180:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useAdminChat.ts
+70:7  Warning: Unexpected console statement.  no-console
+131:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useAdminDashboard.ts
+43:9  Warning: The 'clinicsData' logical expression could make the dependencies of useMemo Hook (at line 62) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'clinicsData' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+
+./src/hooks/useAdminMaster.ts
+22:5  Warning: 'limit' is assigned a value but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/hooks/useAdminTenants.ts
+48:7  Warning: Unexpected console statement.  no-console
+81:9  Warning: Unexpected console statement.  no-console
+123:9  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useAdminUsers.ts
+52:9  Warning: Unexpected console statement.  no-console
+86:9  Warning: Unexpected console statement.  no-console
+123:9  Warning: Unexpected console statement.  no-console
+156:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useChat.ts
+125:7  Warning: Unexpected console statement.  no-console
+235:9  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useDashboard.ts
+49:7  Warning: Unexpected console statement.  no-console
+82:6  Warning: React Hook useEffect has a missing dependency: 'clinicId'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+98:11  Warning: Unexpected console statement.  no-console
+101:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useMasterData.ts
+62:9  Warning: The 'items' logical expression could make the dependencies of useMemo Hook (at line 76) change on every render. To fix this, wrap the initialization of 'items' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+153:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useMultiStore.ts
+57:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useOnboarding.ts
+68:7  Warning: Unexpected console statement.  no-console
+102:9  Warning: Unexpected console statement.  no-console
+143:9  Warning: Unexpected console statement.  no-console
+178:9  Warning: Unexpected console statement.  no-console
+213:9  Warning: Unexpected console statement.  no-console
+
+./src/hooks/usePatientAnalysis.ts
+167:11  Warning: Unexpected console statement.  no-console
+
+./src/hooks/usePatientsList.ts
+106:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useQualityAssurance.ts
+37:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useRevenue.ts
+121:11  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useSessionManagement.ts
+64:6  Warning: React Hook useEffect has a missing dependency: 'initializeSession'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+71:7  Warning: Unexpected console statement.  no-console
+81:6  Warning: React Hook useEffect has missing dependencies: 'handleLogin' and 'handleLogout'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+98:9  Warning: Unexpected console statement.  no-console
+109:7  Warning: Unexpected console statement.  no-console
+154:7  Warning: Unexpected console statement.  no-console
+184:7  Warning: Unexpected console statement.  no-console
+221:7  Warning: Unexpected console statement.  no-console
+236:7  Warning: Unexpected console statement.  no-console
+255:9  Warning: Unexpected console statement.  no-console
+258:7  Warning: Unexpected console statement.  no-console
+270:7  Warning: Unexpected console statement.  no-console
+302:5  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useSystemSettings.ts
+75:9  Warning: Unexpected console statement.  no-console
+118:9  Warning: Unexpected console statement.  no-console
+167:9  Warning: Unexpected console statement.  no-console
+201:7  Warning: Unexpected console statement.  no-console
+253:9  Warning: Unexpected console statement.  no-console
+288:9  Warning: Unexpected console statement.  no-console
+322:9  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useSystemSettingsV2.ts
+52:7  Warning: Unexpected console statement.  no-console
+61:7  Warning: Unexpected console statement.  no-console
+70:7  Warning: Unexpected console statement.  no-console
+
+./src/hooks/useTableManager.ts
+129:9  Warning: Unexpected console statement.  no-console
+134:5  Warning: React Hook useCallback has a missing dependency: 'pagination'. Either include it or remove the dependency array. You can also do a functional update 'setPagination(p => ...)' if you only need 'pagination' in the 'setPagination' call.  react-hooks/exhaustive-deps
+329:6  Warning: React Hook useEffect has a missing dependency: 'fetchTableData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/hooks/useUserProfile.ts
+204:9  Warning: Unexpected console statement.  no-console
+249:9  Warning: Unexpected console statement.  no-console
+287:6  Warning: React Hook useEffect has a missing dependency: 'profile'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/legacy/Reservation/components/AppointmentForm.tsx
+108:14  Warning: 'err' is defined but never used.  unused-imports/no-unused-vars
+
+./src/lib/accessibility-test.ts
+139:41  Warning: 'index' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/error-handler-enhanced.ts
+70:11  Warning: 'errorStack' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/mfa/backup-codes.ts
+29:7  Warning: 'BackupCodeSetSchema' is assigned a value but only used as a type. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/mfa/mfa-manager.ts
+467:14  Warning: 'error' is defined but never used.  unused-imports/no-unused-vars
+
+./src/lib/middleware-optimizer.ts
+37:5  Warning: 'isAdminRoute' is assigned a value but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+165:5  Warning: 'requestPath' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/multi-device-manager.ts
+105:18  Warning: '_' is defined but never used.  unused-imports/no-unused-vars
+128:14  Warning: '_' is defined but never used.  unused-imports/no-unused-vars
+715:6  Warning: React Hook useEffect has a missing dependency: 'refreshDevices'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/lib/notifications/security-alerts.ts
+243:13  Warning: 'data' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/performance.ts
+64:16  Warning: 'e' is defined but never used.  unused-imports/no-unused-vars
+
+./src/lib/rate-limiting/middleware.ts
+266:51  Warning: 'result' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/rate-limiting/rate-limiter.ts
+60:7  Warning: 'RateLimitRuleSchema' is assigned a value but only used as a type. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+228:11  Warning: 'config' is assigned a value but never used. Allowed unused vars must match /^_/u.  unused-imports/no-unused-vars
+413:5  Warning: 'ipAddress' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+414:5  Warning: 'allowedCountries' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/security/csp-hash-generator.ts
+67:18  Warning: 'error' is defined but never used.  unused-imports/no-unused-vars
+123:16  Warning: 'error' is defined but never used.  unused-imports/no-unused-vars
+
+./src/lib/security-monitor.ts
+448:5  Warning: 'userAgent' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/services/reservation-service.ts
+578:5  Warning: 'startDate' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+579:5  Warning: 'endDate' is defined but never used. Allowed unused args must match /^_/u.  unused-imports/no-unused-vars
+
+./src/lib/session-manager.ts
+277:14  Warning: '_' is defined but never used.  unused-imports/no-unused-vars
+
+./src/types/admin.ts
+322:9  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/types/reservation.ts
+11:37  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+./src/types/security.ts
+318:34  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+324:15  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+334:42  Warning: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+Failed to compile.
+
+./src/lib/mfa/mfa-manager.ts:538:13
+Type error: Conversion of type 'MFAManager' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'MFAManager'.
+
+[0m [90m 536 |[39m [36mexport[39m [36mconst[39m mfaManager[33m:[39m [33mMFAManager[39m [33m=[39m [36mnew[39m [33mProxy[39m({} [36mas[39m [33mMFAManager[39m[33m,[39m {
+ [90m 537 |[39m   [36mget[39m(_[33m,[39m prop[33m:[39m keyof [33mMFAManager[39m) {
+[31m[1m>[22m[39m[90m 538 |[39m     [36mreturn[39m (getMFAManager() [36mas[39m [33mRecord[39m[33m<[39m[33mstring[39m[33m,[39m unknown[33m>[39m)[prop [36mas[39m string][33m;[39m
+ [90m     |[39m             [31m[1m^[22m[39m
+ [90m 539 |[39m   }[33m,[39m
+ [90m 540 |[39m })[33m;[39m
+ [90m 541 |[39m[0m
+Next.js build worker exited with code: 1 and signal: null

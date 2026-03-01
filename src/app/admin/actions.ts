@@ -9,6 +9,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
+import { assertEnv } from '@/lib/env';
 import { getServerClient } from '@/lib/supabase';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
@@ -227,11 +228,12 @@ export async function signup(
   const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
   try {
+    const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
     const { error, data } = await supabase.auth.signUp({
       email: sanitizedEmail,
       password: sanitizedPassword,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/callback`,
+        emailRedirectTo: `${appUrl}/admin/callback`,
       },
     });
 
@@ -328,7 +330,7 @@ export async function logoutWithRedirect(redirectTo?: string): Promise<void> {
   // 安全なリダイレクト先を検証
   const safeUrl = getSafeRedirectUrl(
     redirectTo,
-    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    assertEnv('NEXT_PUBLIC_APP_URL')
   );
   const finalRedirect = safeUrl || '/admin/login';
 

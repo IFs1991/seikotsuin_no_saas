@@ -16,6 +16,7 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import { assertEnv } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase';
 
 // ================================================================
@@ -134,9 +135,10 @@ export async function POST(request: NextRequest) {
       });
 
       try {
+        const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
         const inviteResult = await Promise.race([
           adminClient.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || ''}/auth/callback?invited=true`,
+            redirectTo: `${appUrl}/admin/callback?invited=true`,
           }),
           timeoutPromise,
         ]);

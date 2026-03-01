@@ -21,6 +21,7 @@ interface Props {
   onUpdate: (
     updatedAppointment: Appointment
   ) => Promise<AppointmentUpdateResult>;
+  onCancelAppointment?: (id: string) => Promise<AppointmentUpdateResult>;
 }
 
 export const AppointmentDetail: React.FC<Props> = ({
@@ -30,6 +31,7 @@ export const AppointmentDetail: React.FC<Props> = ({
   options,
   onClose,
   onUpdate,
+  onCancelAppointment,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
@@ -127,6 +129,24 @@ export const AppointmentDetail: React.FC<Props> = ({
     setErrorMessage(null);
   };
 
+  const isAlreadyCancelled =
+    appointment.status === 'cancelled' || appointment.status === 'no_show';
+
+  const handleCancelReservation = async () => {
+    if (!onCancelAppointment || isAlreadyCancelled) return;
+
+    const confirmed = window.confirm('この予約を取消しますか？');
+    if (!confirmed) return;
+
+    setErrorMessage(null);
+    const result = await onCancelAppointment(appointment.id);
+    if (result.ok) {
+      onClose();
+      return;
+    }
+    setErrorMessage(result.error ?? 'Failed to cancel reservation.');
+  };
+
   return (
     <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
       <div
@@ -141,10 +161,12 @@ export const AppointmentDetail: React.FC<Props> = ({
             {isEditing ? '予約を編集' : '予約詳細'}
           </h2>
           <div className='flex items-center gap-2'>
-            {!isEditing && (
+            {!isEditing && onCancelAppointment && (
               <button
-                className='p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors'
-                title='削除'
+                onClick={handleCancelReservation}
+                disabled={isAlreadyCancelled}
+                className='p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-gray-400'
+                title={isAlreadyCancelled ? '取消済み' : '取消'}
               >
                 <Trash2 className='w-5 h-5' />
               </button>

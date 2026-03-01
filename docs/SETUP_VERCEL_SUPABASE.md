@@ -18,6 +18,7 @@ SaaS として動作させるための最小手順です。
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_APP_URL`（Vercel本番URL）
    - 根拠: `src/lib/env.ts`
 
 ## 2. Supabase Auth 設定（本番URL対応）
@@ -32,11 +33,28 @@ SaaS として動作させるための最小手順です。
 ## 3. マイグレーション適用（本番）
 
 1. 事前にバックアップを取得（本番にデータがある場合）
-2. `supabase/migrations` を本番へ反映
+2. `20260218000500_clinic_id_not_null_reservation_tables.sql` 適用前に NULL 件数を確認
+   - すべて 0 件であること
+   - 0 件でない場合は原因を解消してから進める（誤テナント補完を避ける）
+3. 確認SQL:
+   ```sql
+   SELECT 'customers' AS tbl, count(*) FROM public.customers WHERE clinic_id IS NULL
+   UNION ALL
+   SELECT 'menus', count(*) FROM public.menus WHERE clinic_id IS NULL
+   UNION ALL
+   SELECT 'resources', count(*) FROM public.resources WHERE clinic_id IS NULL
+   UNION ALL
+   SELECT 'reservations', count(*) FROM public.reservations WHERE clinic_id IS NULL
+   UNION ALL
+   SELECT 'blocks', count(*) FROM public.blocks WHERE clinic_id IS NULL
+   UNION ALL
+   SELECT 'reservation_history', count(*) FROM public.reservation_history WHERE clinic_id IS NULL;
+   ```
+4. `supabase/migrations` を本番へ反映
    - 推奨フローは `RLS_DEPLOYMENT_MANUAL.md` の「Step 3」
-3. 注意:
-   - `supabase db push` は承認が必要
-   - `src/api/database/rls-policies.sql` の手動実行は禁止（同ドキュメント参照）
+5. 注意:
+    - `supabase db push` は承認が必要
+    - `src/api/database/rls-policies.sql` の手動実行は禁止（同ドキュメント参照）
 
 ## 4. Vercel プロジェクト作成
 
@@ -66,6 +84,13 @@ SaaS として動作させるための最小手順です。
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
   - 参照: `src/lib/rate-limiting/middleware.ts`
+- `app.settings.mfa_encryption_key`（Supabase DB設定）
+  - 参照: `supabase/migrations/20260218000600_security_hardening_mfa_legacy.sql`
+  - 例:
+    ```sql
+    ALTER DATABASE postgres
+      SET "app.settings.mfa_encryption_key" = '<本番用ランダム文字列>';
+    ```
 
 ### 任意（機能が必要な場合のみ）
 
@@ -85,7 +110,9 @@ SaaS として動作させるための最小手順です。
 ## 7. 本番動作チェック（最小）
 
 - 管理者ログイン
+- `/register` -> `/register/verify` 導線
 - 招待URL動作（`NEXT_PUBLIC_APP_URL`）
+- `/api/admin/staff/invites` 招待URLが `/admin/callback` に到達すること
 - 主要画面の表示
 - 余裕があれば RLS 検証（`RLS_DEPLOYMENT_MANUAL.md` のSQL）
 

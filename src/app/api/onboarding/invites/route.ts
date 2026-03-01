@@ -10,6 +10,7 @@ import {
   getCurrentUser,
   createAdminClient,
 } from '@/lib/supabase';
+import { assertEnv } from '@/lib/env';
 import { staffInviteSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -72,10 +73,11 @@ export async function POST(request: NextRequest) {
 
       for (const invite of invites) {
         try {
+          const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
           // 1. Supabase Auth で招待メール送信
           const { data: authData, error: authError } =
             await adminClient.auth.admin.inviteUserByEmail(invite.email, {
-              redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || ''}/admin/callback?invited=true`,
+              redirectTo: `${appUrl}/admin/callback?invited=true`,
             });
 
           if (authError) {
@@ -88,7 +90,9 @@ export async function POST(request: NextRequest) {
           }
 
           // 2. staff_invitesに記録
-          const { error: inviteError } = await adminClient
+          // RLS前提のため、service role(adminClient)ではなく
+          // リクエストユーザーのコンテキスト(supabase)で挿入する。
+          const { error: inviteError } = await supabase
             .from('staff_invites')
             .insert({
               clinic_id: state.clinic_id,

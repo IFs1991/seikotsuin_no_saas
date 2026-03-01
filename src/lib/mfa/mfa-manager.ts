@@ -7,6 +7,10 @@ import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
 import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
+import { createLogger } from '@/lib/logger';
+import { backupCodeManager } from '@/lib/mfa/backup-codes';
+
+const log = createLogger('MFAManager');
 
 // MFA設定スキーマ
 const MFAConfigSchema = z.object({
@@ -23,14 +27,8 @@ const MFAVerificationSchema = z.object({
   window: z.number().min(1).max(4).default(1), // 時間窓（±30秒単位）
 });
 
-const BackupCodeSchema = z.object({
-  userId: z.string().min(1),
-  code: z.string().length(8, 'バックアップコードは8桁である必要があります'),
-});
-
 export type MFAConfig = z.infer<typeof MFAConfigSchema>;
 export type MFAVerification = z.infer<typeof MFAVerificationSchema>;
-export type BackupCodeVerification = z.infer<typeof BackupCodeSchema>;
 
 export interface MFASetupResult {
   secretKey: string;
@@ -160,8 +158,7 @@ export class MFAManager {
       }
 
       // MFA設定を正式に有効化
-      const supabase2 = await this.getSupabase();
-      await supabase2.from('user_mfa_settings').upsert({
+      await supabase.from('user_mfa_settings').upsert({
         user_id: validatedVerification.userId,
         clinic_id: setupSession.clinic_id,
         secret_key: setupSession.secret_key,
@@ -173,7 +170,7 @@ export class MFAManager {
       });
 
       // セットアップセッション削除
-      await supabase2
+      await supabase
         .from('mfa_setup_sessions')
         .delete()
         .eq('id', setupSession.id);
@@ -226,8 +223,7 @@ export class MFAManager {
 
       if (isValid) {
         // 最終使用日時更新
-        const supabase2 = await this.getSupabase();
-        await supabase2
+        await supabase
           .from('user_mfa_settings')
           .update({ last_used_at: new Date().toISOString() })
           .eq('user_id', validatedVerification.userId);
@@ -253,84 +249,6 @@ export class MFAManager {
     } catch (error) {
       throw new Error(
         `TOTP検証エラー: ${error instanceof Error ? error.message : error}`
-      );
-    }
-  }
-
-  /**
-   * バックアップコード検証
-   * TOTPが利用できない場合の緊急アクセス
-   */
-  async verifyBackupCode(userId: string, code: string): Promise<boolean> {
-    try {
-      // 入力値検証
-      const validatedCode = BackupCodeSchema.parse({
-        userId,
-        code: code.toUpperCase(),
-      });
-
-      // MFA設定取得
-      const supabase = await this.getSupabase();
-      const { data: mfaSettings, error } = await supabase
-        .from('user_mfa_settings')
-        .select('*')
-        .eq('user_id', validatedCode.userId)
-        .eq('is_enabled', true)
-        .single();
-
-      if (error || !mfaSettings) {
-        throw new Error('MFA設定が見つかりません');
-      }
-
-      const backupCodes = mfaSettings.backup_codes || [];
-      const codeIndex = backupCodes.indexOf(validatedCode.code);
-
-      if (codeIndex === -1) {
-        // 失敗ログ記録
-        await this.logMFAEvent({
-          userId: validatedCode.userId,
-          eventType: 'backup_code_failed',
-          details: { code: validatedCode.code.slice(0, 2) + '****' },
-        });
-        return false;
-      }
-
-      // バックアップコードを使用済みとしてマーク（削除）
-      const updatedBackupCodes = [...backupCodes];
-      updatedBackupCodes.splice(codeIndex, 1);
-
-      const supabase2 = await this.getSupabase();
-      await supabase2
-        .from('user_mfa_settings')
-        .update({
-          backup_codes: updatedBackupCodes,
-          last_used_at: new Date().toISOString(),
-        })
-        .eq('user_id', validatedCode.userId);
-
-      // 成功ログ記録
-      await this.logMFAEvent({
-        userId: validatedCode.userId,
-        eventType: 'backup_code_success',
-        details: {
-          code: validatedCode.code.slice(0, 2) + '****',
-          remainingCodes: updatedBackupCodes.length,
-        },
-      });
-
-      // バックアップコードが少なくなった場合の警告
-      if (updatedBackupCodes.length <= 2) {
-        await this.logMFAEvent({
-          userId: validatedCode.userId,
-          eventType: 'backup_codes_low',
-          details: { remainingCodes: updatedBackupCodes.length },
-        });
-      }
-
-      return true;
-    } catch (error) {
-      throw new Error(
-        `バックアップコード検証エラー: ${error instanceof Error ? error.message : error}`
       );
     }
   }
@@ -411,44 +329,6 @@ export class MFAManager {
   }
 
   /**
-   * バックアップコード再生成
-   */
-  async regenerateBackupCodes(userId: string): Promise<string[]> {
-    try {
-      // 新しいバックアップコード生成
-      const newBackupCodes = this.generateBackupCodes();
-
-      // データベース更新
-      const supabase = await this.getSupabase();
-      const { error } = await supabase
-        .from('user_mfa_settings')
-        .update({
-          backup_codes: newBackupCodes,
-          backup_codes_regenerated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId)
-        .eq('is_enabled', true);
-
-      if (error) {
-        throw new Error(`データベースエラー: ${error.message}`);
-      }
-
-      // 再生成ログ記録
-      await this.logMFAEvent({
-        userId,
-        eventType: 'backup_codes_regenerated',
-        details: { codeCount: newBackupCodes.length },
-      });
-
-      return newBackupCodes;
-    } catch (error) {
-      throw new Error(
-        `バックアップコード再生成エラー: ${error instanceof Error ? error.message : error}`
-      );
-    }
-  }
-
-  /**
    * QRコード生成
    */
   private async generateQRCode(otpauthUrl: string): Promise<string> {
@@ -471,20 +351,10 @@ export class MFAManager {
 
   /**
    * バックアップコード生成（10個）
+   * BackupCodeManagerの暗号学的に安全な実装に委譲
    */
   private generateBackupCodes(): string[] {
-    const codes: string[] = [];
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-
-    for (let i = 0; i < 10; i++) {
-      let code = '';
-      for (let j = 0; j < 8; j++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      codes.push(code);
-    }
-
-    return codes;
+    return backupCodeManager.generateBackupCodes();
   }
 
   /**
@@ -514,28 +384,10 @@ export class MFAManager {
       });
     } catch (error) {
       // ログ記録エラーは主機能を妨げない
-      console.error('MFAイベントログ記録エラー:', error);
+      log.error('MFAイベントログ記録エラー:', error);
     }
   }
 }
 
-// シングルトンインスタンス（遅延初期化）
-let _mfaManager: MFAManager | null = null;
-
-/**
- * MFAManagerシングルトンを取得
- */
-export function getMFAManager(): MFAManager {
-  if (!_mfaManager) {
-    _mfaManager = new MFAManager();
-  }
-  return _mfaManager;
-}
-
-// 後方互換性のためのProxy（既存のmfaManagerインポートを維持）
-export const mfaManager: MFAManager = new Proxy({} as MFAManager, {
-  get(_, prop: keyof MFAManager) {
-    const instance = getMFAManager();
-    return (instance as unknown as Record<string, unknown>)[prop as string];
-  },
-});
+// シングルトンインスタンス
+export const mfaManager: MFAManager = new MFAManager();

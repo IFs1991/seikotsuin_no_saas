@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Appointment, AppointmentUpdateResult } from '../types';
-import { fetchReservations, updateReservation, cancelReservation } from '../api';
+import {
+  fetchReservations,
+  updateReservation,
+  cancelReservation,
+} from '../api';
 import { calculateDuration, calculateEndTime } from '../utils/time';
 import { statusToColor } from './statusToColor';
 

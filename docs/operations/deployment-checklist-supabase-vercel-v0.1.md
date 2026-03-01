@@ -26,6 +26,8 @@ Supabase (local) for DoD evidence:
 - [ ] `supabase db reset --local --no-seed` (approval required)
 - [ ] `supabase db reset --local` (approval required)
 - [ ] `supabase db push --local --dry-run` (approval required)
+- [ ] Preflight NULL check before `20260218000500` migration (all 0):
+  - `customers`, `menus`, `resources`, `reservations`, `blocks`, `reservation_history`
 - [ ] DOD-08 query from `docs/stabilization/DoD-v0.1.md`
 - [ ] DOD-09 rg check from `docs/stabilization/DoD-v0.1.md`
 
@@ -40,7 +42,10 @@ Notes:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
+  - `NEXT_PUBLIC_APP_URL`
   - `GEMINI_API_KEY` (if used)
+- [ ] Set MFA encryption key for DB:
+  - `ALTER DATABASE postgres SET "app.settings.mfa_encryption_key" = '<random>';`
 - [ ] Apply migrations to staging (approval required).
 - [ ] Confirm RLS policies and tenant boundary:
   - Run DOD-08 query against staging DB.
@@ -65,6 +70,8 @@ Notes:
 
 - [ ] Create a production Supabase project.
 - [ ] Configure production env vars (same keys as staging).
+- [ ] Set MFA encryption key for DB:
+  - `ALTER DATABASE postgres SET "app.settings.mfa_encryption_key" = '<random>';`
 - [ ] Apply migrations to production (approval required).
 - [ ] Validate RLS policies and tenant boundary (DOD-08 query).
 - [ ] Confirm backups and retention settings.

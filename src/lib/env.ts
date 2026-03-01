@@ -2,6 +2,7 @@ const REQUIRED_ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
+  'NEXT_PUBLIC_APP_URL',
 ] as const;
 
 const missing = REQUIRED_ENV_VARS.filter(name => {
@@ -21,6 +22,7 @@ export const env = {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
   // eslint-disable-next-line no-restricted-syntax
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? '',
 } as const;
 
 export function assertEnv(name: keyof typeof env) {

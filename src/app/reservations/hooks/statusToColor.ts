@@ -1,6 +1,8 @@
 import type { Appointment } from '../types';
 
-export const statusToColor = (status?: Appointment['status']): Appointment['color'] => {
+export const statusToColor = (
+  status?: Appointment['status']
+): Appointment['color'] => {
   switch (status) {
     case 'confirmed':
       return 'blue';

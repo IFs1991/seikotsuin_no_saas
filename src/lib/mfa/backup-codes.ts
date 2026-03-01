@@ -5,6 +5,9 @@
 
 import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('BackupCodeManager');
 
 // バックアップコード設定
 export const BACKUP_CODE_CONFIG = {
@@ -147,8 +150,7 @@ export class BackupCodeManager {
       updatedBackupCodes.splice(codeIndex, 1);
 
       // データベース更新
-      const supabase2 = await this.getSupabase();
-      await supabase2
+      await supabase
         .from('user_mfa_settings')
         .update({
           backup_codes: updatedBackupCodes,
@@ -314,8 +316,7 @@ export class BackupCodeManager {
 
       // 最近のバックアップコード使用回数（直近7日間）
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const supabase2 = await this.getSupabase();
-      const { count: recentUsageCount } = await supabase2
+      const { count: recentUsageCount } = await supabase
         .from('security_events')
         .select('*', { count: 'exact', head: true })
         .eq('event_type', 'mfa_backup_code_success')
@@ -380,10 +381,9 @@ export class BackupCodeManager {
       ) {
         globalThis.crypto.getRandomValues(randomBytes);
       } else {
-        // フォールバック（非推奨）
-        for (let i = 0; i < bytesNeeded; i++) {
-          randomBytes[i] = Math.floor(Math.random() * 256);
-        }
+        throw new Error(
+          'crypto.getRandomValues is not available. Secure random generation requires a modern runtime.'
+        );
       }
 
       randomValue = randomBytes.reduce((acc, byte, index) => {
@@ -427,32 +427,10 @@ export class BackupCodeManager {
       });
     } catch (error) {
       // ログ記録エラーは主機能を妨げない
-      const { logger } = await import('@/lib/logger');
-      logger.error('バックアップコードイベントログ記録エラー:', error);
+      log.error('バックアップコードイベントログ記録エラー:', error);
     }
   }
 }
 
-// シングルトンインスタンス（遅延初期化）
-let _backupCodeManager: BackupCodeManager | null = null;
-
-/**
- * BackupCodeManagerシングルトンを取得
- */
-export function getBackupCodeManager(): BackupCodeManager {
-  if (!_backupCodeManager) {
-    _backupCodeManager = new BackupCodeManager();
-  }
-  return _backupCodeManager;
-}
-
-// 後方互換性のためのProxy（既存のbackupCodeManagerインポートを維持）
-export const backupCodeManager: BackupCodeManager = new Proxy(
-  {} as BackupCodeManager,
-  {
-    get(_, prop: keyof BackupCodeManager) {
-      const instance = getBackupCodeManager();
-      return (instance as unknown as Record<string, unknown>)[prop as string];
-    },
-  }
-);
+// シングルトンインスタンス
+export const backupCodeManager: BackupCodeManager = new BackupCodeManager();

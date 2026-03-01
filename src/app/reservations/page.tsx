@@ -21,13 +21,16 @@ import { buildTimeSlots } from './constants';
 import { useAppointments } from './hooks/useAppointments';
 import { useReservationFormData } from '@/hooks/useReservationFormData';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { Loader2 } from 'lucide-react';
 
 function ReservationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  // Task C: profile.clinicId の代わりに Context の selectedClinicId を使用
+  const { selectedClinicId } = useSelectedClinic();
+  const clinicId = selectedClinicId;
   const role = profile?.role ?? null;
 
   const {

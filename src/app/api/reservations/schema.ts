@@ -87,7 +87,8 @@ export function mapReservationUpdateToRow(
   if (dto.endTime !== undefined) row.end_time = dto.endTime;
   if (dto.staffId !== undefined) row.staff_id = dto.staffId;
   if (dto.notes !== undefined) row.notes = dto.notes;
-  if (dto.selectedOptions !== undefined) row.selected_options = dto.selectedOptions;
+  if (dto.selectedOptions !== undefined)
+    row.selected_options = dto.selectedOptions;
 
   return row as any;
 }

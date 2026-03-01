@@ -233,7 +233,8 @@ export const Scheduler: React.FC<Props> = ({
                   )}
                   {!isFacility && resource.name !== '指名なし' && (
                     <div className='text-[9px] text-gray-400 mt-0.5'>
-                      {String(GRID_START_HOUR).padStart(2, '0')}:00-{String(GRID_END_HOUR).padStart(2, '0')}:00
+                      {String(GRID_START_HOUR).padStart(2, '0')}:00-
+                      {String(GRID_END_HOUR).padStart(2, '0')}:00
                     </div>
                   )}
                 </div>

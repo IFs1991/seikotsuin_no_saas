@@ -9,6 +9,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
+import { assertEnv } from '@/lib/env';
 import { getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 
@@ -169,12 +170,13 @@ export async function signupAndAcceptInvite(
     const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
     // 2. サインアップ
+    const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
     const { error: signupError, data: signupData } = await supabase.auth.signUp(
       {
         email: sanitizedEmail,
         password: sanitizedPassword,
         options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/invite?token=${token}`,
+          emailRedirectTo: `${appUrl}/invite?token=${token}`,
         },
       }
     );

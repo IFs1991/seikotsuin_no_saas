@@ -1,6 +1,33 @@
+'use client';
+
 import React from 'react';
+import Link from 'next/link';
+import { useSystemStatus } from '@/hooks/useSystemStatus';
+
+const SYSTEM_STATUS_LABELS: Record<string, string> = {
+  operational: '稼働中',
+  degraded: '一部障害',
+  outage: '停止中',
+};
+
+const AI_STATUS_LABELS: Record<string, string> = {
+  active: 'AI稼働中',
+  inactive: 'AI停止中',
+};
 
 export default function HomePage() {
+  const { status, loading } = useSystemStatus();
+
+  // ロード中はプレースホルダ '...' を表示（店舗数バッジのみ）
+  const clinicCountBadge = loading ? '...' : (status?.activeClinicCount ?? 0);
+  const clinicCountTitle = loading ? '...' : (status?.activeClinicCount ?? 0);
+  const systemStatusLabel = status
+    ? (SYSTEM_STATUS_LABELS[status.systemStatus] ?? '稼働中')
+    : '稼働中';
+  const aiStatusLabel = status
+    ? (AI_STATUS_LABELS[status.aiAnalysisStatus] ?? 'AI分析')
+    : 'AI分析';
+
   return (
     <div className='space-y-6'>
       <div className='border-b border-gray-200 pb-4'>
@@ -8,7 +35,8 @@ export default function HomePage() {
           整骨院経営管理システム
         </h1>
         <p className='mt-2 text-gray-600'>
-          46店舗展開の整骨院グループ向けリアルタイム経営分析システム
+          {clinicCountTitle}
+          店舗展開の整骨院グループ向けリアルタイム経営分析システム
         </p>
         <p className='mt-2 text-sm text-gray-500'>
           一般スタッフは左側メニューから日報・患者・収益分析へアクセスできます。
@@ -22,12 +50,12 @@ export default function HomePage() {
             ダッシュボード
           </h2>
           <p className='text-gray-600 mb-4'>リアルタイムの経営データを確認</p>
-          <a
+          <Link
             href='/dashboard'
             className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
           >
             ダッシュボードへ
-          </a>
+          </Link>
         </div>
 
         <div className='bg-white p-6 rounded-lg shadow border'>
@@ -37,12 +65,12 @@ export default function HomePage() {
           <p className='text-gray-600 mb-4'>
             全店舗統合管理・セキュリティ監視・マスタ設定
           </p>
-          <a
+          <Link
             href='/admin/login'
             className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
           >
             管理者ログイン
-          </a>
+          </Link>
           <p className='mt-2 text-xs text-gray-500'>
             ※ 管理者ロールが付与されていないアカウントはアクセスできません。
           </p>
@@ -53,12 +81,12 @@ export default function HomePage() {
             AIチャット
           </h2>
           <p className='text-gray-600 mb-4'>経営分析とインサイトの相談</p>
-          <a
+          <Link
             href='/chat'
             className='inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'
           >
             チャットを開始
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -66,15 +94,21 @@ export default function HomePage() {
         <h3 className='text-lg font-medium text-blue-900'>システム状態</h3>
         <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
           <div className='text-center'>
-            <div className='text-2xl font-bold text-blue-600'>46</div>
+            <div className='text-2xl font-bold text-blue-600'>
+              {clinicCountBadge}
+            </div>
             <div className='text-sm text-blue-800'>店舗数</div>
           </div>
           <div className='text-center'>
-            <div className='text-2xl font-bold text-green-600'>稼働中</div>
+            <div className='text-2xl font-bold text-green-600'>
+              {systemStatusLabel}
+            </div>
             <div className='text-sm text-green-800'>システム状態</div>
           </div>
           <div className='text-center'>
-            <div className='text-2xl font-bold text-purple-600'>AI分析</div>
+            <div className='text-2xl font-bold text-purple-600'>
+              {aiStatusLabel}
+            </div>
             <div className='text-sm text-purple-800'>機能状態</div>
           </div>
         </div>

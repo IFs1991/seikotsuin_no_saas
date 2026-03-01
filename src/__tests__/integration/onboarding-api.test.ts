@@ -29,12 +29,31 @@ const mockUser = {
 };
 
 // Supabaseモジュールをモック
-jest.mock('@/lib/supabase/server', () => ({
+jest.mock('@/lib/supabase', () => ({
   getServerClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
   createClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
   createAdminClient: jest.fn(() => mockSupabaseClient),
   getCurrentUser: jest.fn(() => Promise.resolve(mockUser)),
   getUserPermissions: jest.fn(),
+}));
+
+// 環境変数参照をモック（assertEnv が空文字で落ちるのを防ぐ）
+jest.mock('@/lib/env', () => ({
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: 'http://localhost:54321',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
+    SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+    NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+  },
+  assertEnv: jest.fn((name: string) => {
+    const map: Record<string, string> = {
+      NEXT_PUBLIC_SUPABASE_URL: 'http://localhost:54321',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test-anon-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+    };
+    return map[name] ?? '';
+  }),
 }));
 
 // guardsモジュールをモック

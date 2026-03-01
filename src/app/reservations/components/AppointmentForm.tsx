@@ -7,6 +7,7 @@ import {
 } from '../types';
 
 import { createCustomer, createReservation, fetchCustomers } from '../api';
+import { statusToColor } from '../hooks/statusToColor';
 import {
   calculateEndTime,
   timeToMinutes,
@@ -84,7 +85,6 @@ export const AppointmentForm: React.FC<Props> = ({
     optionId: 'none',
     phone: '',
     type: 'normal' as const,
-    color: 'red' as const,
     customAttributes: createInitialCustomAttributes(),
   });
 
@@ -272,7 +272,7 @@ export const AppointmentForm: React.FC<Props> = ({
           selectedOption?.id === 'none' ? undefined : selectedOption?.id,
         subTitle: menuName,
         type: 'normal',
-        color: formData.color,
+        color: statusToColor(reservation.status ?? 'unconfirmed'),
         status: reservation.status ?? 'unconfirmed',
         customerId: customer.id,
         staffId: formData.resourceId,
@@ -320,8 +320,134 @@ export const AppointmentForm: React.FC<Props> = ({
       )}
 
       <form onSubmit={handleSubmit} className='space-y-6'>
-        {/* Name Fields */}
-        <div className='mt-4'>
+        {/* Date */}
+        <div>
+          <label className='block text-sm font-medium text-gray-700 mb-1'>
+            来店日
+          </label>
+          <input
+            type='date'
+            required
+            value={formData.date}
+            onChange={e => handleInputChange('date', e.target.value)}
+            className='block w-full shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
+          />
+        </div>
+
+        {/* Time */}
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          <div>
+            <label className='block text-sm font-medium text-gray-700'>
+              開始時間
+            </label>
+            <div className='flex gap-2 items-center mt-1'>
+              <input
+                type='number'
+                min='9'
+                max='23'
+                value={formData.startHour}
+                onChange={e =>
+                  handleInputChange('startHour', parseInt(e.target.value))
+                }
+                className='block w-20 shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
+              />
+              <span>:</span>
+              <input
+                type='number'
+                min='0'
+                max='59'
+                step='5'
+                value={formData.startMinute}
+                onChange={e =>
+                  handleInputChange('startMinute', parseInt(e.target.value))
+                }
+                className='block w-20 shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
+              />
+            </div>
+          </div>
+          <div>
+            <label className='block text-sm font-medium text-gray-700'>
+              終了時間
+              <span className='text-xs font-normal text-gray-500 ml-2'>
+                (自動計算)
+              </span>
+            </label>
+            <div className='flex gap-2 items-center mt-1'>
+              <input
+                type='number'
+                disabled
+                value={endTime.hour}
+                className='block w-20 bg-gray-100 shadow-sm sm:text-sm border-gray-300 rounded-md border p-2 text-gray-600'
+              />
+              <span>:</span>
+              <input
+                type='number'
+                disabled
+                value={endTime.minute}
+                className='block w-20 bg-gray-100 shadow-sm sm:text-sm border-gray-300 rounded-md border p-2 text-gray-600'
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Resource Selection */}
+        <div>
+          <label className='block text-sm font-medium text-gray-700'>
+            担当・設備
+          </label>
+          <select
+            value={formData.resourceId}
+            onChange={e => handleInputChange('resourceId', e.target.value)}
+            className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
+          >
+            {resources
+              .filter(r => r.id !== 'separator')
+              .map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.name} {r.capacity ? `(${r.capacity})` : ''}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        {/* Menu & Options */}
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          <div>
+            <label className='block text-sm font-medium text-gray-700'>
+              メニュー
+            </label>
+            <select
+              value={formData.menuId}
+              onChange={e => handleInputChange('menuId', e.target.value)}
+              className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
+            >
+              {menus.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.name} ({m.durationMinutes}分)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className='block text-sm font-medium text-gray-700'>
+              オプション
+            </label>
+            <select
+              value={formData.optionId}
+              onChange={e => handleInputChange('optionId', e.target.value)}
+              className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
+            >
+              {optionItems.map(o => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Customer Fields */}
+        <div>
           <label className='block text-sm font-medium text-gray-700 mb-1'>
             電話番号
           </label>
@@ -398,163 +524,6 @@ export const AppointmentForm: React.FC<Props> = ({
                 )}
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Date */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700 mb-1'>
-            来店日
-          </label>
-          <input
-            type='date'
-            required
-            value={formData.date}
-            onChange={e => handleInputChange('date', e.target.value)}
-            className='block w-full shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
-          />
-        </div>
-
-        {/* Resource Selection */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700'>
-            担当・設備
-          </label>
-          <select
-            value={formData.resourceId}
-            onChange={e => handleInputChange('resourceId', e.target.value)}
-            className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
-          >
-            {resources
-              .filter(r => r.id !== 'separator')
-              .map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.name} {r.capacity ? `(${r.capacity})` : ''}
-                </option>
-              ))}
-          </select>
-        </div>
-
-        {/* Menu & Options */}
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-          <div>
-            <label className='block text-sm font-medium text-gray-700'>
-              メニュー
-            </label>
-            <select
-              value={formData.menuId}
-              onChange={e => handleInputChange('menuId', e.target.value)}
-              className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
-            >
-              {menus.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.name} ({m.durationMinutes}分)
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className='block text-sm font-medium text-gray-700'>
-              オプション
-            </label>
-            <select
-              value={formData.optionId}
-              onChange={e => handleInputChange('optionId', e.target.value)}
-              className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
-            >
-              {optionItems.map(o => (
-                <option key={o.id} value={o.id}>
-                  {o.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Time */}
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-          <div>
-            <label className='block text-sm font-medium text-gray-700'>
-              開始時間
-            </label>
-            <div className='flex gap-2 items-center mt-1'>
-              <input
-                type='number'
-                min='9'
-                max='23'
-                value={formData.startHour}
-                onChange={e =>
-                  handleInputChange('startHour', parseInt(e.target.value))
-                }
-                className='block w-20 shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
-              />
-              <span>:</span>
-              <input
-                type='number'
-                min='0'
-                max='59'
-                step='5'
-                value={formData.startMinute}
-                onChange={e =>
-                  handleInputChange('startMinute', parseInt(e.target.value))
-                }
-                className='block w-20 shadow-sm focus:ring-sky-500 focus:border-sky-500 sm:text-sm border-gray-300 rounded-md border p-2'
-              />
-            </div>
-          </div>
-          <div>
-            <label className='block text-sm font-medium text-gray-700'>
-              終了時間
-              <span className='text-xs font-normal text-gray-500 ml-2'>
-                (自動計算)
-              </span>
-            </label>
-            <div className='flex gap-2 items-center mt-1'>
-              <input
-                type='number'
-                disabled
-                value={endTime.hour}
-                className='block w-20 bg-gray-100 shadow-sm sm:text-sm border-gray-300 rounded-md border p-2 text-gray-600'
-              />
-              <span>:</span>
-              <input
-                type='number'
-                disabled
-                value={endTime.minute}
-                className='block w-20 bg-gray-100 shadow-sm sm:text-sm border-gray-300 rounded-md border p-2 text-gray-600'
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Color */}
-        <div>
-          <label className='block text-sm font-medium text-gray-700'>
-            カラーラベル
-          </label>
-          <div className='mt-2 flex gap-3 flex-wrap'>
-            {(['red', 'pink', 'blue', 'orange', 'purple'] as const).map(
-              color => (
-                <button
-                  key={color}
-                  type='button'
-                  onClick={() => handleInputChange('color', color)}
-                  className={`w-8 h-8 rounded-full ${formData.color === color ? 'ring-2 ring-offset-2 ring-sky-500' : ''}`}
-                  style={{
-                    backgroundColor:
-                      color === 'red'
-                        ? '#fb7185'
-                        : color === 'pink'
-                          ? '#f9a8d4'
-                          : color === 'blue'
-                            ? '#38bdf8'
-                            : color === 'orange'
-                              ? '#fb923c'
-                              : '#4f46e5',
-                  }}
-                />
-              )
-            )}
           </div>
         </div>
 

@@ -24,6 +24,14 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
+// useSelectedClinicをモック（Task C 対応）
+jest.mock('@/providers/selected-clinic-context', () => ({
+  useSelectedClinic: () => ({
+    selectedClinicId: 'clinic-1',
+    setSelectedClinicId: jest.fn(),
+  }),
+}));
+
 // useUserProfileContextをモック
 jest.mock('@/providers/user-profile-context', () => ({
   useUserProfileContext: () => ({

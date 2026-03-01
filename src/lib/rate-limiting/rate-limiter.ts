@@ -1,11 +1,16 @@
+import 'server-only';
+
 /**
  * 高性能レート制限システム
  * Phase 3B: Redis/Upstash Redis統合による段階的ブロック機能
  */
 
 import { Redis } from '@upstash/redis';
-import { logger } from '@/lib/logger';
 import { z } from 'zod';
+import { createLogger } from '@/lib/logger';
+import { getOrCreateRedis } from '@/lib/rate-limiting/redis-client';
+
+const log = createLogger('RateLimiter');
 
 // レート制限設定
 export const RATE_LIMIT_CONFIG = {
@@ -83,14 +88,9 @@ export class RateLimiter {
    * Redis接続の遅延初期化
    * 最初の使用時にのみ接続を確立
    */
-  private getRedis(): Redis {
-    if (!this.getRedis()) {
-      this.redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL || '',
-        token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-      });
-    }
-    return this.getRedis();
+  private getRedis(): Redis | null {
+    this.redis = getOrCreateRedis(this.redis);
+    return this.redis;
   }
 
   /**
@@ -106,25 +106,35 @@ export class RateLimiter {
       blockDuration: number;
     }>
   ): Promise<RateLimitResult> {
-    try {
-      const config = this.getConfig(type);
-      const window = customConfig?.window || config.WINDOW;
-      const limit =
-        customConfig?.limit ||
-        ('MAX_ATTEMPTS' in config && config.MAX_ATTEMPTS) ||
-        ('MAX_CALLS' in config && config.MAX_CALLS) ||
-        ('MAX_SESSIONS' in config && config.MAX_SESSIONS) ||
-        0;
+    const config = this.getConfig(type);
+    const window = customConfig?.window || config.WINDOW;
+    const limit =
+      customConfig?.limit ||
+      ('MAX_ATTEMPTS' in config && config.MAX_ATTEMPTS) ||
+      ('MAX_CALLS' in config && config.MAX_CALLS) ||
+      ('MAX_SESSIONS' in config && config.MAX_SESSIONS) ||
+      0;
+    const now = Math.floor(Date.now() / 1000);
 
+    const redis = this.getRedis();
+    if (!redis) {
+      return {
+        allowed: true,
+        limit,
+        remaining: limit,
+        resetTime: now + window,
+      };
+    }
+
+    try {
       const key = this.generateKey(type, identifier);
       const blockKey = `${key}:block`;
       const escalationKey = `${key}:escalation`;
 
-      const now = Math.floor(Date.now() / 1000);
       const windowStart = now - window;
 
       // ブロック状態チェック
-      const blockInfo = await this.getRedis().get(blockKey);
+      const blockInfo = await redis.get(blockKey);
       if (blockInfo) {
         const blockData = JSON.parse(blockInfo as string);
         const unblockTime = blockData.unblockTime;
@@ -140,18 +150,21 @@ export class RateLimiter {
           };
         } else {
           // ブロック期間終了
-          await this.getRedis().del(blockKey);
+          await redis.del(blockKey);
         }
       }
 
       // スライディングウィンドウでのカウント取得
-      const pipeline = this.getRedis().pipeline();
+      const pipeline = redis.pipeline();
 
       // 古いエントリを削除
       pipeline.zremrangebyscore(key, 0, windowStart);
 
       // 現在の時刻をスコアとして追加
-      pipeline.zadd(key, { score: now, member: `${now}-${Math.random()}` });
+      pipeline.zadd(key, {
+        score: now,
+        member: `${now}-${crypto.randomUUID()}`,
+      });
 
       // 現在のカウントを取得
       pipeline.zcard(key);
@@ -193,14 +206,14 @@ export class RateLimiter {
         resetTime,
       };
     } catch (error) {
-      logger.error('レート制限チェックエラー:', error);
+      log.error('レート制限チェックエラー:', error);
 
       // Redisエラー時は制限しない（フェイルオープン）
       return {
         allowed: true,
-        limit: 0,
-        remaining: 0,
-        resetTime: 0,
+        limit,
+        remaining: limit,
+        resetTime: now + window,
       };
     }
   }
@@ -215,8 +228,13 @@ export class RateLimiter {
     blockKey: string,
     now: number
   ): Promise<{ level: number; blockDuration: number }> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return { level: 0, blockDuration: 0 };
+    }
+
     // 現在のエスカレーションレベル取得
-    const escalationData = await this.getRedis().get(escalationKey);
+    const escalationData = await redis.get(escalationKey);
     let level = 0;
 
     if (escalationData) {
@@ -225,7 +243,6 @@ export class RateLimiter {
     }
 
     // ブロック期間の決定
-    const config = this.getConfig(type);
     let blockDuration: number;
 
     if (type === 'login_attempts') {
@@ -245,7 +262,7 @@ export class RateLimiter {
     const unblockTime = now + blockDuration;
 
     // ブロック情報を保存
-    await this.getRedis().setex(
+    await redis.setex(
       blockKey,
       blockDuration + 60, // 少し余裕を持たせる
       JSON.stringify({
@@ -258,7 +275,7 @@ export class RateLimiter {
     );
 
     // エスカレーション情報を更新
-    await this.getRedis().setex(
+    await redis.setex(
       escalationKey,
       86400, // 24時間保持
       JSON.stringify({
@@ -287,12 +304,17 @@ export class RateLimiter {
     type: RateLimitType,
     identifier: string
   ): Promise<boolean> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return false;
+    }
+
     try {
       const key = this.generateKey(type, identifier);
       const blockKey = `${key}:block`;
       const escalationKey = `${key}:escalation`;
 
-      const pipeline = this.getRedis().pipeline();
+      const pipeline = redis.pipeline();
       pipeline.del(key);
       pipeline.del(blockKey);
       pipeline.del(escalationKey);
@@ -309,7 +331,7 @@ export class RateLimiter {
 
       return true;
     } catch (error) {
-      console.error('レート制限リセットエラー:', error);
+      log.error('レート制限リセットエラー:', error);
       return false;
     }
   }
@@ -322,18 +344,23 @@ export class RateLimiter {
     identifier: string,
     ttl?: number
   ): Promise<boolean> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return false;
+    }
+
     try {
       const whitelistKey = `whitelist:${type}:${identifier}`;
 
       if (ttl) {
-        await this.getRedis().setex(whitelistKey, ttl, '1');
+        await redis.setex(whitelistKey, ttl, '1');
       } else {
-        await this.getRedis().set(whitelistKey, '1');
+        await redis.set(whitelistKey, '1');
       }
 
       return true;
     } catch (error) {
-      console.error('ホワイトリスト追加エラー:', error);
+      log.error('ホワイトリスト追加エラー:', error);
       return false;
     }
   }
@@ -345,12 +372,17 @@ export class RateLimiter {
     type: RateLimitType,
     identifier: string
   ): Promise<boolean> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return false;
+    }
+
     try {
       const whitelistKey = `whitelist:${type}:${identifier}`;
-      const result = await this.getRedis().exists(whitelistKey);
+      const result = await redis.exists(whitelistKey);
       return result === 1;
     } catch (error) {
-      console.error('ホワイトリストチェックエラー:', error);
+      log.error('ホワイトリストチェックエラー:', error);
       return false;
     }
   }
@@ -367,6 +399,15 @@ export class RateLimiter {
     blockLevel?: number;
     nextResetTime: number;
   }> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return {
+        currentCount: 0,
+        isBlocked: false,
+        nextResetTime: 0,
+      };
+    }
+
     try {
       const key = this.generateKey(type, identifier);
       const blockKey = `${key}:block`;
@@ -377,10 +418,10 @@ export class RateLimiter {
       const windowStart = now - window;
 
       // 現在のカウント取得
-      const currentCount = await this.getRedis().zcount(key, windowStart, now);
+      const currentCount = await redis.zcount(key, windowStart, now);
 
       // ブロック状態チェック
-      const blockInfo = await this.getRedis().get(blockKey);
+      const blockInfo = await redis.get(blockKey);
       let isBlocked = false;
       let blockLevel: number | undefined;
 
@@ -397,25 +438,13 @@ export class RateLimiter {
         nextResetTime: now + window,
       };
     } catch (error) {
-      console.error('レート制限統計取得エラー:', error);
+      log.error('レート制限統計取得エラー:', error);
       return {
         currentCount: 0,
         isBlocked: false,
         nextResetTime: 0,
       };
     }
-  }
-
-  /**
-   * 地域別制限チェック（将来拡張用）
-   */
-  async checkGeographicRestriction(
-    ipAddress: string,
-    allowedCountries?: string[]
-  ): Promise<{ allowed: boolean; country?: string }> {
-    // TODO: IP Geolocation APIとの統合
-    // 現在は全て許可
-    return { allowed: true };
   }
 
   /**
@@ -455,33 +484,14 @@ export class RateLimiter {
     timestamp: number;
   }): Promise<void> {
     try {
-      // セキュリティイベントテーブルへの記録
-      // 実装では実際のデータベース挿入処理
-      console.log('Rate Limit Event:', event);
+      // TODO: security_events テーブルへのDB書き込み実装
+      log.info('Rate Limit Event:', event);
     } catch (error) {
       // ログ記録エラーは主機能を妨げない
-      console.error('レート制限イベントログ記録エラー:', error);
+      log.error('レート制限イベントログ記録エラー:', error);
     }
   }
 }
 
-// シングルトンインスタンス（遅延初期化）
-let _rateLimiter: RateLimiter | null = null;
-
-/**
- * RateLimiterシングルトンを取得
- */
-export function getRateLimiter(): RateLimiter {
-  if (!_rateLimiter) {
-    _rateLimiter = new RateLimiter();
-  }
-  return _rateLimiter;
-}
-
-// 後方互換性のためのProxy（既存のrateLimiterインポートを維持）
-export const rateLimiter: RateLimiter = new Proxy({} as RateLimiter, {
-  get(_, prop: keyof RateLimiter) {
-    const instance = getRateLimiter();
-    return (instance as unknown as Record<string, unknown>)[prop as string];
-  },
-});
+// シングルトンインスタンス
+export const rateLimiter: RateLimiter = new RateLimiter();

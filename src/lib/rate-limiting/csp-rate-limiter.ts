@@ -1,10 +1,15 @@
+import 'server-only';
+
 /**
  * CSPレポートAPI専用レート制限
  * Phase 3B Refactoring: DDoS攻撃・ログ汚染攻撃対策
  */
 
 import { Redis } from '@upstash/redis';
-import { logger } from '@/lib/logger';
+import { createLogger } from '@/lib/logger';
+import { getOrCreateRedis } from '@/lib/rate-limiting/redis-client';
+
+const log = createLogger('CSPRateLimiter');
 
 // CSPレポート専用の制限設定
 interface CSPRateLimitConfig {
@@ -62,11 +67,9 @@ export class CSPRateLimiter {
    * Redis接続の遅延初期化
    * 最初の使用時にのみ接続を確立
    */
-  private getRedis(): Redis {
-    if (!this.getRedis()) {
-      this.redis = Redis.fromEnv();
-    }
-    return this.getRedis();
+  private getRedis(): Redis | null {
+    this.redis = getOrCreateRedis(this.redis);
+    return this.redis;
   }
 
   /**
@@ -76,10 +79,20 @@ export class CSPRateLimiter {
     const key = `csp_rate_limit:${clientIP}`;
     const blockKey = `csp_blocked:${clientIP}`;
     const now = Date.now();
+    const redis = this.getRedis();
+
+    if (!redis) {
+      return {
+        allowed: true,
+        remainingRequests: this.config.maxRequests,
+        resetTime: now + this.config.windowMs,
+        reason: 'Rate limiter unavailable - allowing request',
+      };
+    }
 
     try {
       // ブロック状態のチェック
-      const blockInfo = await this.getRedis().get(blockKey);
+      const blockInfo = await redis.get(blockKey);
       if (blockInfo) {
         const blockData = JSON.parse(blockInfo as string);
         if (blockData.blockedUntil > now) {
@@ -93,18 +106,21 @@ export class CSPRateLimiter {
         }
 
         // ブロック期間終了時のクリーンアップ
-        await this.getRedis().del(blockKey);
+        await redis.del(blockKey);
       }
 
       // スライディングウィンドウでのリクエスト数カウント
       const windowStart = now - this.config.windowMs;
-      const pipeline = this.getRedis().pipeline();
+      const pipeline = redis.pipeline();
 
       // 古いエントリを削除
       pipeline.zremrangebyscore(key, 0, windowStart);
 
       // 現在のリクエストを追加
-      pipeline.zadd(key, { score: now, member: `${now}-${Math.random()}` });
+      pipeline.zadd(key, {
+        score: now,
+        member: `${now}-${crypto.randomUUID()}`,
+      });
 
       // 現在のリクエスト数を取得
       pipeline.zcard(key);
@@ -118,7 +134,7 @@ export class CSPRateLimiter {
       // レート制限チェック
       if (currentRequests > this.config.maxRequests) {
         // ブロック状態に移行
-        await this.blockIP(clientIP, now);
+        await this.blockIP(clientIP, now, redis);
 
         return {
           allowed: false,
@@ -142,7 +158,7 @@ export class CSPRateLimiter {
         resetTime,
       };
     } catch (error) {
-      logger.error('CSP Rate Limiter Error:', error);
+      log.error('CSP Rate Limiter Error:', error);
 
       // Redis接続エラー時はリクエストを通す（可用性優先）
       return {
@@ -157,7 +173,11 @@ export class CSPRateLimiter {
   /**
    * IPアドレスをブロック状態に設定
    */
-  private async blockIP(clientIP: string, timestamp: number): Promise<void> {
+  private async blockIP(
+    clientIP: string,
+    timestamp: number,
+    redis: Redis
+  ): Promise<void> {
     const blockKey = `csp_blocked:${clientIP}`;
     const blockInfo = {
       blockedAt: timestamp,
@@ -165,14 +185,14 @@ export class CSPRateLimiter {
       reason: 'CSP report rate limit exceeded',
     };
 
-    await this.getRedis().setex(
+    await redis.setex(
       blockKey,
       Math.ceil(this.config.blockDurationMs / 1000),
       JSON.stringify(blockInfo)
     );
 
     // セキュリティログに記録
-    logger.warn('CSP Rate Limit: IP blocked', {
+    log.warn('CSP Rate Limit: IP blocked', {
       ip: clientIP,
       blockedUntil: new Date(blockInfo.blockedUntil).toISOString(),
       config: this.config,
@@ -187,7 +207,13 @@ export class CSPRateLimiter {
 
     // 厳格モードの期限を設定
     const strictModeKey = 'csp_strict_mode';
-    await this.getRedis().setex(
+    const redis = this.getRedis();
+    if (!redis) {
+      log.warn('CSP Rate Limiter: Redis unavailable; strict mode not saved');
+      return;
+    }
+
+    await redis.setex(
       strictModeKey,
       Math.ceil(duration / 1000),
       JSON.stringify({
@@ -197,7 +223,7 @@ export class CSPRateLimiter {
       })
     );
 
-    logger.warn('CSP Rate Limiter: Strict mode enabled', {
+    log.warn('CSP Rate Limiter: Strict mode enabled', {
       duration,
       config: this.config,
     });
@@ -213,16 +239,25 @@ export class CSPRateLimiter {
   }> {
     const now = Date.now();
     const windowStart = now - hours * 60 * 60 * 1000;
+    const redis = this.getRedis();
+
+    if (!redis) {
+      return {
+        totalRequests: 0,
+        blockedIPs: [],
+        topRequesters: [],
+      };
+    }
 
     try {
       // ブロックされたIPの一覧を取得
-      const blockedIPKeys = await this.getRedis().keys('csp_blocked:*');
+      const blockedIPKeys = await redis.keys('csp_blocked:*');
       const blockedIPs = blockedIPKeys.map(key =>
         key.replace('csp_blocked:', '')
       );
 
       // 統計情報の取得（簡易版）
-      const rateLimitKeys = await this.getRedis().keys('csp_rate_limit:*');
+      const rateLimitKeys = await redis.keys('csp_rate_limit:*');
       let totalRequests = 0;
       const ipRequestCounts: Record<string, number> = {};
 
@@ -230,11 +265,7 @@ export class CSPRateLimiter {
       for (const key of rateLimitKeys.slice(0, 100)) {
         // 最大100IP分
         const ip = key.replace('csp_rate_limit:', '');
-        const requestCount = await this.getRedis().zcount(
-          key,
-          windowStart,
-          now
-        );
+        const requestCount = await redis.zcount(key, windowStart, now);
 
         totalRequests += requestCount;
         ipRequestCounts[ip] = requestCount;
@@ -252,7 +283,7 @@ export class CSPRateLimiter {
         topRequesters,
       };
     } catch (error) {
-      logger.error('Failed to get CSP rate limit statistics:', error);
+      log.error('Failed to get CSP rate limit statistics:', error);
       return {
         totalRequests: 0,
         blockedIPs: [],
@@ -265,41 +296,25 @@ export class CSPRateLimiter {
    * 特定IPの制限解除（管理者機能）
    */
   async unblockIP(clientIP: string): Promise<boolean> {
+    const redis = this.getRedis();
+    if (!redis) {
+      return false;
+    }
+
     try {
       const blockKey = `csp_blocked:${clientIP}`;
       const rateLimitKey = `csp_rate_limit:${clientIP}`;
 
-      await Promise.all([
-        this.getRedis().del(blockKey),
-        this.getRedis().del(rateLimitKey),
-      ]);
+      await Promise.all([redis.del(blockKey), redis.del(rateLimitKey)]);
 
-      console.info('CSP Rate Limit: IP manually unblocked', { ip: clientIP });
+      log.info('CSP Rate Limit: IP manually unblocked', { ip: clientIP });
       return true;
     } catch (error) {
-      console.error('Failed to unblock IP:', error);
+      log.error('Failed to unblock IP:', error);
       return false;
     }
   }
 }
 
-// シングルトンインスタンス（遅延初期化）
-let _cspRateLimiter: CSPRateLimiter | null = null;
-
-/**
- * CSPRateLimiterシングルトンを取得
- */
-export function getCSPRateLimiter(): CSPRateLimiter {
-  if (!_cspRateLimiter) {
-    _cspRateLimiter = new CSPRateLimiter();
-  }
-  return _cspRateLimiter;
-}
-
-// 後方互換性のためのProxy（既存のcspRateLimiterインポートを維持）
-export const cspRateLimiter: CSPRateLimiter = new Proxy({} as CSPRateLimiter, {
-  get(_, prop: keyof CSPRateLimiter) {
-    const instance = getCSPRateLimiter();
-    return (instance as unknown as Record<string, unknown>)[prop as string];
-  },
-});
+// シングルトンインスタンス
+export const cspRateLimiter: CSPRateLimiter = new CSPRateLimiter();

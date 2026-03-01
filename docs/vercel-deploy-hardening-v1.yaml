@@ -1,0 +1,77 @@
+spec_version: 1
+doc_id: vercel-deploy-hardening-v1
+date: 2026-01-31
+objective: "Remove Proxy-based singleton exports; enforce server-only boundaries; fix RateLimiter.getRedis recursion; make Upstash rate limiting fail-open; ensure Vercel env parity."
+status: draft
+assumptions:
+  - "Current build passes: npm run build = SUCCESS."
+  - "Next.js App Router on Next.js 15."
+constraints:
+  - "Do NOT call cookies()/headers() at module top-level."
+  - "Do NOT cache request-scoped Supabase client in a module singleton."
+  - "Server-only modules must not be imported by Client Components; audit usages before adding import 'server-only'."
+decisions:
+  proxy_policy: "MUST remove Proxy exports in MFA and rate limiting modules."
+  server_only_policy: "MUST add import 'server-only' to server-only modules."
+  rate_limit_policy:
+    env_missing_behavior: "MUST fail-open (no-op) and warn once."
+  env_var_names:
+    upstash_url: "UPSTASH_REDIS_REST_URL"
+    upstash_token: "UPSTASH_REDIS_REST_TOKEN"
+targets:
+  mfa:
+    files:
+      - src/lib/mfa/backup-codes.ts
+      - src/lib/mfa/mfa-manager.ts
+  rate_limiting:
+    files:
+      - src/lib/rate-limiting/rate-limiter.ts
+      - src/lib/rate-limiting/csp-rate-limiter.ts
+tasks:
+  - id: P0
+    title: "Fix RateLimiter.getRedis recursion"
+    steps:
+      - "Replace self-recursive getRedis() calls with a single lazy init that returns this.redis."
+      - "If env vars missing, return null and let callers handle fail-open."
+  - id: P1
+    title: "Remove Proxy exports for MFA"
+    steps:
+      - "Delete Proxy export blocks for backupCodeManager/mfaManager."
+      - "Export concrete instances OR exported getters without Proxy."
+      - "Ensure Supabase client is created per method call, not stored."
+  - id: P2
+    title: "Remove Proxy exports + fail-open for rate limiting"
+    steps:
+      - "Add import 'server-only' at top."
+      - "Delete Proxy exports."
+      - "Implement getRedisOrNull() reading env at call-time (UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN)."
+      - "When env missing: allow=true, warn once."
+  - id: P3
+    title: "Align Vercel env for Preview/Prod"
+    steps:
+      - "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for both Preview and Production."
+      - "Redeploy to apply."
+  - id: P4
+    title: "Audit client imports before server-only"
+    steps:
+      - "rg -n \"from '@/lib/mfa/|from '@/lib/rate-limiting/\" src and confirm no Client Component imports."
+      - "If found, move usage to server-only route/handler or create server wrapper."
+verification:
+  local:
+    - "npm run build"
+    - "next build --debug-prerender"
+    - "Smoke: /reservations /login /admin/login /invite"
+  vercel:
+    - "Preview deploy succeeds"
+    - "Preview works with and without Upstash env (fail-open vs enabled)"
+dod_links:
+  - id: DOD-10
+    applies_to: ["P0", "P1", "P2", "P4"]
+references:
+  - "https://nextjs.org/docs/messages/next-dynamic-api-wrong-context"
+  - "https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout"
+  - "https://nextjs.org/docs/app/getting-started/server-and-client-components"
+  - "https://vercel.com/docs/environment-variables"
+  - "https://upstash.com/docs/redis/howto/vercelintegration"
+  - "https://upstash.com/docs/redis/sdks/ts/deployment"
+  - "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/get"
