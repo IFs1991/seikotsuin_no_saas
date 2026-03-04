@@ -2,6 +2,7 @@
 -- Local development seed data
 -- Purpose: bootstrap Supabase Auth + profiles for login testing
 -- ================================================================
+
 BEGIN;
 
 -- Clinic
@@ -45,7 +46,7 @@ INSERT INTO auth.users (
 VALUES (
   'bbbbbbb1-0000-4000-8000-bbbbbbbb0001',
   'manager@example.com',
-  crypt('password123', gen_salt('bf')),
+  extensions.crypt('password123', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"],"role":"manager"}',
   '{"clinic_id":"11111111-1111-4111-8111-111111111111","role":"manager"}',
