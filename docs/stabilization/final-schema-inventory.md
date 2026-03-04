@@ -172,20 +172,54 @@ Key patterns:
 
 ---
 
-## Triggers (28)
+## Triggers (28 unique names, 32 records in information_schema)
 
+Note: information_schema counts each event (INSERT/UPDATE/DELETE) as separate records.
+Below lists 28 unique trigger names.
+
+### Tenant Reference Integrity
 | Trigger | Table | Event | Function |
 |---------|-------|-------|----------|
 | `blocks_clinic_ref_check` | blocks | BEFORE INSERT/UPDATE | `validate_blocks_clinic_refs` |
 | `reservations_clinic_ref_check` | reservations | BEFORE INSERT/UPDATE | `validate_reservations_clinic_refs` |
 | `reservation_history_clinic_ref_check` | reservation_history | BEFORE INSERT/UPDATE | `validate_reservation_history_clinic_refs` |
+
+### Reservation Audit Logging
+| Trigger | Table | Event | Function |
+|---------|-------|-------|----------|
 | `reservation_created_log` | reservations | AFTER INSERT | `log_reservation_created` |
 | `reservation_updated_log` | reservations | AFTER UPDATE | `log_reservation_updated` |
 | `reservation_deleted_log` | reservations | AFTER DELETE | `log_reservation_deleted` |
 | `update_customer_stats_trigger` | reservations | AFTER INSERT/UPDATE | `update_customer_stats` |
-| `update_*_updated_at` | (multiple) | BEFORE UPDATE | `update_updated_at_column` |
-| `set_updated_at_*` | menu_categories, treatments | BEFORE UPDATE | `set_updated_at` |
-| `update_mfa_settings_updated_at_trigger` | user_mfa_settings | BEFORE UPDATE | `update_mfa_settings_updated_at` |
+
+### updated_at Auto-Update (`update_updated_at_column`)
+| Trigger | Table |
+|---------|-------|
+| `update_beta_feedback_updated_at` | beta_feedback |
+| `update_beta_usage_metrics_updated_at` | beta_usage_metrics |
+| `update_blocks_updated_at` | blocks |
+| `update_clinic_settings_updated_at` | clinic_settings |
+| `update_critical_incidents_updated_at` | critical_incidents |
+| `update_customers_updated_at` | customers |
+| `update_improvement_backlog_updated_at` | improvement_backlog |
+| `update_menus_updated_at` | menus |
+| `update_onboarding_states_updated_at` | onboarding_states |
+| `update_registered_devices_updated_at` | registered_devices |
+| `update_reservations_updated_at` | reservations |
+| `update_resources_updated_at` | resources |
+| `update_security_events_updated_at` | security_events |
+| `update_session_policies_updated_at` | session_policies |
+| `update_staff_invites_updated_at` | staff_invites |
+| `update_staff_preferences_updated_at` | staff_preferences |
+| `update_staff_shifts_updated_at` | staff_shifts |
+| `update_user_sessions_updated_at` | user_sessions |
+
+### Other updated_at Triggers
+| Trigger | Table | Function |
+|---------|-------|----------|
+| `set_updated_at_menu_categories` | menu_categories | `set_updated_at` |
+| `set_updated_at_treatments` | treatments | `set_updated_at` |
+| `update_mfa_settings_updated_at_trigger` | user_mfa_settings | `update_mfa_settings_updated_at` |
 
 ---
 
