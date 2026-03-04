@@ -86,7 +86,8 @@ function createQueryBuilder(
   mockData: unknown = null,
   mockError: unknown = null
 ) {
-  const builder: Record<string, jest.Mock> = {};
+  const result = { data: mockData, error: mockError };
+  const builder: Record<string, jest.Mock | ((resolve: (v: unknown) => void) => void)> = {};
 
   builder.select = jest.fn(() => builder);
   builder.insert = jest.fn(() => builder);
@@ -94,12 +95,10 @@ function createQueryBuilder(
   builder.upsert = jest.fn(() => builder);
   builder.delete = jest.fn(() => builder);
   builder.eq = jest.fn(() => builder);
-  builder.single = jest.fn(() =>
-    Promise.resolve({ data: mockData, error: mockError })
-  );
-  builder.maybeSingle = jest.fn(() =>
-    Promise.resolve({ data: mockData, error: mockError })
-  );
+  builder.single = jest.fn(() => Promise.resolve(result));
+  builder.maybeSingle = jest.fn(() => Promise.resolve(result));
+  // Make builder thenable so `await supabase.from('x').insert(...)` resolves to { data, error }
+  builder.then = (resolve: (v: unknown) => void) => resolve(result);
 
   return builder;
 }
@@ -387,31 +386,115 @@ describe('Onboarding API Integration', () => {
   // POST /api/onboarding/seed
   // ================================================================
   describe('POST /api/onboarding/seed', () => {
-    test('初期マスタ投入とオンボーディング完了が成功する', async () => {
-      const mockState = {
-        clinic_id: 'clinic-1',
-      };
+    test('seed route は menus テーブルに INSERT する（master_treatment_menus ではない）', async () => {
+      const fromCalls: string[] = [];
+      const mockState = { clinic_id: 'clinic-1' };
 
-      mockSupabaseClient.from.mockReturnValue(createQueryBuilder(mockState));
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        fromCalls.push(table);
+        if (table === 'onboarding_states') {
+          return createQueryBuilder(mockState);
+        }
+        return createQueryBuilder({});
+      });
 
       const { POST } = await import('@/app/api/onboarding/seed/route');
 
       const request = createMockRequest('/api/onboarding/seed', {
         method: 'POST',
         body: {
-          treatment_menus: [{ name: '肩こり治療', price: 3000 }],
+          treatment_menus: [{ name: '肩こり治療', price: 3000, duration_minutes: 30 }],
+          payment_methods: ['現金'],
+          patient_types: ['初診'],
+        },
+      });
+
+      await POST(request);
+
+      expect(fromCalls).toContain('menus');
+      expect(fromCalls).not.toContain('master_treatment_menus');
+    });
+
+    test('menu INSERT が1件でも失敗した場合、onboarding_states を completed に更新しない', async () => {
+      const fromCalls: string[] = [];
+      const mockState = { clinic_id: 'clinic-1' };
+      let menuInsertCount = 0;
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        fromCalls.push(table);
+        if (table === 'onboarding_states') {
+          const qb = createQueryBuilder(mockState);
+          return qb;
+        }
+        if (table === 'menus') {
+          menuInsertCount++;
+          // 2件目で失敗
+          if (menuInsertCount === 2) {
+            return createQueryBuilder(null, { message: 'insert error' });
+          }
+          return createQueryBuilder({});
+        }
+        return createQueryBuilder({});
+      });
+
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const request = createMockRequest('/api/onboarding/seed', {
+        method: 'POST',
+        body: {
+          treatment_menus: [
+            { name: '肩こり治療', price: 3000, duration_minutes: 30 },
+            { name: '腰痛治療', price: 4000, duration_minutes: 45 },
+          ],
           payment_methods: ['現金'],
           patient_types: ['初診'],
         },
       });
 
       const response = await POST(request);
+      expect(response.status).toBe(500);
 
+      const json = await response.json();
+      expect(json.success).toBe(false);
+
+      // onboarding_states の update が呼ばれていないことを検証
+      // (fromCalls に onboarding_states が最初の select 以降再度現れない)
+      const stateCallsAfterMenus = fromCalls.slice(
+        fromCalls.indexOf('menus')
+      );
+      expect(stateCallsAfterMenus).not.toContain('onboarding_states');
+    });
+
+    test('成功時のレスポンスに menu_count を含む', async () => {
+      const mockState = { clinic_id: 'clinic-1' };
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'onboarding_states') {
+          return createQueryBuilder(mockState);
+        }
+        return createQueryBuilder({});
+      });
+
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const request = createMockRequest('/api/onboarding/seed', {
+        method: 'POST',
+        body: {
+          treatment_menus: [
+            { name: '肩こり治療', price: 3000, duration_minutes: 30 },
+            { name: '腰痛治療', price: 4000, duration_minutes: 45 },
+          ],
+          payment_methods: ['現金'],
+          patient_types: ['初診'],
+        },
+      });
+
+      const response = await POST(request);
       expect(response.status).toBe(200);
 
       const json = await response.json();
       expect(json.success).toBe(true);
-      expect(json.data.completed).toBe(true);
+      expect(json.data.menu_count).toEqual({ success: 2, failed: 0 });
     });
 
     test('空のメニューは400エラー', async () => {
@@ -452,6 +535,38 @@ describe('Onboarding API Integration', () => {
 
       const json = await response.json();
       expect(json.success).toBe(false);
+    });
+  });
+
+  // ================================================================
+  // Onboarding Schema: duration_minutes
+  // ================================================================
+  describe('seedMasterSchema duration_minutes', () => {
+    test('duration_minutes を受け入れる', () => {
+      const { seedMasterSchema } = require('@/app/api/onboarding/schema');
+      const result = seedMasterSchema.safeParse({
+        treatment_menus: [{ name: '施術A', price: 3000, duration_minutes: 30 }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.treatment_menus[0].duration_minutes).toBe(30);
+      }
+    });
+
+    test('duration_minutes <= 0 は拒否する', () => {
+      const { seedMasterSchema } = require('@/app/api/onboarding/schema');
+      const result = seedMasterSchema.safeParse({
+        treatment_menus: [{ name: '施術A', price: 3000, duration_minutes: 0 }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    test('duration_minutes は省略可能', () => {
+      const { seedMasterSchema } = require('@/app/api/onboarding/schema');
+      const result = seedMasterSchema.safeParse({
+        treatment_menus: [{ name: '施術A', price: 3000 }],
+      });
+      expect(result.success).toBe(true);
     });
   });
 });

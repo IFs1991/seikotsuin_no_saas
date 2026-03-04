@@ -5,11 +5,12 @@ import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
 import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import type { Database } from '@/types/supabase';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     {
@@ -69,7 +70,7 @@ export async function createClient(): Promise<SupabaseServerClient> {
 }
 
 export function createAdminClient(): SupabaseServerClient {
-  return createServerClient(
+  return createServerClient<Database>(
     assertEnv('NEXT_PUBLIC_SUPABASE_URL'),
     assertEnv('SUPABASE_SERVICE_ROLE_KEY'),
     {

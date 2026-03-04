@@ -1,3 +1,6 @@
+-- DEPRECATED: 20260304000100_csp_security_alerts_migration_ssot.sql に移行済み
+-- このファイルは参照用にのみ保持しています。変更は migration で行ってください。
+
 /**
  * セキュリティアラートログ用データベーススキーマ
  * Phase 3B Refactoring: 通知システム用テーブル

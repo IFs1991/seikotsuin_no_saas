@@ -223,6 +223,7 @@ export class SecurityNotificationManager {
    */
   private async saveToDatabase(alert: SecurityAlert): Promise<void> {
     await this.supabase.from('security_alerts').insert({
+      clinic_id: alert.details?.clinic_id ?? null,
       type: alert.type,
       severity: alert.severity,
       title: alert.title,

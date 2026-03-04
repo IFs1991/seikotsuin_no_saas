@@ -645,6 +645,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      csp_violations: {
+        Row: {
+          id: string;
+          clinic_id: string | null;
+          document_uri: string;
+          violated_directive: string;
+          blocked_uri: string | null;
+          effective_directive: string | null;
+          original_policy: string | null;
+          disposition: string | null;
+          line_number: number | null;
+          column_number: number | null;
+          source_file: string | null;
+          script_sample: string | null;
+          referrer: string | null;
+          client_ip: string | null;
+          user_agent: string | null;
+          severity: string;
+          threat_score: number | null;
+          is_false_positive: boolean | null;
+          notes: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          clinic_id?: string | null;
+          document_uri: string;
+          violated_directive: string;
+          blocked_uri?: string | null;
+          effective_directive?: string | null;
+          original_policy?: string | null;
+          disposition?: string | null;
+          line_number?: number | null;
+          column_number?: number | null;
+          source_file?: string | null;
+          script_sample?: string | null;
+          referrer?: string | null;
+          client_ip?: string | null;
+          user_agent?: string | null;
+          severity?: string;
+          threat_score?: number | null;
+          is_false_positive?: boolean | null;
+          notes?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string | null;
+          document_uri?: string;
+          violated_directive?: string;
+          blocked_uri?: string | null;
+          effective_directive?: string | null;
+          original_policy?: string | null;
+          disposition?: string | null;
+          line_number?: number | null;
+          column_number?: number | null;
+          source_file?: string | null;
+          script_sample?: string | null;
+          referrer?: string | null;
+          client_ip?: string | null;
+          user_agent?: string | null;
+          severity?: string;
+          threat_score?: number | null;
+          is_false_positive?: boolean | null;
+          notes?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
       critical_incidents: {
         Row: {
           acknowledged_at: string | null;
@@ -1932,6 +2010,60 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      security_alerts: {
+        Row: {
+          id: string;
+          clinic_id: string | null;
+          type: string;
+          severity: string;
+          title: string;
+          message: string;
+          details: Json | null;
+          client_ip: string | null;
+          user_agent: string | null;
+          source: string | null;
+          status: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          clinic_id?: string | null;
+          type: string;
+          severity: string;
+          title: string;
+          message: string;
+          details?: Json | null;
+          client_ip?: string | null;
+          user_agent?: string | null;
+          source?: string | null;
+          status?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          clinic_id?: string | null;
+          type?: string;
+          severity?: string;
+          title?: string;
+          message?: string;
+          details?: Json | null;
+          client_ip?: string | null;
+          user_agent?: string | null;
+          source?: string | null;
+          status?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
       };
       security_events: {
         Row: {

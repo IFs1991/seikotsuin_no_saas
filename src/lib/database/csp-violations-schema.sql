@@ -1,3 +1,6 @@
+-- DEPRECATED: 20260304000100_csp_security_alerts_migration_ssot.sql に移行済み
+-- このファイルは参照用にのみ保持しています。変更は migration で行ってください。
+
 /**
  * CSP違反ログ用データベーススキーマ
  * Phase 3B: CSP違反の監視・記録・分析

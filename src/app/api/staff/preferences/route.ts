@@ -9,6 +9,7 @@ import {
   logError,
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { canManageClinicSettingsWithCompat } from '@/lib/constants/roles';
 
 const PATH = '/api/staff/preferences';
 
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
 
-    const { supabase } = await ensureClinicAccess(
+    const { supabase, permissions } = await ensureClinicAccess(
       request,
       PATH,
       dto.clinic_id,
@@ -186,6 +187,12 @@ export async function POST(request: NextRequest) {
         requireClinicMatch: true,
       }
     );
+
+    // @spec docs/stabilization/spec-rls-menus-staff-preferences-hardening-v0.2.md Issue 2
+    // therapist/staff は直接 INSERT 不可。本フェーズでは self-service 登録なし。
+    if (!canManageClinicSettingsWithCompat(permissions.role)) {
+      return createErrorResponse('希望登録は管理者経由で依頼してください', 403);
+    }
 
     const { data, error } = await supabase
       .from('staff_preferences')

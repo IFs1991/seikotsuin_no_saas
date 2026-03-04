@@ -599,47 +599,6 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     }
   });
 
-  /**
-   * Test: Public API Menu Access
-   *
-   * Non-authenticated customers access menus via server API gateway.
-   * This test verifies the pattern works (API endpoint test).
-   */
-  test('public api - menus are accessible via server API with clinic_id', async () => {
-    const adminResult = await createAdminClient();
-
-    if (!adminResult) {
-      console.warn('Admin authentication failed');
-      return;
-    }
-
-    // Get a valid clinic_id for testing
-    const { data: clinics } = await adminResult.client
-      .from('clinics')
-      .select('id')
-      .eq('is_active', true)
-      .limit(1);
-
-    if (!clinics || clinics.length === 0) {
-      console.warn('No active clinics found');
-      return;
-    }
-
-    // Note: In real E2E, this would call the actual API endpoint
-    // GET /api/public/menus?clinic_id=xxx
-    // For now, verify the menus are scoped correctly
-    const { data: menus, error } = await adminResult.client
-      .from('menus')
-      .select('id, clinic_id, name')
-      .eq('clinic_id', clinics[0].id)
-      .eq('is_active', true)
-      .eq('is_deleted', false);
-
-    expect(error).toBeNull();
-    if (menus && menus.length > 0) {
-      menus.forEach(menu => {
-        expect(menu.clinic_id).toBe(clinics[0].id);
-      });
-    }
-  });
+  // 公開メニューAPIテストは public-menus-api.spec.ts に移動しました。
+  // @see src/__tests__/e2e-playwright/public-menus-api.spec.ts
 });

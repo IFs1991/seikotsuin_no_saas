@@ -19,10 +19,19 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient();
+    const clinicId = auth.permissions?.clinic_id;
 
     // 過去24時間の統計を取得
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+    // clinic_id フィルタヘルパー
+    const withClinicFilter = (query: any) => {
+      if (clinicId) {
+        return query.eq('clinic_id', clinicId);
+      }
+      return query;
+    };
 
     // 基本統計の取得
     const [
@@ -32,31 +41,39 @@ export async function GET(request: NextRequest) {
       topDirectivesResult,
     ] = await Promise.all([
       // 総違反数
-      supabase
-        .from('csp_violations')
-        .select('id', { count: 'exact' })
-        .gte('created_at', twentyFourHoursAgo.toISOString()),
+      withClinicFilter(
+        supabase
+          .from('csp_violations')
+          .select('id', { count: 'exact' })
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+      ),
 
       // 重大違反数（critical + high）
-      supabase
-        .from('csp_violations')
-        .select('id', { count: 'exact' })
-        .gte('created_at', twentyFourHoursAgo.toISOString())
-        .in('severity', ['critical', 'high']),
+      withClinicFilter(
+        supabase
+          .from('csp_violations')
+          .select('id', { count: 'exact' })
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+          .in('severity', ['critical', 'high'])
+      ),
 
       // ユニーククライアント数
-      supabase
-        .from('csp_violations')
-        .select('client_ip')
-        .gte('created_at', twentyFourHoursAgo.toISOString()),
+      withClinicFilter(
+        supabase
+          .from('csp_violations')
+          .select('client_ip')
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+      ),
 
       // よく違反されるディレクティブ
-      supabase
-        .from('csp_violations')
-        .select('violated_directive')
-        .gte('created_at', twentyFourHoursAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1000),
+      withClinicFilter(
+        supabase
+          .from('csp_violations')
+          .select('violated_directive')
+          .gte('created_at', twentyFourHoursAgo.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1000)
+      ),
     ]);
 
     // エラーチェック
@@ -82,13 +99,15 @@ export async function GET(request: NextRequest) {
       .map(([directive, count]) => ({ directive, count }));
 
     // 最近の高脅威違反を取得
-    const recentThreatsResult = await supabase
-      .from('csp_violations')
-      .select('*')
-      .gte('created_at', twentyFourHoursAgo.toISOString())
-      .in('severity', ['critical', 'high'])
-      .order('created_at', { ascending: false })
-      .limit(10);
+    const recentThreatsResult = await withClinicFilter(
+      supabase
+        .from('csp_violations')
+        .select('*')
+        .gte('created_at', twentyFourHoursAgo.toISOString())
+        .in('severity', ['critical', 'high'])
+        .order('created_at', { ascending: false })
+        .limit(10)
+    );
 
     const stats = {
       total_violations: totalViolationsResult.count || 0,

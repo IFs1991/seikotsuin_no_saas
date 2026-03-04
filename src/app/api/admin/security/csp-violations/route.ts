@@ -42,13 +42,14 @@ export async function GET(request: NextRequest) {
     const params = QuerySchema.parse({
       limit: searchParams.get('limit'),
       offset: searchParams.get('offset'),
-      severity: searchParams.get('severity') as any,
+      severity: searchParams.get('severity') ?? undefined,
       directive: searchParams.get('directive'),
       client_ip: searchParams.get('client_ip'),
       hours: searchParams.get('hours'),
     });
 
     const supabase = await createClient();
+    const clinicId = auth.permissions?.clinic_id;
 
     // 期間設定
     const sinceTime = new Date();
@@ -81,6 +82,11 @@ export async function GET(request: NextRequest) {
       )
       .gte('created_at', sinceTime.toISOString())
       .order('created_at', { ascending: false });
+
+    // clinic_id フィルタ
+    if (clinicId) {
+      query = query.eq('clinic_id', clinicId);
+    }
 
     // フィルター適用
     if (params.severity) {
@@ -187,10 +193,12 @@ export async function PATCH(request: NextRequest) {
     const body = auth.body as Record<string, unknown> | undefined;
     const violationId =
       body && typeof body.violationId === 'string' ? body.violationId : '';
-    const is_false_positive = body
-      ? (body as any).is_false_positive
-      : undefined;
-    const notes = body ? (body as any).notes : undefined;
+    const is_false_positive =
+      body && typeof body.is_false_positive === 'boolean'
+        ? body.is_false_positive
+        : undefined;
+    const notes =
+      body && typeof body.notes === 'string' ? body.notes : undefined;
 
     if (!violationId) {
       return NextResponse.json(

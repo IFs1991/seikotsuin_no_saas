@@ -22,7 +22,36 @@ DO $$
 DECLARE
     null_count INTEGER;
     table_name TEXT;
+    fallback_clinic_id UUID;
 BEGIN
+    -- NULL補完に使う既存clinicを先に取得
+    SELECT id INTO fallback_clinic_id
+    FROM public.clinics
+    ORDER BY created_at
+    LIMIT 1;
+
+    -- clinicが存在しない場合は、NULL行がある時のみ移行用clinicを作成
+    IF fallback_clinic_id IS NULL THEN
+        SELECT
+            COALESCE((SELECT count(*) FROM public.customers WHERE clinic_id IS NULL), 0)
+            + COALESCE((SELECT count(*) FROM public.menus WHERE clinic_id IS NULL), 0)
+            + COALESCE((SELECT count(*) FROM public.resources WHERE clinic_id IS NULL), 0)
+            + COALESCE((SELECT count(*) FROM public.reservations WHERE clinic_id IS NULL), 0)
+            + COALESCE((SELECT count(*) FROM public.blocks WHERE clinic_id IS NULL), 0)
+            + COALESCE((SELECT count(*) FROM public.reservation_history WHERE clinic_id IS NULL), 0)
+        INTO null_count;
+
+        IF null_count > 0 THEN
+            INSERT INTO public.clinics (name, is_active)
+            VALUES ('[MIGRATION] fallback clinic for NULL clinic_id cleanup', true)
+            RETURNING id INTO fallback_clinic_id;
+
+            RAISE WARNING
+                'No clinics existed. Created fallback clinic % to resolve % NULL clinic_id rows.',
+                fallback_clinic_id, null_count;
+        END IF;
+    END IF;
+
     -- 1. reservation_history は特別処理: reservation_id 経由で正しい clinic_id を取得
     SELECT count(*) INTO null_count
     FROM public.reservation_history
@@ -47,7 +76,7 @@ BEGIN
         IF null_count > 0 THEN
             RAISE WARNING 'reservation_history still has % orphan rows with NULL clinic_id. Using first clinic as fallback.', null_count;
             UPDATE public.reservation_history
-            SET clinic_id = (SELECT id FROM public.clinics ORDER BY created_at LIMIT 1)
+            SET clinic_id = fallback_clinic_id
             WHERE clinic_id IS NULL;
         END IF;
 
@@ -65,13 +94,30 @@ BEGIN
             RAISE WARNING 'Table % has % rows with NULL clinic_id. Attempting to fix...', table_name, null_count;
 
             EXECUTE format(
-                'UPDATE public.%I SET clinic_id = (SELECT id FROM public.clinics ORDER BY created_at LIMIT 1) WHERE clinic_id IS NULL',
+                'UPDATE public.%I SET clinic_id = $1 WHERE clinic_id IS NULL',
                 table_name
-            );
+            ) USING fallback_clinic_id;
 
             RAISE NOTICE 'Fixed % NULL clinic_id rows in %', null_count, table_name;
         END IF;
     END LOOP;
+
+    -- NOT NULL適用前の最終検証
+    SELECT
+        COALESCE((SELECT count(*) FROM public.customers WHERE clinic_id IS NULL), 0)
+        + COALESCE((SELECT count(*) FROM public.menus WHERE clinic_id IS NULL), 0)
+        + COALESCE((SELECT count(*) FROM public.resources WHERE clinic_id IS NULL), 0)
+        + COALESCE((SELECT count(*) FROM public.reservations WHERE clinic_id IS NULL), 0)
+        + COALESCE((SELECT count(*) FROM public.blocks WHERE clinic_id IS NULL), 0)
+        + COALESCE((SELECT count(*) FROM public.reservation_history WHERE clinic_id IS NULL), 0)
+    INTO null_count;
+
+    IF null_count > 0 THEN
+        RAISE EXCEPTION
+            'Cannot apply NOT NULL to clinic_id columns: % rows still NULL after cleanup.',
+            null_count
+            USING ERRCODE = '23502';
+    END IF;
 END $$;
 
 -- ================================================================

@@ -62,20 +62,40 @@ export async function POST(request: NextRequest) {
 
     const clinicId = state.clinic_id;
 
-    // 施術メニュー投入
+    // 施術メニュー投入（all-or-nothing: 1件でも失敗したら中断）
+    const menuCount = { success: 0, failed: 0 };
+    const menuErrors: string[] = [];
+
     for (const menu of treatment_menus) {
-      const { error } = await supabase.from('master_treatment_menus').insert({
+      const { error } = await supabase.from('menus').insert({
         clinic_id: clinicId,
         name: menu.name,
         price: menu.price,
+        duration_minutes: menu.duration_minutes ?? 30,
         description: menu.description ?? null,
         is_active: true,
       });
 
       if (error) {
+        menuCount.failed++;
+        menuErrors.push(`${menu.name}: ${error.message}`);
         console.error('Treatment menu insert error:', error);
-        // 続行（一部失敗しても他は投入）
+      } else {
+        menuCount.success++;
       }
+    }
+
+    // メニュー投入に失敗があれば中断（completed に遷移しない）
+    if (menuCount.failed > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '施術メニューの投入に失敗しました',
+          details: menuErrors,
+          menu_count: menuCount,
+        },
+        { status: 500 }
+      );
     }
 
     // 支払方法投入
@@ -121,6 +141,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         completed: true,
+        menu_count: menuCount,
       },
     });
   } catch (error) {

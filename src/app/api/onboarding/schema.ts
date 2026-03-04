@@ -111,6 +111,11 @@ const treatmentMenuItemSchema = z.object({
     .min(1, 'メニュー名は必須です')
     .max(255, 'メニュー名は255文字以内で入力してください'),
   price: z.number().min(0, '価格は0以上で入力してください'),
+  duration_minutes: z
+    .number()
+    .int('施術時間は整数で入力してください')
+    .min(1, '施術時間は1分以上で入力してください')
+    .optional(),
   description: z
     .string()
     .max(1000, '説明は1000文字以内で入力してください')
