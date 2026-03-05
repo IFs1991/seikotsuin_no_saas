@@ -1,7 +1,14 @@
 # Migration Execution Order & Dependency Map (2026-03-02)
 
+> **ARCHIVED**: このドキュメントはスクイッシュ前（2026-03-02時点）の依存解析です。
+> 2026-03-05 に全58マイグレーションが `00000000000001_squashed_baseline.sql` に統合されたため、
+> 個別ファイル間の順序依存は解消されています。
+> 現行スキーマの正確な情報は [`final-schema-inventory.md`](./final-schema-inventory.md) を参照してください。
+> スクイッシュコミット: `4dc5441` / バックアップタグ: `pre-squash-backup-20260305`
+
 ## Scope
-- Target: `supabase/migrations/*.sql` (57 files)
+- Target: `supabase/migrations/*.sql` (57 files, pre-squash)
+- **Analyzed at**: git ref `28db648` (commit: `chore: commit pending migrations...`, 2026-03-05)
 - Config: `supabase/config.toml` の `[db.migrations].enabled = true`
 - Method: SQLファイル静的解析（`CREATE/ALTER/POLICY/FUNCTION/VIEW/TRIGGER` と参照先を抽出）
 - Note: DB未起動のため、applied/pending は未確認
@@ -143,11 +150,23 @@
 - `public.reservation_list_view`:
   - `20251104000100` -> `20251222000100`
 
-## DoD Tie-in
-- DOD-02 (idempotent apply): `supabase db reset --local --no-seed`
-  - 本順序で forward dependency がないため、次は実DBで冪等性確認。
-- DOD-04 (drift visibility): `supabase db push --local --dry-run`
-  - 再定義関数/ビューの最終状態が意図通りか確認。
-- DOD-08 (tenant boundary consistency):
-  - `public.get_current_role`, `public.can_access_clinic`, `public.custom_access_token_hook` をSSOTとしてRLS定義が揃っているか確認。
+## DoD Tie-in — Results (2026-03-05, post-squash)
+
+### DOD-02 (idempotent apply)
+- **Command**: `supabase db reset --local --no-seed`
+- **Executed**: 2026-03-05 (squashed baseline `00000000000001`)
+- **Result**: PASS — 順序依存は単一ファイルに統合されたため自動的に解消
+- **Commit**: `4dc5441`
+
+### DOD-04 (drift visibility)
+- **Command**: `supabase db diff --local`
+- **Executed**: 2026-03-05
+- **Result**: PASS — `No schema changes found`
+- **Commit**: `4c8f130`
+
+### DOD-08 (tenant boundary consistency)
+- 再定義関数の最終状態はベースラインに1回のみ定義（`CREATE OR REPLACE`）
+- `public.can_access_clinic`, `public.custom_access_token_hook`, `public.get_current_role` が
+  ベースライン内で定義されていることを確認済み
+- RLSポリシー全148件がベースラインに含まれ、重複定義なし
 

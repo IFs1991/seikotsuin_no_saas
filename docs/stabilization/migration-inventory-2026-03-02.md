@@ -1,11 +1,16 @@
 # Migration Inventory Snapshot (2026-03-02)
 
+> **ARCHIVED**: このドキュメントはスクイッシュ前（2026-03-02時点）の棚卸しスナップショットです。
+> 2026-03-05 に全58マイグレーションが `00000000000001_squashed_baseline.sql` に統合されました。
+> 現行スキーマの正確な情報は [`final-schema-inventory.md`](./final-schema-inventory.md) を参照してください。
+> スクイッシュコミット: `4dc5441` / バックアップタグ: `pre-squash-backup-20260305`
+
 ## Scope
-- Target: `supabase/migrations`
+- Target: `supabase/migrations` (at `28db648`, pre-squash)
 - Config source: `supabase/config.toml` (`[db.migrations].enabled = true`)
 - Notes: this is a file-system inventory only. Local DB was not running, so applied-vs-pending status is not included.
 
-## Counts
+## Counts (pre-squash)
 - Total files: 64
 - Executable migration files (*.sql): 57
 - Rollback artifacts (*.sql.backup): 7
@@ -115,6 +120,21 @@
 - 20260302000100_rls_menus_public_remove_add_staff_select.sql
 - 20260302000200_rls_staff_preferences_insert_guard.sql
 
-## Follow-up Verification (DoD)
-- DOD-02: `supabase db reset --local --no-seed` (idempotent migration apply)
-- DOD-04: `supabase db push --local --dry-run` (schema drift visibility)
+## Follow-up Verification (DoD) — Results
+
+### DOD-02: Idempotent migration apply
+- **Command**: `supabase db reset --local --no-seed`
+- **Executed**: 2026-03-05 (post-squash, single baseline)
+- **Result**: PASS — `Finished supabase db reset on branch main.`
+- **Commit**: `4dc5441`
+
+### DOD-04: Schema drift visibility
+- **Command**: `supabase db diff --local`
+- **Executed**: 2026-03-05
+- **Result**: PASS — `No schema changes found`
+- **Commit**: `4c8f130`
+
+### Additional verifications (2026-03-05)
+- `supabase db reset --local` (with seed): PASS
+- TypeScript type generation (`supabase gen types typescript`): PASS — 3,668 lines
+- Backup tag pushed: `pre-squash-backup-20260305`

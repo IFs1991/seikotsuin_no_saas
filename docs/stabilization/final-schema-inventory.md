@@ -3,6 +3,9 @@
 **Generated**: 2026-03-05
 **Migration**: `00000000000001_squashed_baseline.sql` (6,055 lines)
 **Squashed from**: 58 individual migrations (2025-08 ~ 2026-03)
+**Source commit**: `4dc5441` (squash) / `f737579` (self-review fixes)
+**Backup tag**: `pre-squash-backup-20260305`
+**Verified against**: local Supabase DB (`supabase db reset` + `supabase db diff`)
 
 ---
 
