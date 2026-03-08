@@ -17,6 +17,7 @@ import {
   createSupabaseMock,
   type SupabaseMock,
 } from '../../../test-utils/supabaseMock';
+import type { Database } from '@/types/supabase';
 
 const TEST_CLINIC_ID = 'test-clinic-id';
 
@@ -75,6 +76,48 @@ const mockReservation: Reservation = {
   createdBy: 'user1',
 };
 
+const mockReservationRow: Database['public']['Tables']['reservations']['Row'] = {
+  id: 'res1',
+  clinic_id: TEST_CLINIC_ID,
+  created_at: mockReservation.createdAt.toISOString(),
+  created_by: 'user1',
+  customer_id: 'cust1',
+  start_time: mockReservation.startTime.toISOString(),
+  end_time: mockReservation.endTime.toISOString(),
+  menu_id: 'menu1',
+  staff_id: 'staff1',
+  status: 'confirmed',
+  channel: 'phone',
+  notes: '初回の方です',
+  selected_options: null,
+  updated_at: mockReservation.updatedAt.toISOString(),
+};
+
+const mockResourceRow: Database['public']['Tables']['resources']['Row'] = {
+  id: 'staff1',
+  clinic_id: TEST_CLINIC_ID,
+  color: null,
+  created_at: '2025-10-24T10:00:00.000Z',
+  created_by: 'user1',
+  deleted_at: null,
+  deleted_by: null,
+  display_order: 1,
+  email: 'tanaka@example.com',
+  is_active: true,
+  is_bookable: true,
+  is_deleted: false,
+  max_concurrent: 1,
+  name: '田中先生',
+  phone: '090-0000-0000',
+  qualifications: null,
+  specialties: null,
+  staff_code: 'staff1',
+  supported_menus: ['menu1', 'menu2'],
+  type: 'staff',
+  updated_at: '2025-10-24T10:00:00.000Z',
+  working_hours: mockStaff.workingHours,
+};
+
 // 統一モック
 let mockSupabase: SupabaseMock;
 
@@ -92,23 +135,23 @@ describe('ReservationService', () => {
     // Default results
     mockSupabase.setResult(
       { table: 'reservations', op: 'select' },
-      { data: [mockReservation], error: null }
+      { data: [mockReservationRow], error: null }
     );
     mockSupabase.setResult(
       { table: 'reservations', op: 'insert' },
-      { data: mockReservation, error: null }
+      { data: mockReservationRow, error: null }
     );
     mockSupabase.setResult(
       { table: 'reservations', op: 'update' },
-      { data: mockReservation, error: null }
+      { data: mockReservationRow, error: null }
     );
     mockSupabase.setResult(
       { table: 'reservations', op: 'delete' },
       { data: null, error: null }
     );
     mockSupabase.setResult(
-      { table: 'staff', op: 'select' },
-      { data: mockStaff, error: null }
+      { table: 'resources', op: 'select' },
+      { data: mockResourceRow, error: null }
     );
     mockSupabase.setResult(
       { table: 'blocks', op: 'select' },
@@ -655,8 +698,11 @@ describe('workingHours null safety', () => {
 
     // Set result for staff lookup - actual implementation will be tested
     mockSupabase.setResult(
-      { table: 'staff', op: 'select' },
-      { data: staffWithNoWorkingHours, error: null }
+      { table: 'resources', op: 'select' },
+      {
+        data: { ...mockResourceRow, working_hours: null },
+        error: null,
+      }
     );
 
     // Test actual implementation (no spy) - should not throw
@@ -680,8 +726,14 @@ describe('workingHours null safety', () => {
     };
 
     mockSupabase.setResult(
-      { table: 'staff', op: 'select' },
-      { data: staffWithPartialWorkingHours, error: null }
+      { table: 'resources', op: 'select' },
+      {
+        data: {
+          ...mockResourceRow,
+          working_hours: staffWithPartialWorkingHours.workingHours,
+        },
+        error: null,
+      }
     );
 
     // Saturday (2025-10-25) is missing from workingHours
@@ -701,8 +753,11 @@ describe('workingHours null safety', () => {
     };
 
     mockSupabase.setResult(
-      { table: 'staff', op: 'select' },
-      { data: staffWithNoWorkingHours, error: null }
+      { table: 'resources', op: 'select' },
+      {
+        data: { ...mockResourceRow, working_hours: null },
+        error: null,
+      }
     );
 
     // Test actual implementation - should not throw

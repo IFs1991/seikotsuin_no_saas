@@ -5,6 +5,14 @@
 > 現行スキーマの正確な情報は [`final-schema-inventory.md`](./final-schema-inventory.md) を参照してください。
 > スクイッシュコミット: `4dc5441` / バックアップタグ: `pre-squash-backup-20260305`
 
+## Current Inventory (post-squash, verified 2026-03-05)
+- Target: `supabase/migrations`
+- Total files: 1
+- Executable migration files (`*.sql`): 1
+- Rollback artifacts (`*.sql.backup`): 0
+- Active file:
+  - `00000000000001_squashed_baseline.sql`
+
 ## Scope
 - Target: `supabase/migrations` (at `28db648`, pre-squash)
 - Config source: `supabase/config.toml` (`[db.migrations].enabled = true`)
@@ -128,8 +136,9 @@
 - **Result**: PASS — `Finished supabase db reset on branch main.`
 - **Commit**: `4dc5441`
 
-### DOD-04: Schema drift visibility
-- **Command**: `supabase db diff --local`
+### DOD-04: Schema drift visibility (equivalent evidence)
+- **DoD standard command**: `supabase db push --local --dry-run`
+- **Executed command**: `supabase db diff --local`
 - **Executed**: 2026-03-05
 - **Result**: PASS — `No schema changes found`
 - **Commit**: `4c8f130`

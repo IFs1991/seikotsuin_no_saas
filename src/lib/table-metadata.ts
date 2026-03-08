@@ -1,13 +1,9 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-/* eslint-enable @typescript-eslint/ban-ts-comment */
 // =================================================================
-// テーブルメタデータ管理 - 動的スキーマ取得
+// テーブルメタデータ管理 - 静的スキーマ定義版
 // =================================================================
+// F-03: 未定義RPC依存を排除し、現行スキーマ名で明示定義
 
-import { createAdminClient } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
-import type { TableConfig, TableColumn } from '@/types/admin';
+import type { TableConfig } from '@/types/admin';
 
 // テーブル設定キャッシュ
 const tableConfigCache = new Map<string, CachedTableConfig>();
@@ -19,195 +15,446 @@ interface CachedTableConfig {
 }
 
 /**
- * 管理可能なテーブル一覧を動的に取得
- * information_schemaから実際のDBスキーマを参照
+ * 管理対象テーブル一覧（現行スキーマ準拠）
+ */
+const MANAGEABLE_TABLES: string[] = [
+  'menus',
+  'menu_categories',
+  'staff',
+  'patients',
+  'resources',
+  'clinic_settings',
+];
+
+/**
+ * 管理可能なテーブル一覧を取得（静的定義）
  */
 export async function getManageableTables(): Promise<string[]> {
-  const supabase = createAdminClient();
-
-  // public スキーマの中で管理対象となるテーブルを取得
-  const { data, error } = await supabase.rpc('get_manageable_tables');
-
-  if (error) {
-    logger.error('管理可能テーブルの取得エラー:', error);
-    // フォールバック: 基本的なテーブル一覧
-    return [
-      'treatment_menus',
-      'menu_categories',
-      'staff_members',
-      'patient_profiles',
-      'clinic_settings',
-    ];
-  }
-
-  return data?.map((row: any) => row.table_name) || [];
+  return MANAGEABLE_TABLES;
 }
 
 /**
- * テーブル設定を動的に生成
- * PostgreSQLのinformation_schemaを参照してカラム情報を取得
+ * テーブル設定を静的に生成
  */
 export async function getTableConfig(
   tableName: string
 ): Promise<TableConfig | null> {
+  // 管理対象外のテーブルは拒否
+  if (!MANAGEABLE_TABLES.includes(tableName)) {
+    return null;
+  }
+
   // キャッシュチェック
   const cached = tableConfigCache.get(tableName);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.config;
   }
 
-  const supabase = createAdminClient();
-
-  try {
-    // カラム情報を取得
-    const { data: columns, error } = await supabase.rpc('get_table_columns', {
-      table_name_param: tableName,
-    });
-
-    if (error) {
-      logger.error(`テーブル設定取得エラー (${tableName}):`, error);
-      return null;
-    }
-
-    if (!columns || columns.length === 0) {
-      logger.warn(`テーブル ${tableName} のカラム情報が見つかりません`);
-      return null;
-    }
-
-    // TableConfigを構築
-    const config: TableConfig = {
-      name: tableName,
-      displayName: generateDisplayName(tableName),
-      columns: {},
-    };
-
-    columns.forEach((col: any) => {
-      const columnConfig: TableColumn = {
-        type: mapPostgreSQLTypeToTableColumnType(col.data_type),
-        label: generateColumnLabel(col.column_name),
-        required: !col.is_nullable,
-        readonly: isReadOnlyColumn(col.column_name),
-      };
-
-      // 型に応じた追加設定
-      if (col.character_maximum_length) {
-        columnConfig.maxLength = col.character_maximum_length;
-      }
-
-      if (col.numeric_precision) {
-        columnConfig.precision = col.numeric_precision;
-      }
-
-      // 外部キー情報があれば設定
-      if (col.foreign_table) {
-        columnConfig.foreign_key = col.foreign_table;
-      }
-
-      config.columns[col.column_name] = columnConfig;
-    });
-
-    // キャッシュに保存
-    tableConfigCache.set(tableName, {
-      config,
-      timestamp: Date.now(),
-    });
-
-    return config;
-  } catch (error) {
-    logger.error(`テーブル設定取得中のエラー (${tableName}):`, error);
+  const config = TABLE_CONFIGS[tableName];
+  if (!config) {
     return null;
   }
+
+  // キャッシュに保存
+  tableConfigCache.set(tableName, {
+    config,
+    timestamp: Date.now(),
+  });
+
+  return config;
 }
 
 /**
- * PostgreSQLのデータ型をTableColumnTypeにマッピング
+ * テーブル設定の静的定義（現行スキーマ準拠）
  */
-function mapPostgreSQLTypeToTableColumnType(
-  pgType: string
-): TableColumn['type'] {
-  const typeMapping: Record<string, TableColumn['type']> = {
-    'character varying': 'string',
-    varchar: 'string',
-    text: 'text',
-    char: 'string',
-    integer: 'integer',
-    bigint: 'integer',
-    smallint: 'integer',
-    decimal: 'decimal',
-    numeric: 'decimal',
-    real: 'decimal',
-    'double precision': 'decimal',
-    boolean: 'boolean',
-    'timestamp with time zone': 'timestamp',
-    'timestamp without time zone': 'timestamp',
-    date: 'timestamp',
-    uuid: 'uuid',
-    json: 'json',
-    jsonb: 'json',
-  };
-
-  return typeMapping[pgType.toLowerCase()] || 'string';
-}
-
-/**
- * テーブル名から表示名を生成
- */
-function generateDisplayName(tableName: string): string {
-  const displayNames: Record<string, string> = {
-    treatment_menus: '施術メニュー',
-    menu_categories: 'メニューカテゴリ',
-    staff_members: 'スタッフ',
-    patient_profiles: '患者情報',
-    clinic_settings: 'クリニック設定',
-    appointment_slots: '予約枠',
-    medical_records: '診療記録',
-    payment_records: '支払い記録',
-    insurance_claims: '保険請求',
-  };
-
-  return displayNames[tableName] || tableName;
-}
-
-/**
- * カラム名から表示ラベルを生成
- */
-function generateColumnLabel(columnName: string): string {
-  const labelMapping: Record<string, string> = {
-    id: 'ID',
-    name: '名前',
-    email: 'メールアドレス',
-    phone: '電話番号',
-    address: '住所',
-    description: '説明',
-    price: '料金',
-    duration_minutes: '所要時間（分）',
-    is_active: '有効',
-    created_at: '作成日時',
-    updated_at: '更新日時',
-    clinic_id: 'クリニックID',
-    category_id: 'カテゴリID',
-    display_order: '表示順',
-    is_insurance_applicable: '保険適用',
-    insurance_points: '保険点数',
-  };
-
-  return labelMapping[columnName] || columnName.replace(/_/g, ' ');
-}
-
-/**
- * 読み取り専用カラムかどうかを判定
- */
-function isReadOnlyColumn(columnName: string): boolean {
-  const readOnlyColumns = [
-    'id',
-    'created_at',
-    'updated_at',
-    'created_by',
-    'updated_by',
-  ];
-
-  return readOnlyColumns.includes(columnName);
-}
+const TABLE_CONFIGS: Record<string, TableConfig> = {
+  menus: {
+    name: 'menus',
+    displayName: '施術メニュー',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      clinic_id: {
+        type: 'uuid',
+        label: 'クリニックID',
+        required: true,
+        readonly: false,
+      },
+      category_id: {
+        type: 'uuid',
+        label: 'カテゴリID',
+        required: false,
+        readonly: false,
+      },
+      code: {
+        type: 'string',
+        label: 'コード',
+        required: false,
+        readonly: false,
+        maxLength: 50,
+      },
+      name: {
+        type: 'string',
+        label: '名前',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      description: {
+        type: 'text',
+        label: '説明',
+        required: false,
+        readonly: false,
+      },
+      price: {
+        type: 'decimal',
+        label: '料金',
+        required: true,
+        readonly: false,
+      },
+      duration_minutes: {
+        type: 'integer',
+        label: '所要時間（分）',
+        required: true,
+        readonly: false,
+      },
+      is_insurance_applicable: {
+        type: 'boolean',
+        label: '保険適用',
+        required: false,
+        readonly: false,
+      },
+      insurance_points: {
+        type: 'integer',
+        label: '保険点数',
+        required: false,
+        readonly: false,
+      },
+      display_order: {
+        type: 'integer',
+        label: '表示順',
+        required: false,
+        readonly: false,
+      },
+      is_active: {
+        type: 'boolean',
+        label: '有効',
+        required: false,
+        readonly: false,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+  menu_categories: {
+    name: 'menu_categories',
+    displayName: 'メニューカテゴリ',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      name: {
+        type: 'string',
+        label: '名前',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      description: {
+        type: 'text',
+        label: '説明',
+        required: false,
+        readonly: false,
+      },
+      color_code: {
+        type: 'string',
+        label: 'カラーコード',
+        required: false,
+        readonly: false,
+        maxLength: 7,
+      },
+      icon_name: {
+        type: 'string',
+        label: 'アイコン名',
+        required: false,
+        readonly: false,
+        maxLength: 50,
+      },
+      display_order: {
+        type: 'integer',
+        label: '表示順',
+        required: false,
+        readonly: false,
+      },
+      is_active: {
+        type: 'boolean',
+        label: '有効',
+        required: false,
+        readonly: false,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+  staff: {
+    name: 'staff',
+    displayName: 'スタッフ',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      clinic_id: {
+        type: 'uuid',
+        label: 'クリニックID',
+        required: true,
+        readonly: false,
+      },
+      name: {
+        type: 'string',
+        label: '氏名',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      email: {
+        type: 'string',
+        label: 'メールアドレス',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      role: {
+        type: 'string',
+        label: '役割',
+        required: true,
+        readonly: false,
+        maxLength: 50,
+      },
+      is_therapist: {
+        type: 'boolean',
+        label: '施術者フラグ',
+        required: false,
+        readonly: false,
+      },
+      hire_date: {
+        type: 'timestamp',
+        label: '入社日',
+        required: false,
+        readonly: false,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+  patients: {
+    name: 'patients',
+    displayName: '患者情報',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      clinic_id: {
+        type: 'uuid',
+        label: 'クリニックID',
+        required: true,
+        readonly: false,
+      },
+      name: {
+        type: 'string',
+        label: '氏名',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      phone_number: {
+        type: 'string',
+        label: '電話番号',
+        required: false,
+        readonly: false,
+        maxLength: 20,
+      },
+      date_of_birth: {
+        type: 'timestamp',
+        label: '生年月日',
+        required: false,
+        readonly: false,
+      },
+      gender: {
+        type: 'string',
+        label: '性別',
+        required: false,
+        readonly: false,
+        maxLength: 10,
+      },
+      address: {
+        type: 'text',
+        label: '住所',
+        required: false,
+        readonly: false,
+      },
+      registration_date: {
+        type: 'string',
+        label: '登録日',
+        required: false,
+        readonly: false,
+      },
+      last_visit_date: {
+        type: 'string',
+        label: '最終来院日',
+        required: false,
+        readonly: false,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+  resources: {
+    name: 'resources',
+    displayName: 'リソース',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      clinic_id: {
+        type: 'uuid',
+        label: 'クリニックID',
+        required: true,
+        readonly: false,
+      },
+      name: {
+        type: 'string',
+        label: '名前',
+        required: true,
+        readonly: false,
+        maxLength: 255,
+      },
+      type: {
+        type: 'string',
+        label: '種別',
+        required: true,
+        readonly: false,
+        maxLength: 50,
+      },
+      working_hours: {
+        type: 'json',
+        label: '営業時間',
+        required: false,
+        readonly: false,
+      },
+      supported_menus: {
+        type: 'json',
+        label: '対応メニュー',
+        required: false,
+        readonly: false,
+      },
+      max_concurrent: {
+        type: 'integer',
+        label: '同時対応数',
+        required: false,
+        readonly: false,
+      },
+      is_bookable: {
+        type: 'boolean',
+        label: '予約可能',
+        required: false,
+        readonly: false,
+      },
+      is_active: {
+        type: 'boolean',
+        label: '有効',
+        required: false,
+        readonly: false,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+  clinic_settings: {
+    name: 'clinic_settings',
+    displayName: 'クリニック設定',
+    columns: {
+      id: { type: 'uuid', label: 'ID', required: true, readonly: true },
+      clinic_id: {
+        type: 'uuid',
+        label: 'クリニックID',
+        required: true,
+        readonly: false,
+      },
+      category: {
+        type: 'string',
+        label: 'カテゴリ',
+        required: true,
+        readonly: false,
+        maxLength: 100,
+      },
+      settings: {
+        type: 'json',
+        label: '設定内容',
+        required: false,
+        readonly: false,
+      },
+      updated_by: {
+        type: 'uuid',
+        label: '更新者',
+        required: false,
+        readonly: true,
+      },
+      created_at: {
+        type: 'timestamp',
+        label: '作成日時',
+        required: false,
+        readonly: true,
+      },
+      updated_at: {
+        type: 'timestamp',
+        label: '更新日時',
+        required: false,
+        readonly: true,
+      },
+    },
+  },
+};
 
 /**
  * キャッシュをクリア

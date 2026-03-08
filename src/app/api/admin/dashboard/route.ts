@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     const reportRows: DailyReportRow[] = (dailyReports ??
       []) as DailyReportRow[];
     const performanceRows: StaffPerformanceRow[] = (staffPerformance ??
-      []) as StaffPerformanceRow[];
+      []) as unknown as StaffPerformanceRow[];
 
     const aggregatedMap = new Map<string, AggregatedClinicData>();
 

@@ -86,6 +86,8 @@ describe('Header モバイルメニュー', () => {
     fireEvent.click(screen.getByText('メニュー'));
     fireEvent.keyDown(document, { key: 'Escape' });
 
-    expect(container.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument();
+    expect(
+      container.querySelector('[aria-hidden="true"]')
+    ).not.toBeInTheDocument();
   });
 });

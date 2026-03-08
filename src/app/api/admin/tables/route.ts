@@ -110,7 +110,7 @@ async function getTableData(
     const offset = (page - 1) * limit;
 
     // クエリ構築
-    let query = supabase.from(tableName).select('*', { count: 'exact' });
+    let query = supabase.from(tableName as any).select('*', { count: 'exact' });
 
     // 検索条件
     if (search) {
@@ -219,8 +219,8 @@ export async function POST(request: NextRequest) {
 
     // データベースに挿入
     const { data: newRecord, error } = await supabase
-      .from(table_name)
-      .insert([validationResult.data])
+      .from(table_name as any)
+      .insert([validationResult.data] as any)
       .select()
       .single();
 
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       auth?.id || '',
       auth?.email || '',
       table_name,
-      newRecord.id,
+      (newRecord as any).id,
       validationResult.data
     );
 
@@ -307,8 +307,8 @@ export async function PUT(request: NextRequest) {
 
     // データベースを更新
     const { data: updatedRecord, error } = await supabase
-      .from(table_name)
-      .update(validationResult.data)
+      .from(table_name as any)
+      .update(validationResult.data as any)
       .eq('id', id)
       .select()
       .single();
@@ -372,7 +372,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // データベースから削除
-    const { error } = await supabase.from(tableName).delete().eq('id', id);
+    const { error } = await supabase
+      .from(tableName as any)
+      .delete()
+      .eq('id', id);
 
     if (error) {
       logError(error, {

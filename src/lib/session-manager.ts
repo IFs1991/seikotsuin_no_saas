@@ -3,7 +3,7 @@
  * Phase 3A: セッション管理強化の中核機能
  */
 
-import { createClient } from '@/lib/supabase-browser';
+import { createClient } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import type { Database } from '@/types/supabase';

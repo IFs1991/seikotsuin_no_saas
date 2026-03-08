@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import { ERROR_MESSAGES } from '@/lib/constants';
+import { createMasterDataDeprecationError } from '@/lib/admin/master-data-deprecation';
 import {
   MasterDataDetail,
   FilterState,
   UseSystemSettingsReturn,
-  ApiResponse,
 } from '@/types/admin';
 
 export const useSystemSettings = (): UseSystemSettingsReturn => {
@@ -34,45 +34,14 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     async (filters?: Partial<FilterState>) => {
       try {
         setLoading(true);
-        setError(null);
-
-        const params = new URLSearchParams();
         const currentFilters = { ...filterState, ...filters };
-
-        if (currentFilters.category)
-          params.append('category', currentFilters.category);
-        if (currentFilters.clinicId)
-          params.append('clinic_id', currentFilters.clinicId);
-        if (currentFilters.isPublic !== undefined) {
-          params.append('is_public', currentFilters.isPublic.toString());
-        }
-
-        const response = await fetch(
-          `${API_ENDPOINTS.ADMIN.MASTER_DATA}?${params.toString()}`
-        );
-        const result: ApiResponse<MasterDataDetail[]> = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        const data = result.data || [];
-        setMasterData(data);
-
-        // カテゴリを抽出
-        const uniqueCategories = Array.from(
-          new Set(data.map(item => item.category))
-        ).sort();
-        setCategories(uniqueCategories);
+        setError(createMasterDataDeprecationError().message);
+        setMasterData([]);
+        setCategories([]);
 
         if (filters) {
-          setFilterState(prev => ({ ...prev, ...filters }));
+          setFilterState(currentFilters);
         }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-        setError(errorMessage);
-        console.error('マスターデータ取得エラー:', err);
       } finally {
         setLoading(false);
       }
@@ -85,33 +54,8 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     async (data: Partial<MasterDataDetail>): Promise<boolean> => {
       try {
         setLoading(true);
-        setError(null);
-
-        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-
-        const result: ApiResponse<MasterDataDetail> = await response.json();
-
-        if (!result.success) {
-          throw { message: result.error, details: result.details };
-        }
-
-        if (result.data) {
-          setMasterData(prev => [...prev, result.data!]);
-
-          // カテゴリ更新
-          if (
-            result.data.category &&
-            !categories.includes(result.data.category)
-          ) {
-            setCategories(prev => [...prev, result.data!.category].sort());
-          }
-        }
-
-        return true;
+        void data;
+        throw createMasterDataDeprecationError();
       } catch (err: any) {
         const errorMessage = formatErrorMessage(err);
         setError(errorMessage);
@@ -132,35 +76,9 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     ): Promise<boolean> => {
       try {
         setLoading(true);
-        setError(null);
-
-        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, ...updates }),
-        });
-
-        const result: ApiResponse<MasterDataDetail> = await response.json();
-
-        if (!result.success) {
-          throw { message: result.error, details: result.details };
-        }
-
-        if (result.data) {
-          setMasterData(prev =>
-            prev.map(item => (item.id === id ? result.data! : item))
-          );
-
-          // カテゴリ更新
-          if (
-            result.data.category &&
-            !categories.includes(result.data.category)
-          ) {
-            setCategories(prev => [...prev, result.data!.category].sort());
-          }
-        }
-
-        return true;
+        void id;
+        void updates;
+        throw createMasterDataDeprecationError();
       } catch (err: any) {
         const errorMessage = formatErrorMessage(err);
         setError(errorMessage);
@@ -177,23 +95,8 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
   const deleteMasterData = useCallback(async (id: string): Promise<boolean> => {
     try {
       setLoading(true);
-      setError(null);
-
-      const response = await fetch(
-        `${API_ENDPOINTS.ADMIN.MASTER_DATA}?id=${id}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-      const result: ApiResponse = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-      }
-
-      setMasterData(prev => prev.filter(item => item.id !== id));
-      return true;
+      void id;
+      throw createMasterDataDeprecationError();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
@@ -224,28 +127,8 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     async (filters?: Partial<FilterState>) => {
       try {
         setLoading(true);
-        setError(null);
-
-        const params = new URLSearchParams();
-        const currentFilters = { ...filterState, ...filters };
-
-        if (currentFilters.clinicId) {
-          params.append('clinic_id', currentFilters.clinicId);
-        }
-
-        const response = await fetch(
-          `${API_ENDPOINTS.ADMIN.MASTER_DATA_EXPORT}?${params.toString()}`
-        );
-        const result: ApiResponse<{
-          items: MasterDataDetail[];
-          snapshot_key: string;
-        }> = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        return result.data ?? null;
+        void filters;
+        throw createMasterDataDeprecationError();
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
@@ -263,24 +146,9 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     async (items: MasterDataDetail[], clinicId?: string | null) => {
       try {
         setLoading(true);
-        setError(null);
-
-        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA_IMPORT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items,
-            clinic_id: clinicId ?? (filterState.clinicId || undefined),
-          }),
-        });
-
-        const result: ApiResponse<{ imported: number }> = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        return true;
+        void items;
+        void clinicId;
+        throw createMasterDataDeprecationError();
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
@@ -298,23 +166,8 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
     async (clinicId?: string | null) => {
       try {
         setLoading(true);
-        setError(null);
-
-        const response = await fetch(API_ENDPOINTS.ADMIN.MASTER_DATA_ROLLBACK, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clinic_id: clinicId ?? (filterState.clinicId || undefined),
-          }),
-        });
-
-        const result: ApiResponse<{ restored: number }> = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        return true;
+        void clinicId;
+        throw createMasterDataDeprecationError();
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;

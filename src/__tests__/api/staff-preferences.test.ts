@@ -60,7 +60,10 @@ const createPostRequest = (body: unknown = VALID_BODY) =>
   });
 
 /** supabase.from().insert().select().single() チェーンのモック */
-const createSupabaseMock = (insertResult: { data: unknown; error: unknown }) => {
+const createSupabaseMock = (insertResult: {
+  data: unknown;
+  error: unknown;
+}) => {
   const single = jest.fn().mockResolvedValue(insertResult);
   const select = jest.fn().mockReturnValue({ single });
   const insert = jest.fn().mockReturnValue({ select });

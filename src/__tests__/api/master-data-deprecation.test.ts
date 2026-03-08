@@ -28,9 +28,7 @@ jest.mock('@/lib/env', () => ({
 describe('master-data API deprecation (410 Gone)', () => {
   describe('/api/admin/master-data', () => {
     test('GET returns 410 Gone', async () => {
-      const { GET } = await import(
-        '@/app/api/admin/master-data/route'
-      );
+      const { GET } = await import('@/app/api/admin/master-data/route');
       const response = await GET();
       expect(response.status).toBe(410);
       const json = await response.json();
@@ -39,9 +37,7 @@ describe('master-data API deprecation (410 Gone)', () => {
     });
 
     test('POST returns 410 Gone', async () => {
-      const { POST } = await import(
-        '@/app/api/admin/master-data/route'
-      );
+      const { POST } = await import('@/app/api/admin/master-data/route');
       const response = await POST();
       expect(response.status).toBe(410);
       const json = await response.json();
@@ -50,9 +46,7 @@ describe('master-data API deprecation (410 Gone)', () => {
     });
 
     test('PUT returns 410 Gone', async () => {
-      const { PUT } = await import(
-        '@/app/api/admin/master-data/route'
-      );
+      const { PUT } = await import('@/app/api/admin/master-data/route');
       const response = await PUT();
       expect(response.status).toBe(410);
       const json = await response.json();
@@ -61,9 +55,7 @@ describe('master-data API deprecation (410 Gone)', () => {
     });
 
     test('DELETE returns 410 Gone', async () => {
-      const mod = await import(
-        '@/app/api/admin/master-data/route'
-      );
+      const mod = await import('@/app/api/admin/master-data/route');
       const DELETE = mod.DELETE;
       const response = await DELETE();
       expect(response.status).toBe(410);
@@ -75,9 +67,7 @@ describe('master-data API deprecation (410 Gone)', () => {
 
   describe('/api/admin/master-data/export', () => {
     test('GET returns 410 Gone', async () => {
-      const { GET } = await import(
-        '@/app/api/admin/master-data/export/route'
-      );
+      const { GET } = await import('@/app/api/admin/master-data/export/route');
       const response = await GET();
       expect(response.status).toBe(410);
       const json = await response.json();
@@ -88,9 +78,7 @@ describe('master-data API deprecation (410 Gone)', () => {
 
   describe('/api/admin/master-data/import', () => {
     test('POST returns 410 Gone', async () => {
-      const { POST } = await import(
-        '@/app/api/admin/master-data/import/route'
-      );
+      const { POST } = await import('@/app/api/admin/master-data/import/route');
       const response = await POST();
       expect(response.status).toBe(410);
       const json = await response.json();
@@ -101,9 +89,8 @@ describe('master-data API deprecation (410 Gone)', () => {
 
   describe('/api/admin/master-data/rollback', () => {
     test('POST returns 410 Gone', async () => {
-      const { POST } = await import(
-        '@/app/api/admin/master-data/rollback/route'
-      );
+      const { POST } =
+        await import('@/app/api/admin/master-data/rollback/route');
       const response = await POST();
       expect(response.status).toBe(410);
       const json = await response.json();

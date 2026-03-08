@@ -106,7 +106,8 @@ async function saveCSPViolationToDB(
     // clinic_id を認証コンテキストから取得（未認証の場合は null）
     let clinicId: string | null = null;
     try {
-      const { getCurrentUser, getUserPermissions } = await import('@/lib/supabase');
+      const { getCurrentUser, getUserPermissions } =
+        await import('@/lib/supabase');
       const user = await getCurrentUser(supabase);
       if (user) {
         const permissions = await getUserPermissions(user.id, supabase);
@@ -139,7 +140,7 @@ async function saveCSPViolationToDB(
     // データベースに挿入
     const { data, error } = await supabase
       .from('csp_violations')
-      .insert([violationData])
+      .insert([violationData] as any)
       .select();
 
     if (error) {

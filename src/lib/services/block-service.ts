@@ -8,6 +8,24 @@ import 'server-only';
 
 import { getServerClient, type SupabaseServerClient } from '@/lib/supabase';
 import type { Block, CreateBlockData } from '@/types/reservation';
+import type { Database } from '@/types/supabase';
+
+type BlockRow = Database['public']['Tables']['blocks']['Row'];
+
+/** Convert a Supabase blocks row to the app-level Block type */
+function mapRowToBlock(row: BlockRow): Block {
+  return {
+    id: row.id,
+    resourceId: row.resource_id,
+    startTime: new Date(row.start_time),
+    endTime: new Date(row.end_time),
+    recurrenceRule: row.recurrence_rule ?? undefined,
+    reason: row.reason ?? undefined,
+    createdBy: row.created_by ?? '',
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
 
 export class BlockService {
   private readonly clinicId: string;
@@ -36,10 +54,19 @@ export class BlockService {
   async createBlock(data: CreateBlockData): Promise<Block> {
     const supabase = await this.getSupabase();
     const blockData = {
-      ...data,
+      resource_id: data.resourceId,
+      start_time:
+        data.startTime instanceof Date
+          ? data.startTime.toISOString()
+          : data.startTime,
+      end_time:
+        data.endTime instanceof Date
+          ? data.endTime.toISOString()
+          : data.endTime,
+      recurrence_rule: data.recurrenceRule,
+      reason: data.reason,
+      created_by: data.createdBy,
       clinic_id: this.clinicId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
     const { data: result, error } = await supabase
@@ -52,7 +79,7 @@ export class BlockService {
       throw new Error(`Block作成に失敗しました: ${error.message}`);
     }
 
-    return result;
+    return mapRowToBlock(result);
   }
 
   /**
@@ -77,7 +104,7 @@ export class BlockService {
       throw new Error('Blockが見つかりません');
     }
 
-    return data;
+    return mapRowToBlock(data);
   }
 
   /**
@@ -96,24 +123,26 @@ export class BlockService {
     let query = supabase
       .from('blocks')
       .select('*')
-      .eq('resourceId', resourceId)
+      .eq('resource_id', resourceId)
       .eq('clinic_id', this.clinicId);
 
     if (startDate) {
-      query = query.gte('startTime', startDate.toISOString());
+      query = query.gte('start_time', startDate.toISOString());
     }
 
     if (endDate) {
-      query = query.lte('endTime', endDate.toISOString());
+      query = query.lte('end_time', endDate.toISOString());
     }
 
-    const { data, error } = await query.order('startTime', { ascending: true });
+    const { data, error } = await query.order('start_time', {
+      ascending: true,
+    });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToBlock);
   }
 
   /**
@@ -128,15 +157,15 @@ export class BlockService {
       .from('blocks')
       .select('*')
       .eq('clinic_id', this.clinicId)
-      .gte('startTime', startDate.toISOString())
-      .lte('endTime', endDate.toISOString())
-      .order('startTime', { ascending: true });
+      .gte('start_time', startDate.toISOString())
+      .lte('end_time', endDate.toISOString())
+      .order('start_time', { ascending: true });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToBlock);
   }
 
   /**
@@ -150,9 +179,28 @@ export class BlockService {
     updates: Partial<Omit<Block, 'id' | 'createdAt' | 'createdBy'>>
   ): Promise<Block> {
     const supabase = await this.getSupabase();
+    const dbUpdates: Database['public']['Tables']['blocks']['Update'] = {
+      updated_at: new Date().toISOString(),
+    };
+    if (updates.resourceId !== undefined)
+      dbUpdates.resource_id = updates.resourceId;
+    if (updates.startTime !== undefined)
+      dbUpdates.start_time =
+        updates.startTime instanceof Date
+          ? updates.startTime.toISOString()
+          : String(updates.startTime);
+    if (updates.endTime !== undefined)
+      dbUpdates.end_time =
+        updates.endTime instanceof Date
+          ? updates.endTime.toISOString()
+          : String(updates.endTime);
+    if (updates.recurrenceRule !== undefined)
+      dbUpdates.recurrence_rule = updates.recurrenceRule;
+    if (updates.reason !== undefined) dbUpdates.reason = updates.reason;
+
     const { data, error } = await supabase
       .from('blocks')
-      .update({ ...updates, updatedAt: new Date() })
+      .update(dbUpdates)
       .eq('id', id)
       .eq('clinic_id', this.clinicId)
       .select()
@@ -162,7 +210,7 @@ export class BlockService {
       throw new Error(error.message);
     }
 
-    return data;
+    return mapRowToBlock(data);
   }
 
   /**
@@ -201,10 +249,10 @@ export class BlockService {
     const { data, error } = await supabase
       .from('blocks')
       .select('*')
-      .eq('resourceId', resourceId)
+      .eq('resource_id', resourceId)
       .eq('clinic_id', this.clinicId)
       .or(
-        `startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`
+        `start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()}`
       )
       .limit(1)
       .single();
@@ -214,7 +262,7 @@ export class BlockService {
       throw new Error(error.message);
     }
 
-    return data || null;
+    return data ? mapRowToBlock(data) : null;
   }
 
   /**

@@ -21,7 +21,11 @@ jest.mock('@/lib/supabase', () => {
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
 
-function createThenableQuery(result: { count?: number; data?: unknown; error: unknown }) {
+function createThenableQuery(result: {
+  count?: number;
+  data?: unknown;
+  error: unknown;
+}) {
   const query: any = {
     select: jest.fn().mockReturnThis(),
     in: jest.fn().mockReturnThis(),
@@ -30,7 +34,10 @@ function createThenableQuery(result: { count?: number; data?: unknown; error: un
     or: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
-    then(resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) {
+    then(
+      resolve: (value: unknown) => unknown,
+      reject?: (reason: unknown) => unknown
+    ) {
       return Promise.resolve(result).then(resolve, reject);
     },
   };

@@ -3,7 +3,7 @@
  * Phase 3A: 異常検知・セキュリティイベント監視機能
  */
 
-import { createClient } from '@/lib/supabase-browser';
+import { createClient } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 import { SessionManager, type UserSession } from './session-manager';
 

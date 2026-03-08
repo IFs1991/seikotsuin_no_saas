@@ -67,7 +67,10 @@ describe('Header クリニック選択', () => {
   });
 
   it('clinicsLoading=true のときセレクトが disabled になる', () => {
-    const { container } = renderWithProvider({ clinicsLoading: true, clinics: [] });
+    const { container } = renderWithProvider({
+      clinicsLoading: true,
+      clinics: [],
+    });
     // デスクトップセレクト
     const selects = container.querySelectorAll('select');
     selects.forEach(select => {
@@ -89,7 +92,9 @@ describe('Header クリニック選択', () => {
     // デスクトップの最初のセレクト（hidden md:flex 内）を探す
     const selects = screen.getAllByRole('combobox');
     // 少なくとも1つのセレクトが clinic-2 の value を持つ
-    const selectedValues = Array.from(selects).map(s => (s as HTMLSelectElement).value);
+    const selectedValues = Array.from(selects).map(
+      s => (s as HTMLSelectElement).value
+    );
     expect(selectedValues.some(v => v === 'clinic-2')).toBe(true);
   });
 

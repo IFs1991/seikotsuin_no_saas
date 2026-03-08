@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     // セッション情報を拡張
     const enrichedSessions = (sessions || []).map(session => {
       const user = userMap[session.user_id] || {};
-      const deviceInfo = session.device_info || {};
+      const deviceInfo = (session.device_info || {}) as Record<string, string>;
 
       // リスクレベル計算
       let riskLevel: 'low' | 'medium' | 'high' = 'low';
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         deviceType: deviceInfo.device || 'unknown',
         ipAddress: session.ip_address,
         location: session.geolocation
-          ? `${session.geolocation.city || ''}, ${session.geolocation.country || ''}`
+          ? `${(session.geolocation as Record<string, string>).city || ''}, ${(session.geolocation as Record<string, string>).country || ''}`
           : 'Unknown',
         loginTime: session.created_at,
         lastActivity: session.last_activity,

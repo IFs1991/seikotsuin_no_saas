@@ -71,18 +71,18 @@ export async function GET(request: NextRequest) {
       .eq('resources.clinic_id', clinicId);
 
     if (resourceId) {
-      query = query.eq('resourceId', resourceId);
+      query = query.eq('resource_id', resourceId);
     }
 
     if (startDate) {
-      query = query.gte('startTime', startDate);
+      query = query.gte('start_time', startDate);
     }
 
     if (endDate) {
-      query = query.lte('endTime', endDate);
+      query = query.lte('end_time', endDate);
     }
 
-    query = query.order('startTime', { ascending: true });
+    query = query.order('start_time', { ascending: true });
 
     const { data, error } = await query;
 
@@ -94,16 +94,16 @@ export async function GET(request: NextRequest) {
         .eq('clinic_id', clinicId);
 
       if (resourceId) {
-        fallbackQuery.eq('resourceId', resourceId);
+        fallbackQuery.eq('resource_id', resourceId);
       }
       if (startDate) {
-        fallbackQuery.gte('startTime', startDate);
+        fallbackQuery.gte('start_time', startDate);
       }
       if (endDate) {
-        fallbackQuery.lte('endTime', endDate);
+        fallbackQuery.lte('end_time', endDate);
       }
 
-      const fallbackResult = await fallbackQuery.order('startTime', {
+      const fallbackResult = await fallbackQuery.order('start_time', {
         ascending: true,
       });
 
@@ -174,15 +174,13 @@ export async function POST(request: NextRequest) {
     }
 
     const insertData = {
-      resourceId: blockData.resourceId,
-      startTime: blockData.startTime,
-      endTime: blockData.endTime,
-      recurrenceRule: blockData.recurrenceRule || null,
+      resource_id: blockData.resourceId,
+      start_time: blockData.startTime,
+      end_time: blockData.endTime,
+      recurrence_rule: blockData.recurrenceRule || null,
       reason: blockData.reason || null,
-      createdBy: auth.id,
+      created_by: auth.id,
       clinic_id: clinicId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     const { data, error } = await supabase

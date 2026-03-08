@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
             transaction_count: 0,
           };
         }
-        acc[menuName].total_revenue += parseFloat(item.amount);
+        acc[menuName].total_revenue += Number(item.amount) || 0;
         acc[menuName].transaction_count += 1;
         return acc;
       },
@@ -96,9 +96,9 @@ export async function GET(request: NextRequest) {
             transaction_count: 0,
           };
         }
-        acc[date].total_revenue += parseFloat(item.amount);
-        acc[date].insurance_revenue += parseFloat(item.insurance_revenue || 0);
-        acc[date].private_revenue += parseFloat(item.private_revenue || 0);
+        acc[date].total_revenue += Number(item.amount) || 0;
+        acc[date].insurance_revenue += Number(item.insurance_revenue) || 0;
+        acc[date].private_revenue += Number(item.private_revenue) || 0;
         acc[date].transaction_count += 1;
         return acc;
       },
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     // 前年同期比較
     const lastYear = new Date();
     lastYear.setFullYear(lastYear.getFullYear() - 1);
-    const { data: lastYearData, error: lastYearError } = await supabase
+    const { data: lastYearData } = await supabase
       .from('revenues')
       .select('amount')
       .eq('clinic_id', clinicId)
@@ -132,10 +132,13 @@ export async function GET(request: NextRequest) {
       );
 
     const currentTotal =
-      revenueData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) || 0;
-    const lastYearTotal =
-      lastYearData?.reduce((sum, item) => sum + parseFloat(item.amount), 0) ||
+      revenueData?.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) ||
       0;
+    const lastYearTotal =
+      lastYearData?.reduce(
+        (sum, item) => sum + (Number(item.amount) || 0),
+        0
+      ) || 0;
     const growthRate =
       lastYearTotal > 0
         ? (((currentTotal - lastYearTotal) / lastYearTotal) * 100).toFixed(1)
@@ -157,12 +160,12 @@ export async function GET(request: NextRequest) {
           ) || 0,
         insuranceRevenue:
           revenueData?.reduce(
-            (sum, item) => sum + parseFloat(item.insurance_revenue || 0),
+            (sum, item) => sum + (Number(item.insurance_revenue) || 0),
             0
           ) || 0,
         selfPayRevenue:
           revenueData?.reduce(
-            (sum, item) => sum + parseFloat(item.private_revenue || 0),
+            (sum, item) => sum + (Number(item.private_revenue) || 0),
             0
           ) || 0,
         menuRanking,

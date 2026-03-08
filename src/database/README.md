@@ -1,8 +1,13 @@
-# 整骨院管理SaaS - データベース設計
+# 整骨院管理SaaS - データベース設計（参照資料）
+
+> **注意: このディレクトリは「参照資料」です。DBスキーマの実行正本（Source of Truth）は `supabase/migrations/` です。**
+> ここにあるSQLファイルを直接データベースに適用しないでください。
+> 正本との差分が生じる可能性があります。
 
 ## 概要
 
-このディレクトリには、整骨院管理SaaSシステムのSupabase PostgreSQLデータベースの完全な設計が含まれています。
+このディレクトリには、整骨院管理SaaSシステムのSupabase PostgreSQLデータベースの設計ドキュメントが含まれています。
+実際のスキーマ適用は `supabase/migrations/` 配下のマイグレーションファイルを使用してください。
 
 ## ディレクトリ構造
 
@@ -56,30 +61,22 @@ src/database/
 
 ### 2. データベース構築
 
-スキーマファイルを順番に実行してください：
+> **非推奨**: 以下の手順は参考情報です。実際のDB構築には `supabase/migrations/` を使用してください。
+>
+> ```bash
+> # 推奨手順（正本の適用）
+> supabase db reset   # ローカルDBをマイグレーション正本から再構築
+> ```
 
-```bash
-# 1. コアテーブルの作成
-psql -h [your-supabase-host] -U postgres -d postgres -f schemas/01_core_tables.sql
+以下のSQLファイルは設計参照資料としてのみ使用してください（直接適用禁止）：
 
-# 2. マスターデータテーブルの作成
-psql -h [your-supabase-host] -U postgres -d postgres -f schemas/02_master_data.sql
-
-# 3. トランザクションテーブルの作成
-psql -h [your-supabase-host] -U postgres -d postgres -f schemas/03_transaction_tables.sql
-
-# 4. システムテーブルの作成
-psql -h [your-supabase-host] -U postgres -d postgres -f schemas/04_system_tables.sql
-
-# 5. RLSポリシーの設定
-psql -h [your-supabase-host] -U postgres -d postgres -f policies/auth_policies.sql
-
-# 6. トリガーと関数の作成
-psql -h [your-supabase-host] -U postgres -d postgres -f functions/triggers.sql
-
-# 7. 初期データの投入
-psql -h [your-supabase-host] -U postgres -d postgres -f seed_data/01_initial_data.sql
-```
+- `schemas/01_core_tables.sql` — コアテーブル定義
+- `schemas/02_master_data.sql` — マスターデータテーブル定義
+- `schemas/03_transaction_tables.sql` — トランザクションテーブル定義
+- `schemas/04_system_tables.sql` — システムテーブル定義
+- `policies/auth_policies.sql` — RLSポリシー定義
+- `functions/triggers.sql` — トリガー関数定義
+- `seed_data/01_initial_data.sql` — 初期データ定義
 
 ### 3. Supabase設定
 
@@ -230,5 +227,13 @@ psql -h [your-supabase-host] -U postgres -d postgres -f seed_data/01_initial_dat
 
 ---
 
-**最終更新**: 2025-08-18  
-**バージョン**: 1.0.0
+**最終更新**: 2026-03-06
+**バージョン**: 1.1.0
+
+## 正本情報
+
+| 区分 | パス | 用途 |
+|------|------|------|
+| 実行正本 (Source of Truth) | `supabase/migrations/` | DB構築・変更の唯一の適用元 |
+| 参照資料 | `src/database/` | 設計ドキュメント（直接適用禁止） |
+| 参照資料 | `src/api/database/*.sql` | API設計参照（直接適用禁止） |

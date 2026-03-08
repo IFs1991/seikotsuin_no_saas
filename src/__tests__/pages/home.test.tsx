@@ -76,7 +76,9 @@ describe('HomePage', () => {
     const { container } = render(<HomePage />);
 
     expect(container.querySelector('a[href="/dashboard"]')).toBeInTheDocument();
-    expect(container.querySelector('a[href="/admin/login"]')).toBeInTheDocument();
+    expect(
+      container.querySelector('a[href="/admin/login"]')
+    ).toBeInTheDocument();
     expect(container.querySelector('a[href="/chat"]')).toBeInTheDocument();
   });
 });

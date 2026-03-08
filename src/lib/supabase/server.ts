@@ -121,15 +121,18 @@ export async function getUserPermissions(
   // 2. It only reads the authenticated user's own permission data
   // 3. RLS on user_permissions table can cause performance issues during auth flow
   const adminClient = createAdminClient();
-  const { data: permissions, error } = await adminClient
+  const { data: permissionsData, error } = await adminClient
     .from('user_permissions')
     .select('role, clinic_id')
     .eq('staff_id', userId)
     .maybeSingle();
 
-  if (error || !permissions) {
+  if (error || !permissionsData) {
     return null;
   }
+
+  const permissions: { role: string; clinic_id: string | null } =
+    permissionsData;
 
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md

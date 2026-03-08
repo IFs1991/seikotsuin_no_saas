@@ -1,3 +1,8 @@
+-- =============================================================================
+-- [REFERENCE ONLY] このファイルは設計参照資料です。直接DBに適用しないでください。
+-- 実行正本 (Source of Truth): supabase/migrations/
+-- =============================================================================
+
 -- 時間帯別来院パターン取得関数
 CREATE OR REPLACE FUNCTION get_hourly_visit_pattern(clinic_uuid UUID)
 RETURNS TABLE(

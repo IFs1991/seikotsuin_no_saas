@@ -55,9 +55,9 @@ export async function GET(request: NextRequest) {
           staffName: (report.staff as any)?.name || '未設定',
           totalPatients: report.total_patients,
           newPatients: report.new_patients,
-          totalRevenue: parseFloat(report.total_revenue || '0'),
-          insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
-          privateRevenue: parseFloat(report.private_revenue || '0'),
+          totalRevenue: report.total_revenue ?? 0,
+          insuranceRevenue: report.insurance_revenue ?? 0,
+          privateRevenue: report.private_revenue ?? 0,
           reportText: report.report_text,
           createdAt: report.created_at,
         },
@@ -100,16 +100,11 @@ export async function GET(request: NextRequest) {
           : 0,
       averageRevenue:
         reports?.length > 0
-          ? reports.reduce(
-              (sum, r) => sum + parseFloat(r.total_revenue || '0'),
-              0
-            ) / reports.length
+          ? reports.reduce((sum, r) => sum + (r.total_revenue ?? 0), 0) /
+            reports.length
           : 0,
       totalRevenue:
-        reports?.reduce(
-          (sum, r) => sum + parseFloat(r.total_revenue || '0'),
-          0
-        ) || 0,
+        reports?.reduce((sum, r) => sum + (r.total_revenue ?? 0), 0) || 0,
     };
 
     // 月別トレンド
@@ -127,7 +122,7 @@ export async function GET(request: NextRequest) {
           }
           acc[month].reports += 1;
           acc[month].totalPatients += report.total_patients || 0;
-          acc[month].totalRevenue += parseFloat(report.total_revenue || '0');
+          acc[month].totalRevenue += report.total_revenue ?? 0;
           return acc;
         },
         {} as Record<string, any>
@@ -143,9 +138,9 @@ export async function GET(request: NextRequest) {
             staffName: (report.staff as any)?.name || '未設定',
             totalPatients: report.total_patients,
             newPatients: report.new_patients,
-            totalRevenue: parseFloat(report.total_revenue || '0'),
-            insuranceRevenue: parseFloat(report.insurance_revenue || '0'),
-            privateRevenue: parseFloat(report.private_revenue || '0'),
+            totalRevenue: report.total_revenue ?? 0,
+            insuranceRevenue: report.insurance_revenue ?? 0,
+            privateRevenue: report.private_revenue ?? 0,
             reportText: report.report_text,
             createdAt: report.created_at,
           })) || [],

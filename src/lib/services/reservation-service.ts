@@ -17,6 +17,44 @@ import type {
   StaffUtilization,
   NoShowAnalysis,
 } from '@/types/reservation';
+import type { Database } from '@/types/supabase';
+
+type ReservationRow = Database['public']['Tables']['reservations']['Row'];
+type ResourceRow = Database['public']['Tables']['resources']['Row'];
+
+/** Convert a Supabase reservations row to the app-level Reservation type */
+function mapRowToReservation(row: ReservationRow): Reservation {
+  return {
+    id: row.id,
+    customerId: row.customer_id,
+    menuId: row.menu_id,
+    staffId: row.staff_id,
+    startTime: new Date(row.start_time),
+    endTime: new Date(row.end_time),
+    status: row.status as Reservation['status'],
+    channel: row.channel as Reservation['channel'],
+    notes: row.notes ?? undefined,
+    selectedOptions:
+      (row.selected_options as unknown as Reservation['selectedOptions']) ??
+      undefined,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    createdBy: row.created_by ?? '',
+  };
+}
+
+/** Convert a Supabase resources row to the app-level Resource type */
+function mapResourceRowToResource(row: ResourceRow): Resource {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type as Resource['type'],
+    workingHours: (row.working_hours ?? {}) as Resource['workingHours'],
+    maxConcurrent: row.max_concurrent ?? 1,
+    supportedMenus: row.supported_menus ?? [],
+    isActive: row.is_active ?? false,
+  };
+}
 
 export class ReservationService {
   private readonly clinicId: string;
@@ -55,7 +93,7 @@ export class ReservationService {
       throw new Error('予約が見つかりません');
     }
 
-    return data;
+    return mapRowToReservation(data);
   }
 
   async getReservationsByDateRange(
@@ -67,15 +105,15 @@ export class ReservationService {
       .from('reservations')
       .select('*')
       .eq('clinic_id', this.clinicId)
-      .gte('startTime', startDate.toISOString())
-      .lte('startTime', endDate.toISOString())
-      .order('startTime', { ascending: true });
+      .gte('start_time', startDate.toISOString())
+      .lte('start_time', endDate.toISOString())
+      .order('start_time', { ascending: true });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToReservation);
   }
 
   async getReservationsByStaff(
@@ -93,16 +131,16 @@ export class ReservationService {
       .from('reservations')
       .select('*')
       .eq('clinic_id', this.clinicId)
-      .eq('staffId', staffId)
-      .gte('startTime', startOfDay.toISOString())
-      .lte('startTime', endOfDay.toISOString())
-      .order('startTime', { ascending: true });
+      .eq('staff_id', staffId)
+      .gte('start_time', startOfDay.toISOString())
+      .lte('start_time', endOfDay.toISOString())
+      .order('start_time', { ascending: true });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToReservation);
   }
 
   async getCustomerReservations(customerId: string): Promise<Reservation[]> {
@@ -111,14 +149,14 @@ export class ReservationService {
       .from('reservations')
       .select('*')
       .eq('clinic_id', this.clinicId)
-      .eq('customerId', customerId)
-      .order('startTime', { ascending: false });
+      .eq('customer_id', customerId)
+      .order('start_time', { ascending: false });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToReservation);
   }
 
   async getReservationsByStatus(status: string): Promise<Reservation[]> {
@@ -128,13 +166,13 @@ export class ReservationService {
       .select('*')
       .eq('clinic_id', this.clinicId)
       .eq('status', status)
-      .order('startTime', { ascending: true });
+      .order('start_time', { ascending: true });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return data || [];
+    return (data || []).map(mapRowToReservation);
   }
 
   // 利用可能時間取得機能
@@ -241,11 +279,24 @@ export class ReservationService {
     }
 
     const reservationData = {
-      ...data,
+      customer_id: data.customerId,
+      menu_id: data.menuId,
+      staff_id: data.staffId,
+      start_time:
+        data.startTime instanceof Date
+          ? data.startTime.toISOString()
+          : data.startTime,
+      end_time:
+        data.endTime instanceof Date
+          ? data.endTime.toISOString()
+          : data.endTime,
+      channel: data.channel,
+      notes: data.notes,
+      selected_options:
+        data.selectedOptions as unknown as Database['public']['Tables']['reservations']['Insert']['selected_options'],
+      created_by: data.createdBy,
       clinic_id: this.clinicId,
       status: 'unconfirmed',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
     const { data: result, error } = await supabase
@@ -258,7 +309,7 @@ export class ReservationService {
       throw new Error(error.message);
     }
 
-    return result;
+    return mapRowToReservation(result);
   }
 
   async createMultipleReservations(
@@ -301,7 +352,7 @@ export class ReservationService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ status, updatedAt: new Date() })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
@@ -311,7 +362,7 @@ export class ReservationService {
       throw new Error(error.message);
     }
 
-    return data;
+    return mapRowToReservation(data);
   }
 
   async updateReservationTime(
@@ -322,7 +373,11 @@ export class ReservationService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ startTime, endTime, updatedAt: new Date() })
+      .update({
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
@@ -332,7 +387,7 @@ export class ReservationService {
       throw new Error(error.message);
     }
 
-    return data;
+    return mapRowToReservation(data);
   }
 
   async updateReservationStaff(
@@ -342,7 +397,7 @@ export class ReservationService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ staffId, updatedAt: new Date() })
+      .update({ staff_id: staffId, updated_at: new Date().toISOString() })
       .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
@@ -352,7 +407,7 @@ export class ReservationService {
       throw new Error(error.message);
     }
 
-    return data;
+    return mapRowToReservation(data);
   }
 
   async updateReservationNotes(
@@ -362,7 +417,7 @@ export class ReservationService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ notes, updatedAt: new Date() })
+      .update({ notes, updated_at: new Date().toISOString() })
       .eq('clinic_id', this.clinicId)
       .eq('id', id)
       .select()
@@ -372,7 +427,7 @@ export class ReservationService {
       throw new Error(error.message);
     }
 
-    return data;
+    return mapRowToReservation(data);
   }
 
   // 予約削除機能
@@ -383,7 +438,7 @@ export class ReservationService {
       .update({
         status: 'cancelled',
         notes: reason,
-        updatedAt: new Date(),
+        updated_at: new Date().toISOString(),
       })
       .eq('clinic_id', this.clinicId)
       .eq('id', id);
@@ -418,7 +473,7 @@ export class ReservationService {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
       .from('reservations')
-      .update({ status, updatedAt: new Date() })
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('clinic_id', this.clinicId)
       .in('id', reservationIds)
       .select();
@@ -531,9 +586,9 @@ export class ReservationService {
         .from('blocks')
         .select('*')
         .eq('clinic_id', this.clinicId)
-        .eq('resourceId', staffId)
+        .eq('resource_id', staffId)
         .or(
-          `startTime.lt.${endTime.toISOString()},endTime.gt.${startTime.toISOString()}`
+          `start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()}`
         );
 
       if (!error && blocks && blocks.length > 0) {
@@ -614,7 +669,7 @@ export class ReservationService {
   private async getStaffById(staffId: string): Promise<Resource | null> {
     const supabase = await this.getSupabase();
     const { data, error } = await supabase
-      .from('staff')
+      .from('resources')
       .select('*')
       .eq('clinic_id', this.clinicId)
       .eq('id', staffId)
@@ -624,7 +679,7 @@ export class ReservationService {
       return null;
     }
 
-    return data;
+    return mapResourceRowToResource(data);
   }
 
   private getDayName(date: Date): keyof Resource['workingHours'] {

@@ -420,9 +420,11 @@ export class BackupCodeManager {
       await supabase.from('security_events').insert({
         event_type: `mfa_backup_${eventType}`,
         user_id: userId,
-        event_details: details,
-        ip_address: '', // ミドルウェアで設定される
-        user_agent: '', // ミドルウェアで設定される
+        event_category: 'mfa',
+        event_description: `MFA backup code event: ${eventType}`,
+        event_data: details as any,
+        ip_address: '',
+        user_agent: '',
         created_at: new Date().toISOString(),
       });
     } catch (error) {

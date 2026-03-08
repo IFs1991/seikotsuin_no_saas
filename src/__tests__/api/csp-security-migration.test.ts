@@ -14,10 +14,7 @@ import * as path from 'path';
 // Red 1: マイグレーションファイルの構造検証
 // ================================================================
 describe('CSP/Security migration SSOT', () => {
-  const migrationDir = path.resolve(
-    __dirname,
-    '../../../supabase/migrations'
-  );
+  const migrationDir = path.resolve(__dirname, '../../../supabase/migrations');
   const migrationFile = path.join(
     migrationDir,
     '20260304000100_csp_security_alerts_migration_ssot.sql'
@@ -157,15 +154,18 @@ describe('CSP APIs clinic_id integration', () => {
     const { NextRequest } = await import('next/server');
     const { POST } = await import('@/app/api/security/csp-report/route');
 
-    const request = new NextRequest('http://localhost/api/security/csp-report', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        'document-uri': 'https://example.com',
-        'violated-directive': 'script-src',
-        'blocked-uri': 'https://evil.com/script.js',
-      }),
-    });
+    const request = new NextRequest(
+      'http://localhost/api/security/csp-report',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          'document-uri': 'https://example.com',
+          'violated-directive': 'script-src',
+          'blocked-uri': 'https://evil.com/script.js',
+        }),
+      }
+    );
 
     await POST(request);
 
@@ -186,9 +186,7 @@ describe('CSP APIs clinic_id integration', () => {
         }
         return mockBuilder;
       }),
-      select: jest.fn(() =>
-        Promise.resolve({ data: null, error: null })
-      ),
+      select: jest.fn(() => Promise.resolve({ data: null, error: null })),
       then: (resolve: (v: unknown) => void) =>
         resolve({ data: null, error: null }),
     };
@@ -196,9 +194,8 @@ describe('CSP APIs clinic_id integration', () => {
     mockSupabaseClient.from.mockReturnValue(mockBuilder);
 
     // Import SecurityNotificationManager and test saveToDatabase
-    const { SecurityNotificationManager } = await import(
-      '@/lib/notifications/security-alerts'
-    );
+    const { SecurityNotificationManager } =
+      await import('@/lib/notifications/security-alerts');
     const manager = new SecurityNotificationManager();
 
     // Call notifyCSPViolation which internally calls saveToDatabase

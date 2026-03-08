@@ -116,16 +116,21 @@ export async function acceptInvite(
       return { success: false, error: '招待の受諾に失敗しました' };
     }
 
-    if (!data?.success) {
+    const rpcResult = data as {
+      success?: boolean;
+      error?: string;
+      clinic_id?: string;
+    } | null;
+    if (!rpcResult?.success) {
       return {
         success: false,
-        error: data?.error || '招待の受諾に失敗しました',
+        error: rpcResult?.error || '招待の受諾に失敗しました',
       };
     }
 
     console.info('[Auth] Invite accepted:', {
       userId: user.id,
-      clinicId: data.clinic_id,
+      clinicId: rpcResult.clinic_id,
       timestamp: new Date().toISOString(),
     });
 
@@ -219,7 +224,11 @@ export async function signupAndAcceptInvite(
         { invite_token: token }
       );
 
-      if (acceptError || !acceptData?.success) {
+      const acceptResult = acceptData as {
+        success?: boolean;
+        clinic_id?: string;
+      } | null;
+      if (acceptError || !acceptResult?.success) {
         console.error(
           '[Invite] Accept invite after signup error:',
           acceptError
@@ -235,7 +244,7 @@ export async function signupAndAcceptInvite(
       console.info('[Auth] Signup and invite accepted:', {
         userId: signupData.user.id,
         email: sanitizedEmail,
-        clinicId: acceptData.clinic_id,
+        clinicId: acceptResult.clinic_id,
         timestamp: new Date().toISOString(),
       });
 
@@ -338,11 +347,16 @@ export async function loginAndAcceptInvite(
       { invite_token: token }
     );
 
-    if (acceptError || !acceptData?.success) {
+    const acceptResult2 = acceptData as {
+      success?: boolean;
+      error?: string;
+      clinic_id?: string;
+    } | null;
+    if (acceptError || !acceptResult2?.success) {
       console.error('[Invite] Accept invite after login error:', acceptError);
       return {
         success: false,
-        errors: { _form: [acceptData?.error || '招待の受諾に失敗しました'] },
+        errors: { _form: [acceptResult2?.error || '招待の受諾に失敗しました'] },
       };
     }
 
@@ -355,7 +369,7 @@ export async function loginAndAcceptInvite(
     console.info('[Auth] Login and invite accepted:', {
       userId: loginData.user.id,
       email: sanitizedEmail,
-      clinicId: acceptData.clinic_id,
+      clinicId: acceptResult2.clinic_id,
       timestamp: new Date().toISOString(),
     });
 

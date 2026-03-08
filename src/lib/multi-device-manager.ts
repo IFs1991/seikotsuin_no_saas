@@ -3,7 +3,7 @@
  * Phase 3A: セッション管理強化の一環としての複数デバイス管理
  */
 
-import { createClient } from '@/lib/supabase-browser';
+import { createClient } from '@/lib/supabase/client';
 import { SessionManager, type DeviceInfo } from './session-manager';
 import { SecurityMonitor } from './security-monitor';
 import { logger } from '@/lib/logger';

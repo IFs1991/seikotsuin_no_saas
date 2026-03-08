@@ -165,7 +165,9 @@ describe('GET /api/notifications', () => {
 
     const { GET } = await import('@/app/api/notifications/route');
     await GET(
-      new Request('http://localhost/api/notifications?limit=999&include_count=false') as any
+      new Request(
+        'http://localhost/api/notifications?limit=999&include_count=false'
+      ) as any
     );
 
     expect(listQuery.range).toHaveBeenCalledWith(0, 99);

@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         notes: notes ?? null,
         channel,
-      })
+      } as any)
       .select('id, start_time, end_time, status')
       .single();
 

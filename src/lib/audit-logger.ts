@@ -53,7 +53,9 @@ export class AuditLogger {
 
     try {
       const supabase = createAdminClient();
-      const { error } = await supabase.from('audit_logs').insert([logData]);
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert([logData] as any);
 
       if (error) {
         throw error;

@@ -40,8 +40,9 @@ function loadEnv(envFileName = '.env') {
   }
 }
 
-// .env の読み込み
-loadEnv();
+// .env → .env.local の順で読み込み（Next.js 慣習に合わせたフォールバック）
+loadEnv('.env');
+loadEnv('.env.local');
 
 /**
  * -------------------------

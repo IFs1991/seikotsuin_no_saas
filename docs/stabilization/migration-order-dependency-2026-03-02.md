@@ -6,6 +6,14 @@
 > 現行スキーマの正確な情報は [`final-schema-inventory.md`](./final-schema-inventory.md) を参照してください。
 > スクイッシュコミット: `4dc5441` / バックアップタグ: `pre-squash-backup-20260305`
 
+## Current Execution Order (post-squash, verified 2026-03-05)
+- Target: `supabase/migrations/*.sql`
+- Executable files: 1
+- Order:
+  1. `00000000000001_squashed_baseline.sql`
+- Dependency note:
+  - 現行ブランチでは全DDL/DML変更が単一ファイルに集約されているため、ファイル間の順序依存は存在しない。
+
 ## Scope
 - Target: `supabase/migrations/*.sql` (57 files, pre-squash)
 - **Analyzed at**: git ref `28db648` (commit: `chore: commit pending migrations...`, 2026-03-05)
@@ -158,8 +166,9 @@
 - **Result**: PASS — 順序依存は単一ファイルに統合されたため自動的に解消
 - **Commit**: `4dc5441`
 
-### DOD-04 (drift visibility)
-- **Command**: `supabase db diff --local`
+### DOD-04 (drift visibility, equivalent evidence)
+- **DoD standard command**: `supabase db push --local --dry-run`
+- **Executed command**: `supabase db diff --local`
 - **Executed**: 2026-03-05
 - **Result**: PASS — `No schema changes found`
 - **Commit**: `4c8f130`
@@ -169,4 +178,3 @@
 - `public.can_access_clinic`, `public.custom_access_token_hook`, `public.get_current_role` が
   ベースライン内で定義されていることを確認済み
 - RLSポリシー全148件がベースラインに含まれ、重複定義なし
-

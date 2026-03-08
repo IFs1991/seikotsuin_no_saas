@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('staff_preferences')
-      .insert(dto)
+      .insert(dto as any)
       .select()
       .single();
 

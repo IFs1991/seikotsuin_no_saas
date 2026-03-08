@@ -40,8 +40,8 @@ export const menuCategoriesSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-// 治療メニュー
-export const treatmentMenusSchema = z.object({
+// メニュー（現行スキーマ名: menus）
+export const menusSchema = z.object({
   ...baseFields,
   clinic_id: z.string().uuid().optional(),
   category_id: z.string().uuid('カテゴリーを選択してください'),
@@ -82,26 +82,12 @@ export const treatmentMenusSchema = z.object({
 export const staffSchema = z.object({
   ...baseFields,
   clinic_id: z.string().uuid().optional(),
-  employee_id: z
-    .string()
-    .max(
-      VALIDATION_LIMITS.CODE_MAX_LENGTH,
-      `従業員IDは${VALIDATION_LIMITS.CODE_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  first_name: z
+  name: z
     .string()
     .min(1, '名前は必須です')
     .max(
-      VALIDATION_LIMITS.NAME_MAX_LENGTH,
-      `名前は${VALIDATION_LIMITS.NAME_MAX_LENGTH}文字以内で入力してください`
-    ),
-  last_name: z
-    .string()
-    .min(1, '姓は必須です')
-    .max(
-      VALIDATION_LIMITS.NAME_MAX_LENGTH,
-      `姓は${VALIDATION_LIMITS.NAME_MAX_LENGTH}文字以内で入力してください`
+      VALIDATION_LIMITS.STRING_MAX_LENGTH,
+      `名前は${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
     ),
   email: z
     .string()
@@ -110,62 +96,29 @@ export const staffSchema = z.object({
       VALIDATION_LIMITS.STRING_MAX_LENGTH,
       `メールアドレスは${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
     ),
-  phone: z
-    .string()
-    .max(20, '電話番号は20文字以内で入力してください')
-    .optional(),
-  role: z.enum(['admin', 'staff', 'therapist'], {
+  role: z.enum(['admin', 'clinic_admin', 'manager', 'staff', 'therapist'], {
     errorMap: () => ({ message: '正しい役割を選択してください' }),
   }),
-  specialization: z
-    .string()
-    .max(
-      VALIDATION_LIMITS.STRING_MAX_LENGTH,
-      `専門分野は${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
+  is_therapist: z.boolean().optional(),
   hire_date: z.string().date('正しい日付を入力してください').optional(),
-  is_active: z.boolean().default(true),
 });
 
 // 患者
 export const patientsSchema = z.object({
   ...baseFields,
   clinic_id: z.string().uuid().optional(),
-  patient_number: z
-    .string()
-    .max(
-      VALIDATION_LIMITS.CODE_MAX_LENGTH,
-      `患者番号は${VALIDATION_LIMITS.CODE_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  first_name: z
+  name: z
     .string()
     .min(1, '名前は必須です')
     .max(
-      VALIDATION_LIMITS.NAME_MAX_LENGTH,
-      `名前は${VALIDATION_LIMITS.NAME_MAX_LENGTH}文字以内で入力してください`
-    ),
-  last_name: z
-    .string()
-    .min(1, '姓は必須です')
-    .max(
-      VALIDATION_LIMITS.NAME_MAX_LENGTH,
-      `姓は${VALIDATION_LIMITS.NAME_MAX_LENGTH}文字以内で入力してください`
-    ),
-  email: z
-    .string()
-    .email('正しいメールアドレスを入力してください')
-    .max(
       VALIDATION_LIMITS.STRING_MAX_LENGTH,
-      `メールアドレスは${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  phone: z
+      `名前は${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
+    ),
+  phone_number: z
     .string()
     .max(20, '電話番号は20文字以内で入力してください')
     .optional(),
-  birth_date: z.string().date('正しい日付を入力してください').optional(),
+  date_of_birth: z.string().date('正しい日付を入力してください').optional(),
   gender: z
     .enum(['male', 'female', 'other'], {
       errorMap: () => ({ message: '性別を選択してください' }),
@@ -176,30 +129,49 @@ export const patientsSchema = z.object({
     .max(
       VALIDATION_LIMITS.TEXT_MAX_LENGTH,
       `住所は${VALIDATION_LIMITS.TEXT_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  emergency_contact: z
+        )
+        .optional(),
+  registration_date: z
     .string()
+    .date('正しい日付を入力してください')
+    .optional(),
+  last_visit_date: z
+    .string()
+    .date('正しい日付を入力してください')
+    .optional(),
+});
+
+export const resourcesSchema = z.object({
+  ...baseFields,
+  clinic_id: z.string().uuid(),
+  name: z
+    .string()
+    .min(1, '名前は必須です')
     .max(
       VALIDATION_LIMITS.STRING_MAX_LENGTH,
-      `緊急連絡先は${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  medical_history: z
+      `名前は${VALIDATION_LIMITS.STRING_MAX_LENGTH}文字以内で入力してください`
+    ),
+  type: z.enum(['staff', 'room', 'bed', 'device'], {
+    errorMap: () => ({ message: '正しい種別を選択してください' }),
+  }),
+  working_hours: z.record(z.any()).optional(),
+  supported_menus: z.array(z.string()).optional(),
+  max_concurrent: z.number().int().positive().optional(),
+  is_bookable: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const clinicSettingsSchema = z.object({
+  ...baseFields,
+  clinic_id: z.string().uuid(),
+  category: z
     .string()
+    .min(1, 'カテゴリは必須です')
     .max(
-      VALIDATION_LIMITS.TEXT_MAX_LENGTH,
-      `既往歴は${VALIDATION_LIMITS.TEXT_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  notes: z
-    .string()
-    .max(
-      VALIDATION_LIMITS.TEXT_MAX_LENGTH,
-      `備考は${VALIDATION_LIMITS.TEXT_MAX_LENGTH}文字以内で入力してください`
-    )
-    .optional(),
-  is_active: z.boolean().default(true),
+      VALIDATION_LIMITS.CODE_MAX_LENGTH,
+      `カテゴリは${VALIDATION_LIMITS.CODE_MAX_LENGTH}文字以内で入力してください`
+    ),
+  settings: z.record(z.any()).default({}),
 });
 
 // 予約
@@ -229,12 +201,14 @@ export const appointmentsSchema = z.object({
   price: z.number().positive('料金は正の数値で入力してください').optional(),
 });
 
-// テーブルスキーママッピング
+// テーブルスキーママッピング（現行スキーマ名で定義）
 export const tableSchemas = {
   menu_categories: menuCategoriesSchema,
-  treatment_menus: treatmentMenusSchema,
+  menus: menusSchema,
   staff: staffSchema,
   patients: patientsSchema,
+  resources: resourcesSchema,
+  clinic_settings: clinicSettingsSchema,
   appointments: appointmentsSchema,
 } as const;
 
@@ -264,7 +238,9 @@ export type SupportedTableName = keyof typeof tableSchemas;
 
 // 各テーブルのデータ型
 export type MenuCategoryData = z.infer<typeof menuCategoriesSchema>;
-export type TreatmentMenuData = z.infer<typeof treatmentMenusSchema>;
+export type MenuData = z.infer<typeof menusSchema>;
 export type StaffData = z.infer<typeof staffSchema>;
 export type PatientData = z.infer<typeof patientsSchema>;
+export type ResourceData = z.infer<typeof resourcesSchema>;
+export type ClinicSettingsData = z.infer<typeof clinicSettingsSchema>;
 export type AppointmentData = z.infer<typeof appointmentsSchema>;

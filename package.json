@@ -34,7 +34,7 @@
     "swc:verify": "node scripts/check-swc-binary.mjs",
     "swc:clear": "node scripts/clear-swc-binaries.mjs",
     "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",
-    "supabase:types": "supabase gen types typescript --local --schema public > src/types/supabase.ts",
+    "supabase:types": "node scripts/generate-supabase-types.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "verify:supabase": "node scripts/verify-supabase-connection.mjs"
   },
@@ -44,7 +44,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-switch": "^1.2.6",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.56.0",
     "@tanstack/react-query": "^5.85.3",
     "@tanstack/react-query-devtools": "^5.85.3",

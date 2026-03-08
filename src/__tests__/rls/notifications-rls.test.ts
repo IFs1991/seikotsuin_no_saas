@@ -12,7 +12,9 @@ jest.mock('@/lib/api-helpers', () => {
 const processApiRequestMock = processApiRequest as jest.Mock;
 
 function createListQueryMock() {
-  const range = jest.fn().mockResolvedValue({ data: [], count: 0, error: null });
+  const range = jest
+    .fn()
+    .mockResolvedValue({ data: [], count: 0, error: null });
   const order = jest.fn().mockReturnValue({ range });
   const eqIsRead = jest.fn().mockReturnValue({ order, range });
   const eqUser = jest.fn().mockReturnValue({ eq: eqIsRead, order, range });

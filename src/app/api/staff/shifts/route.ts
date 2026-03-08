@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       .insert({
         ...dto,
         created_by: user.id,
-      })
+      } as any)
       .select()
       .single();
 

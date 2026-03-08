@@ -7,6 +7,9 @@
 **Backup tag**: `pre-squash-backup-20260305`
 **Verified against**: local Supabase DB (`supabase db reset` + `supabase db diff`)
 
+> **Source of Truth**: DBスキーマの実行正本は `supabase/migrations/` です。
+> `src/database/` および `src/api/database/*.sql` は参照資料であり、直接適用禁止です。
+
 ---
 
 ## Tables (46)

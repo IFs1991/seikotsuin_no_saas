@@ -85,7 +85,7 @@ export const dbHelpers = {
         .from('daily_reports')
         .select('*')
         .eq('clinic_id', clinicId)
-        .eq('date', date);
+        .eq('report_date', date);
       if (error) throw error;
       return data;
     });

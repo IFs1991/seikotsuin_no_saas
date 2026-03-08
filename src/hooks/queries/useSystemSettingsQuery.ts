@@ -10,7 +10,8 @@ import {
   type UseMutationOptions,
 } from '@tanstack/react-query';
 import { queryKeys } from '@/providers/query-provider';
-import type { MasterDataDetail, FilterState, ApiResponse } from '@/types/admin';
+import type { MasterDataDetail, FilterState } from '@/types/admin';
+import { createMasterDataDeprecationError } from '@/lib/admin/master-data-deprecation';
 
 // APIクライアント関数
 const systemSettingsApi = {
@@ -19,53 +20,14 @@ const systemSettingsApi = {
     items: MasterDataDetail[];
     total: number;
   }> {
-    const params = new URLSearchParams();
-
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category) params.append('category', filters.category);
-    if (filters.clinicId) params.append('clinic_id', filters.clinicId);
-    if (filters.isPublic !== undefined)
-      params.append('is_public', String(filters.isPublic));
-
-    const response = await fetch(`/api/admin/master-data?${params.toString()}`);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data: ApiResponse<{
-      items: MasterDataDetail[];
-      total: number;
-    }> = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'データの取得に失敗しました');
-    }
-
-    return data.data;
+    void filters;
+    throw createMasterDataDeprecationError();
   },
 
   // 新規作成
   async create(data: Partial<MasterDataDetail>): Promise<MasterDataDetail> {
-    const response = await fetch('/api/admin/master-data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result: ApiResponse<MasterDataDetail> = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'データの作成に失敗しました');
-    }
-
-    return result.data;
+    void data;
+    throw createMasterDataDeprecationError();
   },
 
   // 更新
@@ -73,42 +35,15 @@ const systemSettingsApi = {
     id: string,
     data: Partial<MasterDataDetail>
   ): Promise<MasterDataDetail> {
-    const response = await fetch('/api/admin/master-data', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id, ...data }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result: ApiResponse<MasterDataDetail> = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'データの更新に失敗しました');
-    }
-
-    return result.data;
+    void id;
+    void data;
+    throw createMasterDataDeprecationError();
   },
 
   // 削除
   async delete(id: string): Promise<void> {
-    const response = await fetch(`/api/admin/master-data?id=${id}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result: ApiResponse<null> = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.error || 'データの削除に失敗しました');
-    }
+    void id;
+    throw createMasterDataDeprecationError();
   },
 };
 

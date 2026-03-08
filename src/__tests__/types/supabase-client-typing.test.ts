@@ -15,39 +15,31 @@ import * as path from 'path';
 // ================================================================
 describe('Supabase client Database generics', () => {
   test('server.ts が createServerClient<Database> を使用する', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../lib/supabase/server.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../lib/supabase/server.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
     expect(source).toMatch(/createServerClient<Database>/);
   });
 
   test('supabase-browser.ts が createSupabaseClient<Database> を使用する', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../lib/supabase-browser.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../lib/supabase-browser.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
     expect(source).toMatch(/createSupabaseClient<Database>/);
   });
 
   test('server.ts が Database 型をインポートしている', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../lib/supabase/server.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../lib/supabase/server.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
-    expect(source).toMatch(/import.*Database.*from.*['"]@\/types\/supabase['"]/);
+    expect(source).toMatch(
+      /import.*Database.*from.*['"]@\/types\/supabase['"]/
+    );
   });
 
   test('supabase-browser.ts が Database 型をインポートしている', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../lib/supabase-browser.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../lib/supabase-browser.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
-    expect(source).toMatch(/import.*Database.*from.*['"]@\/types\/supabase['"]/);
+    expect(source).toMatch(
+      /import.*Database.*from.*['"]@\/types\/supabase['"]/
+    );
   });
 });
 
@@ -79,19 +71,13 @@ describe('as any elimination', () => {
 // ================================================================
 describe('Database type definitions', () => {
   test('supabase.ts に csp_violations テーブル型がある', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../types/supabase.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../types/supabase.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
     expect(source).toMatch(/csp_violations/);
   });
 
   test('supabase.ts に security_alerts テーブル型がある', () => {
-    const filePath = path.resolve(
-      __dirname,
-      '../../types/supabase.ts'
-    );
+    const filePath = path.resolve(__dirname, '../../types/supabase.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
     expect(source).toMatch(/security_alerts/);
   });

@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import TableEditor from '@/components/admin/table-editor';
-import AdminMasterForm from '@/components/master/admin-master-form';
-import { useAdminMaster } from '@/hooks/useAdminMaster';
 import {
   Card,
   CardHeader,
@@ -13,45 +12,13 @@ import {
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database, Settings, Table } from 'lucide-react';
+import {
+  MASTER_DATA_DEPRECATION_MESSAGE,
+  MASTER_DATA_REPLACEMENT_ROUTE,
+} from '@/lib/admin/master-data-deprecation';
 
 const AdminMasterPage: React.FC = () => {
-  const {
-    masterData,
-    loading,
-    error,
-    createMasterData,
-    updateMasterData,
-    deleteMasterData,
-    exportMasterData,
-    importMasterData,
-    rollbackMasterData,
-  } = useAdminMaster();
-
   const [currentTable, setCurrentTable] = useState<string>('');
-
-  if (loading) {
-    return (
-      <div className='flex justify-center items-center h-screen bg-white dark:bg-gray-800'>
-        <p className='text-gray-700 dark:text-gray-300'>Loading...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className='flex justify-center items-center h-screen bg-white dark:bg-gray-800'>
-        <div className='text-center'>
-          <p className='text-red-500 mb-4'>Error: {error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
-          >
-            再読み込み
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
@@ -63,7 +30,7 @@ const AdminMasterPage: React.FC = () => {
               データベース管理
             </CardTitle>
             <CardDescription className='text-gray-500 bg-card'>
-              システムのテーブルデータとマスターデータを管理します。
+              テーブル管理は継続し、旧 master-data 導線のみ廃止しています。
               {currentTable && ` | 現在選択中: ${currentTable}`}
             </CardDescription>
           </CardHeader>
@@ -76,7 +43,7 @@ const AdminMasterPage: React.FC = () => {
                 </TabsTrigger>
                 <TabsTrigger value='settings' className='flex items-center'>
                   <Settings className='h-4 w-4 mr-2' />
-                  システム設定
+                  旧システム設定
                 </TabsTrigger>
               </TabsList>
 
@@ -85,15 +52,20 @@ const AdminMasterPage: React.FC = () => {
               </TabsContent>
 
               <TabsContent value='settings' className='mt-6'>
-                <AdminMasterForm
-                  masterData={masterData}
-                  onCreate={createMasterData}
-                  onUpdate={updateMasterData}
-                  onDelete={deleteMasterData}
-                  onImport={importMasterData}
-                  onExport={exportMasterData}
-                  onRollback={rollbackMasterData}
-                />
+                <div className='mx-auto max-w-md rounded-lg border border-yellow-300 bg-yellow-50 p-6 text-center'>
+                  <h2 className='mb-4 text-xl font-bold text-yellow-800'>
+                    この導線は廃止されました
+                  </h2>
+                  <p className='mb-4 text-yellow-700'>
+                    {MASTER_DATA_DEPRECATION_MESSAGE}
+                  </p>
+                  <Link
+                    href={MASTER_DATA_REPLACEMENT_ROUTE}
+                    className='inline-block rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700'
+                  >
+                    設定管理ページへ移動
+                  </Link>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

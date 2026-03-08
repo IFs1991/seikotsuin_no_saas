@@ -1,4 +1,7 @@
-import type { ApiResponse } from '@/types/api';
+import {
+  createMasterDataDeprecationError,
+  MASTER_DATA_DEPRECATION_MESSAGE,
+} from '@/lib/admin/master-data-deprecation';
 
 export interface MasterDataItem {
   id: string;
@@ -31,28 +34,9 @@ function buildUrl(base: string, params?: Record<string, unknown>) {
 }
 
 async function request<T>(input: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-    credentials: 'include',
-  });
-
-  const payload = (await response.json()) as ApiResponse<T>;
-
-  if (
-    !response.ok ||
-    !payload ||
-    (payload as ApiResponse<T>).success === false
-  ) {
-    const errorPayload = payload as unknown as { error?: string };
-    const errorMessage = errorPayload?.error || response.statusText;
-    throw new Error(errorMessage || 'API request failed');
-  }
-
-  return (payload as { data: T }).data;
+  void input;
+  void init;
+  throw createMasterDataDeprecationError();
 }
 
 export async function listMasterData(params?: {
@@ -88,3 +72,5 @@ export async function deleteMasterData(id: string): Promise<void> {
     method: 'DELETE',
   });
 }
+
+export { MASTER_DATA_DEPRECATION_MESSAGE };

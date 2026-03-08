@@ -87,7 +87,10 @@ function createQueryBuilder(
   mockError: unknown = null
 ) {
   const result = { data: mockData, error: mockError };
-  const builder: Record<string, jest.Mock | ((resolve: (v: unknown) => void) => void)> = {};
+  const builder: Record<
+    string,
+    jest.Mock | ((resolve: (v: unknown) => void) => void)
+  > = {};
 
   builder.select = jest.fn(() => builder);
   builder.insert = jest.fn(() => builder);
@@ -403,7 +406,9 @@ describe('Onboarding API Integration', () => {
       const request = createMockRequest('/api/onboarding/seed', {
         method: 'POST',
         body: {
-          treatment_menus: [{ name: '肩こり治療', price: 3000, duration_minutes: 30 }],
+          treatment_menus: [
+            { name: '肩こり治療', price: 3000, duration_minutes: 30 },
+          ],
           payment_methods: ['現金'],
           patient_types: ['初診'],
         },
@@ -459,9 +464,7 @@ describe('Onboarding API Integration', () => {
 
       // onboarding_states の update が呼ばれていないことを検証
       // (fromCalls に onboarding_states が最初の select 以降再度現れない)
-      const stateCallsAfterMenus = fromCalls.slice(
-        fromCalls.indexOf('menus')
-      );
+      const stateCallsAfterMenus = fromCalls.slice(fromCalls.indexOf('menus'));
       expect(stateCallsAfterMenus).not.toContain('onboarding_states');
     });
 

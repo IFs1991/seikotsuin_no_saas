@@ -274,7 +274,11 @@ export class MFAManager {
 
       return {
         isEnabled: mfaSettings.is_enabled,
-        hasBackupCodes: (mfaSettings.backup_codes || []).length > 0,
+        hasBackupCodes:
+          (Array.isArray(mfaSettings.backup_codes)
+            ? mfaSettings.backup_codes
+            : []
+          ).length > 0,
         lastUsed: mfaSettings.last_used_at
           ? new Date(mfaSettings.last_used_at)
           : undefined,
@@ -377,9 +381,11 @@ export class MFAManager {
       await supabase.from('security_events').insert({
         event_type: `mfa_${event.eventType}`,
         user_id: event.userId,
-        event_details: event.details || {},
-        ip_address: '', // ミドルウェアで設定される
-        user_agent: '', // ミドルウェアで設定される
+        event_category: 'mfa',
+        event_description: `MFA event: ${event.eventType}`,
+        event_data: event.details || {},
+        ip_address: '',
+        user_agent: '',
         created_at: new Date().toISOString(),
       });
     } catch (error) {
