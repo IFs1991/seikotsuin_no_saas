@@ -37,7 +37,8 @@
     "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",
     "supabase:types": "node scripts/generate-supabase-types.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
-    "verify:supabase": "node scripts/verify-supabase-connection.mjs"
+    "verify:supabase": "node scripts/verify-supabase-connection.mjs",
+    "lint:ci": "eslint src --max-warnings=-1"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
