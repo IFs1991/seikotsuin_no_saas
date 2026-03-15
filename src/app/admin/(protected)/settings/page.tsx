@@ -20,6 +20,20 @@ import {
   LogOut,
 } from 'lucide-react';
 
+const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set([
+  'clinic-basic',
+  'clinic-hours',
+  'staff-list',
+  'services-menu',
+  'insurance-types',
+  'booking-slots',
+  'comm-email',
+  'system-general',
+  'system-security',
+  'system-backup',
+  'data-import',
+]);
+
 const settingsCategories = [
   {
     id: 'clinic',
@@ -212,17 +226,31 @@ export default function AdminSettings() {
     router.push('/admin/login');
   };
 
-  const filteredCategories = settingsCategories.filter(
-    category =>
-      category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.items.some(
+  const visibleCategories = settingsCategories
+    .map(category => ({
+      ...category,
+      items: category.items.filter(item =>
+        IMPLEMENTED_SETTINGS_ITEM_IDS.has(item.id)
+      ),
+    }))
+    .filter(category => category.items.length > 0);
+
+  const searchableCategories = visibleCategories
+    .map(category => ({
+      ...category,
+      items: category.items.filter(
         item =>
           item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
           item.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-  );
+      ),
+    }))
+    .filter(
+      category =>
+        category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        category.items.length > 0
+    );
 
-  const currentItem = settingsCategories
+  const currentItem = visibleCategories
     .flatMap(cat => cat.items.map(item => ({ ...item, category: cat.title })))
     .find(item => item.id === selectedItem);
 
@@ -350,7 +378,7 @@ export default function AdminSettings() {
         {/* ナビゲーション */}
         <div className='flex-1 overflow-y-auto p-4'>
           <nav className='space-y-1' data-testid='admin-settings-nav'>
-            {filteredCategories.map(category => (
+            {searchableCategories.map(category => (
               <div key={category.id}>
                 <button
                   onClick={() => setSelectedCategory(category.id)}

@@ -7,7 +7,8 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient, type UserPermissions } from '@/lib/supabase';
+import { HQ_ROLES } from '@/lib/constants/roles';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -30,6 +31,18 @@ const ClinicCreateSchema = z.object({
 });
 
 const requireAdmin = (role: string) => role === 'admin';
+
+function resolveScopedClinicIds(permissions: UserPermissions): string[] | null {
+  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
+    return permissions.clinic_scope_ids;
+  }
+
+  if (permissions.clinic_id) {
+    return [permissions.clinic_id];
+  }
+
+  return null;
+}
 
 // KPIデータの型定義
 interface ClinicKPI {
@@ -164,7 +177,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
 
@@ -177,11 +190,17 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+    if (!scopedClinicIds) {
+      return createErrorResponse('クリニックスコープが設定されていません', 403);
+    }
+
     const adminSupabase = createAdminClient();
 
     let query = adminSupabase
       .from('clinics')
       .select('id, name, address, phone_number, is_active, created_at')
+      .in('id', scopedClinicIds)
       .order('created_at', { ascending: false });
 
     if (search) {
@@ -238,7 +257,7 @@ export async function POST(request: NextRequest) {
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
 
@@ -263,6 +282,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, address, phone_number, is_active } = parsed.data;
+
+    if (
+      permissions.clinic_id === null &&
+      !permissions.clinic_scope_ids?.length
+    ) {
+      return createErrorResponse('クリニックスコープが設定されていません', 403);
+    }
 
     const { data, error } = await adminSupabase
       .from('clinics')

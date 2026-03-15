@@ -1,5 +1,7 @@
 # Plan PR-04: Navigation / Test Alignment v0.1
 
+Status: Completed on 2026-03-11
+
 ## 1. 目的
 
 非MVP導線や未接続画面をナビゲーションから外す変更を、関連テスト修正まで含めて 1 本で閉じる。
@@ -19,9 +21,10 @@
 - `src/components/navigation/sidebar.tsx`
 - `src/components/navigation/mobile-bottom-nav.tsx`
 - `src/app/admin/(protected)/settings/page.tsx`
-- `src/__tests__/components/**`
+- `src/__tests__/components/navigation/**`
+- `src/__tests__/components/admin-settings-navigation.test.tsx`
 - `src/__tests__/e2e-playwright/**`
-- `src/__tests__/integration/**`
+- `src/__tests__/auth/middleware-auth.test.ts`
 
 ## 4. 方針
 
@@ -29,6 +32,8 @@
 - `/multi-store` は多店舗 MVP コアのため削除対象にしない
 - 削除対象は「非MVP」「未接続」「準備中」の導線に限定する
 - 410 API 参照や廃止済み画面の導線も同時に切る
+- `/admin/master` は `src/app/api/admin/master-data/route.ts` が 410 のため通常導線から外す
+- `settings/page.tsx` は `componentMap` に実装がある項目のみを表示し、「設定画面を準備中」に落ちる項目はナビから外す
 
 ## 5. 実行手順
 
@@ -41,6 +46,7 @@
    - 表示件数
    - リンク存在確認
    - role ベース表示制御
+   - 管理設定内の表示項目
 4. UI 修正と同時に test fixture / expected route を更新する。
 5. 「導線が無いが URL 直打ちは残る」状態にするか、「URL 自体を閉じる」かを画面ごとに決める。
 
@@ -73,6 +79,8 @@
 
 ## 8. DoD
 
+- `docs/stabilization/DoD-v0.1.md` `DOD-06`
+- `docs/stabilization/DoD-v0.1.md` `DOD-07`
 - `docs/stabilization/DoD-v0.1.md` `DOD-10`
 
 ## 9. リスク
@@ -86,4 +94,22 @@
 - navigation コンポーネント差分
 - `settings/page.tsx` の表示カテゴリ差分
 - 関連テストの更新
+- 410 API 依存導線 (`/admin/master`) を通常ナビから除外した証跡
 - 必要に応じて MVP 導線一覧の文書更新
+
+### 2026-03-11 実施結果
+
+- 実装完了:
+  - `src/components/navigation/header.tsx` と `src/components/navigation/sidebar.tsx` から、非MVPまたは 410 依存の通常導線を除外した
+  - `/multi-store` は多店舗 MVP 導線として維持した
+  - `src/app/admin/(protected)/settings/page.tsx` は `componentMap` に実装がある設定項目のみを表示する形へ調整した
+  - `src/components/navigation/mobile-bottom-nav.tsx` は確認のみ実施し、今回の除外対象リンクを直接持たないため変更不要とした
+- テスト完了:
+  - `src/__tests__/components/navigation/admin-navigation.test.tsx` を追加し、管理ナビの表示対象を固定した
+  - `src/__tests__/components/admin-settings-navigation.test.tsx` を追加し、管理設定ナビの表示対象を固定した
+  - `src/__tests__/components/admin-settings.test.tsx` と `src/__tests__/auth/middleware-auth.test.ts` を含む関連 Jest テストを通過させた
+  - `src/__tests__/e2e-playwright/admin-settings.spec.ts` を対象に Playwright 検証を通過させた
+- DoD 反映:
+  - `DOD-06`: PR-04 対象導線について確認完了
+  - `DOD-07`: PR-04 対象の管理設定導線について確認完了
+  - `DOD-10`: PR-04 差分由来の build blocker は解消済み。ただし、リポジトリ全体の `build` には PR-04 範囲外の既存 lint / prettier エラーが残存する

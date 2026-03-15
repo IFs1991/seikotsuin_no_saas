@@ -7,6 +7,8 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { createAdminClient, canAccessClinicScope } from '@/lib/supabase';
+import { HQ_ROLES } from '@/lib/constants/roles';
 
 const ClinicUpdateSchema = z
   .object({
@@ -30,14 +32,14 @@ const requireAdmin = (role: string) => role === 'admin';
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { clinic_id: string } }
+  context: { params: Promise<{ clinic_id: string }> }
 ) {
-  const { clinic_id } = context.params;
+  const { clinic_id } = await context.params;
 
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: ['admin'],
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
 
@@ -45,9 +47,16 @@ export async function PATCH(
       return processResult.error!;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
+    const { auth, permissions, body } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
+    }
+
+    if (!canAccessClinicScope(permissions, clinic_id)) {
+      return createErrorResponse(
+        '指定クリニックへのアクセス権限がありません',
+        403
+      );
     }
 
     const parsed = ClinicUpdateSchema.safeParse(body);
@@ -71,7 +80,9 @@ export async function PATCH(
     if (parsed.data.is_active !== undefined)
       updatePayload.is_active = parsed.data.is_active;
 
-    const { data, error } = await supabase
+    const adminSupabase = createAdminClient();
+
+    const { data, error } = await adminSupabase
       .from('clinics')
       .update(updatePayload)
       .eq('id', clinic_id)

@@ -14,13 +14,15 @@
   - `src/types/supabase.ts`
 - `src/types/supabase.ts` は現時点で `export type Json =` から始まっており、生成物自体に CLI ログ混入は見えていない
 - 2026-03-08 時点では `npm run type-check` は成功しており、`ts-errors-current.txt` は現状を反映していない
-- 一方で `npm run supabase:types` は `supabase gen types typescript --local --schema public` 実行時にタイムアウトし、`supabase status` では `supabase_db_seikotsuin_management_saas container is not ready: unhealthy` を返す
+- `supabase status --debug` は成功し、local development setup running を確認した
+- `supabase gen types typescript --local --schema public` は成功した
+- `npm run supabase:types` は成功し、`src/types/supabase.ts` は `export type Json =` で始まる clean な生成物に更新された
 - 旧 `system_settings` 契約は型エラーとしては顕在化していないが、廃止済み API を呼ぶ実装が残っている
   - `src/app/api/admin/master-data/route.ts` `GET/POST/PUT/DELETE`
   - `src/hooks/queries/useSystemSettingsQuery.ts` `systemSettingsApi.getAll/create/update/delete`
   - `src/lib/api/admin/master-data-client.ts` `listMasterData/createMasterData/updateMasterData/deleteMasterData`
 
-このため、PR-01 の現時点の論点は「型生成物の欠落」よりも、「DOD-12 再検証のためのローカル Supabase 環境復旧」と「旧 schema / 旧 API 契約の隔離」が主体になる。
+このため、PR-01 の結論は「型生成物の欠落」ではなく、「旧 schema / 旧 API 契約の隔離」が主体だった、となる。
 
 参考として、過去の代表エラー群は以下だったが、現ブランチでは source-of-truth にしない:
 
@@ -55,7 +57,8 @@
 
 - 現ブランチでは `src/types/supabase.ts` 自体に欠落やログ混入は確認できていない
 - したがって、`supabase:types` だけで直ると確認できたアプリ側不整合は、現時点では **なし**
-- 未解決なのは DOD-12 の再実行不能であり、これは schema 差分ではなくローカル Supabase 環境 (`supabase status`) 側の問題として扱う
+- DOD-12 の再検証は完了した
+- `supabase:types` 単体で直ると確認できたアプリ側不整合は引き続き **なし**
 
 ### B. コード修正で解決する範囲
 
@@ -86,7 +89,7 @@
 
 ## 5. 実行手順
 
-1. `supabase status` を確認し、DOD-12 を妨げているローカル DB unhealthy を解消する。
+1. `supabase status` を確認し、DOD-12 を妨げる環境要因がないことを確認する。
 2. `npm run supabase:types` を再実行し、`src/types/supabase.ts` の再生成可否を確認する。
 3. `ts-errors-current.txt` は stale 扱いとし、必要なら現ブランチで再生成したエラー一覧を新しい source-of-truth にする。
 4. 旧 `master-data` 契約の参照を以下の3分類へ振り分ける。
@@ -136,7 +139,8 @@
 
 ## 7. 受け入れ条件
 
-- `supabase status` が healthy を返したうえで `npm run supabase:types` が成功する
+- `supabase status` が成功し、local development setup running を返す
+- `npm run supabase:types` が成功する
 - `src/types/supabase.ts` が `export type Json =` で始まる
 - stale な `ts-errors-current.txt` を source-of-truth として扱わない
 - 現行の `system_settings` / `master-data` 参照に、解決手段の分類が付いている
@@ -161,6 +165,13 @@
 - `npm run type-check`
 - 必要に応じて更新したエラー一覧
 - 必要に応じて `docs/stabilization/triage.md` への追記
+
+2026-03-08 実績:
+
+- `supabase status --debug`: 成功
+- `supabase gen types typescript --local --schema public`: 成功
+- `npm run supabase:types`: 成功
+- `npm run type-check`: 成功
 
 ## 11. 2026-03-08 時点の暫定切り分け
 
@@ -198,3 +209,20 @@
 理由:
 
 - 生成済み型・現行 API・旧 SQL 資産の source-of-truth が分裂しており、migration / rollback を伴う判断が必要だから
+
+## 12. 完了判定
+
+PR-01 は完了とする。
+
+完了理由:
+
+- DOD-12 再検証が完了し、`supabase:types` の成功を確認した
+- DOD-10 観点で `npm run type-check` の成功を確認した
+- `supabase:types` だけで直る範囲と、コード修正 / 別 spec が必要な範囲を分離した
+- 旧 `master-data` / `system_settings` 契約のコード側導線は、本線から隔離した
+
+PR-01 完了後に残る別管理タスク:
+
+- `system_settings` を残す SQL / seed / policy の整理
+- `clinic_settings` への正式移行 spec と rollback plan の策定
+- `src/types/supabase.ts` の生成差分ノイズを抑える整形方針の要否判断

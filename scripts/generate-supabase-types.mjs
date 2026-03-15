@@ -32,6 +32,10 @@ try {
   const cleanOutput = lines.slice(startIdx).join('\n').trimEnd() + '\n';
 
   writeFileSync(OUTPUT_FILE, cleanOutput, 'utf-8');
+  execSync(`npx prettier --write "${OUTPUT_FILE}"`, {
+    stdio: 'ignore',
+    timeout: 30_000,
+  });
 
   // Validate
   const written = readFileSync(OUTPUT_FILE, 'utf-8');

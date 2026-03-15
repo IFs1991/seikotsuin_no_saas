@@ -8,36 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Save, Mail, MessageCircle, Bell, Edit2, Loader2 } from 'lucide-react';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import type {
+  CommunicationSettings as CommunicationData,
+  NotificationChannels,
+  SmtpSettings,
+} from '@/types/settings';
 import { AdminMessage } from './AdminMessage';
-
-interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  type: 'booking_confirmation' | 'reminder' | 'cancellation' | 'followup';
-}
-
-interface NotificationChannels {
-  emailEnabled: boolean;
-  smsEnabled: boolean;
-  lineEnabled: boolean;
-  pushEnabled: boolean;
-}
-
-interface SmtpSettings {
-  host: string;
-  port: number;
-  username: string;
-  password: string;
-  secure: boolean;
-}
-
-interface CommunicationData {
-  channels: NotificationChannels;
-  smtpSettings: SmtpSettings;
-  templates: EmailTemplate[];
-}
 
 const initialData: CommunicationData = {
   channels: {
@@ -50,7 +26,6 @@ const initialData: CommunicationData = {
     host: 'smtp.gmail.com',
     port: 587,
     username: 'noreply@seikotsuin.com',
-    password: '',
     secure: true,
   },
   templates: [
@@ -236,6 +211,11 @@ export function CommunicationSettings() {
         <Card className='p-6'>
           <h3 className='text-lg font-semibold text-gray-900 mb-4'>SMTP設定</h3>
 
+          <div className='mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
+            SMTP の認証情報はここには保存されません。パスワードなどの秘密情報は
+            環境変数またはプラットフォーム Secret で管理してください。
+          </div>
+
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <div>
               <Label
@@ -253,10 +233,14 @@ export function CommunicationSettings() {
             </div>
 
             <div>
-              <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              <Label
+                htmlFor='smtp-port'
+                className='block text-sm font-medium text-gray-700 mb-1'
+              >
                 ポート番号
               </Label>
               <Input
+                id='smtp-port'
                 type='number'
                 value={smtpSettings.port}
                 onChange={e => updateSmtp({ port: parseInt(e.target.value) })}
@@ -265,25 +249,17 @@ export function CommunicationSettings() {
             </div>
 
             <div>
-              <Label className='block text-sm font-medium text-gray-700 mb-1'>
+              <Label
+                htmlFor='smtp-username'
+                className='block text-sm font-medium text-gray-700 mb-1'
+              >
                 ユーザー名
               </Label>
               <Input
+                id='smtp-username'
                 value={smtpSettings.username}
                 onChange={e => updateSmtp({ username: e.target.value })}
                 placeholder='noreply@seikotsuin.com'
-              />
-            </div>
-
-            <div>
-              <Label className='block text-sm font-medium text-gray-700 mb-1'>
-                パスワード
-              </Label>
-              <Input
-                type='password'
-                value={smtpSettings.password}
-                onChange={e => updateSmtp({ password: e.target.value })}
-                placeholder='••••••••'
               />
             </div>
           </div>
@@ -291,6 +267,7 @@ export function CommunicationSettings() {
           <div className='mt-4'>
             <label className='flex items-center space-x-2'>
               <input
+                id='smtp-secure'
                 type='checkbox'
                 checked={smtpSettings.secure}
                 onChange={e => updateSmtp({ secure: e.target.checked })}

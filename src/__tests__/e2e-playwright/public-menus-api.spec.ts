@@ -20,7 +20,7 @@ import { test, expect } from '@playwright/test';
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ??
-  'http://localhost:3000';
+  'http://127.0.0.1:3000';
 
 // テスト用 UUID（UUID 形式は正しいが存在しないクリニック）
 const NONEXISTENT_CLINIC_ID = '00000000-0000-0000-0000-000000000000';

@@ -46,7 +46,7 @@ export default async function globalSetup(config: FullConfig) {
   const baseURL =
     config.projects[0]?.use?.baseURL ??
     config.use?.baseURL ??
-    'http://localhost:3000';
+    'http://127.0.0.1:3000';
   const browserChannel =
     process.env.PLAYWRIGHT_BROWSER_CHANNEL || process.env.PLAYWRIGHT_CHANNEL;
 

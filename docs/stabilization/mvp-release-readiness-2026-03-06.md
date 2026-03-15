@@ -49,25 +49,30 @@
 ## 3. 2026-03-06 時点の検証メモ
 
 - `docs/stabilization/DoD-verification-report-2026-03-06.md` では **DOD-01〜DOD-04** のみ検証済み
-- `docs/stabilization/DoD-v0.1.md` 上の **DOD-05〜DOD-12** は未完了
-- 2026-03-06 にローカルで `npm run type-check` と `npm run build` を実行したところ、どちらも失敗
-- よって、現時点では「再現可能に出荷できる状態」とは言えない
+- 2026-03-15 時点で `docs/stabilization/DoD-verification-report-2026-03-15.md` を追加し、PR-05 verification bundle の focused 再検証を実施済み
+- 2026-03-15 時点の状態:
+  - **PASS**: `DOD-05`, `DOD-08`, `DOD-09`, `DOD-10`, `DOD-12`
+  - **PARTIAL PASS**: `DOD-11` (PR-05 対象 focused Jest は通過、repo 全量 Jest は未取得)
+  - **BLOCKED / FAIL**: `DOD-06`, `DOD-07` (Windows 上の Playwright `spawn EPERM`)
+- `npm run type-check` と `npm run build` は 2026-03-15 時点で通過済み
+- よって、現時点の主な未解消項目は「Playwright の Windows 実行環境ブロッカー」と、MVP 機能面の未完了項目である
 
 関連ファイル:
 
 - `package.json` `scripts.type-check`, `scripts.build`, `scripts.test:e2e:pw`, `scripts.supabase:types`
 - `docs/stabilization/DoD-v0.1.md` `DOD-05` 〜 `DOD-12`
 - `docs/stabilization/DoD-verification-report-2026-03-06.md`
+- `docs/stabilization/DoD-verification-report-2026-03-15.md`
 
 ## 4. 限定パイロット前に必須の要件（P0）
 
 | 要件 | 現状 | 具体内容 | 証拠 | 関連DoD |
 | --- | --- | --- | --- | --- |
-| ビルドと型検査を通す | NG | `npm run build` と `npm run type-check` を安定して通す | `package.json` `scripts.build`, `scripts.type-check`; `docs/stabilization/DoD-v0.1.md` `DOD-10`, `DOD-12` | DOD-10, DOD-12 |
-| E2E/Playwrightを出荷基準に載せる | NG | 公開予約、ログイン、オンボーディング、管理設定の主要導線をE2Eで固定化する | `package.json` `scripts.test:e2e:pw`; `docs/stabilization/DoD-v0.1.md` `DOD-05`, `DOD-06`, `DOD-07`, `DOD-11` | DOD-05, 06, 07, 11 |
-| SMTP秘密情報の扱いを修正する | NG | SMTPパスワードを `clinic_settings` に保存しない。Vercel/Supabase Secret等に移す | `src/components/admin/communication-settings.tsx` `smtpSettings.password`, `src/app/api/admin/settings/route.ts` `PUT`, `clinic_settings`, `settings: parseResult.data` | DOD外だが出荷必須 |
+| ビルドと型検査を通す | PASS | `npm run build` と `npm run type-check` は 2026-03-15 時点で通過。`supabase:types -> build` の再現性も固定済み | `package.json` `scripts.build`, `scripts.type-check`, `scripts.supabase:types`; `docs/stabilization/DoD-verification-report-2026-03-15.md` `DOD-10`, `DOD-12` | DOD-10, DOD-12 |
+| E2E/Playwrightを出荷基準に載せる | BLOCKED | fixture / seed / cleanup と focused Jest は通過済み。ただし Windows 上の Playwright が `spawn EPERM` で失敗し、正式 E2E 証跡は未完 | `package.json` `scripts.test:e2e:pw`; `docs/stabilization/DoD-verification-report-2026-03-15.md` `DOD-05`, `DOD-06`, `DOD-07`, `DOD-11` | DOD-05, 06, 07, 11 |
+| SMTP秘密情報の扱いを修正する | **Phase A 完了** (2026-03-10) | SMTPパスワードを `clinic_settings` に保存しない → PR-03 Phase A で達成。UI からパスワード入力を除去、API で `smtpSettings.password` を除外して upsert、legacy `user` → `username` 互換吸収、E2E 検証済み (10/10 pass)。Phase B (正式 secret vault) は別タスク | `src/components/admin/communication-settings.tsx`, `src/app/api/admin/settings/route.ts`, `src/types/settings.ts`, `docs/stabilization/plan-pr03-smtp-secret-separation-v0.1.md` §12 | DOD外だが出荷必須 |
 | 公開予約設定を永続化するか、UIを閉じる | NG | オンライン予約URL/通知設定がローカルstateのまま。保存されない設定を管理UIに出さない | `src/components/admin/booking-calendar-settings.tsx` `Online/notification settings remain local until API support is added.` | DOD-09, DOD-10 |
-| 多店舗権限境界を出荷基準に含める | NG | HQ/clinic の権限差と tenant boundary を E2E/手順で保証する | `middleware.ts`, `src/app/admin/(protected)/layout.tsx`, `docs/stabilization/DoD-v0.1.md` `DOD-08`, `DOD-09` | DOD-08, DOD-09 |
+| 多店舗権限境界を出荷基準に含める | PASS | HQ/clinic の権限差と tenant boundary は API guard / RLS / focused verification で再確認済み。Playwright の正式実行だけ別ブロッカーとして残る | `middleware.ts`, `src/app/admin/(protected)/layout.tsx`, `src/app/api/admin/tenants/route.ts`, `src/app/api/admin/tenants/[clinic_id]/route.ts`, `docs/stabilization/DoD-verification-report-2026-03-15.md` `DOD-08`, `DOD-09` | DOD-08, DOD-09 |
 | 多店舗KPIの最低限を固定する | 要確認 | 初期顧客が多店舗のため、単一店舗画面だけでは不足。店舗別比較の最低限のKPIを定義する | `src/app/multi-store/page.tsx` `多店舗分析`, `店舗別KPI比較`; `src/app/api/admin/tenants/route.ts` | DOD外だがMVP必須 |
 | 法務ページを公開する | NG | 利用規約同意は取っているが、公開導線がない。最低限 `terms` / `privacy` を用意する | `src/app/register/page.tsx` `利用規約に同意する`, `src/app/register/actions.ts` `terms_version`; 2026-03-06 時点で `src/app` に `terms` / `privacy` ルート未確認 | DOD外だが公開前必須 |
 | 監視をアプリ内表示から運用実体へ寄せる | NG | `/api/health` の `ok: true` と固定 `aiAnalysisStatus` だけでは監視として弱い。最低限、外部通知と障害検知を定義する | `src/hooks/useSystemStatus.ts` `useSystemStatus`, `aiAnalysisStatus: 'active'`; `src/app/api/health/route.ts` `ok: true`; `.env.production.example` `SLACK_WEBHOOK_URL` | DOD外だが運用必須 |
@@ -126,8 +131,9 @@
 1. `npm run build` が通る
 2. `npm run type-check` が通る
 3. `DOD-05` 〜 `DOD-12` のうち、少なくとも対象フローに関係する項目を完了または例外承認する
+   - 2026-03-15 時点では `DOD-06` / `DOD-07` を Windows Playwright `spawn EPERM` の環境ブロッカーとして扱う
 4. 多店舗の権限境界とHQ閲覧権限を検証する
-5. SMTP秘密情報を `clinic_settings` から外す、またはメール送信機能自体を一時停止する
+5. ~~SMTP秘密情報を `clinic_settings` から外す~~ → **PR-03 Phase A 完了** (2026-03-10)
 6. 利用規約とプライバシーポリシーを公開する
 7. 公開予約の作成導線をE2Eまたは手順書で再現確認する
 8. 非MVP画面をナビゲーションから外す
@@ -141,10 +147,8 @@
 
 ## 10. 次の実行順
 
-1. `build` / `type-check` を通す
-2. 多店舗の権限境界とKPI最小要件を確定する
-3. SMTP秘密情報の保存方式を修正する
-4. 法務ページを追加する
-5. 公開予約設定の永続化、または未接続UIの非表示化
-6. 非MVPページをナビゲーションから外す
-7. 最小フローのE2Eを固定する
+1. Windows の Playwright `spawn EPERM` を別タスクで切り分けるか、限定パイロットでは例外承認する
+2. 法務ページを追加する
+3. 公開予約設定の永続化、または未接続UIの非表示化
+4. 非MVPページをナビゲーションから外す
+5. 必要に応じて repo 全量 Jest の証跡を追加取得する

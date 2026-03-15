@@ -57,11 +57,19 @@ export interface BookingCalendarSettings {
 }
 
 // コミュニケーション設定
+export interface NotificationChannels {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  lineEnabled: boolean;
+  pushEnabled: boolean;
+}
+
 export interface SmtpSettings {
   host: string;
   port: number;
-  user: string;
-  password: string;
+  // Public SMTP metadata only. Secrets are managed outside clinic_settings.
+  username: string;
+  secure: boolean;
 }
 
 export interface EmailTemplate {
@@ -73,10 +81,7 @@ export interface EmailTemplate {
 }
 
 export interface CommunicationSettings {
-  emailEnabled: boolean;
-  smsEnabled: boolean;
-  lineEnabled: boolean;
-  pushEnabled: boolean;
+  channels: NotificationChannels;
   smtpSettings: SmtpSettings;
   templates: EmailTemplate[];
 }

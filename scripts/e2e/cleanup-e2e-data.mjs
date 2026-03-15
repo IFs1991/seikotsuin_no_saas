@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
-import { CLINIC_A_ID, CLINIC_B_ID, FIXTURE_USERS } from './fixtures.mjs';
+import {
+  CLINIC_A_ID,
+  CLINIC_B_ID,
+  FIXTURE_USERS,
+  USER_ADMIN_ID,
+} from './fixtures.mjs';
 import { runPreflight, tableExists } from './preflight.mjs';
 
 function loadEnvFile(fileName) {
@@ -68,6 +73,22 @@ async function deleteByUser(table, column = 'user_id') {
   }
 }
 
+async function softDeleteReservations() {
+  const { error } = await supabase
+    .from('reservations')
+    .update({
+      status: 'cancelled',
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: USER_ADMIN_ID,
+    })
+    .in('clinic_id', clinicIds);
+
+  if (error) {
+    console.warn(`reservations cleanup warning: ${error.message}`);
+  }
+}
+
 export async function cleanupE2EData() {
   // Run preflight checks (skipped if E2E_SKIP_DB_CHECK=1)
   await runPreflight(supabase);
@@ -89,11 +110,7 @@ export async function cleanupE2EData() {
 
   // Required tables
   await deleteByClinic('clinic_settings');
-  await deleteByClinic('reservations');
   await deleteByClinic('blocks');
-  await deleteByClinic('resources');
-  await deleteByClinic('menus');
-  await deleteByClinic('customers');
   await deleteByClinic('revenues');
   await deleteByClinic('visits');
   await deleteByClinic('patients');
@@ -101,19 +118,16 @@ export async function cleanupE2EData() {
   await deleteByClinic('audit_logs');
   await deleteByClinic('user_sessions');
   await deleteByClinic('staff_invites');
+  await softDeleteReservations();
+
+  if (await tableExists(supabase, 'reservation_history')) {
+    await deleteByClinic('reservation_history');
+  }
 
   await deleteByUser('onboarding_states');
   await deleteByUser('user_permissions', 'staff_id');
   await deleteByUser('profiles');
   await deleteByUser('staff', 'id');
-
-  const { error: clinicError } = await supabase
-    .from('clinics')
-    .delete()
-    .in('id', clinicIds);
-  if (clinicError) {
-    console.warn(`clinics cleanup warning: ${clinicError.message}`);
-  }
 
   console.log('E2E data cleanup completed.');
 }

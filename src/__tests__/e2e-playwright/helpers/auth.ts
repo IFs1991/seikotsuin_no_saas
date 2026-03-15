@@ -12,7 +12,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const BASE_URL =
   process.env.PLAYWRIGHT_BASE_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  'http://localhost:3000';
+  'http://127.0.0.1:3000';
 
 const createCookieClient = () => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

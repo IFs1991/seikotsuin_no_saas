@@ -47,6 +47,7 @@ Each item includes a command, expected success condition, and representative fai
   - Command: `rg -n "createClient\(|from\('blocks'\)|from\('reservations'\)" src`
   - Success: tenant table access goes through server APIs/guards or includes explicit clinic scoping.
   - Failure: direct Supabase access without clinic guard or `clinic_id` filtering.
+  - Note (2026-03-10): PR-03 Phase A で `clinic_settings` への SMTP password 混入経路を遮断。`PUT /api/admin/settings` は `smtpSettings.password` を除外してから upsert する。communication 設定の UI/API 契約も統一済み。
 
 - [ ] DOD-10 Next build is reproducible (no .next corruption, no TS/ESLint failures).
   - Command: `npm run build`

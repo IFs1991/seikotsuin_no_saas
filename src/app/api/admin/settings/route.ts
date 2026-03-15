@@ -37,6 +37,8 @@ const VALID_CATEGORIES = [
 
 type SettingsCategory = (typeof VALID_CATEGORIES)[number];
 
+type SettingsRecord = Record<string, unknown>;
+
 // デフォルト設定値
 const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, unknown>> = {
   clinic_basic: {
@@ -67,15 +69,17 @@ const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, unknown>> = {
     defaultCalendarView: 'week',
   },
   communication: {
-    emailEnabled: false,
-    smsEnabled: false,
-    lineEnabled: false,
-    pushEnabled: false,
+    channels: {
+      emailEnabled: false,
+      smsEnabled: false,
+      lineEnabled: false,
+      pushEnabled: false,
+    },
     smtpSettings: {
       host: '',
       port: 587,
-      user: '',
-      password: '',
+      username: '',
+      secure: true,
     },
     templates: [],
   },
@@ -166,19 +170,23 @@ const BookingCalendarSchema = z.object({
   defaultCalendarView: z.enum(['day', 'week', 'month']).optional(),
 });
 
-const CommunicationSchema = z.object({
+const CommunicationChannelsSchema = z.object({
   emailEnabled: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
   lineEnabled: z.boolean().optional(),
   pushEnabled: z.boolean().optional(),
-  smtpSettings: z
-    .object({
-      host: z.string().optional(),
-      port: z.number().min(1).max(65535).optional(),
-      user: z.string().optional(),
-      password: z.string().optional(),
-    })
-    .optional(),
+});
+
+const CommunicationSmtpSchema = z.object({
+  host: z.string().optional(),
+  port: z.number().min(1).max(65535).optional(),
+  username: z.string().optional(),
+  secure: z.boolean().optional(),
+});
+
+const CommunicationSchema = z.object({
+  channels: CommunicationChannelsSchema.optional(),
+  smtpSettings: CommunicationSmtpSchema.optional(),
   templates: z.array(z.unknown()).optional(),
 });
 
@@ -241,6 +249,77 @@ const CATEGORY_SCHEMAS: Record<SettingsCategory, z.ZodTypeAny> = {
 const canManageSettings = (role: string) =>
   CLINIC_ADMIN_ROLES.has(role as Role);
 
+const asRecord = (value: unknown): SettingsRecord | null =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as SettingsRecord)
+    : null;
+
+const readString = (value: unknown, fallback: string) =>
+  typeof value === 'string' ? value : fallback;
+
+const readBoolean = (value: unknown, fallback: boolean) =>
+  typeof value === 'boolean' ? value : fallback;
+
+const readNumber = (value: unknown, fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const getDefaultCommunicationSettings = () =>
+  structuredClone(DEFAULT_SETTINGS.communication) as {
+    channels: {
+      emailEnabled: boolean;
+      smsEnabled: boolean;
+      lineEnabled: boolean;
+      pushEnabled: boolean;
+    };
+    smtpSettings: {
+      host: string;
+      port: number;
+      username: string;
+      secure: boolean;
+    };
+    templates: unknown[];
+  };
+
+const normalizeCommunicationSettings = (value: unknown) => {
+  const defaults = getDefaultCommunicationSettings();
+  const record = asRecord(value) ?? {};
+  const channels = asRecord(record.channels);
+  const smtpSettings = asRecord(record.smtpSettings);
+
+  return {
+    channels: {
+      emailEnabled: readBoolean(
+        channels?.emailEnabled ?? record.emailEnabled,
+        defaults.channels.emailEnabled
+      ),
+      smsEnabled: readBoolean(
+        channels?.smsEnabled ?? record.smsEnabled,
+        defaults.channels.smsEnabled
+      ),
+      lineEnabled: readBoolean(
+        channels?.lineEnabled ?? record.lineEnabled,
+        defaults.channels.lineEnabled
+      ),
+      pushEnabled: readBoolean(
+        channels?.pushEnabled ?? record.pushEnabled,
+        defaults.channels.pushEnabled
+      ),
+    },
+    smtpSettings: {
+      host: readString(smtpSettings?.host, defaults.smtpSettings.host),
+      port: readNumber(smtpSettings?.port, defaults.smtpSettings.port),
+      username: readString(
+        smtpSettings?.username ?? smtpSettings?.user,
+        defaults.smtpSettings.username
+      ),
+      secure: readBoolean(smtpSettings?.secure, defaults.smtpSettings.secure),
+    },
+    templates: Array.isArray(record.templates)
+      ? record.templates
+      : defaults.templates,
+  };
+};
+
 /**
  * GET /api/admin/settings
  * 設定を取得（未登録時はデフォルト値を返す）
@@ -299,7 +378,11 @@ export async function GET(request: NextRequest) {
 
     // データがなければデフォルト値を返す
     const settings =
-      data?.settings ?? DEFAULT_SETTINGS[category as SettingsCategory];
+      category === 'communication'
+        ? normalizeCommunicationSettings(
+            data?.settings ?? DEFAULT_SETTINGS.communication
+          )
+        : (data?.settings ?? DEFAULT_SETTINGS[category as SettingsCategory]);
 
     return createSuccessResponse({
       settings,
@@ -379,7 +462,11 @@ export async function PUT(request: NextRequest) {
 
     // カテゴリ固有のバリデーション
     const schema = CATEGORY_SCHEMAS[category as SettingsCategory];
-    const parseResult = schema.safeParse(settings);
+    const candidateSettings =
+      category === 'communication'
+        ? normalizeCommunicationSettings(settings)
+        : settings;
+    const parseResult = schema.safeParse(candidateSettings);
 
     if (!parseResult.success) {
       const errors = parseResult.error.flatten();

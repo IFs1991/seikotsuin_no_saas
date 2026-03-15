@@ -2,14 +2,14 @@
 
 ## Findings
 
-### 1. [High] PR-03 は純粋なリファクタだけでは完結しない可能性がある
+### 1. [High] PR-03 は純粋なリファクタだけでは完結しない可能性がある — **Phase A 解決済み** (2026-03-10)
 
 - 対象: `src/components/admin/communication-settings.tsx` `smtpSettings.password`, `src/app/api/admin/settings/route.ts` `PUT`
 - 問題: SMTP秘密情報の扱いはコード整理だけでなく、運用上の保存先設計が必要
 - 影響: 「リファクタ計画」のつもりで着手しても、途中で設計判断待ちになる恐れがある
 - 対応: PR-03 は2段階に分けるべき
-  - Phase A: `clinic_settings` に保存しない
-  - Phase B: 正式な secret 管理方式を別タスクで導入する
+  - Phase A: `clinic_settings` に保存しない → **完了** (`plan-pr03-smtp-secret-separation-v0.1.md` §12 参照)
+  - Phase B: 正式な secret 管理方式を別タスクで導入する → 未着手（別タスク）
 
 ### 2. [High] PR-01 は schema drift を含む場合に詰まる可能性がある
 
@@ -60,7 +60,7 @@
 
 主な修正ポイント:
 
-- PR-03 は「秘密情報の保存を止める」と「正式なsecret管理を導入する」を分離する
+- ~~PR-03 は「秘密情報の保存を止める」と「正式なsecret管理を導入する」を分離する~~ → Phase A 完了 (2026-03-10)
 - PR-02 着手前に HQ 権限の最小仕様を固定する
 - PR-01 は typegen と schema drift の境界を最初に判定する
 

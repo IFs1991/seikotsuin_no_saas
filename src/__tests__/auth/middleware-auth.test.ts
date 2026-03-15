@@ -114,6 +114,7 @@ describe('認証と権限制御 Middleware', () => {
         '/daily-reports',
         '/chat',
         '/ai-insights',
+        '/multi-store',
         '/master-data',
         '/staff',
         '/patients',
@@ -239,6 +240,47 @@ describe('認証と権限制御 Middleware', () => {
         expect(response.status).not.toBe(307);
       }
     );
+
+    test('HQ admin は /multi-store にアクセス可能', async () => {
+      const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
+      const adminProfile = {
+        role: 'admin',
+        clinic_id: null,
+        is_active: true,
+      };
+
+      mockCreateServerClient.mockReturnValue(
+        createMockSupabase(adminUser, adminProfile) as any
+      );
+
+      const request = createMockRequest('/multi-store');
+      const response = await middleware(request);
+
+      expect(response.status).not.toBe(307);
+    });
+
+    test('clinic_admin は /multi-store にアクセスできない', async () => {
+      const clinicAdminUser = {
+        id: 'clinic-admin-user-123',
+        email: 'clinic-admin@example.com',
+      };
+      const clinicAdminProfile = {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-123',
+        is_active: true,
+      };
+
+      mockCreateServerClient.mockReturnValue(
+        createMockSupabase(clinicAdminUser, clinicAdminProfile) as any
+      );
+
+      const request = createMockRequest('/multi-store');
+      const response = await middleware(request);
+
+      expect(response.status).toBe(307);
+      const location = response.headers.get('location');
+      expect(location).toContain('/unauthorized');
+    });
 
     /**
      * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md

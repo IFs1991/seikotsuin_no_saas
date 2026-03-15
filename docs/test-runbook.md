@@ -1,158 +1,103 @@
-# E2Eテスト実行ガイド
+# Test Runbook
 
-## 概要
+## Purpose
 
-このドキュメントはE2Eテスト（Playwright）の実行に必要な前提条件と手順を記載します。
+PR-05 verification bundle のローカル再現手順を 1 回で追えるようにする。
+対象は Supabase local, fixture seed/cleanup, Playwright 前提, focused Jest, build, type generation である。
 
-## 関連仕様書
+## Preconditions
 
-- `docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md` (スタッフ招待E2E安定化)
-- `docs/stabilization/spec-admin-settings-contract-v0.1.md` (data-testid契約)
-- `docs/stabilization/spec-playwright-baseurl-windows-v0.1.md` (baseURL/port整合)
+- Docker Desktop が起動していること
+- `supabase status` が応答すること
+- `.env.local` または `.env.test` に以下が設定されていること
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000`
+- `playwright.config.ts` は `PLAYWRIGHT_BASE_URL` または `NEXT_PUBLIC_APP_URL` を使い、未指定時は `http://127.0.0.1:3000` を使う
 
-## 前提条件
+## Recommended Order
 
-### 1. ローカルSupabaseの起動
-
-E2Eテストはローカルで起動したSupabaseを使用します。
+1. Supabase local の起動確認
 
 ```bash
-# Supabase起動
-supabase start
-
-# 起動確認（URLとキーを確認）
 supabase status
 ```
 
-### 2. 環境変数の設定
-
-`.env.test.example` を参考に `.env.test` または `.env.local` を設定します。
-
-#### 必須環境変数
-
-| 変数名 | 説明 | 例 |
-|--------|------|-----|
-| `NEXT_PUBLIC_SUPABASE_URL` | ローカルSupabaseのURL | `http://127.0.0.1:54331` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabaseのanon key | `supabase status` で取得 |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabaseのservice_role key | `supabase status` で取得 |
-| `NEXT_PUBLIC_APP_URL` | アプリケーションURL | `http://127.0.0.1:3000` |
-
-#### E2Eテスト専用フラグ
-
-| 変数名 | 説明 | デフォルト |
-|--------|------|-----------|
-| `E2E_INVITE_MODE` | スタッフ招待のE2Eモード | `skip` |
-| `E2E_SKIP_DB_CHECK` | preflight全体をスキップ | `0` |
-| `E2E_DB_READY_TIMEOUT_MS` | Supabase readiness待機の最大時間 | `30000` |
-| `E2E_DB_READY_RETRY_MS` | readinessリトライ間隔 | `1000` |
-
-### 3. URL整合性の確認
-
-以下のURLが一致していることを確認してください：
-
-- `.env.local` の `NEXT_PUBLIC_APP_URL`
-- `supabase/config.toml` の `auth.site_url`
-- `playwright.config.ts` の `baseURL`
-
-現在の設定:
-- `supabase/config.toml`: `auth.site_url = "http://127.0.0.1:3000"`
-- 推奨 `NEXT_PUBLIC_APP_URL`: `http://127.0.0.1:3000`
-
-### 4. Inbucket（メールテスト）
-
-ローカルSupabaseは Inbucket を使用してメールをキャプチャします。
-招待メールなどの確認が必要な場合は以下のURLでアクセスできます：
-
-```
-http://127.0.0.1:54334
-```
-
-## テスト実行
-
-### 全E2Eテストを実行
+2. fixture validate / seed / cleanup の再現性確認
 
 ```bash
-npm run test:e2e:pw
+npm run e2e:validate-fixtures
+npm run e2e:seed
+npm run e2e:cleanup
+npm run e2e:seed
 ```
 
-### 特定のテストを実行
+3. focused Jest の実行
 
 ```bash
-# Staff invites のテストのみ
-npm run test:e2e:pw -- --grep "Staff invites"
-
-# 管理設定永続化のテスト
-npm run test:e2e:pw -- --grep "管理設定永続化"
+npm test -- --runInBand --runTestsByPath \
+  src/__tests__/api/admin-settings.test.ts \
+  src/__tests__/api/admin-tenants-access.test.ts \
+  src/__tests__/api/multi-store-kpi.test.ts \
+  src/__tests__/auth/middleware-auth.test.ts \
+  src/__tests__/components/admin-settings.test.tsx \
+  src/__tests__/components/admin-settings-navigation.test.tsx \
+  src/__tests__/components/navigation/admin-navigation.test.tsx \
+  src/__tests__/lib/api-helpers-auth.test.ts \
+  src/__tests__/lib/reservation-service.test.ts
 ```
 
-### デバッグモードで実行
+4. RLS / tenant guard の確認
+
+CLI `v2.75.0` では `supabase db query` が未対応なので、ローカル DB に `psql` で直接問い合わせる。
 
 ```bash
-# ヘッドあり（ブラウザ表示）
-npx playwright test --headed
+psql "postgresql://postgres:postgres@127.0.0.1:54332/postgres" -c \
+  "select tablename, policyname, qual from pg_policies where schemaname='public' and tablename in ('reservations','blocks','customers','menus','resources','reservation_history','ai_comments') order by tablename, policyname;"
 
-# デバッグモード
-npx playwright test --debug
+rg -n "createClient\(|from\('blocks'\)|from\('reservations'\)" src
 ```
 
-## スタッフ招待E2E安定化
-
-### 背景
-
-`inviteUserByEmail` はSupabase Authを通じて実際にメールを送信しようとするため、
-E2E環境ではレスポンスが遅延またはハングする場合があります（TD-001）。
-
-### 解決策
-
-`E2E_INVITE_MODE=skip` を設定することで、以下の動作になります：
-
-1. `inviteUserByEmail` の呼び出しをスキップ
-2. `staff_invites` テーブルへのINSERTのみ実行
-3. 即座に成功応答を返す
-
-これにより、E2Eテストが決定的に成功するようになります。
-
-### 注意事項
-
-- `NODE_ENV=production` の場合は `E2E_INVITE_MODE` は無効化されます
-- 本番環境では常に `inviteUserByEmail` が呼び出されます
-
-## トラブルシューティング
-
-### テストがタイムアウトする
-
-1. ローカルSupabaseが起動しているか確認
-2. 環境変数が正しく設定されているか確認
-3. `npm run dev` でアプリケーションが起動しているか確認
-
-### スタッフ招待が「送信中...」で止まる
-
-1. `E2E_INVITE_MODE=skip` が設定されているか確認
-2. `NODE_ENV` が `production` でないことを確認
-
-### 認証エラーが発生する
-
-1. `SUPABASE_SERVICE_ROLE_KEY` が正しいか確認
-2. E2Eテスト用のユーザーがシードされているか確認
-
-### Preflight失敗：「Supabase not ready」
-
-1. `supabase status` でローカルSupabaseが起動しているか確認
-2. `supabase start` で起動していない場合は起動
-3. `E2E_DB_READY_TIMEOUT_MS` を増やして待機時間を延長
-
-### Preflight失敗：「Required table(s) missing」
-
-1. `supabase db reset --local` でマイグレーションを適用
-2. テーブルが存在するか確認: `psql "postgresql://postgres:postgres@127.0.0.1:54332/postgres" -c "\dt"`
-
-## 安定性検証
-
-テストの安定性を確認するには、3回連続で成功することを確認します：
+5. type generation と build
 
 ```bash
-# 3回連続テスト
-npm run test:e2e:pw -- --grep "Staff invites" --repeat-each=3
+npm run supabase:types
+npm run type-check
+npm run build
 ```
 
-または手動で3回実行して全てパスすることを確認します。
+## Playwright
+
+通常実行:
+
+```bash
+npx playwright test --project=chromium
+```
+
+### Known Windows blocker
+
+- Windows 環境によっては `browserType.launch: spawn EPERM` で Playwright が起動しない
+- 本件は `npx playwright test --project=chromium` だけでなく、最小再現の `chromium.launch()` でも再現する
+- `chrome.exe --version` や `chrome-headless-shell.exe --version` が直接実行できても、Playwright launch 経路だけ失敗するケースがある
+
+切り分け用最小再現:
+
+```bash
+node -e "const { chromium } = require('@playwright/test'); chromium.launch().catch(err => { console.error(err); process.exit(1); })"
+```
+
+## Current PR-05 Scope
+
+- `admin-settings`
+- `admin-tenants`
+- `auth-context`
+- `reservations`
+- `multi-store` / HQ-clinic guard
+- `supabase:types`, `type-check`, `build`
+
+## Notes
+
+- `npm run supabase:types` は生成後に `src/types/supabase.ts` を Prettier 整形する
+- `npm run test -- --ci --testPathIgnorePatterns=e2e` は repo 全体では重いため、PR-05 では focused suite を優先する
+- Playwright が `spawn EPERM` の場合、DoD report には環境ブロッカーとして分離して記録する

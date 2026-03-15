@@ -25,19 +25,8 @@ const ADMIN_LINKS = [
   { id: 'admin-home', label: '管理ダッシュボード', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
   { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
-  { id: 'admin-master', label: 'マスタ管理', href: '/admin/master' },
-  {
-    id: 'admin-security',
-    label: 'セキュリティ監視',
-    href: '/admin/security-dashboard',
-  },
-  {
-    id: 'admin-session',
-    label: 'セッション管理',
-    href: '/admin/session-management',
-  },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
-  { id: 'admin-chat', label: 'AIアシスタント', href: '/admin/chat' },
+  { id: 'multi-store', label: '多店舗分析', href: '/multi-store' },
 ];
 
 export function Header({

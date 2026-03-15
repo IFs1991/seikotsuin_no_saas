@@ -53,7 +53,10 @@ describe('ClinicBasicSettings', () => {
     expect(await screen.findByDisplayValue('Test Clinic')).toBeInTheDocument();
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/settings?clinic_id=clinic-1&category=clinic_basic'
+        '/api/admin/settings?clinic_id=clinic-1&category=clinic_basic',
+        expect.objectContaining({
+          signal: expect.any(Object),
+        })
       );
     });
   });
@@ -79,15 +82,12 @@ describe('ClinicBasicSettings', () => {
         })
       );
 
-    const { container } = render(<ClinicBasicSettings />);
+    render(<ClinicBasicSettings />);
 
     await screen.findByDisplayValue('Test Clinic');
 
-    const saveIcon = container.querySelector('svg[data-lucide="save"]');
-    expect(saveIcon).not.toBeNull();
-    const saveButton = saveIcon?.closest('button');
-    expect(saveButton).not.toBeNull();
-    await userEvent.click(saveButton as HTMLElement);
+    const saveButton = screen.getByTestId('save-settings-button');
+    await userEvent.click(saveButton);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);

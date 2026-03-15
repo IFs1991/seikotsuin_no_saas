@@ -78,15 +78,17 @@ const DEFAULT_SETTINGS = {
     allowOnlineBooking: false,
   },
   communication: {
-    emailEnabled: false,
-    smsEnabled: false,
-    lineEnabled: false,
-    pushEnabled: false,
+    channels: {
+      emailEnabled: false,
+      smsEnabled: false,
+      lineEnabled: false,
+      pushEnabled: false,
+    },
     smtpSettings: {
       host: '',
       port: 587,
-      user: '',
-      password: '',
+      username: '',
+      secure: true,
     },
     templates: [],
   },
@@ -255,6 +257,135 @@ describe('admin settings API', () => {
       expect(data.success).toBe(true);
       expect(data.data.settings.name).toBe('保存済み整骨院');
     });
+
+    it('communication設定はlegacy保存値を正規化して返す', async () => {
+      const selectMock = jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: {
+            settings: {
+              emailEnabled: true,
+              smsEnabled: false,
+              lineEnabled: true,
+              pushEnabled: false,
+              smtpSettings: {
+                host: 'smtp.example.com',
+                port: 2525,
+                user: 'legacy-user',
+                password: 'stored-secret',
+              },
+              templates: [],
+            },
+            updated_by: TEST_USER_ID,
+            updated_at: new Date().toISOString(),
+          },
+          error: null,
+        }),
+      });
+
+      const supabase = {
+        from: jest.fn().mockReturnValue({
+          select: selectMock,
+        }),
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'admin@example.com', role: 'admin' },
+        permissions: { role: 'admin', clinic_id: TEST_CLINIC_ID },
+        supabase,
+      });
+
+      const { GET } = await import('@/app/api/admin/settings/route');
+
+      const response = await GET({
+        url: `https://example.com/api/admin/settings?clinic_id=${TEST_CLINIC_ID}&category=communication`,
+      } as any);
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.data.settings).toEqual({
+        channels: {
+          emailEnabled: true,
+          smsEnabled: false,
+          lineEnabled: true,
+          pushEnabled: false,
+        },
+        smtpSettings: {
+          host: 'smtp.example.com',
+          port: 2525,
+          username: 'legacy-user',
+          secure: true,
+        },
+        templates: [],
+      });
+    });
+
+    it('communication設定はlegacy userをusernameへ吸収しsecure=falseを保持して返す', async () => {
+      const selectMock = jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: {
+            settings: {
+              channels: {
+                emailEnabled: true,
+                smsEnabled: true,
+                lineEnabled: false,
+                pushEnabled: true,
+              },
+              smtpSettings: {
+                host: 'smtp.secure-off.example.com',
+                port: 587,
+                user: 'legacy-user-2',
+                secure: false,
+                password: 'should-not-return',
+              },
+              templates: [],
+            },
+            updated_by: TEST_USER_ID,
+            updated_at: new Date().toISOString(),
+          },
+          error: null,
+        }),
+      });
+
+      const supabase = {
+        from: jest.fn().mockReturnValue({
+          select: selectMock,
+        }),
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'admin@example.com', role: 'admin' },
+        permissions: { role: 'admin', clinic_id: TEST_CLINIC_ID },
+        supabase,
+      });
+
+      const { GET } = await import('@/app/api/admin/settings/route');
+
+      const response = await GET({
+        url: `https://example.com/api/admin/settings?clinic_id=${TEST_CLINIC_ID}&category=communication`,
+      } as any);
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.data.settings).toEqual({
+        channels: {
+          emailEnabled: true,
+          smsEnabled: true,
+          lineEnabled: false,
+          pushEnabled: true,
+        },
+        smtpSettings: {
+          host: 'smtp.secure-off.example.com',
+          port: 587,
+          username: 'legacy-user-2',
+          secure: false,
+        },
+        templates: [],
+      });
+    });
   });
 
   describe('PUT /api/admin/settings', () => {
@@ -360,6 +491,86 @@ describe('admin settings API', () => {
 
       expect(response.status).toBe(200);
       expect(upsertMock).toHaveBeenCalled();
+    });
+
+    it('communication設定はlegacy入力を正規化しpasswordを保存しない', async () => {
+      const upsertMock = jest.fn().mockResolvedValue({ error: null });
+
+      const supabase = {
+        from: jest.fn().mockReturnValue({
+          upsert: upsertMock,
+        }),
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'admin@example.com', role: 'admin' },
+        permissions: { role: 'admin', clinic_id: TEST_CLINIC_ID },
+        supabase,
+        body: {
+          clinic_id: TEST_CLINIC_ID,
+          category: 'communication',
+          settings: {
+            emailEnabled: true,
+            smsEnabled: false,
+            lineEnabled: true,
+            pushEnabled: false,
+            smtpSettings: {
+              host: 'smtp.example.com',
+              port: 465,
+              user: 'legacy-user',
+              password: 'super-secret',
+            },
+            templates: [],
+          },
+        },
+      });
+
+      const { PUT } = await import('@/app/api/admin/settings/route');
+
+      const response = await PUT(
+        buildRequest({
+          clinic_id: TEST_CLINIC_ID,
+          category: 'communication',
+          settings: {
+            emailEnabled: true,
+            smsEnabled: false,
+            lineEnabled: true,
+            pushEnabled: false,
+            smtpSettings: {
+              host: 'smtp.example.com',
+              port: 465,
+              user: 'legacy-user',
+              password: 'super-secret',
+            },
+            templates: [],
+          },
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(upsertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: TEST_CLINIC_ID,
+          category: 'communication',
+          settings: {
+            channels: {
+              emailEnabled: true,
+              smsEnabled: false,
+              lineEnabled: true,
+              pushEnabled: false,
+            },
+            smtpSettings: {
+              host: 'smtp.example.com',
+              port: 465,
+              username: 'legacy-user',
+              secure: true,
+            },
+            templates: [],
+          },
+        }),
+        { onConflict: 'clinic_id,category' }
+      );
     });
 
     it('監査ログが出力される', async () => {

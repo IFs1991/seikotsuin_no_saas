@@ -4,46 +4,53 @@
  * 仕様:
  * - GET /api/admin/tenants を拡張
  * - 返却: revenue, patients, staff_performance_score
- * - 権限: admin/clinic_admin のみ許可
+ * - 権限: admin のみ許可
+ * - scope: clinic_scope_ids または clinic_id で fail-closed
  */
 
 import { NextRequest } from 'next/server';
-import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { processApiRequest } from '@/lib/api-helpers';
+import { createAdminClient } from '@/lib/supabase';
 
-// モックの設定
-const ensureClinicAccessMock = jest.fn();
-const supabaseFromMock = jest.fn();
+jest.mock('@/lib/api-helpers', () => {
+  const actual = jest.requireActual('@/lib/api-helpers');
+  return {
+    ...actual,
+    processApiRequest: jest.fn(),
+    logError: jest.fn(),
+  };
+});
 
-jest.mock('@/lib/supabase/guards', () => ({
-  ensureClinicAccess: (...args: unknown[]) => ensureClinicAccessMock(...args),
-}));
+jest.mock('@/lib/supabase', () => {
+  const actual = jest.requireActual('@/lib/supabase');
+  return {
+    ...actual,
+    createAdminClient: jest.fn(),
+  };
+});
 
-import { GET } from '@/app/api/admin/tenants/route';
+const processApiRequestMock = processApiRequest as jest.Mock;
+const createAdminClientMock = createAdminClient as jest.Mock;
 
-// クエリビルダーのモックヘルパー
 function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
   const builder = {
     select: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
     then: jest.fn(
       (resolve: (value: { data: unknown; error: unknown }) => void) =>
         resolve({ data: finalData, error: finalError })
     ),
   };
-  // Promise-like behavior
+
   Object.defineProperty(builder, 'data', { get: () => finalData });
   Object.defineProperty(builder, 'error', { get: () => finalError });
   return builder;
 }
 
 describe('多店舗分析API - GET /api/admin/tenants', () => {
-  const mockUser = {
-    id: 'test-user-id',
-    email: 'admin@test.com',
-  };
-
   const mockClinicData = [
     {
       id: 'clinic-1',
@@ -72,7 +79,6 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     { clinic_id: 'clinic-1', patient_id: 'patient-1' },
     { clinic_id: 'clinic-1', patient_id: 'patient-2' },
     { clinic_id: 'clinic-1', patient_id: 'patient-3' },
-    // 150人分の患者をシミュレート
     ...Array.from({ length: 147 }, (_, i) => ({
       clinic_id: 'clinic-1',
       patient_id: `patient-${i + 4}`,
@@ -102,10 +108,15 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
   describe('権限チェック', () => {
     it('認証されていない場合は401を返す', async () => {
-      ensureClinicAccessMock.mockRejectedValue(
-        new AppError(ERROR_CODES.UNAUTHORIZED, '認証が必要です', 401)
-      );
+      processApiRequestMock.mockResolvedValue({
+        success: false,
+        error: new Response(
+          JSON.stringify({ success: false, error: '認証が必要です' }),
+          { status: 401 }
+        ),
+      });
 
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
       const response = await GET(request);
 
@@ -115,15 +126,14 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('admin以外のロールでは403を返す', async () => {
-      supabaseFromMock.mockImplementation(() =>
-        createQueryBuilder(mockClinicData)
-      );
-      ensureClinicAccessMock.mockResolvedValue({
-        supabase: { from: supabaseFromMock },
-        user: mockUser,
-        permissions: { role: 'therapist', clinicId: null },
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'user-1', email: 'user@test.com', role: 'therapist' },
+        permissions: { role: 'therapist', clinic_id: 'clinic-1' },
+        supabase: {},
       });
 
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
       const response = await GET(request);
 
@@ -133,50 +143,74 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
       expect(payload.error).toBe('管理者権限が必要です');
     });
 
-    it('adminロールでアクセス可能', async () => {
-      supabaseFromMock.mockImplementation(() =>
-        createQueryBuilder(mockClinicData)
-      );
-      ensureClinicAccessMock.mockResolvedValue({
-        supabase: { from: supabaseFromMock },
-        user: mockUser,
-        permissions: { role: 'admin', clinicId: null },
+    it('adminロールでscopeがあればアクセス可能', async () => {
+      const clinicsQuery = createQueryBuilder(mockClinicData);
+
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics') {
+            return clinicsQuery;
+          }
+          return createQueryBuilder([]);
+        }),
       });
 
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        permissions: {
+          role: 'admin',
+          clinic_id: null,
+          clinic_scope_ids: ['clinic-1', 'clinic-2'],
+        },
+        supabase: {},
+      });
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
+      expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
+        'clinic-1',
+        'clinic-2',
+      ]);
     });
   });
 
   describe('KPIデータ取得（include_kpi=true）', () => {
     beforeEach(() => {
-      ensureClinicAccessMock.mockResolvedValue({
-        supabase: { from: supabaseFromMock },
-        user: mockUser,
-        permissions: { role: 'admin', clinicId: null },
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        permissions: {
+          role: 'admin',
+          clinic_id: null,
+          clinic_scope_ids: ['clinic-1', 'clinic-2', 'clinic-3'],
+        },
+        supabase: {},
       });
     });
 
     it('include_kpi=true の場合、各クリニックのKPIデータを含む', async () => {
-      // KPIデータ取得用のモック設定
-      supabaseFromMock.mockImplementation((tableName: string) => {
-        if (tableName === 'clinics') {
-          return createQueryBuilder(mockClinicData);
-        }
-        if (tableName === 'daily_revenue_summary') {
-          return createQueryBuilder(mockRevenueData);
-        }
-        if (tableName === 'patient_visit_summary') {
-          return createQueryBuilder(mockPatientData);
-        }
-        if (tableName === 'staff_performance_summary') {
-          return createQueryBuilder(mockStaffPerformanceData);
-        }
-        return createQueryBuilder([]);
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics')
+            return createQueryBuilder(mockClinicData);
+          if (tableName === 'daily_revenue_summary') {
+            return createQueryBuilder(mockRevenueData);
+          }
+          if (tableName === 'patient_visit_summary') {
+            return createQueryBuilder(mockPatientData);
+          }
+          if (tableName === 'staff_performance_summary') {
+            return createQueryBuilder(mockStaffPerformanceData);
+          }
+          return createQueryBuilder([]);
+        }),
       });
 
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
         'http://localhost/api/admin/tenants?include_kpi=true'
       );
@@ -185,21 +219,16 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
       expect(response.status).toBe(200);
       const payload = await response.json();
       expect(payload.success).toBe(true);
-      expect(payload.data.items).toBeDefined();
 
-      // KPIデータが含まれていることを確認
       const clinic1 = payload.data.items.find(
         (c: { id: string }) => c.id === 'clinic-1'
       );
-      expect(clinic1).toBeDefined();
-      expect(clinic1.kpi).toBeDefined();
       expect(clinic1.kpi.revenue).toBe(500000);
       expect(clinic1.kpi.patients).toBe(150);
       expect(clinic1.kpi.staff_performance_score).toBeDefined();
     });
 
     it('KPIデータがないクリニックは0/nullで返される', async () => {
-      // クリニック3のデータがない場合のモック
       const clinicsWithNew = [
         ...mockClinicData,
         {
@@ -212,22 +241,24 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
         },
       ];
 
-      supabaseFromMock.mockImplementation((tableName: string) => {
-        if (tableName === 'clinics') {
-          return createQueryBuilder(clinicsWithNew);
-        }
-        if (tableName === 'daily_revenue_summary') {
-          return createQueryBuilder(mockRevenueData); // clinic-3のデータなし
-        }
-        if (tableName === 'patient_visit_summary') {
-          return createQueryBuilder(mockPatientData);
-        }
-        if (tableName === 'staff_performance_summary') {
-          return createQueryBuilder(mockStaffPerformanceData);
-        }
-        return createQueryBuilder([]);
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics')
+            return createQueryBuilder(clinicsWithNew);
+          if (tableName === 'daily_revenue_summary') {
+            return createQueryBuilder(mockRevenueData);
+          }
+          if (tableName === 'patient_visit_summary') {
+            return createQueryBuilder(mockPatientData);
+          }
+          if (tableName === 'staff_performance_summary') {
+            return createQueryBuilder(mockStaffPerformanceData);
+          }
+          return createQueryBuilder([]);
+        }),
       });
 
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
         'http://localhost/api/admin/tenants?include_kpi=true'
       );
@@ -235,11 +266,9 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
       expect(response.status).toBe(200);
       const payload = await response.json();
-
       const clinic3 = payload.data.items.find(
         (c: { id: string }) => c.id === 'clinic-3'
       );
-      expect(clinic3).toBeDefined();
       expect(clinic3.kpi.revenue).toBe(0);
       expect(clinic3.kpi.patients).toBe(0);
     });
@@ -247,38 +276,54 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
   describe('既存機能との互換性', () => {
     beforeEach(() => {
-      supabaseFromMock.mockImplementation(() =>
-        createQueryBuilder(mockClinicData)
-      );
-      ensureClinicAccessMock.mockResolvedValue({
-        supabase: { from: supabaseFromMock },
-        user: mockUser,
-        permissions: { role: 'admin', clinicId: null },
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+        permissions: {
+          role: 'admin',
+          clinic_id: 'clinic-1',
+        },
+        supabase: {},
       });
     });
 
     it('include_kpi パラメータなしでは従来通りの応答を返す', async () => {
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics')
+            return createQueryBuilder([mockClinicData[0]]);
+          return createQueryBuilder([]);
+        }),
+      });
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
       const response = await GET(request);
 
       expect(response.status).toBe(200);
       const payload = await response.json();
       expect(payload.data.items).toBeDefined();
-      // KPIは含まれない
       expect(payload.data.items[0]?.kpi).toBeUndefined();
     });
 
     it('検索フィルタは引き続き動作する', async () => {
-      supabaseFromMock.mockImplementation(() =>
-        createQueryBuilder([mockClinicData[0]])
-      );
+      const clinicsQuery = createQueryBuilder([mockClinicData[0]]);
 
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics') return clinicsQuery;
+          return createQueryBuilder([]);
+        }),
+      });
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
         'http://localhost/api/admin/tenants?search=テスト'
       );
       const response = await GET(request);
 
       expect(response.status).toBe(200);
+      expect(clinicsQuery.ilike).toHaveBeenCalledWith('name', '%テスト%');
       const payload = await response.json();
       expect(payload.data.items.length).toBe(1);
     });

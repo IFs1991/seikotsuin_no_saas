@@ -129,16 +129,10 @@ export const patientsSchema = z.object({
     .max(
       VALIDATION_LIMITS.TEXT_MAX_LENGTH,
       `住所は${VALIDATION_LIMITS.TEXT_MAX_LENGTH}文字以内で入力してください`
-        )
-        .optional(),
-  registration_date: z
-    .string()
-    .date('正しい日付を入力してください')
+    )
     .optional(),
-  last_visit_date: z
-    .string()
-    .date('正しい日付を入力してください')
-    .optional(),
+  registration_date: z.string().date('正しい日付を入力してください').optional(),
+  last_visit_date: z.string().date('正しい日付を入力してください').optional(),
 });
 
 export const resourcesSchema = z.object({

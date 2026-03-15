@@ -30,7 +30,7 @@ function loadEnvFile(fileName: string) {
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  'http://localhost:3000';
+  'http://127.0.0.1:3000';
 const isLocalBaseUrl =
   baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
 const browserChannel =
@@ -38,9 +38,10 @@ const browserChannel =
 
 export default defineConfig({
   testDir: 'src/__tests__/e2e-playwright',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? undefined : 1,
   timeout: 60_000,
   expect: {
     timeout: 10_000,

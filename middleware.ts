@@ -8,6 +8,7 @@ import { CSPConfig } from '@/lib/security/csp-config';
 import {
   normalizeRole,
   canAccessAdminUIWithCompat,
+  canAccessCrossClinicWithCompat,
 } from '@/lib/constants/roles';
 
 /**
@@ -26,6 +27,7 @@ const PROTECTED_ROUTE_PREFIXES = [
   '/ai-insights',
   '/blocks',
   '/onboarding',
+  '/multi-store',
   '/master-data',
 ] as const;
 
@@ -33,6 +35,7 @@ const PROTECTED_ROUTE_PREFIXES = [
  * Admin専用ルート（HQロールのみアクセス可）
  */
 const ADMIN_ONLY_PREFIXES = ['/admin'] as const;
+const HQ_ONLY_PREFIXES = ['/multi-store'] as const;
 const CLINIC_ONLY_PREFIXES = ['/reservations'] as const;
 
 /**
@@ -108,6 +111,7 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = ADMIN_ONLY_PREFIXES.some(prefix =>
     pathname.startsWith(prefix)
   );
+  const isHQRoute = HQ_ONLY_PREFIXES.some(prefix => pathname.startsWith(prefix));
   const isClinicRoute = CLINIC_ONLY_PREFIXES.some(prefix =>
     pathname.startsWith(prefix)
   );
@@ -143,7 +147,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute || isClinicRoute) {
+  if (isAdminRoute || isHQRoute || isClinicRoute) {
     // user_permissions テーブルを優先的に使用（仕様: single source of truth）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     type PermissionsData = {
@@ -200,6 +204,16 @@ export async function middleware(request: NextRequest) {
         !permissions ||
         !isActive ||
         !canAccessAdminUIWithCompat(permissions.role)
+      ) {
+        return NextResponse.redirect(new URL('/unauthorized', request.url));
+      }
+    }
+
+    if (isHQRoute) {
+      if (
+        !permissions ||
+        !isActive ||
+        !canAccessCrossClinicWithCompat(permissions.role)
       ) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }

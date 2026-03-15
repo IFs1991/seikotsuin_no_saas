@@ -76,22 +76,23 @@ const mockReservation: Reservation = {
   createdBy: 'user1',
 };
 
-const mockReservationRow: Database['public']['Tables']['reservations']['Row'] = {
-  id: 'res1',
-  clinic_id: TEST_CLINIC_ID,
-  created_at: mockReservation.createdAt.toISOString(),
-  created_by: 'user1',
-  customer_id: 'cust1',
-  start_time: mockReservation.startTime.toISOString(),
-  end_time: mockReservation.endTime.toISOString(),
-  menu_id: 'menu1',
-  staff_id: 'staff1',
-  status: 'confirmed',
-  channel: 'phone',
-  notes: '初回の方です',
-  selected_options: null,
-  updated_at: mockReservation.updatedAt.toISOString(),
-};
+const mockReservationRow: Database['public']['Tables']['reservations']['Row'] =
+  {
+    id: 'res1',
+    clinic_id: TEST_CLINIC_ID,
+    created_at: mockReservation.createdAt.toISOString(),
+    created_by: 'user1',
+    customer_id: 'cust1',
+    start_time: mockReservation.startTime.toISOString(),
+    end_time: mockReservation.endTime.toISOString(),
+    menu_id: 'menu1',
+    staff_id: 'staff1',
+    status: 'confirmed',
+    channel: 'phone',
+    notes: '初回の方です',
+    selected_options: null,
+    updated_at: mockReservation.updatedAt.toISOString(),
+  };
 
 const mockResourceRow: Database['public']['Tables']['resources']['Row'] = {
   id: 'staff1',

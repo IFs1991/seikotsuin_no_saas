@@ -20,6 +20,7 @@
     "test:coverage": "jest --coverage",
     "test:windows": "jest --runInBand --testPathIgnorePatterns=e2e",
     "test:windows:md": "node scripts/jest-windows-md.mjs",
+    "test:pr05:focused": "node scripts/run-jest.mjs --ci --runTestsByPath src/__tests__/api/admin-settings.test.ts src/__tests__/api/admin-tenants-access.test.ts src/__tests__/api/multi-store-kpi.test.ts src/__tests__/auth/middleware-auth.test.ts src/__tests__/components/admin-settings.test.tsx src/__tests__/components/admin-settings-navigation.test.tsx src/__tests__/components/navigation/admin-navigation.test.tsx src/__tests__/lib/api-helpers-auth.test.ts src/__tests__/lib/reservation-service.test.ts",
     "test:e2e": "jest --testPathPattern=e2e",
     "test:e2e:pw": "playwright test",
     "test:e2e:pw:ui": "playwright test --ui",

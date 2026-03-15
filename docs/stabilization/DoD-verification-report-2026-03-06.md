@@ -94,6 +94,25 @@
 
 ---
 
+## PR-03 Verification Addendum (2026-03-10)
+
+PR-03 (SMTP Secret Separation) Phase A の検証結果を追記する。
+
+| Check | Result | Notes |
+|-------|--------|-------|
+| `smtpSettings.password` が `clinic_settings` に保存されない | **PASS** | API PUT で `password` を除外して upsert。E2E で送信 payload に `password` が含まれないことを検証 |
+| communication の UI/API 契約統一 (`channels + smtpSettings.username + secure`) | **PASS** | `CommunicationSchema` と `communication-settings.tsx` が同一契約 |
+| legacy `smtpSettings.user` → `username` 互換吸収 | **PASS** | API GET の `normalizeCommunicationSettings` で変換。API テストで検証済み |
+| UI に平文パスワード入力が存在しない | **PASS** | E2E で `input[type="password"]` が SMTP セクションに無いことを確認 |
+| `smtpSettings.username` / `secure` が保存・再取得で欠落しない | **PASS** | E2E で save → reload → 値保持を確認 |
+| `npm test -- src/__tests__/api/admin-settings.test.ts` | **PASS** | 全テストケース通過 |
+| `npm run type-check` | **PASS** | 型エラーなし |
+| `npx playwright test admin-settings --workers=1` | **PASS** | 10/10 passed (1.6m) |
+
+詳細: `docs/stabilization/plan-pr03-smtp-secret-separation-v0.1.md` §12
+
+---
+
 ## Next Actions (minimal)
 
 1. **F-02 mitigation (CI)**: CI パイプラインで `supabase db reset` 後に `supabase status` でヘルスチェックを追加し、502 exit code を一時的リトライで吸収する運用ルールを検討

@@ -13,11 +13,26 @@ This is a practical checklist for local -> staging -> production. Use it to trac
 
 ## 1. Local Validation (Pre-Deploy)
 
+### Required (must match CI required gates)
+
+CI required job names — all must be green before deploy:
+`quality` · `build` · `supabase-contract` · `fixture-preflight` · `focused-regression`
+
 - [ ] `npm run lint`
 - [ ] `npm run type-check`
+- [ ] `npm run scan:secrets`
 - [ ] `npm run build`
-- [ ] `npm run test -- --ci --testPathIgnorePatterns=e2e`
-- [ ] `npm run test:e2e:pw -- --project=chromium` (optional if E2E is required now)
+- [ ] Validate supabase types header:
+  ```bash
+  node -e "const fs=require('fs');const v=fs.readFileSync('src/types/supabase.ts','utf8');const l=v.split('\n')[0].trim();if(l!=='export type Json ='){console.error(l);process.exit(1)}console.log('OK')"
+  ```
+- [ ] `E2E_SKIP_DB_CHECK=1 npm run e2e:validate-fixtures`
+- [ ] `npm run test:pr05:focused`
+
+### Optional / Known Blockers
+
+- [ ] `npm run e2e:validate-fixtures` (with DB) — requires `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+- [ ] `npm run test:e2e:pw -- --project=chromium` — **BLOCKED**: `spawn EPERM` on Windows (DOD-06/DOD-07). Deferred to follow-up PR.
 
 Supabase (local) for DoD evidence:
 - [ ] `supabase start`
