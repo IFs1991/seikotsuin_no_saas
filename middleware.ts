@@ -6,7 +6,6 @@ import {
 } from '@/lib/rate-limiting/middleware';
 import { CSPConfig } from '@/lib/security/csp-config';
 import {
-  normalizeRole,
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
 } from '@/lib/constants/roles';
@@ -111,7 +110,9 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = ADMIN_ONLY_PREFIXES.some(prefix =>
     pathname.startsWith(prefix)
   );
-  const isHQRoute = HQ_ONLY_PREFIXES.some(prefix => pathname.startsWith(prefix));
+  const isHQRoute = HQ_ONLY_PREFIXES.some(prefix =>
+    pathname.startsWith(prefix)
+  );
   const isClinicRoute = CLINIC_ONLY_PREFIXES.some(prefix =>
     pathname.startsWith(prefix)
   );
