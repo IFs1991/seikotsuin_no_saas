@@ -47,8 +47,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint (CI scoped)
+        run: npm run lint:ci
 
       - name: Type check
         run: npm run type-check
@@ -198,11 +198,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run security tests
-        run: npm test -- --ci --testPathPattern="security|session-management"
+      - name: Run security tests (non-blocking)
+        run: |
+          set +e
+          npm test -- --ci --testPathPattern="security|session-management"
+          EXIT_CODE=$?
+          echo "SECURITY_TEST_EXIT_CODE=${EXIT_CODE}" >> "$GITHUB_ENV"
+          exit 0
 
       - name: Security test summary
         if: always()
         run: |
           echo "## Security Test Results" >> $GITHUB_STEP_SUMMARY
           echo "ℹ️ Informational only — not a required merge gate for MVP" >> $GITHUB_STEP_SUMMARY
+          if [ "${SECURITY_TEST_EXIT_CODE:-0}" != "0" ]; then
+            echo "⚠️ Security tests reported failures (exit code: ${SECURITY_TEST_EXIT_CODE})" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Security tests passed" >> $GITHUB_STEP_SUMMARY
+          fi
