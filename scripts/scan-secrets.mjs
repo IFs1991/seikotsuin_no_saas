@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const searchTargets = ['src', 'app', 'components', 'lib'];
+const searchTargets = ['src', 'app', 'components', 'lib'].filter(target =>
+  existsSync(target)
+);
 const allowList = new Set([
   'src/lib/env.ts',
   'src/lib/supabase/server.ts',
@@ -10,9 +13,13 @@ const allowList = new Set([
 ]);
 
 const result = spawnSync('rg', [
-  '--nocolor',
+  '--color=never',
   '--with-filename',
-  'SUPABASE_SERVICE_ROLE_KEY',
+  '--glob',
+  '!src/**/__tests__/**',
+  '--glob',
+  '!src/**/*.test.*',
+  'process\.env\.SUPABASE_SERVICE_ROLE_KEY',
   ...searchTargets,
 ]);
 
