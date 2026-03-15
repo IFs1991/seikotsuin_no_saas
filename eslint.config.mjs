@@ -233,6 +233,7 @@ const eslintConfig = [
       'dist/',
       'build/',
       'coverage/',
+      '.worktrees/',
       '*.config.js',
       '*.config.mjs',
     ],
