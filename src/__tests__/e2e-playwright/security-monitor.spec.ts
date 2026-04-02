@@ -9,6 +9,19 @@ const adminStorageStatePath = path.resolve(
 
 test.use({ storageState: adminStorageStatePath });
 
+const unwrapResponseData = (body: Record<string, any>) => body.data ?? body;
+
+const extractEvents = (body: Record<string, any>) =>
+  body.events ?? unwrapResponseData(body).events ?? [];
+
+const extractSessions = (body: Record<string, any>) =>
+  body.sessions ?? unwrapResponseData(body).sessions ?? [];
+
+const extractNotifications = (body: Record<string, any>) =>
+  body.notifications ?? unwrapResponseData(body).notifications ?? [];
+
+const extractMetrics = (body: Record<string, any>) => unwrapResponseData(body);
+
 /**
  * セキュリティ監視運用 E2Eテスト
  * 仕様書: docs/セキュリティ監視運用_MVP仕様書.md
@@ -24,17 +37,23 @@ test.use({ storageState: adminStorageStatePath });
 test.describe('セキュリティ監視運用', () => {
   test.describe('イベント一覧表示', () => {
     test('セキュリティイベント一覧が表示される', async ({ page }) => {
-      // セキュリティ監視ページへ移動
-      await page.goto('/admin/security-monitor');
+      // pilot mode では /admin/security-monitor が middleware で塞がれるため、
+      // 実際の管理UIは /admin/security-dashboard で確認する。
+      await page.goto('/admin/security-dashboard');
+      await expect(
+        page.getByText('セキュリティデータを読み込んでいます...')
+      ).not.toBeVisible();
 
       // ページタイトルが表示されることを確認
       await expect(
-        page.getByRole('heading', { name: /セキュリティ/i })
+        page.getByRole('heading', {
+          name: /セキュリティ監視センター|セキュリティダッシュボード/i,
+        })
       ).toBeVisible();
 
       // イベント一覧がロードされることを確認
       await expect(
-        page.getByText(/セキュリティイベント|最近のセキュリティイベント/i)
+        page.locator('[data-testid="security-event-item"]').first()
       ).toBeVisible();
     });
 
@@ -49,7 +68,7 @@ test.describe('セキュリティ監視運用', () => {
       const data = await response.json();
 
       // レスポンスが配列であること
-      expect(Array.isArray(data.events || data)).toBeTruthy();
+      expect(Array.isArray(extractEvents(data))).toBeTruthy();
     });
   });
 
@@ -80,12 +99,12 @@ test.describe('セキュリティ監視運用', () => {
 
       expect(getResponse.ok()).toBeTruthy();
       const data = await getResponse.json();
-      const event = Array.isArray(data.events) ? data.events[0] : data;
+      const [event] = extractEvents(data);
       expect(event.status).toBe('investigating');
     });
 
     test('UI上でイベントステータスを解決済みに更新できる', async ({ page }) => {
-      await page.goto('/admin/security-monitor');
+      await page.goto('/admin/security-dashboard');
 
       // イベント一覧が表示されるまで待機
       await page.waitForSelector('[data-testid="security-event-item"]', {
@@ -153,7 +172,8 @@ test.describe('セキュリティ監視運用', () => {
       );
 
       if (notificationsResponse.ok()) {
-        const notifications = await notificationsResponse.json();
+        const body = await notificationsResponse.json();
+        const notifications = extractNotifications(body);
         expect(notifications.length).toBeGreaterThan(0);
       }
     });
@@ -168,7 +188,8 @@ test.describe('セキュリティ監視運用', () => {
       );
 
       expect(response.ok()).toBeTruthy();
-      const data = await response.json();
+      const body = await response.json();
+      const data = extractMetrics(body);
 
       // 必須メトリクスが含まれることを確認
       expect(data).toHaveProperty('totalEvents');
@@ -176,12 +197,17 @@ test.describe('セキュリティ監視運用', () => {
     });
 
     test('SecurityDashboard にメトリクスが表示される', async ({ page }) => {
-      await page.goto('/admin/security-monitor');
+      await page.goto('/admin/security-dashboard');
 
       // メトリクスカードが表示されることを確認
-      await expect(page.getByText(/総イベント|イベント数/i)).toBeVisible();
       await expect(
-        page.getByText(/アクティブセッション|セッション/i)
+        page.locator('p').filter({ hasText: '総ユーザー数' }).first()
+      ).toBeVisible();
+      await expect(
+        page
+          .locator('p')
+          .filter({ hasText: 'アクティブセッション' })
+          .first()
       ).toBeVisible();
     });
   });
@@ -198,7 +224,7 @@ test.describe('セキュリティ監視運用', () => {
       const data = await response.json();
 
       // レスポンスが配列であること
-      expect(Array.isArray(data.sessions || data)).toBeTruthy();
+      expect(Array.isArray(extractSessions(data))).toBeTruthy();
     });
 
     test('POST /api/admin/security/sessions/terminate でセッションが終了される', async ({
@@ -215,7 +241,7 @@ test.describe('セキュリティ監視運用', () => {
       }
 
       const sessionsData = await sessionsResponse.json();
-      const sessions = sessionsData.sessions || sessionsData;
+      const sessions = extractSessions(sessionsData);
 
       if (!sessions.length) {
         test.skip();
@@ -248,7 +274,7 @@ test.describe('セキュリティ監視運用', () => {
         `/api/admin/security/sessions?clinic_id=${CLINIC_A_ID}`
       );
       const afterData = await afterResponse.json();
-      const afterSessions = afterData.sessions || afterData;
+      const afterSessions = extractSessions(afterData);
 
       const stillExists = afterSessions.some(
         (s: { id: string }) => s.id === targetSession.id
@@ -257,7 +283,7 @@ test.describe('セキュリティ監視運用', () => {
     });
 
     test('UI上でセッション強制終了ができる', async ({ page }) => {
-      await page.goto('/admin/security-monitor');
+      await page.goto('/admin/security-dashboard');
 
       // セッションタブをクリック
       const sessionsTab = page.getByRole('tab', {

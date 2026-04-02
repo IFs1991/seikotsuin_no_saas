@@ -80,6 +80,10 @@ const QUICK_ACCESS: SidebarMenuItem[] = [
   { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
 ];
 
+function isAiInsightsEnabled() {
+  return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
+}
+
 export function Sidebar({
   isOpen,
   onClose,
@@ -90,7 +94,13 @@ export function Sidebar({
   const [isExpanded, setIsExpanded] = useState(true);
   const [openSubMenus, setOpenSubMenus] = useState<string[]>([]);
 
-  const menuItems = useMemo(() => CORE_MENU, []);
+  const menuItems = useMemo(
+    () =>
+      CORE_MENU.filter(
+        item => isAiInsightsEnabled() || item.href !== '/ai-insights'
+      ),
+    []
+  );
 
   const currentMenuId = useMemo(() => {
     if (pathname === '/' || pathname === '') {
@@ -98,7 +108,7 @@ export function Sidebar({
     }
 
     const candidates = [
-      ...CORE_MENU.filter(item => item.href !== '/'),
+      ...menuItems.filter(item => item.href !== '/'),
       ...ADMIN_MENU.flatMap(item => [item, ...(item.subItems ?? [])]),
     ];
 
@@ -106,7 +116,7 @@ export function Sidebar({
       pathname.startsWith(item.href.split('?')[0])
     );
     return match?.id ?? '';
-  }, [pathname]);
+  }, [menuItems, pathname]);
 
   const toggleSubMenu = (menuId: string) => {
     setOpenSubMenus(prev =>

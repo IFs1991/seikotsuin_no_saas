@@ -13,6 +13,7 @@ import * as path from 'path';
 // ================================================================
 // Red 1: マイグレーションファイルの構造検証
 // ================================================================
+// @see docs/stabilization/spec-csp-migration-v0.1.md
 describe('CSP/Security migration SSOT', () => {
   const migrationDir = path.resolve(__dirname, '../../../supabase/migrations');
   const migrationFile = path.join(

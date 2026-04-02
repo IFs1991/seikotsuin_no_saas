@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ export default function MenuSettingsPage() {
     optionsJson: '[]',
   });
 
-  const loadMenus = async () => {
+  const loadMenus = useCallback(async () => {
     if (!clinicId) return;
     setLoading(true);
     try {
@@ -34,11 +34,11 @@ export default function MenuSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId]);
 
   useEffect(() => {
     loadMenus();
-  }, [clinicId]);
+  }, [loadMenus]);
 
   const handleCreate = async () => {
     if (!clinicId || !newMenu.name.trim()) return;

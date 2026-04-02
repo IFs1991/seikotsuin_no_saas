@@ -6,7 +6,6 @@ import {
 } from '@/lib/rate-limiting/middleware';
 import { CSPConfig } from '@/lib/security/csp-config';
 import {
-  normalizeRole,
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
 } from '@/lib/constants/roles';
@@ -37,6 +36,17 @@ const PROTECTED_ROUTE_PREFIXES = [
 const ADMIN_ONLY_PREFIXES = ['/admin'] as const;
 const HQ_ONLY_PREFIXES = ['/multi-store'] as const;
 const CLINIC_ONLY_PREFIXES = ['/reservations'] as const;
+const PILOT_BLOCKED_ROUTE_PREFIXES = [
+  '/chat',
+  '/ai-insights',
+  '/admin/security-',
+  '/admin/beta-monitoring',
+  '/admin/session-management',
+  '/admin/master',
+  '/admin/chat',
+  '/blocks',
+  '/master-data',
+] as const;
 
 /**
  * 公開ルート（認証不要）
@@ -44,8 +54,13 @@ const CLINIC_ONLY_PREFIXES = ['/reservations'] as const;
 const ADMIN_PUBLIC_ROUTES = ['/admin/login', '/admin/callback'] as const;
 const CLINIC_PUBLIC_ROUTES = ['/login', '/invite'] as const;
 
+function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
+  return prefixes.some(prefix => pathname.startsWith(prefix));
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const isPilotMode = process.env.NEXT_PUBLIC_PILOT_MODE === 'true';
 
   const rateLimitMiddlewares = getPathRateLimit(pathname);
   if (rateLimitMiddlewares.length > 0) {
@@ -86,9 +101,7 @@ export async function middleware(request: NextRequest) {
     console.warn('CSP header application failed:', error);
   }
 
-  const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(prefix =>
-    pathname.startsWith(prefix)
-  );
+  const isProtectedRoute = matchesAnyPrefix(pathname, PROTECTED_ROUTE_PREFIXES);
   if (!isProtectedRoute) {
     return response;
   }
@@ -98,23 +111,19 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Expires', '0');
 
   // 公開ルートのチェック
-  const isAdminPublicRoute = ADMIN_PUBLIC_ROUTES.some(route =>
-    pathname.startsWith(route)
-  );
-  const isClinicPublicRoute = CLINIC_PUBLIC_ROUTES.some(route =>
-    pathname.startsWith(route)
-  );
+  const isAdminPublicRoute = matchesAnyPrefix(pathname, ADMIN_PUBLIC_ROUTES);
+  const isClinicPublicRoute = matchesAnyPrefix(pathname, CLINIC_PUBLIC_ROUTES);
   if (isAdminPublicRoute || isClinicPublicRoute) {
     return response;
   }
 
-  const isAdminRoute = ADMIN_ONLY_PREFIXES.some(prefix =>
-    pathname.startsWith(prefix)
-  );
-  const isHQRoute = HQ_ONLY_PREFIXES.some(prefix => pathname.startsWith(prefix));
-  const isClinicRoute = CLINIC_ONLY_PREFIXES.some(prefix =>
-    pathname.startsWith(prefix)
-  );
+  if (isPilotMode && matchesAnyPrefix(pathname, PILOT_BLOCKED_ROUTE_PREFIXES)) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  const isAdminRoute = matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES);
+  const isHQRoute = matchesAnyPrefix(pathname, HQ_ONLY_PREFIXES);
+  const isClinicRoute = matchesAnyPrefix(pathname, CLINIC_ONLY_PREFIXES);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

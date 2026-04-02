@@ -74,6 +74,13 @@ const initialBackupData: BackupSettings = {
 };
 
 export function SystemSettings() {
+  const systemInfo: SystemInfo = {
+    version: process.env.NEXT_PUBLIC_APP_VERSION?.trim() || '未設定',
+    lastUpdate: process.env.NEXT_PUBLIC_BUILD_DATE?.trim() || '未設定',
+    databaseSize: '2.3 GB',
+    storageUsage: 65,
+  };
+
   const { profile, loading: profileLoading } = useUserProfile();
   const clinicId = profile?.clinicId;
 
@@ -93,13 +100,6 @@ export function SystemSettings() {
         }
       : undefined
   );
-
-  const [systemInfo] = useState<SystemInfo>({
-    version: '2.1.0',
-    lastUpdate: '2024-08-10',
-    databaseSize: '2.3 GB',
-    storageUsage: 65,
-  });
 
   // Backup settings remain local until system_backup persistence is wired.
   const [backup, setBackup] = useState<BackupSettings>(initialBackupData);
@@ -129,11 +129,6 @@ export function SystemSettings() {
 
   const onSave = async () => {
     await handleSave();
-  };
-
-  const handleBackupNow = async () => {
-    // バックアップは別途API呼び出しが必要
-    await new Promise(resolve => setTimeout(resolve, 2000));
   };
 
   return (
@@ -477,21 +472,22 @@ export function SystemSettings() {
             )}
           </div>
 
+          <div className='rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
+            パイロット版のバックアップ管理は Supabase
+            ダッシュボードで管理してください。
+          </div>
+
           <div className='flex space-x-4'>
-            <Button
-              onClick={handleBackupNow}
-              disabled={loadingState.isLoading}
-              className='flex items-center space-x-2'
-            >
+            <Button disabled className='flex items-center space-x-2'>
               <Download className='w-4 h-4' />
-              <span>
-                {loadingState.isLoading
-                  ? 'バックアップ中...'
-                  : '今すぐバックアップ'}
-              </span>
+              <span>今すぐバックアップ</span>
             </Button>
 
-            <Button variant='outline' className='flex items-center space-x-2'>
+            <Button
+              variant='outline'
+              disabled
+              className='flex items-center space-x-2'
+            >
               <Upload className='w-4 h-4' />
               <span>バックアップから復元</span>
             </Button>

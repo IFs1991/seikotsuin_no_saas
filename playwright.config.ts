@@ -25,7 +25,9 @@ function loadEnvFile(fileName: string) {
   }
 }
 
-['.env.test', '.env.local', '.env'].forEach(loadEnvFile);
+// Prefer local app settings over the generic E2E fallback so Playwright waits
+// on the same port that `npm run dev` is configured to use in local dev.
+['.env.local', '.env.test', '.env'].forEach(loadEnvFile);
 
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ||
@@ -33,6 +35,7 @@ const baseURL =
   'http://127.0.0.1:3000';
 const isLocalBaseUrl =
   baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
+const baseURLPort = new URL(baseURL).port || '3000';
 const browserChannel =
   process.env.PLAYWRIGHT_BROWSER_CHANNEL || process.env.PLAYWRIGHT_CHANNEL;
 
@@ -55,16 +58,17 @@ export default defineConfig({
   },
   webServer: isLocalBaseUrl
     ? {
-        command: 'npm run dev',
+        command: `npm run dev -- --port ${baseURLPort}`,
         url: baseURL,
         // E2E_INVITE_MODE などの環境変数を反映するため、常に新しいサーバーを起動
         // @see docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md
-        reuseExistingServer: false,
+        reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         // E2E専用環境変数をwebServerに渡す
         env: {
           ...process.env,
           E2E_INVITE_MODE: process.env.E2E_INVITE_MODE || 'skip',
+          NEXT_PUBLIC_E2E: 'true',
         },
       }
     : undefined,

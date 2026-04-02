@@ -7,6 +7,10 @@ const isPhase2Enabled = phase === 'phase2' || phase === '2' || phase === 'all';
 test.describe('Dashboard - 実データ表示', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsStaff(page);
+    await page.waitForLoadState('networkidle');
+    await expect(
+      page.getByText('ダッシュボードデータを読み込み中...')
+    ).not.toBeVisible({ timeout: 30000 });
   });
 
   test('dashboard renders core widgets', async ({ page }) => {
@@ -48,8 +52,8 @@ test.describe('Dashboard - 実データ表示', () => {
     ).toBeVisible();
 
     // 曜日ラベルが表示される
-    await expect(page.getByText('月')).toBeVisible();
-    await expect(page.getByText('日')).toBeVisible();
+    await expect(page.getByText('月', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('日', { exact: true }).first()).toBeVisible();
   });
 
   test('データが無い場合は空状態が表示される', async ({ page }) => {

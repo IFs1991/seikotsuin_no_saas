@@ -59,12 +59,12 @@ export function useMasterData(
       }),
   });
 
-  const items = query.data?.items ?? [];
+  const allItems = query.data?.items ?? [];
 
   const filteredItems = useMemo(() => {
-    if (!searchQuery) return items;
+    if (!searchQuery) return allItems;
     const lowerSearch = searchQuery.toLowerCase();
-    return items.filter(item => {
+    return allItems.filter(item => {
       return (
         item.name.toLowerCase().includes(lowerSearch) ||
         item.category.toLowerCase().includes(lowerSearch) ||
@@ -73,7 +73,7 @@ export function useMasterData(
           : false)
       );
     });
-  }, [items, searchQuery]);
+  }, [allItems, searchQuery]);
 
   const groupedData = useMemo(() => {
     return filteredItems.reduce<MasterDataGroupedResult>((acc, item) => {
@@ -158,7 +158,7 @@ export function useMasterData(
   };
 
   const exportData = () => {
-    const jsonString = JSON.stringify(items, null, 2);
+    const jsonString = JSON.stringify(filteredItems, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
@@ -177,7 +177,7 @@ export function useMasterData(
 
   return {
     data: groupedData,
-    items,
+    items: allItems,
     loading: query.isLoading,
     error: query.error instanceof Error ? query.error.message : null,
     searchQuery,

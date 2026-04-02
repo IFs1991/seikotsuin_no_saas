@@ -141,13 +141,6 @@ export async function clinicLogin(
       };
     }
 
-    await AuditLogger.logLogin(
-      data.user.id,
-      sanitizedEmail,
-      ipAddress,
-      userAgent
-    );
-
     // 3. ユーザー権限の確認（user_permissions を単一ソースとして使用）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     const permissions = await getUserPermissions(data.user.id, supabase);
@@ -174,9 +167,19 @@ export async function clinicLogin(
       };
     }
 
+    const recordSuccessfulLogin = async () => {
+      await AuditLogger.logLogin(
+        data.user.id,
+        sanitizedEmail,
+        ipAddress,
+        userAgent
+      );
+    };
+
     // HQロール（admin）は clinic_id なしでもログイン許可
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     if (isHQRole(permissions?.role)) {
+      await recordSuccessfulLogin();
       // 4. last_login_at を更新
       await supabase
         .from('profiles')
@@ -199,6 +202,7 @@ export async function clinicLogin(
     // 非HQロール + clinic_id = null → /onboarding へリダイレクト
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     if (!permissions?.clinic_id) {
+      await recordSuccessfulLogin();
       // 4. last_login_at を更新
       await supabase
         .from('profiles')
@@ -219,6 +223,8 @@ export async function clinicLogin(
       revalidatePath('/', 'layout');
       redirect('/onboarding');
     }
+
+    await recordSuccessfulLogin();
 
     // 4. last_login_at を更新
     await supabase

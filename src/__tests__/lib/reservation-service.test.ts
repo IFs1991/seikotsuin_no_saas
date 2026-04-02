@@ -168,6 +168,25 @@ describe('ReservationService', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('reservations');
     });
 
+    test('selected_options が不正な形なら無視して取得できる', async () => {
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'select' },
+        {
+          data: [
+            {
+              ...mockReservationRow,
+              selected_options: [{ invalid: true }],
+            },
+          ],
+          error: null,
+        }
+      );
+
+      const result = await reservationService.getReservationById('res1');
+
+      expect(result.selectedOptions).toBeUndefined();
+    });
+
     test('日付範囲で予約を検索できる', async () => {
       const startDate = new Date('2025-10-25T00:00:00');
       const endDate = new Date('2025-10-25T23:59:59');
@@ -526,6 +545,38 @@ describe('ReservationService', () => {
       expect(result.isValid).toBe(false);
       expect(result.reason).toBe('このスタッフは対応できないメニューです');
     });
+
+    test('Block 重複判定は lt/gt の両条件で行う', async () => {
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'select' },
+        { data: [], error: null }
+      );
+
+      const startTime = new Date('2025-10-24T10:00:00');
+      const endTime = new Date('2025-10-24T11:00:00');
+
+      await reservationService.validateTimeSlot('staff1', startTime, endTime);
+
+      const blockCalls = mockSupabase
+        .getCallHistory()
+        .filter(call => call.table === 'blocks');
+
+      expect(blockCalls).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            method: 'lt',
+            args: ['start_time', endTime.toISOString()],
+          }),
+          expect.objectContaining({
+            method: 'gt',
+            args: ['end_time', startTime.toISOString()],
+          }),
+        ])
+      );
+      expect(
+        blockCalls.find(call => call.method === 'or')
+      ).toBeUndefined();
+    });
   });
 
   describe('統計・レポート機能', () => {
@@ -593,6 +644,21 @@ describe('ReservationService', () => {
       );
 
       expect(result).toEqual(mockNoShowAnalysis);
+    });
+
+    test('予約が 0 件でも No-show率は 0 を返す', async () => {
+      mockSupabase.setResult(
+        { table: 'reservations', op: 'select' },
+        { data: [], error: null }
+      );
+
+      const result = await reservationService.getNoShowAnalysis(
+        new Date('2025-10-01'),
+        new Date('2025-10-31')
+      );
+
+      expect(result.noShowRate).toBe(0);
+      expect(result.totalNoShows).toBe(0);
     });
   });
 

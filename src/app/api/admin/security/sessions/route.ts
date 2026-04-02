@@ -128,6 +128,7 @@ export async function GET(request: NextRequest) {
 
       return {
         id: session.id,
+        user_id: session.user_id,
         userId: session.user_id,
         userName: user.name || user.email || 'Unknown',
         userEmail: user.email,

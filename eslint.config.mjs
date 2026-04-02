@@ -210,6 +210,15 @@ const eslintConfig = [
       'no-console': 'off',
     },
   },
+  // 運用設定ファイルは CommonJS を許容
+  {
+    files: ['next.config.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-var-requires': 'off',
+      'unused-imports/no-unused-vars': 'off',
+    },
+  },
   // Legacy コード向けの緩和（段階的改善対象）
   {
     files: ['src/legacy/**/*.{ts,tsx}'],
@@ -233,8 +242,22 @@ const eslintConfig = [
       'dist/',
       'build/',
       'coverage/',
-      '*.config.js',
-      '*.config.mjs',
+      'playwright-report/',
+      'test-results/',
+      'test/',
+      'test-utils/',
+      'src/__tests__/',
+      'src/legacy/',
+      'src/**/e2e/',
+      '**/*.test.js',
+      '**/*.test.jsx',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/*.spec.js',
+      '**/*.spec.jsx',
+      '**/*.spec.ts',
+      '**/*.spec.tsx',
+      'eslint.config.mjs',
     ],
   },
 ];

@@ -127,17 +127,39 @@ export async function getUserPermissions(
     .eq('staff_id', userId)
     .maybeSingle();
 
-  if (error || !permissionsData) {
-    return null;
-  }
-
-  const permissions: { role: string; clinic_id: string | null } =
-    permissionsData;
-
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
   // Use normal client for JWT session access (not RLS-protected)
   const supabase = client ?? (await getServerClient());
+  const currentUser = await getCurrentUser(supabase);
+  const appMetadata =
+    currentUser && currentUser.id === userId
+      ? ((currentUser.app_metadata ?? {}) as Record<string, unknown>)
+      : {};
+
+  const roleFromJwt =
+    typeof appMetadata.user_role === 'string'
+      ? appMetadata.user_role
+      : typeof appMetadata.role === 'string'
+        ? appMetadata.role
+        : null;
+  const clinicIdFromJwt =
+    typeof appMetadata.clinic_id === 'string' ? appMetadata.clinic_id : null;
+
+  const permissions =
+    !error && permissionsData
+      ? (permissionsData as { role: string; clinic_id: string | null })
+      : roleFromJwt
+        ? {
+            role: roleFromJwt,
+            clinic_id: clinicIdFromJwt,
+          }
+        : null;
+
+  if (!permissions) {
+    return null;
+  }
+
   let clinic_scope_ids: string[] | undefined;
   try {
     const {

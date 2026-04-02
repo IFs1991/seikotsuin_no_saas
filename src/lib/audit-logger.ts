@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase';
-import { createLogger } from '@/lib/logger';
+import { createLogger, type Logger } from '@/lib/logger';
 
 // 監査ログの種類
 export enum AuditEventType {
@@ -31,8 +31,34 @@ export interface AuditLogEntry {
   error_message?: string;
 }
 
-// 監査ログ記録クラス
-const log = createLogger('AuditLogger');
+type AuditLoggerDependencies = {
+  createAdminClient: typeof createAdminClient;
+  createLogger: typeof createLogger;
+};
+
+const defaultDependencies: AuditLoggerDependencies = {
+  createAdminClient,
+  createLogger,
+};
+
+let auditLoggerDependencies: AuditLoggerDependencies = defaultDependencies;
+
+export function setAuditLoggerDependencies(
+  overrides: Partial<AuditLoggerDependencies>
+) {
+  auditLoggerDependencies = {
+    ...auditLoggerDependencies,
+    ...overrides,
+  };
+}
+
+export function resetAuditLoggerDependencies() {
+  auditLoggerDependencies = defaultDependencies;
+}
+
+function getAuditLogger(): Logger {
+  return auditLoggerDependencies.createLogger('AuditLogger');
+}
 
 export class AuditLogger {
   private static async createLogEntry(entry: AuditLogEntry) {
@@ -52,7 +78,7 @@ export class AuditLogger {
     };
 
     try {
-      const supabase = createAdminClient();
+      const supabase = auditLoggerDependencies.createAdminClient();
       const { error } = await supabase
         .from('audit_logs')
         .insert([logData] as any);
@@ -62,7 +88,7 @@ export class AuditLogger {
       }
     } catch (error) {
       // DB障害時のフォールバック: 構造化ログとして出力
-      log.error('監査ログDB書き込み失敗 - フォールバック出力', {
+      getAuditLogger().error('監査ログDB書き込み失敗 - フォールバック出力', {
         error,
         logData,
       });
@@ -233,7 +259,7 @@ export class AuditLogger {
 
     await this.createLogEntry(entry);
 
-    log.warn('Unauthorized access attempt detected', {
+    getAuditLogger().warn('Unauthorized access attempt detected', {
       attemptedResource,
       userId,
       ipAddress,

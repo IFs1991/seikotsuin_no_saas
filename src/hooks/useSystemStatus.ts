@@ -1,10 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  api,
+  handleApiError,
+  isErrorResponse,
+  isSuccessResponse,
+} from '@/lib/api-client';
 
 export interface SystemStatus {
   activeClinicCount: number;
-  systemStatus: 'operational' | 'degraded' | 'outage';
+  systemStatus: 'operational' | 'degraded' | 'maintenance';
   aiAnalysisStatus: 'active' | 'inactive';
   lastUpdated: string;
 }
@@ -17,9 +23,7 @@ interface UseSystemStatusResult {
 
 /**
  * システム状態を取得するカスタムフック
- * - アクティブ店舗数を /api/clinics から取得（認証あり）
- * - ヘルスチェックを /api/health から取得
- * - 未認証時は clinicCount = 0 のフォールバック
+ * /api/system/status から店舗数・システム状態・AI分析状態を一括取得する
  */
 export function useSystemStatus(): UseSystemStatusResult {
   const [status, setStatus] = useState<SystemStatus | null>(null);
@@ -27,37 +31,52 @@ export function useSystemStatus(): UseSystemStatusResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let isMounted = true;
 
-    Promise.all([
-      fetch('/api/clinics')
-        .then(r => r.json())
-        .catch(() => null),
-      fetch('/api/health')
-        .then(r => r.json())
-        .catch(() => null),
-    ])
-      .then(([clinicsResult, healthResult]) => {
-        const activeClinicCount =
-          clinicsResult?.success === true
-            ? (clinicsResult.data.items as unknown[]).length
-            : 0;
+    async function loadStatus() {
+      setLoading(true);
+      setError(null);
 
-        const systemStatus: SystemStatus['systemStatus'] =
-          healthResult?.ok === true ? 'operational' : 'degraded';
+      try {
+        const response = await api.system.getStatus();
+        if (!isMounted) {
+          return;
+        }
 
-        setStatus({
-          activeClinicCount,
-          systemStatus,
-          aiAnalysisStatus: 'active',
-          lastUpdated: new Date().toISOString(),
-        });
-      })
-      .catch(err => {
+        if (isSuccessResponse(response)) {
+          setStatus(response.data);
+          return;
+        }
+
+        if (isErrorResponse(response)) {
+          setStatus(null);
+          setError(
+            handleApiError(response.error, 'システム状態の取得に失敗しました')
+          );
+          return;
+        }
+
+        setStatus(null);
+        setError('システム状態の取得に失敗しました');
+      } catch (err) {
+        if (!isMounted) {
+          return;
+        }
+
+        setStatus(null);
         setError(err instanceof Error ? err.message : 'Unknown error');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadStatus();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return { status, loading, error };

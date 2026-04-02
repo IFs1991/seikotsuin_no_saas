@@ -68,6 +68,10 @@ const ADMIN_ITEM: NavigationItem = {
   icon: ShieldCheck,
 };
 
+function isAiInsightsEnabled() {
+  return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
+}
+
 interface MobileBottomNavProps {
   isAdmin?: boolean;
 }
@@ -76,10 +80,14 @@ export function MobileBottomNav({ isAdmin = false }: MobileBottomNavProps) {
   const pathname = usePathname();
 
   const navigationItems = useMemo(() => {
+    const baseItems = BASE_ITEMS.filter(
+      item => isAiInsightsEnabled() || item.href !== '/ai-insights'
+    );
+
     if (isAdmin) {
-      return [...BASE_ITEMS, ADMIN_ITEM];
+      return [...baseItems, ADMIN_ITEM];
     }
-    return BASE_ITEMS;
+    return baseItems;
   }, [isAdmin]);
 
   const isActive = (href: string) => {

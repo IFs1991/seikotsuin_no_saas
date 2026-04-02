@@ -10,6 +10,7 @@ import {
   FIXTURE_CLINICS,
   FIXTURE_USERS,
   USER_ADMIN_ID,
+  USER_MANAGER_ID,
   STAFF_SHIFT_IDS,
   STAFF_PREFERENCE_IDS,
 } from './fixtures.mjs';
@@ -120,6 +121,7 @@ const SECURITY_EVENT_IDS = [
   '00000000-0000-0000-0000-00000000a402',
 ];
 const USER_SESSION_ID = '00000000-0000-0000-0000-00000000a501';
+const USER_SESSION_SECONDARY_ID = '00000000-0000-0000-0000-00000000a502';
 const AUDIT_LOG_IDS = [
   '00000000-0000-0000-0000-00000000a601',
   '00000000-0000-0000-0000-00000000a602',
@@ -378,6 +380,9 @@ async function seedReservationData() {
   const nextWeekAfternoon = addDays(todayMorning, 7);
   nextWeekAfternoon.setHours(14, 0, 0, 0);
 
+  // is_deleted / deleted_at / deleted_by を明示的にリセット —
+  // 前回の globalTeardown で softDeleteReservations() が全予約を
+  // cancelled + is_deleted=true に変更するため、upsert 時に上書きが必要
   const reservations = [
     {
       id: RESERVATION_IDS[0],
@@ -390,6 +395,9 @@ async function seedReservationData() {
       status: 'confirmed',
       channel: 'phone',
       price: 6000,
+      is_deleted: false,
+      deleted_at: null,
+      deleted_by: null,
       created_by: USER_ADMIN_ID,
     },
     {
@@ -403,6 +411,9 @@ async function seedReservationData() {
       status: 'confirmed',
       channel: 'web',
       price: 1800,
+      is_deleted: false,
+      deleted_at: null,
+      deleted_by: null,
       created_by: USER_ADMIN_ID,
     },
     {
@@ -416,6 +427,9 @@ async function seedReservationData() {
       status: 'confirmed',
       channel: 'phone',
       price: 6000,
+      is_deleted: false,
+      deleted_at: null,
+      deleted_by: null,
       created_by: USER_ADMIN_ID,
     },
     {
@@ -429,6 +443,9 @@ async function seedReservationData() {
       status: 'confirmed',
       channel: 'walk_in',
       price: 1800,
+      is_deleted: false,
+      deleted_at: null,
+      deleted_by: null,
       created_by: USER_ADMIN_ID,
     },
     {
@@ -444,6 +461,9 @@ async function seedReservationData() {
       status: 'confirmed',
       channel: 'line',
       price: 6000,
+      is_deleted: false,
+      deleted_at: null,
+      deleted_by: null,
       created_by: USER_ADMIN_ID,
     },
   ];
@@ -466,6 +486,9 @@ async function seedReservationData() {
         status: 'completed',
         channel: 'web',
         price: 6000 + index * 200,
+        is_deleted: false,
+        deleted_at: null,
+        deleted_by: null,
         created_by: USER_ADMIN_ID,
       };
     }
@@ -682,29 +705,63 @@ async function seedAnalyticsData() {
 
 async function seedSecurityData() {
   const nowIso = new Date().toISOString();
+  const sessionSeeds = [
+    {
+      id: USER_SESSION_ID,
+      user_id: USER_ADMIN_ID,
+      clinic_id: CLINIC_A_ID,
+      session_token: 'e2e-session-admin',
+      device_info: { device: 'desktop', os: 'Windows', browser: 'Chrome' },
+      ip_address: '127.0.0.1',
+      user_agent: 'E2E Agent',
+      created_at: nowIso,
+      last_activity: nowIso,
+      expires_at: addDays(new Date(), 1).toISOString(),
+      is_active: true,
+      is_revoked: false,
+      max_idle_minutes: 30,
+      max_session_hours: 8,
+      remember_device: false,
+    },
+    {
+      id: USER_SESSION_SECONDARY_ID,
+      user_id: USER_MANAGER_ID,
+      clinic_id: CLINIC_A_ID,
+      session_token: 'e2e-session-manager',
+      device_info: { device: 'desktop', os: 'macOS', browser: 'Safari' },
+      ip_address: '127.0.0.2',
+      user_agent: 'E2E Secondary Agent',
+      created_at: nowIso,
+      last_activity: nowIso,
+      expires_at: addDays(new Date(), 1).toISOString(),
+      is_active: true,
+      is_revoked: false,
+      max_idle_minutes: 30,
+      max_session_hours: 8,
+      remember_device: false,
+    },
+  ];
 
-  const { error: sessionError } = await supabase.from('user_sessions').upsert(
-    [
-      {
-        id: USER_SESSION_ID,
-        user_id: USER_ADMIN_ID,
-        clinic_id: CLINIC_A_ID,
-        session_token: 'e2e-session-admin',
-        device_info: { device: 'desktop', os: 'Windows', browser: 'Chrome' },
-        ip_address: '127.0.0.1',
-        user_agent: 'E2E Agent',
-        created_at: nowIso,
-        last_activity: nowIso,
-        expires_at: addDays(new Date(), 1).toISOString(),
-        is_active: true,
-        is_revoked: false,
-        max_idle_minutes: 30,
-        max_session_hours: 8,
-        remember_device: false,
-      },
-    ],
-    { onConflict: 'id' }
-  );
+  // Idempotency guard: a previous failed run can leave a row with the same
+  // session_token but a different id, which breaks the next upsert on the
+  // unique constraint before cleanup has a chance to run.
+  for (const session of sessionSeeds) {
+    const { error: existingSessionCleanupError } = await supabase
+      .from('user_sessions')
+      .delete()
+      .eq('session_token', session.session_token)
+      .neq('id', session.id);
+
+    if (existingSessionCleanupError) {
+      throw new Error(
+        `User sessions cleanup failed: ${existingSessionCleanupError.message}`
+      );
+    }
+  }
+
+  const { error: sessionError } = await supabase
+    .from('user_sessions')
+    .upsert(sessionSeeds, { onConflict: 'id' });
   if (sessionError) {
     throw new Error(`User sessions upsert failed: ${sessionError.message}`);
   }

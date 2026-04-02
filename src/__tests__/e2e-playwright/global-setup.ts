@@ -57,13 +57,13 @@ export default async function globalSetup(config: FullConfig) {
   );
   const adminContext = await browser.newContext({ baseURL });
   const adminPage = await adminContext.newPage();
-  await loginAsAdmin(adminPage);
+  await loginAsAdmin(adminPage, '');
   await adminContext.storageState({ path: adminStorageStatePath });
   await adminContext.close();
 
   const staffContext = await browser.newContext({ baseURL });
   const staffPage = await staffContext.newPage();
-  await loginAsStaff(staffPage);
+  await loginAsStaff(staffPage, '');
   await staffContext.storageState({ path: staffStorageStatePath });
   await staffContext.close();
   await browser.close();

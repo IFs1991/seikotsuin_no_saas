@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import type { Database } from '@/types/supabase';
 import {
   AppError,
   createApiError,
@@ -16,6 +17,24 @@ import {
 } from '@/lib/constants/roles';
 
 const PATH = '/api/staff/shifts';
+type StaffShiftRow = Database['public']['Tables']['staff_shifts']['Row'];
+type StaffShiftInsert = Database['public']['Tables']['staff_shifts']['Insert'];
+type ResourceSummary = Pick<
+  Database['public']['Tables']['resources']['Row'],
+  'id' | 'name' | 'type'
+>;
+type StaffShiftWithResource = StaffShiftRow & {
+  resources: ResourceSummary | ResourceSummary[] | null;
+};
+
+function normalizeResource(
+  resource: StaffShiftWithResource['resources']
+): ResourceSummary | null {
+  if (Array.isArray(resource)) {
+    return resource[0] ?? null;
+  }
+  return resource ?? null;
+}
 
 // クエリパラメータのスキーマ
 const shiftsQuerySchema = z.object({
@@ -104,31 +123,31 @@ export async function GET(request: NextRequest) {
 
     // レスポンス形式に変換
 
-    const formattedShifts = (shifts || []).map((shift: any) => {
-      // Supabaseのリレーションは配列または単一オブジェクトで返される
-      const resource = Array.isArray(shift.resources)
-        ? shift.resources[0]
-        : shift.resources;
+    const formattedShifts = ((shifts ?? []) as StaffShiftWithResource[]).map(
+      shift => {
+        // Supabaseのリレーションは配列または単一オブジェクトで返される
+        const resource = normalizeResource(shift.resources);
 
-      return {
-        id: shift.id,
-        clinic_id: shift.clinic_id,
-        staff_id: shift.staff_id,
-        start_time: shift.start_time,
-        end_time: shift.end_time,
-        status: shift.status,
-        notes: shift.notes,
-        created_at: shift.created_at,
-        updated_at: shift.updated_at,
-        staff: resource
-          ? {
-              id: resource.id,
-              name: resource.name,
-              type: resource.type,
-            }
-          : null,
-      };
-    });
+        return {
+          id: shift.id,
+          clinic_id: shift.clinic_id,
+          staff_id: shift.staff_id,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          status: shift.status,
+          notes: shift.notes,
+          created_at: shift.created_at,
+          updated_at: shift.updated_at,
+          staff: resource
+            ? {
+                id: resource.id,
+                name: resource.name,
+                type: resource.type,
+              }
+            : null,
+        };
+      }
+    );
 
     return createSuccessResponse({
       shifts: formattedShifts,
@@ -202,12 +221,19 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    const payload: StaffShiftInsert = {
+      clinic_id: dto.clinic_id,
+      staff_id: dto.staff_id,
+      start_time: dto.start_time,
+      end_time: dto.end_time,
+      status: dto.status,
+      notes: dto.notes,
+      created_by: user.id,
+    };
+
     const { data, error } = await supabase
       .from('staff_shifts')
-      .insert({
-        ...dto,
-        created_by: user.id,
-      } as any)
+      .insert(payload)
       .select()
       .single();
 

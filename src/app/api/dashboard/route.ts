@@ -11,6 +11,16 @@ import {
 } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 
+/**
+ * daily_revenue_summary VIEW は AT TIME ZONE 'Asia/Tokyo' で日付を算出するため、
+ * API 側も JST 基準で日付文字列を生成する。
+ * JST は UTC+9 固定（サマータイムなし）。
+ */
+function toJSTDateString(date: Date = new Date()): string {
+  const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return jst.toISOString().split('T')[0];
+}
+
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse<DashboardData>>> {
@@ -46,7 +56,8 @@ export async function GET(
     const resolvedClinicId = clinicId!;
 
     // 基本的なダッシュボードデータを取得
-    const today = new Date().toISOString().split('T')[0];
+    // daily_revenue_summary VIEW は JST 基準のため toJSTDateString を使用
+    const today = toJSTDateString();
 
     // 日次収益データ
     const { data: dailyRevenue, error: revenueError } = await supabase
@@ -112,10 +123,10 @@ export async function GET(
       aiComment = aiCommentData as Record<string, unknown> | null;
     }
 
-    // 収益トレンドデータ（過去7日）
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
+    // 収益トレンドデータ（過去7日）— JST 基準
+    const sevenDaysAgo = toJSTDateString(
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    );
     const { data: revenueChartData, error: chartError } = await supabase
       .from('daily_revenue_summary')
       .select('revenue_date, total_revenue, insurance_revenue, private_revenue')
@@ -141,10 +152,10 @@ export async function GET(
       // ヒートマップエラーは致命的でないため、空配列で継続
     }
 
-    // 前日データ取得（差分アラート用）
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0];
+    // 前日データ取得（差分アラート用）— JST 基準
+    const yesterday = toJSTDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
     const { data: yesterdayRevenue } = await supabase
       .from('daily_revenue_summary')
       .select('total_revenue')

@@ -5,10 +5,11 @@ import { Header } from '@/components/navigation/header';
 import { Sidebar } from '@/components/navigation/sidebar';
 import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useAccessibleClinics } from '@/hooks/useAccessibleClinics';
 import { UserProfileProvider } from '@/providers/user-profile-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
-import { API_ENDPOINTS } from '@/lib/constants';
+import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 
 interface ClientLayoutProps {
   children: React.ReactNode;
@@ -24,14 +25,13 @@ export function ClientLayout({ children }: ClientLayoutProps) {
     loading: profileLoading,
     error: profileError,
   } = useUserProfile();
+  const {
+    clinics,
+    currentClinicId,
+    loading: clinicsLoading,
+  } = useAccessibleClinics();
 
   const isAdmin = profile?.isAdmin ?? false;
-
-  // Task B: クリニック一覧（動的取得）
-  const [clinics, setClinics] = React.useState<
-    Array<{ id: string; name: string }>
-  >([]);
-  const [clinicsLoading, setClinicsLoading] = React.useState(false);
 
   // Task A: 通知件数（管理者のみ取得）
   const [notificationCount, setNotificationCount] = React.useState(0);
@@ -52,20 +52,6 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       document.documentElement.classList.remove(DARK_CLASS);
     }
   }, []);
-
-  // Task B: プロフィール取得後にクリニック一覧を取得
-  const profileId = profile?.id;
-  React.useEffect(() => {
-    if (!profileId) return;
-    setClinicsLoading(true);
-    fetch(API_ENDPOINTS.CLINICS)
-      .then(r => r.json())
-      .then(result => {
-        if (result.success) setClinics(result.data.items);
-      })
-      .catch(() => {})
-      .finally(() => setClinicsLoading(false));
-  }, [profileId]);
 
   // Task A: 管理者のみ通知件数を取得
   React.useEffect(() => {
@@ -103,7 +89,9 @@ export function ClientLayout({ children }: ClientLayoutProps) {
       <UserProfileProvider
         value={{ profile, loading: profileLoading, error: profileError }}
       >
-        <SelectedClinicProvider initialClinicId={profile?.clinicId ?? null}>
+        <SelectedClinicProvider
+          initialClinicId={profile?.clinicId ?? currentClinicId ?? null}
+        >
           <div
             className='min-h-screen'
             style={{ backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb' }}
@@ -144,6 +132,9 @@ export function ClientLayout({ children }: ClientLayoutProps) {
                   >
                     {children}
                   </div>
+                  <footer className='mx-auto mt-10 max-w-7xl border-t border-slate-200 pt-4 text-sm text-slate-500'>
+                    <LegalFooterLinks />
+                  </footer>
                 </div>
               </main>
             </div>

@@ -350,26 +350,38 @@ function createDashboardSupabaseMock({
 
       if (table === 'visits') {
         return {
-          select: jest.fn(() => ({
-            eq: jest.fn(() => ({
-              gte: jest.fn((_, gteValue: string) => ({
-                lt: jest.fn(async (_field: string, ltValue: string) => {
-                  const rangeStart = gteValue.split('T')[0];
-                  const rangeEnd = ltValue.split('T')[0];
-                  const isYesterdayRange =
-                    rangeStart === yesterday && rangeEnd === today;
-                  return {
-                    data: isYesterdayRange ? yesterdayVisits || [] : visits,
-                    error: null,
-                  };
-                }),
+          select: jest.fn(
+            (_columns?: string, options?: { count?: string; head?: boolean }) => ({
+              eq: jest.fn(() => ({
+                gte: jest.fn((_, gteValue: string) => ({
+                  lt: jest.fn(async (_field: string, ltValue: string) => {
+                    const rangeStart = gteValue.split('T')[0];
+                    const rangeEnd = ltValue.split('T')[0];
+                    const isYesterdayRange =
+                      rangeStart === yesterday && rangeEnd === today;
+                    const rows = isYesterdayRange ? yesterdayVisits || [] : visits;
+
+                    if (options?.count === 'exact' && options?.head === true) {
+                      return {
+                        count: rows.length,
+                        data: null,
+                        error: null,
+                      };
+                    }
+
+                    return {
+                      data: rows,
+                      error: null,
+                    };
+                  }),
+                })),
               })),
-            })),
-          })),
+            })
+          ),
         };
       }
 
-      if (table === 'daily_ai_comments') {
+      if (table === 'ai_comments') {
         return {
           select: jest.fn(() => ({
             eq: jest.fn(() => ({

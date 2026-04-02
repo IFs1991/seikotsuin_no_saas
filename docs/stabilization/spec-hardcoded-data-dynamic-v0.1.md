@@ -5,7 +5,7 @@
 - **Purpose**: UIにハードコードされた通知バッジ・クリニック選択・ホームページ統計を、Supabase テーブルから動的に取得するよう実装する。
 - **Priority**: Critical（通知バッジ・クリニック選択は全画面に影響）
 - **Risk**: RLS ポリシー不備によるクロステナントデータ漏洩、または過剰遮断
-- **Status**: PARTIALLY IMPLEMENTED（2026-02-27 実装完了: Phase 2 FE-01〜FE-03 + `/api/clinics` API。詳細は末尾「実装状況」セクション参照）
+- **Status**: IMPLEMENTED WITH FOLLOW-UP（2026-03-30 時点で `notifications` / `clinics/accessible` / `system/status` は実装済み。判定と証跡の正本は `docs/stabilization/DoD-v0.1.md` と `docs/stabilization/pilot-go-execution-2026-03-27.md`）
 - **関連分析**: `hardcoded_data_analysis.md`（Gemini レビュー結果）
 
 ---
@@ -17,13 +17,14 @@
 | HC-01 | `src/components/navigation/header.tsx:141` | 通知バッジ `3` | `notifications` | 🔴 | ✅ 解消 |
 | HC-02 | `src/components/navigation/header.tsx:50` | クリニック `['本店','新宿店',...]` | `clinics` | 🔴 | ✅ 解消 |
 | HC-03 | `src/app/page.tsx:69` | 店舗数 `46` | `clinics` | 🟠 | ✅ 解消 |
-| HC-04 | `src/app/page.tsx:73` | システム状態 `稼働中` | `security_events` | 🟠 | ✅ 部分解消 ※1 |
-| HC-05 | `src/app/page.tsx:77` | AI分析 `AI分析` | `ai_comments` | 🟡 | ⚠️ 仮実装 ※2 |
-| HC-06 | `src/app/reservations/page.tsx:231` | 通知配列 `[] as Notification[]` | `notifications` | 🟠 | ❌ 未実装 |
+| HC-04 | `src/app/page.tsx:73` | システム状態 `稼働中` | `security_events` | 🟠 | ✅ 暫定解消 ※1 |
+| HC-05 | `src/app/page.tsx:77` | AI分析 `AI分析` | `ai_comments` | 🟡 | ✅ 暫定解消 ※2 |
+| HC-06 | `src/app/reservations/page.tsx:231` | 通知配列 `[] as Notification[]` | `notifications` | 🟠 | ⚠️ 別画面導線は未収束 ※3 |
 | HC-BUG | `src/components/navigation/header.tsx:51` | UUID vs 名前文字列の型不一致 | — | 🔴 | ✅ 解消 |
 
-> ※1 **HC-04**: `security_events` ではなく既存 `/api/health` の `ok` フラグで判定。`degraded`/`outage` 状態の詳細検出には API-03 実装が必要。
-> ※2 **HC-05**: `useSystemStatus` フックが常に `'active'` を返す仮実装。`ai_comments` テーブルの当日データ検証は API-03 実装後に対応予定。
+> ※1 **HC-04**: `src/app/api/system/status/route.ts` は実装済み。ただし `system_events` テーブルは migration 未作成のため、`systemStatus` は暫定的に `'operational'` 固定で返す。
+> ※2 **HC-05**: `src/app/api/system/status/route.ts` は `ai_comments` 当日件数で `aiAnalysisStatus` を返す実装に更新済み。
+> ※3 **HC-06**: `src/app/api/notifications/route.ts` と `src/hooks/useNotifications.ts` は実装済み。ただし本仕様書のもともとの「予約ページ通知導線」までを正本として保証する文書ではないため、画面別の追随は別仕様で管理する。
 
 ---
 
@@ -32,11 +33,10 @@
 ### In Scope
 
 1. **新規API 3本** の実装
-   - `GET /api/notifications` — 一般ユーザー向け通知一覧 + 未読件数 ❌ 未実装
-   - `GET /api/clinics/accessible` — ユーザーがアクセス可能なクリニック一覧 ❌ 未実装
-     → **代わりに `GET /api/clinics`（全アクティブクリニック）を実装** ✅
-   - `GET /api/system/status` — ホームページ用システム統計 ❌ 未実装
-     → **代わりに `useSystemStatus` が `/api/clinics` + `/api/health` を並列呼び出し** ✅
+   - `GET /api/notifications` — 一般ユーザー向け通知一覧 + 未読件数 ✅ 実装済み
+   - `GET /api/clinics/accessible` — ユーザーがアクセス可能なクリニック一覧 ✅ 実装済み
+   - `GET /api/system/status` — ホームページ用システム統計 ✅ 実装済み
+     - ただし `system_events` テーブル未整備のため、`systemStatus` の詳細判定は暫定運用
 2. **RLS ポリシーの検証・補強** — 既存 `notifications` ポリシーの確認、新 API 用のアクセス制御 ✅
 3. **フロントエンド接続** — 6 箇所のハードコードを API 呼び出しに置換（5/6 完了） ✅
 4. **TDD** — テストファーストで全 API ・フック・コンポーネントを実装 ✅
@@ -104,8 +104,8 @@ GET /api/notifications
 
 #### ファイル
 
-- **[NEW]** `src/app/api/notifications/route.ts`
-- **[NEW]** `src/hooks/useNotifications.ts`
+- **[IMPLEMENTED]** `src/app/api/notifications/route.ts`
+- **[IMPLEMENTED]** `src/hooks/useNotifications.ts`
 
 #### RLS 依存
 
@@ -199,8 +199,8 @@ GET /api/clinics/accessible
 
 #### ファイル
 
-- **[NEW]** `src/app/api/clinics/accessible/route.ts`
-- **[NEW]** `src/hooks/useAccessibleClinics.ts`
+- **[IMPLEMENTED]** `src/app/api/clinics/accessible/route.ts`
+- **[IMPLEMENTED]** `src/hooks/useAccessibleClinics.ts`
 
 #### RLS 依存
 
@@ -283,25 +283,21 @@ GET /api/system/status
 
 #### ロジック
 
-- `activeClinicCount`: `SELECT COUNT(*) FROM clinics WHERE is_active = true`
-- `systemStatus`: `security_events` テーブルの直近イベントで判定
-  - `severity_level IN ('critical','error')` かつ `status IN ('new','investigating')` が 30 分以内に存在 → `"degraded"`
-  - `event_type='maintenance'` または `event_category='maintenance'` の未解決イベントあり → `"maintenance"`
-  - それ以外 → `"operational"`
+- `activeClinicCount`: `clinics` を所属スコープで集計
+- `systemStatus`: 2026-03-30 時点では暫定的に `"operational"` 固定
+  - 理由: `system_events` テーブルは migration 未作成で、`security_events` 由来の詳細判定ロジックは正本から外した
 - `aiAnalysisStatus`: `ai_comments` テーブルに当日データ存在で `"active"`
 - 全ロールとも所属スコープ内で集計（admin 全体横断はしない）
 
 #### ファイル
 
-- **[NEW]** `src/app/api/system/status/route.ts`
-- **[NEW]** `src/hooks/useSystemStatus.ts`
+- **[IMPLEMENTED]** `src/app/api/system/status/route.ts`
+- **[IMPLEMENTED]** `src/hooks/useSystemStatus.ts`
 
 #### RLS 依存
 
 - `clinics`: `can_access_clinic(id)` に基づく RLS で所属スコープのみ
-- `security_events`:
-  - admin/clinic_admin: `security_events_admin_select`
-  - その他: `security_events_self_select`（自分のイベントのみ）
+- `ai_comments`: 所属スコープで集計
 - 非 admin でも clinic 全体状態を返す要件があるため、Route 内で `createAdminClient()` を使用し、**scope で必ず絞り込んだ集計結果のみ**返す（生データ非公開）
   - `scopeClinicIds = permissions.clinic_scope_ids ?? [permissions.clinic_id].filter(Boolean)`
   - `scopeClinicIds.length === 0` の場合は **403 で fail-closed**
@@ -316,12 +312,12 @@ GET /api/system/status
   TC-S01: 認証済みユーザーがシステム統計を取得できる
   TC-S02: activeClinicCount が clinics テーブルの is_active=true の件数と一致
   TC-S03: critical イベントなしで systemStatus = "operational"
-  TC-S04: 30 分以内に security_events の critical/error 未解決イベントありで systemStatus = "degraded"
+  TC-S04: `clinic_scope_ids` が欠落しており `clinic_id` も null の場合は 403 を返す（fail-closed）
   TC-S05: aiAnalysisStatus が当日の ai_comments 存在に基づく
   TC-S06: 未認証リクエストは 401 を返す
   TC-S07: admin ユーザーは所属スコープ内のアクティブクリニック数を取得
   TC-S08: 非 admin ユーザーも統計を取得可（集約済み、scope外データなし）
-  TC-S09: clinic_scope_ids が欠落しており clinic_id も null の場合は 403 を返す（fail-closed）
+  TC-S09: `systemStatus` は暫定的に `"operational"` を返す
 ```
 
 ---
@@ -665,8 +661,10 @@ npx jest src/__tests__/api/dashboard-security.test.ts --verbose
 - [x] AC-01: ヘッダーの通知バッジが動的に表示される（`notificationCount` prop 経由。`is_read=false` 直接カウントは後続タスク）
 - [x] AC-02: ヘッダーのクリニック選択が `clinics` テーブルの `name` を表示する
 - [x] AC-03: ホームページの「店舗数」が `clinics` テーブルの `is_active = true` 件数に基づく（`/api/clinics` items.length）
-- [ ] AC-04: ホームページの「システム状態」が `security_events` の直近ステータスに基づく（現在は `/api/health` を使用）
-- [ ] AC-05: 予約ページの通知が `notifications` テーブルから取得される（未実装）
+- [ ] AC-04: ホームページの「システム状態」が動的根拠に基づく
+  現時点では `src/app/api/system/status/route.ts` が実装済みだが、`system_events` テーブル未整備のため暫定的に `operational` 固定
+- [ ] AC-05: 予約ページの通知が `notifications` テーブルから取得される
+  `src/app/api/notifications/route.ts` と `src/hooks/useNotifications.ts` は実装済みだが、予約ページ固有導線の完了は本仕様の正本外
 - [x] AC-06: UUID vs 名前文字列の型不一致バグが解消される
 - [x] AC-07: staff ユーザーは他ユーザーの通知を参照できない（RLS + `/api/clinics` STAFF_ROLES guard）
 - [x] AC-08: staff ユーザーは他テナントのクリニックを参照できない（RLS 検証）
@@ -675,42 +673,43 @@ npx jest src/__tests__/api/dashboard-security.test.ts --verbose
 
 ---
 
-## 実装状況サマリー（2026-02-27）
+## 実装状況サマリー（2026-03-30）
 
-### 実装済み（Phase 2 相当）
+### 実装済み
 
 | コンポーネント | 実装内容 | ファイル |
 |-------------|---------|---------|
-| `GET /api/clinics` | 全アクティブクリニック一覧（STAFF_ROLES 認証） | `src/app/api/clinics/route.ts` |
+| `GET /api/clinics/accessible` | 所属スコープのクリニック一覧 | `src/app/api/clinics/accessible/route.ts` |
+| `GET /api/notifications` | 一般ユーザー向け通知一覧 + 未読件数 | `src/app/api/notifications/route.ts` |
+| `GET /api/system/status` | 所属スコープのシステム統計 | `src/app/api/system/status/route.ts` |
 | `SelectedClinicContext` | グローバル選択クリニック状態管理 | `src/providers/selected-clinic-context.tsx` |
-| `useSystemStatus` | `/api/clinics` + `/api/health` 並列取得 | `src/hooks/useSystemStatus.ts` |
+| `useNotifications` | 通知取得 + 未読件数ポーリング | `src/hooks/useNotifications.ts` |
+| `useAccessibleClinics` | アクセス可能クリニック一覧取得 | `src/hooks/useAccessibleClinics.ts` |
+| `useSystemStatus` | `/api/system/status` 単一エンドポイント取得 | `src/hooks/useSystemStatus.ts` |
 | Header 通知バッジ | `notificationCount` prop 動的化 + `99+` 上限 | `src/components/navigation/header.tsx` |
 | Header クリニック選択 | `SelectedClinicContext` 経由で動的化 | `src/components/navigation/header.tsx` |
 | Header モバイル backdrop | `closeMenus` + backdrop + ESC キー | `src/components/navigation/header.tsx` |
 | `page.tsx` 統計表示 | `useSystemStatus` で店舗数・状態を動的化 | `src/app/page.tsx` |
 | `reservations/page.tsx` | `selectedClinicId` コンテキスト配線 | `src/app/reservations/page.tsx` |
 
-### 未実装（後続タスク）
+### 後続タスク
 
 | API / 機能 | 対応 HC | 参照仕様 |
 |-----------|---------|---------|
-| `GET /api/notifications` | HC-01（完全対応）, HC-06 | Phase 1 API-01 |
-| `GET /api/clinics/accessible`（スコープ制限版） | HC-02 補強 | Phase 1 API-02 |
-| `GET /api/system/status`（`security_events` + `ai_comments` 集計） | HC-04, HC-05 | Phase 1 API-03 |
-| `useNotifications` フック | HC-06 | Phase 2 FE-01, FE-04 |
-| `useAccessibleClinics` フック | — | Phase 2 FE-02 |
-| `src/lib/api-client.ts` 拡張 | — | Phase 4 |
+| `systemStatus` の詳細判定 (`degraded` / `maintenance`) | HC-04 | Phase 1 API-03 |
+| 予約ページ固有の通知導線整理 | HC-06 | Phase 2 FE-04 |
+| 関連E2E期待値の正規化 | HC-04, HC-05, HC-06 | DoD-06 follow-up |
 
 ### 計画からの主な方針変更
 
-1. **`GET /api/clinics` を `GET /api/clinics/accessible` の代替として実装**
-   - 全アクティブクリニックを返す（スコープ制限なし）
-   - RLS により実際のデータは各エンドポイントで制御
+1. **`GET /api/clinics/accessible` を正式実装**
+   - 所属スコープのクリニック一覧を返す
+   - `SelectedClinicContext` と header 導線はこれを前提に統一
 
-2. **`useSystemStatus` が `/api/system/status` の代わりに `/api/clinics` + `/api/health` を使用**
-   - `activeClinicCount`: `/api/clinics` の `items.length`
-   - `systemStatus`: `/api/health` の `ok` フラグ
-   - `aiAnalysisStatus`: 常に `'active'`（仮実装）
+2. **`useSystemStatus` は `/api/system/status` を使用**
+   - `activeClinicCount` は route 側で集計
+   - `systemStatus` は暫定的に `'operational'` 固定
+   - `aiAnalysisStatus` は `ai_comments` 当日件数で判定
 
 3. **`page.tsx` を Client Component に変更**
    - 当初計画: async Server Component + `dbHelpers`

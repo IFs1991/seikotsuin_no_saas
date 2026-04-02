@@ -1,9 +1,12 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, Award, Brain } from 'lucide-react';
 import {
   generateAnalysisReport,
   fetchAnalysisData,
-} from '@/api/gemini/ai-analysis-service';
+} from '@/lib/ai/analysis-client';
+import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { clsx } from 'clsx';
 
 interface AnalysisResult {
@@ -33,17 +36,24 @@ interface AIAnalysisProps {
 }
 
 export function AIAnalysis({ className }: AIAnalysisProps) {
+  const { selectedClinicId } = useSelectedClinic();
   const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!selectedClinicId) {
+      setLoading(false);
+      setError('クリニックが選択されていません');
+      return;
+    }
+
     const loadAnalysisData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const data = await fetchAnalysisData();
+        const data = await fetchAnalysisData(selectedClinicId);
         const analysisResult = generateAnalysisReport(data);
 
         setAnalysisData(analysisResult);
@@ -57,7 +67,7 @@ export function AIAnalysis({ className }: AIAnalysisProps) {
     };
 
     loadAnalysisData();
-  }, []);
+  }, [selectedClinicId]);
 
   if (loading) {
     return (

@@ -13,6 +13,10 @@ interface QueryProviderProps {
 }
 
 export function QueryProvider({ children }: QueryProviderProps) {
+  const shouldShowDevtools =
+    process.env.NODE_ENV === 'development' &&
+    process.env.NEXT_PUBLIC_E2E !== 'true';
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -63,7 +67,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
     <QueryClientProvider client={queryClient}>
       {children}
       {/* 開発環境でのみDevToolsを表示 */}
-      {process.env.NODE_ENV === 'development' && (
+      {shouldShowDevtools && (
         <ReactQueryDevtools
           initialIsOpen={false}
           buttonPosition='bottom-right'

@@ -1,0 +1,121 @@
+import { NextRequest } from 'next/server';
+import {
+  AppError,
+  ERROR_CODES,
+  logError,
+  validation,
+  ValidationErrorCollector,
+} from '@/lib/error-handler';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers';
+import type { AnalysisData } from '@/lib/ai/analysis-client';
+
+const PATH = '/api/clinic/analysis';
+
+export async function GET(request: NextRequest) {
+  const clinicId = request.nextUrl.searchParams.get('clinic_id');
+
+  const validator = new ValidationErrorCollector();
+
+  const requiredError = validation.required(clinicId, 'clinic_id');
+  if (requiredError) {
+    validator.add(requiredError.field, requiredError.message);
+  }
+
+  const uuidError = clinicId ? validation.uuid(clinicId, 'clinic_id') : null;
+  if (uuidError) {
+    validator.add(uuidError.field, uuidError.message);
+  }
+
+  if (validator.hasErrors()) {
+    return createErrorResponse(
+      'バリデーションエラー',
+      400,
+      validator.getApiError()
+    );
+  }
+
+  try {
+    const { supabase } = await ensureClinicAccess(request, PATH, clinicId, {
+      requireClinicMatch: true,
+    });
+
+    const resolvedClinicId = clinicId!;
+
+    // 新規患者の判定基準: 過去30日以内に登録
+    const thirtyDaysAgo = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    const [revenueRes, patientRes, therapistRes] = await Promise.all([
+      supabase
+        .from('revenues')
+        .select('amount, created_at')
+        .eq('clinic_id', resolvedClinicId)
+        .order('created_at', { ascending: false })
+        .limit(30),
+      supabase
+        .from('patients')
+        .select('registration_date, created_at')
+        .eq('clinic_id', resolvedClinicId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('staff_performance_summary')
+        .select('staff_name, average_satisfaction_score')
+        .eq('clinic_id', resolvedClinicId)
+        .order('average_satisfaction_score', { ascending: false }),
+    ]);
+
+    if (revenueRes.error) {
+      throw new AppError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        revenueRes.error.message,
+        500
+      );
+    }
+    if (patientRes.error) {
+      throw new AppError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        patientRes.error.message,
+        500
+      );
+    }
+    if (therapistRes.error) {
+      throw new AppError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        therapistRes.error.message,
+        500
+      );
+    }
+
+    const data: AnalysisData = {
+      salesData: (revenueRes.data ?? []).map(row => ({
+        amount: Number(row.amount) || 0,
+        created_at: row.created_at ?? '',
+      })),
+      patientData: (patientRes.data ?? []).map(row => ({
+        is_new:
+          row.registration_date != null &&
+          row.registration_date >= thirtyDaysAgo,
+        created_at: row.created_at ?? '',
+      })),
+      therapistData: (therapistRes.data ?? []).map(row => ({
+        staff_name: row.staff_name ?? '',
+        performance_score: Number(row.average_satisfaction_score) || 0,
+      })),
+    };
+
+    return createSuccessResponse(data);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return createErrorResponse(error.message, error.statusCode);
+    }
+
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+      clinicId,
+    });
+
+    return createErrorResponse('分析データの取得に失敗しました', 500);
+  }
+}

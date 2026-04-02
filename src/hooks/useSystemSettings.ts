@@ -65,7 +65,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         setLoading(false);
       }
     },
-    [categories]
+    []
   );
 
   // マスターデータの更新
@@ -88,7 +88,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         setLoading(false);
       }
     },
-    [categories]
+    []
   );
 
   // マスターデータの削除
@@ -139,7 +139,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         setLoading(false);
       }
     },
-    [filterState]
+    []
   );
 
   const importMasterData = useCallback(
@@ -159,27 +159,24 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         setLoading(false);
       }
     },
-    [filterState.clinicId]
+    []
   );
 
-  const rollbackMasterData = useCallback(
-    async (clinicId?: string | null) => {
-      try {
-        setLoading(true);
-        void clinicId;
-        throw createMasterDataDeprecationError();
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-        setError(errorMessage);
-        console.error('マスターデータロールバックエラー:', err);
-        return false;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [filterState.clinicId]
-  );
+  const rollbackMasterData = useCallback(async (clinicId?: string | null) => {
+    try {
+      setLoading(true);
+      void clinicId;
+      throw createMasterDataDeprecationError();
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+      setError(errorMessage);
+      console.error('マスターデータロールバックエラー:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     // データ状態

@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { registerOwner } from './actions';
 import { registerSchema, type RegisterResponse } from './schema';
 import { getPasswordStrength } from '@/lib/schemas/auth';
@@ -245,8 +246,12 @@ export default function RegisterPage() {
 
           {/* 利用規約同意 */}
           <div>
-            <label className='flex items-start gap-2 cursor-pointer'>
+            <label
+              htmlFor='register-terms'
+              className='flex items-start gap-2 cursor-pointer'
+            >
               <input
+                id='register-terms'
                 type='checkbox'
                 name='termsAccepted'
                 value='on'
@@ -267,6 +272,16 @@ export default function RegisterPage() {
                 <span className='text-red-500 ml-1'>*</span>
               </span>
             </label>
+            <p className='ml-6 mt-1 text-xs text-gray-500'>
+              同意前に{' '}
+              <Link
+                href='/terms'
+                className='text-blue-600 hover:text-blue-500 hover:underline'
+              >
+                利用規約
+              </Link>{' '}
+              をご確認ください。
+            </p>
             {clientErrors.termsAccepted && (
               <p
                 id='register-terms-error'
@@ -292,6 +307,7 @@ export default function RegisterPage() {
           <p className='text-xs text-gray-500'>
             スタッフ登録は招待制です。管理者から招待メールをご確認ください。
           </p>
+          <LegalFooterLinks className='text-xs text-gray-500' />
           <p className='text-sm text-gray-600'>
             すでにアカウントをお持ちの場合は{' '}
             <Link

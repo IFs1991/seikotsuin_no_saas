@@ -498,9 +498,10 @@ export class SessionManager {
       const user = await this.resolveUserContext(userId, clinicId);
 
       return {
-        isValid: true,
+        isValid: false,
         session: fallbackSession,
         user,
+        reason: 'session_creation_failed',
         token: sessionToken,
       };
     }

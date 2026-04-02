@@ -76,7 +76,7 @@ export function Header({
 
   const handleLogout = () => {
     closeMenus();
-    router.push('/admin/login?redirectTo=/');
+    router.push(isAdmin ? '/admin/logout' : '/logout');
   };
 
   const handleNavigateHome = () => {
@@ -88,7 +88,7 @@ export function Header({
   const clinicSelect = (extraClassName?: string) => (
     <select
       value={selectedClinicId ?? ''}
-      onChange={e => setSelectedClinicId(e.target.value)}
+      onChange={e => setSelectedClinicId(e.target.value || null)}
       disabled={clinicsLoading}
       className={`bg-[#2563eb] text-white px-3 py-1 rounded${extraClassName ? ` ${extraClassName}` : ''}`}
     >

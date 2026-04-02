@@ -89,6 +89,18 @@ async function softDeleteReservations() {
   }
 }
 
+async function deleteGeneratedCustomers() {
+  const { error } = await supabase
+    .from('customers')
+    .delete()
+    .in('clinic_id', clinicIds)
+    .like('name', 'E2E New Patient %');
+
+  if (error) {
+    console.warn(`customers cleanup warning: ${error.message}`);
+  }
+}
+
 export async function cleanupE2EData() {
   // Run preflight checks (skipped if E2E_SKIP_DB_CHECK=1)
   await runPreflight(supabase);
@@ -114,6 +126,7 @@ export async function cleanupE2EData() {
   await deleteByClinic('revenues');
   await deleteByClinic('visits');
   await deleteByClinic('patients');
+  await deleteGeneratedCustomers();
   await deleteByClinic('security_events');
   await deleteByClinic('audit_logs');
   await deleteByClinic('user_sessions');

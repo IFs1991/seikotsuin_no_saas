@@ -670,7 +670,7 @@ export class MultiDeviceManager {
 // React Hook
 // ================================================================
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useMultiDeviceManager(userId?: string, clinicId?: string) {
   const [manager] = useState(() => new MultiDeviceManager());
@@ -678,7 +678,7 @@ export function useMultiDeviceManager(userId?: string, clinicId?: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshDevices = async () => {
+  const refreshDevices = useCallback(async () => {
     if (!userId || !clinicId) return;
 
     setLoading(true);
@@ -693,7 +693,7 @@ export function useMultiDeviceManager(userId?: string, clinicId?: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId, manager, userId]);
 
   const executeAction = async (action: DeviceManagementAction) => {
     if (!userId || !clinicId)
@@ -712,7 +712,7 @@ export function useMultiDeviceManager(userId?: string, clinicId?: string) {
     if (userId && clinicId) {
       refreshDevices();
     }
-  }, [userId, clinicId]);
+  }, [clinicId, refreshDevices, userId]);
 
   return {
     devices,

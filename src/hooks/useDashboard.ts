@@ -55,12 +55,6 @@ const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
   }, [clinicId]);
 
   useEffect(() => {
-    if (!clinicId) {
-      setLoading(false);
-      setDashboardData(null);
-      return;
-    }
-
     fetchData();
 
     // 5分ごとにデータを更新（リアルタイム性を向上）
@@ -79,7 +73,7 @@ const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
       clearInterval(updateTimer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchData]);
+  }, [clinicId, fetchData]);
 
   const handleQuickAction = useCallback((action: string): void => {
     // クイックアクションの処理を実装

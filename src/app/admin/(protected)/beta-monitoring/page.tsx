@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { logger } from '@/lib/logger';
@@ -73,11 +73,28 @@ export default function BetaMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
+  const loadMetrics = useCallback(async () => {
+    const response = await fetch('/api/beta/metrics');
+    if (!response.ok) throw new Error('Failed to fetch metrics');
+    const data = await response.json();
+    setMetrics(data.metrics || []);
+  }, []);
 
-  const loadData = async () => {
+  const loadFeedback = useCallback(async () => {
+    const response = await fetch('/api/beta/feedback');
+    if (!response.ok) throw new Error('Failed to fetch feedback');
+    const data = await response.json();
+    setFeedback(data.feedback || []);
+  }, []);
+
+  const loadBacklog = useCallback(async () => {
+    const response = await fetch('/api/beta/backlog');
+    if (!response.ok) throw new Error('Failed to fetch backlog');
+    const data = await response.json();
+    setBacklog(data.backlog || []);
+  }, []);
+
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -98,28 +115,11 @@ export default function BetaMonitoringPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, loadBacklog, loadFeedback, loadMetrics]);
 
-  const loadMetrics = async () => {
-    const response = await fetch('/api/beta/metrics');
-    if (!response.ok) throw new Error('Failed to fetch metrics');
-    const data = await response.json();
-    setMetrics(data.metrics || []);
-  };
-
-  const loadFeedback = async () => {
-    const response = await fetch('/api/beta/feedback');
-    if (!response.ok) throw new Error('Failed to fetch feedback');
-    const data = await response.json();
-    setFeedback(data.feedback || []);
-  };
-
-  const loadBacklog = async () => {
-    const response = await fetch('/api/beta/backlog');
-    if (!response.ok) throw new Error('Failed to fetch backlog');
-    const data = await response.json();
-    setBacklog(data.backlog || []);
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const calculateOverallMetrics = () => {
     if (metrics.length === 0) return null;

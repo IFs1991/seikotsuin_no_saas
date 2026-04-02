@@ -159,6 +159,7 @@ export function useUserProfile(): ProfileState {
   const context = useOptionalUserProfileContext();
   const initialProfile = loadProfileFromCookie();
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
+  const [hasInitialProfile] = useState(Boolean(initialProfile));
   const [loading, setLoading] = useState(!initialProfile);
   const [error, setError] = useState<string | null>(null);
 
@@ -176,7 +177,6 @@ export function useUserProfile(): ProfileState {
       () => abortController.abort(),
       PROFILE_FETCH_TIMEOUT_MS
     );
-    const hasInitialProfile = Boolean(profile);
     let hasSessionFallback = hasInitialProfile;
 
     const loadSessionProfile = async () => {
@@ -284,7 +284,7 @@ export function useUserProfile(): ProfileState {
       clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [context]);
+  }, [context, hasInitialProfile]);
 
   if (context) {
     return {

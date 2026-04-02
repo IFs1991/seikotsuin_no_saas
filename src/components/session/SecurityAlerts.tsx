@@ -5,7 +5,7 @@
  * ユーザーのセキュリティイベント履歴と推奨アクションを表示
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,11 +58,7 @@ export function SecurityAlerts({ userId, clinicId }: SecurityAlertsProps) {
   const [showAllEvents, setShowAllEvents] = useState(false);
   const [securityMonitor] = useState(() => new SecurityMonitor());
 
-  useEffect(() => {
-    loadSecurityData();
-  }, [userId, clinicId]);
-
-  const loadSecurityData = async () => {
+  const loadSecurityData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -92,7 +88,11 @@ export function SecurityAlerts({ userId, clinicId }: SecurityAlertsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId, securityMonitor]);
+
+  useEffect(() => {
+    loadSecurityData();
+  }, [loadSecurityData, userId]);
 
   // 重要度レベルのバッジ
   const getSeverityBadge = (severity: string) => {

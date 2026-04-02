@@ -53,7 +53,7 @@ const signInWithCookies = async (
   page: Page,
   email: string,
   password: string,
-  destination: string
+  destination?: string
 ) => {
   const { supabase, cookieStore } = createCookieClient();
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -66,13 +66,15 @@ const signInWithCookies = async (
   }
 
   await applyCookies(page, cookieStore);
-  await page.goto(destination, { waitUntil: 'domcontentloaded' });
+  if (destination) {
+    await page.goto(destination, { waitUntil: 'domcontentloaded' });
+  }
 };
 
-export async function loginAsAdmin(page: Page) {
-  await signInWithCookies(page, ADMIN_EMAIL, ADMIN_PASSWORD, '/admin/settings');
+export async function loginAsAdmin(page: Page, destination = '/admin/settings') {
+  await signInWithCookies(page, ADMIN_EMAIL, ADMIN_PASSWORD, destination);
 }
 
-export async function loginAsStaff(page: Page) {
-  await signInWithCookies(page, STAFF_EMAIL, STAFF_PASSWORD, '/dashboard');
+export async function loginAsStaff(page: Page, destination = '/dashboard') {
+  await signInWithCookies(page, STAFF_EMAIL, STAFF_PASSWORD, destination);
 }

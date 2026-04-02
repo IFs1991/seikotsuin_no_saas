@@ -7,7 +7,7 @@ import { SessionManager } from '@/lib/session-manager';
 import { SecurityMonitor } from '@/lib/security-monitor';
 import { MultiDeviceManager } from '@/lib/multi-device-manager';
 
-// モック設定: @/lib/supabase をモック（createClient は Promise を返す）
+// モック設定: @/lib/supabase/client を実装どおり同期createClientでモック
 const createMockSupabase = () => ({
   from: jest.fn().mockReturnThis(),
   select: jest.fn().mockReturnThis(),
@@ -31,9 +31,8 @@ const createMockSupabase = () => ({
 
 let mockSupabase = createMockSupabase();
 
-jest.mock('@/lib/supabase', () => ({
-  createClient: jest.fn(async () => mockSupabase),
-  createAdminClient: jest.fn(() => mockSupabase),
+jest.mock('@/lib/supabase/client', () => ({
+  createClient: jest.fn(() => mockSupabase),
 }));
 
 describe('セッション管理統合テスト', () => {
@@ -45,13 +44,11 @@ describe('セッション管理統合テスト', () => {
     // mockSupabase をリセット
     mockSupabase = createMockSupabase();
 
-    // @/lib/supabase のモックを更新
-    const supabaseMock = jest.requireMock('@/lib/supabase') as {
+    // @/lib/supabase/client のモックを更新
+    const supabaseMock = jest.requireMock('@/lib/supabase/client') as {
       createClient: jest.Mock;
-      createAdminClient: jest.Mock;
     };
-    supabaseMock.createClient.mockResolvedValue(mockSupabase);
-    supabaseMock.createAdminClient.mockReturnValue(mockSupabase);
+    supabaseMock.createClient.mockReturnValue(mockSupabase);
 
     sessionManager = new SessionManager();
     securityMonitor = new SecurityMonitor();

@@ -42,7 +42,7 @@ export const reservationCreateSchema = z.object({
     .optional(),
   customer_email: z.string().email('Invalid email address').optional(),
   menu_id: z.string().uuid('menu_id must be a valid UUID'),
-  resource_id: z.string().uuid('resource_id must be a valid UUID').optional(),
+  resource_id: z.string().uuid('resource_id must be a valid UUID'),
   start_time: z
     .string()
     .regex(

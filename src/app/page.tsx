@@ -7,7 +7,7 @@ import { useSystemStatus } from '@/hooks/useSystemStatus';
 const SYSTEM_STATUS_LABELS: Record<string, string> = {
   operational: '稼働中',
   degraded: '一部障害',
-  outage: '停止中',
+  maintenance: 'メンテナンス中',
 };
 
 const AI_STATUS_LABELS: Record<string, string> = {

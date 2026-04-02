@@ -312,6 +312,24 @@ export const apiClient = new ApiClient();
  * 型安全なAPI呼び出し関数群
  */
 export const api = {
+  clinics: {
+    getAccessible: () =>
+      apiClient.get<{
+        clinics: Array<{ id: string; name: string }>;
+        currentClinicId: string | null;
+      }>('/api/clinics/accessible'),
+  },
+
+  system: {
+    getStatus: () =>
+      apiClient.get<{
+        activeClinicCount: number;
+        systemStatus: 'operational' | 'degraded' | 'maintenance';
+        aiAnalysisStatus: 'active' | 'inactive';
+        lastUpdated: string;
+      }>('/api/system/status'),
+  },
+
   // ダッシュボード
   dashboard: {
     get: (clinicId: string) =>
@@ -380,6 +398,29 @@ export const api = {
         ...(sessionId && { session_id: sessionId }),
       }),
     sendMessage: (data: any) => apiClient.post('/api/chat', data),
+  },
+
+  // 通知
+  notifications: {
+    get: (params?: Record<string, string | number | boolean>) =>
+      apiClient.get<{
+        notifications: Array<{
+          id: string;
+          title: string;
+          message: string;
+          type: string;
+          is_read: boolean;
+          created_at: string;
+        }>;
+        unreadCount: number;
+        total: number;
+      }>('/api/notifications', params),
+    getUnreadCount: () =>
+      apiClient.get<{
+        notifications: never[];
+        unreadCount: number;
+        total: number;
+      }>('/api/notifications', { include_count: true, limit: 0 }),
   },
 
   // AIコメント

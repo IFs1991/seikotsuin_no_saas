@@ -61,15 +61,36 @@ describe('Admin settings navigation alignment', () => {
       within(nav).queryByRole('button', { name: '満足度調査' })
     ).not.toBeInTheDocument();
 
-    fireEvent.click(within(nav).getByRole('button', { name: 'データ管理' }));
     expect(
-      within(nav).getByRole('button', { name: 'データインポート' })
+      within(nav).queryByRole('button', { name: 'データ管理' })
+    ).not.toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('button', { name: 'データインポート' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('未実装コンポーネント時はパイロット向け文言を表示する', async () => {
+    jest.resetModules();
+    jest.doMock('react', () => React);
+    jest.doMock('next/navigation', () => ({
+      useRouter: () => ({ push: jest.fn() }),
+    }));
+    jest.doMock('next/dynamic', () => ({
+      __esModule: true,
+      default: () => null,
+    }));
+
+    const { default: AdminSettingsFallbackPage } = await import(
+      '@/app/admin/(protected)/settings/page'
+    );
+
+    render(<AdminSettingsFallbackPage />);
+
+    expect(
+      screen.getByText('パイロット版では提供しておりません')
     ).toBeInTheDocument();
     expect(
-      within(nav).queryByRole('button', { name: 'データエクスポート' })
-    ).not.toBeInTheDocument();
-    expect(
-      within(nav).queryByRole('button', { name: 'マスターデータ' })
-    ).not.toBeInTheDocument();
+      screen.getByText('今後のアップデートで追加予定です。')
+    ).toBeInTheDocument();
   });
 });

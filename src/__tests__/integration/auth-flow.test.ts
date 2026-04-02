@@ -15,11 +15,13 @@ import {
 const createProfileQueryBuilder = () => {
   const builder: any = {
     select: jest.fn(),
+    update: jest.fn(),
     eq: jest.fn(),
     single: jest.fn(),
   };
 
   builder.select.mockReturnValue(builder);
+  builder.update.mockReturnValue(builder);
   builder.eq.mockReturnValue(builder);
 
   return builder;
@@ -45,16 +47,21 @@ const createMockSupabaseClient = () => ({
 });
 
 let mockSupabaseClient = createMockSupabaseClient();
+const getUserPermissionsMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   getServerClient: () => mockSupabaseClient,
   createClient: () => mockSupabaseClient,
   createAdminClient: () => mockSupabaseClient,
+  getUserPermissions: (...args: unknown[]) => getUserPermissionsMock(...args),
 }));
 
 const auditLoggerMocks = {
   logDataAccess: jest.fn().mockResolvedValue(undefined),
   logSecurityEvent: jest.fn().mockResolvedValue(undefined),
+  logFailedLogin: jest.fn().mockResolvedValue(undefined),
+  logLogin: jest.fn().mockResolvedValue(undefined),
+  logLogout: jest.fn().mockResolvedValue(undefined),
 };
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -71,7 +78,8 @@ jest.mock('@/lib/audit-logger', () => ({
 
 let profileQueryBuilder = createProfileQueryBuilder();
 
-const { login, signup, logout } = require('@/app/admin/actions');
+const { clinicLogin } = require('@/app/login/actions');
+const { signup } = require('@/app/admin/actions');
 
 // Mock Next.js functions
 jest.mock('next/cache', () => ({
@@ -95,6 +103,10 @@ describe('Authentication Integration Tests', () => {
     mockSupabaseClient = createMockSupabaseClient();
     profileQueryBuilder = createProfileQueryBuilder();
     mockSupabaseClient.from.mockImplementation(() => profileQueryBuilder);
+    getUserPermissionsMock.mockResolvedValue({
+      role: 'staff',
+      clinic_id: 'clinic-1',
+    });
     // Replace console methods with mocks
     global.console = { ...global.console, ...consoleMock };
   });
@@ -124,7 +136,9 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', '  USER@EXAMPLE.COM  '); // Test trimming and lowercase
       formData.append('password', 'ValidPassword123!');
 
-      await login(null, formData);
+      await expect(clinicLogin(null, formData)).rejects.toThrow(
+        'REDIRECT:/dashboard'
+      );
 
       // Should redirect (throws redirect error in test environment)
       expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalledWith({
@@ -139,7 +153,7 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', 'invalid-email');
       formData.append('password', 'password');
 
-      const result = await login(null, formData);
+      const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -180,7 +194,7 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', 'inactive@example.com');
       formData.append('password', 'ValidPassword123!');
 
-      const result = await login(null, formData);
+      const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.errors._form).toContain(
@@ -201,16 +215,14 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', 'user@example.com');
       formData.append('password', 'wrongpassword');
 
-      const result = await login(null, formData);
+      const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
       expect(consoleMock.warn).toHaveBeenCalledWith(
-        '[Security] Login attempt failed:',
+        '[Security] Clinic login attempt failed:',
         expect.objectContaining({
           email: 'user@example.com',
           error: 'メールアドレスまたはパスワードが正しくありません',
-          status: 400,
-          details: 'Invalid credentials',
         })
       );
       expect(result.errors._form).toContain(
@@ -228,19 +240,17 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', 'user@example.com');
       formData.append('password', 'ValidPassword123!');
 
-      const result = await login(null, formData);
+      const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.errors._form).toContain(
         'アカウントが無効化されています。管理者にお問い合わせください'
       );
       expect(consoleMock.warn).toHaveBeenCalledWith(
-        '[Security] Login attempt failed:',
+        '[Security] Clinic login attempt failed:',
         expect.objectContaining({
           email: 'user@example.com',
           error: 'アカウントが無効化されています。管理者にお問い合わせください',
-          status: 403,
-          details: 'User inactive',
         })
       );
     });
@@ -254,7 +264,7 @@ describe('Authentication Integration Tests', () => {
       formData.append('email', 'user@example.com');
       formData.append('password', 'ValidPassword123!');
 
-      const result = await login(null, formData);
+      const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
       expect(result.errors._form).toContain('システムエラーが発生しました');

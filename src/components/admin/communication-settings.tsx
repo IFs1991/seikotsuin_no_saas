@@ -100,6 +100,11 @@ export function CommunicationSettings() {
       {loadingState.savedMessage && !loadingState.error && (
         <AdminMessage message={loadingState.savedMessage} type='success' />
       )}
+      <AdminMessage
+        message='パイロット版ではメール送信は行われません。設定内容は保存されますが、実際の通知送信は今後のアップデートで対応予定です。'
+        type='info'
+        dataTestId='communication-pilot-banner'
+      />
 
       {/* 通知チャンネル設定 */}
       <Card className='p-6'>

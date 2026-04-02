@@ -52,16 +52,12 @@ describe('GET /api/system/status', () => {
 
   it('TC-S01: 認証済みユーザーがシステム統計を取得できる', async () => {
     const clinicsCountQuery = createThenableQuery({ count: 3, error: null });
-    const degradedQuery = createThenableQuery({ count: 0, error: null });
-    const maintenanceQuery = createThenableQuery({ count: 0, error: null });
     const aiQuery = createThenableQuery({ count: 1, error: null });
 
     const adminClient = {
       from: jest
         .fn()
         .mockReturnValueOnce(clinicsCountQuery)
-        .mockReturnValueOnce(degradedQuery)
-        .mockReturnValueOnce(maintenanceQuery)
         .mockReturnValueOnce(aiQuery),
     };
 
@@ -95,40 +91,11 @@ describe('GET /api/system/status', () => {
     ]);
   });
 
-  it('TC-S04: 30分以内の critical/error 未解決イベントで degraded を返す', async () => {
-    const adminClient = {
-      from: jest
-        .fn()
-        .mockReturnValueOnce(createThenableQuery({ count: 2, error: null }))
-        .mockReturnValueOnce(createThenableQuery({ count: 1, error: null }))
-        .mockReturnValueOnce(createThenableQuery({ count: 0, error: null }))
-        .mockReturnValueOnce(createThenableQuery({ count: 0, error: null })),
-    };
-
-    createAdminClientMock.mockReturnValue(adminClient);
-    processApiRequestMock.mockResolvedValue({
-      success: true,
-      auth: { id: 'user-2', email: 'u2@example.com', role: 'manager' },
-      permissions: { role: 'manager', clinic_id: 'clinic-1' },
-      supabase: {},
-    });
-
-    const { GET } = await import('@/app/api/system/status/route');
-    const response = await GET(
-      new Request('http://localhost/api/system/status') as any
-    );
-    const body = await response.json();
-
-    expect(body.data.systemStatus).toBe('degraded');
-  });
-
   it('TC-S05: ai_comments が当日0件なら aiAnalysisStatus は inactive', async () => {
     const adminClient = {
       from: jest
         .fn()
         .mockReturnValueOnce(createThenableQuery({ count: 1, error: null }))
-        .mockReturnValueOnce(createThenableQuery({ count: 0, error: null }))
-        .mockReturnValueOnce(createThenableQuery({ count: 0, error: null }))
         .mockReturnValueOnce(createThenableQuery({ count: 0, error: null })),
     };
 

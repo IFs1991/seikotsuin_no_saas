@@ -1,49 +1,7 @@
 import { z } from 'zod';
+import { type AnalysisResult } from '@/lib/ai/analysis-client';
 import { supabase } from '@/lib/supabase/client';
 import type { AIComment } from '@/types';
-
-interface RevenueRecord {
-  amount: number;
-  created_at: string;
-}
-
-interface PatientRecord {
-  is_new: boolean;
-  created_at: string;
-}
-
-interface TherapistRecord {
-  staff_name: string;
-  performance_score: number;
-}
-
-interface AnalysisData {
-  salesData: RevenueRecord[];
-  patientData: PatientRecord[];
-  therapistData: TherapistRecord[];
-}
-
-interface AnalysisResult {
-  salesAnalysis: {
-    total: number;
-    trend: string;
-    anomalies: string[];
-  };
-  patientMetrics: {
-    total: number;
-    newPatients: number;
-    returnRate: number;
-  };
-  therapistPerformance: {
-    topPerformer: string;
-    metrics: Record<string, number>;
-  };
-  aiInsights: {
-    summary: string;
-    recommendations: string[];
-    nextDayPlan: string[];
-  };
-}
 
 type InsightImpact = 'high' | 'mid' | 'low';
 
@@ -107,78 +65,6 @@ const aiInsightsSchema = z.object({
     .optional()
     .default([]),
 });
-
-/**
- * データベースから必要なデータを取得
- */
-export async function fetchAnalysisData(): Promise<AnalysisData> {
-  try {
-    const [salesResponse, patientResponse, therapistResponse] =
-      await Promise.all([
-        supabase
-          .from('revenues')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(30),
-
-        supabase
-          .from('patients')
-          .select('*')
-          .order('created_at', { ascending: false }),
-
-        supabase
-          .from('staff_performance')
-          .select('*')
-          .order('performance_score', { ascending: false }),
-      ]);
-
-    return {
-      salesData: mapRevenueRecords(salesResponse.data),
-      patientData: mapPatientRecords(patientResponse.data),
-      therapistData: mapTherapistRecords(therapistResponse.data),
-    };
-  } catch (error) {
-    console.error('Failed to fetch analysis data:', error);
-    throw new Error('データの取得に失敗しました');
-  }
-}
-
-/**
- * 取得したデータを分析してレポートを生成
- */
-export function generateAnalysisReport(data: AnalysisData): AnalysisResult {
-  const { salesData, patientData, therapistData } = data;
-
-  const [firstTherapist] = therapistData;
-
-  return {
-    salesAnalysis: {
-      total: salesData.reduce((acc, curr) => acc + curr.amount, 0),
-      trend: calculateTrend(salesData),
-      anomalies: detectAnomalies(salesData),
-    },
-    patientMetrics: {
-      total: patientData.length,
-      newPatients: patientData.filter(p => p.is_new).length,
-      returnRate: calculateReturnRate(patientData),
-    },
-    therapistPerformance: {
-      topPerformer: firstTherapist?.staff_name ?? '',
-      metrics: therapistData.reduce<Record<string, number>>((acc, curr) => {
-        if (!curr.staff_name) {
-          return acc;
-        }
-        acc[curr.staff_name] = curr.performance_score;
-        return acc;
-      }, {}),
-    },
-    aiInsights: {
-      summary: generateSummary(salesData, patientData, therapistData),
-      recommendations: generateRecommendations(salesData, patientData),
-      nextDayPlan: generateNextDayPlan(salesData, patientData, therapistData),
-    },
-  };
-}
 
 /**
  * Gemini AI APIを使用してAIコメントを生成
@@ -580,60 +466,6 @@ function parseJsonFromText(text: string): unknown {
   return tryParse(candidateJson) || tryParse(extractFirstJsonObject(text));
 }
 
-function mapRevenueRecords(rows: unknown): RevenueRecord[] {
-  if (!Array.isArray(rows)) {
-    return [];
-  }
-  return rows.map(sanitizeRevenueRecord);
-}
-
-function mapPatientRecords(rows: unknown): PatientRecord[] {
-  if (!Array.isArray(rows)) {
-    return [];
-  }
-  return rows.map(sanitizePatientRecord);
-}
-
-function mapTherapistRecords(rows: unknown): TherapistRecord[] {
-  if (!Array.isArray(rows)) {
-    return [];
-  }
-  return rows.map(sanitizeTherapistRecord);
-}
-
-function sanitizeRevenueRecord(row: unknown): RevenueRecord {
-  if (!isRecord(row)) {
-    return { amount: 0, created_at: '' };
-  }
-
-  return {
-    amount: toNumber(row.amount),
-    created_at: toStringOrEmpty(row.created_at),
-  };
-}
-
-function sanitizePatientRecord(row: unknown): PatientRecord {
-  if (!isRecord(row)) {
-    return { is_new: false, created_at: '' };
-  }
-
-  return {
-    is_new: row.is_new === true,
-    created_at: toStringOrEmpty(row.created_at),
-  };
-}
-
-function sanitizeTherapistRecord(row: unknown): TherapistRecord {
-  if (!isRecord(row)) {
-    return { staff_name: '', performance_score: 0 };
-  }
-
-  return {
-    staff_name: toStringOrEmpty(row.staff_name),
-    performance_score: toNumber(row.performance_score),
-  };
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -653,94 +485,6 @@ function toNumber(value: unknown): number {
 
 function toStringOrEmpty(value: unknown): string {
   return typeof value === 'string' ? value : '';
-}
-
-// ヘルパー関数
-function calculateTrend(salesData: RevenueRecord[]): string {
-  if (salesData.length < 2) return '不明';
-
-  const sumAmounts = (records: RevenueRecord[]): number =>
-    records.reduce((acc, curr) => acc + curr.amount, 0);
-
-  const recent = sumAmounts(salesData.slice(0, 7));
-  const previous = sumAmounts(salesData.slice(7, 14));
-
-  if (recent > previous) return '上昇傾向';
-  if (recent < previous) return '下降傾向';
-  return '横ばい';
-}
-
-function detectAnomalies(salesData: RevenueRecord[]): string[] {
-  if (!salesData.length) {
-    return [];
-  }
-
-  const amounts = salesData.map(record => record.amount);
-  const average = amounts.reduce((acc, curr) => acc + curr, 0) / amounts.length;
-
-  const anomalies: string[] = [];
-  amounts.forEach((amount, index) => {
-    if (amount > average * 1.5) {
-      const rawDate = salesData[index]?.created_at;
-      const date = rawDate ? new Date(rawDate) : null;
-      const formatted =
-        date && !Number.isNaN(date.getTime())
-          ? date.toLocaleDateString('ja-JP')
-          : '日付不明';
-      anomalies.push(`${formatted}の売上が平均を大きく上回っています`);
-    }
-  });
-
-  return anomalies;
-}
-
-function calculateReturnRate(patientData: PatientRecord[]): number {
-  const totalPatients = patientData.length;
-  const returningPatients = patientData.filter(p => !p.is_new).length;
-
-  return totalPatients > 0
-    ? Math.round((returningPatients / totalPatients) * 1000) / 10
-    : 0;
-}
-
-function generateSummary(
-  salesData: RevenueRecord[],
-  _patientData: PatientRecord[],
-  _therapistData: TherapistRecord[]
-): string {
-  const trend = calculateTrend(salesData);
-  return `全体的に${trend}で推移しており、患者満足度も良好です。`;
-}
-
-function generateRecommendations(
-  salesData: RevenueRecord[],
-  patientData: PatientRecord[]
-): string[] {
-  const recommendations: string[] = [];
-
-  if (patientData.filter(p => p.is_new).length > patientData.length * 0.3) {
-    recommendations.push('新規患者の受入れ体制を強化することをお勧めします');
-  }
-
-  if (calculateTrend(salesData) === '下降傾向') {
-    recommendations.push('売上向上のための施策を検討してください');
-  } else {
-    recommendations.push('現在の良好な傾向を維持しましょう');
-  }
-
-  return recommendations;
-}
-
-function generateNextDayPlan(
-  _salesData: RevenueRecord[],
-  _patientData: PatientRecord[],
-  _therapistData: TherapistRecord[]
-): string[] {
-  return [
-    'スタッフミーティングで本日の振り返りを実施',
-    '新規患者のフォローアップを優先的に行う',
-    '人気施術の予約枠を調整する',
-  ];
 }
 
 function createAnalysisPrompt(analysisResult: AnalysisResult): string {

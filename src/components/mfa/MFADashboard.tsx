@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -63,7 +63,7 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
   const [error, setError] = useState('');
 
   // MFA状態を取得
-  const fetchMFAStatus = async () => {
+  const fetchMFAStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/mfa/status?userId=${userId}`);
       if (response.ok) {
@@ -73,10 +73,10 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
     } catch (err) {
       console.error('MFA状態取得エラー:', err);
     }
-  };
+  }, [userId]);
 
   // バックアップコード使用状況を取得
-  const fetchBackupCodeUsage = async () => {
+  const fetchBackupCodeUsage = useCallback(async () => {
     if (!mfaStatus.isEnabled) return;
 
     try {
@@ -90,7 +90,7 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
     } catch (err) {
       console.error('バックアップコード使用状況取得エラー:', err);
     }
-  };
+  }, [mfaStatus.isEnabled, userId]);
 
   // MFA無効化
   const handleDisableMFA = async () => {
@@ -177,13 +177,13 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
 
   useEffect(() => {
     fetchMFAStatus();
-  }, [userId]);
+  }, [fetchMFAStatus]);
 
   useEffect(() => {
     if (mfaStatus.isEnabled) {
       fetchBackupCodeUsage();
     }
-  }, [mfaStatus.isEnabled]);
+  }, [fetchBackupCodeUsage, mfaStatus.isEnabled]);
 
   const getSecurityLevel = () => {
     if (!mfaStatus.isEnabled) {

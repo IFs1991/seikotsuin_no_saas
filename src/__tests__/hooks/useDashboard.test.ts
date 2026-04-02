@@ -154,6 +154,41 @@ describe('useDashboard', () => {
     expect(mockApi.api.dashboard.get).toHaveBeenCalledTimes(2);
   });
 
+  it('should fetch again when clinicId changes', async () => {
+    (mockApi.api.dashboard.get as jest.Mock)
+      .mockResolvedValueOnce({
+        success: true,
+        data: mockDashboardData,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        data: {
+          ...mockDashboardData,
+          alerts: ['別院のデータ'],
+        },
+      });
+
+    const { result, rerender } = renderHook(
+      ({ clinicId }: { clinicId: string | null }) => useDashboard(clinicId),
+      { initialProps: { clinicId: mockClinicId } }
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    rerender({ clinicId: '223e4567-e89b-12d3-a456-426614174000' });
+
+    await waitFor(() => {
+      expect(mockApi.api.dashboard.get).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockApi.api.dashboard.get).toHaveBeenNthCalledWith(
+      2,
+      '223e4567-e89b-12d3-a456-426614174000'
+    );
+  });
+
   describe('handleQuickAction', () => {
     it('should navigate to daily reports', async () => {
       (mockApi.api.dashboard.get as jest.Mock).mockResolvedValueOnce({

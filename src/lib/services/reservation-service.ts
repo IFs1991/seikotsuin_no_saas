@@ -5,6 +5,7 @@
 
 import 'server-only';
 
+import { z } from 'zod';
 import { getServerClient, type SupabaseServerClient } from '@/lib/supabase';
 import type {
   Reservation,
@@ -17,10 +18,51 @@ import type {
   StaffUtilization,
   NoShowAnalysis,
 } from '@/types/reservation';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
 
 type ReservationRow = Database['public']['Tables']['reservations']['Row'];
 type ResourceRow = Database['public']['Tables']['resources']['Row'];
+
+const reservationOptionSelectionSchema = z.object({
+  optionId: z.string(),
+  name: z.string(),
+  priceDelta: z.number(),
+  durationDeltaMinutes: z.number(),
+});
+
+const reservationOptionSelectionsSchema = z.array(
+  reservationOptionSelectionSchema
+);
+
+function isReservationOptionSelections(
+  value: unknown
+): value is NonNullable<Reservation['selectedOptions']> {
+  return reservationOptionSelectionsSchema.safeParse(value).success;
+}
+
+function parseReservationOptionSelections(
+  value: ReservationRow['selected_options']
+): Reservation['selectedOptions'] | undefined {
+  return isReservationOptionSelections(value) ? value : undefined;
+}
+
+function serializeReservationOptionSelections(
+  value: Reservation['selectedOptions']
+): Database['public']['Tables']['reservations']['Insert']['selected_options'] {
+  if (!value || value.length === 0) {
+    return null;
+  }
+
+  return value.map(
+    option =>
+      ({
+        optionId: option.optionId,
+        name: option.name,
+        priceDelta: option.priceDelta,
+        durationDeltaMinutes: option.durationDeltaMinutes,
+      }) satisfies { [key: string]: Json }
+  );
+}
 
 /** Convert a Supabase reservations row to the app-level Reservation type */
 function mapRowToReservation(row: ReservationRow): Reservation {
@@ -34,9 +76,7 @@ function mapRowToReservation(row: ReservationRow): Reservation {
     status: row.status as Reservation['status'],
     channel: row.channel as Reservation['channel'],
     notes: row.notes ?? undefined,
-    selectedOptions:
-      (row.selected_options as unknown as Reservation['selectedOptions']) ??
-      undefined,
+    selectedOptions: parseReservationOptionSelections(row.selected_options),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     createdBy: row.created_by ?? '',
@@ -292,8 +332,9 @@ export class ReservationService {
           : data.endTime,
       channel: data.channel,
       notes: data.notes,
-      selected_options:
-        data.selectedOptions as unknown as Database['public']['Tables']['reservations']['Insert']['selected_options'],
+      selected_options: serializeReservationOptionSelections(
+        data.selectedOptions
+      ),
       created_by: data.createdBy,
       clinic_id: this.clinicId,
       status: 'unconfirmed',
@@ -587,9 +628,8 @@ export class ReservationService {
         .select('*')
         .eq('clinic_id', this.clinicId)
         .eq('resource_id', staffId)
-        .or(
-          `start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()}`
-        );
+        .lt('start_time', endTime.toISOString())
+        .gt('end_time', startTime.toISOString());
 
       if (!error && blocks && blocks.length > 0) {
         const block = blocks[0];
@@ -652,7 +692,8 @@ export class ReservationService {
 
     return {
       totalNoShows: noShows.length,
-      noShowRate: noShows.length / reservations.length,
+      noShowRate:
+        reservations.length === 0 ? 0 : noShows.length / reservations.length,
       topReasons: [
         { reason: '急な体調不良', count: 2 },
         { reason: '交通事情', count: 1 },

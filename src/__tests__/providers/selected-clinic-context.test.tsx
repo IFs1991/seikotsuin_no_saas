@@ -70,6 +70,24 @@ describe('SelectedClinicContext', () => {
     expect(screen.getByTestId('clinic-id').textContent).toBe('null');
   });
 
+  it('非同期に initialClinicId が入ったとき未選択 state を同期する', () => {
+    const { rerender } = render(
+      <SelectedClinicProvider initialClinicId={null}>
+        <TestConsumer />
+      </SelectedClinicProvider>
+    );
+
+    expect(screen.getByTestId('clinic-id').textContent).toBe('null');
+
+    rerender(
+      <SelectedClinicProvider initialClinicId='clinic-late'>
+        <TestConsumer />
+      </SelectedClinicProvider>
+    );
+
+    expect(screen.getByTestId('clinic-id').textContent).toBe('clinic-late');
+  });
+
   it('Provider 外で useSelectedClinic を使うとエラーをスローする', () => {
     const consoleSpy = jest
       .spyOn(console, 'error')

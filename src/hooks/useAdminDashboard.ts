@@ -40,9 +40,8 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
       ),
   });
 
-  const clinicsData = query.data?.clinicsData ?? [];
-
   const sortedData = useMemo(() => {
+    const clinicsData = query.data?.clinicsData ?? [];
     const dataCopy = [...clinicsData];
     dataCopy.sort((a, b) => {
       const valueA = a[sort.sortBy as keyof AggregatedClinicData];
@@ -59,7 +58,7 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
         : stringB.localeCompare(stringA);
     });
     return dataCopy;
-  }, [clinicsData, sort]);
+  }, [query.data?.clinicsData, sort]);
 
   const refreshMutation = useMutation({
     mutationFn: async () => {

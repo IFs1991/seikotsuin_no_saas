@@ -34,6 +34,7 @@ jest.mock('@/lib/rate-limiting/middleware', () => ({
 import { middleware } from '../../../middleware';
 
 describe('認証と権限制御 Middleware', () => {
+  const originalEnv = process.env;
   const mockCreateServerClient = createServerClient as jest.MockedFunction<
     typeof createServerClient
   >;
@@ -97,6 +98,12 @@ describe('認証と権限制御 Middleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.NEXT_PUBLIC_PILOT_MODE;
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   describe('未認証ユーザーのアクセス制御', () => {
@@ -356,6 +363,69 @@ describe('認証と権限制御 Middleware', () => {
       expect(response.status).toBe(307);
       const location = response.headers.get('location');
       expect(location).toContain('/unauthorized');
+    });
+  });
+
+  describe('パイロット対象外ルートの保護', () => {
+    const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
+    const adminProfile = {
+      role: 'admin',
+      clinic_id: null,
+      is_active: true,
+    };
+
+    const pilotBlockedRoutes = [
+      '/chat',
+      '/ai-insights',
+      '/admin/security-dashboard',
+      '/admin/security-monitor',
+      '/admin/beta-monitoring',
+      '/admin/session-management',
+      '/admin/master',
+      '/admin/chat',
+      '/blocks',
+      '/master-data',
+    ];
+
+    test.each(pilotBlockedRoutes)(
+      'NEXT_PUBLIC_PILOT_MODE=true のとき %s は /dashboard にリダイレクト',
+      async route => {
+        process.env.NEXT_PUBLIC_PILOT_MODE = 'true';
+        mockCreateServerClient.mockReturnValue(
+          createMockSupabase(adminUser, adminProfile) as any
+        );
+
+        const request = createMockRequest(route);
+        const response = await middleware(request);
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get('location')).toBe(
+          'http://localhost:3000/dashboard'
+        );
+      }
+    );
+
+    test('NEXT_PUBLIC_PILOT_MODE 未設定のとき /ai-insights は既存どおり通過する', async () => {
+      mockCreateServerClient.mockReturnValue(
+        createMockSupabase(adminUser, adminProfile) as any
+      );
+
+      const request = createMockRequest('/ai-insights');
+      const response = await middleware(request);
+
+      expect(response.status).not.toBe(307);
+    });
+
+    test('NEXT_PUBLIC_PILOT_MODE=false のとき /admin/settings は通常どおり通過する', async () => {
+      process.env.NEXT_PUBLIC_PILOT_MODE = 'false';
+      mockCreateServerClient.mockReturnValue(
+        createMockSupabase(adminUser, adminProfile) as any
+      );
+
+      const request = createMockRequest('/admin/settings');
+      const response = await middleware(request);
+
+      expect(response.status).not.toBe(307);
     });
   });
 });

@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // ================================================================
 // モック
@@ -113,6 +114,29 @@ describe('/register ページ', () => {
       // href="/admin/login" を持つリンクを確認
       const links = document.querySelectorAll('a[href*="/admin/login"]');
       expect(links.length).toBeGreaterThan(0);
+    });
+
+    test('利用規約同意文から /terms へのリンクが存在する', async () => {
+      const { default: RegisterPage } = await import('@/app/register/page');
+      render(<RegisterPage />);
+
+      const termsLink = document.querySelector('a[href="/terms"]');
+      expect(termsLink).toBeTruthy();
+    });
+
+    test('/terms リンクを押しても同意チェック状態は変わらない', async () => {
+      const { default: RegisterPage } = await import('@/app/register/page');
+      render(<RegisterPage />);
+
+      const checkbox = screen.getByRole('checkbox');
+      const termsLinks = screen.getAllByRole('link', { name: '利用規約' });
+      const termsLink = termsLinks[0];
+
+      expect(checkbox).not.toBeChecked();
+
+      await userEvent.click(termsLink);
+
+      expect(checkbox).not.toBeChecked();
     });
   });
 });

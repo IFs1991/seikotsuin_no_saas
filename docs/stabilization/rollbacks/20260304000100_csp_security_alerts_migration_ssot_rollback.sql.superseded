@@ -1,7 +1,13 @@
 -- ================================================================
--- ROLLBACK: CSP/セキュリティテーブル migration SSOT
+-- SUPERSEDED: このファイルは誤りのある旧 rollback stub です。実行しないでください。
+-- 正本: docs/stabilization/rollback-csp-migration-v0.1.md
+--       supabase/migrations/20260304000100_csp_security_alerts_migration_ssot_rollback.sql
+-- 誤り: DROP COLUMN clinic_id は squashed baseline 由来のカラムを削除するため破壊的。
+--       'system' の CHECK 削除も同様に baseline カラムへの破壊的操作。
 -- ================================================================
--- 20260304000100_csp_security_alerts_migration_ssot.sql の逆操作
+-- ROLLBACK: CSP/セキュリティテーブル migration SSOT (SUPERSEDED)
+-- ================================================================
+-- 20260304000100_csp_security_alerts_migration_ssot.sql の逆操作（旧版・無効）
 -- ================================================================
 
 BEGIN;

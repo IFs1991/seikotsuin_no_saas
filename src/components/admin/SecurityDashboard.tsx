@@ -169,7 +169,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
   }, [clinicId]);
 
   // データリフレッシュ
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
       fetchSecurityMetrics(),
@@ -177,7 +177,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
       fetchActiveSessions(),
     ]);
     setRefreshing(false);
-  };
+  }, [fetchActiveSessions, fetchSecurityEvents, fetchSecurityMetrics]);
 
   // イベントステータス更新
   const handleUpdateEventStatus = async () => {
@@ -329,7 +329,12 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
     // 30秒ごとに自動更新
     const interval = setInterval(handleRefresh, 30000);
     return () => clearInterval(interval);
-  }, [fetchSecurityMetrics, fetchSecurityEvents, fetchActiveSessions]);
+  }, [
+    fetchActiveSessions,
+    fetchSecurityEvents,
+    fetchSecurityMetrics,
+    handleRefresh,
+  ]);
 
   // フィルター変更時にイベント再取得
   useEffect(() => {

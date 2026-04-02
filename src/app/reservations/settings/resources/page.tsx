@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ export default function ResourceSettingsPage() {
     workingHoursJson: '{}',
   });
 
-  const loadResources = async () => {
+  const loadResources = useCallback(async () => {
     if (!clinicId) return;
     setLoading(true);
     try {
@@ -48,11 +48,11 @@ export default function ResourceSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clinicId]);
 
   useEffect(() => {
     loadResources();
-  }, [clinicId]);
+  }, [loadResources]);
 
   const handleCreate = async () => {
     if (!clinicId || !newResource.name.trim()) return;

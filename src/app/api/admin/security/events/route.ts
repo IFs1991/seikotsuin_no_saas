@@ -20,6 +20,7 @@ import {
   ADMIN_UI_ROLES,
   canAccessAdminUIWithCompat,
 } from '@/lib/constants/roles';
+import { createAdminClient } from '@/lib/supabase';
 
 // ステータス定義
 const VALID_STATUSES = [
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, auth, body } = processResult;
+    const { auth, permissions, body } = processResult;
 
     // バリデーション
     const parseResult = CreateEventSchema.safeParse(body);
@@ -287,9 +288,27 @@ export async function POST(request: NextRequest) {
     }
 
     const eventData = parseResult.data;
+    const allowedClinicIds =
+      permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0
+        ? permissions.clinic_scope_ids
+        : permissions.clinic_id
+          ? [permissions.clinic_id]
+          : [];
+
+    if (
+      allowedClinicIds.length === 0 ||
+      !allowedClinicIds.includes(eventData.clinic_id)
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
+    const adminSupabase = createAdminClient();
 
     // イベント作成
-    const { data: createdEvent, error: eventError } = await supabase
+    const { data: createdEvent, error: eventError } = await adminSupabase
       .from('security_events')
       .insert({
         ...eventData,
@@ -317,10 +336,11 @@ export async function POST(request: NextRequest) {
     ) {
       const notificationTitle = getNotificationTitle(eventData.event_type);
 
-      const { error: notificationError } = await supabase
+      const { error: notificationError } = await adminSupabase
         .from('notifications')
         .upsert(
           {
+            user_id: auth.id,
             clinic_id: eventData.clinic_id,
             title: notificationTitle,
             message: eventData.event_description,
@@ -340,7 +360,10 @@ export async function POST(request: NextRequest) {
           endpoint: '/api/admin/security/events',
           method: 'POST',
           userId: auth.id,
-          params: { event_id: createdEvent.id, clinic_id: eventData.clinic_id },
+          params: {
+            event_id: createdEvent.id,
+            clinic_id: eventData.clinic_id,
+          },
         });
       }
     }

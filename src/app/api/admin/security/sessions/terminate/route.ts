@@ -18,6 +18,7 @@ import {
   ADMIN_UI_ROLES,
   canAccessAdminUIWithCompat,
 } from '@/lib/constants/roles';
+import { createAdminClient } from '@/lib/supabase';
 
 // リクエストスキーマ
 const TerminateSessionSchema = z.object({
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
+    const { auth, permissions, body } = processResult;
 
     // 管理者権限チェック
     if (!isAdmin(permissions.role)) {
@@ -63,9 +64,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { sessionId, reason } = parseResult.data;
+    const allowedClinicIds =
+      permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0
+        ? permissions.clinic_scope_ids
+        : permissions.clinic_id
+          ? [permissions.clinic_id]
+          : [];
+    const adminSupabase = createAdminClient();
 
     // セッション情報を取得
-    const { data: session, error: fetchError } = await supabase
+    const { data: session, error: fetchError } = await adminSupabase
       .from('user_sessions')
       .select('id, user_id, clinic_id, is_active')
       .eq('id', sessionId)
@@ -75,13 +83,24 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('指定されたセッションが見つかりません', 404);
     }
 
+    if (
+      !session.clinic_id ||
+      allowedClinicIds.length === 0 ||
+      !allowedClinicIds.includes(session.clinic_id)
+    ) {
+      return createErrorResponse(
+        '対象セッションへのアクセス権がありません',
+        403
+      );
+    }
+
     // 既に無効化されている場合
     if (!session.is_active) {
       return createErrorResponse('セッションは既に終了しています', 400);
     }
 
     // セッションを終了（revokeフラグを立てる）
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('user_sessions')
       .update({
         is_active: false,
@@ -103,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     // セキュリティイベントを記録
-    await supabase.from('security_events').insert({
+    await adminSupabase.from('security_events').insert({
       user_id: session.user_id,
       clinic_id: session.clinic_id,
       session_id: sessionId,

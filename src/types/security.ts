@@ -129,7 +129,8 @@ export type SessionInvalidReason =
   | 'user_inactive'
   | 'invalid_token'
   | 'tampered_token'
-  | 'policy_violation';
+  | 'policy_violation'
+  | 'session_creation_failed';
 
 export interface SessionWarning {
   type:

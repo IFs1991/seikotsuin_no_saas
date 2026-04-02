@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SessionManager, parseUserAgent } from '@/lib/session-manager';
@@ -58,32 +58,143 @@ export function useSessionManagement(
     warningMinutes: 5,
   });
 
-  // 初期化とセッション確認
-  useEffect(() => {
-    initializeSession();
-  }, []);
-
-  // Supabaseセッション変更の監視
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
-
-      if (event === 'SIGNED_IN' && session) {
-        await handleLogin(session);
-      } else if (event === 'SIGNED_OUT') {
-        await handleLogout();
+  /**
+   * ログアウト処理
+   */
+  const handleLogout = useCallback(async () => {
+    try {
+      // セッションタイムアウト停止
+      if (config.enableTimeout) {
+        sessionTimeout.manager.stop();
       }
-    });
 
-    return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+      // カスタムセッションの無効化
+      if (sessionInfo.customSessionId) {
+        await sessionManager.revokeSession(
+          sessionInfo.customSessionId,
+          'manual_logout'
+        );
+      }
+
+      // カスタムセッションクッキーのクリア
+      document.cookie =
+        'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+      // セッション情報のリセット
+      setSessionInfo({ isAuthenticated: false });
+    } catch (err) {
+      console.error('Logout handling error:', err);
+    }
+  }, [
+    config.enableTimeout,
+    sessionInfo.customSessionId,
+    sessionManager,
+    sessionTimeout.manager,
+  ]);
+
+  /**
+   * カスタムセッション作成
+   */
+  const createCustomSession = useCallback(
+    async (userId: string, clinicId: string): Promise<string> => {
+      try {
+        // デバイス情報の取得
+        const userAgent = navigator.userAgent;
+        const deviceInfo = parseUserAgent(userAgent);
+
+        // IP情報の取得（簡易版）
+        const ipAddress = await getCurrentUserIP();
+
+        // セッション作成
+        const createResult = await sessionManager.createSession(
+          userId,
+          clinicId,
+          {
+            deviceInfo,
+            ipAddress,
+            userAgent,
+            rememberDevice: false, // 必要に応じて設定
+          }
+        );
+
+        if (!createResult.isValid || !createResult.session) {
+          throw new Error('カスタムセッションの作成に失敗しました');
+        }
+
+        const { session, token } = createResult;
+
+        // セッショントークンをクッキーに保存
+        const expires = new Date(session.expires_at);
+        document.cookie = `session-token=${token}; expires=${expires.toUTCString()}; path=/; secure; samesite=strict`;
+
+        return session.id;
+      } catch (error) {
+        console.error('Custom session creation error:', error);
+        throw new Error('カスタムセッションの作成に失敗しました');
+      }
+    },
+    [sessionManager]
+  );
+
+  /**
+   * ログイン処理
+   */
+  const handleLogin = useCallback(
+    async (session: any) => {
+      try {
+        const user = session.user;
+
+        // プロファイル情報の取得
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('clinic_id, role')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!profile) {
+          throw new Error('プロファイル情報が見つかりません');
+        }
+
+        // カスタムセッションの作成（設定が有効な場合）
+        let customSessionId;
+        if (config.enableCustomSession) {
+          customSessionId = await createCustomSession(
+            user.id,
+            profile.clinic_id
+          );
+        }
+
+        // セッション情報の更新
+        setSessionInfo({
+          isAuthenticated: true,
+          userId: user.id,
+          clinicId: profile.clinic_id,
+          customSessionId,
+          supabaseSession: session,
+        });
+
+        // セッションタイムアウト開始（設定が有効な場合）
+        if (config.enableTimeout) {
+          sessionTimeout.manager.start();
+        }
+      } catch (err) {
+        console.error('Login handling error:', err);
+        setError(err instanceof Error ? err.message : 'ログイン処理エラー');
+      }
+    },
+    [
+      config.enableCustomSession,
+      config.enableTimeout,
+      createCustomSession,
+      sessionTimeout.manager,
+      supabase,
+    ]
+  );
 
   /**
    * セッション初期化
    */
-  const initializeSession = async () => {
+  const initializeSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -111,117 +222,29 @@ export function useSessionManagement(
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleLogin, supabase]);
 
-  /**
-   * ログイン処理
-   */
-  const handleLogin = async (session: any) => {
-    try {
-      const user = session.user;
+  // 初期化とセッション確認
+  useEffect(() => {
+    initializeSession();
+  }, [initializeSession]);
 
-      // プロファイル情報の取得
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('clinic_id, role')
-        .eq('user_id', user.id)
-        .single();
+  // Supabaseセッション変更の監視
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
 
-      if (!profile) {
-        throw new Error('プロファイル情報が見つかりません');
+      if (event === 'SIGNED_IN' && session) {
+        await handleLogin(session);
+      } else if (event === 'SIGNED_OUT') {
+        await handleLogout();
       }
+    });
 
-      // カスタムセッションの作成（設定が有効な場合）
-      let customSessionId;
-      if (config.enableCustomSession) {
-        customSessionId = await createCustomSession(user.id, profile.clinic_id);
-      }
-
-      // セッション情報の更新
-      setSessionInfo({
-        isAuthenticated: true,
-        userId: user.id,
-        clinicId: profile.clinic_id,
-        customSessionId,
-        supabaseSession: session,
-      });
-
-      // セッションタイムアウト開始（設定が有効な場合）
-      if (config.enableTimeout) {
-        sessionTimeout.manager.start();
-      }
-    } catch (err) {
-      console.error('Login handling error:', err);
-      setError(err instanceof Error ? err.message : 'ログイン処理エラー');
-    }
-  };
-
-  /**
-   * ログアウト処理
-   */
-  const handleLogout = async () => {
-    try {
-      // セッションタイムアウト停止
-      if (config.enableTimeout) {
-        sessionTimeout.manager.stop();
-      }
-
-      // カスタムセッションの無効化
-      if (sessionInfo.customSessionId) {
-        await sessionManager.revokeSession(
-          sessionInfo.customSessionId,
-          'manual_logout'
-        );
-      }
-
-      // カスタムセッションクッキーのクリア
-      document.cookie =
-        'session-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-
-      // セッション情報のリセット
-      setSessionInfo({ isAuthenticated: false });
-    } catch (err) {
-      console.error('Logout handling error:', err);
-    }
-  };
-
-  /**
-   * カスタムセッション作成
-   */
-  const createCustomSession = async (
-    userId: string,
-    clinicId: string
-  ): Promise<string> => {
-    try {
-      // デバイス情報の取得
-      const userAgent = navigator.userAgent;
-      const deviceInfo = parseUserAgent(userAgent);
-
-      // IP情報の取得（簡易版）
-      const ipAddress = await getCurrentUserIP();
-
-      // セッション作成
-      const { session, token } = await sessionManager.createSession(
-        userId,
-        clinicId,
-        {
-          deviceInfo,
-          ipAddress,
-          userAgent,
-          rememberDevice: false, // 必要に応じて設定
-        }
-      );
-
-      // セッショントークンをクッキーに保存
-      const expires = new Date(session.expires_at);
-      document.cookie = `session-token=${token}; expires=${expires.toUTCString()}; path=/; secure; samesite=strict`;
-
-      return session.id;
-    } catch (error) {
-      console.error('Custom session creation error:', error);
-      throw new Error('カスタムセッションの作成に失敗しました');
-    }
-  };
+    return () => subscription.unsubscribe();
+  }, [handleLogin, handleLogout, supabase.auth]);
 
   /**
    * 手動ログアウト

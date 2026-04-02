@@ -31,7 +31,6 @@ const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set([
   'system-general',
   'system-security',
   'system-backup',
-  'data-import',
 ]);
 
 const settingsCategories = [
@@ -223,7 +222,7 @@ export default function AdminSettings() {
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
     localStorage.removeItem('adminUser');
-    router.push('/admin/login');
+    router.push('/admin/logout');
   };
 
   const visibleCategories = settingsCategories
@@ -460,10 +459,10 @@ export default function AdminSettings() {
                       <Settings className='w-8 h-8 text-gray-400' />
                     </div>
                     <h3 className='text-lg font-medium text-gray-900 mb-2'>
-                      設定画面を準備中
+                      パイロット版では提供しておりません
                     </h3>
                     <p className='text-gray-500 mb-4'>
-                      「{currentItem.title}」の詳細設定画面を実装予定です。
+                      今後のアップデートで追加予定です。
                     </p>
                     <div className='space-y-2 text-sm text-gray-400 max-w-md mx-auto'>
                       <p>この画面では以下の機能を提供予定：</p>

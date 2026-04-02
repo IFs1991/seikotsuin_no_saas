@@ -5,10 +5,9 @@
  * GET /api/admin/security/metrics - ダッシュボード用の集計値を返す
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import {
   createErrorResponse,
-  createSuccessResponse,
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
@@ -168,7 +167,11 @@ export async function GET(request: NextRequest) {
         totalUsers > 0 ? Math.round((mfaEnabledUsers / totalUsers) * 100) : 0,
     };
 
-    return createSuccessResponse(metrics);
+    return NextResponse.json({
+      success: true,
+      data: metrics,
+      ...metrics,
+    });
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/security/metrics',

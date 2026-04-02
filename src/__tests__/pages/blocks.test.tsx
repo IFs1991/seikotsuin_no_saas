@@ -4,32 +4,19 @@
  * Blocks Page Tests - TDD for 認証コンテキスト連携 MVP
  *
  * 仕様:
- * - src/app/blocks/page.tsx で createdBy は profile.userId を使用
+ * - src/app/blocks/page.tsx は `/api/blocks` / `/api/resources` を利用する
  * - sampleResources を廃止し、/api/resources?clinic_id=... から取得
  * - clinicId が無い場合は新規作成を不可にする
  *
  * 受け入れ基準:
  * - resource取得が /api/resources?clinic_id=... で呼ばれる
- * - createBlock の payload に createdBy=profile.userId
- * - ハードコードされた createdBy: 'current-user-id' が削除されている
+ * - createBlock は `/api/blocks` に POST される
+ * - ハードコードされた createdBy: 'current-user-id' が送信されない
  */
 
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-// BlockServiceをモック
-const mockCreateBlock = jest.fn();
-const mockGetBlocksByDateRange = jest.fn();
-const mockDeleteBlock = jest.fn();
-
-jest.mock('@/lib/services/block-service', () => ({
-  BlockService: jest.fn().mockImplementation(() => ({
-    createBlock: mockCreateBlock,
-    getBlocksByDateRange: mockGetBlocksByDateRange,
-    deleteBlock: mockDeleteBlock,
-  })),
-}));
 
 // fetchをモック（リソース取得用）
 const mockFetch = jest.fn();
@@ -94,17 +81,58 @@ describe('BlockManagementPage Component', () => {
       loading: false,
       error: null,
     });
-    mockGetBlocksByDateRange.mockResolvedValue([]);
-    mockCreateBlock.mockResolvedValue({ id: 'new-block-id' });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ data: mockResources }),
+    mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+
+      if (url.includes('/api/resources?')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ data: mockResources }),
+        });
+      }
+
+      if (url.includes('/api/blocks?')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        });
+      }
+
+      if (url === '/api/blocks' && method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: { id: 'new-block-id' },
+            }),
+        });
+      }
+
+      if (url.startsWith('/api/blocks?id=') && method === 'DELETE') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ data: { deleted: true } }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({}),
+      });
     });
   });
 
   describe('基本レンダリング', () => {
     it('販売停止設定ページがレンダリングされる', async () => {
-      const { container } = render(<BlockManagementPage />);
+      mockUseUserProfileContext.mockReturnValue({
+        profile: { ...mockProfile, clinicId: null },
+        loading: false,
+        error: null,
+      });
+
+      render(<BlockManagementPage />);
 
       // h1要素を特定して確認
       expect(
@@ -113,7 +141,13 @@ describe('BlockManagementPage Component', () => {
     });
 
     it('新規作成ボタンが表示される', async () => {
-      const { container } = render(<BlockManagementPage />);
+      mockUseUserProfileContext.mockReturnValue({
+        profile: { ...mockProfile, clinicId: null },
+        loading: false,
+        error: null,
+      });
+
+      render(<BlockManagementPage />);
 
       expect(
         screen.getByRole('button', { name: /新規作成/i })
@@ -122,16 +156,15 @@ describe('BlockManagementPage Component', () => {
   });
 
   /**
-   * 認証コンテキスト連携テスト
-   * - createdBy が profile.userId から取得される
-   * - ハードコードされた 'current-user-id' が使われていない
+   * API POST 契約テスト
+   * - `/api/blocks` にPOSTされる
+   * - client payload に current-user-id が埋め込まれない
    */
-  describe('認証コンテキスト連携 - createdBy', () => {
-    it('createBlock の payload に profile.userId が使用される', async () => {
+  describe('認証コンテキスト連携 - blocks POST', () => {
+    it('createBlock は /api/blocks にPOSTされる', async () => {
       const user = userEvent.setup();
-      const testUserId = 'auth-context-user-id-xyz';
       mockUseUserProfileContext.mockReturnValue({
-        profile: { ...mockProfile, id: testUserId },
+        profile: { ...mockProfile, id: 'auth-context-user-id-xyz' },
         loading: false,
         error: null,
       });
@@ -156,18 +189,23 @@ describe('BlockManagementPage Component', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(mockCreateBlock).toHaveBeenCalled();
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/blocks',
+          expect.objectContaining({
+            method: 'POST',
+          })
+        );
       });
-
-      const payload = mockCreateBlock.mock.calls[0][0];
-      expect(payload.createdBy).toBe(testUserId);
     });
 
-    it('createdBy に "current-user-id" がハードコードされていない', async () => {
+    it('POST payload に "current-user-id" がハードコードされていない', async () => {
       const user = userEvent.setup();
-      const testUserId = 'real-user-from-profile';
       mockUseUserProfileContext.mockReturnValue({
-        profile: { ...mockProfile, id: testUserId, clinicId: 'test-clinic' },
+        profile: {
+          ...mockProfile,
+          id: 'real-user-from-profile',
+          clinicId: 'test-clinic',
+        },
         loading: false,
         error: null,
       });
@@ -188,12 +226,27 @@ describe('BlockManagementPage Component', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(mockCreateBlock).toHaveBeenCalled();
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/blocks',
+          expect.objectContaining({
+            method: 'POST',
+          })
+        );
       });
 
-      const payload = mockCreateBlock.mock.calls[0][0];
-      expect(payload.createdBy).toBe(testUserId);
-      expect(payload.createdBy).not.toBe('current-user-id');
+      const postCall = mockFetch.mock.calls.find(
+        ([url, init]) => url === '/api/blocks' && init?.method === 'POST'
+      );
+      const requestBody = JSON.parse(postCall?.[1]?.body as string);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: /設定を保存/i })
+        ).not.toBeInTheDocument();
+      });
+
+      expect(requestBody.createdBy).toBeUndefined();
+      expect(JSON.stringify(requestBody)).not.toContain('current-user-id');
     });
   });
 
@@ -227,9 +280,36 @@ describe('BlockManagementPage Component', () => {
         { id: 'api-staff-1', name: 'APIスタッフA', type: 'staff' },
         { id: 'api-room-1', name: 'API施術室A', type: 'room' },
       ];
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ data: apiResources }),
+      mockFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? 'GET';
+
+        if (url.includes('/api/resources?')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: apiResources }),
+          });
+        }
+
+        if (url.includes('/api/blocks?')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: [] }),
+          });
+        }
+
+        if (url === '/api/blocks' && method === 'POST') {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: { id: 'new-block-id' } }),
+          });
+        }
+
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
       });
 
       const { container } = render(<BlockManagementPage />);
@@ -331,9 +411,29 @@ describe('BlockManagementPage Component', () => {
     });
 
     it('リソース取得エラー時は空状態と再読み込み導線を表示', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
+      mockFetch.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+
+        if (url.includes('/api/resources?')) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: () => Promise.resolve({}),
+          });
+        }
+
+        if (url.includes('/api/blocks?')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ data: [] }),
+          });
+        }
+
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
       });
 
       render(<BlockManagementPage />);
@@ -350,13 +450,16 @@ describe('BlockManagementPage Component', () => {
    * 販売停止作成フローテスト
    */
   describe('販売停止作成フロー', () => {
-    it('販売停止作成時に createdBy が profile.id で送信される', async () => {
+    it('販売停止作成時に API へ必要な block payload が送信される', async () => {
       const user = userEvent.setup();
-      const testUserId = 'create-block-user-id';
       const testClinicId = 'create-block-clinic-id';
 
       mockUseUserProfileContext.mockReturnValue({
-        profile: { ...mockProfile, id: testUserId, clinicId: testClinicId },
+        profile: {
+          ...mockProfile,
+          id: 'create-block-user-id',
+          clinicId: testClinicId,
+        },
         loading: false,
         error: null,
       });
@@ -380,11 +483,34 @@ describe('BlockManagementPage Component', () => {
       await user.click(saveButton);
 
       await waitFor(() => {
-        expect(mockCreateBlock).toHaveBeenCalled();
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/blocks',
+          expect.objectContaining({
+            method: 'POST',
+          })
+        );
       });
 
-      const payload = mockCreateBlock.mock.calls[0][0];
-      expect(payload.createdBy).toBe(testUserId);
+      const postCall = mockFetch.mock.calls.find(
+        ([url, init]) => url === '/api/blocks' && init?.method === 'POST'
+      );
+      const payload = JSON.parse(postCall?.[1]?.body as string);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: /設定を保存/i })
+        ).not.toBeInTheDocument();
+      });
+
+      expect(payload).toMatchObject({
+        resourceId: 'staff-1',
+        reason: '',
+      });
+      expect(payload.startTime).toContain(TEST_DATE);
+      expect(payload.endTime).toContain(TEST_DATE);
+      expect(Number.isNaN(new Date(payload.startTime).getTime())).toBe(false);
+      expect(Number.isNaN(new Date(payload.endTime).getTime())).toBe(false);
+      expect(payload.createdBy).toBeUndefined();
     });
   });
 });

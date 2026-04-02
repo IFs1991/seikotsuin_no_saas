@@ -3,12 +3,14 @@ import { AppError, ERROR_CODES } from '@/lib/error-handler';
 const createClientMock = jest.fn();
 const getCurrentUserMock = jest.fn();
 const getUserPermissionsMock = jest.fn();
+const canAccessClinicScopeMock = jest.fn();
 const logUnauthorizedAccessMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
   getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
   getUserPermissions: (...args: unknown[]) => getUserPermissionsMock(...args),
+  canAccessClinicScope: (...args: unknown[]) => canAccessClinicScopeMock(...args),
 }));
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -25,6 +27,7 @@ beforeEach(() => {
   createClientMock.mockReturnValue({});
   getCurrentUserMock.mockReset();
   getUserPermissionsMock.mockReset();
+  canAccessClinicScopeMock.mockReset();
   logUnauthorizedAccessMock.mockClear();
 });
 
@@ -78,6 +81,7 @@ describe('ensureClinicAccess', () => {
       role: 'staff',
       clinic_id: 'clinic-allow',
     });
+    canAccessClinicScopeMock.mockReturnValue(false);
 
     await expect(
       ensureClinicAccess(request, '/api/test', 'clinic-deny')
@@ -88,7 +92,7 @@ describe('ensureClinicAccess', () => {
 
     expect(logUnauthorizedAccessMock).toHaveBeenCalledWith(
       '/api/test?clinic_id=clinic-deny',
-      'Forbidden clinic access',
+      'Forbidden clinic access (parent-scope violation)',
       'user-1',
       'user@test',
       '127.0.0.1',
@@ -96,7 +100,7 @@ describe('ensureClinicAccess', () => {
     );
   });
 
-  it('allows privileged roles to bypass clinic checks', async () => {
+  it('allows parent-scoped access for privileged roles', async () => {
     getCurrentUserMock.mockResolvedValue({
       id: 'admin-1',
       email: 'admin@test',
@@ -104,7 +108,9 @@ describe('ensureClinicAccess', () => {
     getUserPermissionsMock.mockResolvedValue({
       role: 'admin',
       clinic_id: 'clinic-a',
+      clinic_scope_ids: ['clinic-b'],
     });
+    canAccessClinicScopeMock.mockReturnValue(true);
 
     const result = await ensureClinicAccess(request, '/api/test', 'clinic-b');
 
@@ -112,6 +118,7 @@ describe('ensureClinicAccess', () => {
     expect(result.permissions).toEqual({
       role: 'admin',
       clinic_id: 'clinic-a',
+      clinic_scope_ids: ['clinic-b'],
     });
     expect(logUnauthorizedAccessMock).not.toHaveBeenCalled();
   });

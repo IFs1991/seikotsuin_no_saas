@@ -43,11 +43,6 @@ describe('useNotifications', () => {
       },
     });
 
-    (mockApi.api.notifications.getUnreadCount as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { notifications: [], unreadCount: 1, total: 1 },
-    });
-
     const { result } = renderHook(() => useNotifications());
 
     await waitFor(() => {
@@ -68,11 +63,6 @@ describe('useNotifications', () => {
       },
     });
 
-    (mockApi.api.notifications.getUnreadCount as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { notifications: [], unreadCount: 3, total: 10 },
-    });
-
     const { result } = renderHook(() => useNotifications());
 
     await waitFor(() => {
@@ -84,11 +74,6 @@ describe('useNotifications', () => {
     (mockApi.api.notifications.get as jest.Mock).mockResolvedValueOnce({
       success: false,
       error: { message: '通知取得エラー' },
-    });
-
-    (mockApi.api.notifications.getUnreadCount as jest.Mock).mockResolvedValue({
-      success: true,
-      data: { notifications: [], unreadCount: 0, total: 0 },
     });
 
     const { result } = renderHook(() => useNotifications());
@@ -112,21 +97,22 @@ describe('useNotifications', () => {
       },
     });
 
-    (mockApi.api.notifications.getUnreadCount as jest.Mock)
-      .mockResolvedValueOnce({
-        success: true,
-        data: { notifications: [], unreadCount: 1, total: 1 },
-      })
-      .mockResolvedValueOnce({
+    // mount 時は fetchNotifications のみ。ポーリングで fetchUnreadCount が呼ばれる。
+    (mockApi.api.notifications.getUnreadCount as jest.Mock).mockResolvedValueOnce(
+      {
         success: true,
         data: { notifications: [], unreadCount: 2, total: 1 },
-      });
+      }
+    );
 
     const { result } = renderHook(() => useNotifications());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
+
+    // mount 直後は fetchNotifications 由来の unreadCount
+    expect(result.current.unreadCount).toBe(1);
 
     await act(async () => {
       jest.advanceTimersByTime(30000);
@@ -136,6 +122,7 @@ describe('useNotifications', () => {
       expect(result.current.unreadCount).toBe(2);
     });
 
-    expect(mockApi.api.notifications.getUnreadCount).toHaveBeenCalledTimes(2);
+    // ポーリング 1 回のみ (mount 時は fetchNotifications が担当)
+    expect(mockApi.api.notifications.getUnreadCount).toHaveBeenCalledTimes(1);
   });
 });

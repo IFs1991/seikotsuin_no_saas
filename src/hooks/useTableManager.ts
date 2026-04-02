@@ -116,7 +116,7 @@ export const useTableManager = (): UseTableManagerReturn => {
         if (result.data) {
           setTableData(result.data.data || []);
           setTableConfig(result.data.table_config || null);
-          setPagination(result.data.pagination || pagination);
+          setPagination(prev => result.data?.pagination || prev);
         }
 
         if (tableName) {
@@ -326,7 +326,13 @@ export const useTableManager = (): UseTableManagerReturn => {
     if (currentTable) {
       fetchTableData();
     }
-  }, [currentTable, pagination.page, sortState, filterState.search]);
+  }, [
+    currentTable,
+    pagination.page,
+    sortState,
+    filterState.search,
+    fetchTableData,
+  ]);
 
   return {
     // データ状態

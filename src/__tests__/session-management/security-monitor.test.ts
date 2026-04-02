@@ -14,11 +14,8 @@ import {
 // Supabase モック - 統一モックを使用
 let mockSupabase: SupabaseMock;
 
-jest.mock('@/lib/supabase', () => ({
-  createClient: () => {
-    // Return a Promise that resolves to the mock client
-    return Promise.resolve(mockSupabase.client);
-  },
+jest.mock('@/lib/supabase/client', () => ({
+  createClient: jest.fn(() => mockSupabase.client),
 }));
 
 describe('SecurityMonitor', () => {

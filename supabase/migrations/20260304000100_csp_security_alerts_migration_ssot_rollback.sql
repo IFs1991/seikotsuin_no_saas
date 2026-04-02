@@ -1,0 +1,53 @@
+-- ================================================================
+-- ROLLBACK: CSP/Security Alerts テーブル SSOT
+-- ================================================================
+-- 20260304000100_csp_security_alerts_migration_ssot.sql の逆操作
+-- 関連: docs/stabilization/rollback-csp-migration-v0.1.md
+-- ================================================================
+--
+-- 重要: 本 migration は冪等な SSOT 宣言であり、squashed baseline が
+-- 適用済みの DB では実質的にスキーマ変更を行わない。
+-- 通常のロールバックは migration 記録の削除のみで十分。
+--
+-- ================================================================
+-- シナリオ A（通常）: migration 記録を削除するのみ
+-- ================================================================
+--
+-- Supabase CLI 推奨:
+--   supabase migration repair --status reverted 20260304000100
+--
+-- または直接 SQL で:
+--   DELETE FROM supabase_migrations.schema_migrations
+--   WHERE version = '20260304000100';
+
+-- ================================================================
+-- シナリオ B（手動・緊急時のみ）
+-- この Migration のみで Baseline がない場合の完全削除。
+-- 実行前にバックアップを取得し、チームレビューを受けること。
+-- 通常のロールバックでは絶対に実行しないこと。
+-- ================================================================
+
+-- BEGIN;
+--
+-- -- RLS ポリシー削除
+-- DROP POLICY IF EXISTS "csp_violations_insert_any"    ON public.csp_violations;
+-- DROP POLICY IF EXISTS "csp_violations_select_admin"  ON public.csp_violations;
+-- DROP POLICY IF EXISTS "csp_violations_update_admin"  ON public.csp_violations;
+-- DROP POLICY IF EXISTS "security_alerts_insert_any"   ON public.security_alerts;
+-- DROP POLICY IF EXISTS "security_alerts_select_admin" ON public.security_alerts;
+-- DROP POLICY IF EXISTS "security_alerts_update_admin" ON public.security_alerts;
+--
+-- -- インデックス削除
+-- DROP INDEX IF EXISTS public.idx_csp_violations_clinic_id;
+-- DROP INDEX IF EXISTS public.idx_csp_violations_created_at;
+-- DROP INDEX IF EXISTS public.idx_csp_violations_severity;
+-- DROP INDEX IF EXISTS public.idx_security_alerts_clinic_id;
+-- DROP INDEX IF EXISTS public.idx_security_alerts_created_at;
+-- DROP INDEX IF EXISTS public.idx_security_alerts_severity;
+-- DROP INDEX IF EXISTS public.idx_security_alerts_type;
+--
+-- -- テーブル削除（CASCADE で FK も削除）
+-- DROP TABLE IF EXISTS public.csp_violations CASCADE;
+-- DROP TABLE IF EXISTS public.security_alerts CASCADE;
+--
+-- COMMIT;

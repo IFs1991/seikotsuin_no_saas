@@ -17,33 +17,26 @@
  */
 
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ??
-  'http://127.0.0.1:3000';
+import { CLINIC_A_ID } from './fixtures';
 
 // テスト用 UUID（UUID 形式は正しいが存在しないクリニック）
 const NONEXISTENT_CLINIC_ID = '00000000-0000-0000-0000-000000000000';
+const ACTIVE_CLINIC_ID = process.env.TEST_ACTIVE_CLINIC_ID || CLINIC_A_ID;
+
+const buildMenusPath = (clinicId: string) =>
+  `/api/public/menus?clinic_id=${clinicId}`;
 
 test.describe('GET /api/public/menus', () => {
   // ----------------------------------------------------------------
   // 正常系: 有効な clinic_id → 200 + 対象クリニックのメニューのみ返却
   // ----------------------------------------------------------------
   test('有効な clinic_id で 200 + メニューを返す', async ({ request }) => {
-    const clinicId = process.env.TEST_ACTIVE_CLINIC_ID;
-    if (!clinicId) {
-      test.skip(true, 'TEST_ACTIVE_CLINIC_ID が未設定のためスキップ');
-      return;
-    }
-
-    const response = await request.get(
-      `${BASE_URL}/api/public/menus?clinic_id=${clinicId}`
-    );
+    const response = await request.get(buildMenusPath(ACTIVE_CLINIC_ID));
     expect(response.status()).toBe(200);
 
     const body = await response.json();
     expect(body.success).toBe(true);
-    expect(body.data.clinic_id).toBe(clinicId);
+    expect(body.data.clinic_id).toBe(ACTIVE_CLINIC_ID);
     expect(Array.isArray(body.data.menus)).toBe(true);
 
     // 返却されたメニューはすべて対象クリニックのもの（テナント境界確認）
@@ -56,9 +49,7 @@ test.describe('GET /api/public/menus', () => {
   // バリデーション: clinic_id が UUID 形式でない → 400
   // ----------------------------------------------------------------
   test('clinic_id が UUID 形式でない場合は 400 を返す', async ({ request }) => {
-    const response = await request.get(
-      `${BASE_URL}/api/public/menus?clinic_id=invalid-not-uuid`
-    );
+    const response = await request.get(buildMenusPath('invalid-not-uuid'));
     expect(response.status()).toBe(400);
 
     const body = await response.json();
@@ -71,9 +62,7 @@ test.describe('GET /api/public/menus', () => {
   test('存在しない clinic_id（UUID 形式は正しい）は 404 を返す', async ({
     request,
   }) => {
-    const response = await request.get(
-      `${BASE_URL}/api/public/menus?clinic_id=${NONEXISTENT_CLINIC_ID}`
-    );
+    const response = await request.get(buildMenusPath(NONEXISTENT_CLINIC_ID));
     expect(response.status()).toBe(404);
 
     const body = await response.json();
@@ -92,9 +81,7 @@ test.describe('GET /api/public/menus', () => {
       return;
     }
 
-    const response = await request.get(
-      `${BASE_URL}/api/public/menus?clinic_id=${clinicId}`
-    );
+    const response = await request.get(buildMenusPath(clinicId));
     expect(response.status()).toBe(403);
 
     const body = await response.json();
@@ -107,19 +94,11 @@ test.describe('GET /api/public/menus', () => {
   test('clinic_id を指定すると対象テナントのメニューのみ返される', async ({
     request,
   }) => {
-    const clinicId = process.env.TEST_ACTIVE_CLINIC_ID;
-    if (!clinicId) {
-      test.skip(true, 'TEST_ACTIVE_CLINIC_ID が未設定のためスキップ');
-      return;
-    }
-
-    const response = await request.get(
-      `${BASE_URL}/api/public/menus?clinic_id=${clinicId}`
-    );
+    const response = await request.get(buildMenusPath(ACTIVE_CLINIC_ID));
     expect(response.status()).toBe(200);
 
     const body = await response.json();
     // data.clinic_id は常にリクエストした clinic_id と一致する
-    expect(body.data.clinic_id).toBe(clinicId);
+    expect(body.data.clinic_id).toBe(ACTIVE_CLINIC_ID);
   });
 });

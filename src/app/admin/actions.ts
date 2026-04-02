@@ -147,13 +147,6 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
       };
     }
 
-    await AuditLogger.logLogin(
-      data.user.id,
-      sanitizedEmail,
-      ipAddress,
-      userAgent
-    );
-
     // 5. ユーザー権限の確認
     const profileResult = await supabase
       .from('profiles')
@@ -174,6 +167,13 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
         },
       };
     }
+
+    await AuditLogger.logLogin(
+      data.user.id,
+      sanitizedEmail,
+      ipAddress,
+      userAgent
+    );
 
     // 6. 成功ログ
     console.info('[Auth] Successful login:', {

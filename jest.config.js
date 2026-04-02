@@ -3,6 +3,7 @@ const nextJest = require('next/jest');
 const createJestConfig = nextJest({ dir: './' });
 
 const sharedConfig = {
+  setupFiles: ['<rootDir>/jest.setup.messagechannel.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
   moduleNameMapper: {
@@ -51,7 +52,6 @@ const createClientConfig = createJestConfig({
   ...sharedConfig,
   displayName: 'client',
   testEnvironment: 'jsdom',
-  setupFiles: ['<rootDir>/jest.setup.messagechannel.ts'],
   testMatch: [
     '<rootDir>/src/__tests__/**/*.test.tsx',
     '<rootDir>/src/__tests__/pages/**/*.test.tsx',

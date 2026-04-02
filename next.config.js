@@ -59,10 +59,46 @@ async function getSecurityHeaders() {
   return securityHeaders;
 }
 
+async function buildHeaders() {
+  const securityHeaders = await getSecurityHeaders();
+
+  return [
+    {
+      source: '/(.*)',
+      headers: securityHeaders,
+    },
+    {
+      source: '/api/(.*)',
+      headers: [
+        ...securityHeaders,
+        {
+          key: 'Cache-Control',
+          value: 'no-store, no-cache, must-revalidate',
+        },
+      ],
+    },
+  ];
+}
+
+function exportNextConfig(config) {
+  if (!process.env.SENTRY_DSN) {
+    return config;
+  }
+
+  const { withSentryConfig } = require('@sentry/nextjs');
+
+  return withSentryConfig(config, {
+    silent: true,
+  });
+}
+
 const nextConfig = {
   // パフォーマンス最適化設定（Supabaseを除外）
   experimental: {
     optimizePackageImports: ['lucide-react'],
+    // Next.js 15.4.x の segment explorer は dev 中に React Client Manifest
+    // エラーを誘発し、Playwright の長時間実行を不安定にするため無効化する。
+    devtoolSegmentExplorer: false,
   },
 
   // Docker本番運用のためNext.jsをstandaloneビルド
@@ -118,23 +154,7 @@ const nextConfig = {
 
   // Phase 3B: 強化されたセキュリティヘッダー（CSP含む）
   async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: await getSecurityHeaders(),
-      },
-      // API エンドポイント用の追加セキュリティ
-      {
-        source: '/api/(.*)',
-        headers: [
-          ...(await getSecurityHeaders()),
-          {
-            key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate',
-          },
-        ],
-      },
-    ];
+    return await buildHeaders();
   },
 
   // リダイレクト設定
@@ -148,5 +168,4 @@ const nextConfig = {
     ];
   },
 };
-
-module.exports = nextConfig;
+module.exports = exportNextConfig(nextConfig);

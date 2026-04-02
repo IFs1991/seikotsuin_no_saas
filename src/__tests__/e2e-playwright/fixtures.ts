@@ -31,11 +31,11 @@ export const RESOURCE_IDS = [
 
 // セキュリティ関連の固定ID
 export const SECURITY_EVENT_IDS = [
-  '00000000-0000-0000-0000-00000000sec1', // high severity event
-  '00000000-0000-0000-0000-00000000sec2', // medium severity event
+  '00000000-0000-0000-0000-00000000a401', // high severity event
+  '00000000-0000-0000-0000-00000000a402', // medium severity event
 ];
 
-export const USER_SESSION_ID = '00000000-0000-0000-0000-000000sess01';
+export const USER_SESSION_ID = '00000000-0000-0000-0000-00000000a501';
 
 export const ADMIN_EMAIL =
   process.env.TEST_ADMIN_EMAIL || 'e2e-admin@clinic.local';

@@ -1,10 +1,18 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 
 interface SelectedClinicContextValue {
   selectedClinicId: string | null;
-  setSelectedClinicId: (id: string) => void;
+  setSelectedClinicId: Dispatch<SetStateAction<string | null>>;
 }
 
 const SelectedClinicContext = createContext<
@@ -21,6 +29,15 @@ export function SelectedClinicProvider({
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
     initialClinicId
   );
+
+  useEffect(() => {
+    if (!initialClinicId) {
+      return;
+    }
+
+    setSelectedClinicId(currentClinicId => currentClinicId ?? initialClinicId);
+  }, [initialClinicId]);
+
   return (
     <SelectedClinicContext.Provider
       value={{ selectedClinicId, setSelectedClinicId }}

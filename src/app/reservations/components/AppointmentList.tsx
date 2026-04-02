@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Appointment, SchedulerResource } from '../types';
 import { COLORS } from '../constants';
 import { ArrowRight, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
@@ -20,9 +20,12 @@ export const AppointmentList: React.FC<Props> = ({
   const [sortField, setSortField] = useState<SortField>('time');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-  const getResourceName = (id: string) => {
-    return resources.find(r => r.id === id)?.name || id;
-  };
+  const getResourceName = useCallback(
+    (id: string) => {
+      return resources.find(r => r.id === id)?.name || id;
+    },
+    [resources]
+  );
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -66,7 +69,7 @@ export const AppointmentList: React.FC<Props> = ({
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [appointments, sortField, sortDirection]);
+  }, [appointments, getResourceName, sortField, sortDirection]);
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field)
