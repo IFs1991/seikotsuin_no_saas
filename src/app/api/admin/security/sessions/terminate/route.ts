@@ -18,7 +18,11 @@ import {
   ADMIN_UI_ROLES,
   canAccessAdminUIWithCompat,
 } from '@/lib/constants/roles';
-import { createAdminClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  ScopeAccessError,
+  ScopeNotConfiguredError,
+} from '@/lib/supabase/scoped-admin';
 
 // リクエストスキーマ
 const TerminateSessionSchema = z.object({
@@ -64,13 +68,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { sessionId, reason } = parseResult.data;
-    const allowedClinicIds =
-      permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0
-        ? permissions.clinic_scope_ids
-        : permissions.clinic_id
-          ? [permissions.clinic_id]
-          : [];
-    const adminSupabase = createAdminClient();
+
+    let adminCtx;
+    try {
+      adminCtx = createScopedAdminContext(permissions);
+    } catch (e) {
+      if (e instanceof ScopeNotConfiguredError) {
+        return createErrorResponse(e.message, 403);
+      }
+      throw e;
+    }
+
+    const adminSupabase = adminCtx.client;
 
     // セッション情報を取得
     const { data: session, error: fetchError } = await adminSupabase
@@ -83,15 +92,19 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('指定されたセッションが見つかりません', 404);
     }
 
-    if (
-      !session.clinic_id ||
-      allowedClinicIds.length === 0 ||
-      !allowedClinicIds.includes(session.clinic_id)
-    ) {
-      return createErrorResponse(
-        '対象セッションへのアクセス権がありません',
-        403
-      );
+    try {
+      if (!session.clinic_id) {
+        throw new ScopeAccessError();
+      }
+      adminCtx.assertClinicInScope(session.clinic_id);
+    } catch (e) {
+      if (e instanceof ScopeAccessError) {
+        return createErrorResponse(
+          '対象セッションへのアクセス権がありません',
+          403
+        );
+      }
+      throw e;
     }
 
     // 既に無効化されている場合

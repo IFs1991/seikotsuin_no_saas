@@ -1,3 +1,14 @@
+/**
+ * POST /api/public/reservations route tests
+ *
+ * Tests the route handler directly, mocking scoped-admin for clinic context
+ * and verifying HTTP response codes and bodies.
+ *
+ * @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-06)
+ */
+
+const mockCreatePublicClinicContext = jest.fn();
+
 jest.mock('next/server', () => ({
   NextResponse: {
     json: (data: unknown, init?: ResponseInit) => ({
@@ -7,13 +18,22 @@ jest.mock('next/server', () => ({
   },
 }));
 
-jest.mock('@/lib/supabase', () => ({
-  createAdminClient: jest.fn(),
+jest.mock('@/lib/supabase/scoped-admin', () => ({
+  createPublicClinicContext: (...args: unknown[]) =>
+    mockCreatePublicClinicContext(...args),
+  ClinicNotFoundError: class ClinicNotFoundError extends Error {
+    constructor(msg = 'Clinic not found') {
+      super(msg);
+      this.name = 'ClinicNotFoundError';
+    }
+  },
+  ClinicInactiveError: class ClinicInactiveError extends Error {
+    constructor(msg = 'Clinic is not active') {
+      super(msg);
+      this.name = 'ClinicInactiveError';
+    }
+  },
 }));
-
-import { createAdminClient } from '@/lib/supabase';
-
-const createAdminClientMock = createAdminClient as jest.Mock;
 
 const VALID_CLINIC_ID = '00000000-0000-0000-0000-000000000101';
 const VALID_MENU_ID = '00000000-0000-0000-0000-000000000201';
@@ -38,45 +58,206 @@ const buildValidBody = () => ({
   channel: 'web' as const,
 });
 
-const createEqChain = (result: unknown, finalMethod: 'single' | 'maybeSingle' = 'single') => {
-  const terminal = jest.fn().mockResolvedValue(result);
-  const chain: Record<string, jest.Mock> = {
-    eq: jest.fn(),
-    [finalMethod]: terminal,
+/**
+ * Build a mock supabase client whose `.from(table)` returns table-specific chains.
+ */
+function buildMockSupabase(overrides: Record<string, unknown> = {}) {
+  const defaultTables: Record<string, unknown> = {
+    clinic_settings: {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: {
+                settings: { allowOnlineBooking: true },
+              },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    },
+    menus: {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: {
+                    id: VALID_MENU_ID,
+                    name: '標準施術',
+                    duration_minutes: 60,
+                    price: 5000,
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    },
+    resources: {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({
+              data: { id: VALID_RESOURCE_ID },
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    },
+    reservations_select: {
+      eq: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          lt: jest.fn().mockReturnValue({
+            gt: jest.fn().mockResolvedValue(EMPTY_LIST),
+          }),
+        }),
+      }),
+    },
+    blocks: {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            lt: jest.fn().mockReturnValue({
+              gt: jest.fn().mockResolvedValue(EMPTY_LIST),
+            }),
+          }),
+        }),
+      }),
+    },
+    customers: {
+      select: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: null,
+                error: { code: 'PGRST116', message: 'No rows found' },
+              }),
+            }),
+          }),
+        }),
+      }),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: VALID_CUSTOMER_ID },
+            error: null,
+          }),
+        }),
+      }),
+    },
+    reservations_insert: {
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: VALID_RESERVATION_ID,
+            start_time: '2026-03-17T10:00:00.000Z',
+            end_time: '2026-03-17T11:00:00.000Z',
+            status: 'pending',
+          },
+          error: null,
+        }),
+      }),
+    },
   };
-  chain.eq.mockReturnValue(chain);
-  return chain;
-};
+
+  const tables = { ...defaultTables, ...overrides };
+
+  // Track call counts per table to distinguish select vs insert on same table
+  const reservationsCallCount = { value: 0 };
+  const customersCallCount = { value: 0 };
+
+  return {
+    from: jest.fn((table: string) => {
+      if (table === 'reservations') {
+        reservationsCallCount.value++;
+        // First call is select (overlap check), second is insert
+        if (reservationsCallCount.value === 1) {
+          return { select: jest.fn().mockReturnValue(tables.reservations_select) };
+        }
+        return { insert: jest.fn().mockReturnValue(tables.reservations_insert) };
+      }
+      if (table === 'customers') {
+        customersCallCount.value++;
+        // First call is select (find existing), second may be insert
+        if (customersCallCount.value === 1) {
+          return { select: jest.fn().mockReturnValue((tables.customers as any).select()) };
+        }
+        return { insert: jest.fn().mockReturnValue((tables.customers as any).insert()) };
+      }
+      const t = tables[table];
+      if (!t) throw new Error(`Unexpected table access: ${table}`);
+      return t;
+    }),
+  };
+}
+
+function setupClinicContext(supabase: unknown) {
+  mockCreatePublicClinicContext.mockResolvedValue({
+    client: supabase,
+    clinicId: VALID_CLINIC_ID,
+    clinic: { id: VALID_CLINIC_ID, name: 'テスト整骨院', is_active: true },
+  });
+}
 
 describe('POST /api/public/reservations', () => {
-  beforeEach(() => {
+  let POST: (req: any) => Promise<any>;
+
+  beforeEach(async () => {
     jest.clearAllMocks();
+    // Dynamic import to pick up mocks
+    jest.resetModules();
+    const mod = await import('@/app/api/public/reservations/route');
+    POST = mod.POST;
+  });
+
+  it('クリニックが見つからない場合は 404 を返す', async () => {
+    const { ClinicNotFoundError } = await import('@/lib/supabase/scoped-admin');
+    mockCreatePublicClinicContext.mockRejectedValue(new ClinicNotFoundError());
+
+    const response = await POST(buildRequest(buildValidBody()));
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data).toEqual({ success: false, error: 'Clinic not found' });
+  });
+
+  it('クリニックが無効な場合は 403 を返す', async () => {
+    const { ClinicInactiveError } = await import('@/lib/supabase/scoped-admin');
+    mockCreatePublicClinicContext.mockRejectedValue(new ClinicInactiveError());
+
+    const response = await POST(buildRequest(buildValidBody()));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data).toEqual({
+      success: false,
+      error: 'Clinic is not accepting reservations',
+    });
   });
 
   it('booking_calendar レコードが存在しない場合は 403 を返す', async () => {
-    const supabase = {
-      from: jest.fn((table: string) => {
-        if (table === 'clinic_settings') {
-          return {
-            select: jest.fn().mockReturnValue(
-              createEqChain(
-                {
-                  data: null,
-                  error: { code: 'PGRST116', message: 'No rows found' },
-                },
-                'single'
-              )
-            ),
-          };
-        }
-
-        throw new Error(`Unexpected table access: ${table}`);
-      }),
-    };
-
-    createAdminClientMock.mockReturnValue(supabase);
-
-    const { POST } = await import('@/app/api/public/reservations/route');
+    const supabase = buildMockSupabase({
+      clinic_settings: {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: null,
+                error: { code: 'PGRST116', message: 'No rows found' },
+              }),
+            }),
+          }),
+        }),
+      },
+    });
+    setupClinicContext(supabase);
 
     const response = await POST(buildRequest(buildValidBody()));
     const data = await response.json();
@@ -89,30 +270,21 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('allowOnlineBooking=false の場合は 403 を返す', async () => {
-    const supabase = {
-      from: jest.fn((table: string) => {
-        if (table === 'clinic_settings') {
-          return {
-            select: jest.fn().mockReturnValue(
-              createEqChain({
-                data: {
-                  settings: {
-                    allowOnlineBooking: false,
-                  },
-                },
+    const supabase = buildMockSupabase({
+      clinic_settings: {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: { settings: { allowOnlineBooking: false } },
                 error: null,
-              })
-            ),
-          };
-        }
-
-        throw new Error(`Unexpected table access: ${table}`);
-      }),
-    };
-
-    createAdminClientMock.mockReturnValue(supabase);
-
-    const { POST } = await import('@/app/api/public/reservations/route');
+              }),
+            }),
+          }),
+        }),
+      },
+    });
+    setupClinicContext(supabase);
 
     const response = await POST(buildRequest(buildValidBody()));
     const data = await response.json();
@@ -124,126 +296,9 @@ describe('POST /api/public/reservations', () => {
     });
   });
 
-  it('allowOnlineBooking=true の場合は既存の予約作成フローを継続する', async () => {
-    const supabase = {
-      from: jest.fn((table: string) => {
-        switch (table) {
-          case 'clinic_settings':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    settings: {
-                      allowOnlineBooking: true,
-                    },
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'clinics':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_CLINIC_ID,
-                    name: 'テスト整骨院',
-                    is_active: true,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'menus':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_MENU_ID,
-                    name: '標準施術',
-                    duration_minutes: 60,
-                    price: 5000,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'resources':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_RESOURCE_ID,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'blocks':
-            return {
-              select: jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                  eq: jest.fn().mockReturnValue({
-                    lt: jest.fn().mockReturnValue({
-                      gt: jest.fn().mockResolvedValue(EMPTY_LIST),
-                    }),
-                  }),
-                }),
-              }),
-            };
-          case 'customers':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: null,
-                  error: { code: 'PGRST116', message: 'No rows found' },
-                })
-              ),
-              insert: jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: VALID_CUSTOMER_ID,
-                    },
-                    error: null,
-                  }),
-                }),
-              }),
-            };
-          case 'reservations':
-            return {
-              select: jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                  eq: jest.fn().mockReturnValue({
-                    lt: jest.fn().mockReturnValue({
-                      gt: jest.fn().mockResolvedValue(EMPTY_LIST),
-                    }),
-                  }),
-                }),
-              }),
-              insert: jest.fn().mockReturnValue({
-                select: jest.fn().mockReturnValue({
-                  single: jest.fn().mockResolvedValue({
-                    data: {
-                      id: VALID_RESERVATION_ID,
-                      start_time: '2026-03-17T10:00:00.000Z',
-                      end_time: '2026-03-17T11:00:00.000Z',
-                      status: 'pending',
-                    },
-                    error: null,
-                  }),
-                }),
-              }),
-            };
-          default:
-            throw new Error(`Unexpected table access: ${table}`);
-        }
-      }),
-    };
-
-    createAdminClientMock.mockReturnValue(supabase);
-
-    const { POST } = await import('@/app/api/public/reservations/route');
+  it('allowOnlineBooking=true の場合は予約作成フローを完了し 201 を返す', async () => {
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
 
     const response = await POST(buildRequest(buildValidBody()));
     const data = await response.json();
@@ -261,96 +316,21 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('重複予約がある場合は 409 を返す', async () => {
-    const supabase = {
-      from: jest.fn((table: string) => {
-        switch (table) {
-          case 'clinic_settings':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    settings: {
-                      allowOnlineBooking: true,
-                    },
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'clinics':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_CLINIC_ID,
-                    name: 'テスト整骨院',
-                    is_active: true,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'menus':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_MENU_ID,
-                    name: '標準施術',
-                    duration_minutes: 60,
-                    price: 5000,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'resources':
-            return {
-              select: jest.fn().mockReturnValue(
-                createEqChain({
-                  data: {
-                    id: VALID_RESOURCE_ID,
-                  },
-                  error: null,
-                })
-              ),
-            };
-          case 'reservations':
-            return {
-              select: jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                  eq: jest.fn().mockReturnValue({
-                    lt: jest.fn().mockReturnValue({
-                      gt: jest.fn().mockResolvedValue({
-                        data: [{ id: VALID_RESERVATION_ID }],
-                        error: null,
-                      }),
-                    }),
-                  }),
-                }),
+    const supabase = buildMockSupabase({
+      reservations_select: {
+        eq: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            lt: jest.fn().mockReturnValue({
+              gt: jest.fn().mockResolvedValue({
+                data: [{ id: VALID_RESERVATION_ID }],
+                error: null,
               }),
-            };
-          case 'blocks':
-            return {
-              select: jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                  eq: jest.fn().mockReturnValue({
-                    lt: jest.fn().mockReturnValue({
-                      gt: jest.fn().mockResolvedValue(EMPTY_LIST),
-                    }),
-                  }),
-                }),
-              }),
-            };
-          default:
-            throw new Error(`Unexpected table access: ${table}`);
-        }
-      }),
-    };
-
-    createAdminClientMock.mockReturnValue(supabase);
-
-    const { POST } = await import('@/app/api/public/reservations/route');
+            }),
+          }),
+        }),
+      },
+    });
+    setupClinicContext(supabase);
 
     const response = await POST(buildRequest(buildValidBody()));
     const data = await response.json();
@@ -360,5 +340,30 @@ describe('POST /api/public/reservations', () => {
       success: false,
       error: 'Requested time slot is not available',
     });
+  });
+
+  it('バリデーションエラーの場合は 400 を返す', async () => {
+    const response = await POST(
+      buildRequest({ clinic_id: 'not-a-uuid' })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe('Validation error');
+  });
+
+  it('不正なJSONの場合は 400 を返す', async () => {
+    const badRequest = {
+      json: async () => {
+        throw new Error('Invalid JSON');
+      },
+    } as any;
+
+    const response = await POST(badRequest);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data).toEqual({ success: false, error: 'Invalid JSON data' });
   });
 });

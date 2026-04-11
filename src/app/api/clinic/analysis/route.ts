@@ -8,6 +8,7 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers';
+import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 import type { AnalysisData } from '@/lib/ai/analysis-client';
 
 const PATH = '/api/clinic/analysis';
@@ -47,7 +48,9 @@ export async function GET(request: NextRequest) {
       Date.now() - 30 * 24 * 60 * 60 * 1000
     ).toISOString();
 
-    const [revenueRes, patientRes, therapistRes] = await Promise.all([
+    const analyticsService = new AnalyticsReadService(supabase);
+
+    const [revenueRes, patientRes, therapistData] = await Promise.all([
       supabase
         .from('revenues')
         .select('amount, created_at')
@@ -59,11 +62,10 @@ export async function GET(request: NextRequest) {
         .select('registration_date, created_at')
         .eq('clinic_id', resolvedClinicId)
         .order('created_at', { ascending: false }),
-      supabase
-        .from('staff_performance_summary')
-        .select('staff_name, average_satisfaction_score')
-        .eq('clinic_id', resolvedClinicId)
-        .order('average_satisfaction_score', { ascending: false }),
+      analyticsService.fetchStaffPerformance(resolvedClinicId, {
+        columns: 'staff_name, average_satisfaction_score',
+        orderBy: 'average_satisfaction_score',
+      }),
     ]);
 
     if (revenueRes.error) {
@@ -80,13 +82,6 @@ export async function GET(request: NextRequest) {
         500
       );
     }
-    if (therapistRes.error) {
-      throw new AppError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        therapistRes.error.message,
-        500
-      );
-    }
 
     const data: AnalysisData = {
       salesData: (revenueRes.data ?? []).map(row => ({
@@ -99,9 +94,9 @@ export async function GET(request: NextRequest) {
           row.registration_date >= thirtyDaysAgo,
         created_at: row.created_at ?? '',
       })),
-      therapistData: (therapistRes.data ?? []).map(row => ({
-        staff_name: row.staff_name ?? '',
-        performance_score: Number(row.average_satisfaction_score) || 0,
+      therapistData: therapistData.map(row => ({
+        staff_name: (row as any).staff_name ?? '',
+        performance_score: Number((row as any).average_satisfaction_score) || 0,
       })),
     };
 

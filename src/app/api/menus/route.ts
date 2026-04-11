@@ -4,15 +4,8 @@ import {
   createSuccessResponse,
   processApiRequest,
 } from '@/lib/api-helpers';
-import {
-  AppError,
-  createApiError,
-  ERROR_CODES,
-  getStatusCodeFromErrorCode,
-  isApiError,
-  normalizeSupabaseError,
-  logError,
-} from '@/lib/error-handler';
+import { normalizeSupabaseError } from '@/lib/error-handler';
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   menusQuerySchema,
   menuInsertSchema,
@@ -64,53 +57,17 @@ export async function GET(request: NextRequest) {
     }));
     return createSuccessResponse(mapped);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = normalizeSupabaseError(error, PATH);
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Menus fetch failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = menuInsertSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
+    const result = await processClinicScopedBody(request, menuInsertSchema);
+    if (!result.success) return result.error;
 
-    const insertPayload = mapMenuInsertToRow(dto, guard.auth.id);
-    const { data, error } = await guard.supabase
+    const insertPayload = mapMenuInsertToRow(result.dto, result.auth.id);
+    const { data, error } = await result.supabase
       .from('menus')
       .insert(insertPayload)
       .select()
@@ -118,79 +75,27 @@ export async function POST(request: NextRequest) {
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data, 201);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Menu creation failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = menuUpdateSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
+    const result = await processClinicScopedBody(request, menuUpdateSchema);
+    if (!result.success) return result.error;
 
-    const updatePayload = mapMenuUpdateToRow(dto);
-    const { data, error } = await guard.supabase
+    const updatePayload = mapMenuUpdateToRow(result.dto);
+    const { data, error } = await result.supabase
       .from('menus')
       .update(updatePayload)
-      .eq('id', dto.id)
-      .eq('clinic_id', dto.clinic_id)
+      .eq('id', result.dto.id)
+      .eq('clinic_id', result.dto.clinic_id)
       .select()
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Menu update failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
@@ -217,25 +122,6 @@ export async function DELETE(request: NextRequest) {
     }
     return createSuccessResponse({ deleted: true });
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Menu delete failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }

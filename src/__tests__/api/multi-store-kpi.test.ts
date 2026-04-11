@@ -5,12 +5,13 @@
  * - GET /api/admin/tenants を拡張
  * - 返却: revenue, patients, staff_performance_score
  * - 権限: admin のみ許可
- * - scope: clinic_scope_ids または clinic_id で fail-closed
+ * - scope: createScopedAdminContext で fail-closed
+ *
+ * @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-07)
  */
 
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { createAdminClient } from '@/lib/supabase';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -21,16 +22,18 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
-jest.mock('@/lib/supabase', () => {
-  const actual = jest.requireActual('@/lib/supabase');
+// Mock scoped-admin to control the admin client
+const mockCreateScopedAdminContext = jest.fn();
+jest.mock('@/lib/supabase/scoped-admin', () => {
+  const actual = jest.requireActual('@/lib/supabase/scoped-admin');
   return {
     ...actual,
-    createAdminClient: jest.fn(),
+    createScopedAdminContext: (...args: unknown[]) =>
+      mockCreateScopedAdminContext(...args),
   };
 });
 
 const processApiRequestMock = processApiRequest as jest.Mock;
-const createAdminClientMock = createAdminClient as jest.Mock;
 
 function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
   const builder = {
@@ -106,6 +109,14 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     jest.clearAllMocks();
   });
 
+  function setupScopedAdmin(supabaseMock: unknown, scopedClinicIds: string[]) {
+    mockCreateScopedAdminContext.mockReturnValue({
+      client: supabaseMock,
+      scopedClinicIds,
+      assertClinicInScope: jest.fn(),
+    });
+  }
+
   describe('権限チェック', () => {
     it('認証されていない場合は401を返す', async () => {
       processApiRequestMock.mockResolvedValue({
@@ -145,15 +156,12 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
     it('adminロールでscopeがあればアクセス可能', async () => {
       const clinicsQuery = createQueryBuilder(mockClinicData);
-
-      createAdminClientMock.mockReturnValue({
+      const supabaseMock = {
         from: jest.fn().mockImplementation((tableName: string) => {
-          if (tableName === 'clinics') {
-            return clinicsQuery;
-          }
+          if (tableName === 'clinics') return clinicsQuery;
           return createQueryBuilder([]);
         }),
-      });
+      };
 
       processApiRequestMock.mockResolvedValue({
         success: true,
@@ -165,6 +173,7 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
         },
         supabase: {},
       });
+      setupScopedAdmin(supabaseMock, ['clinic-1', 'clinic-2']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
@@ -193,22 +202,20 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('include_kpi=true の場合、各クリニックのKPIデータを含む', async () => {
-      createAdminClientMock.mockReturnValue({
+      const supabaseMock = {
         from: jest.fn().mockImplementation((tableName: string) => {
           if (tableName === 'clinics')
             return createQueryBuilder(mockClinicData);
-          if (tableName === 'daily_revenue_summary') {
+          if (tableName === 'daily_revenue_summary')
             return createQueryBuilder(mockRevenueData);
-          }
-          if (tableName === 'patient_visit_summary') {
+          if (tableName === 'patient_visit_summary')
             return createQueryBuilder(mockPatientData);
-          }
-          if (tableName === 'staff_performance_summary') {
+          if (tableName === 'staff_performance_summary')
             return createQueryBuilder(mockStaffPerformanceData);
-          }
           return createQueryBuilder([]);
         }),
-      });
+      };
+      setupScopedAdmin(supabaseMock, ['clinic-1', 'clinic-2', 'clinic-3']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
@@ -241,22 +248,20 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
         },
       ];
 
-      createAdminClientMock.mockReturnValue({
+      const supabaseMock = {
         from: jest.fn().mockImplementation((tableName: string) => {
           if (tableName === 'clinics')
             return createQueryBuilder(clinicsWithNew);
-          if (tableName === 'daily_revenue_summary') {
+          if (tableName === 'daily_revenue_summary')
             return createQueryBuilder(mockRevenueData);
-          }
-          if (tableName === 'patient_visit_summary') {
+          if (tableName === 'patient_visit_summary')
             return createQueryBuilder(mockPatientData);
-          }
-          if (tableName === 'staff_performance_summary') {
+          if (tableName === 'staff_performance_summary')
             return createQueryBuilder(mockStaffPerformanceData);
-          }
           return createQueryBuilder([]);
         }),
-      });
+      };
+      setupScopedAdmin(supabaseMock, ['clinic-1', 'clinic-2', 'clinic-3']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
@@ -288,13 +293,14 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
     });
 
     it('include_kpi パラメータなしでは従来通りの応答を返す', async () => {
-      createAdminClientMock.mockReturnValue({
+      const supabaseMock = {
         from: jest.fn().mockImplementation((tableName: string) => {
           if (tableName === 'clinics')
             return createQueryBuilder([mockClinicData[0]]);
           return createQueryBuilder([]);
         }),
-      });
+      };
+      setupScopedAdmin(supabaseMock, ['clinic-1']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest('http://localhost/api/admin/tenants');
@@ -308,13 +314,13 @@ describe('多店舗分析API - GET /api/admin/tenants', () => {
 
     it('検索フィルタは引き続き動作する', async () => {
       const clinicsQuery = createQueryBuilder([mockClinicData[0]]);
-
-      createAdminClientMock.mockReturnValue({
+      const supabaseMock = {
         from: jest.fn().mockImplementation((tableName: string) => {
           if (tableName === 'clinics') return clinicsQuery;
           return createQueryBuilder([]);
         }),
-      });
+      };
+      setupScopedAdmin(supabaseMock, ['clinic-1']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(

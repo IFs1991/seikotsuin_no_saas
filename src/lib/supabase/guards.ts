@@ -5,7 +5,7 @@ import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import {
   createClient,
   getCurrentUser,
-  getUserPermissions,
+  getUserAccessContext,
   canAccessClinicScope,
   type SupabaseServerClient,
   type UserPermissions,
@@ -56,7 +56,8 @@ export async function ensureClinicAccess(
     throw new AppError(ERROR_CODES.UNAUTHORIZED, undefined, 401);
   }
 
-  const permissions = await getUserPermissions(user.id, supabase);
+  const accessContext = await getUserAccessContext(user.id, supabase);
+  const permissions = accessContext.permissions;
   if (!permissions) {
     await AuditLogger.logUnauthorizedAccess(
       path,

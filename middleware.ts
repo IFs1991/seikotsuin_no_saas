@@ -9,6 +9,12 @@ import {
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
 } from '@/lib/constants/roles';
+import {
+  buildUserAuthAccessContext,
+  fetchProfileStatus,
+  fetchUserPermissionsRecord,
+  resolvePermissionRecord,
+} from '@/lib/supabase/auth-context';
 
 /**
  * 保護対象ルート（認証必須）
@@ -157,78 +163,34 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isAdminRoute || isHQRoute || isClinicRoute) {
-    // user_permissions テーブルを優先的に使用（仕様: single source of truth）
-    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    type PermissionsData = {
-      role: string;
-      clinic_id: string | null;
-    } | null;
-
-    let permissions: PermissionsData = null;
-    let isActive = true;
-
-    const { data: userPermissions } = await supabase
-      .from('user_permissions')
-      .select('role, clinic_id')
-      .eq('staff_id', user.id)
-      .single();
-
-    if (userPermissions) {
-      permissions = userPermissions as PermissionsData;
-      // user_permissions にはアクティブフラグがないため、profiles から取得
-      const { data: profileActive } = await supabase
-        .from('profiles')
-        .select('is_active')
-        .eq('user_id', user.id)
-        .single();
-      isActive =
-        (profileActive as { is_active?: boolean } | null)?.is_active ?? true;
-    } else {
-      // フォールバック: profiles テーブルから取得
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, clinic_id, is_active')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profile) {
-        const typedProfile = profile as {
-          role: string;
-          clinic_id: string | null;
-          is_active: boolean;
-        };
-        permissions = {
-          role: typedProfile.role,
-          clinic_id: typedProfile.clinic_id,
-        };
-        isActive = typedProfile.is_active;
-      }
-    }
+    const [permissionsRecord, profileStatus] = await Promise.all([
+      fetchUserPermissionsRecord(supabase, user.id),
+      fetchProfileStatus(supabase, user.id),
+    ]);
+    const permissions = resolvePermissionRecord(permissionsRecord, user);
+    const accessContext = buildUserAuthAccessContext(
+      permissions,
+      profileStatus
+    );
+    const role = accessContext.normalizedRole;
+    const isActive = accessContext.isActive;
 
     if (isAdminRoute) {
       // Admin UIロールのみ /admin/** にアクセス可能
       // 互換マッピング適用: clinic_manager → clinic_admin
       // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
-      if (
-        !permissions ||
-        !isActive ||
-        !canAccessAdminUIWithCompat(permissions.role)
-      ) {
+      if (!role || !isActive || !canAccessAdminUIWithCompat(role)) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
     }
 
     if (isHQRoute) {
-      if (
-        !permissions ||
-        !isActive ||
-        !canAccessCrossClinicWithCompat(permissions.role)
-      ) {
+      if (!role || !isActive || !canAccessCrossClinicWithCompat(role)) {
         return NextResponse.redirect(new URL('/unauthorized', request.url));
       }
     }
 
-    if (isClinicRoute && permissions?.role === 'admin') {
+    if (isClinicRoute && role === 'admin') {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }

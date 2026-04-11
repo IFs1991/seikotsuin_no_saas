@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 
 type InsightImpact = 'high' | 'mid' | 'low';
 
@@ -99,39 +100,22 @@ async function buildInsightInput(
   periodDays: number
 ): Promise<InsightInput> {
   const { startDate, endDate } = getDateRange(periodDays);
+  const analyticsService = new AnalyticsReadService(supabase);
 
-  const [revenueRes, staffRes, patientRes] = await Promise.all([
-    supabase
-      .from('daily_revenue_summary')
-      .select('revenue_date,total_revenue')
-      .eq('clinic_id', clinicId)
-      .gte('revenue_date', startDate)
-      .lte('revenue_date', endDate)
-      .order('revenue_date', { ascending: true }),
-    supabase
-      .from('staff_performance_summary')
-      .select('staff_name,total_revenue_generated,total_visits')
-      .eq('clinic_id', clinicId)
-      .order('total_revenue_generated', { ascending: false })
-      .limit(MAX_STAFF_ROWS),
-    supabase
-      .from('patient_visit_summary')
-      .select('first_visit_date,last_visit_date,visit_count')
-      .eq('clinic_id', clinicId)
-      .or(`first_visit_date.gte.${startDate},last_visit_date.gte.${startDate}`),
+  const [revenueData, staffData, patientData] = await Promise.all([
+    analyticsService.fetchDailyRevenue(clinicId, { startDate, endDate }),
+    analyticsService.fetchStaffPerformance(clinicId, {
+      columns: 'staff_name,total_revenue_generated,total_visits',
+      orderBy: 'total_revenue_generated',
+      limit: MAX_STAFF_ROWS,
+    }),
+    analyticsService.fetchPatientVisitSummary(clinicId, {
+      columns: 'first_visit_date,last_visit_date,visit_count',
+      dateFilter: { startDate },
+    }),
   ]);
 
-  if (revenueRes.error) {
-    throw revenueRes.error;
-  }
-  if (staffRes.error) {
-    throw staffRes.error;
-  }
-  if (patientRes.error) {
-    throw patientRes.error;
-  }
-
-  const revenueRows = (revenueRes.data ?? [])
+  const revenueRows = revenueData
     .map(row => [
       toStringOrEmpty((row as any).revenue_date),
       toNumber((row as any).total_revenue),
@@ -139,7 +123,7 @@ async function buildInsightInput(
     .filter(row => row[0])
     .slice(-MAX_REVENUE_ROWS);
 
-  const staffRows = (staffRes.data ?? [])
+  const staffRows = staffData
     .map(row => [
       toStringOrEmpty((row as any).staff_name),
       toNumber((row as any).total_revenue_generated),
@@ -148,7 +132,7 @@ async function buildInsightInput(
     .filter(row => row[0]);
 
   const { newPatients, returnPatients } = analyzePatientFunnel(
-    patientRes.data ?? [],
+    patientData,
     startDate,
     endDate
   );

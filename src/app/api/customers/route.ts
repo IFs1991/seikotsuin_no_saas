@@ -5,15 +5,8 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { buildSafeSearchFilter } from '@/lib/postgrest-sanitizer';
-import {
-  AppError,
-  createApiError,
-  ERROR_CODES,
-  getStatusCodeFromErrorCode,
-  isApiError,
-  normalizeSupabaseError,
-  logError,
-} from '@/lib/error-handler';
+import { normalizeSupabaseError } from '@/lib/error-handler';
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   customersQuerySchema,
   customerInsertSchema,
@@ -106,52 +99,17 @@ export async function GET(request: NextRequest) {
     }));
     return createSuccessResponse(mapped);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = normalizeSupabaseError(error, PATH);
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Customers fetch failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = customerInsertSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-    const insertPayload = mapCustomerInsertToRow(dto, guard.auth.id);
-    const { data, error } = await guard.supabase
+    const result = await processClinicScopedBody(request, customerInsertSchema);
+    if (!result.success) return result.error;
+
+    const insertPayload = mapCustomerInsertToRow(result.dto, result.auth.id);
+    const { data, error } = await result.supabase
       .from('customers')
       .insert(insertPayload)
       .select()
@@ -159,77 +117,26 @@ export async function POST(request: NextRequest) {
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data, 201);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Customer creation failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = customerUpdateSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-    const updatePayload = mapCustomerUpdateToRow(dto);
-    const { data, error } = await guard.supabase
+    const result = await processClinicScopedBody(request, customerUpdateSchema);
+    if (!result.success) return result.error;
+
+    const updatePayload = mapCustomerUpdateToRow(result.dto);
+    const { data, error } = await result.supabase
       .from('customers')
       .update(updatePayload)
-      .eq('id', dto.id)
-      .eq('clinic_id', dto.clinic_id)
+      .eq('id', result.dto.id)
+      .eq('clinic_id', result.dto.clinic_id)
       .select()
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Customer update failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }

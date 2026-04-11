@@ -8,7 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase';
+import {
+  createPublicClinicContext,
+  ClinicNotFoundError,
+  ClinicInactiveError,
+} from '@/lib/supabase/scoped-admin';
 import { menusQuerySchema } from '../schema';
 
 export async function GET(request: NextRequest) {
@@ -36,29 +40,27 @@ export async function GET(request: NextRequest) {
 
     const { clinic_id, category } = parsed.data;
 
-    // Use admin client (service role) for public access
-    const supabase = createAdminClient();
-
-    // Verify clinic exists
-    const { data: clinic, error: clinicError } = await supabase
-      .from('clinics')
-      .select('id, name, is_active')
-      .eq('id', clinic_id)
-      .single();
-
-    if (clinicError || !clinic) {
-      return NextResponse.json(
-        { success: false, error: 'Clinic not found' },
-        { status: 404 }
-      );
+    // Validate clinic exists and is active via scoped admin context
+    let clinicCtx;
+    try {
+      clinicCtx = await createPublicClinicContext(clinic_id);
+    } catch (e) {
+      if (e instanceof ClinicNotFoundError) {
+        return NextResponse.json(
+          { success: false, error: 'Clinic not found' },
+          { status: 404 }
+        );
+      }
+      if (e instanceof ClinicInactiveError) {
+        return NextResponse.json(
+          { success: false, error: 'Clinic is not active' },
+          { status: 403 }
+        );
+      }
+      throw e;
     }
 
-    if (!clinic.is_active) {
-      return NextResponse.json(
-        { success: false, error: 'Clinic is not active' },
-        { status: 403 }
-      );
-    }
+    const { client: supabase, clinic } = clinicCtx;
 
     // Build menus query with clinic_id scope
     let query = supabase

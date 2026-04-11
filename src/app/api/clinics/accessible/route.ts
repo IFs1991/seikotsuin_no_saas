@@ -6,19 +6,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { STAFF_ROLES } from '@/lib/constants/roles';
-import type { UserPermissions } from '@/lib/supabase';
-
-function resolveScopedClinicIds(permissions: UserPermissions): string[] | null {
-  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
-    return permissions.clinic_scope_ids;
-  }
-
-  if (permissions.clinic_id) {
-    return [permissions.clinic_id];
-  }
-
-  return null;
-}
+import { resolveScopedClinicIds } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {

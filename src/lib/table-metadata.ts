@@ -27,6 +27,27 @@ const MANAGEABLE_TABLES: string[] = [
 ];
 
 /**
+ * 書き込み可能テーブル（閉鎖MVP向け blast-radius 縮小）
+ *
+ * patients, staff, clinic_settings は専用エンドポイントで管理するため
+ * generic CRUD からは read-only とする。
+ *
+ * @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-08)
+ */
+const WRITABLE_TABLES: string[] = [
+  'menus',
+  'menu_categories',
+  'resources',
+];
+
+/**
+ * テーブルが書き込み可能かどうかを判定
+ */
+export function isWritableTable(tableName: string): boolean {
+  return WRITABLE_TABLES.includes(tableName);
+}
+
+/**
  * 管理可能なテーブル一覧を取得（静的定義）
  */
 export async function getManageableTables(): Promise<string[]> {

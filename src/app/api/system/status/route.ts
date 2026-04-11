@@ -5,7 +5,7 @@ import {
   createErrorResponse,
   logError,
 } from '@/lib/api-helpers';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient, resolveScopedClinicIds } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,9 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { auth, permissions } = result;
 
-  const clinicIds =
-    (permissions as any).clinic_scope_ids ??
-    (permissions.clinic_id ? [permissions.clinic_id] : null);
+  const clinicIds = resolveScopedClinicIds(permissions);
 
   if (!clinicIds || clinicIds.length === 0) {
     return createErrorResponse('院へのアクセス権がありません', 403);

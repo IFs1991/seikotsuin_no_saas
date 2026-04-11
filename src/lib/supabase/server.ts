@@ -6,6 +6,13 @@ import { cookies } from 'next/headers';
 import { assertEnv } from '@/lib/env';
 import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 import type { Database } from '@/types/supabase';
+import {
+  buildUserAuthAccessContext,
+  fetchProfileStatus,
+  fetchUserPermissionsRecord,
+  resolvePermissionRecord,
+  type UserAuthAccessContext,
+} from './auth-context';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -111,6 +118,26 @@ export interface UserPermissions {
   clinic_scope_ids?: string[];
 }
 
+export type UserAccessContext = UserAuthAccessContext<UserPermissions>;
+
+/**
+ * Resolve the effective clinic scope for a user.
+ * Priority: clinic_scope_ids array > clinic_id fallback
+ */
+export function resolveScopedClinicIds(
+  permissions: UserPermissions
+): string[] | null {
+  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
+    return permissions.clinic_scope_ids;
+  }
+
+  if (permissions.clinic_id) {
+    return [permissions.clinic_id];
+  }
+
+  return null;
+}
+
 export async function getUserPermissions(
   userId: string,
   client?: SupabaseServerClient
@@ -121,46 +148,23 @@ export async function getUserPermissions(
   // 2. It only reads the authenticated user's own permission data
   // 3. RLS on user_permissions table can cause performance issues during auth flow
   const adminClient = createAdminClient();
-  const { data: permissionsData, error } = await adminClient
-    .from('user_permissions')
-    .select('role, clinic_id')
-    .eq('staff_id', userId)
-    .maybeSingle();
+  const permissionsData = await fetchUserPermissionsRecord(adminClient, userId);
 
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
   // Use normal client for JWT session access (not RLS-protected)
   const supabase = client ?? (await getServerClient());
   const currentUser = await getCurrentUser(supabase);
-  const appMetadata =
-    currentUser && currentUser.id === userId
-      ? ((currentUser.app_metadata ?? {}) as Record<string, unknown>)
-      : {};
-
-  const roleFromJwt =
-    typeof appMetadata.user_role === 'string'
-      ? appMetadata.user_role
-      : typeof appMetadata.role === 'string'
-        ? appMetadata.role
-        : null;
-  const clinicIdFromJwt =
-    typeof appMetadata.clinic_id === 'string' ? appMetadata.clinic_id : null;
-
-  const permissions =
-    !error && permissionsData
-      ? (permissionsData as { role: string; clinic_id: string | null })
-      : roleFromJwt
-        ? {
-            role: roleFromJwt,
-            clinic_id: clinicIdFromJwt,
-          }
-        : null;
+  const permissions = resolvePermissionRecord(
+    permissionsData as { role: string; clinic_id: string | null } | null,
+    currentUser && currentUser.id === userId ? currentUser : null
+  );
 
   if (!permissions) {
     return null;
   }
 
-  let clinic_scope_ids: string[] | undefined;
+  let clinic_scope_ids: string[] | undefined = permissions.clinic_scope_ids;
   try {
     const {
       data: { session },
@@ -198,13 +202,21 @@ export function canAccessClinicScope(
   permissions: UserPermissions,
   targetClinicId: string
 ): boolean {
-  // If clinic_scope_ids is available, use parent-scope check
-  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
-    return permissions.clinic_scope_ids.includes(targetClinicId);
-  }
+  const scopedClinicIds = resolveScopedClinicIds(permissions);
+  return scopedClinicIds?.includes(targetClinicId) ?? false;
+}
 
-  // Fallback: single clinic_id comparison
-  return permissions.clinic_id === targetClinicId;
+export async function getUserAccessContext(
+  userId: string,
+  client?: SupabaseServerClient
+): Promise<UserAccessContext> {
+  const supabase = client ?? (await getServerClient());
+  const [permissions, profileStatus] = await Promise.all([
+    getUserPermissions(userId, supabase),
+    fetchProfileStatus(supabase, userId),
+  ]);
+
+  return buildUserAuthAccessContext(permissions, profileStatus);
 }
 
 export async function requireAuth(client?: SupabaseServerClient) {
@@ -218,7 +230,8 @@ export async function requireAuth(client?: SupabaseServerClient) {
 export async function requireAdminAuth(client?: SupabaseServerClient) {
   const supabase = client ?? (await getServerClient());
   const user = await requireAuth(supabase);
-  const permissions = await getUserPermissions(user.id, supabase);
+  const accessContext = await getUserAccessContext(user.id, supabase);
+  const permissions = accessContext.permissions;
 
   // 互換マッピング適用: clinic_manager → clinic_admin
   // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)

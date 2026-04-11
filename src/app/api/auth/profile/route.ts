@@ -1,17 +1,5 @@
 import { NextResponse } from 'next/server';
-import {
-  createClient,
-  getUserPermissions,
-  type SupabaseServerClient,
-} from '@/lib/supabase';
-import {
-  canManageClinicSettingsWithCompat,
-  normalizeRole,
-} from '@/lib/constants/roles';
-
-type ProfileStatusRow = {
-  is_active: boolean | null;
-} | null;
+import { createClient, getUserAccessContext } from '@/lib/supabase';
 
 interface ProfileResponse {
   id: string;
@@ -20,33 +8,6 @@ interface ProfileResponse {
   clinicId: string | null;
   isActive: boolean;
   isAdmin: boolean;
-}
-
-async function fetchProfileStatus(
-  supabase: SupabaseServerClient,
-  userId: string
-): Promise<ProfileStatusRow> {
-  const profileQuery = await supabase
-    .from('profiles')
-    .select('is_active')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (profileQuery.data || !profileQuery.error) {
-    return profileQuery.data ?? null;
-  }
-
-  const fallbackQuery = await supabase
-    .from('profiles')
-    .select('is_active')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (fallbackQuery.data || !fallbackQuery.error) {
-    return fallbackQuery.data ?? null;
-  }
-
-  return null;
 }
 
 export async function GET() {
@@ -64,15 +25,10 @@ export async function GET() {
       );
     }
 
-    const permissions = await getUserPermissions(user.id, supabase);
-    const profileStatus = await fetchProfileStatus(supabase, user.id);
-
-    // 互換マッピング適用: clinic_manager → clinic_admin
-    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
-    const rawRole = permissions?.role ?? null;
-    const role = normalizeRole(rawRole);
-    const clinicId = permissions?.clinic_id ?? null;
-    const isActive = profileStatus?.is_active ?? true;
+    const accessContext = await getUserAccessContext(user.id, supabase);
+    const role = accessContext.normalizedRole;
+    const clinicId = accessContext.clinicId;
+    const isActive = accessContext.isActive;
 
     // Q4決定: isAdmin に manager を含める（統一）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
@@ -82,7 +38,7 @@ export async function GET() {
       role,
       clinicId,
       isActive: Boolean(isActive),
-      isAdmin: canManageClinicSettingsWithCompat(role),
+      isAdmin: accessContext.isAdmin,
     };
 
     return NextResponse.json({ success: true, data: response });

@@ -20,7 +20,11 @@ import {
   ADMIN_UI_ROLES,
   canAccessAdminUIWithCompat,
 } from '@/lib/constants/roles';
-import { createAdminClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  ScopeAccessError,
+  ScopeNotConfiguredError,
+} from '@/lib/supabase/scoped-admin';
 
 // ステータス定義
 const VALID_STATUSES = [
@@ -288,24 +292,19 @@ export async function POST(request: NextRequest) {
     }
 
     const eventData = parseResult.data;
-    const allowedClinicIds =
-      permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0
-        ? permissions.clinic_scope_ids
-        : permissions.clinic_id
-          ? [permissions.clinic_id]
-          : [];
 
-    if (
-      allowedClinicIds.length === 0 ||
-      !allowedClinicIds.includes(eventData.clinic_id)
-    ) {
-      return createErrorResponse(
-        '対象クリニックへのアクセス権がありません',
-        403
-      );
+    let adminCtx;
+    try {
+      adminCtx = createScopedAdminContext(permissions);
+      adminCtx.assertClinicInScope(eventData.clinic_id);
+    } catch (e) {
+      if (e instanceof ScopeNotConfiguredError || e instanceof ScopeAccessError) {
+        return createErrorResponse(e.message, 403);
+      }
+      throw e;
     }
 
-    const adminSupabase = createAdminClient();
+    const adminSupabase = adminCtx.client;
 
     // イベント作成
     const { data: createdEvent, error: eventError } = await adminSupabase

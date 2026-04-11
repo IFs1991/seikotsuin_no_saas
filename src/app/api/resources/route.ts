@@ -4,15 +4,8 @@ import {
   createSuccessResponse,
   processApiRequest,
 } from '@/lib/api-helpers';
-import {
-  AppError,
-  createApiError,
-  ERROR_CODES,
-  getStatusCodeFromErrorCode,
-  isApiError,
-  normalizeSupabaseError,
-  logError,
-} from '@/lib/error-handler';
+import { normalizeSupabaseError } from '@/lib/error-handler';
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   resourcesQuerySchema,
   resourceInsertSchema,
@@ -65,51 +58,17 @@ export async function GET(request: NextRequest) {
     }));
     return createSuccessResponse(mapped);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = normalizeSupabaseError(error, PATH);
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Resources fetch failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = resourceInsertSchema.safeParse(auth.body);
-    if (!parsedBody.success)
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-    const insertPayload = mapResourceInsertToRow(dto, guard.auth.id);
-    const { data, error } = await guard.supabase
+    const result = await processClinicScopedBody(request, resourceInsertSchema);
+    if (!result.success) return result.error;
+
+    const insertPayload = mapResourceInsertToRow(result.dto, result.auth.id);
+    const { data, error } = await result.supabase
       .from('resources')
       .insert(insertPayload)
       .select()
@@ -117,77 +76,27 @@ export async function POST(request: NextRequest) {
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data, 201);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Resource creation failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
-    const parsedBody = resourceUpdateSchema.safeParse(auth.body);
-    if (!parsedBody.success)
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-    const updatePayload = mapResourceUpdateToRow(dto);
-    const { data, error } = await guard.supabase
+    const result = await processClinicScopedBody(request, resourceUpdateSchema);
+    if (!result.success) return result.error;
+
+    const updatePayload = mapResourceUpdateToRow(result.dto);
+    const { data, error } = await result.supabase
       .from('resources')
       .update(updatePayload)
-      .eq('id', dto.id)
-      .eq('clinic_id', dto.clinic_id)
+      .eq('id', result.dto.id)
+      .eq('clinic_id', result.dto.clinic_id)
       .select()
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Resource update failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
@@ -214,25 +123,6 @@ export async function DELETE(request: NextRequest) {
     }
     return createSuccessResponse({ deleted: true });
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Resource delete failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }

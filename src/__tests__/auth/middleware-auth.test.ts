@@ -54,12 +54,24 @@ describe('認証と権限制御 Middleware', () => {
   function createMockSupabase(
     user: any,
     profile: any,
-    userPermissions: any = null
+    userPermissions?: any
   ) {
-    // If userPermissions is not provided, derive from profile for backward compatibility
     const permissions =
-      userPermissions ??
-      (profile ? { role: profile.role, clinic_id: profile.clinic_id } : null);
+      userPermissions === undefined
+        ? profile
+          ? { role: profile.role, clinic_id: profile.clinic_id }
+          : null
+        : userPermissions;
+
+    const singleResponse = (data: any) => ({
+      data,
+      error: data ? null : { code: 'PGRST116' },
+    });
+
+    const singleQuery = (data: any) => ({
+      single: jest.fn().mockResolvedValue(singleResponse(data)),
+      maybeSingle: jest.fn().mockResolvedValue(singleResponse(data)),
+    });
 
     return {
       auth: {
@@ -72,24 +84,14 @@ describe('認証と権限制御 Middleware', () => {
         if (table === 'user_permissions') {
           return {
             select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({
-                  data: permissions,
-                  error: permissions ? null : { code: 'PGRST116' },
-                }),
-              }),
+              eq: jest.fn().mockReturnValue(singleQuery(permissions)),
             }),
           };
         }
         // profiles table
         return {
           select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({
-                data: profile,
-                error: profile ? null : { code: 'PGRST116' },
-              }),
-            }),
+            eq: jest.fn().mockReturnValue(singleQuery(profile)),
           }),
         };
       }),
@@ -248,6 +250,31 @@ describe('認証と権限制御 Middleware', () => {
       }
     );
 
+    test('user_permissions が無くても app_metadata.user_role fallback で /admin/** にアクセス可能', async () => {
+      const adminUser = {
+        id: 'legacy-user-123',
+        email: 'legacy@example.com',
+        app_metadata: {
+          user_role: 'clinic_manager',
+          clinic_id: 'clinic-123',
+        },
+      };
+      const profileStatus = {
+        role: 'staff',
+        clinic_id: 'clinic-123',
+        is_active: true,
+      };
+
+      mockCreateServerClient.mockReturnValue(
+        createMockSupabase(adminUser, profileStatus, null) as any
+      );
+
+      const request = createMockRequest('/admin/settings');
+      const response = await middleware(request);
+
+      expect(response.status).not.toBe(307);
+    });
+
     test('HQ admin は /multi-store にアクセス可能', async () => {
       const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
       const adminProfile = {
@@ -363,6 +390,64 @@ describe('認証と権限制御 Middleware', () => {
       expect(response.status).toBe(307);
       const location = response.headers.get('location');
       expect(location).toContain('/unauthorized');
+    });
+
+    test('user_permissions が無い場合は profiles に role があっても拒否される', async () => {
+      const user = { id: 'fallback-user', email: 'fallback@example.com' };
+
+      mockCreateServerClient.mockReturnValue({
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user },
+            error: null,
+          }),
+        },
+        from: jest.fn().mockImplementation((table: string) => {
+          if (table === 'user_permissions') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  maybeSingle: jest.fn().mockResolvedValue({
+                    data: null,
+                    error: { code: 'PGRST116' },
+                  }),
+                  single: jest.fn().mockResolvedValue({
+                    data: null,
+                    error: { code: 'PGRST116' },
+                  }),
+                }),
+              }),
+            };
+          }
+
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockImplementation((column: string) => ({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data:
+                    column === 'user_id' || column === 'id'
+                      ? { is_active: true }
+                      : null,
+                  error: null,
+                }),
+                single: jest.fn().mockResolvedValue({
+                  data:
+                    column === 'user_id' || column === 'id'
+                      ? { is_active: true }
+                      : null,
+                  error: null,
+                }),
+              })),
+            }),
+          };
+        }),
+      } as any);
+
+      const request = createMockRequest('/admin/settings');
+      const response = await middleware(request);
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/unauthorized');
     });
   });
 

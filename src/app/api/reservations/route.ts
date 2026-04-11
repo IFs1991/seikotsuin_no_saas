@@ -4,15 +4,8 @@ import {
   createSuccessResponse,
   processApiRequest,
 } from '@/lib/api-helpers';
-import {
-  AppError,
-  createApiError,
-  ERROR_CODES,
-  getStatusCodeFromErrorCode,
-  isApiError,
-  normalizeSupabaseError,
-  logError,
-} from '@/lib/error-handler';
+import { normalizeSupabaseError } from '@/lib/error-handler';
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   reservationsQuerySchema,
   reservationInsertSchema,
@@ -144,54 +137,20 @@ export async function GET(request: NextRequest) {
 
     return createSuccessResponse(mapped);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = normalizeSupabaseError(error, PATH);
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Reservation fetch failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
+    const result = await processClinicScopedBody(
+      request,
+      reservationInsertSchema
+    );
+    if (!result.success) return result.error;
 
-    const parsedBody = reservationInsertSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-    });
-    if (!guard.success) return guard.error;
-
-    const conflict = await hasReservationConflict(guard.supabase, {
+    const dto = result.dto;
+    const conflict = await hasReservationConflict(result.supabase, {
       clinicId: dto.clinic_id,
       staffId: dto.staffId,
       startTime: dto.startTime,
@@ -201,9 +160,9 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('同時間帯に既存予約があります', 409);
     }
 
-    const insertPayload = mapReservationInsertToRow(dto, guard.auth.id);
+    const insertPayload = mapReservationInsertToRow(dto, result.auth.id);
 
-    const { data, error } = await guard.supabase
+    const { data, error } = await result.supabase
       .from('reservations')
       .insert(insertPayload)
       .select()
@@ -215,53 +174,23 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(data, 201);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Reservation creation failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const auth = await processApiRequest(request, { requireBody: true });
-    if (!auth.success) return auth.error;
+    const result = await processClinicScopedBody(
+      request,
+      reservationUpdateSchema,
+      { allowedRoles: Array.from(STAFF_ROLES) }
+    );
+    if (!result.success) return result.error;
 
-    const parsedBody = reservationUpdateSchema.safeParse(auth.body);
-    if (!parsedBody.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsedBody.error.flatten()
-      );
-    }
-
-    const dto = parsedBody.data;
-    const guard = await processApiRequest(request, {
-      clinicId: dto.clinic_id,
-      requireClinicMatch: true,
-      allowedRoles: Array.from(STAFF_ROLES),
-    });
-    if (!guard.success) return guard.error;
+    const dto = result.dto;
 
     if (dto.staffId || dto.startTime || dto.endTime) {
-      const { data: existing, error: existingError } = await guard.supabase
+      const { data: existing, error: existingError } = await result.supabase
         .from('reservations')
         .select('staff_id, start_time, end_time')
         .eq('id', dto.id)
@@ -276,7 +205,7 @@ export async function PATCH(request: NextRequest) {
       const nextStartTime = dto.startTime ?? existing.start_time;
       const nextEndTime = dto.endTime ?? existing.end_time;
 
-      const conflict = await hasReservationConflict(guard.supabase, {
+      const conflict = await hasReservationConflict(result.supabase, {
         clinicId: dto.clinic_id,
         staffId: nextStaffId,
         startTime: nextStartTime,
@@ -290,7 +219,7 @@ export async function PATCH(request: NextRequest) {
 
     const updatePayload = mapReservationUpdateToRow(dto);
 
-    const { data, error } = await guard.supabase
+    const { data, error } = await result.supabase
       .from('reservations')
       .update(updatePayload)
       .eq('id', dto.id)
@@ -304,26 +233,7 @@ export async function PATCH(request: NextRequest) {
 
     return createSuccessResponse(data);
   } catch (error) {
-    let apiError;
-    let statusCode = 500;
-    if (error instanceof AppError) {
-      apiError = error.toApiError(PATH);
-      statusCode = error.statusCode;
-    } else if (isApiError(error)) {
-      apiError = error;
-      statusCode = getStatusCodeFromErrorCode(apiError.code);
-    } else {
-      apiError = createApiError(
-        ERROR_CODES.INTERNAL_SERVER_ERROR,
-        'Reservation update failed',
-        undefined,
-        PATH
-      );
-    }
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      path: PATH,
-    });
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return handleRouteError(error, PATH);
   }
 }
 

@@ -11,7 +11,7 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { getManageableTables, getTableConfig } from '@/lib/table-metadata';
+import { getManageableTables, getTableConfig, isWritableTable } from '@/lib/table-metadata';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import { HQ_ROLES } from '@/lib/constants/roles';
 
@@ -204,6 +204,14 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('指定されたテーブルは管理対象外です', 404);
     }
 
+    // 書き込み可能テーブルかチェック (PR-08)
+    if (!isWritableTable(table_name)) {
+      return createErrorResponse(
+        'このテーブルは読み取り専用です。専用のエンドポイントを使用してください',
+        403
+      );
+    }
+
     // バリデーション
     const validationResult = safeValidateTableData(
       table_name as SupportedTableName,
@@ -292,6 +300,14 @@ export async function PUT(request: NextRequest) {
       return createErrorResponse('指定されたテーブルは管理対象外です', 404);
     }
 
+    // 書き込み可能テーブルかチェック (PR-08)
+    if (!isWritableTable(table_name)) {
+      return createErrorResponse(
+        'このテーブルは読み取り専用です。専用のエンドポイントを使用してください',
+        403
+      );
+    }
+
     // バリデーション（部分更新対応）
     const validationResult = safeValidateTableData(
       table_name as SupportedTableName,
@@ -343,65 +359,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE: データ削除
-// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
-export async function DELETE(request: NextRequest) {
-  try {
-    // 認証・認可チェック
-    const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(HQ_ROLES),
-      requireClinicMatch: false,
-    });
-    if (!processResult.success) {
-      return processResult.error!;
-    }
-
-    const { auth, supabase } = processResult;
-    const { searchParams } = new URL(request.url);
-    const tableName = searchParams.get('table');
-    const id = searchParams.get('id');
-
-    if (!tableName || !id) {
-      return createErrorResponse('テーブル名とIDが必要です', 400);
-    }
-
-    // テーブル設定を取得して検証
-    const tableConfig = await getTableConfig(tableName);
-    if (!tableConfig) {
-      return createErrorResponse('指定されたテーブルは管理対象外です', 404);
-    }
-
-    // データベースから削除
-    const { error } = await supabase
-      .from(tableName as any)
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      logError(error, {
-        endpoint: '/api/admin/tables',
-        method: 'DELETE',
-        userId: auth?.id || 'unknown',
-        params: { tableName, id },
-      });
-      return createErrorResponse('データの削除に失敗しました', 500);
-    }
-
-    // 監査ログ記録
-    await AuditLogger.logDataDelete(
-      auth?.id || '',
-      auth?.email || '',
-      tableName,
-      id
-    );
-
-    return createSuccessResponse(null, 200, SUCCESS_MESSAGES.DELETED);
-  } catch (error) {
-    logError(error, {
-      endpoint: '/api/admin/tables',
-      method: 'DELETE',
-      userId: 'unknown',
-    });
-    return createErrorResponse('サーバーエラーが発生しました', 500);
-  }
-}
+// DELETE: 閉鎖MVPでは無効化 (PR-08)
+// generic DELETE は blast radius が大きいため、個別エンドポイントで対応する
+// @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-08)
