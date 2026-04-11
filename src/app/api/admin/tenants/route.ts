@@ -43,7 +43,11 @@ interface ClinicWithKPI {
   phone_number: string | null;
   is_active: boolean;
   created_at: string;
-  kpi?: { revenue: number; patients: number; staff_performance_score: number | null };
+  kpi?: {
+    revenue: number;
+    patients: number;
+    staff_performance_score: number | null;
+  };
 }
 
 export async function GET(request: NextRequest) {

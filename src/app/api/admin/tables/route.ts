@@ -11,7 +11,11 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { getManageableTables, getTableConfig, isWritableTable } from '@/lib/table-metadata';
+import {
+  getManageableTables,
+  getTableConfig,
+  isWritableTable,
+} from '@/lib/table-metadata';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import { HQ_ROLES } from '@/lib/constants/roles';
 

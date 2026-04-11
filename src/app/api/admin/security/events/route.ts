@@ -298,7 +298,10 @@ export async function POST(request: NextRequest) {
       adminCtx = createScopedAdminContext(permissions);
       adminCtx.assertClinicInScope(eventData.clinic_id);
     } catch (e) {
-      if (e instanceof ScopeNotConfiguredError || e instanceof ScopeAccessError) {
+      if (
+        e instanceof ScopeNotConfiguredError ||
+        e instanceof ScopeAccessError
+      ) {
         return createErrorResponse(e.message, 403);
       }
       throw e;

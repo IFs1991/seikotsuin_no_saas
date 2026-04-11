@@ -34,11 +34,7 @@ const MANAGEABLE_TABLES: string[] = [
  *
  * @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-08)
  */
-const WRITABLE_TABLES: string[] = [
-  'menus',
-  'menu_categories',
-  'resources',
-];
+const WRITABLE_TABLES: string[] = ['menus', 'menu_categories', 'resources'];
 
 /**
  * テーブルが書き込み可能かどうかを判定

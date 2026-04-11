@@ -151,7 +151,10 @@ export async function PUT(request: NextRequest) {
     const { clinic_id, category, settings } = body as {
       clinic_id?: string;
       category?: string;
-      settings?: Record<string, unknown>;
+      settings?: Record<
+        SettingsCategory,
+        Record<string, unknown>
+      >[SettingsCategory];
     };
 
     // バリデーション

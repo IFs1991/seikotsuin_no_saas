@@ -10,7 +10,7 @@
  * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md - Customer Access Model
  */
 
-import type { SupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];

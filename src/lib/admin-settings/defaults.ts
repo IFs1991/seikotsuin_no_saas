@@ -19,7 +19,10 @@ export type SettingsCategory = (typeof VALID_CATEGORIES)[number];
 
 export type SettingsRecord = Record<string, unknown>;
 
-export const DEFAULT_SETTINGS: Record<SettingsCategory, Record<string, unknown>> = {
+export const DEFAULT_SETTINGS: Record<
+  SettingsCategory,
+  Record<string, unknown>
+> = {
   clinic_basic: {
     name: '',
     zipCode: '',

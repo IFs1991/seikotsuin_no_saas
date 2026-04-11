@@ -1,4 +1,4 @@
-import type { UserPermissions } from '@/lib/supabase/server';
+import type { UserPermissions } from '@/lib/supabase';
 import {
   createScopedAdminContext,
   createPublicClinicContext,

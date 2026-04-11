@@ -86,10 +86,7 @@ export async function POST(request: NextRequest) {
       throw e;
     }
 
-    const service = new PublicReservationService(
-      clinicCtx.client,
-      clinic_id
-    );
+    const service = new PublicReservationService(clinicCtx.client, clinic_id);
 
     // Check booking settings
     try {

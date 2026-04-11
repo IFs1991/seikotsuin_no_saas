@@ -15,8 +15,9 @@
 import {
   createAdminClient,
   resolveScopedClinicIds,
+  type UserPermissions,
+  type SupabaseServerClient,
 } from './server';
-import type { UserPermissions, SupabaseServerClient } from './server';
 
 // ──────────────────────────────────────────────
 // Error types

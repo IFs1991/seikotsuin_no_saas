@@ -12,7 +12,7 @@
  * @see docs/stabilization/plan-closed-mvp-refactoring-priority-v0.1.md (PR-07)
  */
 
-import type { SupabaseServerClient } from '@/lib/supabase/server';
+import type { SupabaseServerClient } from '@/lib/supabase';
 
 // ──────────────────────────────────────────────
 // Types
@@ -130,9 +130,7 @@ export class AnalyticsReadService {
 
     const { data, error } = await query;
     if (error) {
-      throw new Error(
-        `patient_visit_summary query failed: ${error.message}`
-      );
+      throw new Error(`patient_visit_summary query failed: ${error.message}`);
     }
     return data ?? [];
   }
@@ -148,7 +146,11 @@ export class AnalyticsReadService {
 
     // Initialize defaults
     clinicIds.forEach(id => {
-      kpiMap.set(id, { revenue: 0, patients: 0, staff_performance_score: null });
+      kpiMap.set(id, {
+        revenue: 0,
+        patients: 0,
+        staff_performance_score: null,
+      });
     });
 
     // Revenue aggregation
@@ -161,7 +163,10 @@ export class AnalyticsReadService {
       (revenueData as { clinic_id: string; total_revenue: number }[]).forEach(
         row => {
           const current = revenueByClinic.get(row.clinic_id) ?? 0;
-          revenueByClinic.set(row.clinic_id, current + Number(row.total_revenue));
+          revenueByClinic.set(
+            row.clinic_id,
+            current + Number(row.total_revenue)
+          );
         }
       );
       revenueByClinic.forEach((total, clinicId) => {

@@ -28,7 +28,4 @@ export {
   ClinicInactiveError,
 } from './scoped-admin';
 
-export type {
-  ScopedAdminContext,
-  PublicClinicContext,
-} from './scoped-admin';
+export type { ScopedAdminContext, PublicClinicContext } from './scoped-admin';
