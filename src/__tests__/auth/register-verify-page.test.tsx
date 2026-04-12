@@ -22,7 +22,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const mockResend = jest.fn();
-jest.mock('@/app/register/actions', () => ({
+jest.mock('@/app/(public)/register/actions', () => ({
   registerOwner: jest.fn(),
   resendVerificationEmail: (...args: unknown[]) => mockResend(...args),
 }));
@@ -54,7 +54,7 @@ describe('/register/verify ページ', () => {
   describe('UIレンダリング', () => {
     test('「確認メールを送信しました」の見出しが表示される', async () => {
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       render(<VerifyPage />);
       // heading レベルで絞り込み（他のテキストとの衝突を避ける）
       const heading = screen.getByRole('heading', { name: /確認メール/i });
@@ -63,14 +63,14 @@ describe('/register/verify ページ', () => {
 
     test('URL から取得したメールアドレスが表示される', async () => {
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       render(<VerifyPage />);
       expect(screen.getByText(/owner@clinic\.com/)).toBeTruthy();
     });
 
     test('「メールを再送する」ボタンが表示される', async () => {
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       render(<VerifyPage />);
       const resendButton =
         screen.queryByRole('button', { name: /再送/i }) ||
@@ -80,7 +80,7 @@ describe('/register/verify ページ', () => {
 
     test('「管理者ログインへ戻る」リンクが表示される', async () => {
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       render(<VerifyPage />);
       const backLink =
         screen.queryByRole('link', { name: /管理者ログイン/i }) ||
@@ -90,7 +90,7 @@ describe('/register/verify ページ', () => {
 
     test('/admin/login へのリンクが存在する', async () => {
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       render(<VerifyPage />);
       const links = document.querySelectorAll('a[href*="/admin/login"]');
       expect(links.length).toBeGreaterThan(0);
@@ -104,7 +104,7 @@ describe('/register/verify ページ', () => {
     test('メールなしでも表示エラーなくレンダリングされる', async () => {
       mockGetParam.mockReturnValue(null);
       const { default: VerifyPage } =
-        await import('@/app/register/verify/page');
+        await import('@/app/(public)/register/verify/page');
       expect(() => render(<VerifyPage />)).not.toThrow();
     });
   });

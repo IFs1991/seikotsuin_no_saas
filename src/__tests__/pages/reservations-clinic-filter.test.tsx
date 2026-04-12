@@ -76,7 +76,7 @@ jest.mock('@/hooks/useReservationFormData', () => ({
 
 // useAppointments をモック（引数を記録）
 const mockAppointmentsFn = jest.fn();
-jest.mock('@/app/reservations/hooks/useAppointments', () => ({
+jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
   useAppointments: (clinicId: string | null) => {
     mockAppointmentsFn(clinicId);
     return {
@@ -94,28 +94,28 @@ jest.mock('@/app/reservations/hooks/useAppointments', () => ({
 }));
 
 // サブコンポーネントをモックして不要な lucide-react 依存を排除
-jest.mock('@/app/reservations/components/ControlBar', () => ({
+jest.mock('@/app/(app)/reservations/components/ControlBar', () => ({
   ControlBar: () => <div data-testid='control-bar' />,
 }));
-jest.mock('@/app/reservations/components/Scheduler', () => ({
+jest.mock('@/app/(app)/reservations/components/Scheduler', () => ({
   Scheduler: () => <div data-testid='scheduler' />,
 }));
-jest.mock('@/app/reservations/components/AppointmentList', () => ({
+jest.mock('@/app/(app)/reservations/components/AppointmentList', () => ({
   AppointmentList: () => <div data-testid='appointment-list' />,
 }));
-jest.mock('@/app/reservations/components/AppointmentForm', () => ({
+jest.mock('@/app/(app)/reservations/components/AppointmentForm', () => ({
   AppointmentForm: () => <div data-testid='appointment-form' />,
 }));
-jest.mock('@/app/reservations/components/AppointmentDetail', () => ({
+jest.mock('@/app/(app)/reservations/components/AppointmentDetail', () => ({
   AppointmentDetail: () => <div data-testid='appointment-detail' />,
 }));
-jest.mock('@/app/reservations/components/UnconfirmedReservationsModal', () => ({
+jest.mock('@/app/(app)/reservations/components/UnconfirmedReservationsModal', () => ({
   UnconfirmedReservationsModal: () => <div data-testid='unconfirmed-modal' />,
 }));
-jest.mock('@/app/reservations/components/NotificationsModal', () => ({
+jest.mock('@/app/(app)/reservations/components/NotificationsModal', () => ({
   NotificationsModal: () => <div data-testid='notifications-modal' />,
 }));
-jest.mock('@/app/reservations/components/Header', () => ({
+jest.mock('@/app/(app)/reservations/components/Header', () => ({
   Header: () => <div data-testid='res-header' />,
 }));
 
@@ -124,7 +124,7 @@ jest.mock('lucide-react', () => ({
   Loader2: () => <div data-testid='loader' />,
 }));
 
-import ReservationsPage from '@/app/reservations/page';
+import ReservationsPage from '@/app/(app)/reservations/page';
 
 describe('ReservationsPage クリニックフィルタ', () => {
   beforeEach(() => {

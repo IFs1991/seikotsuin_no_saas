@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { Header } from '@/app/reservations/components/Header';
+import { Header } from '@/app/(app)/reservations/components/Header';
 
 describe('Reservation Header', () => {
   it('shows non-alert style when counts are zero', () => {

@@ -74,7 +74,7 @@ jest.mock('@/hooks/useReservationFormData', () => ({
 }));
 
 // useAppointmentsをモック
-jest.mock('@/app/reservations/hooks/useAppointments', () => ({
+jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
   useAppointments: () => ({
     appointments: [],
     pendingAppointments: [],
@@ -87,7 +87,7 @@ jest.mock('@/app/reservations/hooks/useAppointments', () => ({
   }),
 }));
 
-import ReservationTimelinePage from '@/app/reservations/page';
+import ReservationTimelinePage from '@/app/(app)/reservations/page';
 
 describe('ReservationsPage', () => {
   beforeEach(() => {

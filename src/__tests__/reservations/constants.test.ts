@@ -1,4 +1,4 @@
-import { COLORS_LEFT_BORDER } from '@/app/reservations/constants';
+import { COLORS_LEFT_BORDER } from '@/app/(app)/reservations/constants';
 
 describe('COLORS_LEFT_BORDER', () => {
   const colorKeys = ['red', 'pink', 'blue', 'orange', 'purple', 'grey'];

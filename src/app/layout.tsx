@@ -1,6 +1,5 @@
 import React from 'react';
 import './globals.css';
-import { ClientLayout } from './client-layout';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -19,7 +18,7 @@ export default function RootLayout({ children }: LayoutProps) {
   return (
     <html lang='ja'>
       <body className='min-h-screen' suppressHydrationWarning>
-        <ClientLayout>{children}</ClientLayout>
+        {children}
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import PatientsPage from '@/app/patients/page';
+import PatientsPage from '@/app/(app)/patients/page';
 import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 

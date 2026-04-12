@@ -8,7 +8,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import StaffManagementPage from '@/app/staff/page';
+import StaffManagementPage from '@/app/(app)/staff/page';
 import { useStaffAnalysis } from '@/hooks/useStaffAnalysis';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 

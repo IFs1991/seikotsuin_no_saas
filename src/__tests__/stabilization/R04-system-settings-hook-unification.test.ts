@@ -63,7 +63,7 @@ describe('R-04: System Settings フック一本化', () => {
 
   test('admin master page は廃止導線として deprecation メッセージを表示している', () => {
     const adminMasterPage = fs.readFileSync(
-      path.join(SRC_DIR, 'app/admin/(protected)/master/page.tsx'),
+      path.join(SRC_DIR, 'app/(app)/admin/(protected)/master/page.tsx'),
       'utf-8'
     );
     // useAdminMaster の直接利用は解消済み — 廃止導線として deprecation 案内を表示

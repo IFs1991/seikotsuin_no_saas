@@ -70,7 +70,7 @@ jest.mock('next/navigation', () => ({
   }),
 }));
 
-import MFASetupPage from '@/app/admin/(protected)/mfa-setup/page';
+import MFASetupPage from '@/app/(app)/admin/(protected)/mfa-setup/page';
 
 describe('MFASetupPage Component', () => {
   beforeEach(() => {

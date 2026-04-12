@@ -23,7 +23,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const mockRegisterOwner = jest.fn();
-jest.mock('@/app/register/actions', () => ({
+jest.mock('@/app/(public)/register/actions', () => ({
   registerOwner: (...args: unknown[]) => mockRegisterOwner(...args),
   resendVerificationEmail: jest.fn(),
 }));
@@ -52,7 +52,7 @@ describe('/register ページ', () => {
   // ----------------------------------------------------------------
   describe('UIレンダリング', () => {
     test('メールアドレス入力欄が表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       expect(
         screen.getByRole('textbox', { name: /メールアドレス/i }) ||
@@ -61,7 +61,7 @@ describe('/register ページ', () => {
     });
 
     test('パスワード入力欄が表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       // password type は role='textbox' に出ないので getByLabelText 等で確認
       const passwordInput =
@@ -71,7 +71,7 @@ describe('/register ページ', () => {
     });
 
     test('利用規約同意チェックボックスが表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       const checkbox =
         document.querySelector('input[type="checkbox"]') ||
@@ -80,7 +80,7 @@ describe('/register ページ', () => {
     });
 
     test('CTAボタン「無料で始める」が表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       expect(
         screen.getByRole('button', { name: /無料で始める/i })
@@ -88,7 +88,7 @@ describe('/register ページ', () => {
     });
 
     test('管理者ログインへのリンクが表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       // AC-04: /admin/login への導線
       const loginLink =
@@ -98,7 +98,7 @@ describe('/register ページ', () => {
     });
 
     test('「スタッフ登録は招待制です」の補助文が表示される', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       expect(screen.getByText(/招待制/i)).toBeTruthy();
     });
@@ -109,7 +109,7 @@ describe('/register ページ', () => {
   // ----------------------------------------------------------------
   describe('AC-04: ログインページへの導線', () => {
     test('/admin/login へのリンクが存在する', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
       // href="/admin/login" を持つリンクを確認
       const links = document.querySelectorAll('a[href*="/admin/login"]');
@@ -117,7 +117,7 @@ describe('/register ページ', () => {
     });
 
     test('利用規約同意文から /terms へのリンクが存在する', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
 
       const termsLink = document.querySelector('a[href="/terms"]');
@@ -125,7 +125,7 @@ describe('/register ページ', () => {
     });
 
     test('/terms リンクを押しても同意チェック状態は変わらない', async () => {
-      const { default: RegisterPage } = await import('@/app/register/page');
+      const { default: RegisterPage } = await import('@/app/(public)/register/page');
       render(<RegisterPage />);
 
       const checkbox = screen.getByRole('checkbox');

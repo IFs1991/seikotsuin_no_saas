@@ -215,9 +215,12 @@ function AdminLoginContent() {
               新規登録はこちら
             </Link>
           </p>
-          <p className='text-xs text-gray-400'>
-            スタッフの方は管理者からの招待メールをご確認ください
-          </p>
+          <Link
+            href='/login'
+            className='text-sm text-blue-600 hover:text-blue-500 block'
+          >
+            スタッフの方はこちら
+          </Link>
         </div>
 
         <div className='text-center text-sm text-gray-500'>

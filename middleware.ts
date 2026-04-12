@@ -60,6 +60,18 @@ const PILOT_BLOCKED_ROUTE_PREFIXES = [
 const ADMIN_PUBLIC_ROUTES = ['/admin/login', '/admin/callback'] as const;
 const CLINIC_PUBLIC_ROUTES = ['/login', '/invite'] as const;
 
+/**
+ * 認証済みユーザーをリダイレクトする公開ルート
+ * （既にログインしている場合、役割別ホームへ送る）
+ */
+const REDIRECT_IF_AUTHENTICATED_ROUTES = [
+  '/',
+  '/login',
+  '/admin/login',
+  '/register',
+  '/register/verify',
+] as const;
+
 function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some(prefix => pathname.startsWith(prefix));
 }
@@ -105,6 +117,53 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     // Fail open: CSP should not take the whole app down.
     console.warn('CSP header application failed:', error);
+  }
+
+  // --- 認証済みユーザーの公開ページリダイレクト ---
+  const shouldRedirectIfAuthenticated = REDIRECT_IF_AUTHENTICATED_ROUTES.some(
+    route => (route === '/' ? pathname === '/' : pathname.startsWith(route))
+  );
+
+  if (shouldRedirectIfAuthenticated) {
+    const supabaseForPublic = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user: publicUser },
+    } = await supabaseForPublic.auth.getUser();
+
+    if (publicUser) {
+      try {
+        const permRecord = await fetchUserPermissionsRecord(
+          supabaseForPublic,
+          publicUser.id
+        );
+        const permissions = resolvePermissionRecord(permRecord, publicUser);
+        const accessCtx = buildUserAuthAccessContext(permissions, null);
+        const role = accessCtx.normalizedRole;
+
+        const destination = canAccessAdminUIWithCompat(role)
+          ? '/admin'
+          : '/dashboard';
+        return NextResponse.redirect(new URL(destination, request.url));
+      } catch {
+        // If role lookup fails, fall through to normal page rendering
+      }
+    }
   }
 
   const isProtectedRoute = matchesAnyPrefix(pathname, PROTECTED_ROUTE_PREFIXES);

@@ -1,11 +1,11 @@
 /** @jest-environment jsdom */
 
 import { act, renderHook } from '@testing-library/react';
-import { useAppointments } from '@/app/reservations/hooks/useAppointments';
-import type { Appointment } from '@/app/reservations/types';
-import * as reservationApi from '@/app/reservations/api';
+import { useAppointments } from '@/app/(app)/reservations/hooks/useAppointments';
+import type { Appointment } from '@/app/(app)/reservations/types';
+import * as reservationApi from '@/app/(app)/reservations/api';
 
-jest.mock('@/app/reservations/api', () => ({
+jest.mock('@/app/(app)/reservations/api', () => ({
   fetchReservations: jest.fn().mockResolvedValue([]),
   updateReservation: jest.fn().mockResolvedValue({ id: 'appt-1' }),
   cancelReservation: jest.fn().mockResolvedValue({

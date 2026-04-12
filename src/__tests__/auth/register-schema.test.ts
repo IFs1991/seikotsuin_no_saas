@@ -8,7 +8,7 @@
 
 describe('registerSchema', () => {
   // スキーマが存在しない間は全テストをスキップせずに失敗させる
-  const getSchema = () => require('@/app/register/schema').registerSchema;
+  const getSchema = () => require('@/app/(public)/register/schema').registerSchema;
 
   beforeEach(() => {
     jest.resetModules();
@@ -186,7 +186,7 @@ describe('registerSchema', () => {
     });
 
     test('registerSchema と signupSchema は別オブジェクトである', () => {
-      const { registerSchema } = require('@/app/register/schema');
+      const { registerSchema } = require('@/app/(public)/register/schema');
       const { signupSchema } = require('@/lib/schemas/auth');
       expect(registerSchema).not.toBe(signupSchema);
     });

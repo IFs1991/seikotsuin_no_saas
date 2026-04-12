@@ -18,7 +18,7 @@ jest.mock('next/dynamic', () => ({
   },
 }));
 
-import AdminSettingsPage from '@/app/admin/(protected)/settings/page';
+import AdminSettingsPage from '@/app/(app)/admin/(protected)/settings/page';
 
 describe('Admin settings navigation alignment', () => {
   it('準備中に落ちる設定項目をナビゲーションに表示しない', () => {
@@ -81,7 +81,7 @@ describe('Admin settings navigation alignment', () => {
     }));
 
     const { default: AdminSettingsFallbackPage } = await import(
-      '@/app/admin/(protected)/settings/page'
+      '@/app/(app)/admin/(protected)/settings/page'
     );
 
     render(<AdminSettingsFallbackPage />);

@@ -42,7 +42,7 @@ jest.mock('@/hooks/useMultiStore', () => ({
   default: jest.fn(() => mockUseMultiStoreReturn),
 }));
 
-import MultiStorePage from '@/app/multi-store/page';
+import MultiStorePage from '@/app/(app)/multi-store/page';
 import { useMultiStore } from '@/hooks/useMultiStore';
 
 const mockUseMultiStore = useMultiStore as jest.MockedFunction<

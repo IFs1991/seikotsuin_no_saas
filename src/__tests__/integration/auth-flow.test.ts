@@ -78,8 +78,8 @@ jest.mock('@/lib/audit-logger', () => ({
 
 let profileQueryBuilder = createProfileQueryBuilder();
 
-const { clinicLogin } = require('@/app/login/actions');
-const { signup } = require('@/app/admin/actions');
+const { clinicLogin } = require('@/app/(public)/login/actions');
+const { signup } = require('@/app/(public)/admin/actions');
 
 // Mock Next.js functions
 jest.mock('next/cache', () => ({

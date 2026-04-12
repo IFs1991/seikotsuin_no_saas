@@ -45,7 +45,7 @@ describe('院向けログインページ', () => {
   describe('UIレンダリング', () => {
     test('ログインフォームが正しく表示される', async () => {
       // LoginPageコンポーネントをインポート（作成後）
-      // const { default: LoginPage } = await import('@/app/login/page');
+      // const { default: LoginPage } = await import('@/app/(public)/login/page');
       // render(<LoginPage />);
 
       // expect(screen.getByLabelText(/メールアドレス/i)).toBeInTheDocument();

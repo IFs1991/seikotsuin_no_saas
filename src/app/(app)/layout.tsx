@@ -11,13 +11,9 @@ import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 
-interface ClientLayoutProps {
-  children: React.ReactNode;
-}
-
 const DARK_CLASS = 'dark';
 
-export function ClientLayout({ children }: ClientLayoutProps) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const {

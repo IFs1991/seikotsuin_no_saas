@@ -46,7 +46,7 @@ jest.mock('@/providers/user-profile-context', () => ({
 global.confirm = jest.fn(() => true);
 global.alert = jest.fn();
 
-import BlockManagementPage from '@/app/blocks/page';
+import BlockManagementPage from '@/app/(app)/blocks/page';
 
 describe('BlockManagementPage Component', () => {
   const mockResources = [

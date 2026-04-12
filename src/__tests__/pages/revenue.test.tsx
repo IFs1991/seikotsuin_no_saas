@@ -3,7 +3,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import RevenuePage from '@/app/revenue/page';
+import RevenuePage from '@/app/(app)/revenue/page';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useUserProfile } from '@/hooks/useUserProfile';
 

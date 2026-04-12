@@ -41,8 +41,8 @@ describe('R-02: Legacy Reservation 隔離', () => {
     expect(tsconfig.exclude).toContain('src/legacy');
   });
 
-  test('現行実装 src/app/reservations/page.tsx が存在する', () => {
-    const pagePath = path.join(SRC_DIR, 'app/reservations/page.tsx');
+  test('現行実装 src/app/(app)/reservations/page.tsx が存在する', () => {
+    const pagePath = path.join(SRC_DIR, 'app/(app)/reservations/page.tsx');
     expect(fs.existsSync(pagePath)).toBe(true);
   });
 
@@ -53,7 +53,7 @@ describe('R-02: Legacy Reservation 隔離', () => {
       'Scheduler.tsx',
     ];
     for (const comp of components) {
-      const compPath = path.join(SRC_DIR, 'app/reservations/components', comp);
+      const compPath = path.join(SRC_DIR, 'app/(app)/reservations/components', comp);
       expect(fs.existsSync(compPath)).toBe(true);
     }
   });

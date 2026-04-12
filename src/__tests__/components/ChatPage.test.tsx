@@ -73,7 +73,7 @@ jest.mock('@/providers/user-profile-context', () => ({
   useUserProfileContext: () => mockUseUserProfileContext(),
 }));
 
-import ChatPage from '@/app/chat/page';
+import ChatPage from '@/app/(app)/chat/page';
 import { useChat } from '@/hooks/useChat';
 
 const mockUseChat = useChat as jest.MockedFunction<typeof useChat>;

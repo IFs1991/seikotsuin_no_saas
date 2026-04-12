@@ -25,7 +25,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 // 現行API（src/app/reservations/api.ts）のモック
-jest.mock('@/app/reservations/api', () => ({
+jest.mock('@/app/(app)/reservations/api', () => ({
   fetchReservations: jest.fn().mockResolvedValue([]),
   createReservation: jest.fn().mockResolvedValue({ id: 'new-1' }),
   updateReservation: jest.fn().mockResolvedValue({ id: 'updated-1' }),
@@ -101,19 +101,19 @@ describe('予約UI統合テスト', () => {
   describe('API統合確認', () => {
     it('現行API（src/app/reservations/api.ts）からfetchReservationsをインポートしている', async () => {
       // 現行APIがモックされていることを確認
-      const { fetchReservations } = require('@/app/reservations/api');
+      const { fetchReservations } = require('@/app/(app)/reservations/api');
       expect(fetchReservations).toBeDefined();
       expect(typeof fetchReservations).toBe('function');
     });
 
     it('現行API（src/app/reservations/api.ts）からcreateReservationをインポートしている', async () => {
-      const { createReservation } = require('@/app/reservations/api');
+      const { createReservation } = require('@/app/(app)/reservations/api');
       expect(createReservation).toBeDefined();
       expect(typeof createReservation).toBe('function');
     });
 
     it('現行API（src/app/reservations/api.ts）からupdateReservationをインポートしている', async () => {
-      const { updateReservation } = require('@/app/reservations/api');
+      const { updateReservation } = require('@/app/(app)/reservations/api');
       expect(updateReservation).toBeDefined();
       expect(typeof updateReservation).toBe('function');
     });
@@ -147,7 +147,7 @@ describe('予約UI統合テスト', () => {
       const path = require('path');
       const hookPath = path.join(
         getProjectRoot(),
-        'src/app/reservations/hooks/useAppointments.ts'
+        'src/app/(app)/reservations/hooks/useAppointments.ts'
       );
 
       const source = fs.readFileSync(hookPath, 'utf-8');
@@ -167,7 +167,7 @@ describe('予約UI統合テスト', () => {
       const path = require('path');
       const pagePath = path.join(
         getProjectRoot(),
-        'src/app/reservations/page.tsx'
+        'src/app/(app)/reservations/page.tsx'
       );
 
       expect(fs.existsSync(pagePath)).toBe(true);
@@ -195,7 +195,7 @@ describe('予約ページコンポーネントテスト', () => {
   // Headerコンポーネント内のlucide-reactアイコンのモックが複雑なため
   it.skip('ReservationsPageがエラーなくレンダリングされる', async () => {
     // 動的インポートで予約ページをロード
-    const ReservationsPage = require('@/app/reservations/page').default;
+    const ReservationsPage = require('@/app/(app)/reservations/page').default;
 
     await act(async () => {
       render(<ReservationsPage />);

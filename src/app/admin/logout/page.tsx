@@ -1,4 +1,4 @@
-import { logout } from '@/app/admin/actions';
+import { logout } from '@/app/(public)/admin/actions';
 
 export default async function AdminLogoutPage() {
   await logout();

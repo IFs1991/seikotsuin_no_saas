@@ -1,4 +1,4 @@
-import { statusToColor } from '@/app/reservations/hooks/statusToColor';
+import { statusToColor } from '@/app/(app)/reservations/hooks/statusToColor';
 
 describe('statusToColor', () => {
   it('maps unconfirmed to orange', () => {

@@ -19,7 +19,7 @@ jest.mock('next/navigation', () => ({
   useSearchParams: jest.fn(() => ({ get: jest.fn(() => null) })),
 }));
 
-jest.mock('@/app/admin/actions', () => ({
+jest.mock('@/app/(public)/admin/actions', () => ({
   login: jest.fn().mockResolvedValue({ success: true }),
   signup: jest.fn().mockResolvedValue({ success: true }),
   logout: jest.fn(),
@@ -47,13 +47,13 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
   // ----------------------------------------------------------------
   describe('AC-04: ログイン専用', () => {
     test('ログインフォームが表示される', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
       expect(screen.getByRole('button', { name: /ログイン/i })).toBeTruthy();
     });
 
     test('/register への導線（リンクまたはボタン）が存在する', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
 
       // /register へのリンクを探す
@@ -66,7 +66,7 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
     });
 
     test('signup トグルボタン（サインアップ/ログイン切り替え）が存在しない', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
 
       // 旧実装では "アカウントをお持ちでない場合は？新規作成" が button タグだった。
@@ -79,7 +79,7 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
     });
 
     test('ページタイトルまたは見出しに「ログイン」が含まれる', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
       const title =
         screen.queryByRole('heading', { name: /ログイン/i }) ||
@@ -93,7 +93,7 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
   // ----------------------------------------------------------------
   describe('フォーム要素', () => {
     test('メールアドレス入力欄が存在する', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
       const emailInput =
         document.querySelector('input[type="email"]') ||
@@ -102,7 +102,7 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
     });
 
     test('パスワード入力欄が存在する', async () => {
-      const { default: AdminLogin } = await import('@/app/admin/login/page');
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);
       const passwordInput =
         document.querySelector('input[type="password"]') ||

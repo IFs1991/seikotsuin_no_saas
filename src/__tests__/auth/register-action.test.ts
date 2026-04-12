@@ -86,7 +86,7 @@ jest.mock('@/lib/env', () => ({
 const {
   registerOwner,
   resendVerificationEmail,
-} = require('@/app/register/actions');
+} = require('@/app/(public)/register/actions');
 
 // ================================================================
 // ヘルパー

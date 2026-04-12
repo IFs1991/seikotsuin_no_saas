@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import HomePage from '@/app/page';
+import LandingPage from '@/app/(public)/page';
 
 jest.mock('next/link', () => {
   const MockLink = ({
@@ -18,67 +18,33 @@ jest.mock('next/link', () => {
   return MockLink;
 });
 
-const useSystemStatusMock = jest.fn();
+describe('LandingPage', () => {
+  it('サービス名とサブコピーが表示される', () => {
+    render(<LandingPage />);
 
-jest.mock('@/hooks/useSystemStatus', () => ({
-  useSystemStatus: () => useSystemStatusMock(),
-}));
-
-describe('HomePage', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+    expect(
+      screen.getByText('整骨院・治療院向け業務管理SaaS')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('予約・患者・運営管理を一元化し、現場と管理をつなぐ')
+    ).toBeInTheDocument();
   });
 
-  it('システム状態を動的に表示する', () => {
-    useSystemStatusMock.mockReturnValue({
-      status: {
-        activeClinicCount: 7,
-        systemStatus: 'degraded',
-        aiAnalysisStatus: 'active',
-        lastUpdated: '2026-02-27T00:00:00Z',
-      },
-      loading: false,
-      error: null,
-    });
+  it('スタッフログインと管理者ログインのCTAが表示される', () => {
+    const { container } = render(<LandingPage />);
 
-    render(<HomePage />);
-
-    expect(screen.getByText(/7店舗展開/)).toBeInTheDocument();
-    expect(screen.getByText('7')).toBeInTheDocument();
-    expect(screen.getByText('一部障害')).toBeInTheDocument();
-    expect(screen.getByText('AI稼働中')).toBeInTheDocument();
-  });
-
-  it('ロード中はプレースホルダを表示する', () => {
-    useSystemStatusMock.mockReturnValue({
-      status: null,
-      loading: true,
-      error: null,
-    });
-
-    render(<HomePage />);
-
-    expect(screen.getByText('...')).toBeInTheDocument();
-  });
-
-  it('ナビゲーションリンクが描画される', () => {
-    useSystemStatusMock.mockReturnValue({
-      status: {
-        activeClinicCount: 1,
-        systemStatus: 'operational',
-        aiAnalysisStatus: 'inactive',
-        lastUpdated: '2026-02-27T00:00:00Z',
-      },
-      loading: false,
-      error: null,
-    });
-
-    const { container } = render(<HomePage />);
-
-    expect(container.querySelector('a[href="/dashboard"]')).toBeInTheDocument();
+    expect(screen.getByText('スタッフログイン')).toBeInTheDocument();
+    expect(screen.getByText('管理者ログイン')).toBeInTheDocument();
+    expect(container.querySelector('a[href="/login"]')).toBeInTheDocument();
     expect(
       container.querySelector('a[href="/admin/login"]')
     ).toBeInTheDocument();
-    expect(container.querySelector('a[href="/chat"]')).toBeInTheDocument();
+  });
+
+  it('利用規約とプライバシーポリシーのリンクが表示される', () => {
+    const { container } = render(<LandingPage />);
+
+    expect(container.querySelector('a[href="/terms"]')).toBeInTheDocument();
+    expect(container.querySelector('a[href="/privacy"]')).toBeInTheDocument();
   });
 });

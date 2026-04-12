@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 // リダイレクト専用ページをインポート
-import ReservationRegisterPage from '@/app/reservations/register/page';
+import ReservationRegisterPage from '@/app/(app)/reservations/register/page';
 
 const mockRedirect = redirect as jest.MockedFunction<typeof redirect>;
 

@@ -8,11 +8,11 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { AppointmentForm } from '@/app/reservations/components/AppointmentForm';
-import type { MenuItem, SchedulerResource } from '@/app/reservations/types';
+import { AppointmentForm } from '@/app/(app)/reservations/components/AppointmentForm';
+import type { MenuItem, SchedulerResource } from '@/app/(app)/reservations/types';
 
 // API モック
-jest.mock('@/app/reservations/api', () => ({
+jest.mock('@/app/(app)/reservations/api', () => ({
   fetchCustomers: jest.fn().mockResolvedValue([]),
   createCustomer: jest
     .fn()
@@ -24,7 +24,7 @@ jest.mock('@/app/reservations/api', () => ({
 }));
 
 // モック参照（三角測量テストで status を変更するため）
-const { createReservation } = jest.requireMock('@/app/reservations/api') as {
+const { createReservation } = jest.requireMock('@/app/(app)/reservations/api') as {
   createReservation: jest.Mock;
 };
 

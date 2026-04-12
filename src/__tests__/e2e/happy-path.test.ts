@@ -1,5 +1,5 @@
 import { mockServerClient, supabaseMock } from './mocks/supabase-server.mock';
-import { login } from '@/app/admin/actions';
+import { login } from '@/app/(public)/admin/actions';
 
 mockServerClient();
 

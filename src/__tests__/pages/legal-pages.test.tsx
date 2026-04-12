@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 
 describe('Legal pages', () => {
   test('/terms で利用規約が表示される', async () => {
-    const { default: TermsPage } = await import('@/app/terms/page');
+    const { default: TermsPage } = await import('@/app/(public)/terms/page');
 
     render(<TermsPage />);
 
@@ -14,7 +14,7 @@ describe('Legal pages', () => {
   });
 
   test('/privacy でプライバシーポリシーが表示される', async () => {
-    const { default: PrivacyPage } = await import('@/app/privacy/page');
+    const { default: PrivacyPage } = await import('@/app/(public)/privacy/page');
 
     render(<PrivacyPage />);
 
