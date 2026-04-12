@@ -210,6 +210,15 @@ function ClinicLoginPageContent() {
           <p className='text-sm text-gray-500'>
             招待を受けた方は招待メールのリンクからご登録ください
           </p>
+          <p className='text-sm text-gray-600'>
+            初めてご利用の方は{' '}
+            <Link
+              href='/register'
+              className='text-teal-600 hover:text-teal-500 font-medium'
+            >
+              新規登録はこちら
+            </Link>
+          </p>
           <Link
             href='/admin/login'
             className='text-sm text-teal-600 hover:text-teal-500 block'
