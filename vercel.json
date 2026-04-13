@@ -12,6 +12,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/internal/process-email-outbox",
+      "schedule": "*/2 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

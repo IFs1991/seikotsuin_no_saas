@@ -5,7 +5,9 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { normalizeSupabaseError } from '@/lib/error-handler';
+import { logger } from '@/lib/logger';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
+import { createScopedAdminContext } from '@/lib/supabase';
 import {
   reservationsQuerySchema,
   reservationInsertSchema,
@@ -14,8 +16,33 @@ import {
   mapReservationUpdateToRow,
 } from './schema';
 import { STAFF_ROLES } from '@/lib/constants/roles';
+import {
+  enqueueReservationCreated,
+  enqueueReservationChange,
+} from '@/lib/notifications/email/reservation-enqueue';
+import type { ReservationSnapshot } from '@/lib/notifications/email/types';
 
 const PATH = '/api/reservations';
+
+function createNotificationClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  try {
+    const scopedAdmin = createScopedAdminContext(permissions);
+    scopedAdmin.assertClinicInScope(clinicId);
+    return scopedAdmin.client;
+  } catch (error) {
+    logger.warn(
+      'Failed to create scoped notification client for reservation email',
+      {
+        clinicId,
+        error: error instanceof Error ? error.message : String(error),
+      }
+    );
+    return null;
+  }
+}
 
 async function hasReservationConflict(
   supabase: any,
@@ -172,6 +199,34 @@ export async function POST(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
+    // メール通知エンキュー (失敗しても予約は成功扱い)
+    const notificationSupabase = createNotificationClient(
+      result.permissions,
+      dto.clinic_id
+    );
+    if (notificationSupabase) {
+      enqueueReservationCreated(notificationSupabase, {
+        id: data.id,
+        clinic_id: data.clinic_id,
+        customer_id: data.customer_id,
+        menu_id: data.menu_id,
+        status: data.status,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        staff_id: data.staff_id,
+        updated_at: data.updated_at ?? new Date().toISOString(),
+      }).catch(error => {
+        logger.error(
+          'Failed to enqueue reservation_created email from reservations route',
+          {
+            reservationId: data.id,
+            clinicId: dto.clinic_id,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
+      });
+    }
+
     return createSuccessResponse(data, 201);
   } catch (error) {
     return handleRouteError(error, PATH);
@@ -189,18 +244,21 @@ export async function PATCH(request: NextRequest) {
 
     const dto = result.dto;
 
+    // 更新前レコードを取得 (conflict check + メール通知差分検知に使用)
+    const { data: existing, error: existingError } = await result.supabase
+      .from('reservations')
+      .select(
+        'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes'
+      )
+      .eq('id', dto.id)
+      .eq('clinic_id', dto.clinic_id)
+      .single();
+
+    if (existingError) {
+      throw normalizeSupabaseError(existingError, PATH);
+    }
+
     if (dto.staffId || dto.startTime || dto.endTime) {
-      const { data: existing, error: existingError } = await result.supabase
-        .from('reservations')
-        .select('staff_id, start_time, end_time')
-        .eq('id', dto.id)
-        .eq('clinic_id', dto.clinic_id)
-        .single();
-
-      if (existingError) {
-        throw normalizeSupabaseError(existingError, PATH);
-      }
-
       const nextStaffId = dto.staffId ?? existing.staff_id;
       const nextStartTime = dto.startTime ?? existing.start_time;
       const nextEndTime = dto.endTime ?? existing.end_time;
@@ -229,6 +287,51 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       throw normalizeSupabaseError(error, PATH);
+    }
+
+    // メール通知エンキュー (差分検知ベース、失敗しても更新は成功扱い)
+    const before: ReservationSnapshot = {
+      id: existing.id,
+      clinic_id: existing.clinic_id,
+      customer_id: existing.customer_id,
+      menu_id: existing.menu_id,
+      status: existing.status,
+      start_time: existing.start_time,
+      end_time: existing.end_time,
+      staff_id: existing.staff_id,
+      notes: existing.notes,
+    };
+    const after: ReservationSnapshot = {
+      id: data.id,
+      clinic_id: data.clinic_id,
+      customer_id: data.customer_id,
+      menu_id: data.menu_id,
+      status: data.status,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      staff_id: data.staff_id,
+      notes: data.notes,
+    };
+    const notificationSupabase = createNotificationClient(
+      result.permissions,
+      dto.clinic_id
+    );
+    if (notificationSupabase) {
+      enqueueReservationChange(
+        notificationSupabase,
+        before,
+        after,
+        data.updated_at ?? new Date().toISOString()
+      ).catch(error => {
+        logger.error(
+          'Failed to enqueue reservation change email from reservations route',
+          {
+            reservationId: data.id,
+            clinicId: dto.clinic_id,
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
+      });
     }
 
     return createSuccessResponse(data);

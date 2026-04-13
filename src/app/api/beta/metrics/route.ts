@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { createAdminClient, createClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
     // 認証チェック（システムまたは管理者のみ）
     const {
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     );
 
     // メトリクス保存
-    const { data: savedMetrics, error: insertError } = await supabase
+    const { data: savedMetrics, error: insertError } = await adminSupabase
       .from('beta_usage_metrics')
       .insert({
         clinic_id: clinicId,

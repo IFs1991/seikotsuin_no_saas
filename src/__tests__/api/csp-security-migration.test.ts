@@ -20,8 +20,9 @@ describe('CSP/Security migration SSOT', () => {
     migrationDir,
     '20260304000100_csp_security_alerts_migration_ssot.sql'
   );
-  const rollbackFile = path.join(
-    migrationDir,
+  const rollbackFile = path.resolve(
+    __dirname,
+    '../../../supabase/rollbacks',
     '20260304000100_csp_security_alerts_migration_ssot_rollback.sql'
   );
 
@@ -74,9 +75,10 @@ describe('CSP APIs clinic_id integration', () => {
   };
 
   jest.mock('@/lib/supabase', () => ({
-    // createClient is called both as sync (SecurityNotificationManager constructor)
-    // and as async (csp-report route). Return the mock directly for sync usage.
+    // createClient is called async in the route, createAdminClient is called
+    // sync in server-side notification/write paths.
     createClient: jest.fn(() => mockSupabaseClient),
+    createAdminClient: jest.fn(() => mockSupabaseClient),
     getServerClient: jest.fn(() => Promise.resolve(mockSupabaseClient)),
     getCurrentUser: jest.fn(() =>
       Promise.resolve({ id: 'user-1', email: 'test@example.com' })

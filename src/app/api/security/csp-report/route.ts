@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CSPConfig, CSPViolationReport } from '@/lib/security/csp-config';
 import { cspRateLimiter } from '@/lib/rate-limiting/csp-rate-limiter';
 import { logger } from '@/lib/logger';
+import { createAdminClient, createClient } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,9 +96,8 @@ async function saveCSPViolationToDB(
   report: Record<string, unknown>
 ): Promise<void> {
   try {
-    // Supabaseクライアントのインポート
-    const { createClient } = await import('@/lib/supabase');
     const supabase = await createClient();
+    const adminSupabase = createAdminClient();
 
     // 違反の重要度を計算
     const severity = calculateViolationSeverity(report);
@@ -137,8 +137,7 @@ async function saveCSPViolationToDB(
       created_at: report.receivedAt,
     };
 
-    // データベースに挿入
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from('csp_violations')
       .insert([violationData] as any)
       .select();

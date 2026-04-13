@@ -3,7 +3,7 @@
  * Phase 3B Refactoring: 高重要度CSP違反の通知機能
  */
 
-import { createClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
 
 export interface SecurityAlert {
@@ -39,7 +39,7 @@ export class SecurityNotificationManager {
   private supabase;
 
   constructor() {
-    this.supabase = createClient();
+    this.supabase = createAdminClient();
   }
 
   /**
@@ -241,7 +241,7 @@ export class SecurityNotificationManager {
    */
   private async sendExternalNotification(alert: SecurityAlert): Promise<void> {
     // Supabase Edge Functions呼び出し
-    const { data, error } = await this.supabase.functions.invoke(
+    const { error } = await this.supabase.functions.invoke(
       'security-alert-notify',
       {
         body: {
