@@ -1,19 +1,11 @@
 /**
  * @file middleware-auth.test.ts
- * @description 認証と権限制御のmiddlewareテスト
+ * @description 薄い認証 middleware の回帰テスト
  * @spec docs/認証と権限制御_MVP仕様書.md
- * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
  */
 
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 
-// Supabase SSRのモック
-jest.mock('@supabase/ssr', () => ({
-  createServerClient: jest.fn(),
-}));
-
-// CSPモックを設定
 jest.mock('@/lib/security/csp-config', () => ({
   CSPConfig: {
     generateNonce: jest.fn().mockReturnValue('test-nonce'),
@@ -24,78 +16,24 @@ jest.mock('@/lib/security/csp-config', () => ({
   },
 }));
 
-// レート制限モックを設定
 jest.mock('@/lib/rate-limiting/middleware', () => ({
   applyRateLimits: jest.fn().mockResolvedValue(null),
   getPathRateLimit: jest.fn().mockReturnValue([]),
 }));
 
-// middlewareをインポート（モック後）
 import { middleware } from '../../../middleware';
 
 describe('認証と権限制御 Middleware', () => {
   const originalEnv = process.env;
-  const mockCreateServerClient = createServerClient as jest.MockedFunction<
-    typeof createServerClient
-  >;
 
-  function createMockRequest(pathname: string): NextRequest {
-    const url = new URL(`http://localhost:3000${pathname}`);
-    const request = new NextRequest(url, {
+  function createMockRequest(
+    pathname: string,
+    cookieHeader?: string
+  ): NextRequest {
+    return new NextRequest(new URL(`http://localhost:3000${pathname}`), {
       method: 'GET',
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
     });
-    return request;
-  }
-
-  /**
-   * Create mock Supabase client that handles both user_permissions and profiles queries
-   * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - user_permissions is single source of truth
-   */
-  function createMockSupabase(
-    user: any,
-    profile: any,
-    userPermissions?: any
-  ) {
-    const permissions =
-      userPermissions === undefined
-        ? profile
-          ? { role: profile.role, clinic_id: profile.clinic_id }
-          : null
-        : userPermissions;
-
-    const singleResponse = (data: any) => ({
-      data,
-      error: data ? null : { code: 'PGRST116' },
-    });
-
-    const singleQuery = (data: any) => ({
-      single: jest.fn().mockResolvedValue(singleResponse(data)),
-      maybeSingle: jest.fn().mockResolvedValue(singleResponse(data)),
-    });
-
-    return {
-      auth: {
-        getUser: jest.fn().mockResolvedValue({
-          data: { user },
-          error: null,
-        }),
-      },
-      from: jest.fn().mockImplementation((table: string) => {
-        if (table === 'user_permissions') {
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue(singleQuery(permissions)),
-            }),
-          };
-        }
-        // profiles table
-        return {
-          select: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue(singleQuery(profile)),
-          }),
-        };
-      }),
-    };
   }
 
   beforeEach(() => {
@@ -109,356 +47,88 @@ describe('認証と権限制御 Middleware', () => {
   });
 
   describe('未認証ユーザーのアクセス制御', () => {
-    beforeEach(() => {
-      // 未認証状態をモック
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(null, null) as any
-      );
-    });
+    const protectedRoutes = [
+      '/dashboard',
+      '/reservations',
+      '/daily-reports',
+      '/chat',
+      '/ai-insights',
+      '/multi-store',
+      '/master-data',
+      '/staff',
+      '/patients',
+      '/revenue',
+    ];
 
-    describe('保護対象ルートへのアクセス', () => {
-      const protectedRoutes = [
-        '/dashboard',
-        '/reservations',
-        '/daily-reports',
-        '/chat',
-        '/ai-insights',
-        '/multi-store',
-        '/master-data',
-        '/staff',
-        '/patients',
-        '/revenue',
-      ];
+    test.each(protectedRoutes)(
+      '未認証で %s にアクセスすると /login にリダイレクト',
+      async route => {
+        const response = await middleware(createMockRequest(route));
 
-      test.each(protectedRoutes)(
-        '未認証で %s にアクセスすると /login にリダイレクト',
-        async route => {
-          const request = createMockRequest(route);
-          const response = await middleware(request);
-
-          expect(response.status).toBe(307);
-          const location = response.headers.get('location');
-          expect(location).toContain('/login');
-          expect(location).toContain(`redirectTo=${encodeURIComponent(route)}`);
-        }
-      );
-    });
-
-    describe('Admin保護ルートへのアクセス', () => {
-      const adminRoutes = [
-        '/admin',
-        '/admin/settings',
-        '/admin/security-dashboard',
-      ];
-
-      test.each(adminRoutes)(
-        '未認証で %s にアクセスすると /admin/login にリダイレクト',
-        async route => {
-          const request = createMockRequest(route);
-          const response = await middleware(request);
-
-          expect(response.status).toBe(307);
-          const location = response.headers.get('location');
-          expect(location).toContain('/admin/login');
-        }
-      );
-    });
-
-    describe('公開ルートへのアクセス', () => {
-      const publicRoutes = [
-        '/admin/login',
-        '/admin/callback',
-        '/login',
-        '/invite',
-      ];
-
-      test.each(publicRoutes)('未認証でも %s にアクセス可能', async route => {
-        const request = createMockRequest(route);
-        const response = await middleware(request);
-
-        // リダイレクトではなく通過
-        expect(response.status).not.toBe(307);
-      });
-    });
-  });
-
-  describe('院ユーザーのアクセス制御', () => {
-    const clinicUser = { id: 'user-123', email: 'staff@clinic.com' };
-    const clinicProfile = {
-      role: 'staff',
-      clinic_id: 'clinic-123',
-      is_active: true,
-    };
-
-    beforeEach(() => {
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(clinicUser, clinicProfile) as any
-      );
-    });
-
-    test('院ユーザーは /admin/** にアクセスできない', async () => {
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
-
-      expect(response.status).toBe(307);
-      const location = response.headers.get('location');
-      expect(location).toContain('/unauthorized');
-    });
-
-    test('院ユーザーは保護対象ルートにアクセス可能', async () => {
-      const routes = ['/dashboard', '/reservations', '/daily-reports'];
-
-      for (const route of routes) {
-        mockCreateServerClient.mockReturnValue(
-          createMockSupabase(clinicUser, clinicProfile) as any
+        expect(response.status).toBe(307);
+        expect(response.headers.get('location')).toContain('/login');
+        expect(response.headers.get('location')).toContain(
+          `redirectTo=${encodeURIComponent(route)}`
         );
-        const request = createMockRequest(route);
-        const response = await middleware(request);
+      }
+    );
 
-        // リダイレクトではなく通過
+    test.each(['/admin', '/admin/settings', '/admin/security-dashboard'])(
+      '未認証で %s にアクセスすると /admin/login にリダイレクト',
+      async route => {
+        const response = await middleware(createMockRequest(route));
+
+        expect(response.status).toBe(307);
+        expect(response.headers.get('location')).toContain('/admin/login');
+        expect(response.headers.get('location')).toContain(
+          `redirectTo=${encodeURIComponent(route)}`
+        );
+      }
+    );
+
+    test.each(['/admin/login', '/admin/callback', '/login', '/invite'])(
+      '未認証でも %s は通過する',
+      async route => {
+        const response = await middleware(createMockRequest(route));
+
         expect(response.status).not.toBe(307);
       }
-    });
+    );
   });
 
-  describe('Admin UIアクセス制御', () => {
-    /**
-     * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-     * ADMIN_UI_ROLES = ['admin', 'clinic_admin'] can access /admin/**
-     */
-    const adminUIRoles = ['admin', 'clinic_admin'];
-
-    test.each(adminUIRoles)(
-      'ADMIN_UI_ROLES (%s) は /admin/** にアクセス可能',
-      async role => {
-        const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
-        const adminProfile = {
-          role,
-          clinic_id: role === 'admin' ? null : 'clinic-123',
-          is_active: true,
-        };
-
-        mockCreateServerClient.mockReturnValue(
-          createMockSupabase(adminUser, adminProfile) as any
+  describe('認証 cookie がある場合の挙動', () => {
+    test.each(['/dashboard', '/admin/settings', '/multi-store'])(
+      '認証 cookie があると %s は middleware で通過する',
+      async route => {
+        const response = await middleware(
+          createMockRequest(route, 'sb-test-auth-token=session')
         );
 
-        const request = createMockRequest('/admin/settings');
-        const response = await middleware(request);
-
-        // リダイレクトではなく通過
         expect(response.status).not.toBe(307);
       }
     );
 
-    test('user_permissions が無くても app_metadata.user_role fallback で /admin/** にアクセス可能', async () => {
-      const adminUser = {
-        id: 'legacy-user-123',
-        email: 'legacy@example.com',
-        app_metadata: {
-          user_role: 'clinic_manager',
-          clinic_id: 'clinic-123',
-        },
-      };
-      const profileStatus = {
-        role: 'staff',
-        clinic_id: 'clinic-123',
-        is_active: true,
-      };
-
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(adminUser, profileStatus, null) as any
+    test('chunked な Supabase auth cookie でも通過する', async () => {
+      const response = await middleware(
+        createMockRequest('/dashboard', 'sb-test-auth-token.0=session-fragment')
       );
-
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
 
       expect(response.status).not.toBe(307);
     });
 
-    test('HQ admin は /multi-store にアクセス可能', async () => {
-      const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
-      const adminProfile = {
-        role: 'admin',
-        clinic_id: null,
-        is_active: true,
-      };
+    test.each(['/', '/login', '/admin/login', '/register', '/invite'])(
+      '認証 cookie があっても %s では public redirect をしない',
+      async route => {
+        const response = await middleware(
+          createMockRequest(route, 'sb-test-auth-token=session')
+        );
 
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(adminUser, adminProfile) as any
-      );
-
-      const request = createMockRequest('/multi-store');
-      const response = await middleware(request);
-
-      expect(response.status).not.toBe(307);
-    });
-
-    test('clinic_admin は /multi-store にアクセスできない', async () => {
-      const clinicAdminUser = {
-        id: 'clinic-admin-user-123',
-        email: 'clinic-admin@example.com',
-      };
-      const clinicAdminProfile = {
-        role: 'clinic_admin',
-        clinic_id: 'clinic-123',
-        is_active: true,
-      };
-
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(clinicAdminUser, clinicAdminProfile) as any
-      );
-
-      const request = createMockRequest('/multi-store');
-      const response = await middleware(request);
-
-      expect(response.status).toBe(307);
-      const location = response.headers.get('location');
-      expect(location).toContain('/unauthorized');
-    });
-
-    /**
-     * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-     * manager role should NOT be able to access /admin/** (only ADMIN_UI_ROLES)
-     */
-    test('manager ロールは /admin/** にアクセスできない', async () => {
-      const managerUser = {
-        id: 'manager-user-123',
-        email: 'manager@example.com',
-      };
-      const managerProfile = {
-        role: 'manager',
-        clinic_id: 'clinic-123',
-        is_active: true,
-      };
-
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(managerUser, managerProfile) as any
-      );
-
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
-
-      expect(response.status).toBe(307);
-      const location = response.headers.get('location');
-      expect(location).toContain('/unauthorized');
-    });
-
-    /**
-     * @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
-     * clinic_manager is deprecated but temporarily mapped to clinic_admin via canAccessAdminUIWithCompat
-     * This allows clinic_manager to access /admin/** until Phase 3 migration is complete.
-     */
-    test('非推奨の clinic_manager ロールは互換モードにより /admin/** にアクセス可能（Option B-1）', async () => {
-      const deprecatedUser = {
-        id: 'deprecated-user-123',
-        email: 'deprecated@example.com',
-      };
-      const deprecatedProfile = {
-        role: 'clinic_manager',
-        clinic_id: 'clinic-123',
-        is_active: true,
-      };
-
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(deprecatedUser, deprecatedProfile) as any
-      );
-
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
-
-      // Option B-1: clinic_manager は clinic_admin にマッピングされるため、アクセス可能
-      expect(response.status).not.toBe(307);
-    });
-  });
-
-  describe('無効化アカウントのアクセス制御', () => {
-    test('is_active=false のユーザーは拒否される', async () => {
-      const user = { id: 'inactive-user', email: 'inactive@example.com' };
-      const inactiveProfile = {
-        role: 'admin',
-        clinic_id: null,
-        is_active: false,
-      };
-
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(user, inactiveProfile) as any
-      );
-
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
-
-      expect(response.status).toBe(307);
-      const location = response.headers.get('location');
-      expect(location).toContain('/unauthorized');
-    });
-
-    test('user_permissions が無い場合は profiles に role があっても拒否される', async () => {
-      const user = { id: 'fallback-user', email: 'fallback@example.com' };
-
-      mockCreateServerClient.mockReturnValue({
-        auth: {
-          getUser: jest.fn().mockResolvedValue({
-            data: { user },
-            error: null,
-          }),
-        },
-        from: jest.fn().mockImplementation((table: string) => {
-          if (table === 'user_permissions') {
-            return {
-              select: jest.fn().mockReturnValue({
-                eq: jest.fn().mockReturnValue({
-                  maybeSingle: jest.fn().mockResolvedValue({
-                    data: null,
-                    error: { code: 'PGRST116' },
-                  }),
-                  single: jest.fn().mockResolvedValue({
-                    data: null,
-                    error: { code: 'PGRST116' },
-                  }),
-                }),
-              }),
-            };
-          }
-
-          return {
-            select: jest.fn().mockReturnValue({
-              eq: jest.fn().mockImplementation((column: string) => ({
-                maybeSingle: jest.fn().mockResolvedValue({
-                  data:
-                    column === 'user_id' || column === 'id'
-                      ? { is_active: true }
-                      : null,
-                  error: null,
-                }),
-                single: jest.fn().mockResolvedValue({
-                  data:
-                    column === 'user_id' || column === 'id'
-                      ? { is_active: true }
-                      : null,
-                  error: null,
-                }),
-              })),
-            }),
-          };
-        }),
-      } as any);
-
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
-
-      expect(response.status).toBe(307);
-      expect(response.headers.get('location')).toContain('/unauthorized');
-    });
+        expect(response.status).not.toBe(307);
+      }
+    );
   });
 
   describe('パイロット対象外ルートの保護', () => {
-    const adminUser = { id: 'admin-user-123', email: 'admin@example.com' };
-    const adminProfile = {
-      role: 'admin',
-      clinic_id: null,
-      is_active: true,
-    };
-
     const pilotBlockedRoutes = [
       '/chat',
       '/ai-insights',
@@ -476,12 +146,10 @@ describe('認証と権限制御 Middleware', () => {
       'NEXT_PUBLIC_PILOT_MODE=true のとき %s は /dashboard にリダイレクト',
       async route => {
         process.env.NEXT_PUBLIC_PILOT_MODE = 'true';
-        mockCreateServerClient.mockReturnValue(
-          createMockSupabase(adminUser, adminProfile) as any
-        );
 
-        const request = createMockRequest(route);
-        const response = await middleware(request);
+        const response = await middleware(
+          createMockRequest(route, 'sb-test-auth-token=session')
+        );
 
         expect(response.status).toBe(307);
         expect(response.headers.get('location')).toBe(
@@ -490,25 +158,12 @@ describe('認証と権限制御 Middleware', () => {
       }
     );
 
-    test('NEXT_PUBLIC_PILOT_MODE 未設定のとき /ai-insights は既存どおり通過する', async () => {
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(adminUser, adminProfile) as any
-      );
-
-      const request = createMockRequest('/ai-insights');
-      const response = await middleware(request);
-
-      expect(response.status).not.toBe(307);
-    });
-
-    test('NEXT_PUBLIC_PILOT_MODE=false のとき /admin/settings は通常どおり通過する', async () => {
+    test('NEXT_PUBLIC_PILOT_MODE=false のとき protected route は通常どおり通過する', async () => {
       process.env.NEXT_PUBLIC_PILOT_MODE = 'false';
-      mockCreateServerClient.mockReturnValue(
-        createMockSupabase(adminUser, adminProfile) as any
-      );
 
-      const request = createMockRequest('/admin/settings');
-      const response = await middleware(request);
+      const response = await middleware(
+        createMockRequest('/admin/settings', 'sb-test-auth-token=session')
+      );
 
       expect(response.status).not.toBe(307);
     });

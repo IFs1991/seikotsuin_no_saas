@@ -217,21 +217,23 @@ export function getPathRateLimit(
     (request: NextRequest) => Promise<NextResponse | null>
   > = [];
 
-  // 共通のAPI制限
-  if (pathname.startsWith('/api/')) {
+  // 公開APIのみ共通制限を適用
+  if (isPublicApiPath(pathname)) {
     middlewares.push(apiRateLimit);
   }
 
-  // 特定エンドポイントの制限
-  if (pathname.includes('/api/auth/') || pathname.includes('/login')) {
+  // 認証フローの入口
+  if (isAuthEntryPoint(pathname)) {
     middlewares.push(loginRateLimit);
   }
 
-  if (pathname.includes('/api/session/')) {
+  // セッション管理
+  if (isSessionManagementPath(pathname)) {
     middlewares.push(sessionCreationRateLimit);
   }
 
-  if (pathname.includes('/api/mfa/')) {
+  // MFA操作
+  if (isMfaPath(pathname)) {
     middlewares.push(mfaRateLimit);
   }
 
@@ -261,6 +263,30 @@ function getClientIP(request: NextRequest): string {
 
   // フォールバック (NextRequest does not have .ip property)
   return '127.0.0.1';
+}
+
+function isPublicApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/public/');
+}
+
+function isAuthEntryPoint(pathname: string): boolean {
+  return (
+    pathname === '/login' ||
+    pathname === '/admin/login' ||
+    pathname === '/register' ||
+    pathname === '/invite'
+  );
+}
+
+function isSessionManagementPath(pathname: string): boolean {
+  return (
+    pathname === '/api/admin/security/sessions' ||
+    pathname === '/api/admin/security/sessions/terminate'
+  );
+}
+
+function isMfaPath(pathname: string): boolean {
+  return pathname.startsWith('/api/mfa/');
 }
 
 function getRateLimitMessage(type: RateLimitType, result: any): string {

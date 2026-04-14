@@ -35,34 +35,43 @@ describe('Layout Separation: (public) vs (app)', () => {
 
   describe('(app)/layout.tsx', () => {
     const appLayoutPath = path.join(appDir, '(app)', 'layout.tsx');
+    const appShellPath = path.join(appDir, '(app)', 'app-shell.tsx');
 
     it('should exist', () => {
       expect(fs.existsSync(appLayoutPath)).toBe(true);
     });
 
-    it('should contain Sidebar', () => {
+    it('should import AppShell', () => {
       const content = fs.readFileSync(appLayoutPath, 'utf-8');
-      expect(content).toContain('Sidebar');
+      expect(content).toContain("from './app-shell'");
+      expect(content).toContain('AppShell');
     });
 
-    it('should contain Header', () => {
+    it('should redirect unauthenticated users to /login', () => {
       const content = fs.readFileSync(appLayoutPath, 'utf-8');
-      expect(content).toContain('Header');
+      expect(content).toContain("redirect('/login')");
     });
 
-    it('should contain QueryProvider', () => {
+    it('should be a server component wrapper', () => {
       const content = fs.readFileSync(appLayoutPath, 'utf-8');
-      expect(content).toContain('QueryProvider');
+      expect(content).not.toContain("'use client'");
     });
 
-    it('should contain UserProfileProvider', () => {
-      const content = fs.readFileSync(appLayoutPath, 'utf-8');
-      expect(content).toContain('UserProfileProvider');
+    it('should extract client shell into app-shell.tsx', () => {
+      expect(fs.existsSync(appShellPath)).toBe(true);
     });
 
-    it('should be a client component', () => {
-      const content = fs.readFileSync(appLayoutPath, 'utf-8');
+    it('app-shell.tsx should remain a client component', () => {
+      const content = fs.readFileSync(appShellPath, 'utf-8');
       expect(content).toContain("'use client'");
+    });
+
+    it('app-shell.tsx should contain Sidebar, Header, QueryProvider, and UserProfileProvider', () => {
+      const content = fs.readFileSync(appShellPath, 'utf-8');
+      expect(content).toContain('Sidebar');
+      expect(content).toContain('Header');
+      expect(content).toContain('QueryProvider');
+      expect(content).toContain('UserProfileProvider');
     });
   });
 
