@@ -183,6 +183,50 @@ describe('reservation email enqueue helpers', () => {
         })
       );
     });
+
+    it('writes a durable email_log when customer row is missing', async () => {
+      const outboxInsert = createInsertMock();
+      const logInsert = jest.fn().mockResolvedValue({ error: null });
+      const customerSelect = createSelectMock(null);
+      const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
+      const staffSelect = createSelectMock({ name: '山田先生' });
+
+      const from = jest.fn().mockImplementation((table: string) => {
+        if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'email_logs') return { insert: logInsert };
+        if (table === 'customers') return { select: customerSelect.select };
+        if (table === 'clinics') return { select: clinicSelect.select };
+        if (table === 'staff') return { select: staffSelect.select };
+        return {};
+      });
+
+      const supabase = { from } as any;
+
+      await enqueueReservationCreated(supabase, {
+        id: 'res-004',
+        clinic_id: 'clinic-001',
+        customer_id: 'cust-missing',
+        status: 'unconfirmed',
+        start_time: '2026-04-15T10:00:00Z',
+        end_time: '2026-04-15T11:00:00Z',
+        staff_id: 'staff-001',
+        updated_at: '2026-04-14T09:00:00.000Z',
+      });
+
+      expect(outboxInsert.insert).not.toHaveBeenCalled();
+      expect(logInsert).toHaveBeenCalledTimes(1);
+      expect(logInsert.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          event_type: 'enqueue_lookup_failed',
+          detail: expect.objectContaining({
+            stage: 'customer',
+            error: expect.stringContaining(
+              'customers lookup returned no row for customer_id=cust-missing'
+            ),
+          }),
+        })
+      );
+    });
   });
 
   // -------------------------------------------------------
@@ -355,6 +399,57 @@ describe('reservation email enqueue helpers', () => {
           detail: expect.objectContaining({
             stage: 'context',
             template_type: 'reservation_cancelled',
+          }),
+        })
+      );
+    });
+
+    it('writes a durable email_log when menu row is missing for the reservation context', async () => {
+      const outboxInsert = createInsertMock();
+      const logInsert = jest.fn().mockResolvedValue({ error: null });
+      const customerSelect = createSelectMock({
+        id: 'cust-001',
+        email: 'patient@example.com',
+        name: '田中太郎',
+      });
+      const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
+      const staffSelect = createSelectMock({ name: '山田先生' });
+      const menuSelect = createSelectMock(null);
+
+      const from = jest.fn().mockImplementation((table: string) => {
+        if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'email_logs') return { insert: logInsert };
+        if (table === 'customers') return { select: customerSelect.select };
+        if (table === 'clinics') return { select: clinicSelect.select };
+        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'menus') return { select: menuSelect.select };
+        return {};
+      });
+
+      const supabase = { from } as any;
+      const after: ReservationSnapshot = {
+        ...before,
+        menu_id: 'menu-missing',
+        status: 'cancelled',
+      };
+
+      await enqueueReservationChange(
+        supabase,
+        before,
+        after,
+        '2026-04-14T10:00:00.000Z'
+      );
+
+      expect(outboxInsert.insert).not.toHaveBeenCalled();
+      expect(logInsert).toHaveBeenCalledTimes(1);
+      expect(logInsert.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          event_type: 'enqueue_lookup_failed',
+          detail: expect.objectContaining({
+            stage: 'context',
+            error: expect.stringContaining(
+              'menus lookup returned no row for menu_id=menu-missing'
+            ),
           }),
         })
       );

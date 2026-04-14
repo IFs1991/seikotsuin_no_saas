@@ -17,7 +17,7 @@ type ReservationWithUpdatedAt = {
 
 type CustomerLookupResult = {
   customer: { email: string | null; name: string | null } | null;
-  errorMessage: string | null;
+  failureMessage: string | null;
 };
 
 type ReservationContext = {
@@ -28,7 +28,18 @@ type ReservationContext = {
 
 type ContextLookupResult = {
   context: ReservationContext;
-  errorMessage: string | null;
+  failureMessage: string | null;
+};
+
+type LookupFailure = {
+  stage: 'customer' | 'context';
+  message: string;
+} | null;
+
+type EnqueueDependencies = {
+  customer: { email: string | null; name: string | null } | null;
+  context: ReservationContext;
+  failure: LookupFailure;
 };
 
 async function insertEnqueueLookupFailureLog(
@@ -88,44 +99,26 @@ export async function enqueueReservationCreated(
   reservation: ReservationWithUpdatedAt
 ): Promise<void> {
   try {
-    const [customerLookup, contextLookup] = await Promise.all([
-      fetchCustomerEmail(
-        supabase,
-        reservation.clinic_id,
-        reservation.customer_id
-      ),
-      fetchReservationContext(supabase, reservation),
-    ]);
+    const dependencies = await resolveEnqueueDependencies(
+      supabase,
+      reservation
+    );
 
-    if (customerLookup.errorMessage) {
+    if (dependencies.failure) {
       await insertEnqueueLookupFailureLog(supabase, {
         clinicId: reservation.clinic_id,
         reservationId: reservation.id,
         customerId: reservation.customer_id,
         templateType: 'reservation_created',
-        stage: 'customer',
-        errorMessage: customerLookup.errorMessage,
+        stage: dependencies.failure.stage,
+        errorMessage: dependencies.failure.message,
         staffId: reservation.staff_id,
         menuId: reservation.menu_id,
       });
       return;
     }
 
-    if (contextLookup.errorMessage) {
-      await insertEnqueueLookupFailureLog(supabase, {
-        clinicId: reservation.clinic_id,
-        reservationId: reservation.id,
-        customerId: reservation.customer_id,
-        templateType: 'reservation_created',
-        stage: 'context',
-        errorMessage: contextLookup.errorMessage,
-        staffId: reservation.staff_id,
-        menuId: reservation.menu_id,
-      });
-      return;
-    }
-
-    const customer = customerLookup.customer;
+    const customer = dependencies.customer;
     if (!customer?.email) return;
 
     await enqueueEmail(
@@ -136,14 +129,12 @@ export async function enqueueReservationCreated(
         customerId: reservation.customer_id,
         templateType: 'reservation_created',
         toEmail: customer.email,
-        payload: {
-          customerName: customer.name ?? '',
-          clinicName: contextLookup.context.clinicName,
-          startTime: reservation.start_time,
-          endTime: reservation.end_time,
-          staffName: contextLookup.context.staffName,
-          menuName: contextLookup.context.menuName,
-        },
+        payload: buildReservationEmailPayload(
+          customer,
+          dependencies.context,
+          reservation.start_time,
+          reservation.end_time
+        ),
       },
       reservation.updated_at
     );
@@ -169,40 +160,23 @@ export async function enqueueReservationChange(
     const templateType = determineNotificationType({ before, after });
     if (!templateType) return;
 
-    const [customerLookup, contextLookup] = await Promise.all([
-      fetchCustomerEmail(supabase, after.clinic_id, after.customer_id),
-      fetchReservationContext(supabase, after),
-    ]);
+    const dependencies = await resolveEnqueueDependencies(supabase, after);
 
-    if (customerLookup.errorMessage) {
+    if (dependencies.failure) {
       await insertEnqueueLookupFailureLog(supabase, {
         clinicId: after.clinic_id,
         reservationId: after.id,
         customerId: after.customer_id,
         templateType,
-        stage: 'customer',
-        errorMessage: customerLookup.errorMessage,
+        stage: dependencies.failure.stage,
+        errorMessage: dependencies.failure.message,
         staffId: after.staff_id,
         menuId: after.menu_id,
       });
       return;
     }
 
-    if (contextLookup.errorMessage) {
-      await insertEnqueueLookupFailureLog(supabase, {
-        clinicId: after.clinic_id,
-        reservationId: after.id,
-        customerId: after.customer_id,
-        templateType,
-        stage: 'context',
-        errorMessage: contextLookup.errorMessage,
-        staffId: after.staff_id,
-        menuId: after.menu_id,
-      });
-      return;
-    }
-
-    const customer = customerLookup.customer;
+    const customer = dependencies.customer;
     if (!customer?.email) return;
 
     await enqueueEmail(
@@ -213,14 +187,12 @@ export async function enqueueReservationChange(
         customerId: after.customer_id,
         templateType,
         toEmail: customer.email,
-        payload: {
-          customerName: customer.name ?? '',
-          clinicName: contextLookup.context.clinicName,
-          startTime: after.start_time,
-          endTime: after.end_time,
-          staffName: contextLookup.context.staffName,
-          menuName: contextLookup.context.menuName,
-        },
+        payload: buildReservationEmailPayload(
+          customer,
+          dependencies.context,
+          after.start_time,
+          after.end_time
+        ),
       },
       updatedAt,
       { ignoreDuplicate: true }
@@ -228,6 +200,54 @@ export async function enqueueReservationChange(
   } catch (err) {
     logger.error('Failed to enqueue reservation change email', err);
   }
+}
+
+async function resolveEnqueueDependencies(
+  supabase: any,
+  reservation: {
+    id: string;
+    clinic_id: string;
+    customer_id: string;
+    staff_id: string;
+    menu_id?: string | null;
+  }
+): Promise<EnqueueDependencies> {
+  const [customerLookup, contextLookup] = await Promise.all([
+    fetchCustomerEmail(
+      supabase,
+      reservation.clinic_id,
+      reservation.customer_id
+    ),
+    fetchReservationContext(supabase, reservation),
+  ]);
+
+  if (customerLookup.failureMessage) {
+    return {
+      customer: customerLookup.customer,
+      context: createEmptyReservationContext(),
+      failure: {
+        stage: 'customer',
+        message: customerLookup.failureMessage,
+      },
+    };
+  }
+
+  if (contextLookup.failureMessage) {
+    return {
+      customer: customerLookup.customer,
+      context: contextLookup.context,
+      failure: {
+        stage: 'context',
+        message: contextLookup.failureMessage,
+      },
+    };
+  }
+
+  return {
+    customer: customerLookup.customer,
+    context: contextLookup.context,
+    failure: null,
+  };
 }
 
 async function fetchCustomerEmail(
@@ -245,17 +265,20 @@ async function fetchCustomerEmail(
   if (error) {
     return {
       customer: null,
-      errorMessage: `customers lookup failed: ${error.message}`,
+      failureMessage: `customers lookup failed: ${error.message}`,
     };
   }
 
   if (!data) {
-    return { customer: null, errorMessage: null };
+    return {
+      customer: null,
+      failureMessage: `customers lookup returned no row for customer_id=${customerId}, clinic_id=${clinicId}`,
+    };
   }
 
   return {
     customer: { email: data.email, name: data.name },
-    errorMessage: null,
+    failureMessage: null,
   };
 }
 
@@ -263,11 +286,7 @@ async function fetchReservationContext(
   supabase: any,
   reservation: { clinic_id: string; staff_id: string; menu_id?: string | null }
 ): Promise<ContextLookupResult> {
-  const context: ReservationContext = {
-    clinicName: '',
-    staffName: '',
-    menuName: '',
-  };
+  const context = createEmptyReservationContext();
 
   const [clinicRes, staffRes, menuRes] = await Promise.all([
     supabase
@@ -295,14 +314,23 @@ async function fetchReservationContext(
     clinicRes.error
       ? `clinics lookup failed: ${clinicRes.error.message}`
       : null,
+    !clinicRes.error && !clinicRes.data
+      ? `clinics lookup returned no row for clinic_id=${reservation.clinic_id}`
+      : null,
     staffRes.error ? `staff lookup failed: ${staffRes.error.message}` : null,
+    !staffRes.error && !staffRes.data
+      ? `staff lookup returned no row for staff_id=${reservation.staff_id}, clinic_id=${reservation.clinic_id}`
+      : null,
     menuRes.error ? `menus lookup failed: ${menuRes.error.message}` : null,
+    reservation.menu_id && !menuRes.error && !menuRes.data
+      ? `menus lookup returned no row for menu_id=${reservation.menu_id}, clinic_id=${reservation.clinic_id}`
+      : null,
   ].filter(Boolean);
 
   if (lookupErrors.length > 0) {
     return {
       context,
-      errorMessage: lookupErrors.join(' | '),
+      failureMessage: lookupErrors.join(' | '),
     };
   }
 
@@ -310,5 +338,29 @@ async function fetchReservationContext(
   if (staffRes.data?.name) context.staffName = staffRes.data.name;
   if (menuRes.data?.name) context.menuName = menuRes.data.name;
 
-  return { context, errorMessage: null };
+  return { context, failureMessage: null };
+}
+
+function createEmptyReservationContext(): ReservationContext {
+  return {
+    clinicName: '',
+    staffName: '',
+    menuName: '',
+  };
+}
+
+function buildReservationEmailPayload(
+  customer: { email: string | null; name: string | null },
+  context: ReservationContext,
+  startTime: string,
+  endTime: string
+) {
+  return {
+    customerName: customer.name ?? '',
+    clinicName: context.clinicName,
+    startTime,
+    endTime,
+    staffName: context.staffName,
+    menuName: context.menuName,
+  };
 }
