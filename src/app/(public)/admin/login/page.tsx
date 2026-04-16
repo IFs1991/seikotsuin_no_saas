@@ -206,6 +206,12 @@ function AdminLoginContent() {
 
         {/* /register への導線 (AC-04) */}
         <div className='text-center space-y-2'>
+          <Link
+            href='/forgot-password?source=admin'
+            className='text-sm text-blue-600 hover:text-blue-500 block font-medium'
+          >
+            パスワードを忘れた方はこちら
+          </Link>
           <p className='text-sm text-gray-600'>
             アカウントをお持ちでない場合は{' '}
             <Link

@@ -26,9 +26,23 @@ SaaS として動作させるための最小手順です。
 1. 本番URLを Supabase Dashboard の Auth 設定に反映
    - `site_url` / `additional_redirect_urls`
    - ローカル値は `supabase/config.toml` の `[auth]` を参照
+   - パスワードリセットでは `src/app/(public)/forgot-password/actions.ts` が
+     `redirectTo=${NEXT_PUBLIC_APP_URL}/admin/callback?next=/reset-password/{source}`
+     を使うため、`NEXT_PUBLIC_APP_URL` と Supabase Auth の redirect allow-list が一致している必要がある
 2. Custom Access Token Hook を有効化
    - `public.custom_access_token_hook`
    - 根拠: `supabase/config.toml` の `[auth.hook.custom_access_token]`
+3. Auth Email 用の custom SMTP を有効化
+   - Resend SMTP を利用する前提
+   - 参照: `.env.local.example`, `.env.production.example`
+   - 最低限確認する値:
+     - `RESEND_SMTP_HOST=smtp.resend.com`
+     - `RESEND_SMTP_PORT=587`
+     - `RESEND_SMTP_USERNAME=resend`
+     - `RESEND_SMTP_PASSWORD`
+4. Resend 側で送信ドメイン認証を完了する
+   - password reset は Tiramisu の Resend API 直送ではなく Supabase Auth SMTP 経由
+   - 参照: `docs/メール_LINE送信責務整理.md`
 
 ## 3. マイグレーション適用（本番）
 
@@ -75,7 +89,8 @@ SaaS として動作させるための最小手順です。
   - 根拠: `src/lib/env.ts`
 - `NEXT_PUBLIC_APP_URL`
   - 参照: `src/app/invite/actions.ts`, `src/app/api/onboarding/invites/route.ts`,
-    `src/app/api/admin/staff/invites/route.ts`, `src/lib/api-helpers.ts`
+    `src/app/api/admin/staff/invites/route.ts`, `src/lib/api-helpers.ts`,
+    `src/app/(public)/forgot-password/actions.ts`
 
 ### 推奨（セキュリティ/運用）
 
@@ -84,6 +99,7 @@ SaaS として動作させるための最小手順です。
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
   - 参照: `src/lib/rate-limiting/middleware.ts`
+  - password reset では `/forgot-password` と `/reset-password/*` も auth entry point として扱う
 - `app.settings.mfa_encryption_key`（Supabase DB設定）
   - 参照: `supabase/migrations/20260218000600_security_hardening_mfa_legacy.sql`
   - 例:
@@ -113,10 +129,37 @@ SaaS として動作させるための最小手順です。
 - `/register` -> `/register/verify` 導線
 - 招待URL動作（`NEXT_PUBLIC_APP_URL`）
 - `/api/admin/staff/invites` 招待URLが `/admin/callback` に到達すること
+- `/forgot-password?source=admin` から recovery メール送信
+- `/forgot-password?source=clinic` から recovery メール送信
+- recovery メールのリンクが `/admin/callback?next=/reset-password/{source}` を経由して
+  `/reset-password/{source}` に到達すること
+- `/reset-password/{source}` で新パスワード更新後、`/admin/login?message=password_reset_completed`
+  または `/login?message=password_reset_completed` に戻ること
 - 主要画面の表示
 - 余裕があれば RLS 検証（`RLS_DEPLOYMENT_MANUAL.md` のSQL）
 
-## 8. ローカルでの事前検証（DoD）
+## 8. パスワードリセットの一次切り分け
+
+### メールが届かない
+
+- `src/app/(public)/forgot-password/actions.ts` が `resetPasswordForEmail(...)` を呼んでいるか確認
+- Supabase Dashboard で Auth SMTP custom SMTP が enabled か確認
+- Resend の送信ドメインが verified か確認
+- `NEXT_PUBLIC_APP_URL` が公開 URL と一致しているか確認
+
+### リンクが無効
+
+- `src/app/(public)/admin/callback/route.ts` の `next` 契約で `/reset-password/{source}` に到達しているか確認
+- `src/app/(public)/reset-password/[source]/page.tsx` で recovery セッションが取れているか確認
+- Supabase Auth の recovery リンク有効期限切れでないか確認
+
+### callback で失敗する
+
+- `/admin/callback?error=auth_failed` に落ちていないか確認
+- `next` が外部 URL になっていないか確認
+- `NEXT_PUBLIC_APP_URL` と Supabase Auth allow-list が一致しているか確認
+
+## 9. ローカルでの事前検証（DoD）
 
 DoDに沿って最低限の検証を行うと安全です:
 - `docs/stabilization/DoD-v0.1.md` の DOD-01/02/03/04/08

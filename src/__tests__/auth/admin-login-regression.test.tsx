@@ -65,6 +65,16 @@ describe('/admin/login ページ (signup トグル削除後)', () => {
       expect(registerLink).toBeTruthy();
     });
 
+    test('forgot-password への導線が存在する', async () => {
+      const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
+      render(<AdminLogin />);
+
+      expect(
+        document.querySelector('a[href="/forgot-password?source=admin"]')
+      ).toBeTruthy();
+      expect(screen.getByText(/パスワードを忘れた方はこちら/i)).toBeTruthy();
+    });
+
     test('signup トグルボタン（サインアップ/ログイン切り替え）が存在しない', async () => {
       const { default: AdminLogin } = await import('@/app/(public)/admin/login/page');
       render(<AdminLogin />);

@@ -19,6 +19,9 @@ describe('getPathRateLimit', () => {
     expect(getPathRateLimit('/admin/login')).toEqual([loginRateLimit]);
     expect(getPathRateLimit('/register')).toEqual([loginRateLimit]);
     expect(getPathRateLimit('/invite')).toEqual([loginRateLimit]);
+    expect(getPathRateLimit('/forgot-password')).toEqual([loginRateLimit]);
+    expect(getPathRateLimit('/reset-password/admin')).toEqual([loginRateLimit]);
+    expect(getPathRateLimit('/reset-password/clinic')).toEqual([loginRateLimit]);
     expect(getPathRateLimit('/api/auth/profile')).toEqual([]);
   });
 

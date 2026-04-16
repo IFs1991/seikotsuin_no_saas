@@ -274,7 +274,9 @@ function isAuthEntryPoint(pathname: string): boolean {
     pathname === '/login' ||
     pathname === '/admin/login' ||
     pathname === '/register' ||
-    pathname === '/invite'
+    pathname === '/invite' ||
+    pathname === '/forgot-password' ||
+    pathname.startsWith('/reset-password')
   );
 }
 

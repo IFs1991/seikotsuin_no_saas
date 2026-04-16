@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
+import {
+  createPasswordRecoveryIntent,
+  getPasswordRecoveryIntentCookieOptions,
+  PASSWORD_RECOVERY_INTENT_COOKIE,
+} from '@/lib/auth/password-recovery-intent';
 import type { Database } from '@/types/supabase';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
@@ -12,6 +17,10 @@ export async function GET(request: Request) {
 
   // セキュアなリダイレクト先を検証
   const safeRedirectUrl = getSafeRedirectUrl(nextParam, origin);
+  const safeRedirectPath = safeRedirectUrl
+    ? new URL(safeRedirectUrl).pathname
+    : null;
+  const isRecoveryRedirect = safeRedirectPath?.startsWith('/reset-password/');
 
   if (code) {
     const supabase = await createClient();
@@ -33,12 +42,14 @@ export async function GET(request: Request) {
         const userRole = profile?.role ?? 'staff';
         const hasClinic = !!profile?.clinic_id;
 
-        // clinic_idがない場合はオンボーディングへ
+        // recovery フローだけは clinic_id 未設定より優先して通す
         let finalRedirectPath: string;
-        if (!hasClinic) {
+        if (isRecoveryRedirect && safeRedirectPath) {
+          finalRedirectPath = safeRedirectPath;
+        } else if (!hasClinic) {
           finalRedirectPath = '/onboarding';
-        } else if (safeRedirectUrl) {
-          finalRedirectPath = new URL(safeRedirectUrl).pathname;
+        } else if (safeRedirectPath) {
+          finalRedirectPath = safeRedirectPath;
         } else {
           finalRedirectPath = getDefaultRedirect(userRole);
         }
@@ -48,7 +59,17 @@ export async function GET(request: Request) {
           `[Auth] Successful login: ${data.user.email} -> ${finalRedirectPath}`
         );
 
-        return NextResponse.redirect(`${origin}${finalRedirectPath}`);
+        const response = NextResponse.redirect(`${origin}${finalRedirectPath}`);
+
+        if (isRecoveryRedirect && safeRedirectPath) {
+          response.cookies.set(
+            PASSWORD_RECOVERY_INTENT_COOKIE,
+            createPasswordRecoveryIntent(data.user.id),
+            getPasswordRecoveryIntentCookieOptions()
+          );
+        }
+
+        return response;
       } else {
         // 認証エラーをログに記録
         console.error('[Auth] Exchange code failed:', {

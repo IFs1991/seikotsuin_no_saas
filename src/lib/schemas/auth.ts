@@ -119,6 +119,21 @@ export const passwordResetSchema = z.object({
 });
 
 /**
+ * パスワードリカバリー用スキーマ
+ * recovery フローでは currentPassword を要求しないため、
+ * passwordChangeSchema を流用しない。
+ */
+export const passwordRecoverySchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    message: 'パスワードが一致しません',
+    path: ['confirmPassword'],
+  });
+
+/**
  * パスワード変更用スキーマ
  */
 export const passwordChangeSchema = z
@@ -162,12 +177,32 @@ export type AuthSuccessResponse = {
  */
 export type AuthResponse = AuthErrorResponse | AuthSuccessResponse;
 
+export type PasswordRecoveryErrorResponse = {
+  success: false;
+  errors: {
+    password?: string[];
+    confirmPassword?: string[];
+    _form?: string[];
+  };
+};
+
+export type PasswordRecoverySuccessResponse = {
+  success: true;
+  message?: string;
+  redirectTo?: string;
+};
+
+export type PasswordRecoveryResponse =
+  | PasswordRecoveryErrorResponse
+  | PasswordRecoverySuccessResponse;
+
 /**
  * TypeScript型の推論
  */
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 export type PasswordResetFormData = z.infer<typeof passwordResetSchema>;
+export type PasswordRecoveryFormData = z.infer<typeof passwordRecoverySchema>;
 export type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 
 /**

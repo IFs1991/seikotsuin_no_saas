@@ -207,6 +207,12 @@ function ClinicLoginPageContent() {
         </form>
 
         <div className='text-center space-y-2'>
+          <Link
+            href='/forgot-password?source=clinic'
+            className='text-sm text-teal-600 hover:text-teal-500 block font-medium'
+          >
+            パスワードを忘れた方はこちら
+          </Link>
           <p className='text-sm text-gray-500'>
             招待を受けた方は招待メールのリンクからご登録ください
           </p>

@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { createAdminClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  ScopeAccessError,
+  ScopeNotConfiguredError,
+} from '@/lib/supabase/scoped-admin';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -11,16 +15,16 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
-jest.mock('@/lib/supabase', () => {
-  const actual = jest.requireActual('@/lib/supabase');
+jest.mock('@/lib/supabase/scoped-admin', () => {
+  const actual = jest.requireActual('@/lib/supabase/scoped-admin');
   return {
     ...actual,
-    createAdminClient: jest.fn(),
+    createScopedAdminContext: jest.fn(),
   };
 });
 
 const processApiRequestMock = processApiRequest as jest.Mock;
-const createAdminClientMock = createAdminClient as jest.Mock;
+const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 
 function createListQueryMock(result: unknown[]) {
   const query = {
@@ -51,10 +55,9 @@ describe('Admin tenants access alignment', () => {
   it('GET /api/admin/tenants scopes list by clinic_scope_ids for HQ admin', async () => {
     const clinics = [{ id: 'clinic-1', name: 'Scope Clinic' }];
     const clinicsQuery = createListQueryMock(clinics);
-
-    createAdminClientMock.mockReturnValue({
+    const mockAdminClient = {
       from: jest.fn().mockReturnValue(clinicsQuery),
-    });
+    };
 
     processApiRequestMock.mockResolvedValue({
       success: true,
@@ -65,6 +68,11 @@ describe('Admin tenants access alignment', () => {
         clinic_scope_ids: ['clinic-1', 'clinic-2'],
       },
       supabase: {},
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: mockAdminClient,
+      scopedClinicIds: ['clinic-1', 'clinic-2'],
+      assertClinicInScope: jest.fn(),
     });
 
     const { GET } = await import('@/app/api/admin/tenants/route');
@@ -91,8 +99,9 @@ describe('Admin tenants access alignment', () => {
       },
       supabase: {},
     });
-
-    createAdminClientMock.mockReturnValue({ from: jest.fn() });
+    createScopedAdminContextMock.mockImplementation(() => {
+      throw new ScopeNotConfiguredError();
+    });
 
     const { GET } = await import('@/app/api/admin/tenants/route');
     const response = await GET(
@@ -116,8 +125,13 @@ describe('Admin tenants access alignment', () => {
       supabase: {},
       body: { is_active: false },
     });
-
-    createAdminClientMock.mockReturnValue({ from: jest.fn() });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from: jest.fn() },
+      scopedClinicIds: ['clinic-1'],
+      assertClinicInScope: jest.fn(() => {
+        throw new ScopeAccessError();
+      }),
+    });
 
     const { PATCH } = await import('@/app/api/admin/tenants/[clinic_id]/route');
     const response = await PATCH(
