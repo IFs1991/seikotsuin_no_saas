@@ -20,6 +20,18 @@ export function useAdminTenants() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const upsertClinic = useCallback((clinic: ClinicSummary) => {
+    setClinics(prev => {
+      const existingIndex = prev.findIndex(item => item.id === clinic.id);
+
+      if (existingIndex === -1) {
+        return [clinic, ...prev];
+      }
+
+      return prev.map(item => (item.id === clinic.id ? clinic : item));
+    });
+  }, []);
+
   const fetchClinics = useCallback(async (filters: ClinicFilters = {}) => {
     try {
       setLoading(true);
@@ -73,7 +85,10 @@ export function useAdminTenants() {
           throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
         }
 
-        return result.data as ClinicSummary;
+        const createdClinic = result.data as ClinicSummary;
+        upsertClinic(createdClinic);
+
+        return createdClinic;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
@@ -84,7 +99,7 @@ export function useAdminTenants() {
         setLoading(false);
       }
     },
-    []
+    [upsertClinic]
   );
 
   const updateClinic = useCallback(
@@ -115,7 +130,10 @@ export function useAdminTenants() {
           throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
         }
 
-        return result.data as ClinicSummary;
+        const updatedClinic = result.data as ClinicSummary;
+        upsertClinic(updatedClinic);
+
+        return updatedClinic;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
@@ -126,7 +144,7 @@ export function useAdminTenants() {
         setLoading(false);
       }
     },
-    []
+    [upsertClinic]
   );
 
   return {

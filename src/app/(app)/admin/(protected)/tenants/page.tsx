@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAdminTenants } from '@/hooks/useAdminTenants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,8 +35,15 @@ const formatDate = (value?: string | null) => {
 };
 
 export default function AdminTenantsPage() {
-  const { clinics, loading, error, fetchClinics, createClinic, updateClinic } =
-    useAdminTenants();
+  const {
+    clinics,
+    loading,
+    error,
+    fetchClinics,
+    createClinic,
+    updateClinic,
+    setClinics,
+  } = useAdminTenants();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] =
@@ -62,6 +69,29 @@ export default function AdminTenantsPage() {
     }, 200);
     return () => clearTimeout(timeout);
   }, [fetchClinics, currentFilters]);
+
+  const matchesCurrentFilters = useCallback(
+    (clinic: (typeof clinics)[number]) => {
+      const normalizedSearch = search.trim().toLocaleLowerCase('ja-JP');
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        clinic.name.toLocaleLowerCase('ja-JP').includes(normalizedSearch);
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' ? clinic.is_active : !clinic.is_active);
+
+      return matchesSearch && matchesStatus;
+    },
+    [search, statusFilter]
+  );
+
+  const removeClinicFromCurrentView = useCallback(
+    (clinicId: string) => {
+      setClinics(prev => prev.filter(clinic => clinic.id !== clinicId));
+    },
+    [setClinics]
+  );
 
   const resetForm = () => {
     setFormState({
@@ -90,9 +120,11 @@ export default function AdminTenantsPage() {
         is_active: formState.is_active,
       });
       if (updated) {
+        if (!matchesCurrentFilters(updated)) {
+          removeClinicFromCurrentView(updated.id);
+        }
         setNotice('クリニックを更新しました');
         resetForm();
-        fetchClinics(currentFilters);
       }
       return;
     }
@@ -105,9 +137,11 @@ export default function AdminTenantsPage() {
     });
 
     if (created) {
+      if (!matchesCurrentFilters(created)) {
+        removeClinicFromCurrentView(created.id);
+      }
       setNotice('クリニックを作成しました');
       resetForm();
-      fetchClinics(currentFilters);
     }
   };
 
@@ -128,12 +162,14 @@ export default function AdminTenantsPage() {
       is_active: !clinic.is_active,
     });
     if (updated) {
+      if (!matchesCurrentFilters(updated)) {
+        removeClinicFromCurrentView(updated.id);
+      }
       setNotice(
         clinic.is_active
           ? 'クリニックを無効化しました'
           : 'クリニックを有効化しました'
       );
-      fetchClinics(currentFilters);
     }
   };
 
