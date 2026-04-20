@@ -5,7 +5,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerClient, getCurrentUser } from '@/lib/supabase';
+import {
+  createAdminClient,
+  getServerClient,
+  getCurrentUser,
+} from '@/lib/supabase';
 import { seedMasterSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -61,19 +65,24 @@ export async function POST(request: NextRequest) {
     const { treatment_menus, payment_methods, patient_types } = parsed.data;
 
     const clinicId = state.clinic_id;
+    // DOD-08: clinic 作成直後は JWT の clinic claim が未更新なことがあるため、
+    // 自分の onboarding_state で clinic_id を確定したうえで service_role で投入する。
+    const adminClient = createAdminClient();
 
     // 施術メニュー投入（all-or-nothing: 1件でも失敗したら中断）
     const menuCount = { success: 0, failed: 0 };
     const menuErrors: string[] = [];
 
-    for (const menu of treatment_menus) {
-      const { error } = await supabase.from('menus').insert({
+    for (const [index, menu] of treatment_menus.entries()) {
+      const { error } = await adminClient.from('menus').insert({
         clinic_id: clinicId,
         name: menu.name,
         price: menu.price,
         duration_minutes: menu.duration_minutes ?? 30,
-        description: menu.description ?? null,
+        description: menu.description?.trim() ? menu.description : null,
         is_active: true,
+        created_by: user.id,
+        display_order: index,
       });
 
       if (error) {
@@ -100,11 +109,15 @@ export async function POST(request: NextRequest) {
 
     // 支払方法投入
     for (const method of payment_methods) {
-      const { error } = await supabase.from('master_payment_methods').insert({
-        clinic_id: clinicId,
-        name: method,
-        is_active: true,
-      });
+      const { error } = await adminClient
+        .from('master_payment_methods')
+        .upsert(
+          {
+            name: method,
+            is_active: true,
+          },
+          { onConflict: 'name' }
+        );
 
       if (error) {
         console.error('Payment method insert error:', error);
@@ -113,10 +126,14 @@ export async function POST(request: NextRequest) {
 
     // 患者タイプ投入
     for (const type of patient_types) {
-      const { error } = await supabase.from('master_patient_types').insert({
-        clinic_id: clinicId,
-        name: type,
-      });
+      const { error } = await adminClient
+        .from('master_patient_types')
+        .upsert(
+          {
+            name: type,
+          },
+          { onConflict: 'name' }
+        );
 
       if (error) {
         console.error('Patient type insert error:', error);

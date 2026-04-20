@@ -22,6 +22,16 @@ const mockSupabaseClient = {
   rpc: jest.fn(),
 };
 
+const mockAdminSupabaseClient = {
+  auth: {
+    admin: {
+      inviteUserByEmail: jest.fn(),
+    },
+  },
+  from: jest.fn(),
+  rpc: jest.fn(),
+};
+
 // モック用ユーザー
 const mockUser = {
   id: 'test-user-id',
@@ -109,6 +119,17 @@ function createQueryBuilder(
 describe('Onboarding API Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSupabaseClient.auth.getUser.mockReset();
+    mockSupabaseClient.from.mockReset();
+    mockSupabaseClient.rpc.mockReset();
+    mockAdminSupabaseClient.from.mockReset();
+    mockAdminSupabaseClient.rpc.mockReset();
+    mockAdminSupabaseClient.auth.admin.inviteUserByEmail.mockReset();
+
+    const supabaseModule = jest.requireMock('@/lib/supabase') as {
+      createAdminClient: jest.Mock;
+    };
+    supabaseModule.createAdminClient.mockImplementation(() => mockSupabaseClient);
 
     // デフォルトの認証済みユーザー
     mockSupabaseClient.auth.getUser.mockResolvedValue({
@@ -502,6 +523,91 @@ describe('Onboarding API Integration', () => {
 
       expect(fromCalls).toContain('menus');
       expect(fromCalls).not.toContain('master_treatment_menus');
+    });
+
+    test('clinic claim が未反映でも admin client でマスタ投入できる', async () => {
+      const mockState = { clinic_id: 'clinic-1' };
+      const stateLookupBuilder = createQueryBuilder(mockState);
+      const stateUpdateBuilder = createQueryBuilder({});
+      const menuBuilder = createQueryBuilder({});
+      const paymentBuilder = createQueryBuilder({});
+      const patientBuilder = createQueryBuilder({});
+      const stateBuilders = [stateLookupBuilder, stateUpdateBuilder];
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'onboarding_states') {
+          return stateBuilders.shift() ?? createQueryBuilder({});
+        }
+
+        return createQueryBuilder(null, {
+          message: `server client should not write ${table}`,
+        });
+      });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'menus') {
+          return menuBuilder;
+        }
+        if (table === 'master_payment_methods') {
+          return paymentBuilder;
+        }
+        if (table === 'master_patient_types') {
+          return patientBuilder;
+        }
+        return createQueryBuilder({});
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const request = createMockRequest('/api/onboarding/seed', {
+        method: 'POST',
+        body: {
+          treatment_menus: [
+            { name: '肩こり治療', price: 3000, duration_minutes: 30 },
+          ],
+          payment_methods: ['現金'],
+          patient_types: ['初診'],
+        },
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(200);
+
+      expect(supabaseModule.createAdminClient).toHaveBeenCalled();
+      expect(menuBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: 'clinic-1',
+          name: '肩こり治療',
+          price: 3000,
+          duration_minutes: 30,
+          created_by: 'test-user-id',
+        })
+      );
+      expect(paymentBuilder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '現金',
+          is_active: true,
+        }),
+        { onConflict: 'name' }
+      );
+      expect(patientBuilder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '初診',
+        }),
+        { onConflict: 'name' }
+      );
+
+      const paymentPayload = paymentBuilder.upsert.mock.calls[0][0];
+      const patientPayload = patientBuilder.upsert.mock.calls[0][0];
+      expect(paymentPayload).not.toHaveProperty('clinic_id');
+      expect(patientPayload).not.toHaveProperty('clinic_id');
     });
 
     test('menu INSERT が1件でも失敗した場合、onboarding_states を completed に更新しない', async () => {
