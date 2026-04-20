@@ -33,9 +33,15 @@ describe('Pilot navigation gating', () => {
     process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = 'false';
 
     const { unmount } = render(
-      <Sidebar isOpen onClose={jest.fn()} isAdmin={false} profileLoading={false} />
+      <Sidebar
+        isOpen
+        onClose={jest.fn()}
+        isAdmin={false}
+        profileLoading={false}
+      />
     );
 
+    expect(screen.queryByText('トップ')).not.toBeInTheDocument();
     expect(screen.queryByText('AI分析')).not.toBeInTheDocument();
 
     unmount();
@@ -48,9 +54,15 @@ describe('Pilot navigation gating', () => {
     process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = 'true';
 
     const { unmount } = render(
-      <Sidebar isOpen onClose={jest.fn()} isAdmin={false} profileLoading={false} />
+      <Sidebar
+        isOpen
+        onClose={jest.fn()}
+        isAdmin={false}
+        profileLoading={false}
+      />
     );
 
+    expect(screen.queryByText('トップ')).not.toBeInTheDocument();
     expect(screen.getByText('AI分析')).toBeInTheDocument();
 
     unmount();

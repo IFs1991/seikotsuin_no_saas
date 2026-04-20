@@ -22,7 +22,6 @@ interface SidebarProps {
 }
 
 const CORE_MENU: SidebarMenuItem[] = [
-  { id: 'home', label: 'トップ', href: '/' },
   { id: 'dashboard', label: 'ダッシュボード', href: '/dashboard' },
   {
     id: 'daily-reports',
@@ -103,12 +102,8 @@ export function Sidebar({
   );
 
   const currentMenuId = useMemo(() => {
-    if (pathname === '/' || pathname === '') {
-      return 'home';
-    }
-
     const candidates = [
-      ...menuItems.filter(item => item.href !== '/'),
+      ...menuItems,
       ...ADMIN_MENU.flatMap(item => [item, ...(item.subItems ?? [])]),
     ];
 
