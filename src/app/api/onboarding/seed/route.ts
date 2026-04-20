@@ -109,15 +109,13 @@ export async function POST(request: NextRequest) {
 
     // 支払方法投入
     for (const method of payment_methods) {
-      const { error } = await adminClient
-        .from('master_payment_methods')
-        .upsert(
-          {
-            name: method,
-            is_active: true,
-          },
-          { onConflict: 'name' }
-        );
+      const { error } = await adminClient.from('master_payment_methods').upsert(
+        {
+          name: method,
+          is_active: true,
+        },
+        { onConflict: 'name' }
+      );
 
       if (error) {
         console.error('Payment method insert error:', error);
@@ -126,14 +124,12 @@ export async function POST(request: NextRequest) {
 
     // 患者タイプ投入
     for (const type of patient_types) {
-      const { error } = await adminClient
-        .from('master_patient_types')
-        .upsert(
-          {
-            name: type,
-          },
-          { onConflict: 'name' }
-        );
+      const { error } = await adminClient.from('master_patient_types').upsert(
+        {
+          name: type,
+        },
+        { onConflict: 'name' }
+      );
 
       if (error) {
         console.error('Patient type insert error:', error);
