@@ -220,6 +220,31 @@ describe('Onboarding API Integration', () => {
   // ================================================================
   describe('POST /api/onboarding/clinic', () => {
     test('クリニック作成成功時、profiles と user_permissions も更新される', async () => {
+      const profileBuilder = createQueryBuilder({ full_name: '山田太郎' });
+      const staffLookupBuilder = createQueryBuilder(null);
+      const staffInsertBuilder = createQueryBuilder({ id: 'test-user-id' });
+      const staffUpdateBuilder = createQueryBuilder({
+        id: 'test-user-id',
+        clinic_id: 'clinic-1',
+      });
+      const staffBuilders = [
+        staffLookupBuilder,
+        staffInsertBuilder,
+        staffUpdateBuilder,
+      ];
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profileBuilder;
+        }
+
+        if (table === 'staff') {
+          return staffBuilders.shift() ?? createQueryBuilder();
+        }
+
+        return createQueryBuilder();
+      });
+
       // RPC関数のモック
       mockSupabaseClient.rpc.mockResolvedValue({
         data: { success: true, clinic_id: 'clinic-1' },
@@ -244,6 +269,25 @@ describe('Onboarding API Integration', () => {
       expect(json.success).toBe(true);
       expect(json.data.clinic_id).toBe('clinic-1');
       expect(json.data.next_step).toBe('invites');
+      expect(staffInsertBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'test-user-id',
+          clinic_id: null,
+          name: '山田太郎',
+          role: 'admin',
+          email: 'test@example.com',
+          password_hash: 'managed_by_supabase',
+          is_therapist: false,
+        })
+      );
+      expect(staffUpdateBuilder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: 'clinic-1',
+          name: '山田太郎',
+          role: 'admin',
+          email: 'test@example.com',
+        })
+      );
     });
 
     test('空のクリニック名は400エラーを返す', async () => {
@@ -287,6 +331,46 @@ describe('Onboarding API Integration', () => {
 
       const json = await response.json();
       expect(json.success).toBe(false);
+    });
+
+    test('staff のプレースホルダ作成に失敗した場合は RPC を呼ばずに500を返す', async () => {
+      const profileBuilder = createQueryBuilder({ full_name: '山田太郎' });
+      const staffLookupBuilder = createQueryBuilder(null);
+      const staffInsertBuilder = createQueryBuilder(null, {
+        message: 'duplicate key value violates unique constraint',
+      });
+      const staffBuilders = [staffLookupBuilder, staffInsertBuilder];
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profileBuilder;
+        }
+
+        if (table === 'staff') {
+          return staffBuilders.shift() ?? createQueryBuilder();
+        }
+
+        return createQueryBuilder();
+      });
+
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+
+      const request = createMockRequest('/api/onboarding/clinic', {
+        method: 'POST',
+        body: {
+          name: 'テストクリニック',
+          address: '東京都渋谷区1-1-1',
+        },
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(500);
+      expect(mockSupabaseClient.rpc).not.toHaveBeenCalled();
+
+      const json = await response.json();
+      expect(json.success).toBe(false);
+      expect(json.error).toBe('クリニック作成の準備に失敗しました');
     });
   });
 
