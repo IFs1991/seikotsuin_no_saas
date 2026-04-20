@@ -5,7 +5,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerClient, getCurrentUser } from '@/lib/supabase';
+import {
+  createAdminClient,
+  getServerClient,
+  getCurrentUser,
+} from '@/lib/supabase';
 import { profileUpdateSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -45,16 +49,41 @@ export async function POST(request: NextRequest) {
     }
 
     const { full_name, phone_number } = parsed.data;
+    const adminClient = createAdminClient();
+    const profileEmail =
+      user.email?.trim().toLowerCase() || `${user.id}@placeholder.local`;
 
-    // プロフィール更新
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        full_name,
-        phone_number: phone_number ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
+    const { data: existingProfile, error: profileLookupError } =
+      await adminClient
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    if (profileLookupError) {
+      console.error('Profile lookup error:', profileLookupError);
+      return NextResponse.json(
+        { success: false, error: 'プロフィールの更新に失敗しました' },
+        { status: 500 }
+      );
+    }
+
+    const profilePayload = {
+      full_name,
+      phone_number: phone_number ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: profileError } = existingProfile
+      ? await adminClient
+          .from('profiles')
+          .update(profilePayload)
+          .eq('user_id', user.id)
+      : await adminClient.from('profiles').insert({
+          user_id: user.id,
+          email: profileEmail,
+          ...profilePayload,
+        });
 
     if (profileError) {
       console.error('Profile update error:', profileError);

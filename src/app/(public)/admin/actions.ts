@@ -10,7 +10,12 @@ import {
   type AuthResponse,
 } from '@/lib/schemas/auth';
 import { assertEnv } from '@/lib/env';
-import { getServerClient } from '@/lib/supabase';
+import {
+  createAdminClient,
+  getServerClient,
+  getUserAccessContext,
+} from '@/lib/supabase';
+import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 
@@ -66,6 +71,98 @@ function extractAuthFormValues(formData: FormData) {
     email: typeof emailValue === 'string' ? emailValue : '',
     password: typeof passwordValue === 'string' ? passwordValue : '',
   };
+}
+
+function resolveProfileName(
+  email: string,
+  metadata: Record<string, unknown> | null | undefined
+) {
+  const metadataName =
+    typeof metadata?.full_name === 'string'
+      ? metadata.full_name.trim()
+      : typeof metadata?.name === 'string'
+        ? metadata.name.trim()
+        : '';
+
+  if (metadataName) {
+    return metadataName;
+  }
+
+  return email.split('@')[0] || '管理者';
+}
+
+async function ensureProfileExists(user: {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown> | null;
+}) {
+  const adminClient = createAdminClient();
+  const profileEmail =
+    user.email?.trim().toLowerCase() || `${user.id}@placeholder.local`;
+
+  const { data: existingProfile, error: lookupError } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error('[Auth] Profile bootstrap lookup error:', lookupError);
+    return;
+  }
+
+  if (existingProfile) {
+    return;
+  }
+
+  const { error: insertError } = await adminClient.from('profiles').insert({
+    user_id: user.id,
+    email: profileEmail,
+    full_name: resolveProfileName(profileEmail, user.user_metadata),
+  });
+
+  if (insertError) {
+    console.error('[Auth] Profile bootstrap insert error:', insertError);
+  }
+}
+
+async function syncProfileAccess(
+  userId: string,
+  email: string,
+  role: string | null,
+  clinicId: string | null
+) {
+  if (!role && clinicId === null) {
+    return;
+  }
+
+  const adminClient = createAdminClient();
+  const profilePayload: {
+    updated_at: string;
+    email: string;
+    role?: string;
+    clinic_id?: string | null;
+  } = {
+    updated_at: new Date().toISOString(),
+    email,
+  };
+
+  if (role) {
+    profilePayload.role = role;
+  }
+
+  if (clinicId !== null) {
+    profilePayload.clinic_id = clinicId;
+  }
+
+  const { error } = await adminClient
+    .from('profiles')
+    .update(profilePayload)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('[Auth] Profile access sync error:', error);
+  }
 }
 
 export async function login(_: any, formData: FormData): Promise<AuthResponse> {
@@ -147,17 +244,13 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
       };
     }
 
-    // 5. ユーザー権限の確認
-    const profileResult = await supabase
-      .from('profiles')
-      .select('role, is_active')
-      .eq('user_id', data.user.id)
-      .single();
+    await ensureProfileExists(data.user);
 
-    type ProfileData = { role: string; is_active: boolean } | null;
-    const profile = profileResult?.data as ProfileData;
+    // 5. 認可コンテキストを user_permissions/profile の整合済み導線で解決
+    const accessContext = await getUserAccessContext(data.user.id, supabase);
+    const effectiveRole = accessContext.normalizedRole ?? accessContext.role;
 
-    if (!profile?.is_active) {
+    if (!accessContext.isActive) {
       await supabase.auth.signOut();
       return {
         success: false,
@@ -167,6 +260,13 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
         },
       };
     }
+
+    await syncProfileAccess(
+      data.user.id,
+      sanitizedEmail,
+      effectiveRole,
+      accessContext.clinicId
+    );
 
     await AuditLogger.logLogin(
       data.user.id,
@@ -178,13 +278,19 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     // 6. 成功ログ
     console.info('[Auth] Successful login:', {
       email: sanitizedEmail,
-      role: profile!.role,
+      role: effectiveRole,
+      clinic_id: accessContext.clinicId,
       timestamp: new Date().toISOString(),
     });
 
     // 7. パス再検証とリダイレクト
     revalidatePath('/', 'layout');
-    const redirectPath = getDefaultRedirect(profile!.role);
+    const redirectPath =
+      accessContext.clinicId === null
+        ? '/onboarding'
+        : canAccessAdminUIWithCompat(effectiveRole)
+          ? getDefaultRedirect(effectiveRole ?? 'admin')
+          : '/dashboard';
     redirect(redirectPath);
   } catch (error) {
     if (isRedirectLikeError(error)) {

@@ -129,7 +129,9 @@ describe('Onboarding API Integration', () => {
     const supabaseModule = jest.requireMock('@/lib/supabase') as {
       createAdminClient: jest.Mock;
     };
-    supabaseModule.createAdminClient.mockImplementation(() => mockSupabaseClient);
+    supabaseModule.createAdminClient.mockImplementation(
+      () => mockSupabaseClient
+    );
 
     // デフォルトの認証済みユーザー
     mockSupabaseClient.auth.getUser.mockResolvedValue({
@@ -215,6 +217,58 @@ describe('Onboarding API Integration', () => {
       const json = await response.json();
       expect(json.success).toBe(true);
       expect(json.data.next_step).toBe('clinic');
+    });
+
+    test('profiles 行が未作成でも service role で新規作成できる', async () => {
+      const profileLookupBuilder = createQueryBuilder(null);
+      const profileInsertBuilder = createQueryBuilder({ id: 'profile-1' });
+      const profileBuilders = [profileLookupBuilder, profileInsertBuilder];
+      const onboardingStateBuilder = createQueryBuilder({ id: 'state-1' });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profileBuilders.shift() ?? createQueryBuilder({});
+        }
+
+        return createQueryBuilder({});
+      });
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'onboarding_states') {
+          return onboardingStateBuilder;
+        }
+
+        return createQueryBuilder({});
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/profile/route');
+
+      const request = createMockRequest('/api/onboarding/profile', {
+        method: 'POST',
+        body: {
+          full_name: '山田太郎',
+          phone_number: '090-1234-5678',
+        },
+      });
+
+      const response = await POST(request);
+
+      expect(response.status).toBe(200);
+      expect(profileInsertBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'test-user-id',
+          email: 'test@example.com',
+          full_name: '山田太郎',
+          phone_number: '090-1234-5678',
+        })
+      );
     });
 
     test('無効なデータは400エラーを返す', async () => {
