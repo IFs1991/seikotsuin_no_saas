@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
+import { createAdminClient } from '@/lib/supabase';
 import {
   createScopedAdminContext,
   ScopeAccessError,
@@ -23,8 +24,17 @@ jest.mock('@/lib/supabase/scoped-admin', () => {
   };
 });
 
+jest.mock('@/lib/supabase', () => {
+  const actual = jest.requireActual('@/lib/supabase');
+  return {
+    ...actual,
+    createAdminClient: jest.fn(),
+  };
+});
+
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
+const createAdminClientMock = createAdminClient as jest.Mock;
 
 function createListQueryMock(result: unknown[]) {
   const query = {
@@ -145,5 +155,151 @@ describe('Admin tenants access alignment', () => {
 
     expect(response.status).toBe(403);
     expect(body.success).toBe(false);
+  });
+
+  it('POST /api/admin/tenants creates a clinic_admin account when login credentials are provided', async () => {
+    const createdClinic = {
+      id: 'clinic-new',
+      name: '新宿西口院',
+      address: '東京都新宿区',
+      phone_number: '03-9999-0000',
+      is_active: true,
+      created_at: '2026-04-20T00:00:00.000Z',
+    };
+
+    const clinicsInsertQuery = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: createdClinic,
+        error: null,
+      }),
+    };
+
+    const scopedAdminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'clinics') {
+          return clinicsInsertQuery;
+        }
+        throw new Error(`Unexpected scoped table: ${table}`);
+      }),
+    };
+
+    const profilesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const staffQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const permissionsQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+
+    const adminClient = {
+      auth: {
+        admin: {
+          createUser: jest.fn().mockResolvedValue({
+            data: { user: { id: 'user-1' } },
+            error: null,
+          }),
+          deleteUser: jest.fn(),
+        },
+      },
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profilesQuery;
+        }
+        if (table === 'staff') {
+          return staffQuery;
+        }
+        if (table === 'user_permissions') {
+          return permissionsQuery;
+        }
+        throw new Error(`Unexpected admin table: ${table}`);
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: ['hq-1'],
+      },
+      supabase: {},
+      body: {
+        name: createdClinic.name,
+        address: createdClinic.address,
+        phone_number: createdClinic.phone_number,
+        is_active: true,
+        login_email: 'clinic-admin@example.com',
+        login_password: 'StorePass1!',
+      },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedAdminClient,
+      scopedClinicIds: ['hq-1'],
+      assertClinicInScope: jest.fn(),
+    });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: createdClinic.name,
+          address: createdClinic.address,
+          phone_number: createdClinic.phone_number,
+          is_active: true,
+          login_email: 'clinic-admin@example.com',
+          login_password: 'StorePass1!',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(adminClient.auth.admin.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'clinic-admin@example.com',
+        password: 'StorePass1!',
+        email_confirm: true,
+      })
+    );
+    expect(profilesQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: 'user-1',
+        clinic_id: createdClinic.id,
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      }),
+      { onConflict: 'user_id' }
+    );
+    expect(staffQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'user-1',
+        clinic_id: createdClinic.id,
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+        password_hash: 'managed_by_supabase',
+      }),
+      { onConflict: 'id' }
+    );
+    expect(permissionsQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staff_id: 'user-1',
+        clinic_id: createdClinic.id,
+        username: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+        hashed_password: 'managed_by_supabase',
+      }),
+      { onConflict: 'staff_id' }
+    );
+    expect(body.data.admin_account).toEqual({
+      email: 'clinic-admin@example.com',
+      role: 'clinic_admin',
+    });
   });
 });

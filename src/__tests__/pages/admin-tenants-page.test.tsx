@@ -34,6 +34,10 @@ describe('AdminTenantsPage', () => {
       phone_number: '03-9999-0000',
       is_active: true,
       created_at: '2026-04-20T00:00:00.000Z',
+      admin_account: {
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
     };
 
     mockFetch
@@ -63,6 +67,15 @@ describe('AdminTenantsPage', () => {
     fireEvent.change(screen.getByPlaceholderText('例: 03-1234-5678'), {
       target: { value: createdClinic.phone_number },
     });
+    fireEvent.change(
+      screen.getByPlaceholderText('例: clinic-admin@example.com'),
+      {
+        target: { value: createdClinic.admin_account.email },
+      }
+    );
+    fireEvent.change(screen.getByPlaceholderText('初期パスワードを設定'), {
+      target: { value: 'StorePass1!' },
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '作成する' }));
 
@@ -70,7 +83,11 @@ describe('AdminTenantsPage', () => {
       expect(screen.getByText(createdClinic.name)).toBeInTheDocument();
     });
 
-    expect(screen.getByText('クリニックを作成しました')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'クリニックと店舗管理者アカウントを作成しました（ID: clinic-admin@example.com）'
+      )
+    ).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -81,6 +98,18 @@ describe('AdminTenantsPage', () => {
       '/api/admin/tenants',
       expect.objectContaining({
         method: 'POST',
+      })
+    );
+
+    const requestInit = mockFetch.mock.calls[1][1] as RequestInit;
+    expect(JSON.parse(String(requestInit.body))).toEqual(
+      expect.objectContaining({
+        name: createdClinic.name,
+        address: createdClinic.address,
+        phone_number: createdClinic.phone_number,
+        is_active: true,
+        login_email: createdClinic.admin_account.email,
+        login_password: 'StorePass1!',
       })
     );
   });

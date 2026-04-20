@@ -5,14 +5,21 @@ import {
   createSuccessResponse,
   logError,
   processApiRequest,
+  sanitizeInput,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { createAdminClient } from '@/lib/supabase';
 import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
 import { HQ_ROLES } from '@/lib/constants/roles';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
+import {
+  emailSchema,
+  passwordSchema,
+  sanitizeAuthInput,
+} from '@/lib/schemas/auth';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -25,16 +32,332 @@ import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
  * @see docs/stabilization/spec-tenant-table-api-guard-v0.1.md (Follow-ups: 追加修正2)
  * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Parent-scope model)
  */
-const ClinicCreateSchema = z.object({
-  name: z.string().min(1, 'クリニック名は必須です').max(255),
-  address: z.string().max(500).optional(),
-  phone_number: z.string().max(50).optional(),
-  is_active: z.boolean().optional(),
-  // NOTE: parent_id is intentionally NOT included.
-  // Parent-child tenant creation should use /api/onboarding/clinic endpoint.
-});
+const ClinicCreateSchema = z
+  .object({
+    name: z.string().min(1, 'クリニック名は必須です').max(255),
+    address: z.string().max(500).optional(),
+    phone_number: z.string().max(50).optional(),
+    is_active: z.boolean().optional(),
+    login_email: emailSchema.optional(),
+    login_password: passwordSchema.optional(),
+    // NOTE: parent_id is intentionally NOT included.
+    // Parent-child tenant creation should use /api/onboarding/clinic endpoint.
+  })
+  .superRefine((value, ctx) => {
+    const hasLoginEmail = value.login_email !== undefined;
+    const hasLoginPassword = value.login_password !== undefined;
+
+    if (hasLoginEmail !== hasLoginPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: hasLoginEmail ? ['login_password'] : ['login_email'],
+        message:
+          'ログインID（メールアドレス）と初期パスワードはセットで指定してください',
+      });
+    }
+  });
 
 const requireAdmin = (role: string) => role === 'admin';
+const CLINIC_ADMIN_ROLE = 'clinic_admin';
+const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const TENANTS_ENDPOINT = '/api/admin/tenants';
+
+type ClinicCreateInput = z.infer<typeof ClinicCreateSchema>;
+type ClinicAdminAccount = {
+  email: string;
+  role: typeof CLINIC_ADMIN_ROLE;
+};
+type NormalizedClinicCreateInput = {
+  clinic: {
+    name: string;
+    address: string | null;
+    phone_number: string | null;
+    is_active: boolean;
+  };
+  loginEmail: string | null;
+  loginPassword: string | null;
+  shouldCreateClinicAdmin: boolean;
+};
+type RollbackStage =
+  | 'rollback_user_permissions'
+  | 'rollback_staff'
+  | 'rollback_profiles'
+  | 'rollback_clinic'
+  | 'rollback_auth_user';
+type CreateClinicAdminResourcesInput = {
+  adminClient: ReturnType<typeof createAdminClient>;
+  endpointUserId: string;
+  clinicId: string;
+  clinicName: string;
+  loginEmail: string;
+  loginPassword: string;
+};
+type CreateClinicAdminResourcesResult =
+  | {
+      success: true;
+      adminAccount: ClinicAdminAccount;
+    }
+  | {
+      success: false;
+      errorResponse: Response;
+    };
+
+function buildClinicAdminName(clinicName: string) {
+  return `${clinicName} 管理者`;
+}
+
+function logTenantPostError(
+  error: unknown,
+  userId: string,
+  params?: Record<string, unknown>
+) {
+  logError(error, {
+    endpoint: TENANTS_ENDPOINT,
+    method: 'POST',
+    userId,
+    params,
+  });
+}
+
+function logTenantRollbackError(
+  error: unknown,
+  userId: string,
+  stage: RollbackStage,
+  extraParams?: Record<string, unknown>
+) {
+  logTenantPostError(error, userId, {
+    stage,
+    ...extraParams,
+  });
+}
+
+function normalizeClinicCreateInput(
+  input: ClinicCreateInput
+): NormalizedClinicCreateInput {
+  const clinicName = sanitizeInput(input.name) as string;
+  const loginEmail = input.login_email
+    ? sanitizeAuthInput(input.login_email).toLowerCase()
+    : null;
+  const loginPassword = input.login_password
+    ? sanitizeAuthInput(input.login_password)
+    : null;
+
+  return {
+    clinic: {
+      name: clinicName,
+      address:
+        input.address !== undefined
+          ? (sanitizeInput(input.address) as string) || null
+          : null,
+      phone_number:
+        input.phone_number !== undefined
+          ? (sanitizeInput(input.phone_number) as string) || null
+          : null,
+      is_active: input.is_active ?? true,
+    },
+    loginEmail,
+    loginPassword,
+    shouldCreateClinicAdmin: loginEmail !== null && loginPassword !== null,
+  };
+}
+
+function mapCreateUserErrorMessage(error?: { message?: string | null }) {
+  const normalizedMessage = error?.message?.toLowerCase();
+  if (
+    normalizedMessage?.includes('already') ||
+    normalizedMessage?.includes('registered')
+  ) {
+    return 'ログインID（メールアドレス）は既に使用されています';
+  }
+
+  return '店舗アカウントの作成に失敗しました';
+}
+
+async function rollbackCreatedClinicAdminResources(
+  adminClient: ReturnType<typeof createAdminClient>,
+  userId: string
+) {
+  const { error: deletePermissionError } = await adminClient
+    .from('user_permissions')
+    .delete()
+    .eq('staff_id', userId);
+  if (deletePermissionError) {
+    logTenantRollbackError(
+      deletePermissionError,
+      userId,
+      'rollback_user_permissions'
+    );
+  }
+
+  const { error: deleteStaffError } = await adminClient
+    .from('staff')
+    .delete()
+    .eq('id', userId);
+  if (deleteStaffError) {
+    logTenantRollbackError(deleteStaffError, userId, 'rollback_staff');
+  }
+
+  const { error: deleteProfileError } = await adminClient
+    .from('profiles')
+    .delete()
+    .eq('user_id', userId);
+  if (deleteProfileError) {
+    logTenantRollbackError(deleteProfileError, userId, 'rollback_profiles');
+  }
+
+  const { error: deleteUserError } =
+    await adminClient.auth.admin.deleteUser(userId);
+  if (deleteUserError) {
+    logTenantRollbackError(deleteUserError, userId, 'rollback_auth_user');
+  }
+}
+
+async function rollbackCreatedClinicRecord(
+  adminClient: ReturnType<typeof createAdminClient>,
+  clinicId: string,
+  userId: string
+) {
+  const { error: deleteClinicError } = await adminClient
+    .from('clinics')
+    .delete()
+    .eq('id', clinicId);
+
+  if (deleteClinicError) {
+    logTenantRollbackError(deleteClinicError, userId, 'rollback_clinic', {
+      clinicId,
+    });
+  }
+}
+
+async function createClinicAdminResources({
+  adminClient,
+  endpointUserId,
+  clinicId,
+  clinicName,
+  loginEmail,
+  loginPassword,
+}: CreateClinicAdminResourcesInput): Promise<CreateClinicAdminResourcesResult> {
+  const clinicAdminName = buildClinicAdminName(clinicName);
+  const timestamp = new Date().toISOString();
+
+  const { data: authData, error: createUserError } =
+    await adminClient.auth.admin.createUser({
+      email: loginEmail,
+      password: loginPassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: clinicAdminName,
+      },
+    });
+
+  if (createUserError || !authData.user) {
+    logTenantPostError(createUserError, endpointUserId, {
+      clinic_name: clinicName,
+      login_email: loginEmail,
+      stage: 'create_auth_user',
+    });
+    return {
+      success: false as const,
+      errorResponse: createErrorResponse(
+        mapCreateUserErrorMessage(createUserError),
+        400
+      ),
+    };
+  }
+
+  const createdUserId = authData.user.id;
+
+  const cleanupAndReturn = async (
+    error: unknown,
+    message: string,
+    stage: string
+  ): Promise<CreateClinicAdminResourcesResult> => {
+    await rollbackCreatedClinicAdminResources(adminClient, createdUserId);
+    logTenantPostError(error, endpointUserId, {
+      clinic_name: clinicName,
+      clinic_id: clinicId,
+      login_email: loginEmail,
+      stage,
+    });
+    return {
+      success: false as const,
+      errorResponse: createErrorResponse(message, 500),
+    };
+  };
+
+  const { error: profileError } = await adminClient.from('profiles').upsert(
+    {
+      user_id: createdUserId,
+      clinic_id: clinicId,
+      email: loginEmail,
+      full_name: clinicAdminName,
+      role: CLINIC_ADMIN_ROLE,
+      is_active: true,
+      updated_at: timestamp,
+    },
+    { onConflict: 'user_id' }
+  );
+
+  if (profileError) {
+    return await cleanupAndReturn(
+      profileError,
+      '店舗アカウントのプロフィール作成に失敗しました',
+      'upsert_profiles'
+    );
+  }
+
+  const { error: staffError } = await adminClient.from('staff').upsert(
+    {
+      id: createdUserId,
+      clinic_id: clinicId,
+      name: clinicAdminName,
+      role: CLINIC_ADMIN_ROLE,
+      email: loginEmail,
+      password_hash: MANAGED_PASSWORD_PLACEHOLDER,
+      is_therapist: false,
+      updated_at: timestamp,
+    },
+    { onConflict: 'id' }
+  );
+
+  if (staffError) {
+    return await cleanupAndReturn(
+      staffError,
+      '店舗アカウントの作成に失敗しました',
+      'upsert_staff'
+    );
+  }
+
+  const { error: permissionError } = await adminClient
+    .from('user_permissions')
+    .upsert(
+      {
+        staff_id: createdUserId,
+        clinic_id: clinicId,
+        role: CLINIC_ADMIN_ROLE,
+        username: loginEmail,
+        hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
+        updated_at: timestamp,
+      },
+      { onConflict: 'staff_id' }
+    );
+
+  if (permissionError) {
+    return await cleanupAndReturn(
+      permissionError,
+      '店舗アカウントの権限設定に失敗しました',
+      'upsert_user_permissions'
+    );
+  }
+
+  return {
+    success: true as const,
+    adminAccount: {
+      email: loginEmail,
+      role: CLINIC_ADMIN_ROLE,
+    },
+  };
+}
 
 interface ClinicWithKPI {
   id: string;
@@ -107,7 +430,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
     if (error) {
       logError(error, {
-        endpoint: '/api/admin/tenants',
+        endpoint: TENANTS_ENDPOINT,
         method: 'GET',
         userId: auth.id,
         params: { search, is_active: isActiveParam },
@@ -139,7 +462,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     logError(error, {
-      endpoint: '/api/admin/tenants',
+      endpoint: TENANTS_ENDPOINT,
       method: 'GET',
       userId: 'unknown',
     });
@@ -153,6 +476,7 @@ export async function POST(request: NextRequest) {
       requireBody: true,
       allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
+      sanitizeInputValues: false,
     });
 
     if (!processResult.success) {
@@ -173,7 +497,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, address, phone_number, is_active } = parsed.data;
+    const normalizedInput = normalizeClinicCreateInput(parsed.data);
 
     let adminCtx;
     try {
@@ -186,26 +510,44 @@ export async function POST(request: NextRequest) {
     }
 
     const adminSupabase = adminCtx.client;
+    const serviceAdminClient = createAdminClient();
 
     const { data, error } = await adminSupabase
       .from('clinics')
-      .insert({
-        name,
-        address: address || null,
-        phone_number: phone_number || null,
-        is_active: is_active ?? true,
-      })
+      .insert(normalizedInput.clinic)
       .select('id, name, address, phone_number, is_active, created_at')
       .single();
 
     if (error) {
-      logError(error, {
-        endpoint: '/api/admin/tenants',
-        method: 'POST',
-        userId: auth.id,
-        params: { name },
+      logTenantPostError(error, auth.id, {
+        name: normalizedInput.clinic.name,
+        login_email: normalizedInput.loginEmail,
       });
       return createErrorResponse('クリニックの作成に失敗しました', 500);
+    }
+
+    let adminAccount: ClinicAdminAccount | null = null;
+
+    if (
+      normalizedInput.shouldCreateClinicAdmin &&
+      normalizedInput.loginEmail &&
+      normalizedInput.loginPassword
+    ) {
+      const adminAccountResult = await createClinicAdminResources({
+        adminClient: serviceAdminClient,
+        endpointUserId: auth.id,
+        clinicId: data.id,
+        clinicName: normalizedInput.clinic.name,
+        loginEmail: normalizedInput.loginEmail,
+        loginPassword: normalizedInput.loginPassword,
+      });
+
+      if (adminAccountResult.success === false) {
+        await rollbackCreatedClinicRecord(serviceAdminClient, data.id, auth.id);
+        return adminAccountResult.errorResponse;
+      }
+
+      adminAccount = adminAccountResult.adminAccount;
     }
 
     await AuditLogger.logAdminAction(
@@ -213,16 +555,22 @@ export async function POST(request: NextRequest) {
       auth.email,
       'clinic_create',
       data.id,
-      { name }
+      {
+        name: normalizedInput.clinic.name,
+        login_email: normalizedInput.loginEmail,
+        created_clinic_admin: normalizedInput.shouldCreateClinicAdmin,
+      }
     );
 
-    return createSuccessResponse(data, 201);
+    return createSuccessResponse(
+      {
+        ...data,
+        admin_account: adminAccount,
+      },
+      201
+    );
   } catch (error) {
-    logError(error, {
-      endpoint: '/api/admin/tenants',
-      method: 'POST',
-      userId: 'unknown',
-    });
+    logTenantPostError(error, 'unknown');
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
 }

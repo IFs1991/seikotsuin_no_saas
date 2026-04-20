@@ -8,6 +8,10 @@ export interface ClinicSummary {
   phone_number?: string | null;
   is_active: boolean;
   created_at?: string | null;
+  admin_account?: {
+    email: string;
+    role: string;
+  } | null;
 }
 
 export interface ClinicFilters {
@@ -69,6 +73,8 @@ export function useAdminTenants() {
       address?: string;
       phone_number?: string;
       is_active?: boolean;
+      login_email?: string;
+      login_password?: string;
     }) => {
       try {
         setLoading(true);
