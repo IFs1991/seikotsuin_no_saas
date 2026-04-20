@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
+import {
+  useAdminTenants,
+  type ClinicSummary,
+  type CreateClinicPayload,
+  type UpdateClinicPayload,
+} from '@/hooks/useAdminTenants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,7 +84,9 @@ const buildFormValidationMessage = (
   return null;
 };
 
-const buildCreateClinicPayload = (formState: TenantFormState) => ({
+const buildCreateClinicPayload = (
+  formState: TenantFormState
+): CreateClinicPayload => ({
   name: formState.name,
   address: formState.address || undefined,
   phone_number: formState.phone_number || undefined,
@@ -88,7 +95,9 @@ const buildCreateClinicPayload = (formState: TenantFormState) => ({
   login_password: formState.login_password || undefined,
 });
 
-const buildUpdateClinicPayload = (formState: TenantFormState) => ({
+const buildUpdateClinicPayload = (
+  formState: TenantFormState
+): UpdateClinicPayload => ({
   name: formState.name,
   address: formState.address || null,
   phone_number: formState.phone_number || null,

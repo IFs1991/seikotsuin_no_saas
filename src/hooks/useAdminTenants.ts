@@ -1,5 +1,28 @@
 import { useCallback, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import { logger } from '@/lib/logger';
+
+const TENANTS_ENDPOINT = API_ENDPOINTS.ADMIN.TENANTS;
+const JSON_HEADERS = {
+  'Content-Type': 'application/json',
+} as const;
+
+type TenantApiSuccessResponse<T> = {
+  success: true;
+  data: T;
+  message?: string;
+};
+
+type TenantApiErrorResponse = {
+  success: false;
+  error?: string | { message?: string };
+  details?: unknown;
+  code?: string;
+};
+
+type TenantApiResponse<T> =
+  | TenantApiSuccessResponse<T>
+  | TenantApiErrorResponse;
 
 export interface ClinicSummary {
   id: string;
@@ -19,6 +42,81 @@ export interface ClinicFilters {
   isActive?: boolean | null;
 }
 
+export interface CreateClinicPayload {
+  name: string;
+  address?: string;
+  phone_number?: string;
+  is_active?: boolean;
+  login_email?: string;
+  login_password?: string;
+}
+
+export interface UpdateClinicPayload {
+  name?: string;
+  address?: string | null;
+  phone_number?: string | null;
+  is_active?: boolean;
+}
+
+interface ClinicsListResponse {
+  items: ClinicSummary[];
+}
+
+function extractApiErrorMessage(response: TenantApiErrorResponse): string {
+  if (typeof response.error === 'string' && response.error.trim()) {
+    return response.error;
+  }
+
+  if (
+    response.error &&
+    typeof response.error === 'object' &&
+    'message' in response.error &&
+    typeof response.error.message === 'string' &&
+    response.error.message.trim()
+  ) {
+    return response.error.message;
+  }
+
+  return ERROR_MESSAGES.SERVER_ERROR;
+}
+
+function buildTenantsUrl(filters: ClinicFilters = {}) {
+  const params = new URLSearchParams();
+  const normalizedSearch = filters.search?.trim();
+
+  if (normalizedSearch) {
+    params.set('search', normalizedSearch);
+  }
+
+  if (filters.isActive !== undefined && filters.isActive !== null) {
+    params.set('is_active', String(filters.isActive));
+  }
+
+  const queryString = params.toString();
+  return queryString ? `${TENANTS_ENDPOINT}?${queryString}` : TENANTS_ENDPOINT;
+}
+
+function buildJsonRequestInit(
+  method: 'POST' | 'PATCH',
+  body: unknown
+): RequestInit {
+  return {
+    method,
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  };
+}
+
+async function parseTenantResponse<T>(response: Response): Promise<T> {
+  const result = (await response.json()) as TenantApiResponse<T>;
+
+  if (result.success === false) {
+    throw new Error(extractApiErrorMessage(result));
+  }
+
+  return result.data;
+}
+
 export function useAdminTenants() {
   const [clinics, setClinics] = useState<ClinicSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,121 +134,89 @@ export function useAdminTenants() {
     });
   }, []);
 
-  const fetchClinics = useCallback(async (filters: ClinicFilters = {}) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const params = new URLSearchParams();
-      if (filters.search) params.set('search', filters.search);
-      if (filters.isActive !== undefined && filters.isActive !== null) {
-        params.set('is_active', String(filters.isActive));
-      }
-
-      const response = await fetch(
-        `${API_ENDPOINTS.ADMIN.TENANTS}?${params.toString()}`
-      );
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-      }
-
-      setClinics(result.data?.items ?? []);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-      setError(message);
-      console.error('Failed to fetch clinics', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const createClinic = useCallback(
-    async (payload: {
-      name: string;
-      address?: string;
-      phone_number?: string;
-      is_active?: boolean;
-      login_email?: string;
-      login_password?: string;
-    }) => {
+  const runTenantRequest = useCallback(
+    async <T>(
+      logMessage: string,
+      request: () => Promise<T>
+    ): Promise<T | null> => {
       try {
         setLoading(true);
         setError(null);
-
-        const response = await fetch(API_ENDPOINTS.ADMIN.TENANTS, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        const createdClinic = result.data as ClinicSummary;
-        upsertClinic(createdClinic);
-
-        return createdClinic;
+        return await request();
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(message);
-        console.error('Failed to create clinic', err);
+        logger.error(logMessage, err);
         return null;
       } finally {
         setLoading(false);
       }
     },
-    [upsertClinic]
+    []
+  );
+
+  const fetchClinics = useCallback(
+    async (filters: ClinicFilters = {}) => {
+      const data = await runTenantRequest(
+        'クリニック一覧取得エラー:',
+        async () => {
+          const response = await fetch(buildTenantsUrl(filters));
+          return await parseTenantResponse<ClinicsListResponse>(response);
+        }
+      );
+
+      if (data) {
+        setClinics(data.items ?? []);
+      }
+    },
+    [runTenantRequest]
+  );
+
+  const createClinic = useCallback(
+    async (payload: CreateClinicPayload) => {
+      const createdClinic = await runTenantRequest(
+        'クリニック作成エラー:',
+        async () => {
+          const response = await fetch(
+            TENANTS_ENDPOINT,
+            buildJsonRequestInit('POST', payload)
+          );
+
+          return await parseTenantResponse<ClinicSummary>(response);
+        }
+      );
+
+      if (createdClinic) {
+        upsertClinic(createdClinic);
+      }
+
+      return createdClinic;
+    },
+    [runTenantRequest, upsertClinic]
   );
 
   const updateClinic = useCallback(
-    async (
-      clinicId: string,
-      payload: {
-        name?: string;
-        address?: string | null;
-        phone_number?: string | null;
-        is_active?: boolean;
-      }
-    ) => {
-      try {
-        setLoading(true);
-        setError(null);
+    async (clinicId: string, payload: UpdateClinicPayload) => {
+      const updatedClinic = await runTenantRequest(
+        'クリニック更新エラー:',
+        async () => {
+          const response = await fetch(
+            `${TENANTS_ENDPOINT}/${clinicId}`,
+            buildJsonRequestInit('PATCH', payload)
+          );
 
-        const response = await fetch(
-          `${API_ENDPOINTS.ADMIN.TENANTS}/${clinicId}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }
-        );
-
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+          return await parseTenantResponse<ClinicSummary>(response);
         }
+      );
 
-        const updatedClinic = result.data as ClinicSummary;
+      if (updatedClinic) {
         upsertClinic(updatedClinic);
-
-        return updatedClinic;
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-        setError(message);
-        console.error('Failed to update clinic', err);
-        return null;
-      } finally {
-        setLoading(false);
       }
+
+      return updatedClinic;
     },
-    [upsertClinic]
+    [runTenantRequest, upsertClinic]
   );
 
   return {
