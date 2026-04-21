@@ -1,222 +1,198 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useMemo } from 'react';
+import { ArrowRight, CheckCircle } from 'lucide-react';
+import useAdminDashboard from '@/hooks/useAdminDashboard';
+import { Button } from '@/components/ui/button';
 import {
   Card,
+  CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import {
+  ADMIN_DASHBOARD_COPY,
+  ADMIN_DASHBOARD_STYLES,
+  buildSummaryMetrics,
+  decorateDashboardClinics,
+  formatCurrency,
+  type DashboardClinic,
+  type SummaryMetric,
+} from '@/components/dashboard/admin-dashboard.utils';
+import { cn } from '@/lib/utils';
 
-// Dummy data for 46 clinics
-interface ClinicPerformance {
-  id: number;
-  name: string;
-  revenue: number;
-  patients: number;
-  satisfaction: number;
-  kpi_score: number;
-  isProblematic: boolean;
+function SummaryMetricCard({ label, value }: SummaryMetric) {
+  return (
+    <Card className={ADMIN_DASHBOARD_STYLES.metricCard}>
+      <CardTitle className={ADMIN_DASHBOARD_STYLES.metricTitle}>
+        {label}
+      </CardTitle>
+      <CardContent className={ADMIN_DASHBOARD_STYLES.metricValue}>
+        {value}
+      </CardContent>
+    </Card>
+  );
 }
 
-const generateDummyData = (numClinics: number): ClinicPerformance[] => {
-  const data: ClinicPerformance[] = [];
-  for (let i = 1; i <= numClinics; i++) {
-    const revenue = Math.floor(Math.random() * 1000000 + 500000); // 50万-150万
-    const patients = Math.floor(Math.random() * 200 + 50); // 50-250人
-    const satisfaction = parseFloat((Math.random() * 1 + 4).toFixed(1)); // 4.0-5.0
-    // KPI score calculation: higher revenue, more patients, higher satisfaction = higher score
-    const kpi_score = parseFloat(
-      (
-        (revenue / 1500000) * 0.4 +
-        (patients / 250) * 0.3 +
-        (satisfaction / 5) * 0.3
-      ).toFixed(2)
-    );
-    const isProblematic = kpi_score < 0.6 || revenue < 600000; // Example condition for problematic
-    data.push({
-      id: i,
-      name: `店舗 ${String(i).padStart(2, '0')}`,
-      revenue,
-      patients,
-      satisfaction,
-      kpi_score,
-      isProblematic,
-    });
-  }
-  return data;
-};
-
-const AdminDashboardPage: React.FC = () => {
-  const [clinicData, setClinicData] = useState<ClinicPerformance[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate data fetching
-    const fetchData = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-      setClinicData(generateDummyData(46));
-      setLoading(false);
-    };
-    fetchData();
-
-    // Simulate real-time updates (e.g., every 30 seconds)
-    const interval = setInterval(() => {
-      setClinicData(generateDummyData(46));
-    }, 30000); // Update every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const totalRevenue = clinicData.reduce(
-    (sum, clinic) => sum + clinic.revenue,
-    0
+function ClinicPerformanceCard({ clinic }: { clinic: DashboardClinic }) {
+  return (
+    <Card
+      className={cn(
+        ADMIN_DASHBOARD_STYLES.clinicCard,
+        clinic.isProblematic && ADMIN_DASHBOARD_STYLES.problematicClinicCard
+      )}
+    >
+      <CardTitle className={ADMIN_DASHBOARD_STYLES.clinicTitle}>
+        {clinic.name}
+      </CardTitle>
+      <CardContent className={ADMIN_DASHBOARD_STYLES.clinicBody}>
+        <p>
+          売上:{' '}
+          <span className='font-medium'>
+            {formatCurrency(clinic.totalRevenue)}
+          </span>
+        </p>
+        <p>
+          患者数:{' '}
+          <span className='font-medium'>{clinic.totalPatientCount}人</span>
+        </p>
+        <p>
+          {ADMIN_DASHBOARD_COPY.performanceLabel}:{' '}
+          <span className={ADMIN_DASHBOARD_STYLES.clinicKpiValue}>
+            {clinic.averagePerformanceScore.toFixed(2)} / 5.0
+          </span>
+        </p>
+        <Button
+          variant='link'
+          className={ADMIN_DASHBOARD_STYLES.clinicDetailButton}
+        >
+          {ADMIN_DASHBOARD_COPY.detailButton}
+        </Button>
+      </CardContent>
+    </Card>
   );
-  const totalPatients = clinicData.reduce(
-    (sum, clinic) => sum + clinic.patients,
-    0
-  );
-  const avgSatisfaction =
-    clinicData.length > 0
-      ? clinicData.reduce((sum, clinic) => sum + clinic.satisfaction, 0) /
-        clinicData.length
-      : 0;
-  const problematicClinics = clinicData.filter(clinic => clinic.isProblematic);
+}
 
-  const formatCurrency = (value: number) => `¥${value.toLocaleString()}`;
+export default function AdminDashboard() {
+  const {
+    clinicsData,
+    overallKpis,
+    loading,
+    error,
+    refreshData,
+    isRefreshing,
+  } = useAdminDashboard();
+
+  const { summaryMetrics, dashboardClinics, problematicClinics } =
+    useMemo(() => {
+      const decoratedClinics = decorateDashboardClinics(clinicsData);
+
+      return {
+        summaryMetrics: buildSummaryMetrics(overallKpis),
+        dashboardClinics: decoratedClinics,
+        problematicClinics: decoratedClinics.filter(
+          clinic => clinic.isProblematic
+        ),
+      };
+    }, [clinicsData, overallKpis]);
 
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen p-8'>
-      <div className='max-w-4xl mx-auto'>
-        <Card className='w-full bg-card'>
-          <CardHeader className='bg-card'>
-            <CardTitle className='bg-card text-[#111827] dark:text-[#f9fafb] text-center text-2xl font-bold'>
-              Admin統合管理ダッシュボード
+    <div className={ADMIN_DASHBOARD_STYLES.page}>
+      <div className={ADMIN_DASHBOARD_STYLES.container}>
+        <Card className={ADMIN_DASHBOARD_STYLES.rootCard}>
+          <CardHeader>
+            <CardTitle className={ADMIN_DASHBOARD_STYLES.title}>
+              {ADMIN_DASHBOARD_COPY.title}
             </CardTitle>
-            <CardDescription className='bg-card text-[#111827] dark:text-[#f9fafb] text-center mt-2'>
-              全46店舗のリアルタイムパフォーマンス、KPIランキング、グループ全体の統計情報を表示します。
+            <CardDescription className={ADMIN_DASHBOARD_STYLES.description}>
+              {ADMIN_DASHBOARD_COPY.description}
             </CardDescription>
           </CardHeader>
-          <CardContent className='bg-card p-6 space-y-8'>
+          <CardContent className={ADMIN_DASHBOARD_STYLES.body}>
             {loading ? (
-              <div className='text-center text-[#111827] dark:text-[#f9fafb]'>
-                データを読み込み中...
+              <div className={ADMIN_DASHBOARD_STYLES.loading}>
+                {ADMIN_DASHBOARD_COPY.loading}
+              </div>
+            ) : error ? (
+              <div className={ADMIN_DASHBOARD_STYLES.errorState}>
+                <p>{ADMIN_DASHBOARD_COPY.errorTitle}</p>
+                <p className='mt-2 text-sm'>{error}</p>
+                <Button
+                  className={cn(
+                    'mt-4',
+                    ADMIN_DASHBOARD_STYLES.primaryActionButton
+                  )}
+                  onClick={() => void refreshData()}
+                >
+                  {ADMIN_DASHBOARD_COPY.retryButton}
+                </Button>
               </div>
             ) : (
               <>
-                {/* グループ全体のKPIサマリー */}
-                <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                  <Card className='bg-card p-4 shadow-sm'>
-                    <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-[#10b981]'>
-                      総売上
-                    </CardTitle>
-                    <CardContent className='text-3xl font-bold text-[#111827] dark:text-[#f9fafb] mt-2'>
-                      {formatCurrency(totalRevenue)}
-                    </CardContent>
-                  </Card>
-                  <Card className='bg-card p-4 shadow-sm'>
-                    <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-[#10b981]'>
-                      総患者数
-                    </CardTitle>
-                    <CardContent className='text-3xl font-bold text-[#111827] dark:text-[#f9fafb] mt-2'>
-                      {totalPatients.toLocaleString()}人
-                    </CardContent>
-                  </Card>
-                  <Card className='bg-card p-4 shadow-sm'>
-                    <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-[#10b981]'>
-                      平均患者満足度
-                    </CardTitle>
-                    <CardContent className='text-3xl font-bold text-[#111827] dark:text-[#f9fafb] mt-2'>
-                      {avgSatisfaction.toFixed(1)} / 5.0
-                    </CardContent>
-                  </Card>
+                {isRefreshing && (
+                  <p className={ADMIN_DASHBOARD_STYLES.statusText}>
+                    {ADMIN_DASHBOARD_COPY.refreshing}
+                  </p>
+                )}
+
+                <div className={ADMIN_DASHBOARD_STYLES.summaryGrid}>
+                  {summaryMetrics.map(metric => (
+                    <SummaryMetricCard
+                      key={metric.label}
+                      label={metric.label}
+                      value={metric.value}
+                    />
+                  ))}
                 </div>
 
-                {/* 問題店舗のアラート表示 */}
                 {problematicClinics.length > 0 && (
-                  <Card className='bg-card border-l-4 border-red-500 p-4 shadow-sm'>
-                    <CardTitle className='text-lg font-semibold text-red-600 dark:text-red-400 flex items-center'>
-                      <CheckCircle className='h-5 w-5 mr-2 text-red-500' />
-                      問題店舗アラート
+                  <Card className={ADMIN_DASHBOARD_STYLES.alertCard}>
+                    <CardTitle className={ADMIN_DASHBOARD_STYLES.alertTitle}>
+                      <CheckCircle className='mr-2 h-5 w-5 text-red-500' />
+                      {ADMIN_DASHBOARD_COPY.alertTitle}
                     </CardTitle>
-                    <CardContent className='text-[#111827] dark:text-[#f9fafb] mt-2'>
-                      以下の店舗でパフォーマンス低下が検出されました:
-                      <ul className='list-disc list-inside mt-2'>
+                    <CardContent className={ADMIN_DASHBOARD_STYLES.alertBody}>
+                      {ADMIN_DASHBOARD_COPY.alertDescription}
+                      <ul className='mt-2 list-inside list-disc'>
                         {problematicClinics.map(clinic => (
                           <li key={clinic.id} className='text-sm'>
-                            <span className='font-medium'>{clinic.name}</span>{' '}
-                            (KPIスコア: {clinic.kpi_score.toFixed(2)})
+                            <span className='font-medium'>{clinic.name}</span> (
+                            {ADMIN_DASHBOARD_COPY.performanceLabel}:{' '}
+                            {clinic.averagePerformanceScore.toFixed(2)} / 5.0)
                           </li>
                         ))}
                       </ul>
-                      <Button className='mt-4 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'>
-                        詳細を確認 <ArrowRight className='ml-2 h-4 w-4' />
-                      </Button>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* 店舗別パフォーマンスグリッド */}
-                <div>
-                  <h3 className='text-xl font-semibold text-[#1e3a8a] dark:text-[#10b981] mb-4'>
-                    店舗別パフォーマンス
+                <section>
+                  <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+                    {ADMIN_DASHBOARD_COPY.performanceSectionTitle}
                   </h3>
-                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-y-auto'>
-                    {clinicData
-                      .sort((a, b) => b.kpi_score - a.kpi_score) // Sort by KPI score
-                      .map(clinic => (
-                        <Card
+                  {dashboardClinics.length === 0 ? (
+                    <div className={ADMIN_DASHBOARD_STYLES.emptyState}>
+                      {ADMIN_DASHBOARD_COPY.emptyState}
+                    </div>
+                  ) : (
+                    <div className={ADMIN_DASHBOARD_STYLES.clinicGrid}>
+                      {dashboardClinics.map(clinic => (
+                        <ClinicPerformanceCard
                           key={clinic.id}
-                          className={`bg-card p-4 shadow-sm ${clinic.isProblematic ? 'border-2 border-red-400' : ''}`}
-                        >
-                          <CardTitle className='text-md font-bold text-[#111827] dark:text-[#f9fafb]'>
-                            {clinic.name}
-                          </CardTitle>
-                          <CardContent className='text-sm text-[#111827] dark:text-[#f9fafb] mt-2'>
-                            <p>
-                              売上:{' '}
-                              <span className='font-medium'>
-                                {formatCurrency(clinic.revenue)}
-                              </span>
-                            </p>
-                            <p>
-                              患者数:{' '}
-                              <span className='font-medium'>
-                                {clinic.patients}人
-                              </span>
-                            </p>
-                            <p>
-                              満足度:{' '}
-                              <span className='font-medium'>
-                                {clinic.satisfaction.toFixed(1)}
-                              </span>
-                            </p>
-                            <p>
-                              KPIスコア:{' '}
-                              <span className='font-medium text-[#10b981]'>
-                                {clinic.kpi_score.toFixed(2)}
-                              </span>
-                            </p>
-                            <Button
-                              variant='link'
-                              className='p-0 h-auto text-[#1e3a8a] dark:text-[#10b981]'
-                            >
-                              詳細へ
-                            </Button>
-                          </CardContent>
-                        </Card>
+                          clinic={clinic}
+                        />
                       ))}
-                  </div>
-                </div>
+                    </div>
+                  )}
+                </section>
 
-                {/* エクスポート機能 */}
-                <div className='flex justify-end mt-8'>
-                  <Button className='bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'>
-                    経営レポートをエクスポート
+                <div className={ADMIN_DASHBOARD_STYLES.footer}>
+                  <Button
+                    className={ADMIN_DASHBOARD_STYLES.primaryActionButton}
+                  >
+                    {ADMIN_DASHBOARD_COPY.exportButton}
+                    <ArrowRight className='ml-2 h-4 w-4' />
                   </Button>
                 </div>
               </>
@@ -226,6 +202,4 @@ const AdminDashboardPage: React.FC = () => {
       </div>
     </div>
   );
-};
-
-export default AdminDashboardPage;
+}

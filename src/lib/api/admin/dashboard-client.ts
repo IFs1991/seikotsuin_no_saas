@@ -1,21 +1,10 @@
 import type { ApiResponse } from '@/types/api';
+import type {
+  AggregatedClinicData,
+  AdminDashboardPayload,
+} from '@/lib/admin/dashboard';
 
-export interface AggregatedClinicData {
-  id: string;
-  name: string;
-  totalRevenue: number;
-  totalPatientCount: number;
-  averagePerformanceScore: number;
-}
-
-export interface AdminDashboardPayload {
-  clinicsData: AggregatedClinicData[];
-  overallKpis: {
-    totalGroupRevenue: number;
-    totalGroupPatientCount: number;
-    averageGroupPerformance: number;
-  };
-}
+export type { AggregatedClinicData, AdminDashboardPayload };
 
 function buildUrl(base: string, params?: Record<string, unknown>) {
   if (!params) return base;

@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  fetchAdminDashboard,
-  type AggregatedClinicData,
-  type AdminDashboardPayload,
-} from '@/lib/api/admin/dashboard-client';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAdminDashboard } from '@/lib/api/admin/dashboard-client';
+import type {
+  AggregatedClinicData,
+  AdminDashboardPayload,
+} from '@/lib/admin/dashboard';
 
 interface SortState {
   sortBy: keyof AggregatedClinicData | 'name';
@@ -25,9 +25,8 @@ interface UseAdminDashboardReturn {
 }
 
 export default function useAdminDashboard(): UseAdminDashboardReturn {
-  const queryClient = useQueryClient();
   const [sort, setSortState] = useState<SortState>({
-    sortBy: 'totalRevenue',
+    sortBy: 'averagePerformanceScore',
     order: 'desc',
   });
   const [clinicFilter, setClinicFilter] = useState<string | null>(null);
@@ -38,6 +37,7 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
       fetchAdminDashboard(
         clinicFilter ? { clinic_id: clinicFilter } : undefined
       ),
+    placeholderData: previousData => previousData,
   });
 
   const sortedData = useMemo(() => {
@@ -60,15 +60,6 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
     return dataCopy;
   }, [query.data?.clinicsData, sort]);
 
-  const refreshMutation = useMutation({
-    mutationFn: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ['admin-dashboard'],
-      });
-      await query.refetch();
-    },
-  });
-
   return {
     clinicsData: sortedData,
     overallKpis: query.data?.overallKpis ?? null,
@@ -76,7 +67,9 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
     error: query.error instanceof Error ? query.error.message : null,
     setSort: (sortBy, order) => setSortState({ sortBy, order }),
     setClinicFilter,
-    refreshData: () => refreshMutation.mutateAsync(),
-    isRefreshing: query.isFetching || refreshMutation.isPending,
+    refreshData: async () => {
+      await query.refetch();
+    },
+    isRefreshing: query.isRefetching,
   };
 }

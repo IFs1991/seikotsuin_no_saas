@@ -5,38 +5,18 @@ import {
   createSuccessResponse,
   logError,
 } from '@/lib/api-helpers';
+import {
+  buildAdminDashboardPayload,
+  createEmptyAdminDashboardPayload,
+  type ClinicDashboardRow,
+  type DailyReportAggregateRow,
+  type StaffPerformanceAggregateRow,
+} from '@/lib/admin/dashboard';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 
-type ClinicRow = {
-  id: string;
-  name: string;
+type ClinicRow = ClinicDashboardRow & {
   is_active?: boolean | null;
 };
-
-type DailyReportRow = {
-  clinic_id: string;
-  total_patients: number | null;
-  total_revenue: number | string | null;
-};
-
-type StaffPerformanceRow = {
-  clinic_id: string;
-  performance_score: number | null;
-};
-
-interface AggregatedClinicData {
-  id: string;
-  name: string;
-  totalRevenue: number;
-  totalPatientCount: number;
-  averagePerformanceScore: number;
-}
-
-interface OverallKpis {
-  totalGroupRevenue: number;
-  totalGroupPatientCount: number;
-  averageGroupPerformance: number;
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -84,14 +64,7 @@ export async function GET(request: NextRequest) {
 
     const clinicIds = clinicRows.map(clinic => clinic.id);
     if (clinicIds.length === 0) {
-      return createSuccessResponse({
-        clinicsData: [],
-        overallKpis: {
-          totalGroupRevenue: 0,
-          totalGroupPatientCount: 0,
-          averageGroupPerformance: 0,
-        },
-      });
+      return createSuccessResponse(createEmptyAdminDashboardPayload());
     }
 
     const { data: dailyReports, error: reportsError } = await supabase
@@ -125,74 +98,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const reportRows: DailyReportRow[] = (dailyReports ??
-      []) as DailyReportRow[];
-    const performanceRows: StaffPerformanceRow[] = (staffPerformance ??
-      []) as unknown as StaffPerformanceRow[];
+    const reportRows: DailyReportAggregateRow[] = (dailyReports ??
+      []) as DailyReportAggregateRow[];
+    const performanceRows: StaffPerformanceAggregateRow[] = (staffPerformance ??
+      []) as unknown as StaffPerformanceAggregateRow[];
 
-    const aggregatedMap = new Map<string, AggregatedClinicData>();
-
-    clinicRows.forEach(clinic => {
-      aggregatedMap.set(clinic.id, {
-        id: clinic.id,
-        name: clinic.name,
-        totalRevenue: 0,
-        totalPatientCount: 0,
-        averagePerformanceScore: 0,
-      });
-    });
-
-    reportRows.forEach(report => {
-      const entry = aggregatedMap.get(report.clinic_id);
-      if (!entry) return;
-      const revenue =
-        typeof report.total_revenue === 'number'
-          ? report.total_revenue
-          : Number(report.total_revenue ?? 0);
-      entry.totalRevenue += revenue;
-      entry.totalPatientCount += report.total_patients ?? 0;
-    });
-
-    const performanceTotals = new Map<string, { sum: number; count: number }>();
-
-    performanceRows.forEach(perf => {
-      const current = performanceTotals.get(perf.clinic_id) ?? {
-        sum: 0,
-        count: 0,
-      };
-      current.sum += perf.performance_score ?? 0;
-      current.count += 1;
-      performanceTotals.set(perf.clinic_id, current);
-    });
-
-    performanceTotals.forEach((value, clinicId) => {
-      const entry = aggregatedMap.get(clinicId);
-      if (!entry) return;
-      entry.averagePerformanceScore =
-        value.count > 0 ? value.sum / value.count : 0;
-    });
-
-    const clinicsData = Array.from(aggregatedMap.values());
-
-    const overallKpis: OverallKpis = {
-      totalGroupRevenue: clinicsData.reduce(
-        (sum, clinic) => sum + clinic.totalRevenue,
-        0
-      ),
-      totalGroupPatientCount: clinicsData.reduce(
-        (sum, clinic) => sum + clinic.totalPatientCount,
-        0
-      ),
-      averageGroupPerformance:
-        clinicsData.length > 0
-          ? clinicsData.reduce(
-              (sum, clinic) => sum + clinic.averagePerformanceScore,
-              0
-            ) / clinicsData.length
-          : 0,
-    };
-
-    return createSuccessResponse({ clinicsData, overallKpis });
+    return createSuccessResponse(
+      buildAdminDashboardPayload(clinicRows, reportRows, performanceRows)
+    );
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/dashboard',
