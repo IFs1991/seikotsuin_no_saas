@@ -46,9 +46,13 @@ test.describe('管理設定永続化', () => {
       await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
       await waitForPageReady(page);
 
-      // 「基本情報」を選択（デフォルト表示だが明示的にクリック）
-      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
-      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      // 「基本情報テンプレート」を選択（デフォルト表示だが明示的にクリック）
+      await adminSettingsNav
+        .getByRole('button', { name: '設定テンプレート' })
+        .click();
+      await adminSettingsNav
+        .getByRole('button', { name: '基本情報テンプレート' })
+        .click();
       await expect(
         adminSettingsContent.getByText('設定を読み込み中...')
       ).toBeHidden({ timeout: 15000 });
@@ -84,8 +88,12 @@ test.describe('管理設定永続化', () => {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForPageReady(page);
 
-      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
-      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      await adminSettingsNav
+        .getByRole('button', { name: '設定テンプレート' })
+        .click();
+      await adminSettingsNav
+        .getByRole('button', { name: '基本情報テンプレート' })
+        .click();
       await expect(
         adminSettingsContent.getByText('設定を読み込み中...')
       ).toBeHidden({ timeout: 15000 });
@@ -104,8 +112,12 @@ test.describe('管理設定永続化', () => {
       await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
       await waitForPageReady(page);
 
-      await adminSettingsNav.getByRole('button', { name: '店舗管理' }).click();
-      await adminSettingsNav.getByRole('button', { name: '基本情報' }).click();
+      await adminSettingsNav
+        .getByRole('button', { name: '設定テンプレート' })
+        .click();
+      await adminSettingsNav
+        .getByRole('button', { name: '基本情報テンプレート' })
+        .click();
       await expect(
         adminSettingsContent.getByText('設定を読み込み中...')
       ).toBeHidden({ timeout: 15000 });

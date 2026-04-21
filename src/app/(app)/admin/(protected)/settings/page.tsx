@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,72 @@ import {
   LogOut,
 } from 'lucide-react';
 
-const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set([
+type SettingsCategoryId =
+  | 'clinic'
+  | 'staff'
+  | 'services'
+  | 'insurance'
+  | 'booking'
+  | 'communication'
+  | 'system'
+  | 'data';
+
+type SettingsItemId =
+  | 'clinic-basic'
+  | 'clinic-hours'
+  | 'clinic-facilities'
+  | 'staff-list'
+  | 'staff-roles'
+  | 'staff-schedule'
+  | 'services-menu'
+  | 'services-products'
+  | 'services-packages'
+  | 'insurance-types'
+  | 'insurance-receipt'
+  | 'insurance-billing'
+  | 'booking-slots'
+  | 'booking-online'
+  | 'booking-display'
+  | 'comm-email'
+  | 'comm-announcement'
+  | 'comm-survey'
+  | 'system-general'
+  | 'system-security'
+  | 'system-backup'
+  | 'data-import'
+  | 'data-export'
+  | 'data-master';
+
+interface SettingsItemDefinition {
+  id: SettingsItemId;
+  title: string;
+  description: string;
+}
+
+interface SettingsCategoryDefinition {
+  id: SettingsCategoryId;
+  title: string;
+  icon: ReactNode;
+  items: readonly SettingsItemDefinition[];
+}
+
+type SearchableSettingsItem = SettingsItemDefinition & {
+  searchText: string;
+};
+
+type SearchableSettingsCategory = Omit<SettingsCategoryDefinition, 'items'> & {
+  items: readonly SearchableSettingsItem[];
+  searchText: string;
+};
+
+type SelectedSettingsItem = SearchableSettingsItem & {
+  category: string;
+  categoryId: SettingsCategoryId;
+};
+
+type SettingsComponent = ComponentType<Record<string, never>>;
+
+const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'clinic-basic',
   'clinic-hours',
   'staff-list',
@@ -33,26 +98,26 @@ const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set([
   'system-backup',
 ]);
 
-const settingsCategories = [
+const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
   {
     id: 'clinic',
-    title: '店舗管理',
+    title: '設定テンプレート',
     icon: <Building className='w-5 h-5' />,
     items: [
       {
         id: 'clinic-basic',
-        title: '基本情報',
-        description: '院名、住所、電話番号、ロゴ画像の設定',
+        title: '基本情報テンプレート',
+        description: '子テナント作成時に使う院名・住所・連絡先などの初期値',
       },
       {
         id: 'clinic-hours',
-        title: '診療時間・休診日',
-        description: '曜日ごとの診療時間、祝日や臨時休診日の設定',
+        title: '診療時間・休診日テンプレート',
+        description: '子テナント作成時に使う診療時間・休診日・受付時間の初期値',
       },
       {
         id: 'clinic-facilities',
-        title: '設備・ベッド管理',
-        description: '施術ベッドの数や種類の設定',
+        title: '設備・ベッドテンプレート',
+        description: '子テナント作成時に使う施術ベッド数や設備構成の初期値',
       },
     ],
   },
@@ -213,9 +278,136 @@ const settingsCategories = [
   },
 ];
 
+const buildSearchText = (...values: readonly string[]) =>
+  values.join(' ').toLowerCase();
+
+const VISIBLE_SETTINGS_CATEGORIES: readonly SearchableSettingsCategory[] =
+  SETTINGS_CATEGORIES.map(category => {
+    const items = category.items
+      .filter(item => IMPLEMENTED_SETTINGS_ITEM_IDS.has(item.id))
+      .map(item => ({
+        ...item,
+        searchText: buildSearchText(item.title, item.description),
+      }));
+
+    return {
+      ...category,
+      items,
+      searchText: buildSearchText(
+        category.title,
+        ...items.flatMap(item => [item.title, item.description])
+      ),
+    };
+  }).filter(category => category.items.length > 0);
+
+const SETTINGS_ITEMS_BY_ID = new Map<SettingsItemId, SelectedSettingsItem>(
+  VISIBLE_SETTINGS_CATEGORIES.flatMap(category =>
+    category.items.map(item => [
+      item.id,
+      {
+        ...item,
+        category: category.title,
+        categoryId: category.id,
+      },
+    ])
+  )
+);
+
+function getSearchableCategories(
+  searchQuery: string
+): readonly SearchableSettingsCategory[] {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return VISIBLE_SETTINGS_CATEGORIES;
+  }
+
+  return VISIBLE_SETTINGS_CATEGORIES.map(category => ({
+    ...category,
+    items: category.items.filter(item =>
+      item.searchText.includes(normalizedQuery)
+    ),
+  })).filter(
+    category =>
+      category.searchText.includes(normalizedQuery) || category.items.length > 0
+  );
+}
+
+function SettingsLoadingCard() {
+  return (
+    <Card className='p-6'>
+      <div className='text-center py-12 text-gray-500'>設定を読み込み中...</div>
+    </Card>
+  );
+}
+
+const SystemSettingsComponent = dynamic(
+  () =>
+    import('@/components/admin/system-settings').then(m => m.SystemSettings),
+  { loading: SettingsLoadingCard }
+);
+
+const SETTINGS_COMPONENTS: Partial<Record<SettingsItemId, SettingsComponent>> =
+  {
+    'clinic-basic': dynamic(
+      () =>
+        import('@/components/admin/clinic-basic-settings').then(
+          m => m.ClinicBasicSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'clinic-hours': dynamic(
+      () =>
+        import('@/components/admin/clinic-hours-settings').then(
+          m => m.ClinicHoursSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'staff-list': dynamic(
+      () =>
+        import('@/components/admin/staff-management-settings').then(
+          m => m.StaffManagementSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'services-menu': dynamic(
+      () =>
+        import('@/components/admin/services-pricing-settings').then(
+          m => m.ServicesPricingSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'insurance-types': dynamic(
+      () =>
+        import('@/components/admin/insurance-billing-settings').then(
+          m => m.InsuranceBillingSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'booking-slots': dynamic(
+      () =>
+        import('@/components/admin/booking-calendar-settings').then(
+          m => m.BookingCalendarSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'comm-email': dynamic(
+      () =>
+        import('@/components/admin/communication-settings').then(
+          m => m.CommunicationSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'system-general': SystemSettingsComponent,
+    'system-security': SystemSettingsComponent,
+    'system-backup': SystemSettingsComponent,
+  };
+
 export default function AdminSettings() {
-  const [selectedCategory, setSelectedCategory] = useState('clinic');
-  const [selectedItem, setSelectedItem] = useState('clinic-basic');
+  const [selectedCategory, setSelectedCategory] =
+    useState<SettingsCategoryId>('clinic');
+  const [selectedItem, setSelectedItem] =
+    useState<SettingsItemId>('clinic-basic');
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
@@ -225,123 +417,10 @@ export default function AdminSettings() {
     router.push('/admin/logout');
   };
 
-  const visibleCategories = settingsCategories
-    .map(category => ({
-      ...category,
-      items: category.items.filter(item =>
-        IMPLEMENTED_SETTINGS_ITEM_IDS.has(item.id)
-      ),
-    }))
-    .filter(category => category.items.length > 0);
-
-  const searchableCategories = visibleCategories
-    .map(category => ({
-      ...category,
-      items: category.items.filter(
-        item =>
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    }))
-    .filter(
-      category =>
-        category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        category.items.length > 0
-    );
-
-  const currentItem = visibleCategories
-    .flatMap(cat => cat.items.map(item => ({ ...item, category: cat.title })))
-    .find(item => item.id === selectedItem);
-
-  // ローディング表示
-  const LoadingCard = () => (
-    <Card className='p-6'>
-      <div className='text-center py-12 text-gray-500'>設定を読み込み中...</div>
-    </Card>
-  );
-
-  // 動的インポート用のコンポーネントマップ（Next.js dynamicで統一）
-  const componentMap: { [key: string]: React.ComponentType | null } = {
-    'clinic-basic': dynamic(
-      () =>
-        import('@/components/admin/clinic-basic-settings').then(
-          m => m.ClinicBasicSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'clinic-hours': dynamic(
-      () =>
-        import('@/components/admin/clinic-hours-settings').then(
-          m => m.ClinicHoursSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'staff-list': dynamic(
-      () =>
-        import('@/components/admin/staff-management-settings').then(
-          m => m.StaffManagementSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'services-menu': dynamic(
-      () =>
-        import('@/components/admin/services-pricing-settings').then(
-          m => m.ServicesPricingSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'insurance-types': dynamic(
-      () =>
-        import('@/components/admin/insurance-billing-settings').then(
-          m => m.InsuranceBillingSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'booking-slots': dynamic(
-      () =>
-        import('@/components/admin/booking-calendar-settings').then(
-          m => m.BookingCalendarSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'comm-email': dynamic(
-      () =>
-        import('@/components/admin/communication-settings').then(
-          m => m.CommunicationSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'system-general': dynamic(
-      () =>
-        import('@/components/admin/system-settings').then(
-          m => m.SystemSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'system-security': dynamic(
-      () =>
-        import('@/components/admin/system-settings').then(
-          m => m.SystemSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'system-backup': dynamic(
-      () =>
-        import('@/components/admin/system-settings').then(
-          m => m.SystemSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-    'data-import': dynamic(
-      () =>
-        import('@/components/admin/data-management-settings').then(
-          m => m.DataManagementSettings
-        ),
-      { loading: () => <LoadingCard /> }
-    ),
-  };
-
-  const SelectedComponent = componentMap[selectedItem] || null;
+  const searchableCategories = getSearchableCategories(searchQuery);
+  const currentItem = SETTINGS_ITEMS_BY_ID.get(selectedItem);
+  const isTemplateItem = currentItem?.categoryId === 'clinic';
+  const SelectedComponent = SETTINGS_COMPONENTS[selectedItem] ?? null;
 
   return (
     <div className='min-h-screen bg-gray-50 flex'>
@@ -448,6 +527,19 @@ export default function AdminSettings() {
                   {currentItem.title}
                 </h1>
                 <p className='text-gray-600'>{currentItem.description}</p>
+                {isTemplateItem && (
+                  <Card className='mt-4 border-blue-200 bg-blue-50 p-4'>
+                    <p className='text-sm font-semibold text-blue-950'>
+                      店舗作成時の初期設定テンプレートです
+                    </p>
+                    <p className='mt-1 text-sm text-blue-900'>
+                      子テナント作成時に初期設定として適用されます。作成後の店舗ごとの診療時間・連絡先・予約設定は、各店舗の院長または店舗管理者が調整できます。
+                    </p>
+                    <p className='mt-1 text-sm text-blue-900'>
+                      この画面の変更は、既存店舗の設定を自動的に上書きしません。
+                    </p>
+                  </Card>
+                )}
               </div>
 
               {SelectedComponent ? (

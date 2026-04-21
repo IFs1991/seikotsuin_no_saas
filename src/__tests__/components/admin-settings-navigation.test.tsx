@@ -26,16 +26,28 @@ describe('Admin settings navigation alignment', () => {
 
     const nav = screen.getByTestId('admin-settings-nav');
 
-    fireEvent.click(within(nav).getByRole('button', { name: '店舗管理' }));
+    fireEvent.click(
+      within(nav).getByRole('button', { name: '設定テンプレート' })
+    );
     expect(
-      within(nav).getByRole('button', { name: '基本情報' })
+      within(nav).getByRole('button', { name: '基本情報テンプレート' })
     ).toBeInTheDocument();
     expect(
-      within(nav).getByRole('button', { name: '診療時間・休診日' })
+      within(nav).getByRole('button', {
+        name: '診療時間・休診日テンプレート',
+      })
     ).toBeInTheDocument();
     expect(
-      within(nav).queryByRole('button', { name: '設備・ベッド管理' })
+      within(nav).queryByRole('button', { name: '設備・ベッドテンプレート' })
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('店舗作成時の初期設定テンプレートです')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'この画面の変更は、既存店舗の設定を自動的に上書きしません。'
+      )
+    ).toBeInTheDocument();
 
     fireEvent.click(within(nav).getByRole('button', { name: 'スタッフ管理' }));
     expect(
