@@ -1,6 +1,19 @@
 import { useCallback, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import type {
+  ClinicFilters,
+  ClinicSummary,
+  CreateClinicPayload,
+  UpdateClinicPayload,
+} from '@/lib/admin/tenants';
 import { logger } from '@/lib/logger';
+
+export type {
+  ClinicFilters,
+  ClinicSummary,
+  CreateClinicPayload,
+  UpdateClinicPayload,
+} from '@/lib/admin/tenants';
 
 const TENANTS_ENDPOINT = API_ENDPOINTS.ADMIN.TENANTS;
 const JSON_HEADERS = {
@@ -23,46 +36,6 @@ type TenantApiErrorResponse = {
 type TenantApiResponse<T> =
   | TenantApiSuccessResponse<T>
   | TenantApiErrorResponse;
-
-export interface ClinicSummary {
-  id: string;
-  name: string;
-  address?: string | null;
-  phone_number?: string | null;
-  is_active: boolean;
-  created_at?: string | null;
-  parent_id?: string | null;
-  parent_name?: string | null;
-  clinic_type?: 'hq' | 'child';
-  child_count?: number;
-  admin_account?: {
-    email: string;
-    role: string;
-  } | null;
-}
-
-export interface ClinicFilters {
-  search?: string;
-  isActive?: boolean | null;
-}
-
-export interface CreateClinicPayload {
-  name: string;
-  address?: string;
-  phone_number?: string;
-  is_active?: boolean;
-  parent_id?: string | null;
-  login_email?: string;
-  login_password?: string;
-}
-
-export interface UpdateClinicPayload {
-  name?: string;
-  address?: string | null;
-  phone_number?: string | null;
-  is_active?: boolean;
-  parent_id?: string | null;
-}
 
 interface ClinicsListResponse {
   items: ClinicSummary[];
@@ -195,50 +168,48 @@ export function useAdminTenants() {
     }
   }, []);
 
-  const createClinic = useCallback(
-    async (payload: CreateClinicPayload) => {
-      const createdClinic = await runTenantRequest(
-        'クリニック作成エラー:',
-        async () => {
-          const response = await fetch(
-            TENANTS_ENDPOINT,
-            buildJsonRequestInit('POST', payload)
-          );
+  const runClinicMutation = useCallback(
+    async (
+      logMessage: string,
+      request: () => Promise<ClinicSummary>
+    ): Promise<ClinicSummary | null> => {
+      const clinic = await runTenantRequest(logMessage, request);
 
-          return await parseTenantResponse<ClinicSummary>(response);
-        }
-      );
-
-      if (createdClinic) {
-        upsertClinic(createdClinic);
+      if (clinic) {
+        upsertClinic(clinic);
       }
 
-      return createdClinic;
+      return clinic;
     },
     [runTenantRequest, upsertClinic]
   );
 
+  const createClinic = useCallback(
+    async (payload: CreateClinicPayload) => {
+      return await runClinicMutation('クリニック作成エラー:', async () => {
+        const response = await fetch(
+          TENANTS_ENDPOINT,
+          buildJsonRequestInit('POST', payload)
+        );
+
+        return await parseTenantResponse<ClinicSummary>(response);
+      });
+    },
+    [runClinicMutation]
+  );
+
   const updateClinic = useCallback(
     async (clinicId: string, payload: UpdateClinicPayload) => {
-      const updatedClinic = await runTenantRequest(
-        'クリニック更新エラー:',
-        async () => {
-          const response = await fetch(
-            `${TENANTS_ENDPOINT}/${clinicId}`,
-            buildJsonRequestInit('PATCH', payload)
-          );
+      return await runClinicMutation('クリニック更新エラー:', async () => {
+        const response = await fetch(
+          `${TENANTS_ENDPOINT}/${clinicId}`,
+          buildJsonRequestInit('PATCH', payload)
+        );
 
-          return await parseTenantResponse<ClinicSummary>(response);
-        }
-      );
-
-      if (updatedClinic) {
-        upsertClinic(updatedClinic);
-      }
-
-      return updatedClinic;
+        return await parseTenantResponse<ClinicSummary>(response);
+      });
     },
-    [runTenantRequest, upsertClinic]
+    [runClinicMutation]
   );
 
   return {

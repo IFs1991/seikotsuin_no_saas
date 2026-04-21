@@ -10,6 +10,10 @@ import { AuditLogger } from '@/lib/audit-logger';
 import { createAdminClient } from '@/lib/supabase';
 import { HQ_ROLES } from '@/lib/constants/roles';
 import {
+  buildClinicHierarchySummary,
+  CLINIC_LIST_SELECT,
+} from '@/lib/admin/tenants';
+import {
   createScopedAdminContext,
   ScopeAccessError,
   ScopeNotConfiguredError,
@@ -325,9 +329,7 @@ export async function PATCH(
       .from('clinics')
       .update(updatePayload)
       .eq('id', clinic_id)
-      .select(
-        'id, name, address, phone_number, is_active, created_at, parent_id'
-      )
+      .select(CLINIC_LIST_SELECT)
       .single();
 
     if (error) {
@@ -349,12 +351,12 @@ export async function PATCH(
       updatePayload
     );
 
-    return createSuccessResponse({
-      ...data,
-      parent_name: parentName,
-      clinic_type: data.parent_id ? 'child' : 'hq',
-      child_count: hierarchyValidation.childCount,
-    });
+    return createSuccessResponse(
+      buildClinicHierarchySummary(data, {
+        parentName,
+        childCount: hierarchyValidation.childCount,
+      })
+    );
   } catch (error) {
     logTenantPatchError(error, 'unknown');
     return createErrorResponse('サーバーエラーが発生しました', 500);

@@ -20,6 +20,16 @@ import {
   passwordSchema,
   sanitizeAuthInput,
 } from '@/lib/schemas/auth';
+import {
+  buildClinicHierarchyRows,
+  buildClinicHierarchySummary,
+  CLINIC_HIERARCHY_SELECT,
+  CLINIC_LIST_SELECT,
+  type ClinicAdminAccount,
+  type ClinicHierarchySummary,
+  type ClinicListRow,
+  type ScopedClinicLookupRow,
+} from '@/lib/admin/tenants';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -65,10 +75,6 @@ const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 const TENANTS_ENDPOINT = '/api/admin/tenants';
 
 type ClinicCreateInput = z.infer<typeof ClinicCreateSchema>;
-type ClinicAdminAccount = {
-  email: string;
-  role: typeof CLINIC_ADMIN_ROLE;
-};
 type NormalizedClinicCreateInput = {
   clinic: {
     name: string;
@@ -104,20 +110,6 @@ type CreateClinicAdminResourcesResult =
       success: false;
       errorResponse: Response;
     };
-type ScopedClinicLookupRow = {
-  id: string;
-  name: string;
-  parent_id: string | null;
-};
-type ClinicListRow = {
-  id: string;
-  name: string;
-  address: string | null;
-  phone_number: string | null;
-  is_active: boolean;
-  created_at: string;
-  parent_id: string | null;
-};
 type ParentClinicRow = ScopedClinicLookupRow & {
   is_active: boolean;
 };
@@ -189,36 +181,6 @@ function normalizeClinicCreateInput(
     loginPassword,
     shouldCreateClinicAdmin: loginEmail !== null && loginPassword !== null,
   };
-}
-
-function buildClinicHierarchyRows(
-  clinics: ClinicListRow[],
-  hierarchySource: ScopedClinicLookupRow[]
-) {
-  const clinicNameMap = new Map(
-    hierarchySource.map(clinic => [clinic.id, clinic.name] as const)
-  );
-  const childCountMap = new Map<string, number>();
-
-  for (const clinic of hierarchySource) {
-    if (!clinic.parent_id) {
-      continue;
-    }
-
-    childCountMap.set(
-      clinic.parent_id,
-      (childCountMap.get(clinic.parent_id) ?? 0) + 1
-    );
-  }
-
-  return clinics.map(clinic => ({
-    ...clinic,
-    parent_name: clinic.parent_id
-      ? (clinicNameMap.get(clinic.parent_id) ?? null)
-      : null,
-    clinic_type: clinic.parent_id ? ('child' as const) : ('hq' as const),
-    child_count: childCountMap.get(clinic.id) ?? 0,
-  }));
 }
 
 async function validateParentClinic(
@@ -480,10 +442,7 @@ async function createClinicAdminResources({
   };
 }
 
-interface ClinicWithKPI extends ClinicListRow {
-  parent_name: string | null;
-  clinic_type: 'hq' | 'child';
-  child_count: number;
+interface ClinicWithKPI extends ClinicListRow, ClinicHierarchySummary {
   kpi?: {
     revenue: number;
     patients: number;
@@ -533,9 +492,7 @@ export async function GET(request: NextRequest) {
 
     let query = adminSupabase
       .from('clinics')
-      .select(
-        'id, name, address, phone_number, is_active, created_at, parent_id'
-      )
+      .select(CLINIC_LIST_SELECT)
       .in('id', adminCtx.scopedClinicIds)
       .order('created_at', { ascending: false });
 
@@ -552,7 +509,7 @@ export async function GET(request: NextRequest) {
         query,
         adminSupabase
           .from('clinics')
-          .select('id, name, parent_id')
+          .select(CLINIC_HIERARCHY_SELECT)
           .in('id', adminCtx.scopedClinicIds),
       ]);
 
@@ -655,9 +612,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await adminSupabase
       .from('clinics')
       .insert(normalizedInput.clinic)
-      .select(
-        'id, name, address, phone_number, is_active, created_at, parent_id'
-      )
+      .select(CLINIC_LIST_SELECT)
       .single();
 
     if (error) {
@@ -708,10 +663,10 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(
       {
-        ...data,
-        parent_name: parentValidation.parent?.name ?? null,
-        clinic_type: data.parent_id ? 'child' : 'hq',
-        child_count: 0,
+        ...buildClinicHierarchySummary(data, {
+          parentName: parentValidation.parent?.name ?? null,
+          childCount: 0,
+        }),
         admin_account: adminAccount,
       },
       201

@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  useAdminTenants,
-  type ClinicSummary,
-  type CreateClinicPayload,
-  type UpdateClinicPayload,
-} from '@/hooks/useAdminTenants';
+import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,171 +21,26 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-
-const STATUS_OPTIONS = [
-  { label: 'すべて', value: 'all' },
-  { label: '有効のみ', value: 'active' },
-  { label: '無効のみ', value: 'inactive' },
-] as const;
-
-const TENANT_TYPE_OPTIONS = [
-  { label: '本部/単独テナント', value: 'hq' },
-  { label: '子テナント', value: 'child' },
-] as const;
-
-const UNSELECTED_PARENT_VALUE = '__unselected_parent__';
-
-type TenantRelationshipType = (typeof TENANT_TYPE_OPTIONS)[number]['value'];
-
-type TenantFormState = {
-  name: string;
-  address: string;
-  phone_number: string;
-  login_email: string;
-  login_password: string;
-  is_active: boolean;
-  tenant_type: TenantRelationshipType;
-  parent_id: string;
-};
-
-const INITIAL_FORM_STATE: TenantFormState = {
-  name: '',
-  address: '',
-  phone_number: '',
-  login_email: '',
-  login_password: '',
-  is_active: true,
-  tenant_type: 'hq',
-  parent_id: '',
-};
-
-const formatDate = (value?: string | null) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('ja-JP');
-};
-
-const createInitialFormState = (): TenantFormState => ({
-  ...INITIAL_FORM_STATE,
-});
-
-const formatClinicType = (clinic: ClinicSummary) => {
-  if (clinic.parent_id) {
-    return '子テナント';
-  }
-
-  if ((clinic.child_count ?? 0) > 0) {
-    return `本部 (${clinic.child_count}店舗)`;
-  }
-
-  return '本部/単独';
-};
-
-const buildParentLabel = (clinic: ClinicSummary) =>
-  clinic.parent_name ? clinic.parent_name : '-';
-
-const buildParentOptionLabel = (clinic: ClinicSummary) =>
-  `${clinic.name}${clinic.child_count ? ` (${clinic.child_count}店舗)` : ''}`;
-
-const buildFormValidationMessage = (
-  formState: TenantFormState,
-  isCreateMode: boolean
-) => {
-  if (!formState.name.trim()) {
-    return 'クリニック名を入力してください';
-  }
-
-  if (formState.tenant_type === 'child' && !formState.parent_id) {
-    return '子テナントを作成する場合は親テナントを選択してください';
-  }
-
-  if (!isCreateMode) {
-    return null;
-  }
-
-  if (!formState.login_email.trim()) {
-    return 'ログインID（メールアドレス）を入力してください';
-  }
-
-  if (!formState.login_password) {
-    return '初期パスワードを入力してください';
-  }
-
-  return null;
-};
-
-const buildCreateClinicPayload = (
-  formState: TenantFormState
-): CreateClinicPayload => ({
-  name: formState.name,
-  address: formState.address || undefined,
-  phone_number: formState.phone_number || undefined,
-  is_active: formState.is_active,
-  parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
-  login_email: formState.login_email || undefined,
-  login_password: formState.login_password || undefined,
-});
-
-const buildUpdateClinicPayload = (
-  formState: TenantFormState
-): UpdateClinicPayload => ({
-  name: formState.name,
-  address: formState.address || null,
-  phone_number: formState.phone_number || null,
-  is_active: formState.is_active,
-  parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
-});
-
-const buildCreateNotice = (clinic: ClinicSummary) => {
-  if (!clinic.admin_account) {
-    return clinic.parent_name
-      ? `子テナントを作成しました（親: ${clinic.parent_name}）`
-      : 'クリニックを作成しました';
-  }
-
-  return clinic.parent_name
-    ? `子テナントと店舗管理者アカウントを作成しました（親: ${clinic.parent_name} / ID: ${clinic.admin_account.email}）`
-    : `クリニックと店舗管理者アカウントを作成しました（ID: ${clinic.admin_account.email}）`;
-};
-
-const buildEditFormState = (clinic: ClinicSummary): TenantFormState => ({
-  name: clinic.name,
-  address: clinic.address ?? '',
-  phone_number: clinic.phone_number ?? '',
-  login_email: '',
-  login_password: '',
-  is_active: clinic.is_active,
-  tenant_type: clinic.parent_id ? 'child' : 'hq',
-  parent_id: clinic.parent_id ?? '',
-});
-
-const sortClinicsForDisplay = (items: ClinicSummary[]) => {
-  const clinicsById = new Map(
-    items.map(clinic => [clinic.id, clinic] as const)
-  );
-
-  return [...items].sort((left, right) => {
-    const leftRoot = left.parent_id ?? left.id;
-    const rightRoot = right.parent_id ?? right.id;
-    const leftRootName = clinicsById.get(leftRoot)?.name ?? left.name;
-    const rightRootName = clinicsById.get(rightRoot)?.name ?? right.name;
-    const groupCompare = leftRootName.localeCompare(rightRootName, 'ja');
-
-    if (groupCompare !== 0) {
-      return groupCompare;
-    }
-
-    if (left.parent_id === null && right.parent_id !== null) {
-      return -1;
-    }
-
-    if (left.parent_id !== null && right.parent_id === null) {
-      return 1;
-    }
-
-    return left.name.localeCompare(right.name, 'ja');
-  });
-};
+import {
+  ADMIN_TENANT_STATUS_OPTIONS,
+  ADMIN_TENANT_TYPE_OPTIONS,
+  UNSELECTED_PARENT_VALUE,
+  buildCreateClinicPayload,
+  buildCreateNotice,
+  buildEditFormState,
+  buildFormValidationMessage,
+  buildParentLabel,
+  buildParentOptionLabel,
+  buildUpdateClinicPayload,
+  createInitialTenantFormState,
+  formatClinicDate,
+  formatClinicTypeLabel,
+  isHierarchyLocked,
+  sortClinicsForDisplay,
+  type ClinicStatusFilterValue,
+  type ClinicHierarchyType,
+  type TenantFormState,
+} from '@/lib/admin/tenants';
 
 export default function AdminTenantsPage() {
   const {
@@ -206,13 +56,13 @@ export default function AdminTenantsPage() {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] =
-    useState<(typeof STATUS_OPTIONS)[number]['value']>('active');
+    useState<ClinicStatusFilterValue>('active');
   const [tenantOptions, setTenantOptions] = useState<ClinicSummary[]>([]);
   const [tenantOptionsLoading, setTenantOptionsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [formState, setFormState] = useState<TenantFormState>(
-    createInitialFormState
+    createInitialTenantFormState
   );
   const isCreateMode = editingId === null;
 
@@ -276,7 +126,7 @@ export default function AdminTenantsPage() {
   );
 
   const resetForm = useCallback(() => {
-    setFormState(createInitialFormState());
+    setFormState(createInitialTenantFormState());
     setEditingId(null);
   }, []);
 
@@ -292,8 +142,7 @@ export default function AdminTenantsPage() {
     );
   }, [editingId, tenantOptions, clinics]);
 
-  const isHierarchyLocked =
-    !isCreateMode && (editingClinic?.child_count ?? 0) > 0;
+  const shouldLockHierarchy = !isCreateMode && isHierarchyLocked(editingClinic);
 
   const parentTenantOptions = useMemo(
     () =>
@@ -313,7 +162,7 @@ export default function AdminTenantsPage() {
     [clinics]
   );
 
-  const handleTenantTypeChange = (value: TenantRelationshipType) => {
+  const handleTenantTypeChange = (value: ClinicHierarchyType) => {
     setFormState(prev => ({
       ...prev,
       tenant_type: value,
@@ -475,15 +324,15 @@ export default function AdminTenantsPage() {
                   <Select
                     value={formState.tenant_type}
                     onValueChange={value =>
-                      handleTenantTypeChange(value as TenantRelationshipType)
+                      handleTenantTypeChange(value as ClinicHierarchyType)
                     }
-                    disabled={isHierarchyLocked}
+                    disabled={shouldLockHierarchy}
                   >
                     <SelectTrigger id='clinic-tenant-type' className='w-full'>
                       <SelectValue placeholder='種別を選択' />
                     </SelectTrigger>
                     <SelectContent>
-                      {TENANT_TYPE_OPTIONS.map(option => (
+                      {ADMIN_TENANT_TYPE_OPTIONS.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -508,7 +357,7 @@ export default function AdminTenantsPage() {
                       }))
                     }
                     disabled={
-                      formState.tenant_type !== 'child' || isHierarchyLocked
+                      formState.tenant_type !== 'child' || shouldLockHierarchy
                     }
                   >
                     <SelectTrigger id='clinic-parent-tenant' className='w-full'>
@@ -534,7 +383,7 @@ export default function AdminTenantsPage() {
                   <p className='text-xs text-gray-500 dark:text-gray-400'>
                     本部/単独テナントは親なし、子テナントは同一スコープ内の本部配下に作成します
                   </p>
-                  {isHierarchyLocked && (
+                  {shouldLockHierarchy && (
                     <p className='text-xs text-amber-600 dark:text-amber-400'>
                       子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
                     </p>
@@ -621,16 +470,14 @@ export default function AdminTenantsPage() {
               <Select
                 value={statusFilter}
                 onValueChange={value =>
-                  setStatusFilter(
-                    value as (typeof STATUS_OPTIONS)[number]['value']
-                  )
+                  setStatusFilter(value as ClinicStatusFilterValue)
                 }
               >
                 <SelectTrigger className='w-40'>
                   <SelectValue placeholder='状態' />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map(option => (
+                  {ADMIN_TENANT_STATUS_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -666,12 +513,14 @@ export default function AdminTenantsPage() {
                           {clinic.name}
                         </div>
                       </TableCell>
-                      <TableCell>{formatClinicType(clinic)}</TableCell>
+                      <TableCell>{formatClinicTypeLabel(clinic)}</TableCell>
                       <TableCell>{buildParentLabel(clinic)}</TableCell>
                       <TableCell>
                         {clinic.is_active ? '有効' : '無効'}
                       </TableCell>
-                      <TableCell>{formatDate(clinic.created_at)}</TableCell>
+                      <TableCell>
+                        {formatClinicDate(clinic.created_at)}
+                      </TableCell>
                       <TableCell className='space-x-2'>
                         <Button
                           size='sm'
