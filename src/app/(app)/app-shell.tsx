@@ -59,7 +59,7 @@ async function fetchAdminNotificationCount(
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const {
     profile,
@@ -72,7 +72,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     loading: clinicsLoading,
   } = useAccessibleClinics();
 
-  const canAccessAdminNavigation = canUseAdminNavigation(profile?.role);
+  const profileRole = profile?.role ?? null;
+  const profileClinicId = profile?.clinicId ?? null;
+
+  const canAccessAdminNavigation = React.useMemo(
+    () => canUseAdminNavigation(profileRole),
+    [profileRole]
+  );
 
   const [notificationCount, setNotificationCount] = React.useState(0);
 
@@ -94,64 +100,89 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    if (!canAccessAdminNavigation || !profile?.clinicId) {
-      setNotificationCount(0);
+    if (!canAccessAdminNavigation || !profileClinicId) {
+      setNotificationCount(currentCount =>
+        currentCount === 0 ? currentCount : 0
+      );
       return;
     }
 
-    const clinicId = profile.clinicId;
     const abortController = new AbortController();
 
     const loadNotificationCount = async () => {
       try {
         const count = await fetchAdminNotificationCount(
-          clinicId,
+          profileClinicId,
           abortController.signal
         );
-        setNotificationCount(count);
+        setNotificationCount(currentCount =>
+          currentCount === count ? currentCount : count
+        );
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return;
         }
 
-        setNotificationCount(0);
+        setNotificationCount(currentCount =>
+          currentCount === 0 ? currentCount : 0
+        );
       }
     };
 
     void loadNotificationCount();
 
     return () => abortController.abort();
-  }, [canAccessAdminNavigation, profile?.clinicId]);
+  }, [canAccessAdminNavigation, profileClinicId]);
 
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', newMode ? 'dark' : 'light');
-    }
+  const toggleDarkMode = React.useCallback(() => {
+    setIsDarkMode(currentMode => {
+      const newMode = !currentMode;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', newMode ? 'dark' : 'light');
+      }
 
-    if (newMode) {
-      document.documentElement.classList.add(DARK_CLASS);
-    } else {
-      document.documentElement.classList.remove(DARK_CLASS);
-    }
-  };
+      if (newMode) {
+        document.documentElement.classList.add(DARK_CLASS);
+      } else {
+        document.documentElement.classList.remove(DARK_CLASS);
+      }
 
-  const toggleSidebar = () => {
+      return newMode;
+    });
+  }, []);
+
+  const toggleSidebar = React.useCallback(() => {
     setIsSidebarOpen(prev => !prev);
-  };
+  }, []);
+
+  const closeSidebar = React.useCallback(() => {
+    setIsSidebarOpen(false);
+  }, []);
+
+  const userProfileContextValue = React.useMemo(
+    () => ({
+      profile,
+      loading: profileLoading,
+      error: profileError,
+    }),
+    [profile, profileError, profileLoading]
+  );
+
+  const initialClinicId = React.useMemo(
+    () => profileClinicId ?? currentClinicId ?? null,
+    [currentClinicId, profileClinicId]
+  );
 
   return (
     <QueryProvider>
-      <UserProfileProvider
-        value={{ profile, loading: profileLoading, error: profileError }}
-      >
-        <SelectedClinicProvider
-          initialClinicId={profile?.clinicId ?? currentClinicId ?? null}
-        >
+      <UserProfileProvider value={userProfileContextValue}>
+        <SelectedClinicProvider initialClinicId={initialClinicId}>
           <div
-            className='min-h-screen'
-            style={{ backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb' }}
+            className={
+              isDarkMode
+                ? 'min-h-screen bg-gray-800'
+                : 'min-h-screen bg-gray-50'
+            }
           >
             <Header
               onToggleSidebar={toggleSidebar}
@@ -165,28 +196,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               notificationCount={notificationCount}
             />
 
-            <div className='flex' style={{ paddingTop: '64px' }}>
+            <div className='flex pt-16'>
+              {isSidebarOpen && (
+                <div
+                  className='fixed inset-0 top-16 z-30 bg-black/40 md:hidden'
+                  onClick={closeSidebar}
+                  aria-hidden='true'
+                />
+              )}
+
               <Sidebar
                 isOpen={isSidebarOpen}
-                onClose={() => setIsSidebarOpen(false)}
+                onClose={closeSidebar}
                 isAdmin={canAccessAdminNavigation}
                 profileLoading={profileLoading}
-                role={profile?.role ?? null}
+                role={profileRole}
               />
 
               <main
-                className={`flex-1 transition-all duration-300 ${
-                  isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-                }`}
-                style={{
-                  backgroundColor: isDarkMode ? '#111827' : '#ffffff',
-                  minHeight: 'calc(100vh - 64px)',
-                }}
+                className={
+                  isDarkMode
+                    ? 'min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-gray-900 transition-colors duration-300'
+                    : 'min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-white transition-colors duration-300'
+                }
               >
                 <div className='p-6 lg:p-8'>
                   <div
-                    className='mx-auto max-w-7xl'
-                    style={{ color: isDarkMode ? '#f3f4f6' : '#111827' }}
+                    className={
+                      isDarkMode
+                        ? 'mx-auto max-w-7xl text-gray-100'
+                        : 'mx-auto max-w-7xl text-gray-900'
+                    }
                   >
                     {children}
                   </div>
@@ -200,7 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <MobileBottomNav
               isAdmin={canAccessAdminNavigation}
               profileLoading={profileLoading}
-              role={profile?.role ?? null}
+              role={profileRole}
             />
           </div>
         </SelectedClinicProvider>

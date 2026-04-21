@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type Dispatch,
   type ReactNode,
@@ -38,10 +39,13 @@ export function SelectedClinicProvider({
     setSelectedClinicId(currentClinicId => currentClinicId ?? initialClinicId);
   }, [initialClinicId]);
 
+  const value = useMemo(
+    () => ({ selectedClinicId, setSelectedClinicId }),
+    [selectedClinicId]
+  );
+
   return (
-    <SelectedClinicContext.Provider
-      value={{ selectedClinicId, setSelectedClinicId }}
-    >
+    <SelectedClinicContext.Provider value={value}>
       {children}
     </SelectedClinicContext.Provider>
   );

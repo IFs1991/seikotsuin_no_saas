@@ -73,6 +73,20 @@ describe('Layout Separation: (public) vs (app)', () => {
       expect(content).toContain('QueryProvider');
       expect(content).toContain('UserProfileProvider');
     });
+
+    it('app-shell.tsx should keep desktop sidebar in normal layout flow', () => {
+      const shellContent = fs.readFileSync(appShellPath, 'utf-8');
+      const sidebarPath = path.join(
+        appDir,
+        '../components/navigation/sidebar.tsx'
+      );
+      const sidebarContent = fs.readFileSync(sidebarPath, 'utf-8');
+
+      expect(shellContent).toContain('min-w-0 flex-1');
+      expect(shellContent).not.toContain('lg:ml-64');
+      expect(sidebarContent).toContain('md:sticky');
+      expect(sidebarContent).toContain('md:flex-shrink-0');
+    });
   });
 
   describe('Root layout.tsx', () => {

@@ -7,6 +7,11 @@ import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { ADMIN_MENU_ITEMS } from '@/lib/navigation/items';
 
+interface ClinicOption {
+  id: string;
+  name: string;
+}
+
 interface HeaderProps {
   onToggleSidebar: () => void;
   onToggleDarkMode: () => void;
@@ -17,12 +22,57 @@ interface HeaderProps {
   /** 動的通知件数（0 または未指定でバッジ非表示） */
   notificationCount?: number;
   /** クリニック一覧（DBから取得） */
-  clinics?: Array<{ id: string; name: string }>;
+  clinics?: readonly ClinicOption[];
   /** クリニック一覧取得中フラグ */
   clinicsLoading?: boolean;
 }
 
-export function Header({
+interface ClinicSelectProps {
+  selectedClinicId: string | null;
+  clinics: readonly ClinicOption[];
+  clinicsLoading: boolean;
+  onClinicChange: (clinicId: string | null) => void;
+  className?: string;
+}
+
+const EMPTY_CLINICS: readonly ClinicOption[] = [];
+const BASE_CLINIC_SELECT_CLASS = 'bg-[#2563eb] text-white px-3 py-1 rounded';
+
+const ClinicSelect = React.memo(function ClinicSelect({
+  selectedClinicId,
+  clinics,
+  clinicsLoading,
+  onClinicChange,
+  className,
+}: ClinicSelectProps) {
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onClinicChange(event.target.value || null);
+    },
+    [onClinicChange]
+  );
+
+  return (
+    <select
+      value={selectedClinicId ?? ''}
+      onChange={handleChange}
+      disabled={clinicsLoading}
+      className={`${BASE_CLINIC_SELECT_CLASS}${className ? ` ${className}` : ''}`}
+    >
+      {clinicsLoading ? (
+        <option value=''>読み込み中...</option>
+      ) : (
+        clinics.map(clinic => (
+          <option key={clinic.id} value={clinic.id}>
+            {clinic.name}
+          </option>
+        ))
+      )}
+    </select>
+  );
+});
+
+export const Header = React.memo(function Header({
   onToggleSidebar,
   onToggleDarkMode,
   isDarkMode,
@@ -30,7 +80,7 @@ export function Header({
   profileLoading = false,
   isAdmin = false,
   notificationCount,
-  clinics = [],
+  clinics = EMPTY_CLINICS,
   clinicsLoading = false,
 }: HeaderProps) {
   const router = useRouter();
@@ -38,13 +88,11 @@ export function Header({
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
 
-  // Task E: useCallback でメモ化して ESC ハンドラーの依存に使う
   const closeMenus = useCallback(() => {
     setIsAdminMenuOpen(false);
     setIsUserMenuOpen(false);
   }, []);
 
-  // Task E: ESC キーでメニューを閉じる
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMenus();
@@ -53,62 +101,56 @@ export function Header({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [closeMenus]);
 
-  const handleAdminLink = (href: string) => {
-    closeMenus();
-    router.push(href);
-  };
+  const handleAdminLink = useCallback(
+    (href: string) => {
+      closeMenus();
+      router.push(href);
+    },
+    [closeMenus, router]
+  );
 
-  const handleSettingsClick = () => {
+  const handleSettingsClick = useCallback(() => {
     if (isAdmin) {
       setIsUserMenuOpen(false);
       setIsAdminMenuOpen(prev => !prev);
     } else {
       router.push('/settings');
     }
-  };
+  }, [isAdmin, router]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     closeMenus();
     router.push(isAdmin ? '/admin/logout' : '/logout');
-  };
+  }, [closeMenus, isAdmin, router]);
 
-  const handleNavigateHome = () => {
+  const handleNavigateHome = useCallback(() => {
     closeMenus();
     router.push('/');
-  };
+  }, [closeMenus, router]);
 
-  // Task B: クリニック選択セレクト（デスクトップ・モバイル共通）
-  const clinicSelect = (extraClassName?: string) => (
-    <select
-      value={selectedClinicId ?? ''}
-      onChange={e => setSelectedClinicId(e.target.value || null)}
-      disabled={clinicsLoading}
-      className={`bg-[#2563eb] text-white px-3 py-1 rounded${extraClassName ? ` ${extraClassName}` : ''}`}
-    >
-      {clinicsLoading ? (
-        <option value=''>読み込み中...</option>
-      ) : (
-        clinics.map(c => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))
-      )}
-    </select>
+  const handleToggleUserMenu = useCallback(() => {
+    setIsAdminMenuOpen(false);
+    setIsUserMenuOpen(prev => !prev);
+  }, []);
+
+  const handleClinicChange = useCallback(
+    (clinicId: string | null) => {
+      setSelectedClinicId(clinicId);
+    },
+    [setSelectedClinicId]
   );
 
-  // Task A: 通知バッジ（0 または未指定で非表示、99 件超は '99+' 表示）
   const showBadge = (notificationCount ?? 0) > 0;
   const badgeLabel =
     (notificationCount ?? 0) >= 100 ? '99+' : notificationCount;
 
   return (
     <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-[#1e3a8a] text-white flex items-center justify-between'>
-      <div className='flex items-center space-x-4'>
+      <div className='flex items-center gap-4'>
         <Button
           variant='ghost'
           onClick={onToggleSidebar}
-          className='text-white hover:bg-blue-700'
+          className='text-white hover:bg-blue-700 md:hidden'
           aria-label='メニューを開閉'
         >
           ☰
@@ -116,7 +158,7 @@ export function Header({
         <button
           type='button'
           onClick={handleNavigateHome}
-          className='flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 rounded-md px-1'
+          className='flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 rounded-md px-1'
           aria-label='トップページへ移動'
         >
           <span className='w-8 h-8 bg-white rounded-full flex items-center justify-center text-blue-600 font-bold text-sm'>
@@ -138,7 +180,12 @@ export function Header({
 
       {/* デスクトップメニュー */}
       <div className='hidden md:flex items-center space-x-6 relative'>
-        {clinicSelect()}
+        <ClinicSelect
+          selectedClinicId={selectedClinicId}
+          clinics={clinics}
+          clinicsLoading={clinicsLoading}
+          onClinicChange={handleClinicChange}
+        />
 
         <div className='relative'>
           <Button variant='ghost' className='relative'>
@@ -189,10 +236,7 @@ export function Header({
           <Button
             variant='ghost'
             className='text-white hover:bg-blue-700'
-            onClick={() => {
-              setIsAdminMenuOpen(false);
-              setIsUserMenuOpen(prev => !prev);
-            }}
+            onClick={handleToggleUserMenu}
           >
             ユーザー
           </Button>
@@ -220,15 +264,11 @@ export function Header({
       <Button
         variant='ghost'
         className='md:hidden'
-        onClick={() => {
-          setIsAdminMenuOpen(false);
-          setIsUserMenuOpen(prev => !prev);
-        }}
+        onClick={handleToggleUserMenu}
       >
         メニュー
       </Button>
 
-      {/* Task E: モバイルメニュー + backdrop */}
       {isUserMenuOpen && (
         <>
           <div
@@ -237,7 +277,13 @@ export function Header({
             aria-hidden='true'
           />
           <div className='absolute top-16 right-4 bg-[#1e3a8a] p-4 rounded shadow-lg md:hidden w-60 space-y-3 z-50'>
-            {clinicSelect('w-full')}
+            <ClinicSelect
+              selectedClinicId={selectedClinicId}
+              clinics={clinics}
+              clinicsLoading={clinicsLoading}
+              onClinicChange={handleClinicChange}
+              className='w-full'
+            />
             <Button variant='ghost'>通知</Button>
             <Button variant='ghost' onClick={onToggleDarkMode}>
               {isDarkMode ? '🌙 ダーク' : '☀️ ライト'}
@@ -265,4 +311,4 @@ export function Header({
       )}
     </div>
   );
-}
+});

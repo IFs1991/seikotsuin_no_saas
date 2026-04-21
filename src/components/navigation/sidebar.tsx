@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ function SidebarItemButton({
   );
 }
 
-export function Sidebar({
+export const Sidebar = React.memo(function Sidebar({
   isOpen,
   onClose,
   isAdmin = false,
@@ -68,16 +68,22 @@ export function Sidebar({
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(true);
   const [openSubMenus, setOpenSubMenus] = useState<string[]>([]);
-  const navigationMode = getNavigationMode({
-    role,
-    profileLoading,
-    canAccessAdminNavigation: isAdmin,
-  });
+  const navigationMode = useMemo(
+    () =>
+      getNavigationMode({
+        role,
+        profileLoading,
+        canAccessAdminNavigation: isAdmin,
+      }),
+    [isAdmin, profileLoading, role]
+  );
 
   const operationMenuItems = useMemo(() => getOperationMenuItems(), []);
-  const primaryMenuItems = navigationMode.isHqAdmin
-    ? ADMIN_MENU_ITEMS
-    : operationMenuItems;
+  const primaryMenuItems = useMemo(
+    () => (navigationMode.isHqAdmin ? ADMIN_MENU_ITEMS : operationMenuItems),
+    [navigationMode.isHqAdmin, operationMenuItems]
+  );
+  const openSubMenuIds = useMemo(() => new Set(openSubMenus), [openSubMenus]);
 
   const currentMenuId = useMemo(() => {
     const visibleItems = [
@@ -92,53 +98,66 @@ export function Sidebar({
     pathname,
   ]);
 
-  const toggleSubMenu = (menuId: string) => {
+  const toggleSubMenu = useCallback((menuId: string) => {
     setOpenSubMenus(prev =>
       prev.includes(menuId)
         ? prev.filter(id => id !== menuId)
         : [...prev, menuId]
     );
-  };
+  }, []);
 
-  const renderMenuButton = (item: NavigationItem) => {
-    const hasSubItems = Boolean(item.subItems?.length);
-    const handleClick: React.MouseEventHandler<HTMLButtonElement> = event => {
-      if (hasSubItems && isExpanded) {
-        event.preventDefault();
-        toggleSubMenu(item.id);
-        return;
-      }
+  const handleToggleExpanded = useCallback(() => {
+    setIsExpanded(prev => !prev);
+  }, []);
 
-      onClose();
-    };
+  const handleCloseMenu = useCallback<
+    React.MouseEventHandler<HTMLButtonElement>
+  >(() => {
+    onClose();
+  }, [onClose]);
 
-    return (
-      <SidebarItemButton
-        key={item.id}
-        item={item}
-        isActive={currentMenuId === item.id}
-        className='w-full mb-2 justify-start'
-        onClick={handleClick}
-      >
-        <span
-          className={cn(
-            'mr-2 text-xs uppercase tracking-wide',
-            !isExpanded && 'hidden'
-          )}
+  const renderMenuButton = useCallback(
+    (item: NavigationItem) => {
+      const hasSubItems = Boolean(item.subItems?.length);
+      const handleClick: React.MouseEventHandler<HTMLButtonElement> = event => {
+        if (hasSubItems && isExpanded) {
+          event.preventDefault();
+          toggleSubMenu(item.id);
+          return;
+        }
+
+        onClose();
+      };
+
+      return (
+        <SidebarItemButton
+          key={item.id}
+          item={item}
+          isActive={currentMenuId === item.id}
+          className='w-full mb-2 justify-start'
+          onClick={handleClick}
         >
-          ●
-        </span>
-        {isExpanded ? item.label : item.label.slice(0, 2)}
-      </SidebarItemButton>
-    );
-  };
+          <span
+            className={cn(
+              'mr-2 text-xs uppercase tracking-wide',
+              !isExpanded && 'hidden'
+            )}
+          >
+            ●
+          </span>
+          {isExpanded ? item.label : item.label.slice(0, 2)}
+        </SidebarItemButton>
+      );
+    },
+    [currentMenuId, isExpanded, onClose, toggleSubMenu]
+  );
 
   return (
     <div
       className={cn(
-        'fixed left-0 top-16 h-screen bg-[#1e3a8a] text-white transition-all duration-300 z-40',
+        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] overflow-hidden bg-[#1e3a8a] text-white shadow-xl transition-all duration-300',
         isOpen ? 'translate-x-0' : '-translate-x-full',
-        'lg:translate-x-0',
+        'md:sticky md:translate-x-0 md:flex-shrink-0 md:shadow-none',
         isExpanded ? 'w-64' : 'w-20'
       )}
     >
@@ -152,7 +171,7 @@ export function Sidebar({
           整骨院管理
         </h1>
         <Button
-          onClick={() => setIsExpanded(prev => !prev)}
+          onClick={handleToggleExpanded}
           variant='ghost'
           className='text-white hover:bg-[#2d4ba0]'
         >
@@ -182,7 +201,7 @@ export function Sidebar({
 
                   {item.subItems &&
                     isExpanded &&
-                    openSubMenus.includes(item.id) && (
+                    openSubMenuIds.has(item.id) && (
                       <div className='ml-4'>
                         {item.subItems.map(subItem => (
                           <SidebarItemButton
@@ -190,7 +209,7 @@ export function Sidebar({
                             item={subItem}
                             isActive={currentMenuId === subItem.id}
                             className='w-full mb-1 justify-start text-sm'
-                            onClick={() => onClose()}
+                            onClick={handleCloseMenu}
                           >
                             {subItem.label}
                           </SidebarItemButton>
@@ -215,7 +234,7 @@ export function Sidebar({
                     item={item}
                     isActive={currentMenuId === item.id}
                     className='w-full mb-1 justify-start text-sm'
-                    onClick={() => onClose()}
+                    onClick={handleCloseMenu}
                   >
                     {item.label}
                   </SidebarItemButton>
@@ -240,7 +259,7 @@ export function Sidebar({
                   item={item}
                   isActive={currentMenuId === item.id}
                   className='w-full mb-1 justify-start text-sm'
-                  onClick={() => onClose()}
+                  onClick={handleCloseMenu}
                 >
                   {isExpanded ? item.label : item.label.slice(0, 2)}
                 </SidebarItemButton>
@@ -251,4 +270,4 @@ export function Sidebar({
       </div>
     </div>
   );
-}
+});

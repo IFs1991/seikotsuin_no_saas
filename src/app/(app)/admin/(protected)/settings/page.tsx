@@ -1,9 +1,12 @@
 'use client';
 
 import {
+  memo,
+  useCallback,
   useDeferredValue,
   useMemo,
   useState,
+  type ChangeEvent,
   type ComponentType,
   type ReactNode,
 } from 'react';
@@ -85,6 +88,23 @@ type SelectedSettingsItem = SearchableSettingsItem & {
 };
 
 type SettingsComponent = ComponentType<Record<string, never>>;
+
+interface SettingsSidebarProps {
+  categories: readonly SearchableSettingsCategory[];
+  searchQuery: string;
+  selectedCategory: SettingsCategoryId;
+  selectedItem: SettingsItemId;
+  onSearchQueryChange: (query: string) => void;
+  onSelectCategory: (categoryId: SettingsCategoryId) => void;
+  onSelectItem: (itemId: SettingsItemId) => void;
+  onLogout: () => void;
+}
+
+interface SettingsContentProps {
+  currentItem: SelectedSettingsItem | undefined;
+  isTemplateItem: boolean;
+  SelectedComponent: SettingsComponent | null;
+}
 
 const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'clinic-basic',
@@ -374,6 +394,190 @@ const SETTINGS_COMPONENTS: Partial<Record<SettingsItemId, SettingsComponent>> =
     'system-backup': SystemSettingsComponent,
   };
 
+const SettingsSidebar = memo(function SettingsSidebar({
+  categories,
+  searchQuery,
+  selectedCategory,
+  selectedItem,
+  onSearchQueryChange,
+  onSelectCategory,
+  onSelectItem,
+  onLogout,
+}: SettingsSidebarProps) {
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onSearchQueryChange(event.target.value);
+    },
+    [onSearchQueryChange]
+  );
+
+  return (
+    <div className='flex w-full flex-col border-b border-gray-200 bg-white xl:w-80 xl:flex-shrink-0 xl:border-b-0 xl:border-r'>
+      <div className='p-6 border-b border-gray-200'>
+        <div className='flex items-center space-x-3 mb-4'>
+          <div className='w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center'>
+            <span className='text-white font-bold'>骨</span>
+          </div>
+          <div>
+            <h1 className='text-lg font-semibold text-gray-900'>
+              システム設定
+            </h1>
+            <p className='text-sm text-gray-500'>管理者: admin</p>
+          </div>
+        </div>
+
+        <div className='relative'>
+          <Search className='w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
+          <Input
+            type='text'
+            placeholder='設定項目を検索...'
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className='pl-10'
+          />
+        </div>
+      </div>
+
+      <div className='flex-1 overflow-y-auto p-4'>
+        <nav className='space-y-1' data-testid='admin-settings-nav'>
+          {categories.map(category => (
+            <div key={category.id}>
+              <button
+                type='button'
+                onClick={() => onSelectCategory(category.id)}
+                className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
+                  selectedCategory === category.id
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className='flex items-center space-x-3'>
+                  {category.icon}
+                  <span className='font-medium'>{category.title}</span>
+                </div>
+                <ChevronRight
+                  className={`w-4 h-4 transition-transform ${
+                    selectedCategory === category.id ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+
+              {selectedCategory === category.id && (
+                <div className='ml-8 mt-1 space-y-1'>
+                  {category.items.map(item => (
+                    <button
+                      key={item.id}
+                      type='button'
+                      onClick={() => onSelectItem(item.id)}
+                      className={`w-full text-left p-2 rounded text-sm transition-colors ${
+                        selectedItem === item.id
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {item.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </nav>
+      </div>
+
+      <div className='p-4 border-t border-gray-200'>
+        <Button
+          onClick={onLogout}
+          variant='outline'
+          className='w-full flex items-center space-x-2'
+        >
+          <LogOut className='w-4 h-4' />
+          <span>ログアウト</span>
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+function TemplateItemNotice() {
+  return (
+    <Card className='mt-4 border-blue-200 bg-blue-50 p-4'>
+      <p className='text-sm font-semibold text-blue-950'>
+        店舗作成時の初期設定テンプレートです
+      </p>
+      <p className='mt-1 text-sm text-blue-900'>
+        子テナント作成時に初期設定として適用されます。作成後の店舗ごとの診療時間・連絡先・予約設定は、各店舗の院長または店舗管理者が調整できます。
+      </p>
+      <p className='mt-1 text-sm text-blue-900'>
+        この画面の変更は、既存店舗の設定を自動的に上書きしません。
+      </p>
+      <p className='mt-1 text-sm text-blue-900'>
+        スタッフ招待・勤務管理・店舗ごとの運用設定は、店舗単位の管理画面で扱います。
+      </p>
+    </Card>
+  );
+}
+
+function UnavailableSettingsCard({ description }: { description: string }) {
+  return (
+    <Card className='p-6'>
+      <div className='text-center py-12'>
+        <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+          <Settings className='w-8 h-8 text-gray-400' />
+        </div>
+        <h3 className='text-lg font-medium text-gray-900 mb-2'>
+          パイロット版では提供しておりません
+        </h3>
+        <p className='text-gray-500 mb-4'>今後のアップデートで追加予定です。</p>
+        <div className='space-y-2 text-sm text-gray-400 max-w-md mx-auto'>
+          <p>この画面では以下の機能を提供予定：</p>
+          <p>• {description}</p>
+          <p>• フォームベースの設定変更</p>
+          <p>• リアルタイムの保存とバリデーション</p>
+          <p>• 変更履歴の管理</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+const SettingsContent = memo(function SettingsContent({
+  currentItem,
+  isTemplateItem,
+  SelectedComponent,
+}: SettingsContentProps) {
+  if (!currentItem) {
+    return (
+      <div className='text-center py-12'>
+        <p className='text-gray-500'>設定項目を選択してください</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className='mb-8'>
+        <div className='flex items-center text-sm text-gray-500 mb-2'>
+          <span>{currentItem.category}</span>
+          <ChevronRight className='w-4 h-4 mx-2' />
+          <span>{currentItem.title}</span>
+        </div>
+        <h1 className='text-3xl font-bold text-gray-900 mb-2'>
+          {currentItem.title}
+        </h1>
+        <p className='text-gray-600'>{currentItem.description}</p>
+        {isTemplateItem && <TemplateItemNotice />}
+      </div>
+
+      {SelectedComponent ? (
+        <SelectedComponent />
+      ) : (
+        <UnavailableSettingsCard description={currentItem.description} />
+      )}
+    </div>
+  );
+});
+
 export default function AdminSettings() {
   const [selectedCategory, setSelectedCategory] =
     useState<SettingsCategoryId>('clinic');
@@ -383,11 +587,23 @@ export default function AdminSettings() {
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const router = useRouter();
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('adminAuth');
     localStorage.removeItem('adminUser');
     router.push('/admin/logout');
-  };
+  }, [router]);
+
+  const handleSearchQueryChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+
+  const handleSelectCategory = useCallback((categoryId: SettingsCategoryId) => {
+    setSelectedCategory(categoryId);
+  }, []);
+
+  const handleSelectItem = useCallback((itemId: SettingsItemId) => {
+    setSelectedItem(itemId);
+  }, []);
 
   const searchableCategories = useMemo(
     () => getSearchableCategories(deferredSearchQuery),
@@ -398,158 +614,25 @@ export default function AdminSettings() {
   const SelectedComponent = SETTINGS_COMPONENTS[selectedItem] ?? null;
 
   return (
-    <div className='min-h-screen bg-gray-50 flex'>
-      {/* 左サイドバー */}
-      <div className='w-80 bg-white border-r border-gray-200 flex flex-col'>
-        {/* ヘッダー */}
-        <div className='p-6 border-b border-gray-200'>
-          <div className='flex items-center space-x-3 mb-4'>
-            <div className='w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center'>
-              <span className='text-white font-bold'>骨</span>
-            </div>
-            <div>
-              <h1 className='text-lg font-semibold text-gray-900'>
-                システム設定
-              </h1>
-              <p className='text-sm text-gray-500'>管理者: admin</p>
-            </div>
-          </div>
+    <div className='flex min-h-screen flex-col bg-gray-50 xl:flex-row'>
+      <SettingsSidebar
+        categories={searchableCategories}
+        searchQuery={searchQuery}
+        selectedCategory={selectedCategory}
+        selectedItem={selectedItem}
+        onSearchQueryChange={handleSearchQueryChange}
+        onSelectCategory={handleSelectCategory}
+        onSelectItem={handleSelectItem}
+        onLogout={handleLogout}
+      />
 
-          {/* 検索バー */}
-          <div className='relative'>
-            <Search className='w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400' />
-            <Input
-              type='text'
-              placeholder='設定項目を検索...'
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className='pl-10'
-            />
-          </div>
-        </div>
-
-        {/* ナビゲーション */}
-        <div className='flex-1 overflow-y-auto p-4'>
-          <nav className='space-y-1' data-testid='admin-settings-nav'>
-            {searchableCategories.map(category => (
-              <div key={category.id}>
-                <button
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg text-left transition-colors ${
-                    selectedCategory === category.id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className='flex items-center space-x-3'>
-                    {category.icon}
-                    <span className='font-medium'>{category.title}</span>
-                  </div>
-                  <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      selectedCategory === category.id ? 'rotate-90' : ''
-                    }`}
-                  />
-                </button>
-
-                {selectedCategory === category.id && (
-                  <div className='ml-8 mt-1 space-y-1'>
-                    {category.items.map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedItem(item.id)}
-                        className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                          selectedItem === item.id
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        {item.title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </nav>
-        </div>
-
-        {/* ログアウトボタン */}
-        <div className='p-4 border-t border-gray-200'>
-          <Button
-            onClick={handleLogout}
-            variant='outline'
-            className='w-full flex items-center space-x-2'
-          >
-            <LogOut className='w-4 h-4' />
-            <span>ログアウト</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* メインコンテンツ */}
-      <div className='flex-1 overflow-y-auto'>
-        <div className='p-8' data-testid='admin-settings-content'>
-          {currentItem ? (
-            <div>
-              <div className='mb-8'>
-                <div className='flex items-center text-sm text-gray-500 mb-2'>
-                  <span>{currentItem.category}</span>
-                  <ChevronRight className='w-4 h-4 mx-2' />
-                  <span>{currentItem.title}</span>
-                </div>
-                <h1 className='text-3xl font-bold text-gray-900 mb-2'>
-                  {currentItem.title}
-                </h1>
-                <p className='text-gray-600'>{currentItem.description}</p>
-                {isTemplateItem && (
-                  <Card className='mt-4 border-blue-200 bg-blue-50 p-4'>
-                    <p className='text-sm font-semibold text-blue-950'>
-                      店舗作成時の初期設定テンプレートです
-                    </p>
-                    <p className='mt-1 text-sm text-blue-900'>
-                      子テナント作成時に初期設定として適用されます。作成後の店舗ごとの診療時間・連絡先・予約設定は、各店舗の院長または店舗管理者が調整できます。
-                    </p>
-                    <p className='mt-1 text-sm text-blue-900'>
-                      この画面の変更は、既存店舗の設定を自動的に上書きしません。
-                    </p>
-                    <p className='mt-1 text-sm text-blue-900'>
-                      スタッフ招待・勤務管理・店舗ごとの運用設定は、店舗単位の管理画面で扱います。
-                    </p>
-                  </Card>
-                )}
-              </div>
-
-              {SelectedComponent ? (
-                <SelectedComponent />
-              ) : (
-                <Card className='p-6'>
-                  <div className='text-center py-12'>
-                    <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                      <Settings className='w-8 h-8 text-gray-400' />
-                    </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>
-                      パイロット版では提供しておりません
-                    </h3>
-                    <p className='text-gray-500 mb-4'>
-                      今後のアップデートで追加予定です。
-                    </p>
-                    <div className='space-y-2 text-sm text-gray-400 max-w-md mx-auto'>
-                      <p>この画面では以下の機能を提供予定：</p>
-                      <p>• {currentItem.description}</p>
-                      <p>• フォームベースの設定変更</p>
-                      <p>• リアルタイムの保存とバリデーション</p>
-                      <p>• 変更履歴の管理</p>
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </div>
-          ) : (
-            <div className='text-center py-12'>
-              <p className='text-gray-500'>設定項目を選択してください</p>
-            </div>
-          )}
+      <div className='min-w-0 flex-1 overflow-y-auto'>
+        <div className='p-4 sm:p-6 lg:p-8' data-testid='admin-settings-content'>
+          <SettingsContent
+            currentItem={currentItem}
+            isTemplateItem={isTemplateItem}
+            SelectedComponent={SelectedComponent}
+          />
         </div>
       </div>
     </div>
