@@ -31,6 +31,10 @@ export interface ClinicSummary {
   phone_number?: string | null;
   is_active: boolean;
   created_at?: string | null;
+  parent_id?: string | null;
+  parent_name?: string | null;
+  clinic_type?: 'hq' | 'child';
+  child_count?: number;
   admin_account?: {
     email: string;
     role: string;
@@ -47,6 +51,7 @@ export interface CreateClinicPayload {
   address?: string;
   phone_number?: string;
   is_active?: boolean;
+  parent_id?: string | null;
   login_email?: string;
   login_password?: string;
 }
@@ -56,6 +61,7 @@ export interface UpdateClinicPayload {
   address?: string | null;
   phone_number?: string | null;
   is_active?: boolean;
+  parent_id?: string | null;
 }
 
 interface ClinicsListResponse {
@@ -117,6 +123,11 @@ async function parseTenantResponse<T>(response: Response): Promise<T> {
   return result.data;
 }
 
+async function fetchTenantList(filters: ClinicFilters = {}) {
+  const response = await fetch(buildTenantsUrl(filters));
+  return await parseTenantResponse<ClinicsListResponse>(response);
+}
+
 export function useAdminTenants() {
   const [clinics, setClinics] = useState<ClinicSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,10 +171,7 @@ export function useAdminTenants() {
     async (filters: ClinicFilters = {}) => {
       const data = await runTenantRequest(
         'クリニック一覧取得エラー:',
-        async () => {
-          const response = await fetch(buildTenantsUrl(filters));
-          return await parseTenantResponse<ClinicsListResponse>(response);
-        }
+        async () => await fetchTenantList(filters)
       );
 
       if (data) {
@@ -172,6 +180,20 @@ export function useAdminTenants() {
     },
     [runTenantRequest]
   );
+
+  const listClinics = useCallback(async (filters: ClinicFilters = {}) => {
+    try {
+      setError(null);
+      const data = await fetchTenantList(filters);
+      return data.items ?? [];
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+      setError(message);
+      logger.error('クリニック選択肢取得エラー:', err);
+      return null;
+    }
+  }, []);
 
   const createClinic = useCallback(
     async (payload: CreateClinicPayload) => {
@@ -224,6 +246,7 @@ export function useAdminTenants() {
     loading,
     error,
     fetchClinics,
+    listClinics,
     createClinic,
     updateClinic,
     setClinics,

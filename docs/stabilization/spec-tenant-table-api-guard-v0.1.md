@@ -99,13 +99,15 @@
   - 対策: 既存の `get_current_user_clinic_id()` 依存をやめ、`public.can_access_clinic(...)` を `USING` / `WITH CHECK` に適用。
   - 指針: `src/api/database/rls-policies.sql` の `admin_clinics_all` / `clinic_manager_clinics_own` / `staff_clinics_own_read`、および `admin_user_permissions_all` / `clinic_manager_user_permissions_own_clinic` / `user_permissions_own` を `can_access_clinic()` 基準に更新し、変更は `supabase/migrations` に集約する。
   - 実装: `supabase/migrations/20260116000100_rls_clinics_user_permissions_can_access_clinic.sql`
-- [x] DOD-08: 子テナント作成の経路を明確化（選択肢B: オンボーディング限定を明記）。（2026-01-16 実装完了）
-  - 決定: **選択肢B採用** - 親子テナント（parent_id付き）作成はオンボーディング経路のみ。
-  - 対策: `src/app/api/admin/tenants/route.ts` は既存フラットテナント管理用とし、`parent_id` 非対応を明記。
+- [x] DOD-08: 子テナント作成の経路を明確化。（2026-04-21 更新）
+  - 現在の運用: `src/app/api/admin/tenants/route.ts` で `parent_id` を受け付け、親スコープ内の本部テナント配下に子テナントを作成できる。
+  - ガード:
+    - 親テナントは `clinic_scope_ids` 内であること
+    - 親テナントは `parent_id IS NULL` の本部テナントであること
+    - 無効化済みテナントは親に指定できないこと
   - 経路整理:
-    - `POST /api/onboarding/clinic`: 親子テナント作成対応（`create_clinic_with_admin` RPC + `parent_id`サポート）
-    - `POST /api/admin/tenants`: フラットテナント管理用（`parent_id`非対応、既存運用向け）
-  - 指針: 新規クリニック（子テナント）作成は `/api/onboarding/clinic` を使用すること。
+    - `POST /api/admin/tenants`: 管理画面からの本部/子テナント作成
+    - `POST /api/onboarding/clinic`: 初回登録ユーザー自身を管理者として紐付けるオンボーディング専用作成
 - [x] DOD-08: E2Eで `clinic_scope_ids` 未設定時は失敗扱いにする。（2026-01-16 実装完了）
   - 対策: フォールバックの `console.warn` ではなく `expect` で明示的に失敗させる。
   - 指針: `src/__tests__/e2e-playwright/cross-clinic-isolation.spec.ts` の `clinic_scope_ids` 未設定分岐を失敗条件に変更し、親スコープ前提のE2Eを保証する。

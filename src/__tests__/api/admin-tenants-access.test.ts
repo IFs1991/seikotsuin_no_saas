@@ -57,13 +57,44 @@ function createListQueryMock(result: unknown[]) {
   return query;
 }
 
+function createSingleClinicQuery(result: unknown) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({
+      data: result,
+      error: null,
+    }),
+  };
+}
+
+function createCountQuery(count: number) {
+  return {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockResolvedValue({
+      count,
+      error: null,
+    }),
+  };
+}
+
 describe('Admin tenants access alignment', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('GET /api/admin/tenants scopes list by clinic_scope_ids for HQ admin', async () => {
-    const clinics = [{ id: 'clinic-1', name: 'Scope Clinic' }];
+    const clinics = [
+      {
+        id: 'clinic-1',
+        name: 'Scope Clinic',
+        address: null,
+        phone_number: null,
+        is_active: true,
+        created_at: '2026-04-20T00:00:00.000Z',
+        parent_id: null,
+      },
+    ];
     const clinicsQuery = createListQueryMock(clinics);
     const mockAdminClient = {
       from: jest.fn().mockReturnValue(clinicsQuery),
@@ -96,7 +127,16 @@ describe('Admin tenants access alignment', () => {
       'clinic-1',
       'clinic-2',
     ]);
-    expect(body.data.items).toEqual(clinics);
+    expect(body.data.items).toEqual([
+      expect.objectContaining({
+        id: 'clinic-1',
+        name: 'Scope Clinic',
+        parent_id: null,
+        parent_name: null,
+        clinic_type: 'hq',
+        child_count: 0,
+      }),
+    ]);
   });
 
   it('GET /api/admin/tenants fails closed when admin has no clinic scope and no clinic_id', async () => {
@@ -165,6 +205,7 @@ describe('Admin tenants access alignment', () => {
       phone_number: '03-9999-0000',
       is_active: true,
       created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: null,
     };
 
     const clinicsInsertQuery = {
@@ -261,6 +302,12 @@ describe('Admin tenants access alignment', () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
+    expect(clinicsInsertQuery.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: createdClinic.name,
+        parent_id: null,
+      })
+    );
     expect(adminClient.auth.admin.createUser).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'clinic-admin@example.com',
@@ -301,5 +348,242 @@ describe('Admin tenants access alignment', () => {
       email: 'clinic-admin@example.com',
       role: 'clinic_admin',
     });
+  });
+
+  it('POST /api/admin/tenants allows creating a child tenant under an in-scope HQ tenant', async () => {
+    const hqClinicId = '11111111-1111-4111-8111-111111111111';
+    const childClinicId = '22222222-2222-4222-8222-222222222222';
+    const createdClinic = {
+      id: childClinicId,
+      name: '渋谷支店',
+      address: '東京都渋谷区',
+      phone_number: '03-1234-0000',
+      is_active: true,
+      created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: hqClinicId,
+    };
+
+    const clinicsInsertQuery = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest
+        .fn()
+        .mockResolvedValueOnce({
+          data: {
+            id: hqClinicId,
+            name: '本部',
+            parent_id: null,
+            is_active: true,
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: createdClinic,
+          error: null,
+        }),
+    };
+
+    const scopedAdminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'clinics') {
+          return clinicsInsertQuery;
+        }
+        throw new Error(`Unexpected scoped table: ${table}`);
+      }),
+    };
+
+    const profilesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const staffQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const permissionsQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+
+    const adminClient = {
+      auth: {
+        admin: {
+          createUser: jest.fn().mockResolvedValue({
+            data: { user: { id: 'user-2' } },
+            error: null,
+          }),
+          deleteUser: jest.fn(),
+        },
+      },
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profilesQuery;
+        }
+        if (table === 'staff') {
+          return staffQuery;
+        }
+        if (table === 'user_permissions') {
+          return permissionsQuery;
+        }
+        throw new Error(`Unexpected admin table: ${table}`);
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [hqClinicId, childClinicId],
+      },
+      supabase: {},
+      body: {
+        name: createdClinic.name,
+        address: createdClinic.address,
+        phone_number: createdClinic.phone_number,
+        is_active: true,
+        parent_id: hqClinicId,
+        login_email: 'child-admin@example.com',
+        login_password: 'StorePass1!',
+      },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedAdminClient,
+      scopedClinicIds: [hqClinicId, childClinicId],
+      assertClinicInScope: jest.fn(),
+    });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: createdClinic.name,
+          address: createdClinic.address,
+          phone_number: createdClinic.phone_number,
+          is_active: true,
+          parent_id: hqClinicId,
+          login_email: 'child-admin@example.com',
+          login_password: 'StorePass1!',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(clinicsInsertQuery.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: createdClinic.name,
+        parent_id: hqClinicId,
+      })
+    );
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        parent_id: hqClinicId,
+        parent_name: '本部',
+        clinic_type: 'child',
+        child_count: 0,
+      })
+    );
+  });
+
+  it('PATCH /api/admin/tenants/[clinic_id] allows moving a child tenant to another in-scope HQ tenant', async () => {
+    const currentParentId = '11111111-1111-4111-8111-111111111111';
+    const nextParentId = '33333333-3333-4333-8333-333333333333';
+    const childClinicId = '22222222-2222-4222-8222-222222222222';
+    const currentClinicQuery = createSingleClinicQuery({
+      id: childClinicId,
+      name: '渋谷支店',
+      parent_id: currentParentId,
+      is_active: true,
+    });
+    const childCountQuery = createCountQuery(0);
+    const parentClinicQuery = createSingleClinicQuery({
+      id: nextParentId,
+      name: '第二本部',
+      parent_id: null,
+      is_active: true,
+    });
+    const updateQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: childClinicId,
+          name: '渋谷支店',
+          address: null,
+          phone_number: null,
+          is_active: true,
+          created_at: '2026-04-20T00:00:00.000Z',
+          parent_id: nextParentId,
+        },
+        error: null,
+      }),
+    };
+
+    const queries = [
+      currentClinicQuery,
+      childCountQuery,
+      parentClinicQuery,
+      updateQuery,
+    ];
+    const scopedAdminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table !== 'clinics') {
+          throw new Error(`Unexpected scoped table: ${table}`);
+        }
+
+        const nextQuery = queries.shift();
+        if (!nextQuery) {
+          throw new Error('Unexpected extra clinics query');
+        }
+
+        return nextQuery;
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [currentParentId, nextParentId, childClinicId],
+      },
+      supabase: {},
+      body: { parent_id: nextParentId },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedAdminClient,
+      scopedClinicIds: [currentParentId, nextParentId, childClinicId],
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/admin/tenants/[clinic_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/tenants/${childClinicId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parent_id: nextParentId }),
+      }),
+      { params: { clinic_id: childClinicId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(updateQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parent_id: nextParentId,
+      })
+    );
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        id: childClinicId,
+        parent_id: nextParentId,
+        parent_name: '第二本部',
+        clinic_type: 'child',
+        child_count: 0,
+      })
+    );
   });
 });

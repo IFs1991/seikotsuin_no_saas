@@ -1,6 +1,12 @@
 /** @jest-environment jsdom */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import AdminTenantsPage from '@/app/(app)/admin/(protected)/tenants/page';
 
 const mockFetch = jest.fn();
@@ -34,6 +40,10 @@ describe('AdminTenantsPage', () => {
       phone_number: '03-9999-0000',
       is_active: true,
       created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 0,
       admin_account: {
         email: 'clinic-admin@example.com',
         role: 'clinic_admin',
@@ -45,7 +55,13 @@ describe('AdminTenantsPage', () => {
         createJsonResponse({ success: true, data: { items: [] } })
       )
       .mockResolvedValueOnce(
+        createJsonResponse({ success: true, data: { items: [] } })
+      )
+      .mockResolvedValueOnce(
         createJsonResponse({ success: true, data: createdClinic })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({ success: true, data: { items: [createdClinic] } })
       );
 
     render(<AdminTenantsPage />);
@@ -55,7 +71,7 @@ describe('AdminTenantsPage', () => {
     });
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     fireEvent.change(screen.getByPlaceholderText('例: 本院'), {
@@ -80,7 +96,9 @@ describe('AdminTenantsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '作成する' }));
 
     await waitFor(() => {
-      expect(screen.getByText(createdClinic.name)).toBeInTheDocument();
+      expect(
+        screen.getByRole('cell', { name: createdClinic.name })
+      ).toBeInTheDocument();
     });
 
     expect(
@@ -88,26 +106,29 @@ describe('AdminTenantsPage', () => {
         'クリニックと店舗管理者アカウントを作成しました（ID: clinic-admin@example.com）'
       )
     ).toBeInTheDocument();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect(mockFetch).toHaveBeenNthCalledWith(1, '/api/admin/tenants');
     expect(mockFetch).toHaveBeenNthCalledWith(
-      1,
+      2,
       '/api/admin/tenants?is_active=true'
     );
     expect(mockFetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       '/api/admin/tenants',
       expect.objectContaining({
         method: 'POST',
       })
     );
+    expect(mockFetch).toHaveBeenNthCalledWith(4, '/api/admin/tenants');
 
-    const requestInit = mockFetch.mock.calls[1][1] as RequestInit;
+    const requestInit = mockFetch.mock.calls[2][1] as RequestInit;
     expect(JSON.parse(String(requestInit.body))).toEqual(
       expect.objectContaining({
         name: createdClinic.name,
         address: createdClinic.address,
         phone_number: createdClinic.phone_number,
         is_active: true,
+        parent_id: null,
         login_email: createdClinic.admin_account.email,
         login_password: 'StorePass1!',
       })
@@ -122,9 +143,19 @@ describe('AdminTenantsPage', () => {
       phone_number: '03-1111-2222',
       is_active: true,
       created_at: '2026-04-01T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 0,
     };
 
     mockFetch
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [activeClinic] },
+        })
+      )
       .mockResolvedValueOnce(
         createJsonResponse({
           success: true,
@@ -139,6 +170,19 @@ describe('AdminTenantsPage', () => {
             is_active: false,
           },
         })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: {
+            items: [
+              {
+                ...activeClinic,
+                is_active: false,
+              },
+            ],
+          },
+        })
       );
 
     render(<AdminTenantsPage />);
@@ -148,19 +192,23 @@ describe('AdminTenantsPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(activeClinic.name)).toBeInTheDocument();
+      expect(
+        screen.getByRole('cell', { name: activeClinic.name })
+      ).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: '無効化' }));
 
     await waitFor(() => {
-      expect(screen.queryByText(activeClinic.name)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('cell', { name: activeClinic.name })
+      ).not.toBeInTheDocument();
     });
 
     expect(screen.getByText('クリニックを無効化しました')).toBeInTheDocument();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
     expect(mockFetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       `/api/admin/tenants/${activeClinic.id}`,
       expect.objectContaining({
         method: 'PATCH',

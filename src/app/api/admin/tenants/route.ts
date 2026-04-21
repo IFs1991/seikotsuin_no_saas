@@ -24,13 +24,12 @@ import {
 /**
  * Clinic Create Schema for admin tenant management.
  *
- * NOTE (DOD-08): Parent-child tenant creation is NOT supported via this endpoint.
- * - This endpoint is for managing EXISTING flat clinics without parent-child hierarchy.
- * - For parent-child tenant creation with admin setup, use:
- *   POST /api/onboarding/clinic (supports parent_id via create_clinic_with_admin RPC)
+ * Supports:
+ * - Standalone/HQ clinic creation (parent_id = null)
+ * - Child clinic creation under an in-scope HQ clinic (parent_id != null)
  *
- * @see docs/stabilization/spec-tenant-table-api-guard-v0.1.md (Follow-ups: 追加修正2)
- * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Parent-scope model)
+ * Parent selection is validated at the application layer because this route
+ * uses service-role access for admin operations.
  */
 const ClinicCreateSchema = z
   .object({
@@ -38,10 +37,13 @@ const ClinicCreateSchema = z
     address: z.string().max(500).optional(),
     phone_number: z.string().max(50).optional(),
     is_active: z.boolean().optional(),
+    parent_id: z
+      .string()
+      .uuid('親テナントIDの形式が不正です')
+      .optional()
+      .nullable(),
     login_email: emailSchema.optional(),
     login_password: passwordSchema.optional(),
-    // NOTE: parent_id is intentionally NOT included.
-    // Parent-child tenant creation should use /api/onboarding/clinic endpoint.
   })
   .superRefine((value, ctx) => {
     const hasLoginEmail = value.login_email !== undefined;
@@ -73,6 +75,7 @@ type NormalizedClinicCreateInput = {
     address: string | null;
     phone_number: string | null;
     is_active: boolean;
+    parent_id: string | null;
   };
   loginEmail: string | null;
   loginPassword: string | null;
@@ -96,6 +99,32 @@ type CreateClinicAdminResourcesResult =
   | {
       success: true;
       adminAccount: ClinicAdminAccount;
+    }
+  | {
+      success: false;
+      errorResponse: Response;
+    };
+type ScopedClinicLookupRow = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+};
+type ClinicListRow = {
+  id: string;
+  name: string;
+  address: string | null;
+  phone_number: string | null;
+  is_active: boolean;
+  created_at: string;
+  parent_id: string | null;
+};
+type ParentClinicRow = ScopedClinicLookupRow & {
+  is_active: boolean;
+};
+type ParentValidationResult =
+  | {
+      success: true;
+      parent: ParentClinicRow | null;
     }
   | {
       success: false;
@@ -154,10 +183,102 @@ function normalizeClinicCreateInput(
           ? (sanitizeInput(input.phone_number) as string) || null
           : null,
       is_active: input.is_active ?? true,
+      parent_id: input.parent_id ?? null,
     },
     loginEmail,
     loginPassword,
     shouldCreateClinicAdmin: loginEmail !== null && loginPassword !== null,
+  };
+}
+
+function buildClinicHierarchyRows(
+  clinics: ClinicListRow[],
+  hierarchySource: ScopedClinicLookupRow[]
+) {
+  const clinicNameMap = new Map(
+    hierarchySource.map(clinic => [clinic.id, clinic.name] as const)
+  );
+  const childCountMap = new Map<string, number>();
+
+  for (const clinic of hierarchySource) {
+    if (!clinic.parent_id) {
+      continue;
+    }
+
+    childCountMap.set(
+      clinic.parent_id,
+      (childCountMap.get(clinic.parent_id) ?? 0) + 1
+    );
+  }
+
+  return clinics.map(clinic => ({
+    ...clinic,
+    parent_name: clinic.parent_id
+      ? (clinicNameMap.get(clinic.parent_id) ?? null)
+      : null,
+    clinic_type: clinic.parent_id ? ('child' as const) : ('hq' as const),
+    child_count: childCountMap.get(clinic.id) ?? 0,
+  }));
+}
+
+async function validateParentClinic(
+  adminClient: ReturnType<typeof createAdminClient>,
+  scopedClinicIds: string[],
+  parentId: string | null
+): Promise<ParentValidationResult> {
+  if (!parentId) {
+    return {
+      success: true,
+      parent: null,
+    };
+  }
+
+  if (!scopedClinicIds.includes(parentId)) {
+    return {
+      success: false,
+      errorResponse: createErrorResponse(
+        '指定した親テナントへのアクセス権限がありません',
+        403
+      ),
+    };
+  }
+
+  const { data: parentClinic, error } = await adminClient
+    .from('clinics')
+    .select('id, name, parent_id, is_active')
+    .eq('id', parentId)
+    .single();
+
+  if (error || !parentClinic) {
+    return {
+      success: false,
+      errorResponse: createErrorResponse('親テナントが見つかりません', 400),
+    };
+  }
+
+  if (!parentClinic.is_active) {
+    return {
+      success: false,
+      errorResponse: createErrorResponse(
+        '無効な親テナントは指定できません',
+        400
+      ),
+    };
+  }
+
+  if (parentClinic.parent_id !== null) {
+    return {
+      success: false,
+      errorResponse: createErrorResponse(
+        '親テナントには本部テナントのみ指定できます',
+        400
+      ),
+    };
+  }
+
+  return {
+    success: true,
+    parent: parentClinic,
   };
 }
 
@@ -359,13 +480,10 @@ async function createClinicAdminResources({
   };
 }
 
-interface ClinicWithKPI {
-  id: string;
-  name: string;
-  address: string | null;
-  phone_number: string | null;
-  is_active: boolean;
-  created_at: string;
+interface ClinicWithKPI extends ClinicListRow {
+  parent_name: string | null;
+  clinic_type: 'hq' | 'child';
+  child_count: number;
   kpi?: {
     revenue: number;
     patients: number;
@@ -415,7 +533,9 @@ export async function GET(request: NextRequest) {
 
     let query = adminSupabase
       .from('clinics')
-      .select('id, name, address, phone_number, is_active, created_at')
+      .select(
+        'id, name, address, phone_number, is_active, created_at, parent_id'
+      )
       .in('id', adminCtx.scopedClinicIds)
       .order('created_at', { ascending: false });
 
@@ -427,9 +547,17 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_active', isActiveFilter);
     }
 
-    const { data, error } = await query;
-    if (error) {
-      logError(error, {
+    const [{ data, error }, { data: hierarchySource, error: hierarchyError }] =
+      await Promise.all([
+        query,
+        adminSupabase
+          .from('clinics')
+          .select('id, name, parent_id')
+          .in('id', adminCtx.scopedClinicIds),
+      ]);
+
+    if (error || hierarchyError) {
+      logError(error ?? hierarchyError, {
         endpoint: TENANTS_ENDPOINT,
         method: 'GET',
         userId: auth.id,
@@ -438,7 +566,10 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('クリニック情報の取得に失敗しました', 500);
     }
 
-    let items: ClinicWithKPI[] = data ?? [];
+    let items = buildClinicHierarchyRows(
+      data ?? [],
+      hierarchySource ?? []
+    ) as ClinicWithKPI[];
 
     // KPIデータが要求された場合
     if (includeKpi && items.length > 0) {
@@ -511,11 +642,22 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = adminCtx.client;
     const serviceAdminClient = createAdminClient();
+    const parentValidation = await validateParentClinic(
+      adminSupabase,
+      adminCtx.scopedClinicIds,
+      normalizedInput.clinic.parent_id
+    );
+
+    if (parentValidation.success === false) {
+      return parentValidation.errorResponse;
+    }
 
     const { data, error } = await adminSupabase
       .from('clinics')
       .insert(normalizedInput.clinic)
-      .select('id, name, address, phone_number, is_active, created_at')
+      .select(
+        'id, name, address, phone_number, is_active, created_at, parent_id'
+      )
       .single();
 
     if (error) {
@@ -557,6 +699,8 @@ export async function POST(request: NextRequest) {
       data.id,
       {
         name: normalizedInput.clinic.name,
+        parent_id: normalizedInput.clinic.parent_id,
+        parent_name: parentValidation.parent?.name ?? null,
         login_email: normalizedInput.loginEmail,
         created_clinic_admin: normalizedInput.shouldCreateClinicAdmin,
       }
@@ -565,6 +709,9 @@ export async function POST(request: NextRequest) {
     return createSuccessResponse(
       {
         ...data,
+        parent_name: parentValidation.parent?.name ?? null,
+        clinic_type: data.parent_id ? 'child' : 'hq',
+        child_count: 0,
         admin_account: adminAccount,
       },
       201

@@ -33,6 +33,15 @@ const STATUS_OPTIONS = [
   { label: '無効のみ', value: 'inactive' },
 ] as const;
 
+const TENANT_TYPE_OPTIONS = [
+  { label: '本部/単独テナント', value: 'hq' },
+  { label: '子テナント', value: 'child' },
+] as const;
+
+const UNSELECTED_PARENT_VALUE = '__unselected_parent__';
+
+type TenantRelationshipType = (typeof TENANT_TYPE_OPTIONS)[number]['value'];
+
 type TenantFormState = {
   name: string;
   address: string;
@@ -40,6 +49,8 @@ type TenantFormState = {
   login_email: string;
   login_password: string;
   is_active: boolean;
+  tenant_type: TenantRelationshipType;
+  parent_id: string;
 };
 
 const INITIAL_FORM_STATE: TenantFormState = {
@@ -49,6 +60,8 @@ const INITIAL_FORM_STATE: TenantFormState = {
   login_email: '',
   login_password: '',
   is_active: true,
+  tenant_type: 'hq',
+  parent_id: '',
 };
 
 const formatDate = (value?: string | null) => {
@@ -61,12 +74,34 @@ const createInitialFormState = (): TenantFormState => ({
   ...INITIAL_FORM_STATE,
 });
 
+const formatClinicType = (clinic: ClinicSummary) => {
+  if (clinic.parent_id) {
+    return '子テナント';
+  }
+
+  if ((clinic.child_count ?? 0) > 0) {
+    return `本部 (${clinic.child_count}店舗)`;
+  }
+
+  return '本部/単独';
+};
+
+const buildParentLabel = (clinic: ClinicSummary) =>
+  clinic.parent_name ? clinic.parent_name : '-';
+
+const buildParentOptionLabel = (clinic: ClinicSummary) =>
+  `${clinic.name}${clinic.child_count ? ` (${clinic.child_count}店舗)` : ''}`;
+
 const buildFormValidationMessage = (
   formState: TenantFormState,
   isCreateMode: boolean
 ) => {
   if (!formState.name.trim()) {
     return 'クリニック名を入力してください';
+  }
+
+  if (formState.tenant_type === 'child' && !formState.parent_id) {
+    return '子テナントを作成する場合は親テナントを選択してください';
   }
 
   if (!isCreateMode) {
@@ -91,6 +126,7 @@ const buildCreateClinicPayload = (
   address: formState.address || undefined,
   phone_number: formState.phone_number || undefined,
   is_active: formState.is_active,
+  parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
   login_email: formState.login_email || undefined,
   login_password: formState.login_password || undefined,
 });
@@ -102,12 +138,20 @@ const buildUpdateClinicPayload = (
   address: formState.address || null,
   phone_number: formState.phone_number || null,
   is_active: formState.is_active,
+  parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
 });
 
-const buildCreateNotice = (adminAccount?: ClinicSummary['admin_account']) =>
-  adminAccount
-    ? `クリニックと店舗管理者アカウントを作成しました（ID: ${adminAccount.email}）`
-    : 'クリニックを作成しました';
+const buildCreateNotice = (clinic: ClinicSummary) => {
+  if (!clinic.admin_account) {
+    return clinic.parent_name
+      ? `子テナントを作成しました（親: ${clinic.parent_name}）`
+      : 'クリニックを作成しました';
+  }
+
+  return clinic.parent_name
+    ? `子テナントと店舗管理者アカウントを作成しました（親: ${clinic.parent_name} / ID: ${clinic.admin_account.email}）`
+    : `クリニックと店舗管理者アカウントを作成しました（ID: ${clinic.admin_account.email}）`;
+};
 
 const buildEditFormState = (clinic: ClinicSummary): TenantFormState => ({
   name: clinic.name,
@@ -116,7 +160,37 @@ const buildEditFormState = (clinic: ClinicSummary): TenantFormState => ({
   login_email: '',
   login_password: '',
   is_active: clinic.is_active,
+  tenant_type: clinic.parent_id ? 'child' : 'hq',
+  parent_id: clinic.parent_id ?? '',
 });
+
+const sortClinicsForDisplay = (items: ClinicSummary[]) => {
+  const clinicsById = new Map(
+    items.map(clinic => [clinic.id, clinic] as const)
+  );
+
+  return [...items].sort((left, right) => {
+    const leftRoot = left.parent_id ?? left.id;
+    const rightRoot = right.parent_id ?? right.id;
+    const leftRootName = clinicsById.get(leftRoot)?.name ?? left.name;
+    const rightRootName = clinicsById.get(rightRoot)?.name ?? right.name;
+    const groupCompare = leftRootName.localeCompare(rightRootName, 'ja');
+
+    if (groupCompare !== 0) {
+      return groupCompare;
+    }
+
+    if (left.parent_id === null && right.parent_id !== null) {
+      return -1;
+    }
+
+    if (left.parent_id !== null && right.parent_id === null) {
+      return 1;
+    }
+
+    return left.name.localeCompare(right.name, 'ja');
+  });
+};
 
 export default function AdminTenantsPage() {
   const {
@@ -124,6 +198,7 @@ export default function AdminTenantsPage() {
     loading,
     error,
     fetchClinics,
+    listClinics,
     createClinic,
     updateClinic,
     setClinics,
@@ -132,7 +207,8 @@ export default function AdminTenantsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_OPTIONS)[number]['value']>('active');
-
+  const [tenantOptions, setTenantOptions] = useState<ClinicSummary[]>([]);
+  const [tenantOptionsLoading, setTenantOptionsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [formState, setFormState] = useState<TenantFormState>(
@@ -145,12 +221,27 @@ export default function AdminTenantsPage() {
     return { search, isActive: statusFilter === 'active' };
   }, [search, statusFilter]);
 
+  const refreshTenantOptions = useCallback(async () => {
+    setTenantOptionsLoading(true);
+    const items = await listClinics();
+
+    if (items) {
+      setTenantOptions(items);
+    }
+
+    setTenantOptionsLoading(false);
+  }, [listClinics]);
+
   useEffect(() => {
     const timeout = setTimeout(() => {
       fetchClinics(currentFilters);
     }, 200);
     return () => clearTimeout(timeout);
   }, [fetchClinics, currentFilters]);
+
+  useEffect(() => {
+    void refreshTenantOptions();
+  }, [refreshTenantOptions]);
 
   const matchesCurrentFilters = useCallback(
     (clinic: ClinicSummary) => {
@@ -189,6 +280,47 @@ export default function AdminTenantsPage() {
     setEditingId(null);
   }, []);
 
+  const editingClinic = useMemo(() => {
+    if (!editingId) {
+      return null;
+    }
+
+    return (
+      tenantOptions.find(clinic => clinic.id === editingId) ??
+      clinics.find(clinic => clinic.id === editingId) ??
+      null
+    );
+  }, [editingId, tenantOptions, clinics]);
+
+  const isHierarchyLocked =
+    !isCreateMode && (editingClinic?.child_count ?? 0) > 0;
+
+  const parentTenantOptions = useMemo(
+    () =>
+      sortClinicsForDisplay(
+        tenantOptions.filter(
+          clinic =>
+            clinic.parent_id === null &&
+            clinic.id !== editingId &&
+            (clinic.is_active || clinic.id === formState.parent_id)
+        )
+      ),
+    [tenantOptions, editingId, formState.parent_id]
+  );
+
+  const displayClinics = useMemo(
+    () => sortClinicsForDisplay(clinics),
+    [clinics]
+  );
+
+  const handleTenantTypeChange = (value: TenantRelationshipType) => {
+    setFormState(prev => ({
+      ...prev,
+      tenant_type: value,
+      parent_id: value === 'child' ? prev.parent_id : '',
+    }));
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setNotice(null);
@@ -209,6 +341,7 @@ export default function AdminTenantsPage() {
       );
       if (updated) {
         syncClinicWithCurrentFilters(updated);
+        await refreshTenantOptions();
         setNotice('クリニックを更新しました');
         resetForm();
       }
@@ -219,7 +352,8 @@ export default function AdminTenantsPage() {
 
     if (created) {
       syncClinicWithCurrentFilters(created);
-      setNotice(buildCreateNotice(created.admin_account));
+      await refreshTenantOptions();
+      setNotice(buildCreateNotice(created));
       resetForm();
     }
   };
@@ -237,6 +371,7 @@ export default function AdminTenantsPage() {
     });
     if (updated) {
       syncClinicWithCurrentFilters(updated);
+      await refreshTenantOptions();
       setNotice(
         clinic.is_active
           ? 'クリニックを無効化しました'
@@ -246,7 +381,7 @@ export default function AdminTenantsPage() {
   };
 
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 p-6'>
+    <div className='min-h-screen bg-white p-6 dark:bg-gray-800'>
       <div className='mx-auto max-w-6xl space-y-6'>
         <Card>
           <CardHeader>
@@ -327,6 +462,83 @@ export default function AdminTenantsPage() {
                   >
                     有効
                   </label>
+                </div>
+              </div>
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-tenant-type'
+                    className='text-sm font-medium'
+                  >
+                    テナント種別
+                  </label>
+                  <Select
+                    value={formState.tenant_type}
+                    onValueChange={value =>
+                      handleTenantTypeChange(value as TenantRelationshipType)
+                    }
+                    disabled={isHierarchyLocked}
+                  >
+                    <SelectTrigger id='clinic-tenant-type' className='w-full'>
+                      <SelectValue placeholder='種別を選択' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TENANT_TYPE_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-parent-tenant'
+                    className='text-sm font-medium'
+                  >
+                    親テナント
+                  </label>
+                  <Select
+                    value={formState.parent_id || UNSELECTED_PARENT_VALUE}
+                    onValueChange={value =>
+                      setFormState(prev => ({
+                        ...prev,
+                        parent_id:
+                          value === UNSELECTED_PARENT_VALUE ? '' : value,
+                      }))
+                    }
+                    disabled={
+                      formState.tenant_type !== 'child' || isHierarchyLocked
+                    }
+                  >
+                    <SelectTrigger id='clinic-parent-tenant' className='w-full'>
+                      <SelectValue
+                        placeholder={
+                          tenantOptionsLoading
+                            ? '親テナントを読み込み中'
+                            : '親テナントを選択'
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNSELECTED_PARENT_VALUE}>
+                        親テナントを選択
+                      </SelectItem>
+                      {parentTenantOptions.map(clinic => (
+                        <SelectItem key={clinic.id} value={clinic.id}>
+                          {buildParentOptionLabel(clinic)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    本部/単独テナントは親なし、子テナントは同一スコープ内の本部配下に作成します
+                  </p>
+                  {isHierarchyLocked && (
+                    <p className='text-xs text-amber-600 dark:text-amber-400'>
+                      子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
+                    </p>
+                  )}
                 </div>
               </div>
               {isCreateMode && (
@@ -436,20 +648,26 @@ export default function AdminTenantsPage() {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>名称</TableHead>
+                    <TableHead>種別</TableHead>
+                    <TableHead>親テナント</TableHead>
                     <TableHead>状態</TableHead>
                     <TableHead>作成日</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinics.map(clinic => (
+                  {displayClinics.map(clinic => (
                     <TableRow key={clinic.id}>
                       <TableCell className='text-xs text-gray-500'>
                         {clinic.id}
                       </TableCell>
                       <TableCell className='font-medium'>
-                        {clinic.name}
+                        <div className={clinic.parent_id ? 'pl-4' : ''}>
+                          {clinic.name}
+                        </div>
                       </TableCell>
+                      <TableCell>{formatClinicType(clinic)}</TableCell>
+                      <TableCell>{buildParentLabel(clinic)}</TableCell>
                       <TableCell>
                         {clinic.is_active ? '有効' : '無効'}
                       </TableCell>
@@ -474,9 +692,9 @@ export default function AdminTenantsPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {clinics.length === 0 && (
+                  {displayClinics.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className='text-center text-sm'>
+                      <TableCell colSpan={7} className='text-center text-sm'>
                         クリニックがありません
                       </TableCell>
                     </TableRow>

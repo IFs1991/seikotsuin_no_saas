@@ -110,10 +110,13 @@
    - DoD: DOD-08 (tenant boundary + RLS source-of-truth)
 
 2) **親テナントによる子テナント作成経路の明確化**
-   - 選択肢A: `/api/admin/tenants` で `parent_id` を受け付けて子テナント作成を許可する。
-     - 対象: `src/app/api/admin/tenants/route.ts` の `ClinicCreateSchema` と insert payload。
-   - 選択肢B: 子テナント作成はオンボーディング経由に限定する。
-     - 対象: `/api/admin/tenants` で `parent_id` 作成を明示的に禁止し、仕様で運用ルールを固定。
+   - 実装済み: `/api/admin/tenants` で `parent_id` を受け付け、親スコープ内の本部テナント配下に子テナントを作成できる。
+     - 対象: `src/app/api/admin/tenants/route.ts` の `ClinicCreateSchema` / parent validation / insert payload。
+   - UI運用:
+     - `src/app/(app)/admin/(protected)/tenants/page.tsx` で「本部/単独テナント」「子テナント」を選択可能。
+     - 親候補は `parent_id IS NULL` の本部テナントに限定する。
+   - オンボーディング経路は引き続き別用途。
+     - `POST /api/onboarding/clinic` は「現在ログインしている本人を新規クリニックの管理者として紐付ける」初回登録専用。
    - DoD: DOD-08 (tenant boundary)
 
 3) **E2E: parent_id 前提の強制**
