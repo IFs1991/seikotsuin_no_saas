@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, type ComponentType, type ReactNode } from 'react';
+import {
+  useDeferredValue,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
@@ -8,7 +14,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Settings,
-  Users,
   Building,
   CreditCard,
   Database,
@@ -22,7 +27,6 @@ import {
 
 type SettingsCategoryId =
   | 'clinic'
-  | 'staff'
   | 'services'
   | 'insurance'
   | 'booking'
@@ -34,9 +38,6 @@ type SettingsItemId =
   | 'clinic-basic'
   | 'clinic-hours'
   | 'clinic-facilities'
-  | 'staff-list'
-  | 'staff-roles'
-  | 'staff-schedule'
   | 'services-menu'
   | 'services-products'
   | 'services-packages'
@@ -88,7 +89,6 @@ type SettingsComponent = ComponentType<Record<string, never>>;
 const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'clinic-basic',
   'clinic-hours',
-  'staff-list',
   'services-menu',
   'insurance-types',
   'booking-slots',
@@ -118,28 +118,6 @@ const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
         id: 'clinic-facilities',
         title: '設備・ベッドテンプレート',
         description: '子テナント作成時に使う施術ベッド数や設備構成の初期値',
-      },
-    ],
-  },
-  {
-    id: 'staff',
-    title: 'スタッフ管理',
-    icon: <Users className='w-5 h-5' />,
-    items: [
-      {
-        id: 'staff-list',
-        title: 'スタッフ一覧・招待',
-        description: 'スタッフの追加、編集、削除、招待',
-      },
-      {
-        id: 'staff-roles',
-        title: 'ロール・権限',
-        description: '院長、施術スタッフ、受付などの役割と権限設定',
-      },
-      {
-        id: 'staff-schedule',
-        title: 'シフト管理',
-        description: 'スタッフの勤務スケジュールと休暇管理',
       },
     ],
   },
@@ -363,13 +341,6 @@ const SETTINGS_COMPONENTS: Partial<Record<SettingsItemId, SettingsComponent>> =
         ),
       { loading: SettingsLoadingCard }
     ),
-    'staff-list': dynamic(
-      () =>
-        import('@/components/admin/staff-management-settings').then(
-          m => m.StaffManagementSettings
-        ),
-      { loading: SettingsLoadingCard }
-    ),
     'services-menu': dynamic(
       () =>
         import('@/components/admin/services-pricing-settings').then(
@@ -409,6 +380,7 @@ export default function AdminSettings() {
   const [selectedItem, setSelectedItem] =
     useState<SettingsItemId>('clinic-basic');
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const router = useRouter();
 
   const handleLogout = () => {
@@ -417,7 +389,10 @@ export default function AdminSettings() {
     router.push('/admin/logout');
   };
 
-  const searchableCategories = getSearchableCategories(searchQuery);
+  const searchableCategories = useMemo(
+    () => getSearchableCategories(deferredSearchQuery),
+    [deferredSearchQuery]
+  );
   const currentItem = SETTINGS_ITEMS_BY_ID.get(selectedItem);
   const isTemplateItem = currentItem?.categoryId === 'clinic';
   const SelectedComponent = SETTINGS_COMPONENTS[selectedItem] ?? null;
@@ -537,6 +512,9 @@ export default function AdminSettings() {
                     </p>
                     <p className='mt-1 text-sm text-blue-900'>
                       この画面の変更は、既存店舗の設定を自動的に上書きしません。
+                    </p>
+                    <p className='mt-1 text-sm text-blue-900'>
+                      スタッフ招待・勤務管理・店舗ごとの運用設定は、店舗単位の管理画面で扱います。
                     </p>
                   </Card>
                 )}

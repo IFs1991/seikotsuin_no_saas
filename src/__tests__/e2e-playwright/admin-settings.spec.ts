@@ -32,8 +32,8 @@ async function waitForPageReady(page: Page) {
  * 1. クリニック基本情報の保存・復元
  * 2. コミュニケーション設定のSMTP公開設定保存
  * 3. セキュリティ設定のポリシー変更
- * 4. スタッフ招待
- * 5. バリデーションエラー時の動作
+ * 4. 予約枠設定の保存・復元
+ * 5. APIエンドポイント検証
  */
 
 test.describe('管理設定永続化', () => {
@@ -393,87 +393,6 @@ test.describe('管理設定永続化', () => {
       if (await slotMinutesAfter.isVisible()) {
         await expect(slotMinutesAfter).toHaveValue('30');
       }
-    });
-  });
-
-  test.describe('Staff invites', () => {
-    test('スタッフを招待して一覧に表示される', async ({ page }) => {
-      const adminSettingsNav = page.getByTestId('admin-settings-nav');
-      const adminSettingsContent = page.getByTestId('admin-settings-content');
-
-      await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
-      await waitForPageReady(page);
-
-      // スタッフ管理設定へ移動
-      await adminSettingsNav
-        .getByRole('button', { name: 'スタッフ管理' })
-        .click();
-      await adminSettingsNav
-        .getByRole('button', { name: 'スタッフ一覧・招待' })
-        .click();
-
-      await expect(
-        adminSettingsContent.getByText('設定を読み込み中...')
-      ).toBeHidden({ timeout: 15000 });
-
-      // 招待フォームを開く
-      await page.getByRole('button', { name: /新しいスタッフを招待/ }).click();
-      await expect(page.getByTestId('staff-invite-form')).toBeVisible();
-
-      // テスト用のユニークなメールアドレス
-      const testEmail = `test-staff-${Date.now()}@example.com`;
-      const testName = 'テストスタッフ';
-
-      // フォーム入力
-      await page.getByTestId('staff-invite-name-input').fill(testName);
-      await page.getByTestId('staff-invite-email-input').fill(testEmail);
-      await page.getByTestId('staff-invite-role-select').selectOption('staff');
-
-      // 招待送信
-      await page.getByTestId('staff-invite-submit-button').click();
-
-      // 成功メッセージを確認
-      await expect(page.getByText(/招待メールを送信しました/)).toBeVisible({
-        timeout: 20000,
-      });
-
-      // スタッフ一覧に追加されたことを確認
-      const staffRow = page.locator('tr', { hasText: testEmail });
-      await expect(staffRow).toBeVisible();
-      await expect(staffRow.getByText('招待中')).toBeVisible();
-    });
-
-    test('無効なメールアドレスでエラーが表示される', async ({ page }) => {
-      const adminSettingsNav = page.getByTestId('admin-settings-nav');
-      const adminSettingsContent = page.getByTestId('admin-settings-content');
-
-      await page.goto('/admin/settings', { waitUntil: 'domcontentloaded' });
-      await waitForPageReady(page);
-
-      await adminSettingsNav
-        .getByRole('button', { name: 'スタッフ管理' })
-        .click();
-      await adminSettingsNav
-        .getByRole('button', { name: 'スタッフ一覧・招待' })
-        .click();
-
-      await expect(
-        adminSettingsContent.getByText('設定を読み込み中...')
-      ).toBeHidden({ timeout: 15000 });
-
-      await page.getByRole('button', { name: /新しいスタッフを招待/ }).click();
-
-      // 無効なメールアドレス
-      await page.getByTestId('staff-invite-email-input').fill('invalid-email');
-      await page.getByTestId('staff-invite-role-select').selectOption('staff');
-      await page.getByTestId('staff-invite-submit-button').click();
-
-      // エラーメッセージを確認
-      await expect(
-        page.getByText(
-          /有効なメールアドレス|メールアドレスを入力|入力値にエラー|失敗/
-        )
-      ).toBeVisible({ timeout: 20000 });
     });
   });
 

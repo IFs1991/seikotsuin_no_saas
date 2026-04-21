@@ -1,7 +1,7 @@
 /**
  * POST /api/admin/staff/invites
  *
- * スタッフ招待API（管理設定画面用）
+ * スタッフ招待API（店舗単位のスタッフ管理導線用）
  * @spec docs/stabilization/admin-settings-staff-invite-todo.md
  * @spec docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md
  */

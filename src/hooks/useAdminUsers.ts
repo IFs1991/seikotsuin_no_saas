@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 import type {
   AssignPermissionPayload,
@@ -18,6 +18,10 @@ type ApiResponse<T> = {
 type PermissionListPayload = {
   items: PermissionEntry[];
   total: number;
+};
+
+type FetchPermissionsOptions = {
+  signal?: AbortSignal;
 };
 
 const buildPermissionListUrl = (filters: PermissionFilters): string => {
@@ -40,28 +44,57 @@ const readApiResponse = async <T>(response: Response): Promise<T> => {
   return result.data as T;
 };
 
+const isAbortError = (error: unknown): boolean =>
+  typeof DOMException !== 'undefined' && error instanceof DOMException
+    ? error.name === 'AbortError'
+    : error instanceof Error && error.name === 'AbortError';
+
 export function useAdminUsers() {
   const [permissions, setPermissions] = useState<PermissionEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const permissionListRequestIdRef = useRef(0);
 
   const fetchPermissions = useCallback(
-    async (filters: PermissionFilters = {}) => {
+    async (
+      filters: PermissionFilters = {},
+      options: FetchPermissionsOptions = {}
+    ) => {
+      const requestId = permissionListRequestIdRef.current + 1;
+      permissionListRequestIdRef.current = requestId;
+
       try {
         setLoading(true);
         setError(null);
 
         const data = await readApiResponse<PermissionListPayload>(
-          await fetch(buildPermissionListUrl(filters))
+          await fetch(buildPermissionListUrl(filters), {
+            signal: options.signal,
+          })
         );
 
-        setPermissions(data.items);
+        if (permissionListRequestIdRef.current === requestId) {
+          setPermissions(data.items);
+        }
+
+        return data.items;
       } catch (err) {
+        if (isAbortError(err)) {
+          return null;
+        }
+
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
-        setError(message);
+
+        if (permissionListRequestIdRef.current === requestId) {
+          setError(message);
+        }
+
+        return null;
       } finally {
-        setLoading(false);
+        if (permissionListRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
       }
     },
     []

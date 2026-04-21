@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -57,6 +63,7 @@ export default function AdminUsersPage() {
   const { clinics, fetchClinics } = useAdminTenants();
 
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [roleFilter, setRoleFilter] =
     useState<AdminUsersRoleFilter>(ROLE_FILTER_ALL);
   const [clinicFilter, setClinicFilter] = useState<string>(CLINIC_FILTER_ALL);
@@ -70,8 +77,13 @@ export default function AdminUsersPage() {
   );
 
   const currentFilters = useMemo(
-    () => buildPermissionFilters({ roleFilter, clinicFilter, search }),
-    [clinicFilter, roleFilter, search]
+    () =>
+      buildPermissionFilters({
+        roleFilter,
+        clinicFilter,
+        search: deferredSearch,
+      }),
+    [clinicFilter, deferredSearch, roleFilter]
   );
 
   useEffect(() => {
@@ -79,10 +91,15 @@ export default function AdminUsersPage() {
   }, [fetchClinics]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const timeout = setTimeout(() => {
-      fetchPermissions(currentFilters);
+      fetchPermissions(currentFilters, { signal: controller.signal });
     }, 200);
-    return () => clearTimeout(timeout);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, [fetchPermissions, currentFilters]);
 
   const resetForm = () => {
@@ -133,7 +150,7 @@ export default function AdminUsersPage() {
     setNotice(null);
     const ok = await revokePermission(permissionId);
     if (ok) {
-      setNotice('権限を剥奪しました');
+      setNotice('権限を外しました');
       fetchPermissions(currentFilters);
     }
   };
@@ -144,8 +161,11 @@ export default function AdminUsersPage() {
         <Card>
           <CardHeader>
             <CardTitle className='text-xl font-semibold'>
-              ユーザー権限管理
+              アカウント・権限管理
             </CardTitle>
+            <CardDescription>
+              ログインできるアカウント、所属店舗、ロールを管理します。店舗スタッフの招待や勤務情報は店舗単位の管理画面で扱います。
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className='space-y-4'>
@@ -155,7 +175,7 @@ export default function AdminUsersPage() {
                     htmlFor='admin-user-id'
                     className='text-sm font-medium'
                   >
-                    ユーザーID
+                    Supabase Auth ユーザーID
                   </label>
                   <Input
                     id='admin-user-id'
@@ -205,7 +225,7 @@ export default function AdminUsersPage() {
                     htmlFor='admin-user-clinic'
                     className='text-sm font-medium'
                   >
-                    クリニック
+                    所属店舗
                   </label>
                   <Select
                     value={formState.clinic_id || NO_CLINIC_VALUE}
@@ -233,7 +253,7 @@ export default function AdminUsersPage() {
               </div>
               <div className='flex flex-wrap items-center gap-2'>
                 <Button type='submit' disabled={loading}>
-                  {editingPermissionId ? '更新する' : '付与する'}
+                  {editingPermissionId ? '権限を更新する' : '権限を付与する'}
                 </Button>
                 {editingPermissionId && (
                   <Button type='button' variant='outline' onClick={resetForm}>
@@ -251,12 +271,14 @@ export default function AdminUsersPage() {
 
         <Card>
           <CardHeader className='space-y-3'>
-            <CardTitle className='text-lg font-semibold'>一覧</CardTitle>
+            <CardTitle className='text-lg font-semibold'>
+              アカウント一覧
+            </CardTitle>
             <div className='flex flex-wrap items-center gap-3'>
               <Input
                 value={search}
                 onChange={event => setSearch(event.target.value)}
-                placeholder='ユーザーID/メールで検索'
+                placeholder='アカウントID/メールで検索'
                 className='max-w-xs'
               />
               <Select
@@ -280,7 +302,7 @@ export default function AdminUsersPage() {
                 onValueChange={value => setClinicFilter(value)}
               >
                 <SelectTrigger className='w-56'>
-                  <SelectValue placeholder='クリニック' />
+                  <SelectValue placeholder='所属店舗' />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={CLINIC_FILTER_ALL}>すべて</SelectItem>
@@ -301,9 +323,9 @@ export default function AdminUsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
-                    <TableHead>ユーザー</TableHead>
+                    <TableHead>アカウント</TableHead>
                     <TableHead>ロール</TableHead>
-                    <TableHead>クリニック</TableHead>
+                    <TableHead>所属店舗</TableHead>
                     <TableHead>作成日</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
@@ -340,7 +362,7 @@ export default function AdminUsersPage() {
                           variant='destructive'
                           onClick={() => handleRevoke(permission.id)}
                         >
-                          剥奪
+                          権限を外す
                         </Button>
                       </TableCell>
                     </TableRow>

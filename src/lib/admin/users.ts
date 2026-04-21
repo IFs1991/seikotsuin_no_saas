@@ -106,14 +106,14 @@ export function validatePermissionForm(
   formState: PermissionFormState
 ): string | null {
   if (!formState.user_id.trim()) {
-    return 'ユーザーIDを入力してください';
+    return 'Supabase Auth ユーザーIDを入力してください';
   }
 
   if (
     formState.role !== 'admin' &&
     !getPermissionClinicId(formState.role, formState.clinic_id)
   ) {
-    return 'クリニックIDを選択してください';
+    return '所属店舗を選択してください';
   }
 
   return null;

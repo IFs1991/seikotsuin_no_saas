@@ -48,6 +48,16 @@ describe('admin users helpers', () => {
     });
   });
 
+  test('user id is required for permission assignment', () => {
+    expect(
+      validatePermissionForm({
+        user_id: '   ',
+        role: 'clinic_admin',
+        clinic_id: 'clinic-1',
+      })
+    ).toBe('Supabase Auth ユーザーIDを入力してください');
+  });
+
   test('clinic scoped roles require clinic id', () => {
     expect(
       validatePermissionForm({
@@ -55,7 +65,7 @@ describe('admin users helpers', () => {
         role: 'clinic_admin',
         clinic_id: '',
       })
-    ).toBe('クリニックIDを選択してください');
+    ).toBe('所属店舗を選択してください');
   });
 
   test('update payload converts blank clinic id to null', () => {

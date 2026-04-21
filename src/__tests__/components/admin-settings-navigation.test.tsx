@@ -48,11 +48,17 @@ describe('Admin settings navigation alignment', () => {
         'この画面の変更は、既存店舗の設定を自動的に上書きしません。'
       )
     ).toBeInTheDocument();
-
-    fireEvent.click(within(nav).getByRole('button', { name: 'スタッフ管理' }));
     expect(
-      within(nav).getByRole('button', { name: 'スタッフ一覧・招待' })
+      screen.getByText(
+        'スタッフ招待・勤務管理・店舗ごとの運用設定は、店舗単位の管理画面で扱います。'
+      )
     ).toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('button', { name: 'スタッフ管理' })
+    ).not.toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('button', { name: 'スタッフ一覧・招待' })
+    ).not.toBeInTheDocument();
     expect(
       within(nav).queryByRole('button', { name: 'ロール・権限' })
     ).not.toBeInTheDocument();
@@ -92,9 +98,8 @@ describe('Admin settings navigation alignment', () => {
       default: () => null,
     }));
 
-    const { default: AdminSettingsFallbackPage } = await import(
-      '@/app/(app)/admin/(protected)/settings/page'
-    );
+    const { default: AdminSettingsFallbackPage } =
+      await import('@/app/(app)/admin/(protected)/settings/page');
 
     render(<AdminSettingsFallbackPage />);
 
