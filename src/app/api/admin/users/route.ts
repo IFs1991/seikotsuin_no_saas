@@ -7,20 +7,16 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import {
+  ADMIN_USER_ROLE_VALUES,
+  type AdminUserRole,
+} from '@/lib/constants/roles';
 import { createAdminClient } from '@/lib/supabase';
-
-const ROLE_VALUES = [
-  'admin',
-  'clinic_admin',
-  'therapist',
-  'staff',
-  'manager',
-] as const;
 
 const AssignPermissionSchema = z.object({
   user_id: z.string().uuid(),
   clinic_id: z.string().uuid().nullable().optional(),
-  role: z.enum(ROLE_VALUES),
+  role: z.enum(ADMIN_USER_ROLE_VALUES),
 });
 
 const requireAdmin = (role: string) => role === 'admin';
@@ -66,7 +62,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (role) {
-      if (!ROLE_VALUES.includes(role as (typeof ROLE_VALUES)[number])) {
+      if (!ADMIN_USER_ROLE_VALUES.includes(role as AdminUserRole)) {
         return createErrorResponse('不正なロール指定です', 400);
       }
       query = query.eq('role', role);

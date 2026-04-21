@@ -1,23 +1,44 @@
 import { useCallback, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import type {
+  AssignPermissionPayload,
+  PermissionEntry,
+  PermissionFilters,
+  UpdatePermissionPayload,
+} from '@/lib/admin/users';
 
-export interface PermissionEntry {
-  id: string;
-  user_id: string | null;
-  role: string;
-  clinic_id: string | null;
-  clinic_name?: string | null;
-  username: string;
-  profile_email?: string | null;
-  profile_name?: string | null;
-  created_at?: string | null;
-}
+export type { PermissionEntry, PermissionFilters } from '@/lib/admin/users';
 
-export interface PermissionFilters {
-  role?: string;
-  clinicId?: string;
-  search?: string;
-}
+type ApiResponse<T> = {
+  success: boolean;
+  data?: T;
+  error?: string;
+};
+
+type PermissionListPayload = {
+  items: PermissionEntry[];
+  total: number;
+};
+
+const buildPermissionListUrl = (filters: PermissionFilters): string => {
+  const params = new URLSearchParams();
+  if (filters.role) params.set('role', filters.role);
+  if (filters.clinicId) params.set('clinic_id', filters.clinicId);
+  if (filters.search) params.set('search', filters.search);
+
+  const query = params.toString();
+  return query
+    ? `${API_ENDPOINTS.ADMIN.USERS}?${query}`
+    : API_ENDPOINTS.ADMIN.USERS;
+};
+
+const readApiResponse = async <T>(response: Response): Promise<T> => {
+  const result = (await response.json()) as ApiResponse<T>;
+  if (!result.success) {
+    throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+  }
+  return result.data as T;
+};
 
 export function useAdminUsers() {
   const [permissions, setPermissions] = useState<PermissionEntry[]>([]);
@@ -30,26 +51,15 @@ export function useAdminUsers() {
         setLoading(true);
         setError(null);
 
-        const params = new URLSearchParams();
-        if (filters.role) params.set('role', filters.role);
-        if (filters.clinicId) params.set('clinic_id', filters.clinicId);
-        if (filters.search) params.set('search', filters.search);
-
-        const response = await fetch(
-          `${API_ENDPOINTS.ADMIN.USERS}?${params.toString()}`
+        const data = await readApiResponse<PermissionListPayload>(
+          await fetch(buildPermissionListUrl(filters))
         );
-        const result = await response.json();
 
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        setPermissions(result.data?.items ?? []);
+        setPermissions(data.items);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(message);
-        console.error('Failed to fetch permissions', err);
       } finally {
         setLoading(false);
       }
@@ -58,32 +68,22 @@ export function useAdminUsers() {
   );
 
   const assignPermission = useCallback(
-    async (payload: {
-      user_id: string;
-      clinic_id?: string | null;
-      role: string;
-    }) => {
+    async (payload: AssignPermissionPayload) => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(API_ENDPOINTS.ADMIN.USERS, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        return result.data as PermissionEntry;
+        return await readApiResponse<PermissionEntry>(
+          await fetch(API_ENDPOINTS.ADMIN.USERS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        );
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(message);
-        console.error('Failed to assign permission', err);
         return null;
       } finally {
         setLoading(false);
@@ -93,34 +93,22 @@ export function useAdminUsers() {
   );
 
   const updatePermission = useCallback(
-    async (
-      permissionId: string,
-      payload: { role?: string; clinic_id?: string | null }
-    ) => {
+    async (permissionId: string, payload: UpdatePermissionPayload) => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `${API_ENDPOINTS.ADMIN.USERS}/${permissionId}`,
-          {
+        return await readApiResponse<PermissionEntry>(
+          await fetch(`${API_ENDPOINTS.ADMIN.USERS}/${permissionId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
-          }
+          })
         );
-
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-        }
-
-        return result.data as PermissionEntry;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(message);
-        console.error('Failed to update permission', err);
         return null;
       } finally {
         setLoading(false);
@@ -134,26 +122,19 @@ export function useAdminUsers() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `${API_ENDPOINTS.ADMIN.USERS}/${permissionId}`,
-        {
+      await readApiResponse<{ id: string; revoked: true }>(
+        await fetch(`${API_ENDPOINTS.ADMIN.USERS}/${permissionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ revoke: true }),
-        }
+        })
       );
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
-      }
 
       return true;
     } catch (err) {
       const message =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(message);
-      console.error('Failed to revoke permission', err);
       return false;
     } finally {
       setLoading(false);
@@ -168,6 +149,5 @@ export function useAdminUsers() {
     assignPermission,
     updatePermission,
     revokePermission,
-    setPermissions,
   };
 }

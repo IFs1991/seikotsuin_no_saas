@@ -19,16 +19,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAdminUsers, type PermissionFilters } from '@/hooks/useAdminUsers';
+import {
+  CLINIC_FILTER_ALL,
+  NO_CLINIC_VALUE,
+  ROLE_FILTER_ALL,
+  buildPermissionFilters,
+  createAssignPermissionPayload,
+  createEmptyPermissionFormState,
+  createPermissionFormState,
+  createUpdatePermissionPayload,
+  toAdminUserRole,
+  toRoleFilterValue,
+  validatePermissionForm,
+  type AdminUsersRoleFilter,
+  type PermissionFormState,
+} from '@/lib/admin/users';
+import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAdminTenants } from '@/hooks/useAdminTenants';
-
-const ROLE_OPTIONS = [
-  { label: 'admin', value: 'admin' },
-  { label: 'clinic_admin', value: 'clinic_admin' },
-  { label: 'manager', value: 'manager' },
-  { label: 'therapist', value: 'therapist' },
-  { label: 'staff', value: 'staff' },
-] as const;
+import { ADMIN_USER_ROLE_OPTIONS, getRoleLabel } from '@/lib/constants/roles';
 
 const formatDate = (value?: string | null) => {
   if (!value) return '-';
@@ -49,26 +57,22 @@ export default function AdminUsersPage() {
   const { clinics, fetchClinics } = useAdminTenants();
 
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [clinicFilter, setClinicFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] =
+    useState<AdminUsersRoleFilter>(ROLE_FILTER_ALL);
+  const [clinicFilter, setClinicFilter] = useState<string>(CLINIC_FILTER_ALL);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [editingPermissionId, setEditingPermissionId] = useState<string | null>(
     null
   );
-  const [formState, setFormState] = useState({
-    user_id: '',
-    role: 'clinic_admin',
-    clinic_id: '',
-  });
+  const [formState, setFormState] = useState<PermissionFormState>(
+    createEmptyPermissionFormState
+  );
 
-  const currentFilters = useMemo<PermissionFilters>(() => {
-    const result: PermissionFilters = {};
-    if (roleFilter !== 'all') result.role = roleFilter;
-    if (clinicFilter !== 'all') result.clinicId = clinicFilter;
-    if (search) result.search = search;
-    return result;
-  }, [clinicFilter, roleFilter, search]);
+  const currentFilters = useMemo(
+    () => buildPermissionFilters({ roleFilter, clinicFilter, search }),
+    [clinicFilter, roleFilter, search]
+  );
 
   useEffect(() => {
     fetchClinics({ isActive: null });
@@ -83,33 +87,24 @@ export default function AdminUsersPage() {
 
   const resetForm = () => {
     setEditingPermissionId(null);
-    setFormState({
-      user_id: '',
-      role: 'clinic_admin',
-      clinic_id: '',
-    });
+    setFormState(createEmptyPermissionFormState());
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setNotice(null);
 
-    if (!formState.user_id.trim()) {
-      setNotice('ユーザーIDを入力してください');
-      return;
-    }
-
-    if (formState.role !== 'admin' && !formState.clinic_id.trim()) {
-      setNotice('クリニックIDを選択してください');
+    const validationMessage = validatePermissionForm(formState);
+    if (validationMessage) {
+      setNotice(validationMessage);
       return;
     }
 
     if (editingPermissionId) {
-      const updated = await updatePermission(editingPermissionId, {
-        role: formState.role,
-        clinic_id:
-          formState.role === 'admin' ? null : formState.clinic_id || null,
-      });
+      const updated = await updatePermission(
+        editingPermissionId,
+        createUpdatePermissionPayload(formState)
+      );
       if (updated) {
         setNotice('権限を更新しました');
         resetForm();
@@ -118,12 +113,9 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const created = await assignPermission({
-      user_id: formState.user_id,
-      role: formState.role,
-      clinic_id:
-        formState.role === 'admin' ? null : formState.clinic_id || null,
-    });
+    const created = await assignPermission(
+      createAssignPermissionPayload(formState)
+    );
     if (created) {
       setNotice('権限を付与しました');
       resetForm();
@@ -133,11 +125,7 @@ export default function AdminUsersPage() {
 
   const handleEdit = (permission: (typeof permissions)[number]) => {
     setEditingPermissionId(permission.id);
-    setFormState({
-      user_id: permission.user_id || '',
-      role: permission.role,
-      clinic_id: permission.clinic_id || '',
-    });
+    setFormState(createPermissionFormState(permission));
     setNotice(null);
   };
 
@@ -163,8 +151,14 @@ export default function AdminUsersPage() {
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div className='grid gap-4 md:grid-cols-2'>
                 <div className='space-y-2'>
-                  <label className='text-sm font-medium'>ユーザーID</label>
+                  <label
+                    htmlFor='admin-user-id'
+                    className='text-sm font-medium'
+                  >
+                    ユーザーID
+                  </label>
                   <Input
+                    id='admin-user-id'
                     value={formState.user_id}
                     onChange={event =>
                       setFormState(prev => ({
@@ -177,18 +171,26 @@ export default function AdminUsersPage() {
                   />
                 </div>
                 <div className='space-y-2'>
-                  <label className='text-sm font-medium'>ロール</label>
+                  <label
+                    htmlFor='admin-user-role'
+                    className='text-sm font-medium'
+                  >
+                    ロール
+                  </label>
                   <Select
                     value={formState.role}
                     onValueChange={value =>
-                      setFormState(prev => ({ ...prev, role: value }))
+                      setFormState(prev => ({
+                        ...prev,
+                        role: toAdminUserRole(value),
+                      }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id='admin-user-role'>
                       <SelectValue placeholder='ロールを選択' />
                     </SelectTrigger>
                     <SelectContent>
-                      {ROLE_OPTIONS.map(option => (
+                      {ADMIN_USER_ROLE_OPTIONS.map(option => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
                         </SelectItem>
@@ -199,22 +201,27 @@ export default function AdminUsersPage() {
               </div>
               <div className='grid gap-4 md:grid-cols-2'>
                 <div className='space-y-2'>
-                  <label className='text-sm font-medium'>クリニック</label>
+                  <label
+                    htmlFor='admin-user-clinic'
+                    className='text-sm font-medium'
+                  >
+                    クリニック
+                  </label>
                   <Select
-                    value={formState.clinic_id || 'none'}
+                    value={formState.clinic_id || NO_CLINIC_VALUE}
                     onValueChange={value =>
                       setFormState(prev => ({
                         ...prev,
-                        clinic_id: value === 'none' ? '' : value,
+                        clinic_id: value === NO_CLINIC_VALUE ? '' : value,
                       }))
                     }
                     disabled={formState.role === 'admin'}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id='admin-user-clinic'>
                       <SelectValue placeholder='クリニックを選択' />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value='none'>未指定</SelectItem>
+                      <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
                       {clinics.map(clinic => (
                         <SelectItem key={clinic.id} value={clinic.id}>
                           {clinic.name}
@@ -254,14 +261,14 @@ export default function AdminUsersPage() {
               />
               <Select
                 value={roleFilter}
-                onValueChange={value => setRoleFilter(value)}
+                onValueChange={value => setRoleFilter(toRoleFilterValue(value))}
               >
                 <SelectTrigger className='w-40'>
                   <SelectValue placeholder='ロール' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='all'>すべて</SelectItem>
-                  {ROLE_OPTIONS.map(option => (
+                  <SelectItem value={ROLE_FILTER_ALL}>すべて</SelectItem>
+                  {ADMIN_USER_ROLE_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -276,7 +283,7 @@ export default function AdminUsersPage() {
                   <SelectValue placeholder='クリニック' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value='all'>すべて</SelectItem>
+                  <SelectItem value={CLINIC_FILTER_ALL}>すべて</SelectItem>
                   {clinics.map(clinic => (
                     <SelectItem key={clinic.id} value={clinic.id}>
                       {clinic.name}
@@ -315,7 +322,7 @@ export default function AdminUsersPage() {
                           {permission.user_id}
                         </div>
                       </TableCell>
-                      <TableCell>{permission.role}</TableCell>
+                      <TableCell>{getRoleLabel(permission.role)}</TableCell>
                       <TableCell>
                         {permission.clinic_name || permission.clinic_id || '-'}
                       </TableCell>

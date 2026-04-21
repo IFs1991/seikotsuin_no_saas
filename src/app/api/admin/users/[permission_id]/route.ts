@@ -7,18 +7,14 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-
-const ROLE_VALUES = [
-  'admin',
-  'clinic_admin',
-  'therapist',
-  'staff',
-  'manager',
-] as const;
+import {
+  ADMIN_USER_ROLE_VALUES,
+  type AdminUserRole,
+} from '@/lib/constants/roles';
 
 const PermissionUpdateSchema = z
   .object({
-    role: z.enum(ROLE_VALUES).optional(),
+    role: z.enum(ADMIN_USER_ROLE_VALUES).optional(),
     clinic_id: z.string().uuid().nullable().optional(),
     revoke: z.boolean().optional(),
   })
@@ -91,7 +87,11 @@ export async function PATCH(
       return createSuccessResponse({ id: permission_id, revoked: true });
     }
 
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: {
+      updated_at: string;
+      role?: AdminUserRole;
+      clinic_id?: string | null;
+    } = {
       updated_at: new Date().toISOString(),
     };
 

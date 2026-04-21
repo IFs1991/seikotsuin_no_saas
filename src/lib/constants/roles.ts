@@ -12,6 +12,30 @@ export type Role =
   | 'staff'
   | 'customer';
 
+export const ADMIN_USER_ROLE_VALUES = [
+  'admin',
+  'clinic_admin',
+  'manager',
+  'therapist',
+  'staff',
+] as const satisfies readonly Role[];
+
+export type AdminUserRole = (typeof ADMIN_USER_ROLE_VALUES)[number];
+
+export const ROLE_LABELS = {
+  admin: '本部管理者',
+  clinic_admin: '店舗管理者',
+  manager: 'マネージャー',
+  therapist: '施術者',
+  staff: 'スタッフ',
+  customer: '顧客',
+} as const satisfies Record<Role, string>;
+
+export const ADMIN_USER_ROLE_OPTIONS = ADMIN_USER_ROLE_VALUES.map(value => ({
+  value,
+  label: ROLE_LABELS[value],
+}));
+
 /**
  * HQ roles - can access cross-clinic data and admin features
  */
@@ -113,6 +137,24 @@ export function normalizeRole(role: string | null | undefined): string | null {
     return null;
   }
   return DEPRECATED_ROLE_MAPPING[role] ?? role;
+}
+
+export function getRoleLabel(role: string | null | undefined): string {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === null) {
+    return '-';
+  }
+  return ROLE_LABELS[normalizedRole as Role] ?? normalizedRole;
+}
+
+export function isAdminUserRole(
+  role: string | null | undefined
+): role is AdminUserRole {
+  return (
+    role !== null &&
+    role !== undefined &&
+    ADMIN_USER_ROLE_VALUES.includes(role as AdminUserRole)
+  );
 }
 
 /**
