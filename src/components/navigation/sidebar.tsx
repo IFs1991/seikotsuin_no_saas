@@ -6,81 +6,56 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-
-interface SidebarMenuItem {
-  id: string;
-  label: string;
-  href: string;
-  subItems?: SidebarMenuItem[];
-}
+import {
+  ADMIN_MENU_ITEMS,
+  QUICK_ACCESS_ITEMS,
+  getCurrentNavigationItemId,
+  getNavigationMode,
+  getOperationMenuItems,
+  type NavigationItem,
+} from '@/lib/navigation/items';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   isAdmin?: boolean;
   profileLoading?: boolean;
+  role?: string | null;
 }
 
-const CORE_MENU: SidebarMenuItem[] = [
-  { id: 'dashboard', label: 'ダッシュボード', href: '/dashboard' },
-  {
-    id: 'daily-reports',
-    label: '日報管理',
-    href: '/daily-reports',
-    subItems: [
-      { id: 'daily-input', label: '日報入力', href: '/daily-reports/input' },
-      { id: 'daily-list', label: '日報一覧', href: '/daily-reports' },
-    ],
-  },
-  {
-    id: 'reservations',
-    label: '予約管理',
-    href: '/reservations',
-    subItems: [
-      {
-        id: 'reservation-timeline',
-        label: 'タイムライン',
-        href: '/reservations',
-      },
-      {
-        id: 'reservation-register',
-        label: '新規予約',
-        href: '/reservations?view=register',
-      },
-      {
-        id: 'reservation-list',
-        label: '予約一覧',
-        href: '/reservations?view=list',
-      },
-    ],
-  },
-  { id: 'patients', label: '患者分析', href: '/patients' },
-  { id: 'revenue', label: '収益分析', href: '/revenue' },
-  { id: 'staff', label: 'スタッフ管理', href: '/staff' },
-  { id: 'ai-insights', label: 'AI分析', href: '/ai-insights' },
-];
+interface SidebarItemButtonProps {
+  item: NavigationItem;
+  isActive: boolean;
+  className: string;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
+  children: React.ReactNode;
+}
 
-const ADMIN_MENU: SidebarMenuItem[] = [
-  { id: 'admin', label: '管理ダッシュボード', href: '/admin' },
-  { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
-  { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
-  { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
-  { id: 'multi-store', label: '多店舗分析', href: '/multi-store' },
-];
+const ACTIVE_MENU_CLASS = 'bg-[#2d4ba0]';
+const INACTIVE_MENU_CLASS = 'hover:bg-[#2d4ba0]';
 
-const QUICK_ACCESS: SidebarMenuItem[] = [
-  { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
-  {
-    id: 'quick-reservation',
-    label: '新規予約',
-    href: '/reservations?view=register',
-  },
-  { id: 'quick-patient', label: '患者検索', href: '/patients' },
-  { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
-];
-
-function isAiInsightsEnabled() {
-  return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
+function SidebarItemButton({
+  item,
+  isActive,
+  className,
+  onClick,
+  children,
+}: SidebarItemButtonProps) {
+  return (
+    <Link href={item.href} className='w-full'>
+      <Button
+        variant='ghost'
+        className={cn(
+          className,
+          isActive ? ACTIVE_MENU_CLASS : INACTIVE_MENU_CLASS
+        )}
+        onClick={onClick}
+        title={item.label}
+      >
+        {children}
+      </Button>
+    </Link>
+  );
 }
 
 export function Sidebar({
@@ -88,30 +63,34 @@ export function Sidebar({
   onClose,
   isAdmin = false,
   profileLoading = false,
+  role = null,
 }: SidebarProps) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(true);
   const [openSubMenus, setOpenSubMenus] = useState<string[]>([]);
+  const navigationMode = getNavigationMode({
+    role,
+    profileLoading,
+    canAccessAdminNavigation: isAdmin,
+  });
 
-  const menuItems = useMemo(
-    () =>
-      CORE_MENU.filter(
-        item => isAiInsightsEnabled() || item.href !== '/ai-insights'
-      ),
-    []
-  );
+  const operationMenuItems = useMemo(() => getOperationMenuItems(), []);
+  const primaryMenuItems = navigationMode.isHqAdmin
+    ? ADMIN_MENU_ITEMS
+    : operationMenuItems;
 
   const currentMenuId = useMemo(() => {
-    const candidates = [
-      ...menuItems,
-      ...ADMIN_MENU.flatMap(item => [item, ...(item.subItems ?? [])]),
+    const visibleItems = [
+      ...(navigationMode.showOperationMenus ? operationMenuItems : []),
+      ...(navigationMode.showAdminMenus ? ADMIN_MENU_ITEMS : []),
     ];
-
-    const match = candidates.find(item =>
-      pathname.startsWith(item.href.split('?')[0])
-    );
-    return match?.id ?? '';
-  }, [menuItems, pathname]);
+    return getCurrentNavigationItemId(pathname, visibleItems);
+  }, [
+    navigationMode.showAdminMenus,
+    navigationMode.showOperationMenus,
+    operationMenuItems,
+    pathname,
+  ]);
 
   const toggleSubMenu = (menuId: string) => {
     setOpenSubMenus(prev =>
@@ -121,23 +100,25 @@ export function Sidebar({
     );
   };
 
-  const renderMenuButton = (item: SidebarMenuItem) => (
-    <Link key={item.id} href={item.href} className='w-full'>
-      <Button
-        variant='ghost'
-        className={cn(
-          'w-full mb-2 justify-start',
-          currentMenuId === item.id ? 'bg-[#2d4ba0]' : 'hover:bg-[#2d4ba0]'
-        )}
-        onClick={e => {
-          if (item.subItems && item.subItems.length > 0 && isExpanded) {
-            e.preventDefault();
-            toggleSubMenu(item.id);
-          } else {
-            onClose();
-          }
-        }}
-        title={item.label}
+  const renderMenuButton = (item: NavigationItem) => {
+    const hasSubItems = Boolean(item.subItems?.length);
+    const handleClick: React.MouseEventHandler<HTMLButtonElement> = event => {
+      if (hasSubItems && isExpanded) {
+        event.preventDefault();
+        toggleSubMenu(item.id);
+        return;
+      }
+
+      onClose();
+    };
+
+    return (
+      <SidebarItemButton
+        key={item.id}
+        item={item}
+        isActive={currentMenuId === item.id}
+        className='w-full mb-2 justify-start'
+        onClick={handleClick}
       >
         <span
           className={cn(
@@ -148,9 +129,9 @@ export function Sidebar({
           ●
         </span>
         {isExpanded ? item.label : item.label.slice(0, 2)}
-      </Button>
-    </Link>
-  );
+      </SidebarItemButton>
+    );
+  };
 
   return (
     <div
@@ -187,65 +168,64 @@ export function Sidebar({
               !isExpanded && 'hidden'
             )}
           >
-            メインメニュー
+            {navigationMode.isHqAdmin ? '管理メニュー' : 'メインメニュー'}
           </p>
           <div className='mt-2'>
-            {menuItems.map(item => (
-              <div key={item.id}>
-                {renderMenuButton(item)}
+            {profileLoading ? (
+              <div className='text-xs text-blue-100'>
+                ロール情報を取得しています…
+              </div>
+            ) : (
+              primaryMenuItems.map(item => (
+                <div key={item.id}>
+                  {renderMenuButton(item)}
 
-                {item.subItems &&
-                  isExpanded &&
-                  openSubMenus.includes(item.id) && (
-                    <div className='ml-4'>
-                      {item.subItems.map(subItem => (
-                        <Link
-                          key={subItem.id}
-                          href={subItem.href}
-                          className='w-full'
-                        >
-                          <Button
-                            variant='ghost'
-                            className={cn(
-                              'w-full mb-1 justify-start text-sm',
-                              currentMenuId === subItem.id
-                                ? 'bg-[#2d4ba0]'
-                                : 'hover:bg-[#2d4ba0]'
-                            )}
-                            onClick={onClose}
+                  {item.subItems &&
+                    isExpanded &&
+                    openSubMenus.includes(item.id) && (
+                      <div className='ml-4'>
+                        {item.subItems.map(subItem => (
+                          <SidebarItemButton
+                            key={subItem.id}
+                            item={subItem}
+                            isActive={currentMenuId === subItem.id}
+                            className='w-full mb-1 justify-start text-sm'
+                            onClick={() => onClose()}
                           >
                             {subItem.label}
-                          </Button>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            ))}
+                          </SidebarItemButton>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        <div>
-          <Separator className='my-4 bg-[#2d4ba0]' />
-          {isExpanded && (
-            <div className='mb-4'>
-              <h2 className='text-sm font-bold mb-2'>クイックアクセス</h2>
-              {QUICK_ACCESS.map(item => (
-                <Link key={item.id} href={item.href} className='w-full'>
-                  <Button
-                    variant='ghost'
+        {navigationMode.showOperationMenus && (
+          <div>
+            <Separator className='my-4 bg-[#2d4ba0]' />
+            {isExpanded && (
+              <div className='mb-4'>
+                <h2 className='text-sm font-bold mb-2'>クイックアクセス</h2>
+                {QUICK_ACCESS_ITEMS.map(item => (
+                  <SidebarItemButton
+                    key={item.id}
+                    item={item}
+                    isActive={currentMenuId === item.id}
                     className='w-full mb-1 justify-start text-sm'
-                    onClick={onClose}
+                    onClick={() => onClose()}
                   >
                     {item.label}
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                  </SidebarItemButton>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {isAdmin && !profileLoading && (
+        {navigationMode.showAdminMenus && !navigationMode.isHqAdmin && (
           <div>
             <Separator className='my-4 bg-[#2d4ba0]' />
             <div className={cn('space-y-2', !isExpanded && 'space-y-0')}>
@@ -254,30 +234,18 @@ export function Sidebar({
                   管理セクション
                 </h2>
               )}
-              {ADMIN_MENU.map(item => (
-                <Link key={item.id} href={item.href} className='w-full'>
-                  <Button
-                    variant='ghost'
-                    className={cn(
-                      'w-full mb-1 justify-start text-sm',
-                      currentMenuId === item.id
-                        ? 'bg-[#2d4ba0]'
-                        : 'hover:bg-[#2d4ba0]'
-                    )}
-                    onClick={onClose}
-                    title={item.label}
-                  >
-                    {isExpanded ? item.label : item.label.slice(0, 2)}
-                  </Button>
-                </Link>
+              {ADMIN_MENU_ITEMS.map(item => (
+                <SidebarItemButton
+                  key={item.id}
+                  item={item}
+                  isActive={currentMenuId === item.id}
+                  className='w-full mb-1 justify-start text-sm'
+                  onClick={() => onClose()}
+                >
+                  {isExpanded ? item.label : item.label.slice(0, 2)}
+                </SidebarItemButton>
               ))}
             </div>
-          </div>
-        )}
-
-        {profileLoading && (
-          <div className='text-xs text-blue-100'>
-            ロール情報を取得しています…
           </div>
         )}
       </div>

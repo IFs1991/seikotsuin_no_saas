@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
+import { ADMIN_MENU_ITEMS } from '@/lib/navigation/items';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -20,14 +21,6 @@ interface HeaderProps {
   /** クリニック一覧取得中フラグ */
   clinicsLoading?: boolean;
 }
-
-const ADMIN_LINKS = [
-  { id: 'admin-home', label: '管理ダッシュボード', href: '/admin' },
-  { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
-  { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
-  { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
-  { id: 'multi-store', label: '多店舗分析', href: '/multi-store' },
-];
 
 export function Header({
   onToggleSidebar,
@@ -170,7 +163,7 @@ export function Header({
 
           {isAdmin && isAdminMenuOpen && (
             <div className='absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg py-2 text-gray-700'>
-              {ADMIN_LINKS.map(link => (
+              {ADMIN_MENU_ITEMS.map(link => (
                 <button
                   key={link.id}
                   type='button'
@@ -252,7 +245,7 @@ export function Header({
             {isAdmin && (
               <div className='rounded bg-blue-900/50 p-2 space-y-1'>
                 <p className='text-xs text-blue-100'>管理メニュー</p>
-                {ADMIN_LINKS.map(link => (
+                {ADMIN_MENU_ITEMS.map(link => (
                   <Button
                     key={link.id}
                     variant='ghost'

@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { getNavigationMode, isAiInsightsEnabled } from '@/lib/navigation/items';
 import {
   BarChart3,
   FileText,
@@ -14,7 +15,7 @@ import {
   Calendar,
 } from 'lucide-react';
 
-interface NavigationItem {
+interface MobileNavigationItem {
   id: string;
   label: string;
   href: string;
@@ -22,7 +23,7 @@ interface NavigationItem {
   activeIcon?: React.ComponentType<{ className?: string }>;
 }
 
-const BASE_ITEMS: NavigationItem[] = [
+const BASE_ITEMS: readonly MobileNavigationItem[] = [
   {
     id: 'dashboard',
     label: 'ホーム',
@@ -61,34 +62,64 @@ const BASE_ITEMS: NavigationItem[] = [
   },
 ];
 
-const ADMIN_ITEM: NavigationItem = {
+const ADMIN_ITEM: MobileNavigationItem = {
   id: 'admin',
   label: '管理',
   href: '/admin',
   icon: ShieldCheck,
 };
 
-function isAiInsightsEnabled() {
-  return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
-}
-
 interface MobileBottomNavProps {
   isAdmin?: boolean;
+  profileLoading?: boolean;
+  role?: string | null;
 }
 
-export function MobileBottomNav({ isAdmin = false }: MobileBottomNavProps) {
+function getMobileNavigationItems({
+  isAdmin,
+  profileLoading,
+  role,
+}: Required<MobileBottomNavProps>): readonly MobileNavigationItem[] {
+  const navigationMode = getNavigationMode({
+    role,
+    profileLoading,
+    canAccessAdminNavigation: isAdmin,
+  });
+
+  if (!navigationMode.showOperationMenus && !navigationMode.showAdminMenus) {
+    return [];
+  }
+
+  const baseItems = BASE_ITEMS.filter(
+    item => isAiInsightsEnabled() || item.href !== '/ai-insights'
+  );
+
+  if (navigationMode.isHqAdmin) {
+    return [ADMIN_ITEM];
+  }
+
+  if (navigationMode.showAdminMenus) {
+    return [...baseItems, ADMIN_ITEM];
+  }
+
+  return baseItems;
+}
+
+export function MobileBottomNav({
+  isAdmin = false,
+  profileLoading = false,
+  role = null,
+}: MobileBottomNavProps) {
   const pathname = usePathname();
 
-  const navigationItems = useMemo(() => {
-    const baseItems = BASE_ITEMS.filter(
-      item => isAiInsightsEnabled() || item.href !== '/ai-insights'
-    );
+  const navigationItems = useMemo(
+    () => getMobileNavigationItems({ isAdmin, profileLoading, role }),
+    [isAdmin, profileLoading, role]
+  );
 
-    if (isAdmin) {
-      return [...baseItems, ADMIN_ITEM];
-    }
-    return baseItems;
-  }, [isAdmin]);
+  if (navigationItems.length === 0) {
+    return null;
+  }
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {

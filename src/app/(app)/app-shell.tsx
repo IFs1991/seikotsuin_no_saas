@@ -10,8 +10,53 @@ import { UserProfileProvider } from '@/providers/user-profile-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import { canUseAdminNavigation } from '@/lib/navigation/items';
 
 const DARK_CLASS = 'dark';
+const NOTIFICATION_FETCH_LIMIT = '100';
+
+interface AdminNotificationsResponse {
+  success: true;
+  data: {
+    notifications: readonly unknown[];
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAdminNotificationsResponse(
+  value: unknown
+): value is AdminNotificationsResponse {
+  if (!isRecord(value) || value.success !== true || !isRecord(value.data)) {
+    return false;
+  }
+
+  return Array.isArray(value.data.notifications);
+}
+
+async function fetchAdminNotificationCount(
+  clinicId: string,
+  signal: AbortSignal
+): Promise<number> {
+  const params = new URLSearchParams({
+    clinic_id: clinicId,
+    limit: NOTIFICATION_FETCH_LIMIT,
+  });
+  const response = await fetch(`/api/admin/notifications?${params}`, {
+    signal,
+  });
+
+  if (!response.ok) {
+    return 0;
+  }
+
+  const payload: unknown = await response.json();
+  return isAdminNotificationsResponse(payload)
+    ? payload.data.notifications.length
+    : 0;
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
@@ -27,9 +72,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     loading: clinicsLoading,
   } = useAccessibleClinics();
 
-  const isAdmin = profile?.isAdmin ?? false;
+  const canAccessAdminNavigation = canUseAdminNavigation(profile?.role);
 
-  // Task A: 通知件数（管理者のみ取得）
   const [notificationCount, setNotificationCount] = React.useState(0);
 
   React.useEffect(() => {
@@ -49,18 +93,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Task A: 管理者のみ通知件数を取得
   React.useEffect(() => {
-    if (!isAdmin || !profile?.clinicId) return;
+    if (!canAccessAdminNavigation || !profile?.clinicId) {
+      setNotificationCount(0);
+      return;
+    }
+
     const clinicId = profile.clinicId;
-    fetch(`/api/admin/notifications?clinic_id=${clinicId}&limit=100`)
-      .then(r => r.json())
-      .then(result => {
-        if (result.success)
-          setNotificationCount(result.data.notifications.length);
-      })
-      .catch(() => {});
-  }, [isAdmin, profile?.clinicId]);
+    const abortController = new AbortController();
+
+    const loadNotificationCount = async () => {
+      try {
+        const count = await fetchAdminNotificationCount(
+          clinicId,
+          abortController.signal
+        );
+        setNotificationCount(count);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+
+        setNotificationCount(0);
+      }
+    };
+
+    void loadNotificationCount();
+
+    return () => abortController.abort();
+  }, [canAccessAdminNavigation, profile?.clinicId]);
 
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
@@ -98,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isDarkMode={isDarkMode}
               profile={profile}
               profileLoading={profileLoading}
-              isAdmin={isAdmin}
+              isAdmin={canAccessAdminNavigation}
               clinics={clinics}
               clinicsLoading={clinicsLoading}
               notificationCount={notificationCount}
@@ -108,8 +169,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
-                isAdmin={isAdmin}
+                isAdmin={canAccessAdminNavigation}
                 profileLoading={profileLoading}
+                role={profile?.role ?? null}
               />
 
               <main
@@ -135,7 +197,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </main>
             </div>
 
-            <MobileBottomNav isAdmin={isAdmin} />
+            <MobileBottomNav
+              isAdmin={canAccessAdminNavigation}
+              profileLoading={profileLoading}
+              role={profile?.role ?? null}
+            />
           </div>
         </SelectedClinicProvider>
       </UserProfileProvider>
