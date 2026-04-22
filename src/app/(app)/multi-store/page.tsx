@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -11,9 +11,178 @@ import {
 import { useMultiStore, ClinicWithKPI } from '@/hooks/useMultiStore';
 
 type SortDirection = 'asc' | 'desc';
-type SortField = 'revenue' | 'patients' | 'performance' | null;
+type SortField = 'revenue' | 'patients' | 'performance';
 
-const MultiStorePage: React.FC = () => {
+interface SummaryCardProps {
+  label: string;
+  value: string;
+  testId: string;
+}
+
+interface SortableHeaderProps {
+  label: string;
+  field: SortField;
+  activeField: SortField | null;
+  direction: SortDirection;
+  onSort: (field: SortField) => void;
+}
+
+interface ClinicsTableProps {
+  clinics: readonly ClinicWithKPI[];
+  sortField: SortField | null;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}
+
+const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
+const TABLE_HEADER_CLASS =
+  'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider';
+const TABLE_CELL_CLASS =
+  'px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300';
+
+const formatCurrency = (value: number): string =>
+  CURRENCY_FORMATTER.format(value);
+
+const formatPerformanceScore = (value: number | null | undefined): string =>
+  value === null || value === undefined ? '-' : String(value);
+
+function SummaryCard({ label, value, testId }: SummaryCardProps) {
+  return (
+    <Card className='bg-card shadow-md'>
+      <CardHeader className='pb-2'>
+        <CardDescription className='text-gray-600 dark:text-gray-300'>
+          {label}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p
+          data-testid={testId}
+          className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
+        >
+          {value}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+const SortableHeader = React.memo(function SortableHeader({
+  label,
+  field,
+  activeField,
+  direction,
+  onSort,
+}: SortableHeaderProps) {
+  const sortMark =
+    activeField === field ? (direction === 'desc' ? '▼' : '▲') : '';
+  const ariaSort =
+    activeField === field
+      ? direction === 'desc'
+        ? 'descending'
+        : 'ascending'
+      : undefined;
+
+  return (
+    <th className={TABLE_HEADER_CLASS} aria-sort={ariaSort}>
+      <button
+        type='button'
+        onClick={() => onSort(field)}
+        className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
+      >
+        {label}
+        {sortMark && <span aria-hidden='true'>{sortMark}</span>}
+      </button>
+    </th>
+  );
+});
+
+const ClinicStatusBadge = React.memo(function ClinicStatusBadge({
+  isActive,
+}: {
+  isActive: boolean;
+}) {
+  return (
+    <span
+      className={`px-2 py-1 rounded-full text-xs ${
+        isActive
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      }`}
+    >
+      {isActive ? '有効' : '無効'}
+    </span>
+  );
+});
+
+const ClinicsTable = React.memo(function ClinicsTable({
+  clinics,
+  sortField,
+  sortDirection,
+  onSort,
+}: ClinicsTableProps) {
+  if (clinics.length === 0) {
+    return (
+      <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
+        クリニックデータがありません
+      </p>
+    );
+  }
+
+  return (
+    <div className='overflow-x-auto'>
+      <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+        <thead className='bg-gray-50 dark:bg-gray-700'>
+          <tr>
+            <th className={TABLE_HEADER_CLASS}>店舗名</th>
+            <SortableHeader
+              label='収益'
+              field='revenue'
+              activeField={sortField}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              label='患者数'
+              field='patients'
+              activeField={sortField}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <SortableHeader
+              label='パフォーマンス'
+              field='performance'
+              activeField={sortField}
+              direction={sortDirection}
+              onSort={onSort}
+            />
+            <th className={TABLE_HEADER_CLASS}>ステータス</th>
+          </tr>
+        </thead>
+        <tbody className='bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700'>
+          {clinics.map(clinic => (
+            <tr key={clinic.id}>
+              <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+                {clinic.name}
+              </td>
+              <td className={TABLE_CELL_CLASS}>
+                {formatCurrency(clinic.kpi?.revenue ?? 0)}円
+              </td>
+              <td className={TABLE_CELL_CLASS}>{clinic.kpi?.patients ?? 0}</td>
+              <td className={TABLE_CELL_CLASS}>
+                {formatPerformanceScore(clinic.kpi?.staff_performance_score)}
+              </td>
+              <td className='px-6 py-4 whitespace-nowrap text-sm'>
+                <ClinicStatusBadge isActive={clinic.is_active} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+});
+
+const MultiStorePage = () => {
   const {
     clinics,
     loading,
@@ -27,31 +196,33 @@ const MultiStorePage: React.FC = () => {
     averagePerformanceScore,
   } = useMultiStore();
 
-  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
-    fetchClinicsWithKPI();
+    const controller = new AbortController();
+    void fetchClinicsWithKPI(controller.signal);
+
+    return () => controller.abort();
   }, [fetchClinicsWithKPI]);
 
-  const handleSort = (field: 'revenue' | 'patients' | 'performance') => {
-    const newDirection: SortDirection =
-      sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
-    setSortField(field);
-    setSortDirection(newDirection);
+  const handleSort = useCallback(
+    (field: SortField) => {
+      const newDirection: SortDirection =
+        sortField === field && sortDirection === 'desc' ? 'asc' : 'desc';
+      setSortField(field);
+      setSortDirection(newDirection);
 
-    if (field === 'revenue') {
-      sortByRevenue(newDirection);
-    } else if (field === 'patients') {
-      sortByPatients(newDirection);
-    } else if (field === 'performance') {
-      sortByPerformance(newDirection);
-    }
-  };
-
-  const formatCurrency = (value: number): string => {
-    return value.toLocaleString('ja-JP');
-  };
+      if (field === 'revenue') {
+        sortByRevenue(newDirection);
+      } else if (field === 'patients') {
+        sortByPatients(newDirection);
+      } else if (field === 'performance') {
+        sortByPerformance(newDirection);
+      }
+    },
+    [sortByPatients, sortByPerformance, sortByRevenue, sortDirection, sortField]
+  );
 
   if (loading) {
     return (
@@ -81,55 +252,25 @@ const MultiStorePage: React.FC = () => {
 
         {/* サマリーカード */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
-          <Card className='bg-card shadow-md'>
-            <CardHeader className='pb-2'>
-              <CardDescription className='text-gray-600 dark:text-gray-300'>
-                合計収益
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p
-                data-testid='total-revenue'
-                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
-              >
-                {formatCurrency(totalRevenue)}円
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className='bg-card shadow-md'>
-            <CardHeader className='pb-2'>
-              <CardDescription className='text-gray-600 dark:text-gray-300'>
-                合計患者数
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p
-                data-testid='total-patients'
-                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
-              >
-                {totalPatients}人
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className='bg-card shadow-md'>
-            <CardHeader className='pb-2'>
-              <CardDescription className='text-gray-600 dark:text-gray-300'>
-                平均パフォーマンス
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p
-                data-testid='average-performance'
-                className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
-              >
-                {averagePerformanceScore !== null
-                  ? averagePerformanceScore.toFixed(2)
-                  : '-'}
-              </p>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            label='合計収益'
+            value={`${formatCurrency(totalRevenue)}円`}
+            testId='total-revenue'
+          />
+          <SummaryCard
+            label='合計患者数'
+            value={`${totalPatients}人`}
+            testId='total-patients'
+          />
+          <SummaryCard
+            label='平均パフォーマンス'
+            value={
+              averagePerformanceScore !== null
+                ? averagePerformanceScore.toFixed(2)
+                : '-'
+            }
+            testId='average-performance'
+          />
         </div>
 
         {/* 店舗別KPI比較テーブル */}
@@ -143,91 +284,12 @@ const MultiStorePage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {clinics.length > 0 ? (
-              <div className='overflow-x-auto'>
-                <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
-                  <thead className='bg-gray-50 dark:bg-gray-700'>
-                    <tr>
-                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                        店舗名
-                      </th>
-                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                        <button
-                          type='button'
-                          onClick={() => handleSort('revenue')}
-                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
-                        >
-                          収益
-                          {sortField === 'revenue' && (
-                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
-                          )}
-                        </button>
-                      </th>
-                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                        <button
-                          type='button'
-                          onClick={() => handleSort('patients')}
-                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
-                        >
-                          患者数
-                          {sortField === 'patients' && (
-                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
-                          )}
-                        </button>
-                      </th>
-                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                        <button
-                          type='button'
-                          onClick={() => handleSort('performance')}
-                          className='flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400'
-                        >
-                          パフォーマンス
-                          {sortField === 'performance' && (
-                            <span>{sortDirection === 'desc' ? '▼' : '▲'}</span>
-                          )}
-                        </button>
-                      </th>
-                      <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider'>
-                        ステータス
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className='bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700'>
-                    {clinics.map((clinic: ClinicWithKPI) => (
-                      <tr key={clinic.id}>
-                        <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
-                          {clinic.name}
-                        </td>
-                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                          {formatCurrency(clinic.kpi?.revenue ?? 0)}円
-                        </td>
-                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                          {clinic.kpi?.patients ?? 0}
-                        </td>
-                        <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300'>
-                          {clinic.kpi?.staff_performance_score ?? '-'}
-                        </td>
-                        <td className='px-6 py-4 whitespace-nowrap text-sm'>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              clinic.is_active
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            }`}
-                          >
-                            {clinic.is_active ? '有効' : '無効'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
-                クリニックデータがありません
-              </p>
-            )}
+            <ClinicsTable
+              clinics={clinics}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
           </CardContent>
         </Card>
       </div>

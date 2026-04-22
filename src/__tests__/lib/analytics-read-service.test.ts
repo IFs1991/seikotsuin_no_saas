@@ -11,6 +11,7 @@ import {
   AnalyticsReadService,
   type DateRange,
 } from '@/lib/services/analytics-read-service';
+import type { SupabaseServerClient } from '@/lib/supabase';
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -18,8 +19,33 @@ import {
 
 const CLINIC_ID = '00000000-0000-0000-0000-000000000101';
 
-function mockChain(result: unknown, terminal: 'single' | 'list' = 'list') {
-  const chain: Record<string, jest.Mock> = {
+type QueryResult = {
+  data?: unknown;
+  error?: unknown;
+};
+type QueryChain = Record<
+  | 'select'
+  | 'eq'
+  | 'gte'
+  | 'lte'
+  | 'lt'
+  | 'gt'
+  | 'or'
+  | 'order'
+  | 'limit'
+  | 'in',
+  jest.Mock
+> & {
+  single?: jest.Mock;
+  then?: jest.Mock;
+};
+type TableFactory = QueryChain | (() => QueryChain);
+
+function mockChain(
+  result: QueryResult,
+  terminal: 'single' | 'list' = 'list'
+): QueryChain {
+  const chain: QueryChain = {
     select: jest.fn(),
     eq: jest.fn(),
     gte: jest.fn(),
@@ -41,23 +67,21 @@ function mockChain(result: unknown, terminal: 'single' | 'list' = 'list') {
     chain.single = jest.fn().mockResolvedValue(result);
   } else {
     // list terminal: the chain itself resolves (thenable)
-    (chain as any).then = jest.fn(
-      (resolve: (v: unknown) => void) => resolve(result)
-    );
-    Object.defineProperty(chain, 'data', { get: () => (result as any).data });
-    Object.defineProperty(chain, 'error', { get: () => (result as any).error });
+    chain.then = jest.fn((resolve: (v: unknown) => void) => resolve(result));
+    Object.defineProperty(chain, 'data', { get: () => result.data });
+    Object.defineProperty(chain, 'error', { get: () => result.error });
   }
   return chain;
 }
 
-function buildClient(tableMap: Record<string, unknown>) {
+function buildClient(tableMap: Record<string, TableFactory>) {
   return {
     from: jest.fn((table: string) => {
       const factory = tableMap[table];
       if (!factory) throw new Error(`Unexpected table: ${table}`);
       return typeof factory === 'function' ? factory() : factory;
     }),
-  } as any;
+  } as unknown as SupabaseServerClient;
 }
 
 // ──────────────────────────────────────────────
@@ -113,7 +137,11 @@ describe('AnalyticsReadService', () => {
   describe('fetchStaffPerformance', () => {
     it('スタッフパフォーマンスを取得する', async () => {
       const rows = [
-        { staff_name: '田中', total_revenue_generated: 200000, total_visits: 50 },
+        {
+          staff_name: '田中',
+          total_revenue_generated: 200000,
+          total_visits: 50,
+        },
       ];
       const chain = mockChain({ data: rows, error: null });
       const client = buildClient({ staff_performance_summary: () => chain });
@@ -153,7 +181,11 @@ describe('AnalyticsReadService', () => {
   describe('fetchPatientVisitSummary', () => {
     it('日付フィルタ付きで patient_visit_summary を取得する', async () => {
       const rows = [
-        { first_visit_date: '2026-03-01', last_visit_date: '2026-03-15', visit_count: 3 },
+        {
+          first_visit_date: '2026-03-01',
+          last_visit_date: '2026-03-15',
+          visit_count: 3,
+        },
       ];
       const chain = mockChain({ data: rows, error: null });
       const client = buildClient({ patient_visit_summary: () => chain });
@@ -202,21 +234,26 @@ describe('AnalyticsReadService', () => {
         { clinic_id: 'c-2', patient_id: 'p-3' },
       ];
       const staffRows = [
-        { clinic_id: 'c-1', total_revenue_generated: 500000, total_visits: 100 },
+        {
+          clinic_id: 'c-1',
+          total_revenue_generated: 500000,
+          total_visits: 100,
+        },
         { clinic_id: 'c-2', total_revenue_generated: 300000, total_visits: 80 },
       ];
 
+      const revenueChain = mockChain({ data: revenueRows, error: null });
+      const patientChain = mockChain({ data: patientRows, error: null });
+      const staffChain = mockChain({ data: staffRows, error: null });
+      const clinicIds = ['c-1', 'c-2'];
       const client = buildClient({
-        daily_revenue_summary: () =>
-          mockChain({ data: revenueRows, error: null }),
-        patient_visit_summary: () =>
-          mockChain({ data: patientRows, error: null }),
-        staff_performance_summary: () =>
-          mockChain({ data: staffRows, error: null }),
+        daily_revenue_summary: revenueChain,
+        patient_visit_summary: patientChain,
+        staff_performance_summary: staffChain,
       });
       const svc = new AnalyticsReadService(client);
 
-      const result = await svc.fetchMultiClinicKPI(['c-1', 'c-2']);
+      const result = await svc.fetchMultiClinicKPI(clinicIds);
 
       expect(result.get('c-1')).toEqual({
         revenue: 600000,
@@ -228,6 +265,9 @@ describe('AnalyticsReadService', () => {
         patients: 1,
         staff_performance_score: expect.any(Number),
       });
+      expect(revenueChain.in).toHaveBeenCalledWith('clinic_id', clinicIds);
+      expect(patientChain.in).toHaveBeenCalledWith('clinic_id', clinicIds);
+      expect(staffChain.in).toHaveBeenCalledWith('clinic_id', clinicIds);
     });
 
     it('データがないクリニックは0/nullで返す', async () => {

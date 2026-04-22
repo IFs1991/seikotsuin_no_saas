@@ -153,10 +153,15 @@ export class AnalyticsReadService {
       });
     });
 
+    if (clinicIds.length === 0) {
+      return kpiMap;
+    }
+
     // Revenue aggregation
     const { data: revenueData } = await this.client
       .from('daily_revenue_summary')
-      .select('clinic_id, total_revenue');
+      .select('clinic_id, total_revenue')
+      .in('clinic_id', clinicIds);
 
     if (revenueData) {
       const revenueByClinic = new Map<string, number>();
@@ -178,7 +183,8 @@ export class AnalyticsReadService {
     // Patient count aggregation
     const { data: patientData } = await this.client
       .from('patient_visit_summary')
-      .select('clinic_id, patient_id');
+      .select('clinic_id, patient_id')
+      .in('clinic_id', clinicIds);
 
     if (patientData) {
       const patientsByClinic = new Map<string, Set<string>>();
@@ -199,7 +205,8 @@ export class AnalyticsReadService {
     // Staff performance aggregation
     const { data: staffData } = await this.client
       .from('staff_performance_summary')
-      .select('clinic_id, total_revenue_generated, total_visits');
+      .select('clinic_id, total_revenue_generated, total_visits')
+      .in('clinic_id', clinicIds);
 
     if (staffData) {
       const perfByClinic = new Map<

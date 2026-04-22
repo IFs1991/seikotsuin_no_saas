@@ -20,13 +20,71 @@ export interface ClinicWithKPI {
 }
 
 type SortDirection = 'asc' | 'desc';
+type SortField = 'revenue' | 'patients' | 'performance';
+
+interface MultiStoreApiResponse {
+  success: boolean;
+  error?: string;
+  data?: {
+    items?: ClinicWithKPI[];
+  };
+}
+
+interface MultiStoreMetrics {
+  totalRevenue: number;
+  totalPatients: number;
+  averagePerformanceScore: number | null;
+}
+
+const getSortValue = (clinic: ClinicWithKPI, field: SortField): number => {
+  if (field === 'revenue') return clinic.kpi?.revenue ?? 0;
+  if (field === 'patients') return clinic.kpi?.patients ?? 0;
+  return clinic.kpi?.staff_performance_score ?? 0;
+};
+
+const sortClinics = (
+  clinics: readonly ClinicWithKPI[],
+  field: SortField,
+  direction: SortDirection
+): ClinicWithKPI[] => {
+  return [...clinics].sort((a, b) => {
+    const diff = getSortValue(a, field) - getSortValue(b, field);
+    return direction === 'desc' ? -diff : diff;
+  });
+};
+
+const calculateMetrics = (
+  clinics: readonly ClinicWithKPI[]
+): MultiStoreMetrics => {
+  let totalRevenue = 0;
+  let totalPatients = 0;
+  let scoreTotal = 0;
+  let scoreCount = 0;
+
+  for (const clinic of clinics) {
+    totalRevenue += clinic.kpi?.revenue ?? 0;
+    totalPatients += clinic.kpi?.patients ?? 0;
+
+    const score = clinic.kpi?.staff_performance_score;
+    if (score !== null && score !== undefined) {
+      scoreTotal += score;
+      scoreCount += 1;
+    }
+  }
+
+  return {
+    totalRevenue,
+    totalPatients,
+    averagePerformanceScore: scoreCount > 0 ? scoreTotal / scoreCount : null,
+  };
+};
 
 export function useMultiStore() {
   const [clinics, setClinics] = useState<ClinicWithKPI[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchClinicsWithKPI = useCallback(async () => {
+  const fetchClinicsWithKPI = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       setError(null);
@@ -38,12 +96,13 @@ export function useMultiStore() {
         `${API_ENDPOINTS.ADMIN.TENANTS}?${params.toString()}`,
         {
           method: 'GET',
+          signal,
           headers: {
             'Content-Type': 'application/json',
           },
         }
       );
-      const result = await response.json();
+      const result = (await response.json()) as MultiStoreApiResponse;
 
       if (!result.success) {
         throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
@@ -51,65 +110,29 @@ export function useMultiStore() {
 
       setClinics(result.data?.items ?? []);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+
       const message =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(message);
-      console.error('Failed to fetch clinics with KPI', err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   const sortByRevenue = useCallback((direction: SortDirection) => {
-    setClinics(prev =>
-      [...prev].sort((a, b) => {
-        const aRevenue = a.kpi?.revenue ?? 0;
-        const bRevenue = b.kpi?.revenue ?? 0;
-        return direction === 'desc' ? bRevenue - aRevenue : aRevenue - bRevenue;
-      })
-    );
+    setClinics(prev => sortClinics(prev, 'revenue', direction));
   }, []);
 
   const sortByPatients = useCallback((direction: SortDirection) => {
-    setClinics(prev =>
-      [...prev].sort((a, b) => {
-        const aPatients = a.kpi?.patients ?? 0;
-        const bPatients = b.kpi?.patients ?? 0;
-        return direction === 'desc'
-          ? bPatients - aPatients
-          : aPatients - bPatients;
-      })
-    );
+    setClinics(prev => sortClinics(prev, 'patients', direction));
   }, []);
 
   const sortByPerformance = useCallback((direction: SortDirection) => {
-    setClinics(prev =>
-      [...prev].sort((a, b) => {
-        const aScore = a.kpi?.staff_performance_score ?? 0;
-        const bScore = b.kpi?.staff_performance_score ?? 0;
-        return direction === 'desc' ? bScore - aScore : aScore - bScore;
-      })
-    );
+    setClinics(prev => sortClinics(prev, 'performance', direction));
   }, []);
 
-  const totalRevenue = useMemo(() => {
-    return clinics.reduce((sum, clinic) => sum + (clinic.kpi?.revenue ?? 0), 0);
-  }, [clinics]);
-
-  const totalPatients = useMemo(() => {
-    return clinics.reduce(
-      (sum, clinic) => sum + (clinic.kpi?.patients ?? 0),
-      0
-    );
-  }, [clinics]);
-
-  const averagePerformanceScore = useMemo(() => {
-    const scores = clinics
-      .map(c => c.kpi?.staff_performance_score)
-      .filter((s): s is number => s !== null && s !== undefined);
-    if (scores.length === 0) return null;
-    return scores.reduce((sum, s) => sum + s, 0) / scores.length;
-  }, [clinics]);
+  const metrics = useMemo(() => calculateMetrics(clinics), [clinics]);
 
   return {
     clinics,
@@ -119,9 +142,9 @@ export function useMultiStore() {
     sortByRevenue,
     sortByPatients,
     sortByPerformance,
-    totalRevenue,
-    totalPatients,
-    averagePerformanceScore,
+    totalRevenue: metrics.totalRevenue,
+    totalPatients: metrics.totalPatients,
+    averagePerformanceScore: metrics.averagePerformanceScore,
   };
 }
 
