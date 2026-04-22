@@ -39,6 +39,27 @@ interface ClinicSelectProps {
 
 const EMPTY_CLINICS: readonly ClinicOption[] = [];
 const BASE_CLINIC_SELECT_CLASS = 'bg-[#2563eb] text-white px-3 py-1 rounded';
+const USER_MENU_ITEM_CLASS =
+  'block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none';
+const MOBILE_LOGOUT_LINK_CLASS =
+  'block rounded-medical px-4 py-2 text-sm font-medium transition-all duration-200 ease-out hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2';
+
+interface LogoutLinkProps {
+  href: string;
+  className: string;
+  onClick: () => void;
+}
+
+interface NotificationBadgeProps {
+  show: boolean;
+  label: string | number;
+  variant: 'floating' | 'inline';
+}
+
+interface AdminMenuLinksProps {
+  onNavigate: (href: string) => void;
+  itemClassName: string;
+}
 
 const ClinicSelect = React.memo(function ClinicSelect({
   selectedClinicId,
@@ -71,6 +92,60 @@ const ClinicSelect = React.memo(function ClinicSelect({
         ))
       )}
     </select>
+  );
+});
+
+const LogoutLink = React.memo(function LogoutLink({
+  href,
+  className,
+  onClick,
+}: LogoutLinkProps) {
+  return (
+    <a href={href} className={className} onClick={onClick}>
+      ログアウト
+    </a>
+  );
+});
+
+const NotificationBadge = React.memo(function NotificationBadge({
+  show,
+  label,
+  variant,
+}: NotificationBadgeProps) {
+  if (!show) return null;
+
+  if (variant === 'inline') {
+    return (
+      <span className='ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white'>
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <span className='absolute -top-1 -right-1 h-4 w-4 bg-[#ef4444] rounded-full text-xs flex items-center justify-center'>
+      {label}
+    </span>
+  );
+});
+
+const AdminMenuLinks = React.memo(function AdminMenuLinks({
+  onNavigate,
+  itemClassName,
+}: AdminMenuLinksProps) {
+  return (
+    <>
+      {ADMIN_MENU_ITEMS.map(link => (
+        <button
+          key={link.id}
+          type='button'
+          className={itemClassName}
+          onClick={() => onNavigate(link.href)}
+        >
+          {link.label}
+        </button>
+      ))}
+    </>
   );
 });
 
@@ -139,11 +214,6 @@ export const Header = React.memo(function Header({
     }
   }, [isAdmin, router]);
 
-  const handleLogout = useCallback(() => {
-    closeMenus();
-    router.push(isAdmin ? '/admin/logout' : '/logout');
-  }, [closeMenus, isAdmin, router]);
-
   const handleNavigateHome = useCallback(() => {
     closeMenus();
     router.push('/');
@@ -193,6 +263,7 @@ export const Header = React.memo(function Header({
   const showBadge = effectiveNotificationCount > 0;
   const badgeLabel =
     effectiveNotificationCount >= 100 ? '99+' : effectiveNotificationCount;
+  const logoutHref = isAdmin ? '/admin/logout' : '/logout';
 
   return (
     <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-[#1e3a8a] text-white flex items-center justify-between'>
@@ -252,11 +323,11 @@ export const Header = React.memo(function Header({
             aria-expanded={isNotificationsOpen}
             aria-haspopup='dialog'
           >
-            {showBadge && (
-              <span className='absolute -top-1 -right-1 h-4 w-4 bg-[#ef4444] rounded-full text-xs flex items-center justify-center'>
-                {badgeLabel}
-              </span>
-            )}
+            <NotificationBadge
+              show={showBadge}
+              label={badgeLabel}
+              variant='floating'
+            />
             通知
           </Button>
           {isNotificationsOpen && (
@@ -287,16 +358,10 @@ export const Header = React.memo(function Header({
 
           {isAdmin && isAdminMenuOpen && (
             <div className='absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg py-2 text-gray-700'>
-              {ADMIN_MENU_ITEMS.map(link => (
-                <button
-                  key={link.id}
-                  type='button'
-                  className='w-full text-left px-4 py-2 text-sm hover:bg-blue-50'
-                  onClick={() => handleAdminLink(link.href)}
-                >
-                  {link.label}
-                </button>
-              ))}
+              <AdminMenuLinks
+                onNavigate={handleAdminLink}
+                itemClassName='w-full text-left px-4 py-2 text-sm hover:bg-blue-50'
+              />
             </div>
           )}
         </div>
@@ -319,19 +384,17 @@ export const Header = React.memo(function Header({
           </Button>
 
           {isUserMenuOpen && (
-            <div className='absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg py-2 text-gray-700'>
+            <div className='absolute right-0 z-50 mt-2 w-48 rounded-md bg-white py-2 text-gray-700 shadow-lg'>
               <div className='px-4 py-2 border-b text-xs text-gray-500'>
                 {profileLoading
                   ? '情報を取得中…'
                   : (profile?.email ?? 'ゲスト')}
               </div>
-              <button
-                type='button'
-                className='w-full text-left px-4 py-2 text-sm hover:bg-blue-50'
-                onClick={handleLogout}
-              >
-                ログアウト
-              </button>
+              <LogoutLink
+                href={logoutHref}
+                className={USER_MENU_ITEM_CLASS}
+                onClick={closeMenus}
+              />
             </div>
           )}
         </div>
@@ -369,11 +432,11 @@ export const Header = React.memo(function Header({
               aria-haspopup='dialog'
             >
               通知
-              {showBadge && (
-                <span className='ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white'>
-                  {badgeLabel}
-                </span>
-              )}
+              <NotificationBadge
+                show={showBadge}
+                label={badgeLabel}
+                variant='inline'
+              />
             </Button>
             {isNotificationsOpen && (
               <AdminNotificationsMenu
@@ -395,21 +458,17 @@ export const Header = React.memo(function Header({
             {isAdmin && (
               <div className='rounded bg-blue-900/50 p-2 space-y-1'>
                 <p className='text-xs text-blue-100'>管理メニュー</p>
-                {ADMIN_MENU_ITEMS.map(link => (
-                  <Button
-                    key={link.id}
-                    variant='ghost'
-                    className='justify-start text-left w-full text-sm'
-                    onClick={() => handleAdminLink(link.href)}
-                  >
-                    {link.label}
-                  </Button>
-                ))}
+                <AdminMenuLinks
+                  onNavigate={handleAdminLink}
+                  itemClassName='justify-start text-left w-full text-sm rounded-medical px-4 py-2 hover:bg-white/10'
+                />
               </div>
             )}
-            <Button variant='ghost' onClick={handleLogout}>
-              ログアウト
-            </Button>
+            <LogoutLink
+              href={logoutHref}
+              className={MOBILE_LOGOUT_LINK_CLASS}
+              onClick={closeMenus}
+            />
           </div>
         </>
       )}
