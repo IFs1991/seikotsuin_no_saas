@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
     MASTER_DATA_ROLLBACK: '/api/admin/master-data/rollback',
     TENANTS: '/api/admin/tenants',
     USERS: '/api/admin/users',
+    USER_CANDIDATES: '/api/admin/users/candidates',
   },
 } as const;
 

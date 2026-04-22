@@ -4,6 +4,8 @@ export const DEFAULT_ADMIN_USER_ROLE: AdminUserRole = 'clinic_admin';
 export const ROLE_FILTER_ALL = 'all';
 export const CLINIC_FILTER_ALL = 'all';
 export const NO_CLINIC_VALUE = 'none';
+export const USER_CANDIDATE_MIN_SEARCH_LENGTH = 1;
+export const USER_CANDIDATE_LIMIT = 20;
 
 export type AdminUsersRoleFilter = AdminUserRole | typeof ROLE_FILTER_ALL;
 
@@ -17,6 +19,19 @@ export type PermissionEntry = {
   profile_email?: string | null;
   profile_name?: string | null;
   created_at?: string | null;
+};
+
+export type UserPermissionCandidate = {
+  user_id: string;
+  email: string;
+  full_name: string;
+  clinic_id: string | null;
+  clinic_name: string | null;
+  staff_role: string | null;
+  current_role: string | null;
+  permission_id: string | null;
+  permission_clinic_id: string | null;
+  permission_clinic_name: string | null;
 };
 
 export type PermissionFilters = {
@@ -106,7 +121,7 @@ export function validatePermissionForm(
   formState: PermissionFormState
 ): string | null {
   if (!formState.user_id.trim()) {
-    return 'Supabase Auth ユーザーIDを入力してください';
+    return 'ユーザーを選択してください';
   }
 
   if (
@@ -146,4 +161,52 @@ export function createPermissionFormState(
     role: toAdminUserRole(permission.role),
     clinic_id: permission.clinic_id ?? '',
   };
+}
+
+export function getCandidateInputLabel(
+  candidate: Pick<UserPermissionCandidate, 'email' | 'full_name'>
+): string {
+  return candidate.full_name
+    ? `${candidate.full_name} / ${candidate.email}`
+    : candidate.email;
+}
+
+export function getPermissionAccountPrimary(
+  permission: Pick<
+    PermissionEntry,
+    'profile_name' | 'profile_email' | 'username'
+  >
+): string {
+  return (
+    permission.profile_name ||
+    permission.profile_email ||
+    permission.username ||
+    '名称未設定'
+  );
+}
+
+export function getPermissionAccountSecondary(
+  permission: Pick<
+    PermissionEntry,
+    'profile_name' | 'profile_email' | 'username'
+  >
+): string | null {
+  if (permission.profile_name && permission.profile_email) {
+    return permission.profile_email;
+  }
+
+  if (
+    permission.profile_email &&
+    permission.profile_email !== permission.username
+  ) {
+    return permission.username;
+  }
+
+  return null;
+}
+
+export function getPermissionInputLabel(permission: PermissionEntry): string {
+  const primary = getPermissionAccountPrimary(permission);
+  const secondary = getPermissionAccountSecondary(permission);
+  return secondary ? `${primary} / ${secondary}` : primary;
 }

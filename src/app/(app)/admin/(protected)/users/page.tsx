@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -29,18 +30,24 @@ import {
   CLINIC_FILTER_ALL,
   NO_CLINIC_VALUE,
   ROLE_FILTER_ALL,
+  USER_CANDIDATE_MIN_SEARCH_LENGTH,
   buildPermissionFilters,
   createAssignPermissionPayload,
   createEmptyPermissionFormState,
   createPermissionFormState,
   createUpdatePermissionPayload,
+  getCandidateInputLabel,
+  getPermissionAccountPrimary,
+  getPermissionAccountSecondary,
+  getPermissionInputLabel,
   toAdminUserRole,
   toRoleFilterValue,
   validatePermissionForm,
   type AdminUsersRoleFilter,
   type PermissionFormState,
+  type UserPermissionCandidate,
 } from '@/lib/admin/users';
-import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { useAdminUserCandidates, useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAdminTenants } from '@/hooks/useAdminTenants';
 import { ADMIN_USER_ROLE_OPTIONS, getRoleLabel } from '@/lib/constants/roles';
 
@@ -60,10 +67,21 @@ export default function AdminUsersPage() {
     updatePermission,
     revokePermission,
   } = useAdminUsers();
+  const {
+    candidates: userCandidates,
+    loading: userCandidatesLoading,
+    error: userCandidatesError,
+    clearCandidates,
+    fetchUserCandidates,
+  } = useAdminUserCandidates();
   const { clinics, fetchClinics } = useAdminTenants();
 
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
+  const [userSearch, setUserSearch] = useState('');
+  const deferredUserSearch = useDeferredValue(userSearch);
+  const [selectedUserLabel, setSelectedUserLabel] = useState('');
+  const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const [roleFilter, setRoleFilter] =
     useState<AdminUsersRoleFilter>(ROLE_FILTER_ALL);
   const [clinicFilter, setClinicFilter] = useState<string>(CLINIC_FILTER_ALL);
@@ -91,6 +109,38 @@ export default function AdminUsersPage() {
   }, [fetchClinics]);
 
   useEffect(() => {
+    const trimmedSearch = deferredUserSearch.trim();
+    const selectedLabel = selectedUserLabel.trim();
+
+    if (
+      editingPermissionId ||
+      !isUserPickerOpen ||
+      trimmedSearch.length < USER_CANDIDATE_MIN_SEARCH_LENGTH ||
+      (selectedLabel && trimmedSearch === selectedLabel)
+    ) {
+      clearCandidates();
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetchUserCandidates(trimmedSearch, { signal: controller.signal });
+    }, 200);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [
+    clearCandidates,
+    deferredUserSearch,
+    editingPermissionId,
+    fetchUserCandidates,
+    isUserPickerOpen,
+    selectedUserLabel,
+  ]);
+
+  useEffect(() => {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       fetchPermissions(currentFilters, { signal: controller.signal });
@@ -105,6 +155,10 @@ export default function AdminUsersPage() {
   const resetForm = () => {
     setEditingPermissionId(null);
     setFormState(createEmptyPermissionFormState());
+    setUserSearch('');
+    setSelectedUserLabel('');
+    setIsUserPickerOpen(false);
+    clearCandidates();
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -143,7 +197,35 @@ export default function AdminUsersPage() {
   const handleEdit = (permission: (typeof permissions)[number]) => {
     setEditingPermissionId(permission.id);
     setFormState(createPermissionFormState(permission));
+    const label = getPermissionInputLabel(permission);
+    setUserSearch(label);
+    setSelectedUserLabel(label);
+    setIsUserPickerOpen(false);
+    clearCandidates();
     setNotice(null);
+  };
+
+  const handleUserSearchChange = (value: string) => {
+    setUserSearch(value);
+    setSelectedUserLabel('');
+    setFormState(prev => ({
+      ...prev,
+      user_id: '',
+    }));
+    setIsUserPickerOpen(true);
+  };
+
+  const handleUserSelect = (candidate: UserPermissionCandidate) => {
+    const label = getCandidateInputLabel(candidate);
+    setUserSearch(label);
+    setSelectedUserLabel(label);
+    setFormState(prev => ({
+      ...prev,
+      user_id: candidate.user_id,
+      clinic_id: prev.clinic_id || candidate.clinic_id || '',
+    }));
+    setIsUserPickerOpen(false);
+    clearCandidates();
   };
 
   const handleRevoke = async (permissionId: string) => {
@@ -154,6 +236,11 @@ export default function AdminUsersPage() {
       fetchPermissions(currentFilters);
     }
   };
+
+  const hasSelectedUser =
+    Boolean(formState.user_id) &&
+    Boolean(selectedUserLabel) &&
+    userSearch.trim() === selectedUserLabel.trim();
 
   return (
     <div className='min-h-screen bg-white dark:bg-gray-800 p-6'>
@@ -170,26 +257,21 @@ export default function AdminUsersPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className='space-y-4'>
               <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='admin-user-id'
-                    className='text-sm font-medium'
-                  >
-                    Supabase Auth ユーザーID
-                  </label>
-                  <Input
-                    id='admin-user-id'
-                    value={formState.user_id}
-                    onChange={event =>
-                      setFormState(prev => ({
-                        ...prev,
-                        user_id: event.target.value,
-                      }))
-                    }
-                    placeholder='auth.users の UUID'
-                    disabled={Boolean(editingPermissionId)}
-                  />
-                </div>
+                <UserCandidateCombobox
+                  candidates={userCandidates}
+                  disabled={Boolean(editingPermissionId)}
+                  error={userCandidatesError}
+                  hasSelectedUser={hasSelectedUser}
+                  inputId='admin-user-search'
+                  isOpen={isUserPickerOpen}
+                  listboxId='admin-user-candidates'
+                  loading={userCandidatesLoading}
+                  selectedUserId={formState.user_id}
+                  value={userSearch}
+                  onOpenChange={setIsUserPickerOpen}
+                  onSearchChange={handleUserSearchChange}
+                  onSelect={handleUserSelect}
+                />
                 <div className='space-y-2'>
                   <label
                     htmlFor='admin-user-role'
@@ -278,7 +360,7 @@ export default function AdminUsersPage() {
               <Input
                 value={search}
                 onChange={event => setSearch(event.target.value)}
-                placeholder='アカウントID/メールで検索'
+                placeholder='氏名・メールで検索'
                 className='max-w-xs'
               />
               <Select
@@ -322,7 +404,7 @@ export default function AdminUsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
+                    <TableHead>権限ID</TableHead>
                     <TableHead>アカウント</TableHead>
                     <TableHead>ロール</TableHead>
                     <TableHead>所属店舗</TableHead>
@@ -331,42 +413,58 @@ export default function AdminUsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {permissions.map(permission => (
-                    <TableRow key={permission.id}>
-                      <TableCell className='text-xs text-gray-500'>
-                        {permission.id}
-                      </TableCell>
-                      <TableCell>
-                        <div className='text-sm font-medium'>
-                          {permission.profile_email || permission.username}
-                        </div>
-                        <div className='text-xs text-gray-500'>
-                          {permission.user_id}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRoleLabel(permission.role)}</TableCell>
-                      <TableCell>
-                        {permission.clinic_name || permission.clinic_id || '-'}
-                      </TableCell>
-                      <TableCell>{formatDate(permission.created_at)}</TableCell>
-                      <TableCell className='space-x-2'>
-                        <Button
-                          size='sm'
-                          variant='outline'
-                          onClick={() => handleEdit(permission)}
-                        >
-                          編集
-                        </Button>
-                        <Button
-                          size='sm'
-                          variant='destructive'
-                          onClick={() => handleRevoke(permission.id)}
-                        >
-                          権限を外す
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {permissions.map(permission => {
+                    const secondaryAccount =
+                      getPermissionAccountSecondary(permission);
+
+                    return (
+                      <TableRow key={permission.id}>
+                        <TableCell className='text-xs text-gray-500'>
+                          {permission.id}
+                        </TableCell>
+                        <TableCell>
+                          <div className='text-sm font-medium'>
+                            {getPermissionAccountPrimary(permission)}
+                          </div>
+                          {secondaryAccount && (
+                            <div className='text-xs text-gray-500'>
+                              {secondaryAccount}
+                            </div>
+                          )}
+                          {permission.user_id && (
+                            <div className='mt-1 text-[11px] text-gray-400'>
+                              内部ID: {permission.user_id}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{getRoleLabel(permission.role)}</TableCell>
+                        <TableCell>
+                          {permission.clinic_name ||
+                            permission.clinic_id ||
+                            '-'}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(permission.created_at)}
+                        </TableCell>
+                        <TableCell className='space-x-2'>
+                          <Button
+                            size='sm'
+                            variant='outline'
+                            onClick={() => handleEdit(permission)}
+                          >
+                            編集
+                          </Button>
+                          <Button
+                            size='sm'
+                            variant='destructive'
+                            onClick={() => handleRevoke(permission.id)}
+                          >
+                            権限を外す
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {permissions.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className='text-center text-sm'>

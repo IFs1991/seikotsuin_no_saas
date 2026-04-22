@@ -5,6 +5,7 @@ import type {
   PermissionEntry,
   PermissionFilters,
   UpdatePermissionPayload,
+  UserPermissionCandidate,
 } from '@/lib/admin/users';
 
 export type { PermissionEntry, PermissionFilters } from '@/lib/admin/users';
@@ -17,6 +18,11 @@ type ApiResponse<T> = {
 
 type PermissionListPayload = {
   items: PermissionEntry[];
+  total: number;
+};
+
+type UserCandidateListPayload = {
+  items: UserPermissionCandidate[];
   total: number;
 };
 
@@ -34,6 +40,17 @@ const buildPermissionListUrl = (filters: PermissionFilters): string => {
   return query
     ? `${API_ENDPOINTS.ADMIN.USERS}?${query}`
     : API_ENDPOINTS.ADMIN.USERS;
+};
+
+const buildUserCandidateListUrl = (search: string): string => {
+  const params = new URLSearchParams();
+  const trimmedSearch = search.trim();
+  if (trimmedSearch) params.set('search', trimmedSearch);
+
+  const query = params.toString();
+  return query
+    ? `${API_ENDPOINTS.ADMIN.USER_CANDIDATES}?${query}`
+    : API_ENDPOINTS.ADMIN.USER_CANDIDATES;
 };
 
 const readApiResponse = async <T>(response: Response): Promise<T> => {
@@ -182,5 +199,75 @@ export function useAdminUsers() {
     assignPermission,
     updatePermission,
     revokePermission,
+  };
+}
+
+export function useAdminUserCandidates() {
+  const [candidates, setCandidates] = useState<UserPermissionCandidate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+
+  const clearCandidates = useCallback(() => {
+    requestIdRef.current += 1;
+    setCandidates(current => (current.length === 0 ? current : []));
+    setLoading(current => (current ? false : current));
+    setError(current => (current === null ? current : null));
+  }, []);
+
+  const fetchUserCandidates = useCallback(
+    async (search: string, options: FetchPermissionsOptions = {}) => {
+      const trimmedSearch = search.trim();
+      if (!trimmedSearch) {
+        clearCandidates();
+        return [];
+      }
+
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await readApiResponse<UserCandidateListPayload>(
+          await fetch(buildUserCandidateListUrl(trimmedSearch), {
+            signal: options.signal,
+          })
+        );
+
+        if (requestIdRef.current === requestId) {
+          setCandidates(data.items);
+        }
+
+        return data.items;
+      } catch (err) {
+        if (isAbortError(err)) {
+          return null;
+        }
+
+        const message =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+
+        if (requestIdRef.current === requestId) {
+          setError(message);
+        }
+
+        return null;
+      } finally {
+        if (requestIdRef.current === requestId) {
+          setLoading(false);
+        }
+      }
+    },
+    [clearCandidates]
+  );
+
+  return {
+    candidates,
+    loading,
+    error,
+    clearCandidates,
+    fetchUserCandidates,
   };
 }

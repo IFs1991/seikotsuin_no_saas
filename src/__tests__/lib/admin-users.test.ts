@@ -5,6 +5,9 @@ import {
   createAssignPermissionPayload,
   createPermissionFormState,
   createUpdatePermissionPayload,
+  getCandidateInputLabel,
+  getPermissionAccountPrimary,
+  getPermissionAccountSecondary,
   validatePermissionForm,
 } from '@/lib/admin/users';
 
@@ -48,14 +51,14 @@ describe('admin users helpers', () => {
     });
   });
 
-  test('user id is required for permission assignment', () => {
+  test('user selection is required for permission assignment', () => {
     expect(
       validatePermissionForm({
         user_id: '   ',
         role: 'clinic_admin',
         clinic_id: 'clinic-1',
       })
-    ).toBe('Supabase Auth ユーザーIDを入力してください');
+    ).toBe('ユーザーを選択してください');
   });
 
   test('clinic scoped roles require clinic id', () => {
@@ -93,5 +96,25 @@ describe('admin users helpers', () => {
       role: 'clinic_admin',
       clinic_id: 'clinic-1',
     });
+  });
+
+  test('candidate input label uses Japanese name and email', () => {
+    expect(
+      getCandidateInputLabel({
+        full_name: '山田 太郎',
+        email: 'yamada@example.com',
+      })
+    ).toBe('山田 太郎 / yamada@example.com');
+  });
+
+  test('account display prefers profile name and keeps email as secondary', () => {
+    const permission = {
+      profile_name: '佐藤 花子',
+      profile_email: 'sato@example.com',
+      username: 'legacy-login',
+    };
+
+    expect(getPermissionAccountPrimary(permission)).toBe('佐藤 花子');
+    expect(getPermissionAccountSecondary(permission)).toBe('sato@example.com');
   });
 });
