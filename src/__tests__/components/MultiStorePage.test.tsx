@@ -22,6 +22,9 @@ const mockFetchClinicsWithKPI = jest.fn();
 const mockSortByRevenue = jest.fn();
 const mockSortByPatients = jest.fn();
 const mockSortByPerformance = jest.fn();
+const mockFetch = jest.fn();
+
+global.fetch = mockFetch;
 
 const mockUseMultiStoreReturn = {
   clinics: [],
@@ -82,6 +85,7 @@ describe('MultiStorePage Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFetch.mockReset();
     mockUseMultiStore.mockReturnValue({
       ...mockUseMultiStoreReturn,
     });
@@ -278,6 +282,84 @@ describe('MultiStorePage Component', () => {
       await user.click(performanceHeader);
 
       expect(mockSortByPerformance).toHaveBeenCalledWith('desc');
+    });
+  });
+
+  describe('横断AI分析', () => {
+    it('初期表示ではAI分析APIを呼ばず、空状態を表示する', () => {
+      render(<MultiStorePage />);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(
+          'AI分析結果はまだありません。必要なタイミングで取得してください。'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('ボタン押下でAI分析APIを呼び出しsummaryを表示する', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          summary: '全店舗で新患数が増加し、売上も安定しています。',
+          insights: [
+            {
+              title: '新患獲得',
+              why: '新患獲得施策が好調です。',
+              action: '好調店舗の施策を横展開してください。',
+              impact: 'high',
+            },
+          ],
+          anomalies: [
+            {
+              title: 'キャンセル率',
+              evidence: '大阪店舗でキャンセル率が上昇しています。',
+              action: '予約前日の確認運用を見直してください。',
+            },
+          ],
+          scope: { clinic_count: 2 },
+          kpi: {},
+        }),
+      });
+
+      const user = userEvent.setup();
+      render(<MultiStorePage />);
+
+      await user.click(screen.getByRole('button', { name: 'AI分析を取得' }));
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/admin/ai-insights?period_days=30',
+        expect.objectContaining({
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        })
+      );
+      expect(
+        await screen.findByText(
+          '全店舗で新患数が増加し、売上も安定しています。'
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText('新患獲得')).toBeInTheDocument();
+      expect(screen.getByText('新患獲得施策が好調です。')).toBeInTheDocument();
+      expect(
+        screen.getByText(/大阪店舗でキャンセル率が上昇しています。/)
+      ).toBeInTheDocument();
+    });
+
+    it('AI分析API失敗時にエラーを表示する', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'AI分析を利用できません' }),
+      });
+
+      const user = userEvent.setup();
+      render(<MultiStorePage />);
+
+      await user.click(screen.getByRole('button', { name: 'AI分析を取得' }));
+
+      expect(
+        await screen.findByText('AI分析を利用できません')
+      ).toBeInTheDocument();
     });
   });
 

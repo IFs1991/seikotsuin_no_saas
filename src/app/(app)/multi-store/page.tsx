@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -40,6 +40,29 @@ interface ClinicsTableProps {
   onSort: (field: SortField) => void;
 }
 
+interface AdminAiInsights {
+  summary?: string | null;
+  insights?: AdminAiInsightItem[] | null;
+  anomalies?: AdminAiAnomalyItem[] | null;
+  scope?: Record<string, unknown> | null;
+  kpi?: Record<string, unknown> | null;
+}
+
+type AdminAiInsightsStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface AdminAiInsightItem {
+  title: string;
+  why: string;
+  action: string;
+  impact?: string;
+}
+
+interface AdminAiAnomalyItem {
+  title: string;
+  evidence: string;
+  action: string;
+}
+
 const MULTI_STORE_COPY = {
   title: '店舗比較分析',
   description:
@@ -54,9 +77,22 @@ const MULTI_STORE_COPY = {
   tableTitle: '店舗別KPI比較',
   tableDescription:
     '各店舗の主要指標を一覧で比較します。ヘッダーをクリックすると並び替えできます。',
+  ai: {
+    title: '横断AI分析',
+    description:
+      '子テナント横断の傾向、異常値、改善余地をAIで分析します。重い分析のため必要な時だけ取得します。',
+    button: 'AI分析を取得',
+    loading: 'AI分析を取得中...',
+    empty: 'AI分析結果はまだありません。必要なタイミングで取得してください。',
+    noResult: '表示できるAI分析結果がありません。',
+    error: 'AI分析の取得に失敗しました',
+    insights: '示唆',
+    anomalies: '異常検知',
+  },
 } as const;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
+const ADMIN_AI_INSIGHTS_URL = '/api/admin/ai-insights?period_days=30';
 const TABLE_HEADER_CLASS =
   'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider';
 const TABLE_CELL_CLASS =
@@ -264,6 +300,197 @@ const ErrorState = memo(function ErrorState({ error }: { error: string }) {
   );
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(item => typeof item === 'string');
+
+const isAdminAiInsightItem = (value: unknown): value is AdminAiInsightItem =>
+  isRecord(value) &&
+  typeof value.title === 'string' &&
+  typeof value.why === 'string' &&
+  typeof value.action === 'string';
+
+const isAdminAiAnomalyItem = (value: unknown): value is AdminAiAnomalyItem =>
+  isRecord(value) &&
+  typeof value.title === 'string' &&
+  typeof value.evidence === 'string' &&
+  typeof value.action === 'string';
+
+const parseInsightItems = (value: unknown): AdminAiInsightItem[] => {
+  if (isStringArray(value)) {
+    return value.map(item => ({
+      title: item,
+      why: item,
+      action: '詳細を確認してください',
+    }));
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(isAdminAiInsightItem);
+};
+
+const parseAnomalyItems = (value: unknown): AdminAiAnomalyItem[] => {
+  if (isStringArray(value)) {
+    return value.map(item => ({
+      title: item,
+      evidence: item,
+      action: '詳細を確認してください',
+    }));
+  }
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(isAdminAiAnomalyItem);
+};
+
+const parseAdminAiInsights = (payload: unknown): AdminAiInsights => {
+  const source =
+    isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+
+  if (!isRecord(source)) {
+    return {};
+  }
+
+  return {
+    summary: typeof source.summary === 'string' ? source.summary : null,
+    insights: parseInsightItems(source.insights),
+    anomalies: parseAnomalyItems(source.anomalies),
+    scope: isRecord(source.scope) ? source.scope : null,
+    kpi: isRecord(source.kpi) ? source.kpi : null,
+  };
+};
+
+const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
+  status,
+  data,
+  error,
+  onFetch,
+}: {
+  status: AdminAiInsightsStatus;
+  data: AdminAiInsights | null;
+  error: string | null;
+  onFetch: () => void;
+}) {
+  const insights = data?.insights ?? [];
+  const anomalies = data?.anomalies ?? [];
+  const hasResult =
+    Boolean(data?.summary) || insights.length > 0 || anomalies.length > 0;
+
+  return (
+    <Card className='bg-card shadow-lg mb-8 border-blue-100 dark:border-blue-900'>
+      <CardHeader>
+        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
+          <div>
+            <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
+              {MULTI_STORE_COPY.ai.title}
+            </CardTitle>
+            <CardDescription className='mt-2 text-gray-600 dark:text-gray-300'>
+              {MULTI_STORE_COPY.ai.description}
+            </CardDescription>
+          </div>
+          <button
+            type='button'
+            onClick={onFetch}
+            disabled={status === 'loading'}
+            className='rounded-md bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60'
+          >
+            {status === 'loading'
+              ? MULTI_STORE_COPY.ai.loading
+              : MULTI_STORE_COPY.ai.button}
+          </button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {status === 'idle' && (
+          <p className='text-sm text-gray-500 dark:text-gray-400'>
+            {MULTI_STORE_COPY.ai.empty}
+          </p>
+        )}
+
+        {status === 'loading' && (
+          <p role='status' className='text-sm text-blue-700 dark:text-blue-300'>
+            {MULTI_STORE_COPY.ai.loading}
+          </p>
+        )}
+
+        {status === 'error' && (
+          <p role='alert' className='text-sm text-red-600 dark:text-red-400'>
+            {error ?? MULTI_STORE_COPY.ai.error}
+          </p>
+        )}
+
+        {status === 'success' && !hasResult && (
+          <p className='text-sm text-gray-500 dark:text-gray-400'>
+            {MULTI_STORE_COPY.ai.noResult}
+          </p>
+        )}
+
+        {status === 'success' && hasResult && (
+          <div className='space-y-5 text-sm text-gray-700 dark:text-gray-200'>
+            {data?.summary && (
+              <section>
+                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
+                  サマリー
+                </h3>
+                <p>{data.summary}</p>
+              </section>
+            )}
+
+            {insights.length > 0 && (
+              <section>
+                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
+                  {MULTI_STORE_COPY.ai.insights}
+                </h3>
+                <ul className='list-disc space-y-1 pl-5'>
+                  {insights.map(insight => (
+                    <li key={`${insight.title}-${insight.action}`}>
+                      <span className='font-medium'>{insight.title}</span>
+                      <span className='block text-gray-600 dark:text-gray-300'>
+                        {insight.why}
+                      </span>
+                      <span className='block text-gray-700 dark:text-gray-200'>
+                        対応: {insight.action}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {anomalies.length > 0 && (
+              <section>
+                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
+                  {MULTI_STORE_COPY.ai.anomalies}
+                </h3>
+                <ul className='list-disc space-y-1 pl-5'>
+                  {anomalies.map(anomaly => (
+                    <li key={`${anomaly.title}-${anomaly.action}`}>
+                      <span className='font-medium'>{anomaly.title}</span>
+                      <span className='block text-gray-600 dark:text-gray-300'>
+                        根拠: {anomaly.evidence}
+                      </span>
+                      <span className='block text-gray-700 dark:text-gray-200'>
+                        対応: {anomaly.action}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
 const MultiStorePage = () => {
   const {
     clinics,
@@ -281,6 +508,11 @@ const MultiStorePage = () => {
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [aiInsights, setAiInsights] = useState<AdminAiInsights | null>(null);
+  const [aiInsightsStatus, setAiInsightsStatus] =
+    useState<AdminAiInsightsStatus>('idle');
+  const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
+  const aiInsightsAbortRef = useRef<AbortController | null>(null);
   const summaryItems = useMemo<SummaryItem[]>(
     () => [
       {
@@ -315,6 +547,10 @@ const MultiStorePage = () => {
     return () => controller.abort();
   }, [fetchClinicsWithKPI]);
 
+  useEffect(() => {
+    return () => aiInsightsAbortRef.current?.abort();
+  }, []);
+
   const handleSort = useCallback(
     (field: SortField) => {
       const newDirection: SortDirection =
@@ -337,6 +573,50 @@ const MultiStorePage = () => {
     [sortByPatients, sortByPerformance, sortByRevenue, sortDirection, sortField]
   );
 
+  const handleFetchAiInsights = useCallback(async () => {
+    aiInsightsAbortRef.current?.abort();
+    const controller = new AbortController();
+    aiInsightsAbortRef.current = controller;
+
+    try {
+      setAiInsightsStatus('loading');
+      setAiInsightsError(null);
+
+      const response = await fetch(ADMIN_AI_INSIGHTS_URL, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+      const payload = (await response.json()) as unknown;
+
+      if (!response.ok) {
+        const message =
+          isRecord(payload) && typeof payload.error === 'string'
+            ? payload.error
+            : MULTI_STORE_COPY.ai.error;
+        throw new Error(message);
+      }
+
+      setAiInsights(parseAdminAiInsights(payload));
+      setAiInsightsStatus('success');
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      const message =
+        err instanceof Error ? err.message : MULTI_STORE_COPY.ai.error;
+      setAiInsights(null);
+      setAiInsightsError(message);
+      setAiInsightsStatus('error');
+    } finally {
+      if (aiInsightsAbortRef.current === controller) {
+        aiInsightsAbortRef.current = null;
+      }
+    }
+  }, []);
+
   if (!hasLoaded || loading) {
     return <LoadingState />;
   }
@@ -350,6 +630,12 @@ const MultiStorePage = () => {
       <div className='max-w-6xl mx-auto py-8'>
         <MultiStoreHeader />
         <SummaryCardsGrid items={summaryItems} />
+        <AdminAiInsightsSection
+          status={aiInsightsStatus}
+          data={aiInsights}
+          error={aiInsightsError}
+          onFetch={handleFetchAiInsights}
+        />
 
         {/* 店舗別KPI比較テーブル */}
         <Card className='bg-card shadow-lg'>

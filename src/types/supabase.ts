@@ -1019,6 +1019,116 @@ export type Database = {
           },
         ];
       };
+      email_logs: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          detail: Json;
+          event_type: string;
+          id: string;
+          outbox_id: string | null;
+          provider: string;
+          provider_message_id: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          detail?: Json;
+          event_type: string;
+          id?: string;
+          outbox_id?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          detail?: Json;
+          event_type?: string;
+          id?: string;
+          outbox_id?: string | null;
+          provider?: string;
+          provider_message_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'email_logs_outbox_id_fkey';
+            columns: ['outbox_id'];
+            isOneToOne: false;
+            referencedRelation: 'email_outbox';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      email_outbox: {
+        Row: {
+          attempts: number;
+          clinic_id: string;
+          created_at: string;
+          customer_id: string | null;
+          dedupe_key: string;
+          from_email: string | null;
+          id: string;
+          last_error: string | null;
+          next_attempt_at: string;
+          payload: Json;
+          provider: string;
+          provider_message_id: string | null;
+          resend_idempotency_key: string;
+          reservation_id: string | null;
+          sent_at: string | null;
+          status: string;
+          subject: string | null;
+          template_type: string;
+          to_email: string;
+          updated_at: string;
+        };
+        Insert: {
+          attempts?: number;
+          clinic_id: string;
+          created_at?: string;
+          customer_id?: string | null;
+          dedupe_key: string;
+          from_email?: string | null;
+          id?: string;
+          last_error?: string | null;
+          next_attempt_at?: string;
+          payload?: Json;
+          provider?: string;
+          provider_message_id?: string | null;
+          resend_idempotency_key: string;
+          reservation_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          subject?: string | null;
+          template_type: string;
+          to_email: string;
+          updated_at?: string;
+        };
+        Update: {
+          attempts?: number;
+          clinic_id?: string;
+          created_at?: string;
+          customer_id?: string | null;
+          dedupe_key?: string;
+          from_email?: string | null;
+          id?: string;
+          last_error?: string | null;
+          next_attempt_at?: string;
+          payload?: Json;
+          provider?: string;
+          provider_message_id?: string | null;
+          resend_idempotency_key?: string;
+          reservation_id?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          subject?: string | null;
+          template_type?: string;
+          to_email?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       encryption_keys: {
         Row: {
           algorithm: string;
@@ -3527,8 +3637,6 @@ export type Database = {
         }[];
       };
       refresh_daily_stats: { Args: never; Returns: undefined };
-      show_limit: { Args: never; Returns: number };
-      show_trgm: { Args: { '': string }; Returns: string[] };
       upsert_clinic_settings: {
         Args: {
           p_category: string;
