@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { ADMIN_MENU_ITEMS } from '@/lib/navigation/items';
+import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import { AdminNotificationsMenu } from './admin-notifications-menu';
 
 interface ClinicOption {
   id: string;
@@ -86,11 +88,29 @@ export const Header = React.memo(function Header({
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
+  const adminNotifications = useAdminNotifications({
+    clinicId: selectedClinicId,
+    enabled: isAdmin && Boolean(selectedClinicId),
+    limit: isNotificationsOpen ? 10 : 0,
+  });
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    updating: notificationsUpdating,
+    error: notificationsError,
+    realtimeStatus,
+    refresh: refreshNotifications,
+    markAsRead,
+    markAllAsRead,
+  } = adminNotifications;
 
   const closeMenus = useCallback(() => {
     setIsAdminMenuOpen(false);
     setIsUserMenuOpen(false);
+    setIsNotificationsOpen(false);
   }, []);
 
   useEffect(() => {
@@ -110,6 +130,7 @@ export const Header = React.memo(function Header({
   );
 
   const handleSettingsClick = useCallback(() => {
+    setIsNotificationsOpen(false);
     if (isAdmin) {
       setIsUserMenuOpen(false);
       setIsAdminMenuOpen(prev => !prev);
@@ -130,19 +151,48 @@ export const Header = React.memo(function Header({
 
   const handleToggleUserMenu = useCallback(() => {
     setIsAdminMenuOpen(false);
+    setIsNotificationsOpen(false);
     setIsUserMenuOpen(prev => !prev);
   }, []);
 
+  const handleToggleNotifications = useCallback(() => {
+    setIsAdminMenuOpen(false);
+    setIsUserMenuOpen(false);
+    setIsNotificationsOpen(prev => !prev);
+  }, []);
+
+  const handleToggleMobileNotifications = useCallback(() => {
+    setIsAdminMenuOpen(false);
+    setIsNotificationsOpen(prev => !prev);
+  }, []);
+
+  const handleRefreshNotifications = useCallback(() => {
+    void refreshNotifications();
+  }, [refreshNotifications]);
+
+  const handleMarkNotificationAsRead = useCallback(
+    (notificationId: string) => {
+      void markAsRead(notificationId);
+    },
+    [markAsRead]
+  );
+
+  const handleMarkAllNotificationsAsRead = useCallback(() => {
+    void markAllAsRead();
+  }, [markAllAsRead]);
+
   const handleClinicChange = useCallback(
     (clinicId: string | null) => {
+      setIsNotificationsOpen(false);
       setSelectedClinicId(clinicId);
     },
     [setSelectedClinicId]
   );
 
-  const showBadge = (notificationCount ?? 0) > 0;
+  const effectiveNotificationCount = notificationCount ?? unreadCount;
+  const showBadge = effectiveNotificationCount > 0;
   const badgeLabel =
-    (notificationCount ?? 0) >= 100 ? '99+' : notificationCount;
+    effectiveNotificationCount >= 100 ? '99+' : effectiveNotificationCount;
 
   return (
     <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-[#1e3a8a] text-white flex items-center justify-between'>
@@ -188,7 +238,20 @@ export const Header = React.memo(function Header({
         />
 
         <div className='relative'>
-          <Button variant='ghost' className='relative'>
+          {isNotificationsOpen && (
+            <div
+              className='fixed inset-0 z-40'
+              onClick={closeMenus}
+              aria-hidden='true'
+            />
+          )}
+          <Button
+            variant='ghost'
+            className='relative text-white hover:bg-blue-700'
+            onClick={handleToggleNotifications}
+            aria-expanded={isNotificationsOpen}
+            aria-haspopup='dialog'
+          >
             {showBadge && (
               <span className='absolute -top-1 -right-1 h-4 w-4 bg-[#ef4444] rounded-full text-xs flex items-center justify-center'>
                 {badgeLabel}
@@ -196,6 +259,20 @@ export const Header = React.memo(function Header({
             )}
             通知
           </Button>
+          {isNotificationsOpen && (
+            <AdminNotificationsMenu
+              notifications={notifications}
+              unreadCount={effectiveNotificationCount}
+              loading={notificationsLoading}
+              updating={notificationsUpdating}
+              error={notificationsError}
+              realtimeStatus={realtimeStatus}
+              onRefresh={handleRefreshNotifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              className='absolute right-0 top-full z-50 mt-2'
+            />
+          )}
         </div>
 
         <div className='relative'>
@@ -284,7 +361,34 @@ export const Header = React.memo(function Header({
               onClinicChange={handleClinicChange}
               className='w-full'
             />
-            <Button variant='ghost'>通知</Button>
+            <Button
+              variant='ghost'
+              className='relative w-full justify-start'
+              onClick={handleToggleMobileNotifications}
+              aria-expanded={isNotificationsOpen}
+              aria-haspopup='dialog'
+            >
+              通知
+              {showBadge && (
+                <span className='ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white'>
+                  {badgeLabel}
+                </span>
+              )}
+            </Button>
+            {isNotificationsOpen && (
+              <AdminNotificationsMenu
+                notifications={notifications}
+                unreadCount={effectiveNotificationCount}
+                loading={notificationsLoading}
+                updating={notificationsUpdating}
+                error={notificationsError}
+                realtimeStatus={realtimeStatus}
+                onRefresh={handleRefreshNotifications}
+                onMarkAsRead={handleMarkNotificationAsRead}
+                onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+                className='w-full max-w-none'
+              />
+            )}
             <Button variant='ghost' onClick={onToggleDarkMode}>
               {isDarkMode ? '🌙 ダーク' : '☀️ ライト'}
             </Button>

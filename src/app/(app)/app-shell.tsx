@@ -13,50 +13,6 @@ import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { canUseAdminNavigation } from '@/lib/navigation/items';
 
 const DARK_CLASS = 'dark';
-const NOTIFICATION_FETCH_LIMIT = '100';
-
-interface AdminNotificationsResponse {
-  success: true;
-  data: {
-    notifications: readonly unknown[];
-  };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isAdminNotificationsResponse(
-  value: unknown
-): value is AdminNotificationsResponse {
-  if (!isRecord(value) || value.success !== true || !isRecord(value.data)) {
-    return false;
-  }
-
-  return Array.isArray(value.data.notifications);
-}
-
-async function fetchAdminNotificationCount(
-  clinicId: string,
-  signal: AbortSignal
-): Promise<number> {
-  const params = new URLSearchParams({
-    clinic_id: clinicId,
-    limit: NOTIFICATION_FETCH_LIMIT,
-  });
-  const response = await fetch(`/api/admin/notifications?${params}`, {
-    signal,
-  });
-
-  if (!response.ok) {
-    return 0;
-  }
-
-  const payload: unknown = await response.json();
-  return isAdminNotificationsResponse(payload)
-    ? payload.data.notifications.length
-    : 0;
-}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
@@ -80,8 +36,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [profileRole]
   );
 
-  const [notificationCount, setNotificationCount] = React.useState(0);
-
   React.useEffect(() => {
     const savedTheme =
       typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
@@ -98,41 +52,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.remove(DARK_CLASS);
     }
   }, []);
-
-  React.useEffect(() => {
-    if (!canAccessAdminNavigation || !profileClinicId) {
-      setNotificationCount(currentCount =>
-        currentCount === 0 ? currentCount : 0
-      );
-      return;
-    }
-
-    const abortController = new AbortController();
-
-    const loadNotificationCount = async () => {
-      try {
-        const count = await fetchAdminNotificationCount(
-          profileClinicId,
-          abortController.signal
-        );
-        setNotificationCount(currentCount =>
-          currentCount === count ? currentCount : count
-        );
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          return;
-        }
-
-        setNotificationCount(currentCount =>
-          currentCount === 0 ? currentCount : 0
-        );
-      }
-    };
-
-    void loadNotificationCount();
-
-    return () => abortController.abort();
-  }, [canAccessAdminNavigation, profileClinicId]);
 
   const toggleDarkMode = React.useCallback(() => {
     setIsDarkMode(currentMode => {
@@ -193,7 +112,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isAdmin={canAccessAdminNavigation}
               clinics={clinics}
               clinicsLoading={clinicsLoading}
-              notificationCount={notificationCount}
             />
 
             <div className='flex pt-16'>
