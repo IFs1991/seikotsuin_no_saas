@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -14,6 +14,11 @@ import {
   type SortDirection,
   type SortField,
 } from '@/hooks/useMultiStore';
+import {
+  useAdminAiInsights,
+  type AdminAiInsights,
+  type AdminAiInsightsStatus,
+} from '@/hooks/useAdminAiInsights';
 
 interface SummaryCardProps {
   label: string;
@@ -38,29 +43,6 @@ interface ClinicsTableProps {
   sortField: SortField | null;
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
-}
-
-interface AdminAiInsights {
-  summary?: string | null;
-  insights?: AdminAiInsightItem[] | null;
-  anomalies?: AdminAiAnomalyItem[] | null;
-  scope?: Record<string, unknown> | null;
-  kpi?: Record<string, unknown> | null;
-}
-
-type AdminAiInsightsStatus = 'idle' | 'loading' | 'success' | 'error';
-
-interface AdminAiInsightItem {
-  title: string;
-  why: string;
-  action: string;
-  impact?: string;
-}
-
-interface AdminAiAnomalyItem {
-  title: string;
-  evidence: string;
-  action: string;
 }
 
 const MULTI_STORE_COPY = {
@@ -92,7 +74,6 @@ const MULTI_STORE_COPY = {
 } as const;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
-const ADMIN_AI_INSIGHTS_URL = '/api/admin/ai-insights?period_days=30';
 const TABLE_HEADER_CLASS =
   'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider';
 const TABLE_CELL_CLASS =
@@ -300,73 +281,6 @@ const ErrorState = memo(function ErrorState({ error }: { error: string }) {
   );
 });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const isStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every(item => typeof item === 'string');
-
-const isAdminAiInsightItem = (value: unknown): value is AdminAiInsightItem =>
-  isRecord(value) &&
-  typeof value.title === 'string' &&
-  typeof value.why === 'string' &&
-  typeof value.action === 'string';
-
-const isAdminAiAnomalyItem = (value: unknown): value is AdminAiAnomalyItem =>
-  isRecord(value) &&
-  typeof value.title === 'string' &&
-  typeof value.evidence === 'string' &&
-  typeof value.action === 'string';
-
-const parseInsightItems = (value: unknown): AdminAiInsightItem[] => {
-  if (isStringArray(value)) {
-    return value.map(item => ({
-      title: item,
-      why: item,
-      action: '詳細を確認してください',
-    }));
-  }
-
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(isAdminAiInsightItem);
-};
-
-const parseAnomalyItems = (value: unknown): AdminAiAnomalyItem[] => {
-  if (isStringArray(value)) {
-    return value.map(item => ({
-      title: item,
-      evidence: item,
-      action: '詳細を確認してください',
-    }));
-  }
-
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(isAdminAiAnomalyItem);
-};
-
-const parseAdminAiInsights = (payload: unknown): AdminAiInsights => {
-  const source =
-    isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
-
-  if (!isRecord(source)) {
-    return {};
-  }
-
-  return {
-    summary: typeof source.summary === 'string' ? source.summary : null,
-    insights: parseInsightItems(source.insights),
-    anomalies: parseAnomalyItems(source.anomalies),
-    scope: isRecord(source.scope) ? source.scope : null,
-    kpi: isRecord(source.kpi) ? source.kpi : null,
-  };
-};
-
 const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
   status,
   data,
@@ -508,11 +422,12 @@ const MultiStorePage = () => {
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [aiInsights, setAiInsights] = useState<AdminAiInsights | null>(null);
-  const [aiInsightsStatus, setAiInsightsStatus] =
-    useState<AdminAiInsightsStatus>('idle');
-  const [aiInsightsError, setAiInsightsError] = useState<string | null>(null);
-  const aiInsightsAbortRef = useRef<AbortController | null>(null);
+  const {
+    data: aiInsights,
+    status: aiInsightsStatus,
+    error: aiInsightsError,
+    fetchInsights,
+  } = useAdminAiInsights();
   const summaryItems = useMemo<SummaryItem[]>(
     () => [
       {
@@ -547,10 +462,6 @@ const MultiStorePage = () => {
     return () => controller.abort();
   }, [fetchClinicsWithKPI]);
 
-  useEffect(() => {
-    return () => aiInsightsAbortRef.current?.abort();
-  }, []);
-
   const handleSort = useCallback(
     (field: SortField) => {
       const newDirection: SortDirection =
@@ -573,50 +484,6 @@ const MultiStorePage = () => {
     [sortByPatients, sortByPerformance, sortByRevenue, sortDirection, sortField]
   );
 
-  const handleFetchAiInsights = useCallback(async () => {
-    aiInsightsAbortRef.current?.abort();
-    const controller = new AbortController();
-    aiInsightsAbortRef.current = controller;
-
-    try {
-      setAiInsightsStatus('loading');
-      setAiInsightsError(null);
-
-      const response = await fetch(ADMIN_AI_INSIGHTS_URL, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-      const payload = (await response.json()) as unknown;
-
-      if (!response.ok) {
-        const message =
-          isRecord(payload) && typeof payload.error === 'string'
-            ? payload.error
-            : MULTI_STORE_COPY.ai.error;
-        throw new Error(message);
-      }
-
-      setAiInsights(parseAdminAiInsights(payload));
-      setAiInsightsStatus('success');
-    } catch (err) {
-      if (controller.signal.aborted) {
-        return;
-      }
-      const message =
-        err instanceof Error ? err.message : MULTI_STORE_COPY.ai.error;
-      setAiInsights(null);
-      setAiInsightsError(message);
-      setAiInsightsStatus('error');
-    } finally {
-      if (aiInsightsAbortRef.current === controller) {
-        aiInsightsAbortRef.current = null;
-      }
-    }
-  }, []);
-
   if (!hasLoaded || loading) {
     return <LoadingState />;
   }
@@ -634,7 +501,7 @@ const MultiStorePage = () => {
           status={aiInsightsStatus}
           data={aiInsights}
           error={aiInsightsError}
-          onFetch={handleFetchAiInsights}
+          onFetch={fetchInsights}
         />
 
         {/* 店舗別KPI比較テーブル */}

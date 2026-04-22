@@ -37,6 +37,7 @@ function createListQueryMock(result: unknown[]) {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     is: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     limit: jest.fn().mockResolvedValue({
       data: result,
@@ -49,6 +50,10 @@ function createSingleQueryMock(result: unknown) {
   return {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({
+      data: result,
+      error: null,
+    }),
     single: jest.fn().mockResolvedValue({
       data: result,
       error: null,
@@ -88,8 +93,20 @@ describe('GET /api/admin/chat', () => {
 
   it('uses ADMIN_UI_ROLES and returns only current user multi-clinic admin sessions', async () => {
     const listQuery = createListQueryMock([{ id: SESSION_ID }]);
+    const messageQuery = createListQueryMock([
+      {
+        id: 'message-1',
+        session_id: SESSION_ID,
+        sender: 'user',
+        message_text: '売上を分析して',
+        created_at: '2026-04-22T01:00:00.000Z',
+      },
+    ]);
     const client = {
-      from: jest.fn().mockReturnValue(listQuery),
+      from: jest
+        .fn()
+        .mockReturnValueOnce(listQuery)
+        .mockReturnValueOnce(messageQuery),
     };
     mockAuth();
     createScopedAdminContextMock.mockReturnValue({
@@ -115,7 +132,26 @@ describe('GET /api/admin/chat', () => {
     expect(listQuery.eq).toHaveBeenCalledWith('user_id', 'auth-user-1');
     expect(listQuery.eq).toHaveBeenCalledWith('is_admin_session', true);
     expect(listQuery.is).toHaveBeenCalledWith('clinic_id', null);
-    expect(body.data).toEqual([{ id: SESSION_ID }]);
+    expect(listQuery.order).toHaveBeenCalledWith('created_at', {
+      ascending: false,
+    });
+    expect(listQuery.limit).toHaveBeenCalledWith(1);
+    expect(messageQuery.in).toHaveBeenCalledWith('session_id', [SESSION_ID]);
+    expect(messageQuery.limit).toHaveBeenCalledWith(100);
+    expect(body.data).toEqual([
+      {
+        id: SESSION_ID,
+        chat_messages: [
+          {
+            id: 'message-1',
+            session_id: SESSION_ID,
+            sender: 'user',
+            message_text: '売上を分析して',
+            created_at: '2026-04-22T01:00:00.000Z',
+          },
+        ],
+      },
+    ]);
   });
 
   it('asserts clinic scope when clinic_id is specified', async () => {
@@ -327,6 +363,7 @@ describe('POST /api/admin/chat', () => {
 
     expect(response.status).toBe(200);
     expect(sessionQuery.eq).toHaveBeenCalledWith('id', SESSION_ID);
+    expect(sessionQuery.maybeSingle).toHaveBeenCalled();
     expect(userMessageInsertQuery.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         session_id: SESSION_ID,
@@ -361,5 +398,30 @@ describe('POST /api/admin/chat', () => {
 
     expect(response.status).toBe(403);
     expect(body.success).toBe(false);
+  });
+
+  it('returns 404 when requested session_id does not exist', async () => {
+    const sessionQuery = createSingleQueryMock(null);
+    mockAuth({ message: '改善提案', session_id: SESSION_ID });
+    createScopedAdminContextMock.mockReturnValue({
+      client: {
+        from: jest.fn().mockReturnValueOnce(sessionQuery),
+      },
+      scopedClinicIds: [CLINIC_ID],
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { POST } = await import('@/app/api/admin/chat/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: '改善提案', session_id: SESSION_ID }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.success).toBe(false);
+    expect(body.error).toBe('チャットセッションが見つかりません');
   });
 });

@@ -589,13 +589,6 @@ export type Database = {
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
           },
-          {
-            foreignKeyName: 'chat_sessions_user_id_fkey';
-            columns: ['user_id'];
-            isOneToOne: false;
-            referencedRelation: 'user_permissions';
-            referencedColumns: ['id'];
-          },
         ];
       };
       clinic_settings: {

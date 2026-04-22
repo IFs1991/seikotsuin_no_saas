@@ -85,6 +85,7 @@ export function aggregateAdminClinicKpis(
   patientRows: PatientRow[],
   staffRows: StaffRow[]
 ): AdminClinicKpi[] {
+  const clinicIdSet = new Set(clinicIds);
   const revenueByClinic = new Map<string, number>();
   const patientsByClinic = new Map<string, Set<string>>();
   const staffRevenueByClinic = new Map<
@@ -93,7 +94,7 @@ export function aggregateAdminClinicKpis(
   >();
 
   for (const row of revenueRows) {
-    if (!row.clinic_id || !clinicIds.includes(row.clinic_id)) continue;
+    if (!row.clinic_id || !clinicIdSet.has(row.clinic_id)) continue;
     revenueByClinic.set(
       row.clinic_id,
       (revenueByClinic.get(row.clinic_id) ?? 0) + toNumber(row.total_revenue)
@@ -101,11 +102,7 @@ export function aggregateAdminClinicKpis(
   }
 
   for (const row of patientRows) {
-    if (
-      !row.clinic_id ||
-      !row.patient_id ||
-      !clinicIds.includes(row.clinic_id)
-    ) {
+    if (!row.clinic_id || !row.patient_id || !clinicIdSet.has(row.clinic_id)) {
       continue;
     }
     const patients = patientsByClinic.get(row.clinic_id) ?? new Set<string>();
@@ -114,7 +111,7 @@ export function aggregateAdminClinicKpis(
   }
 
   for (const row of staffRows) {
-    if (!row.clinic_id || !clinicIds.includes(row.clinic_id)) continue;
+    if (!row.clinic_id || !clinicIdSet.has(row.clinic_id)) continue;
     const stats = staffRevenueByClinic.get(row.clinic_id) ?? {
       totalRevenue: 0,
       staffCount: 0,
@@ -163,9 +160,13 @@ export function summarizeAdminKpi(clinics: AdminClinicKpi[]): AdminAiKpi {
 export function buildDeterministicAdminInsights(
   input: AdminAiInsightInput
 ): Pick<AdminAiInsightsResponse, 'summary' | 'insights' | 'anomalies'> {
-  const topRevenueClinic = [...input.clinics].sort(
-    (a, b) => b.revenue - a.revenue
-  )[0];
+  const topRevenueClinic = input.clinics.reduce<AdminClinicKpi | null>(
+    (topClinic, clinic) =>
+      topClinic === null || clinic.revenue > topClinic.revenue
+        ? clinic
+        : topClinic,
+    null
+  );
   const lowPatientClinics = input.clinics.filter(row => row.patients === 0);
   const averageRevenue =
     input.clinic_count > 0

@@ -23,7 +23,9 @@ import {
 import type { Json } from '@/types/supabase';
 
 const ENDPOINT = '/api/admin/chat';
-const CHAT_SESSION_SELECT = '*, chat_messages(*)';
+const CHAT_SESSION_SELECT = '*';
+const CHAT_HISTORY_SESSION_LIMIT = 1;
+const CHAT_HISTORY_MESSAGE_LIMIT = 100;
 const ADMIN_ALLOWED_ROLES = Array.from(ADMIN_UI_ROLES);
 const GetQuerySchema = z.object({
   clinic_id: z.string().uuid().optional(),
@@ -38,6 +40,19 @@ type ChatSessionRow = {
   clinic_id: string | null;
   is_admin_session: boolean;
   context_data?: unknown;
+};
+
+type ChatMessageRow = {
+  id: string;
+  session_id: string;
+  sender: 'user' | 'ai';
+  message_text: string;
+  created_at: string;
+  response_data?: unknown;
+};
+
+type ChatSessionWithMessages = ChatSessionRow & {
+  chat_messages: ChatMessageRow[];
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -145,13 +160,49 @@ async function fetchSessionById(params: {
     .from('chat_sessions')
     .select('*')
     .eq('id', params.sessionId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
   return (data as ChatSessionRow | null) ?? null;
+}
+
+async function attachMessagesToSessions(params: {
+  client: ReturnType<typeof createScopedAdminContext>['client'];
+  sessions: ChatSessionRow[];
+}): Promise<ChatSessionWithMessages[]> {
+  const sessionIds = params.sessions.map(session => session.id);
+  if (sessionIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await params.client
+    .from('chat_messages')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('created_at', { ascending: false })
+    .limit(CHAT_HISTORY_MESSAGE_LIMIT);
+
+  if (error) {
+    throw error;
+  }
+
+  const messagesBySession = new Map<string, ChatMessageRow[]>();
+  for (const message of (data ?? []) as ChatMessageRow[]) {
+    const messages = messagesBySession.get(message.session_id) ?? [];
+    messages.push(message);
+    messagesBySession.set(message.session_id, messages);
+  }
+
+  return params.sessions.map(session => ({
+    ...session,
+    chat_messages: (messagesBySession.get(session.id) ?? []).sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }));
 }
 
 async function createSession(params: {
@@ -227,13 +278,18 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(CHAT_HISTORY_SESSION_LIMIT);
 
     if (error) {
       throw error;
     }
 
-    return createSuccessResponse(data ?? []);
+    const sessionsWithMessages = await attachMessagesToSessions({
+      client: adminCtx.client,
+      sessions: (data ?? []) as ChatSessionRow[],
+    });
+
+    return createSuccessResponse(sessionsWithMessages);
   } catch (error) {
     const scopeError = toScopeError(error);
     if (scopeError) {
