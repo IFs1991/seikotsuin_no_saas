@@ -38,7 +38,10 @@ interface ClinicSelectProps {
 }
 
 const EMPTY_CLINICS: readonly ClinicOption[] = [];
-const BASE_CLINIC_SELECT_CLASS = 'bg-[#2563eb] text-white px-3 py-1 rounded';
+const BASE_CLINIC_SELECT_CLASS =
+  'bg-[#2563eb] text-white px-3 py-1 rounded border border-blue-300/40';
+const CLINIC_SELECT_PLACEHOLDER = '操作対象店舗を選択';
+const EMPTY_CLINIC_SELECT_LABEL = '利用可能な店舗なし';
 const USER_MENU_ITEM_CLASS =
   'block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none';
 const MOBILE_LOGOUT_LINK_CLASS =
@@ -68,6 +71,14 @@ const ClinicSelect = React.memo(function ClinicSelect({
   onClinicChange,
   className,
 }: ClinicSelectProps) {
+  const hasClinics = clinics.length > 0;
+  const placeholderLabel = hasClinics
+    ? CLINIC_SELECT_PLACEHOLDER
+    : EMPTY_CLINIC_SELECT_LABEL;
+  const selectClassName = `${BASE_CLINIC_SELECT_CLASS}${
+    selectedClinicId ? '' : ' ring-2 ring-amber-300/80'
+  }${className ? ` ${className}` : ''}`;
+
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       onClinicChange(event.target.value || null);
@@ -77,19 +88,25 @@ const ClinicSelect = React.memo(function ClinicSelect({
 
   return (
     <select
+      aria-label='操作対象店舗'
       value={selectedClinicId ?? ''}
       onChange={handleChange}
-      disabled={clinicsLoading}
-      className={`${BASE_CLINIC_SELECT_CLASS}${className ? ` ${className}` : ''}`}
+      disabled={clinicsLoading || !hasClinics}
+      className={selectClassName}
     >
       {clinicsLoading ? (
         <option value=''>読み込み中...</option>
       ) : (
-        clinics.map(clinic => (
-          <option key={clinic.id} value={clinic.id}>
-            {clinic.name}
+        <>
+          <option value='' disabled>
+            {placeholderLabel}
           </option>
-        ))
+          {clinics.map(clinic => (
+            <option key={clinic.id} value={clinic.id}>
+              {clinic.name}
+            </option>
+          ))}
+        </>
       )}
     </select>
   );

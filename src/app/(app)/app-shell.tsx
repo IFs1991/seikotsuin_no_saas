@@ -11,6 +11,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { canUseAdminNavigation } from '@/lib/navigation/items';
+import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
 
 const DARK_CLASS = 'dark';
 
@@ -88,8 +89,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const initialClinicId = React.useMemo(
-    () => profileClinicId ?? currentClinicId ?? null,
-    [currentClinicId, profileClinicId]
+    () =>
+      resolveInitialSelectedClinicId({
+        profileClinicId,
+        currentClinicId,
+        clinics,
+      }),
+    [clinics, currentClinicId, profileClinicId]
   );
 
   return (

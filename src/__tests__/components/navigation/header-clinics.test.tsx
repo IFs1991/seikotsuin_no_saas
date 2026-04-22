@@ -9,6 +9,7 @@
  * [x] clinicsLoading=true のとき「読み込み中...」を表示する
  * [x] ハードコードされた店舗名が表示されない
  * [x] 選択変更で Context の setSelectedClinicId が呼ばれる（統合）
+ * [x] 複数店舗かつ未選択では操作対象店舗の明示選択を促す
  */
 
 import React from 'react';
@@ -96,6 +97,30 @@ describe('Header クリニック選択', () => {
       s => (s as HTMLSelectElement).value
     );
     expect(selectedValues.some(v => v === 'clinic-2')).toBe(true);
+  });
+
+  it('複数店舗かつ未選択では操作対象店舗の選択を促す', () => {
+    renderWithProvider({ clinics: mockClinics }, null);
+
+    const selects = screen.getAllByRole('combobox', {
+      name: '操作対象店舗',
+    });
+    expect(
+      screen.getAllByRole('option', { name: '操作対象店舗を選択' }).length
+    ).toBeGreaterThan(0);
+    expect((selects[0] as HTMLSelectElement).value).toBe('');
+  });
+
+  it('利用可能な店舗がない場合は選択できない', () => {
+    renderWithProvider({ clinics: [] }, null);
+
+    const selects = screen.getAllByRole('combobox', {
+      name: '操作対象店舗',
+    });
+    expect(
+      screen.getByRole('option', { name: '利用可能な店舗なし' })
+    ).toBeInTheDocument();
+    expect(selects[0]).toBeDisabled();
   });
 
   // Context 統合: 選択変更でコンテキストが更新される（子コンポーネントで確認）

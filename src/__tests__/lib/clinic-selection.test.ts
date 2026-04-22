@@ -1,0 +1,43 @@
+import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
+
+describe('resolveInitialSelectedClinicId', () => {
+  it('profile clinic id を最優先する', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        profileClinicId: 'profile-clinic',
+        currentClinicId: 'current-clinic',
+        clinics: [{ id: 'only-clinic' }],
+      })
+    ).toBe('profile-clinic');
+  });
+
+  it('profile clinic id がない場合は current clinic id を使う', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        profileClinicId: null,
+        currentClinicId: 'current-clinic',
+        clinics: [{ id: 'only-clinic' }],
+      })
+    ).toBe('current-clinic');
+  });
+
+  it('明示的な clinic id がなく単一店舗だけなら自動選択する', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        profileClinicId: null,
+        currentClinicId: null,
+        clinics: [{ id: 'only-clinic' }],
+      })
+    ).toBe('only-clinic');
+  });
+
+  it('明示的な clinic id がなく複数店舗なら未選択にする', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        profileClinicId: null,
+        currentClinicId: null,
+        clinics: [{ id: 'clinic-1' }, { id: 'clinic-2' }],
+      })
+    ).toBeNull();
+  });
+});

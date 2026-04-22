@@ -8,30 +8,67 @@ import {
   isSuccessResponse,
 } from '@/lib/api-client';
 
-interface AccessibleClinic {
+export interface AccessibleClinic {
   id: string;
   name: string;
 }
 
-interface UseAccessibleClinicsResult {
-  clinics: AccessibleClinic[];
+export interface UseAccessibleClinicsResult {
+  clinics: readonly AccessibleClinic[];
   currentClinicId: string | null;
   loading: boolean;
   error: string | null;
 }
 
+const ACCESSIBLE_CLINICS_ERROR_MESSAGE = 'クリニック一覧の取得に失敗しました';
+const EMPTY_ACCESSIBLE_CLINICS: readonly AccessibleClinic[] = [];
+
+const INITIAL_ACCESSIBLE_CLINICS_STATE: UseAccessibleClinicsResult = {
+  clinics: EMPTY_ACCESSIBLE_CLINICS,
+  currentClinicId: null,
+  loading: true,
+  error: null,
+};
+
+function buildAccessibleClinicsSuccessState(
+  clinics: readonly AccessibleClinic[],
+  currentClinicId: string | null
+): UseAccessibleClinicsResult {
+  return {
+    clinics,
+    currentClinicId,
+    loading: false,
+    error: null,
+  };
+}
+
+function buildAccessibleClinicsErrorState(
+  error: string
+): UseAccessibleClinicsResult {
+  return {
+    clinics: EMPTY_ACCESSIBLE_CLINICS,
+    currentClinicId: null,
+    loading: false,
+    error,
+  };
+}
+
+function getAccessibleClinicsErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : ACCESSIBLE_CLINICS_ERROR_MESSAGE;
+}
+
 export function useAccessibleClinics(): UseAccessibleClinicsResult {
-  const [clinics, setClinics] = useState<AccessibleClinic[]>([]);
-  const [currentClinicId, setCurrentClinicId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<UseAccessibleClinicsResult>(
+    INITIAL_ACCESSIBLE_CLINICS_STATE
+  );
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadClinics() {
-      setLoading(true);
-      setError(null);
+      setState(INITIAL_ACCESSIBLE_CLINICS_STATE);
 
       try {
         const response = await api.clinics.getAccessible();
@@ -40,39 +77,37 @@ export function useAccessibleClinics(): UseAccessibleClinicsResult {
         }
 
         if (isSuccessResponse(response)) {
-          setClinics(response.data.clinics);
-          setCurrentClinicId(response.data.currentClinicId);
-          return;
-        }
-
-        if (isErrorResponse(response)) {
-          setClinics([]);
-          setCurrentClinicId(null);
-          setError(
-            handleApiError(response.error, 'クリニック一覧の取得に失敗しました')
+          setState(
+            buildAccessibleClinicsSuccessState(
+              response.data.clinics,
+              response.data.currentClinicId
+            )
           );
           return;
         }
 
-        setClinics([]);
-        setCurrentClinicId(null);
-        setError('クリニック一覧の取得に失敗しました');
+        if (isErrorResponse(response)) {
+          setState(
+            buildAccessibleClinicsErrorState(
+              handleApiError(response.error, ACCESSIBLE_CLINICS_ERROR_MESSAGE)
+            )
+          );
+          return;
+        }
+
+        setState(
+          buildAccessibleClinicsErrorState(ACCESSIBLE_CLINICS_ERROR_MESSAGE)
+        );
       } catch (fetchError) {
         if (!isMounted) {
           return;
         }
 
-        setClinics([]);
-        setCurrentClinicId(null);
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : 'クリニック一覧の取得に失敗しました'
+        setState(
+          buildAccessibleClinicsErrorState(
+            getAccessibleClinicsErrorMessage(fetchError)
+          )
         );
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
       }
     }
 
@@ -83,5 +118,5 @@ export function useAccessibleClinics(): UseAccessibleClinicsResult {
     };
   }, []);
 
-  return { clinics, currentClinicId, loading, error };
+  return state;
 }

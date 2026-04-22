@@ -11,14 +11,14 @@ const mockApi = apiClient as jest.Mocked<typeof apiClient>;
 describe('useAccessibleClinics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApi.isSuccessResponse.mockImplementation((response: any) =>
-      Boolean(response?.success)
+    mockApi.isSuccessResponse.mockImplementation(response =>
+      Boolean(response.success)
     );
     mockApi.isErrorResponse.mockImplementation(
-      (response: any) => response?.success === false
+      response => response.success === false
     );
     mockApi.handleApiError.mockImplementation(
-      (error: any) => error?.message ?? 'error'
+      error => error.message ?? 'error'
     );
   });
 
@@ -78,5 +78,23 @@ describe('useAccessibleClinics', () => {
     });
 
     expect(result.current.error).toBe('取得失敗');
+  });
+
+  it('TC-CH04: 不正なレスポンス形式では汎用エラーにする', async () => {
+    (mockApi.api.clinics.getAccessible as jest.Mock).mockResolvedValueOnce({
+      success: true,
+    });
+    mockApi.isSuccessResponse.mockReturnValueOnce(false);
+    mockApi.isErrorResponse.mockReturnValueOnce(false);
+
+    const { result } = renderHook(() => useAccessibleClinics());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.clinics).toEqual([]);
+    expect(result.current.currentClinicId).toBeNull();
+    expect(result.current.error).toBe('クリニック一覧の取得に失敗しました');
   });
 });
