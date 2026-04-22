@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
@@ -60,7 +61,7 @@ interface NotificationBadgeProps {
 }
 
 interface AdminMenuLinksProps {
-  onNavigate: (href: string) => void;
+  onClose: () => void;
   itemClassName: string;
 }
 
@@ -147,20 +148,20 @@ const NotificationBadge = React.memo(function NotificationBadge({
 });
 
 const AdminMenuLinks = React.memo(function AdminMenuLinks({
-  onNavigate,
+  onClose,
   itemClassName,
 }: AdminMenuLinksProps) {
   return (
     <>
       {ADMIN_MENU_ITEMS.map(link => (
-        <button
+        <Link
           key={link.id}
-          type='button'
-          className={itemClassName}
-          onClick={() => onNavigate(link.href)}
+          href={link.href}
+          className={`block ${itemClassName}`}
+          onClick={onClose}
         >
           {link.label}
-        </button>
+        </Link>
       ))}
     </>
   );
@@ -212,14 +213,6 @@ export const Header = React.memo(function Header({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [closeMenus]);
-
-  const handleAdminLink = useCallback(
-    (href: string) => {
-      closeMenus();
-      router.push(href);
-    },
-    [closeMenus, router]
-  );
 
   const handleSettingsClick = useCallback(() => {
     setIsNotificationsOpen(false);
@@ -376,7 +369,7 @@ export const Header = React.memo(function Header({
           {isAdmin && isAdminMenuOpen && (
             <div className='absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg py-2 text-gray-700'>
               <AdminMenuLinks
-                onNavigate={handleAdminLink}
+                onClose={closeMenus}
                 itemClassName='w-full text-left px-4 py-2 text-sm hover:bg-blue-50'
               />
             </div>
@@ -476,7 +469,7 @@ export const Header = React.memo(function Header({
               <div className='rounded bg-blue-900/50 p-2 space-y-1'>
                 <p className='text-xs text-blue-100'>管理メニュー</p>
                 <AdminMenuLinks
-                  onNavigate={handleAdminLink}
+                  onClose={closeMenus}
                   itemClassName='justify-start text-left w-full text-sm rounded-medical px-4 py-2 hover:bg-white/10'
                 />
               </div>

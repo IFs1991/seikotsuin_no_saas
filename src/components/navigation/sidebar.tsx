@@ -12,6 +12,7 @@ import {
   getCurrentNavigationItemId,
   getNavigationMode,
   getOperationMenuItems,
+  getVisibleNavigationItems,
   type NavigationItem,
 } from '@/lib/navigation/items';
 
@@ -86,17 +87,9 @@ export const Sidebar = React.memo(function Sidebar({
   const openSubMenuIds = useMemo(() => new Set(openSubMenus), [openSubMenus]);
 
   const currentMenuId = useMemo(() => {
-    const visibleItems = [
-      ...(navigationMode.showOperationMenus ? operationMenuItems : []),
-      ...(navigationMode.showAdminMenus ? ADMIN_MENU_ITEMS : []),
-    ];
+    const visibleItems = getVisibleNavigationItems(navigationMode);
     return getCurrentNavigationItemId(pathname, visibleItems);
-  }, [
-    navigationMode.showAdminMenus,
-    navigationMode.showOperationMenus,
-    operationMenuItems,
-    pathname,
-  ]);
+  }, [navigationMode, pathname]);
 
   const toggleSubMenu = useCallback((menuId: string) => {
     setOpenSubMenus(prev =>

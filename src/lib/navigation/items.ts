@@ -64,12 +64,28 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'ai-insights', label: 'AI分析', href: '/ai-insights' },
 ];
 
+const AI_INSIGHTS_HREF = '/ai-insights';
+
+const OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
+  OPERATION_MENU_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
+
 export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
   { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
   { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
+  { id: 'admin-chat', label: 'AIチャット', href: '/admin/chat' },
+];
+
+const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
+const OPERATION_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  ...OPERATION_MENU_ITEMS,
+  ...ADMIN_MENU_ITEMS,
+];
+const OPERATION_WITHOUT_AI_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  ...OPERATION_MENU_ITEMS_WITHOUT_AI,
+  ...ADMIN_MENU_ITEMS,
 ];
 
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
@@ -88,9 +104,33 @@ export function isAiInsightsEnabled() {
 }
 
 export function getOperationMenuItems() {
-  return OPERATION_MENU_ITEMS.filter(
-    item => isAiInsightsEnabled() || item.href !== '/ai-insights'
-  );
+  return isAiInsightsEnabled()
+    ? OPERATION_MENU_ITEMS
+    : OPERATION_MENU_ITEMS_WITHOUT_AI;
+}
+
+export function getVisibleNavigationItems({
+  showOperationMenus,
+  showAdminMenus,
+}: Pick<
+  NavigationMode,
+  'showOperationMenus' | 'showAdminMenus'
+>): readonly NavigationItem[] {
+  if (!showOperationMenus) {
+    return showAdminMenus ? ADMIN_MENU_ITEMS : EMPTY_NAVIGATION_ITEMS;
+  }
+
+  const aiInsightsEnabled = isAiInsightsEnabled();
+
+  if (!showAdminMenus) {
+    return aiInsightsEnabled
+      ? OPERATION_MENU_ITEMS
+      : OPERATION_MENU_ITEMS_WITHOUT_AI;
+  }
+
+  return aiInsightsEnabled
+    ? OPERATION_AND_ADMIN_MENU_ITEMS
+    : OPERATION_WITHOUT_AI_AND_ADMIN_MENU_ITEMS;
 }
 
 export function canUseAdminNavigation(
@@ -135,14 +175,27 @@ export function getCurrentNavigationItemId(
   pathname: string,
   items: readonly NavigationItem[]
 ) {
-  const candidates = items
-    .flatMap(item => [item, ...(item.subItems ?? [])])
-    .sort(
-      (a, b) => getPathFromHref(b.href).length - getPathFromHref(a.href).length
-    );
+  let currentItemId = '';
+  let currentPathLength = -1;
 
-  return (
-    candidates.find(item => isNavigationItemActive(pathname, item.href))?.id ??
-    ''
-  );
+  const visitItems = (navigationItems: readonly NavigationItem[]) => {
+    for (const item of navigationItems) {
+      const itemPathLength = getPathFromHref(item.href).length;
+
+      if (
+        itemPathLength > currentPathLength &&
+        isNavigationItemActive(pathname, item.href)
+      ) {
+        currentItemId = item.id;
+        currentPathLength = itemPathLength;
+      }
+
+      if (item.subItems?.length) {
+        visitItems(item.subItems);
+      }
+    }
+  };
+
+  visitItems(items);
+  return currentItemId;
 }

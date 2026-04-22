@@ -49,6 +49,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('ユーザー権限')).toBeInTheDocument();
     expect(screen.getByText('システム設定')).toBeInTheDocument();
     expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
+    expect(screen.getByText('AIチャット')).toBeInTheDocument();
 
     expect(screen.queryByText('マスタ管理')).not.toBeInTheDocument();
     expect(screen.queryByText('セキュリティ監視')).not.toBeInTheDocument();
@@ -72,6 +73,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('ユーザー権限')).toBeInTheDocument();
     expect(screen.getByText('システム設定')).toBeInTheDocument();
     expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
+    expect(screen.getByText('AIチャット')).toBeInTheDocument();
 
     expect(screen.queryByText('日報管理')).not.toBeInTheDocument();
     expect(screen.queryByText('予約管理')).not.toBeInTheDocument();

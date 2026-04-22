@@ -62,12 +62,27 @@ const BASE_ITEMS: readonly MobileNavigationItem[] = [
   },
 ];
 
+const AI_INSIGHTS_HREF = '/ai-insights';
+const BASE_ITEMS_WITHOUT_AI: readonly MobileNavigationItem[] =
+  BASE_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
+
 const ADMIN_ITEM: MobileNavigationItem = {
   id: 'admin',
   label: '管理',
   href: '/admin',
   icon: ShieldCheck,
 };
+
+const ADMIN_ONLY_ITEMS: readonly MobileNavigationItem[] = [ADMIN_ITEM];
+const BASE_ITEMS_WITH_ADMIN: readonly MobileNavigationItem[] = [
+  ...BASE_ITEMS,
+  ADMIN_ITEM,
+];
+const BASE_ITEMS_WITHOUT_AI_WITH_ADMIN: readonly MobileNavigationItem[] = [
+  ...BASE_ITEMS_WITHOUT_AI,
+  ADMIN_ITEM,
+];
+const EMPTY_MOBILE_NAVIGATION_ITEMS: readonly MobileNavigationItem[] = [];
 
 interface MobileBottomNavProps {
   isAdmin?: boolean;
@@ -87,22 +102,22 @@ function getMobileNavigationItems({
   });
 
   if (!navigationMode.showOperationMenus && !navigationMode.showAdminMenus) {
-    return [];
+    return EMPTY_MOBILE_NAVIGATION_ITEMS;
   }
 
-  const baseItems = BASE_ITEMS.filter(
-    item => isAiInsightsEnabled() || item.href !== '/ai-insights'
-  );
+  const aiInsightsEnabled = isAiInsightsEnabled();
 
   if (navigationMode.isHqAdmin) {
-    return [ADMIN_ITEM];
+    return ADMIN_ONLY_ITEMS;
   }
 
   if (navigationMode.showAdminMenus) {
-    return [...baseItems, ADMIN_ITEM];
+    return aiInsightsEnabled
+      ? BASE_ITEMS_WITH_ADMIN
+      : BASE_ITEMS_WITHOUT_AI_WITH_ADMIN;
   }
 
-  return baseItems;
+  return aiInsightsEnabled ? BASE_ITEMS : BASE_ITEMS_WITHOUT_AI;
 }
 
 export function MobileBottomNav({

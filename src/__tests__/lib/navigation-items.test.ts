@@ -53,9 +53,12 @@ describe('navigation items', () => {
   });
 
   it('現在パスに最も近いナビ項目を選択する', () => {
-    expect(
-      getCurrentNavigationItemId('/admin/tenants', ADMIN_MENU_ITEMS)
-    ).toBe('admin-tenants');
+    expect(getCurrentNavigationItemId('/admin/tenants', ADMIN_MENU_ITEMS)).toBe(
+      'admin-tenants'
+    );
+    expect(getCurrentNavigationItemId('/admin/chat', ADMIN_MENU_ITEMS)).toBe(
+      'admin-chat'
+    );
     expect(
       getCurrentNavigationItemId('/daily-reports/input', OPERATION_MENU_ITEMS)
     ).toBe('daily-input');
