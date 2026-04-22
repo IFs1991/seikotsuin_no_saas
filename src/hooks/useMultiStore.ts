@@ -19,8 +19,8 @@ export interface ClinicWithKPI {
   kpi?: ClinicKPI;
 }
 
-type SortDirection = 'asc' | 'desc';
-type SortField = 'revenue' | 'patients' | 'performance';
+export type SortDirection = 'asc' | 'desc';
+export type SortField = 'revenue' | 'patients' | 'performance';
 
 interface MultiStoreApiResponse {
   success: boolean;
@@ -41,6 +41,11 @@ const getSortValue = (clinic: ClinicWithKPI, field: SortField): number => {
   if (field === 'patients') return clinic.kpi?.patients ?? 0;
   return clinic.kpi?.staff_performance_score ?? 0;
 };
+
+const MULTI_STORE_KPI_URL = `${API_ENDPOINTS.ADMIN.TENANTS}?include_kpi=true`;
+
+const isAbortError = (err: unknown): boolean =>
+  err instanceof DOMException && err.name === 'AbortError';
 
 const sortClinics = (
   clinics: readonly ClinicWithKPI[],
@@ -82,6 +87,7 @@ const calculateMetrics = (
 export function useMultiStore() {
   const [clinics, setClinics] = useState<ClinicWithKPI[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchClinicsWithKPI = useCallback(async (signal?: AbortSignal) => {
@@ -89,34 +95,31 @@ export function useMultiStore() {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams();
-      params.set('include_kpi', 'true');
-
-      const response = await fetch(
-        `${API_ENDPOINTS.ADMIN.TENANTS}?${params.toString()}`,
-        {
-          method: 'GET',
-          signal,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await fetch(MULTI_STORE_KPI_URL, {
+        method: 'GET',
+        signal,
+        headers: {
+          Accept: 'application/json',
+        },
+      });
       const result = (await response.json()) as MultiStoreApiResponse;
 
-      if (!result.success) {
+      if (!response.ok || !result.success) {
         throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
       }
 
       setClinics(result.data?.items ?? []);
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (isAbortError(err)) return;
 
       const message =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(message);
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setHasLoaded(true);
+      }
     }
   }, []);
 
@@ -137,6 +140,7 @@ export function useMultiStore() {
   return {
     clinics,
     loading,
+    hasLoaded,
     error,
     fetchClinicsWithKPI,
     sortByRevenue,

@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
-import { ArrowRight, CheckCircle } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 import useAdminDashboard from '@/hooks/useAdminDashboard';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,17 +13,30 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  ADMIN_MANAGEMENT_ACTIONS,
   ADMIN_DASHBOARD_COPY,
   ADMIN_DASHBOARD_STYLES,
-  buildSummaryMetrics,
-  decorateDashboardClinics,
+  buildAdminHomeViewModel,
   formatCurrency,
   type DashboardClinic,
+  type ManagementAction,
+  type ManagementSignal,
   type SummaryMetric,
 } from '@/components/dashboard/admin-dashboard.utils';
 import { cn } from '@/lib/utils';
 
-function SummaryMetricCard({ label, value }: SummaryMetric) {
+const SIGNAL_TONE_CLASS = {
+  neutral: ADMIN_DASHBOARD_STYLES.signalNeutral,
+  warning: ADMIN_DASHBOARD_STYLES.signalWarning,
+  success: ADMIN_DASHBOARD_STYLES.signalSuccess,
+} as const;
+
+const ADMIN_COMPARISON_HREF = '/multi-store';
+
+const SummaryMetricCard = memo(function SummaryMetricCard({
+  label,
+  value,
+}: SummaryMetric) {
   return (
     <Card className={ADMIN_DASHBOARD_STYLES.metricCard}>
       <CardTitle className={ADMIN_DASHBOARD_STYLES.metricTitle}>
@@ -33,9 +47,118 @@ function SummaryMetricCard({ label, value }: SummaryMetric) {
       </CardContent>
     </Card>
   );
-}
+});
 
-function ClinicPerformanceCard({ clinic }: { clinic: DashboardClinic }) {
+const SummaryMetricsGrid = memo(function SummaryMetricsGrid({
+  metrics,
+}: {
+  metrics: readonly SummaryMetric[];
+}) {
+  return (
+    <div className={ADMIN_DASHBOARD_STYLES.summaryGrid}>
+      {metrics.map(metric => (
+        <SummaryMetricCard
+          key={metric.label}
+          label={metric.label}
+          value={metric.value}
+        />
+      ))}
+    </div>
+  );
+});
+
+const ManagementSignalCard = memo(function ManagementSignalCard({
+  signal,
+}: {
+  signal: ManagementSignal;
+}) {
+  return (
+    <Card
+      className={cn(
+        ADMIN_DASHBOARD_STYLES.signalCard,
+        SIGNAL_TONE_CLASS[signal.tone]
+      )}
+    >
+      <CardTitle className={ADMIN_DASHBOARD_STYLES.signalLabel}>
+        {signal.label}
+      </CardTitle>
+      <CardContent className='p-0'>
+        <p className={ADMIN_DASHBOARD_STYLES.signalValue}>{signal.value}</p>
+        <p className={ADMIN_DASHBOARD_STYLES.signalDetail}>{signal.detail}</p>
+      </CardContent>
+    </Card>
+  );
+});
+
+const ManagementSignalsGrid = memo(function ManagementSignalsGrid({
+  signals,
+}: {
+  signals: readonly ManagementSignal[];
+}) {
+  return (
+    <section>
+      <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
+        <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+          {ADMIN_DASHBOARD_COPY.signalTitle}
+        </h3>
+      </div>
+      <div className={ADMIN_DASHBOARD_STYLES.signalGrid}>
+        {signals.map(signal => (
+          <ManagementSignalCard key={signal.label} signal={signal} />
+        ))}
+      </div>
+    </section>
+  );
+});
+
+const ManagementActionCard = memo(function ManagementActionCard({
+  action,
+}: {
+  action: ManagementAction;
+}) {
+  return (
+    <Link href={action.href} className={ADMIN_DASHBOARD_STYLES.actionCard}>
+      <span>
+        <span className={ADMIN_DASHBOARD_STYLES.actionTitle}>
+          {action.label}
+        </span>
+        <span className={ADMIN_DASHBOARD_STYLES.actionDescription}>
+          {action.description}
+        </span>
+      </span>
+      <span className={ADMIN_DASHBOARD_STYLES.actionCta}>
+        {action.cta}
+        <ArrowRight className='ml-1 h-4 w-4' />
+      </span>
+    </Link>
+  );
+});
+
+const ManagementActionsSection = memo(function ManagementActionsSection() {
+  return (
+    <section>
+      <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
+        <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+          {ADMIN_DASHBOARD_COPY.actionTitle}
+        </h3>
+        <p className={ADMIN_DASHBOARD_STYLES.sectionDescription}>
+          {ADMIN_DASHBOARD_COPY.actionDescription}
+        </p>
+      </div>
+      <div className={ADMIN_DASHBOARD_STYLES.actionGrid}>
+        {ADMIN_MANAGEMENT_ACTIONS.map(action => (
+          <ManagementActionCard key={action.href} action={action} />
+        ))}
+      </div>
+    </section>
+  );
+});
+
+const AttentionClinicCard = memo(function AttentionClinicCard({
+  clinic,
+}: {
+  clinic: DashboardClinic;
+}) {
   return (
     <Card
       className={cn(
@@ -63,16 +186,56 @@ function ClinicPerformanceCard({ clinic }: { clinic: DashboardClinic }) {
             {clinic.averagePerformanceScore.toFixed(2)} / 5.0
           </span>
         </p>
-        <Button
-          variant='link'
-          className={ADMIN_DASHBOARD_STYLES.clinicDetailButton}
+        <Link
+          href={ADMIN_COMPARISON_HREF}
+          className={ADMIN_DASHBOARD_STYLES.clinicDetailLink}
         >
           {ADMIN_DASHBOARD_COPY.detailButton}
-        </Button>
+        </Link>
       </CardContent>
     </Card>
   );
-}
+});
+
+const AttentionClinicsPanel = memo(function AttentionClinicsPanel({
+  clinics,
+}: {
+  clinics: readonly DashboardClinic[];
+}) {
+  if (clinics.length === 0) {
+    return (
+      <Card className={ADMIN_DASHBOARD_STYLES.signalSuccess}>
+        <CardHeader>
+          <CardTitle className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+            {ADMIN_DASHBOARD_COPY.noAlertsTitle}
+          </CardTitle>
+          <CardDescription>
+            {ADMIN_DASHBOARD_COPY.noAlertsDescription}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className={ADMIN_DASHBOARD_STYLES.alertCard}>
+      <CardTitle className={ADMIN_DASHBOARD_STYLES.alertTitle}>
+        <AlertTriangle className='mr-2 h-5 w-5 text-amber-600' />
+        {ADMIN_DASHBOARD_COPY.alertTitle}
+      </CardTitle>
+      <CardContent className={ADMIN_DASHBOARD_STYLES.alertBody}>
+        {ADMIN_DASHBOARD_COPY.alertDescription}
+        <ul className='mt-3 grid grid-cols-1 gap-3 md:grid-cols-2'>
+          {clinics.map(clinic => (
+            <li key={clinic.id}>
+              <AttentionClinicCard clinic={clinic} />
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+});
 
 export default function AdminDashboard() {
   const {
@@ -84,30 +247,33 @@ export default function AdminDashboard() {
     isRefreshing,
   } = useAdminDashboard();
 
-  const { summaryMetrics, dashboardClinics, problematicClinics } =
-    useMemo(() => {
-      const decoratedClinics = decorateDashboardClinics(clinicsData);
-
-      return {
-        summaryMetrics: buildSummaryMetrics(overallKpis),
-        dashboardClinics: decoratedClinics,
-        problematicClinics: decoratedClinics.filter(
-          clinic => clinic.isProblematic
-        ),
-      };
-    }, [clinicsData, overallKpis]);
+  const { summaryMetrics, managementSignals, problematicClinics } = useMemo(
+    () => buildAdminHomeViewModel(clinicsData, overallKpis),
+    [clinicsData, overallKpis]
+  );
 
   return (
     <div className={ADMIN_DASHBOARD_STYLES.page}>
       <div className={ADMIN_DASHBOARD_STYLES.container}>
         <Card className={ADMIN_DASHBOARD_STYLES.rootCard}>
-          <CardHeader>
-            <CardTitle className={ADMIN_DASHBOARD_STYLES.title}>
-              {ADMIN_DASHBOARD_COPY.title}
-            </CardTitle>
-            <CardDescription className={ADMIN_DASHBOARD_STYLES.description}>
-              {ADMIN_DASHBOARD_COPY.description}
-            </CardDescription>
+          <CardHeader className={ADMIN_DASHBOARD_STYLES.header}>
+            <div className={ADMIN_DASHBOARD_STYLES.headerRow}>
+              <div>
+                <CardTitle className={ADMIN_DASHBOARD_STYLES.title}>
+                  {ADMIN_DASHBOARD_COPY.title}
+                </CardTitle>
+                <CardDescription className={ADMIN_DASHBOARD_STYLES.description}>
+                  {ADMIN_DASHBOARD_COPY.description}
+                </CardDescription>
+              </div>
+              <Link
+                href={ADMIN_COMPARISON_HREF}
+                className={ADMIN_DASHBOARD_STYLES.linkButton}
+              >
+                {ADMIN_DASHBOARD_COPY.comparisonButton}
+                <ArrowRight className='ml-2 h-4 w-4' />
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className={ADMIN_DASHBOARD_STYLES.body}>
             {loading ? (
@@ -136,65 +302,10 @@ export default function AdminDashboard() {
                   </p>
                 )}
 
-                <div className={ADMIN_DASHBOARD_STYLES.summaryGrid}>
-                  {summaryMetrics.map(metric => (
-                    <SummaryMetricCard
-                      key={metric.label}
-                      label={metric.label}
-                      value={metric.value}
-                    />
-                  ))}
-                </div>
-
-                {problematicClinics.length > 0 && (
-                  <Card className={ADMIN_DASHBOARD_STYLES.alertCard}>
-                    <CardTitle className={ADMIN_DASHBOARD_STYLES.alertTitle}>
-                      <CheckCircle className='mr-2 h-5 w-5 text-red-500' />
-                      {ADMIN_DASHBOARD_COPY.alertTitle}
-                    </CardTitle>
-                    <CardContent className={ADMIN_DASHBOARD_STYLES.alertBody}>
-                      {ADMIN_DASHBOARD_COPY.alertDescription}
-                      <ul className='mt-2 list-inside list-disc'>
-                        {problematicClinics.map(clinic => (
-                          <li key={clinic.id} className='text-sm'>
-                            <span className='font-medium'>{clinic.name}</span> (
-                            {ADMIN_DASHBOARD_COPY.performanceLabel}:{' '}
-                            {clinic.averagePerformanceScore.toFixed(2)} / 5.0)
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <section>
-                  <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-                    {ADMIN_DASHBOARD_COPY.performanceSectionTitle}
-                  </h3>
-                  {dashboardClinics.length === 0 ? (
-                    <div className={ADMIN_DASHBOARD_STYLES.emptyState}>
-                      {ADMIN_DASHBOARD_COPY.emptyState}
-                    </div>
-                  ) : (
-                    <div className={ADMIN_DASHBOARD_STYLES.clinicGrid}>
-                      {dashboardClinics.map(clinic => (
-                        <ClinicPerformanceCard
-                          key={clinic.id}
-                          clinic={clinic}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </section>
-
-                <div className={ADMIN_DASHBOARD_STYLES.footer}>
-                  <Button
-                    className={ADMIN_DASHBOARD_STYLES.primaryActionButton}
-                  >
-                    {ADMIN_DASHBOARD_COPY.exportButton}
-                    <ArrowRight className='ml-2 h-4 w-4' />
-                  </Button>
-                </div>
+                <SummaryMetricsGrid metrics={summaryMetrics} />
+                <ManagementSignalsGrid signals={managementSignals} />
+                <AttentionClinicsPanel clinics={problematicClinics} />
+                <ManagementActionsSection />
               </>
             )}
           </CardContent>

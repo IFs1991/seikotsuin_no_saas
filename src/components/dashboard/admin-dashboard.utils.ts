@@ -8,60 +8,144 @@ export interface SummaryMetric {
   value: string;
 }
 
+export type SignalTone = 'neutral' | 'warning' | 'success';
+
+export interface ManagementSignal {
+  label: string;
+  value: string;
+  detail: string;
+  tone: SignalTone;
+}
+
+export interface ManagementAction {
+  label: string;
+  description: string;
+  href: string;
+  cta: string;
+}
+
 export interface DashboardClinic extends AggregatedClinicData {
   isProblematic: boolean;
 }
 
+export interface AdminHomeViewModel {
+  summaryMetrics: SummaryMetric[];
+  managementSignals: ManagementSignal[];
+  problematicClinics: DashboardClinic[];
+}
+
+interface DashboardClinicInsights {
+  dashboardClinics: DashboardClinic[];
+  problematicClinics: DashboardClinic[];
+  inactiveDataClinics: number;
+}
+
+interface ManagementSignalCounts {
+  totalClinics: number;
+  problematicClinicCount: number;
+  inactiveDataClinics: number;
+}
+
 export const ADMIN_DASHBOARD_COPY = {
-  title: 'Admin統合管理ダッシュボード',
+  title: '管理ホーム',
   description:
-    '権限範囲内の店舗パフォーマンス、ランキング、グループ統計を表示します。',
+    '本部管理者が今日確認すべき店舗状態、要対応事項、主要な管理導線をまとめます。詳細な店舗比較は店舗比較分析で確認します。',
   loading: 'データを読み込み中...',
   refreshing: '最新データに更新中です。',
   errorTitle: 'ダッシュボードデータを取得できませんでした。',
-  emptyState: '表示できる店舗データがありません。',
-  summaryLabels: ['総売上', '総患者数', '平均パフォーマンス'] as const,
-  alertTitle: '問題店舗アラート',
-  alertDescription: '以下の店舗で平均パフォーマンスの低下が検出されました:',
-  performanceLabel: '平均パフォーマンス',
-  performanceSectionTitle: '店舗別パフォーマンス',
-  detailButton: '詳細へ',
+  summaryLabels: ['全店舗売上', '全店舗患者数', '全店舗平均スコア'] as const,
+  signalTitle: '今日の確認ポイント',
+  actionTitle: '管理アクション',
+  actionDescription:
+    'テナント作成、権限、設定テンプレート、分析の深掘りへすぐ移動できます。',
+  alertTitle: '要確認店舗',
+  alertDescription:
+    '平均パフォーマンスが基準を下回っています。原因の比較は店舗比較分析で確認してください。',
+  noAlertsTitle: '要確認店舗はありません',
+  noAlertsDescription:
+    '現時点では平均パフォーマンス基準を下回る店舗は検出されていません。',
+  performanceLabel: '平均スコア',
+  detailButton: '店舗比較分析で見る',
   retryButton: '再読み込み',
-  exportButton: '経営レポートをエクスポート',
+  comparisonButton: '店舗比較分析を開く',
 } as const;
 
+export const ADMIN_MANAGEMENT_ACTIONS = [
+  {
+    label: 'クリニック管理',
+    description: '親子テナント、店舗作成、状態変更を確認します。',
+    href: '/admin/tenants',
+    cta: '店舗管理へ',
+  },
+  {
+    label: 'ユーザー権限',
+    description: 'admin / clinic_admin / manager などの割り当てを管理します。',
+    href: '/admin/users',
+    cta: '権限管理へ',
+  },
+  {
+    label: '設定テンプレート',
+    description: '新規店舗作成時に適用する初期設定を整えます。',
+    href: '/admin/settings',
+    cta: '設定へ',
+  },
+  {
+    label: '店舗比較分析',
+    description: '店舗別KPI、ランキング、差分を深掘りします。',
+    href: '/multi-store',
+    cta: '分析へ',
+  },
+] as const satisfies readonly ManagementAction[];
+
 export const ADMIN_DASHBOARD_STYLES = {
-  page: 'min-h-screen bg-slate-50 p-8 text-slate-950',
-  container: 'mx-auto max-w-4xl',
+  page: 'min-h-screen bg-slate-50 p-4 text-slate-950 md:p-8',
+  container: 'mx-auto max-w-6xl',
   rootCard: 'w-full border-slate-200 bg-white',
+  header: 'space-y-4 border-b border-slate-100',
+  headerRow:
+    'flex flex-col gap-4 md:flex-row md:items-start md:justify-between',
+  title: 'text-2xl font-bold text-slate-950',
+  description: 'mt-2 max-w-3xl text-sm leading-6 text-slate-600',
   body: 'space-y-8 p-6',
-  title: 'text-center text-2xl font-bold text-slate-950',
-  description: 'mt-2 text-center text-slate-600',
   loading: 'text-center text-slate-700',
   statusText: 'text-center text-sm text-slate-500',
   errorState:
     'rounded-lg border border-red-200 bg-red-50 px-4 py-6 text-center text-red-800',
-  emptyState:
-    'rounded-lg border border-slate-200 bg-slate-50 px-4 py-6 text-center text-slate-600',
   summaryGrid: 'grid grid-cols-1 gap-4 md:grid-cols-3',
   metricCard: 'border border-slate-200 bg-white p-4 shadow-sm',
-  metricTitle: 'text-lg font-semibold text-slate-900',
+  metricTitle: 'text-sm font-semibold text-slate-600',
   metricValue: 'mt-2 text-3xl font-bold text-slate-950',
-  alertCard: 'border-l-4 border-red-500 bg-red-50 p-4 shadow-sm',
-  alertTitle: 'flex items-center text-lg font-semibold text-red-800',
+  sectionHeader: 'space-y-1',
+  sectionTitle: 'text-xl font-semibold text-slate-950',
+  sectionDescription: 'text-sm text-slate-600',
+  signalGrid: 'grid grid-cols-1 gap-4 md:grid-cols-3',
+  signalCard: 'border border-slate-200 bg-white p-4 shadow-sm',
+  signalLabel: 'text-sm font-semibold text-slate-600',
+  signalValue: 'mt-2 text-2xl font-bold text-slate-950',
+  signalDetail: 'mt-1 text-sm text-slate-500',
+  signalNeutral: 'border-slate-200',
+  signalWarning: 'border-amber-300 bg-amber-50',
+  signalSuccess: 'border-emerald-300 bg-emerald-50',
+  alertCard: 'border-l-4 border-amber-500 bg-amber-50 p-4 shadow-sm',
+  alertTitle: 'flex items-center text-lg font-semibold text-amber-900',
   alertBody: 'mt-2 text-slate-800',
-  sectionTitle: 'mb-4 text-xl font-semibold text-slate-950',
-  clinicGrid:
-    'grid max-h-96 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
   clinicCard: 'border border-slate-200 bg-white p-4 shadow-sm',
-  problematicClinicCard: 'border-2 border-red-300 bg-red-50/60',
+  problematicClinicCard: 'border-2 border-amber-300 bg-amber-50/70',
   clinicTitle: 'text-md font-bold text-slate-950',
   clinicBody: 'mt-2 text-sm text-slate-700',
   clinicKpiValue: 'font-medium text-emerald-700',
-  clinicDetailButton: 'h-auto p-0 text-slate-900',
+  actionGrid: 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4',
+  actionCard:
+    'flex h-full flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md',
+  actionTitle: 'font-semibold text-slate-950',
+  actionDescription: 'mt-2 block text-sm leading-6 text-slate-600',
+  actionCta: 'mt-4 inline-flex text-sm font-semibold text-blue-800',
+  linkButton:
+    'inline-flex items-center justify-center rounded-medical bg-[#1e3a8a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1e3a8a]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
+  clinicDetailLink:
+    'mt-3 inline-flex text-sm font-semibold text-blue-800 hover:underline',
   primaryActionButton:
     'bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90 dark:bg-[#10b981] dark:hover:bg-[#10b981]/90',
-  footer: 'mt-8 flex justify-end',
 } as const;
 
 const PERFORMANCE_ALERT_THRESHOLD = 3.0;
@@ -89,6 +173,84 @@ export function buildSummaryMetrics(
   ];
 }
 
+function hasNoRecordedActivity(clinic: AggregatedClinicData): boolean {
+  return clinic.totalRevenue <= 0 && clinic.totalPatientCount <= 0;
+}
+
+function buildManagementSignalsFromCounts({
+  totalClinics,
+  problematicClinicCount,
+  inactiveDataClinics,
+}: ManagementSignalCounts): ManagementSignal[] {
+  const healthyClinicCount =
+    totalClinics - problematicClinicCount - inactiveDataClinics;
+
+  return [
+    {
+      label: '注意店舗',
+      value: `${problematicClinicCount}件`,
+      detail: '平均スコアが基準を下回る店舗数',
+      tone: problematicClinicCount > 0 ? 'warning' : 'success',
+    },
+    {
+      label: 'データ未計上',
+      value: `${inactiveDataClinics}件`,
+      detail: '売上・患者数がまだ計上されていない店舗',
+      tone: inactiveDataClinics > 0 ? 'warning' : 'neutral',
+    },
+    {
+      label: '通常範囲',
+      value: `${Math.max(healthyClinicCount, 0)}件`,
+      detail: '現時点で基準内に収まっている店舗',
+      tone: 'success',
+    },
+  ];
+}
+
+function collectDashboardClinicInsights(
+  clinics: readonly AggregatedClinicData[]
+): DashboardClinicInsights {
+  const dashboardClinics: DashboardClinic[] = [];
+  const problematicClinics: DashboardClinic[] = [];
+  let inactiveDataClinics = 0;
+
+  for (const clinic of clinics) {
+    const isProblematic = isProblematicClinic(clinic);
+    const dashboardClinic = {
+      ...clinic,
+      isProblematic,
+    };
+
+    dashboardClinics.push(dashboardClinic);
+
+    if (isProblematic) {
+      problematicClinics.push(dashboardClinic);
+    }
+
+    if (hasNoRecordedActivity(clinic)) {
+      inactiveDataClinics += 1;
+    }
+  }
+
+  return {
+    dashboardClinics,
+    problematicClinics,
+    inactiveDataClinics,
+  };
+}
+
+export function buildManagementSignals(
+  clinics: readonly AggregatedClinicData[]
+): ManagementSignal[] {
+  const insights = collectDashboardClinicInsights(clinics);
+
+  return buildManagementSignalsFromCounts({
+    totalClinics: clinics.length,
+    problematicClinicCount: insights.problematicClinics.length,
+    inactiveDataClinics: insights.inactiveDataClinics,
+  });
+}
+
 export function isProblematicClinic(clinic: AggregatedClinicData): boolean {
   if (clinic.totalPatientCount <= 0) {
     return false;
@@ -98,10 +260,24 @@ export function isProblematicClinic(clinic: AggregatedClinicData): boolean {
 }
 
 export function decorateDashboardClinics(
-  clinics: AggregatedClinicData[]
+  clinics: readonly AggregatedClinicData[]
 ): DashboardClinic[] {
-  return clinics.map(clinic => ({
-    ...clinic,
-    isProblematic: isProblematicClinic(clinic),
-  }));
+  return collectDashboardClinicInsights(clinics).dashboardClinics;
+}
+
+export function buildAdminHomeViewModel(
+  clinics: readonly AggregatedClinicData[],
+  overallKpis: AdminDashboardPayload['overallKpis'] | null
+): AdminHomeViewModel {
+  const insights = collectDashboardClinicInsights(clinics);
+
+  return {
+    summaryMetrics: buildSummaryMetrics(overallKpis),
+    managementSignals: buildManagementSignalsFromCounts({
+      totalClinics: clinics.length,
+      problematicClinicCount: insights.problematicClinics.length,
+      inactiveDataClinics: insights.inactiveDataClinics,
+    }),
+    problematicClinics: insights.problematicClinics,
+  };
 }

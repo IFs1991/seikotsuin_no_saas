@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 /**
- * Multi-Store Page Component Tests - TDD for 多店舗分析 MVP
+ * Multi-Store Page Component Tests - TDD for 店舗比較分析 MVP
  *
  * 仕様:
  * - src/app/multi-store/page.tsx
@@ -26,6 +26,7 @@ const mockSortByPerformance = jest.fn();
 const mockUseMultiStoreReturn = {
   clinics: [],
   loading: false,
+  hasLoaded: true,
   error: null,
   fetchClinicsWithKPI: mockFetchClinicsWithKPI,
   sortByRevenue: mockSortByRevenue,
@@ -91,7 +92,7 @@ describe('MultiStorePage Component', () => {
       render(<MultiStorePage />);
 
       expect(
-        screen.getByRole('heading', { name: /多店舗分析/i })
+        screen.getByRole('heading', { name: /店舗比較分析/i })
       ).toBeInTheDocument();
     });
 
@@ -304,7 +305,7 @@ describe('MultiStorePage Component', () => {
       render(<MultiStorePage />);
 
       expect(
-        screen.getByText(/クリニックデータがありません/i)
+        screen.getByText(/比較できるクリニックデータがありません/i)
       ).toBeInTheDocument();
     });
   });

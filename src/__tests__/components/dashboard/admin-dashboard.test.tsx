@@ -36,7 +36,7 @@ describe('AdminDashboard', () => {
     expect(screen.getByText(ADMIN_DASHBOARD_COPY.loading)).toBeInTheDocument();
   });
 
-  it('renders Supabase-backed dashboard metrics and clinic cards', () => {
+  it('renders Supabase-backed admin home metrics and management actions', () => {
     mockedUseAdminDashboard.mockReturnValue({
       clinicsData: [
         {
@@ -73,11 +73,17 @@ describe('AdminDashboard', () => {
     expect(screen.getByText('¥1,890,000')).toBeInTheDocument();
     expect(screen.getByText('282人')).toBeInTheDocument();
     expect(screen.getByText('3.5 / 5.0')).toBeInTheDocument();
-    expect(screen.getByText('本町院')).toBeInTheDocument();
-    expect(screen.getAllByText('梅田院')).toHaveLength(2);
+    expect(
+      screen.getByText(ADMIN_DASHBOARD_COPY.signalTitle)
+    ).toBeInTheDocument();
+    expect(screen.getByText('注意店舗')).toBeInTheDocument();
+    expect(screen.getByText('梅田院')).toBeInTheDocument();
+    expect(screen.getByText('クリニック管理')).toBeInTheDocument();
+    expect(screen.getByText('ユーザー権限')).toBeInTheDocument();
     expect(
       screen.getByText(ADMIN_DASHBOARD_COPY.alertTitle)
     ).toBeInTheDocument();
+    expect(screen.getAllByText('店舗比較分析')).not.toHaveLength(0);
   });
 
   it('shows an error state and retries loading on demand', () => {

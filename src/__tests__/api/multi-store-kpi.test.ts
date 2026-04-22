@@ -1,5 +1,5 @@
 /**
- * 多店舗分析API ユニットテスト（TDD）
+ * 店舗比較分析API ユニットテスト（TDD）
  *
  * 仕様:
  * - GET /api/admin/tenants を拡張
@@ -53,7 +53,7 @@ function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
   return builder;
 }
 
-describe('多店舗分析API - GET /api/admin/tenants', () => {
+describe('店舗比較分析API - GET /api/admin/tenants', () => {
   const mockClinicData = [
     {
       id: 'clinic-1',

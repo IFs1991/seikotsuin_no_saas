@@ -57,6 +57,7 @@ describe('useMultiStore', () => {
 
       expect(result.current.clinics).toEqual([]);
       expect(result.current.loading).toBe(false);
+      expect(result.current.hasLoaded).toBe(false);
       expect(result.current.error).toBeNull();
     });
   });
@@ -79,6 +80,7 @@ describe('useMultiStore', () => {
       });
 
       expect(result.current.clinics).toHaveLength(2);
+      expect(result.current.hasLoaded).toBe(true);
       expect(result.current.clinics[0].kpi).toBeDefined();
       expect(result.current.clinics[0].kpi?.revenue).toBe(500000);
       expect(result.current.clinics[0].kpi?.patients).toBe(150);
@@ -134,6 +136,7 @@ describe('useMultiStore', () => {
       });
 
       expect(result.current.error).toBe('権限がありません');
+      expect(result.current.hasLoaded).toBe(true);
       expect(result.current.clinics).toEqual([]);
     });
 
@@ -151,6 +154,7 @@ describe('useMultiStore', () => {
       });
 
       expect(result.current.error).toBe('Network error');
+      expect(result.current.hasLoaded).toBe(true);
     });
   });
 

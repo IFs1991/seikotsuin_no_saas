@@ -65,11 +65,11 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
 ];
 
 export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
-  { id: 'admin', label: '管理ダッシュボード', href: '/admin' },
+  { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
   { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
-  { id: 'multi-store', label: '多店舗分析', href: '/multi-store' },
+  { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
 ];
 
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [

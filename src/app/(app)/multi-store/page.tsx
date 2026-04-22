@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -8,10 +8,12 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
-import { useMultiStore, ClinicWithKPI } from '@/hooks/useMultiStore';
-
-type SortDirection = 'asc' | 'desc';
-type SortField = 'revenue' | 'patients' | 'performance';
+import {
+  useMultiStore,
+  type ClinicWithKPI,
+  type SortDirection,
+  type SortField,
+} from '@/hooks/useMultiStore';
 
 interface SummaryCardProps {
   label: string;
@@ -27,12 +29,32 @@ interface SortableHeaderProps {
   onSort: (field: SortField) => void;
 }
 
+interface SummaryItem extends SummaryCardProps {
+  key: string;
+}
+
 interface ClinicsTableProps {
   clinics: readonly ClinicWithKPI[];
   sortField: SortField | null;
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
 }
+
+const MULTI_STORE_COPY = {
+  title: '店舗比較分析',
+  description:
+    '管理ホームで検知した注意店舗やKPI差分を、店舗別の売上・患者数・パフォーマンスで深掘りします。',
+  loading: '店舗KPIを読み込み中...',
+  emptyState: '比較できるクリニックデータがありません',
+  summary: {
+    revenue: '比較対象の合計収益',
+    patients: '比較対象の合計患者数',
+    performance: '比較対象の平均スコア',
+  },
+  tableTitle: '店舗別KPI比較',
+  tableDescription:
+    '各店舗の主要指標を一覧で比較します。ヘッダーをクリックすると並び替えできます。',
+} as const;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
 const TABLE_HEADER_CLASS =
@@ -46,7 +68,11 @@ const formatCurrency = (value: number): string =>
 const formatPerformanceScore = (value: number | null | undefined): string =>
   value === null || value === undefined ? '-' : String(value);
 
-function SummaryCard({ label, value, testId }: SummaryCardProps) {
+const SummaryCard = memo(function SummaryCard({
+  label,
+  value,
+  testId,
+}: SummaryCardProps) {
   return (
     <Card className='bg-card shadow-md'>
       <CardHeader className='pb-2'>
@@ -64,9 +90,44 @@ function SummaryCard({ label, value, testId }: SummaryCardProps) {
       </CardContent>
     </Card>
   );
-}
+});
 
-const SortableHeader = React.memo(function SortableHeader({
+const MultiStoreHeader = memo(function MultiStoreHeader() {
+  return (
+    <header className='mb-8 text-center'>
+      <p className='mb-2 text-sm font-semibold text-blue-700 dark:text-blue-300'>
+        分析専用
+      </p>
+      <h1 className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'>
+        {MULTI_STORE_COPY.title}
+      </h1>
+      <p className='mx-auto mt-3 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300'>
+        {MULTI_STORE_COPY.description}
+      </p>
+    </header>
+  );
+});
+
+const SummaryCardsGrid = memo(function SummaryCardsGrid({
+  items,
+}: {
+  items: readonly SummaryItem[];
+}) {
+  return (
+    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
+      {items.map(item => (
+        <SummaryCard
+          key={item.key}
+          label={item.label}
+          value={item.value}
+          testId={item.testId}
+        />
+      ))}
+    </div>
+  );
+});
+
+const SortableHeader = memo(function SortableHeader({
   label,
   field,
   activeField,
@@ -96,7 +157,7 @@ const SortableHeader = React.memo(function SortableHeader({
   );
 });
 
-const ClinicStatusBadge = React.memo(function ClinicStatusBadge({
+const ClinicStatusBadge = memo(function ClinicStatusBadge({
   isActive,
 }: {
   isActive: boolean;
@@ -114,7 +175,7 @@ const ClinicStatusBadge = React.memo(function ClinicStatusBadge({
   );
 });
 
-const ClinicsTable = React.memo(function ClinicsTable({
+const ClinicsTable = memo(function ClinicsTable({
   clinics,
   sortField,
   sortDirection,
@@ -123,7 +184,7 @@ const ClinicsTable = React.memo(function ClinicsTable({
   if (clinics.length === 0) {
     return (
       <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
-        クリニックデータがありません
+        {MULTI_STORE_COPY.emptyState}
       </p>
     );
   }
@@ -182,10 +243,32 @@ const ClinicsTable = React.memo(function ClinicsTable({
   );
 });
 
+const LoadingState = memo(function LoadingState() {
+  return (
+    <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-gray-900 dark:text-gray-100'>
+      <div
+        data-testid='loading-spinner'
+        role='status'
+        aria-label={MULTI_STORE_COPY.loading}
+        className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'
+      ></div>
+    </div>
+  );
+});
+
+const ErrorState = memo(function ErrorState({ error }: { error: string }) {
+  return (
+    <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
+      <p>{error}</p>
+    </div>
+  );
+});
+
 const MultiStorePage = () => {
   const {
     clinics,
     loading,
+    hasLoaded,
     error,
     fetchClinicsWithKPI,
     sortByRevenue,
@@ -198,6 +281,32 @@ const MultiStorePage = () => {
 
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const summaryItems = useMemo<SummaryItem[]>(
+    () => [
+      {
+        key: 'revenue',
+        label: MULTI_STORE_COPY.summary.revenue,
+        value: `${formatCurrency(totalRevenue)}円`,
+        testId: 'total-revenue',
+      },
+      {
+        key: 'patients',
+        label: MULTI_STORE_COPY.summary.patients,
+        value: `${totalPatients}人`,
+        testId: 'total-patients',
+      },
+      {
+        key: 'performance',
+        label: MULTI_STORE_COPY.summary.performance,
+        value:
+          averagePerformanceScore !== null
+            ? averagePerformanceScore.toFixed(2)
+            : '-',
+        testId: 'average-performance',
+      },
+    ],
+    [averagePerformanceScore, totalPatients, totalRevenue]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -213,74 +322,43 @@ const MultiStorePage = () => {
       setSortField(field);
       setSortDirection(newDirection);
 
-      if (field === 'revenue') {
-        sortByRevenue(newDirection);
-      } else if (field === 'patients') {
-        sortByPatients(newDirection);
-      } else if (field === 'performance') {
-        sortByPerformance(newDirection);
+      switch (field) {
+        case 'revenue':
+          sortByRevenue(newDirection);
+          break;
+        case 'patients':
+          sortByPatients(newDirection);
+          break;
+        case 'performance':
+          sortByPerformance(newDirection);
+          break;
       }
     },
     [sortByPatients, sortByPerformance, sortByRevenue, sortDirection, sortField]
   );
 
-  if (loading) {
-    return (
-      <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-gray-900 dark:text-gray-100'>
-        <div
-          data-testid='loading-spinner'
-          className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'
-        ></div>
-      </div>
-    );
+  if (!hasLoaded || loading) {
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
-        <p>{error}</p>
-      </div>
-    );
+    return <ErrorState error={error} />;
   }
 
   return (
     <div className='bg-white dark:bg-gray-800 min-h-screen text-gray-900 dark:text-gray-100 p-4'>
       <div className='max-w-6xl mx-auto py-8'>
-        <h1 className='text-2xl font-bold text-center text-[#1e3a8a] dark:text-gray-100 mb-8'>
-          多店舗分析
-        </h1>
-
-        {/* サマリーカード */}
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-8'>
-          <SummaryCard
-            label='合計収益'
-            value={`${formatCurrency(totalRevenue)}円`}
-            testId='total-revenue'
-          />
-          <SummaryCard
-            label='合計患者数'
-            value={`${totalPatients}人`}
-            testId='total-patients'
-          />
-          <SummaryCard
-            label='平均パフォーマンス'
-            value={
-              averagePerformanceScore !== null
-                ? averagePerformanceScore.toFixed(2)
-                : '-'
-            }
-            testId='average-performance'
-          />
-        </div>
+        <MultiStoreHeader />
+        <SummaryCardsGrid items={summaryItems} />
 
         {/* 店舗別KPI比較テーブル */}
         <Card className='bg-card shadow-lg'>
           <CardHeader>
             <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-              店舗別KPI比較
+              {MULTI_STORE_COPY.tableTitle}
             </CardTitle>
             <CardDescription className='text-gray-600 dark:text-gray-300'>
-              各店舗の主要指標を比較します。ヘッダーをクリックでソートできます。
+              {MULTI_STORE_COPY.tableDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
