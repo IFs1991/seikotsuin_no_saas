@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,10 +46,12 @@ import {
   getPermissionAccountPrimary,
   getPermissionAccountSecondary,
   getPermissionInputLabel,
+  permissionMatchesFilters,
   toAdminUserRole,
   toRoleFilterValue,
   validatePermissionForm,
   type AdminUsersRoleFilter,
+  type PermissionEntry,
   type PermissionFormState,
   type UserPermissionCandidate,
 } from '@/lib/admin/users';
@@ -65,6 +73,8 @@ export default function AdminUsersPage() {
     fetchPermissions,
     assignPermission,
     updatePermission,
+    applyPermissionToList,
+    removePermissionFromList,
     revokePermission,
   } = useAdminUsers();
   const {
@@ -152,14 +162,24 @@ export default function AdminUsersPage() {
     };
   }, [fetchPermissions, currentFilters]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setEditingPermissionId(null);
     setFormState(createEmptyPermissionFormState());
     setUserSearch('');
     setSelectedUserLabel('');
     setIsUserPickerOpen(false);
     clearCandidates();
-  };
+  }, [clearCandidates]);
+
+  const syncPermissionList = useCallback(
+    (permission: PermissionEntry) => {
+      applyPermissionToList(
+        permission,
+        permissionMatchesFilters(permission, currentFilters)
+      );
+    },
+    [applyPermissionToList, currentFilters]
+  );
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -178,8 +198,8 @@ export default function AdminUsersPage() {
       );
       if (updated) {
         setNotice('権限を更新しました');
+        syncPermissionList(updated);
         resetForm();
-        fetchPermissions(currentFilters);
       }
       return;
     }
@@ -189,8 +209,8 @@ export default function AdminUsersPage() {
     );
     if (created) {
       setNotice('権限を付与しました');
+      syncPermissionList(created);
       resetForm();
-      fetchPermissions(currentFilters);
     }
   };
 
@@ -205,7 +225,7 @@ export default function AdminUsersPage() {
     setNotice(null);
   };
 
-  const handleUserSearchChange = (value: string) => {
+  const handleUserSearchChange = useCallback((value: string) => {
     setUserSearch(value);
     setSelectedUserLabel('');
     setFormState(prev => ({
@@ -213,27 +233,30 @@ export default function AdminUsersPage() {
       user_id: '',
     }));
     setIsUserPickerOpen(true);
-  };
+  }, []);
 
-  const handleUserSelect = (candidate: UserPermissionCandidate) => {
-    const label = getCandidateInputLabel(candidate);
-    setUserSearch(label);
-    setSelectedUserLabel(label);
-    setFormState(prev => ({
-      ...prev,
-      user_id: candidate.user_id,
-      clinic_id: prev.clinic_id || candidate.clinic_id || '',
-    }));
-    setIsUserPickerOpen(false);
-    clearCandidates();
-  };
+  const handleUserSelect = useCallback(
+    (candidate: UserPermissionCandidate) => {
+      const label = getCandidateInputLabel(candidate);
+      setUserSearch(label);
+      setSelectedUserLabel(label);
+      setFormState(prev => ({
+        ...prev,
+        user_id: candidate.user_id,
+        clinic_id: prev.clinic_id || candidate.clinic_id || '',
+      }));
+      setIsUserPickerOpen(false);
+      clearCandidates();
+    },
+    [clearCandidates]
+  );
 
   const handleRevoke = async (permissionId: string) => {
     setNotice(null);
     const ok = await revokePermission(permissionId);
     if (ok) {
       setNotice('権限を外しました');
-      fetchPermissions(currentFilters);
+      removePermissionFromList(permissionId);
     }
   };
 

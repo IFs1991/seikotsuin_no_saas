@@ -167,6 +167,49 @@ export function useAdminUsers() {
     []
   );
 
+  const applyPermissionToList = useCallback(
+    (permission: PermissionEntry, keepInList = true) => {
+      permissionListRequestIdRef.current += 1;
+
+      setPermissions(current => {
+        const existing = current.find(item => item.id === permission.id);
+
+        if (!keepInList) {
+          return existing
+            ? current.filter(item => item.id !== permission.id)
+            : current;
+        }
+
+        if (!existing) {
+          return [permission, ...current];
+        }
+
+        const mergedPermission: PermissionEntry = {
+          ...existing,
+          ...permission,
+          profile_email: permission.profile_email ?? existing.profile_email,
+          profile_name: permission.profile_name ?? existing.profile_name,
+          clinic_name: permission.clinic_name ?? existing.clinic_name,
+        };
+
+        return current.map(item =>
+          item.id === permission.id ? mergedPermission : item
+        );
+      });
+    },
+    []
+  );
+
+  const removePermissionFromList = useCallback((permissionId: string) => {
+    permissionListRequestIdRef.current += 1;
+    setPermissions(current => {
+      const exists = current.some(item => item.id === permissionId);
+      return exists
+        ? current.filter(item => item.id !== permissionId)
+        : current;
+    });
+  }, []);
+
   const revokePermission = useCallback(async (permissionId: string) => {
     try {
       setLoading(true);
@@ -198,6 +241,8 @@ export function useAdminUsers() {
     fetchPermissions,
     assignPermission,
     updatePermission,
+    applyPermissionToList,
+    removePermissionFromList,
     revokePermission,
   };
 }

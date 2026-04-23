@@ -8,6 +8,8 @@ import {
   getCandidateInputLabel,
   getPermissionAccountPrimary,
   getPermissionAccountSecondary,
+  permissionMatchesFilters,
+  toPermissionEntry,
   validatePermissionForm,
 } from '@/lib/admin/users';
 
@@ -116,5 +118,64 @@ describe('admin users helpers', () => {
 
     expect(getPermissionAccountPrimary(permission)).toBe('佐藤 花子');
     expect(getPermissionAccountSecondary(permission)).toBe('sato@example.com');
+  });
+
+  test('mutation rows are normalized for the admin users UI', () => {
+    expect(
+      toPermissionEntry(
+        {
+          id: 'permission-1',
+          staff_id: 'user-1',
+          role: 'manager',
+          clinic_id: 'clinic-1',
+          clinics: { name: '新宿院' },
+          username: 'sato@example.com',
+          created_at: '2026-04-24T00:00:00.000Z',
+        },
+        {
+          email: 'sato@example.com',
+          full_name: '佐藤 花子',
+        }
+      )
+    ).toEqual({
+      id: 'permission-1',
+      user_id: 'user-1',
+      role: 'manager',
+      clinic_id: 'clinic-1',
+      clinic_name: '新宿院',
+      username: 'sato@example.com',
+      profile_email: 'sato@example.com',
+      profile_name: '佐藤 花子',
+      created_at: '2026-04-24T00:00:00.000Z',
+    });
+  });
+
+  test('permission filter matching follows the current list filters', () => {
+    const permission = {
+      id: 'permission-1',
+      user_id: 'user-1',
+      role: 'manager',
+      clinic_id: 'clinic-1',
+      clinic_name: '新宿院',
+      username: 'sato@example.com',
+      profile_email: 'sato@example.com',
+      profile_name: '佐藤 花子',
+      created_at: null,
+    };
+
+    expect(
+      permissionMatchesFilters(permission, {
+        role: 'manager',
+        clinicId: 'clinic-1',
+        search: '花子',
+      })
+    ).toBe(true);
+    expect(
+      permissionMatchesFilters(permission, {
+        role: 'staff',
+        clinicId: 'clinic-1',
+        search: '花子',
+      })
+    ).toBe(false);
   });
 });

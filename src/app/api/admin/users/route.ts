@@ -12,6 +12,10 @@ import {
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { createAdminClient } from '@/lib/supabase';
+import {
+  toPermissionEntry,
+  type PermissionMutationRow,
+} from '@/lib/admin/users';
 
 const AssignPermissionSchema = z.object({
   user_id: z.string().uuid(),
@@ -21,15 +25,7 @@ const AssignPermissionSchema = z.object({
 
 const requireAdmin = (role: string) => role === 'admin';
 
-type PermissionRow = {
-  id: string;
-  staff_id: string | null;
-  role: string;
-  clinic_id: string | null;
-  created_at: string | null;
-  username: string;
-  clinics?: { name: string | null }[] | { name: string | null } | null;
-};
+type PermissionRow = PermissionMutationRow;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -115,32 +111,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    let items = rows.map(row => {
-      const clinicsData = row.clinics;
-      let clinicName: string | null = null;
-      if (clinicsData) {
-        if (Array.isArray(clinicsData)) {
-          clinicName = clinicsData[0]?.name ?? null;
-        } else {
-          clinicName = clinicsData.name ?? null;
-        }
-      }
-      return {
-        id: row.id,
-        user_id: row.staff_id,
-        role: row.role,
-        clinic_id: row.clinic_id,
-        clinic_name: clinicName,
-        username: row.username,
-        profile_email: row.staff_id
-          ? profileMap.get(row.staff_id)?.email
-          : null,
-        profile_name: row.staff_id
-          ? profileMap.get(row.staff_id)?.full_name
-          : null,
-        created_at: row.created_at,
-      };
-    });
+    let items = rows.map(row =>
+      toPermissionEntry(row, row.staff_id ? profileMap.get(row.staff_id) : {})
+    );
 
     if (search) {
       const lowered = search.toLowerCase();
@@ -204,7 +177,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile, error: profileError } = await adminSupabase
       .from('profiles')
-      .select('email')
+      .select('email, full_name')
       .eq('user_id', user_id)
       .maybeSingle();
 
@@ -254,7 +227,9 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', existingPermission.id)
-        .select('id, staff_id, role, clinic_id, username, created_at')
+        .select(
+          'id, staff_id, role, clinic_id, username, created_at, clinics(name)'
+        )
         .single();
     } else {
       result = await adminSupabase
@@ -266,7 +241,9 @@ export async function POST(request: NextRequest) {
           username,
           hashed_password: 'managed_by_supabase',
         })
-        .select('id, staff_id, role, clinic_id, username, created_at')
+        .select(
+          'id, staff_id, role, clinic_id, username, created_at, clinics(name)'
+        )
         .single();
     }
 
@@ -292,7 +269,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    return createSuccessResponse(result.data, existingPermission ? 200 : 201);
+    return createSuccessResponse(
+      toPermissionEntry(result.data, {
+        email: profile.email,
+        full_name: profile.full_name,
+      }),
+      existingPermission ? 200 : 201
+    );
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/users',

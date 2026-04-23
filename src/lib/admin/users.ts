@@ -21,6 +21,27 @@ export type PermissionEntry = {
   created_at?: string | null;
 };
 
+type PermissionClinicRelation =
+  | { name: string | null }[]
+  | { name: string | null }
+  | null
+  | undefined;
+
+export type PermissionMutationRow = {
+  id: string;
+  staff_id: string | null;
+  role: string;
+  clinic_id: string | null;
+  username: string;
+  created_at?: string | null;
+  clinics?: PermissionClinicRelation;
+};
+
+type PermissionProfileInput = {
+  email?: string | null;
+  full_name?: string | null;
+};
+
 export type UserPermissionCandidate = {
   user_id: string;
   email: string;
@@ -68,6 +89,37 @@ type EditablePermission = Pick<
   'user_id' | 'role' | 'clinic_id'
 >;
 
+export function getPermissionClinicName(
+  clinics: PermissionClinicRelation
+): string | null {
+  if (!clinics) {
+    return null;
+  }
+
+  if (Array.isArray(clinics)) {
+    return clinics[0]?.name ?? null;
+  }
+
+  return clinics.name ?? null;
+}
+
+export function toPermissionEntry(
+  row: PermissionMutationRow,
+  profile: PermissionProfileInput = {}
+): PermissionEntry {
+  return {
+    id: row.id,
+    user_id: row.staff_id,
+    role: row.role,
+    clinic_id: row.clinic_id,
+    clinic_name: getPermissionClinicName(row.clinics),
+    username: row.username,
+    profile_email: profile.email ?? null,
+    profile_name: profile.full_name ?? null,
+    created_at: row.created_at ?? null,
+  };
+}
+
 export function createEmptyPermissionFormState(): PermissionFormState {
   return {
     user_id: '',
@@ -105,6 +157,32 @@ export function buildPermissionFilters({
   }
 
   return filters;
+}
+
+export function permissionMatchesFilters(
+  permission: PermissionEntry,
+  filters: PermissionFilters
+): boolean {
+  if (filters.role && permission.role !== filters.role) {
+    return false;
+  }
+
+  if (filters.clinicId && permission.clinic_id !== filters.clinicId) {
+    return false;
+  }
+
+  const search = filters.search?.trim().toLowerCase();
+  if (!search) {
+    return true;
+  }
+
+  return [
+    permission.username,
+    permission.profile_email,
+    permission.profile_name,
+    permission.user_id,
+    permission.clinic_name,
+  ].some(value => (value ?? '').toLowerCase().includes(search));
 }
 
 export function getPermissionClinicId(

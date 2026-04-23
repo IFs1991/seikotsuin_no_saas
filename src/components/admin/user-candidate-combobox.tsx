@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   USER_CANDIDATE_MIN_SEARCH_LENGTH,
@@ -23,7 +24,7 @@ type UserCandidateComboboxProps = {
   onSelect: (candidate: UserPermissionCandidate) => void;
 };
 
-export function UserCandidateCombobox({
+export const UserCandidateCombobox = memo(function UserCandidateCombobox({
   candidates,
   disabled,
   error,
@@ -102,7 +103,7 @@ export function UserCandidateCombobox({
                 role='option'
                 aria-selected={selectedUserId === candidate.user_id}
                 className='block w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
-                onMouseDown={event => event.preventDefault()}
+                onPointerDown={event => event.preventDefault()}
                 onClick={() => onSelect(candidate)}
               >
                 <span className='block text-sm font-medium text-gray-900'>
@@ -127,4 +128,6 @@ export function UserCandidateCombobox({
       </p>
     </div>
   );
-}
+});
+
+UserCandidateCombobox.displayName = 'UserCandidateCombobox';

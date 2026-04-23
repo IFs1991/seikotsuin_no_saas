@@ -11,6 +11,8 @@ import {
   ADMIN_USER_ROLE_VALUES,
   type AdminUserRole,
 } from '@/lib/constants/roles';
+import { createAdminClient } from '@/lib/supabase';
+import { toPermissionEntry } from '@/lib/admin/users';
 
 const PermissionUpdateSchema = z
   .object({
@@ -47,7 +49,7 @@ export async function PATCH(
       return processResult.error!;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
+    const { auth, permissions, body } = processResult;
     if (!requireAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
@@ -61,8 +63,10 @@ export async function PATCH(
       );
     }
 
+    const adminSupabase = createAdminClient();
+
     if (parsed.data.revoke) {
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from('user_permissions')
         .delete()
         .eq('id', permission_id);
@@ -99,11 +103,13 @@ export async function PATCH(
     if (parsed.data.clinic_id !== undefined)
       updatePayload.clinic_id = parsed.data.clinic_id;
 
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
       .from('user_permissions')
       .update(updatePayload)
       .eq('id', permission_id)
-      .select('id, staff_id, role, clinic_id, username, created_at')
+      .select(
+        'id, staff_id, role, clinic_id, username, created_at, clinics(name)'
+      )
       .single();
 
     if (error) {
@@ -124,7 +130,7 @@ export async function PATCH(
       updatePayload
     );
 
-    return createSuccessResponse(data);
+    return createSuccessResponse(toPermissionEntry(data));
   } catch (error) {
     logError(error, {
       endpoint: '/api/admin/users/[permission_id]',
