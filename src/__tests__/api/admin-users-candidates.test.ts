@@ -13,6 +13,12 @@ jest.mock('@/lib/api-helpers', () => {
 
 jest.mock('@/lib/supabase', () => ({
   createAdminClient: jest.fn(),
+  resolveScopedClinicIds: jest.fn(permissions => {
+    if (permissions?.clinic_scope_ids?.length) {
+      return permissions.clinic_scope_ids;
+    }
+    return permissions?.clinic_id ? [permissions.clinic_id] : null;
+  }),
 }));
 
 const processApiRequestMock = processApiRequest as jest.Mock;
@@ -51,7 +57,7 @@ function createListQuery<T extends QueryRow>(rows: T[]) {
 
 describe('GET /api/admin/users/candidates', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
   });
 
   it('Japanese name search returns display-safe user candidates', async () => {
@@ -138,7 +144,9 @@ describe('GET /api/admin/users/candidates', () => {
     ]);
   });
 
-  it('rejects non-admin permission even when authenticated', async () => {
+  it('limits clinic_admin candidates to scoped clinics', async () => {
+    const scopedClinicIds = ['clinic-a', 'clinic-b'];
+
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: {
@@ -146,7 +154,88 @@ describe('GET /api/admin/users/candidates', () => {
         email: 'clinic-admin@example.com',
         role: 'clinic_admin',
       },
-      permissions: { role: 'clinic_admin', clinic_id: 'clinic-1' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-a',
+        clinic_scope_ids: scopedClinicIds,
+      },
+      supabase: {},
+    });
+
+    const staffSearchQuery = createListQuery([
+      {
+        id: 'user-1',
+        email: 'staff-sato@example.com',
+        name: '佐藤 花子',
+        clinic_id: 'clinic-b',
+        role: 'therapist',
+        clinics: { name: '渋谷院' },
+      },
+    ]);
+    const profileSearchQuery = createListQuery([]);
+    const profileDetailsQuery = createListQuery([
+      {
+        user_id: 'user-1',
+        email: 'sato@example.com',
+        full_name: '佐藤 花子',
+        is_active: true,
+      },
+    ]);
+    const permissionsQuery = createListQuery([]);
+
+    const tableQueries = {
+      staff: [staffSearchQuery],
+      profiles: [profileSearchQuery, profileDetailsQuery],
+      user_permissions: [permissionsQuery],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(
+      adminClient as unknown as ReturnType<typeof createAdminClient>
+    );
+
+    const { GET } = await import('@/app/api/admin/users/candidates/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/admin/users/candidates?search=sato')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(staffSearchQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(profileDetailsQuery.in).toHaveBeenCalledWith('user_id', ['user-1']);
+    expect(permissionsQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(body.data.items).toEqual([
+      expect.objectContaining({
+        user_id: 'user-1',
+        clinic_id: 'clinic-b',
+        clinic_name: '渋谷院',
+      }),
+    ]);
+  });
+
+  it('rejects non-admin-ui permission even when authenticated', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'manager-1',
+        email: 'manager@example.com',
+        role: 'manager',
+      },
+      permissions: { role: 'manager', clinic_id: 'clinic-1' },
       supabase: {},
     });
 

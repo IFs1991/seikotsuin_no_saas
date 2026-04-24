@@ -20,6 +20,21 @@ jest.mock('@/lib/audit-logger', () => ({
 
 jest.mock('@/lib/supabase', () => ({
   createAdminClient: jest.fn(),
+  resolveScopedClinicIds: jest.fn(permissions => {
+    if (permissions?.clinic_scope_ids?.length) {
+      return permissions.clinic_scope_ids;
+    }
+    return permissions?.clinic_id ? [permissions.clinic_id] : null;
+  }),
+  canAccessClinicScope: jest.fn((permissions, clinicId) => {
+    const scoped =
+      permissions?.clinic_scope_ids?.length > 0
+        ? permissions.clinic_scope_ids
+        : permissions?.clinic_id
+          ? [permissions.clinic_id]
+          : [];
+    return scoped.includes(clinicId);
+  }),
 }));
 
 const processApiRequestMock = processApiRequest as jest.Mock;
@@ -32,7 +47,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
   const clinicId = '33333333-3333-4333-8333-333333333333';
 
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
     logAdminActionMock.mockResolvedValue(undefined);
   });
 
@@ -124,5 +139,78 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         }),
       })
     );
+  });
+
+  it('prevents clinic_admin from updating permissions outside scoped clinics', async () => {
+    const scopedClinicId = '44444444-4444-4444-8444-444444444444';
+    const outsideClinicId = '55555555-5555-4555-8555-555555555555';
+
+    const userScopedSupabase = {
+      from: jest.fn(() => {
+        throw new Error('user scoped client should not be used');
+      }),
+    };
+
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'staff',
+          clinic_id: outsideClinicId,
+          username: 'staff@example.com',
+        },
+        error: null,
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue({
+      from: jest.fn((table: string) => {
+        if (table !== 'user_permissions') {
+          throw new Error(`Unexpected table: ${table}`);
+        }
+        return existingQuery;
+      }),
+    });
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'clinic-admin-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: scopedClinicId,
+        clinic_scope_ids: [scopedClinicId],
+      },
+      supabase: userScopedSupabase,
+      body: {
+        role: 'manager',
+        clinic_id: outsideClinicId,
+      },
+    });
+
+    const { PATCH } = await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'manager',
+          clinic_id: outsideClinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(existingQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
+    expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 });

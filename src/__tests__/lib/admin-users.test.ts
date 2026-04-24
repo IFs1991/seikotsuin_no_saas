@@ -1,11 +1,14 @@
 import {
   CLINIC_FILTER_ALL,
+  CLINIC_ADMIN_ASSIGNABLE_ROLES,
   ROLE_FILTER_ALL,
   buildPermissionFilters,
+  canClinicAdminManagePermissionRole,
   createAssignPermissionPayload,
   createPermissionFormState,
   createUpdatePermissionPayload,
   getCandidateInputLabel,
+  getAssignableAdminUserRoleOptions,
   getPermissionAccountPrimary,
   getPermissionAccountSecondary,
   permissionMatchesFilters,
@@ -177,5 +180,26 @@ describe('admin users helpers', () => {
         search: '花子',
       })
     ).toBe(false);
+  });
+
+  test('clinic_admin role options are limited to staff-manageable roles', () => {
+    expect(CLINIC_ADMIN_ASSIGNABLE_ROLES).toEqual([
+      'manager',
+      'therapist',
+      'staff',
+    ]);
+    expect(getAssignableAdminUserRoleOptions('clinic_admin').map(o => o.value))
+      .toEqual(['manager', 'therapist', 'staff']);
+    expect(getAssignableAdminUserRoleOptions('admin').map(o => o.value)).toEqual(
+      ['admin', 'clinic_admin', 'manager', 'therapist', 'staff']
+    );
+  });
+
+  test('clinic_admin cannot manage admin or clinic_admin permission rows', () => {
+    expect(canClinicAdminManagePermissionRole('manager')).toBe(true);
+    expect(canClinicAdminManagePermissionRole('therapist')).toBe(true);
+    expect(canClinicAdminManagePermissionRole('staff')).toBe(true);
+    expect(canClinicAdminManagePermissionRole('clinic_admin')).toBe(false);
+    expect(canClinicAdminManagePermissionRole('admin')).toBe(false);
   });
 });

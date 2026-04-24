@@ -1,6 +1,16 @@
-import { isAdminUserRole, type AdminUserRole } from '@/lib/constants/roles';
+import {
+  ADMIN_USER_ROLE_OPTIONS,
+  isAdminUserRole,
+  normalizeRole,
+  type AdminUserRole,
+} from '@/lib/constants/roles';
 
 export const DEFAULT_ADMIN_USER_ROLE: AdminUserRole = 'clinic_admin';
+export const CLINIC_ADMIN_ASSIGNABLE_ROLES = [
+  'manager',
+  'therapist',
+  'staff',
+] as const satisfies readonly AdminUserRole[];
 export const ROLE_FILTER_ALL = 'all';
 export const CLINIC_FILTER_ALL = 'all';
 export const NO_CLINIC_VALUE = 'none';
@@ -89,6 +99,38 @@ type EditablePermission = Pick<
   'user_id' | 'role' | 'clinic_id'
 >;
 
+const CLINIC_ADMIN_ASSIGNABLE_ROLE_SET = new Set<string>(
+  CLINIC_ADMIN_ASSIGNABLE_ROLES
+);
+
+export function canClinicAdminManagePermissionRole(
+  role: string | null | undefined
+): boolean {
+  const normalizedRole = normalizeRole(role);
+  return (
+    normalizedRole !== null &&
+    CLINIC_ADMIN_ASSIGNABLE_ROLE_SET.has(normalizedRole)
+  );
+}
+
+export function getAssignableAdminUserRoleOptions(
+  actorRole: string | null | undefined
+) {
+  const normalizedRole = normalizeRole(actorRole);
+
+  if (normalizedRole === 'admin') {
+    return ADMIN_USER_ROLE_OPTIONS;
+  }
+
+  if (normalizedRole === 'clinic_admin') {
+    return ADMIN_USER_ROLE_OPTIONS.filter(option =>
+      canClinicAdminManagePermissionRole(option.value)
+    );
+  }
+
+  return [];
+}
+
 export function getPermissionClinicName(
   clinics: PermissionClinicRelation
 ): string | null {
@@ -120,10 +162,12 @@ export function toPermissionEntry(
   };
 }
 
-export function createEmptyPermissionFormState(): PermissionFormState {
+export function createEmptyPermissionFormState(
+  role: AdminUserRole = DEFAULT_ADMIN_USER_ROLE
+): PermissionFormState {
   return {
     user_id: '',
-    role: DEFAULT_ADMIN_USER_ROLE,
+    role,
     clinic_id: '',
   };
 }

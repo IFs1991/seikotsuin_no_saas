@@ -11,6 +11,13 @@ import {
   type UserPermissionCandidate,
 } from '@/lib/admin/users';
 import { createAdminClient, type SupabaseServerClient } from '@/lib/supabase';
+import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import {
+  ADMIN_USERS_ACCESS_MESSAGES,
+  getClinicAdminScopedClinicIds,
+  isAdminUsersActor,
+  isClinicAdminActor,
+} from '../access';
 
 const StaffCandidateSearchSchema = z.object({
   search: z.string().trim().max(100).optional().default(''),
@@ -26,8 +33,6 @@ const StaffCandidateSearchSchema = z.object({
 const STAFF_SELECT = 'id, email, name, clinic_id, role, clinics(name)';
 const PROFILE_SELECT = 'user_id, email, full_name, is_active';
 const PERMISSION_SELECT = 'id, staff_id, role, clinic_id, clinics(name)';
-
-const requireAdmin = (role: string) => role === 'admin';
 
 type ClinicRelation =
   | { name: string | null }[]
@@ -90,12 +95,17 @@ const pickMissingIds = (ids: string[], rows: StaffCandidateRow[]): string[] => {
 const fetchStaffCandidates = async (
   adminSupabase: SupabaseServerClient,
   search: string,
-  limit: number
+  limit: number,
+  scopedClinicIds: string[] | null
 ): Promise<QueryResult<StaffCandidateRow[]>> => {
+  let query = adminSupabase.from('staff').select(STAFF_SELECT);
+
+  if (scopedClinicIds?.length) {
+    query = query.in('clinic_id', scopedClinicIds);
+  }
+
   if (!search) {
-    const { data, error } = await adminSupabase
-      .from('staff')
-      .select(STAFF_SELECT)
+    const { data, error } = await query
       .order('name', { ascending: true })
       .limit(limit);
 
@@ -105,9 +115,7 @@ const fetchStaffCandidates = async (
     };
   }
 
-  const { data, error } = await adminSupabase
-    .from('staff')
-    .select(STAFF_SELECT)
+  const { data, error } = await query
     .or(buildIlikeOrFilter(['name', 'email'], search))
     .order('name', { ascending: true })
     .limit(limit);
@@ -150,17 +158,23 @@ const fetchProfileMatchedIds = async (
 const fetchStaffCandidatesByIds = async (
   adminSupabase: SupabaseServerClient,
   staffIds: string[],
-  limit: number
+  limit: number,
+  scopedClinicIds: string[] | null
 ): Promise<QueryResult<StaffCandidateRow[]>> => {
   if (staffIds.length === 0) {
     return { data: [], error: null };
   }
 
-  const { data, error: staffError } = await adminSupabase
+  let query = adminSupabase
     .from('staff')
     .select(STAFF_SELECT)
-    .in('id', staffIds)
-    .limit(limit);
+    .in('id', staffIds);
+
+  if (scopedClinicIds?.length) {
+    query = query.in('clinic_id', scopedClinicIds);
+  }
+
+  const { data, error: staffError } = await query.limit(limit);
 
   return {
     data: (data ?? []) as StaffCandidateRow[],
@@ -187,7 +201,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: ['admin'],
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
       requireClinicMatch: false,
     });
 
@@ -196,13 +210,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { auth, permissions } = processResult;
-    if (!requireAdmin(permissions.role)) {
+    if (!isAdminUsersActor(permissions)) {
       return createErrorResponse('管理者権限が必要です', 403);
+    }
+
+    const scopedClinicIds = getClinicAdminScopedClinicIds(permissions);
+    if (isClinicAdminActor(permissions) && !scopedClinicIds?.length) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403
+      );
     }
 
     const adminSupabase = createAdminClient();
     const [staffResult, profileMatchedIdsResult] = await Promise.all([
-      fetchStaffCandidates(adminSupabase, search, limit),
+      fetchStaffCandidates(adminSupabase, search, limit, scopedClinicIds),
       fetchProfileMatchedIds(adminSupabase, search, limit),
     ]);
 
@@ -224,7 +246,8 @@ export async function GET(request: NextRequest) {
     const profileMatchedStaffResult = await fetchStaffCandidatesByIds(
       adminSupabase,
       missingProfileMatchedStaffIds,
-      limit
+      limit,
+      scopedClinicIds
     );
 
     if (profileMatchedStaffResult.error) {
@@ -256,10 +279,18 @@ export async function GET(request: NextRequest) {
         .select(PROFILE_SELECT)
         .eq('is_active', true)
         .in('user_id', staffIds),
-      adminSupabase
-        .from('user_permissions')
-        .select(PERMISSION_SELECT)
-        .in('staff_id', staffIds),
+      (() => {
+        let permissionQuery = adminSupabase
+          .from('user_permissions')
+          .select(PERMISSION_SELECT)
+          .in('staff_id', staffIds);
+
+        if (scopedClinicIds?.length) {
+          permissionQuery = permissionQuery.in('clinic_id', scopedClinicIds);
+        }
+
+        return permissionQuery;
+      })(),
     ]);
 
     if (profileError || permissionError) {
