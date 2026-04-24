@@ -135,7 +135,7 @@ describe('AdminTenantsPage', () => {
     );
   });
 
-  it('active フィルタで無効化したクリニックを一覧から外す', async () => {
+  it('運用中フィルタで停止したクリニックを一覧から外す', async () => {
     const activeClinic = {
       id: 'clinic-1',
       name: '本院',
@@ -197,7 +197,7 @@ describe('AdminTenantsPage', () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '無効化' }));
+    fireEvent.click(screen.getByRole('button', { name: '運用を停止' }));
 
     await waitFor(() => {
       expect(
@@ -205,7 +205,9 @@ describe('AdminTenantsPage', () => {
       ).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText('クリニックを無効化しました')).toBeInTheDocument();
+    expect(
+      screen.getByText('テナントの運用を停止しました')
+    ).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledTimes(4);
     expect(mockFetch).toHaveBeenNthCalledWith(
       3,

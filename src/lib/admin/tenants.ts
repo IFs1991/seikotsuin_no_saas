@@ -1,7 +1,7 @@
 export const ADMIN_TENANT_STATUS_OPTIONS = [
   { label: 'すべて', value: 'all' },
-  { label: '有効のみ', value: 'active' },
-  { label: '無効のみ', value: 'inactive' },
+  { label: '運用中のみ', value: 'active' },
+  { label: '停止中のみ', value: 'inactive' },
 ] as const;
 
 export const ADMIN_TENANT_TYPE_OPTIONS = [
@@ -191,6 +191,20 @@ export function buildParentOptionLabel(
   clinic: Pick<ClinicSummary, 'name' | 'child_count'>
 ) {
   return `${clinic.name}${clinic.child_count ? ` (${clinic.child_count}店舗)` : ''}`;
+}
+
+export function formatClinicOperationStatus(isActive: boolean) {
+  return isActive ? '運用中' : '停止中';
+}
+
+export function formatClinicOperationAction(isActive: boolean) {
+  return isActive ? '運用を停止' : '運用を再開';
+}
+
+export function buildClinicOperationNotice(isActiveBeforeUpdate: boolean) {
+  return isActiveBeforeUpdate
+    ? 'テナントの運用を停止しました'
+    : 'テナントの運用を再開しました';
 }
 
 export function buildFormValidationMessage(

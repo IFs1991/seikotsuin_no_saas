@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 import type {
   ClinicFilters,
@@ -105,6 +105,7 @@ export function useAdminTenants() {
   const [clinics, setClinics] = useState<ClinicSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const latestFetchRequestId = useRef(0);
 
   const upsertClinic = useCallback((clinic: ClinicSummary) => {
     setClinics(prev => {
@@ -142,12 +143,15 @@ export function useAdminTenants() {
 
   const fetchClinics = useCallback(
     async (filters: ClinicFilters = {}) => {
+      const requestId = latestFetchRequestId.current + 1;
+      latestFetchRequestId.current = requestId;
+
       const data = await runTenantRequest(
         'クリニック一覧取得エラー:',
         async () => await fetchTenantList(filters)
       );
 
-      if (data) {
+      if (data && requestId === latestFetchRequestId.current) {
         setClinics(data.items ?? []);
       }
     },

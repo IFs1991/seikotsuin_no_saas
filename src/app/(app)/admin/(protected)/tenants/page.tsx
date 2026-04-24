@@ -1,7 +1,19 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from 'react';
 import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
+import {
+  TenantOperationStatusBadge,
+  TenantOperationStatusControl,
+} from '@/components/admin/tenant-operation-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,13 +32,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Switch } from '@/components/ui/switch';
 import {
   ADMIN_TENANT_STATUS_OPTIONS,
   ADMIN_TENANT_TYPE_OPTIONS,
   UNSELECTED_PARENT_VALUE,
   buildCreateClinicPayload,
   buildCreateNotice,
+  buildClinicOperationNotice,
   buildEditFormState,
   buildFormValidationMessage,
   buildParentLabel,
@@ -34,6 +46,7 @@ import {
   buildUpdateClinicPayload,
   createInitialTenantFormState,
   formatClinicDate,
+  formatClinicOperationAction,
   formatClinicTypeLabel,
   isHierarchyLocked,
   sortClinicsForDisplay,
@@ -55,6 +68,7 @@ export default function AdminTenantsPage() {
   } = useAdminTenants();
 
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] =
     useState<ClinicStatusFilterValue>('active');
   const [tenantOptions, setTenantOptions] = useState<ClinicSummary[]>([]);
@@ -67,19 +81,21 @@ export default function AdminTenantsPage() {
   const isCreateMode = editingId === null;
 
   const currentFilters = useMemo(() => {
-    if (statusFilter === 'all') return { search };
-    return { search, isActive: statusFilter === 'active' };
-  }, [search, statusFilter]);
+    if (statusFilter === 'all') return { search: deferredSearch };
+    return { search: deferredSearch, isActive: statusFilter === 'active' };
+  }, [deferredSearch, statusFilter]);
 
   const refreshTenantOptions = useCallback(async () => {
     setTenantOptionsLoading(true);
-    const items = await listClinics();
+    try {
+      const items = await listClinics();
 
-    if (items) {
-      setTenantOptions(items);
+      if (items) {
+        setTenantOptions(items);
+      }
+    } finally {
+      setTenantOptionsLoading(false);
     }
-
-    setTenantOptionsLoading(false);
   }, [listClinics]);
 
   useEffect(() => {
@@ -162,15 +178,87 @@ export default function AdminTenantsPage() {
     [clinics]
   );
 
-  const handleTenantTypeChange = (value: ClinicHierarchyType) => {
+  const updateFormField = useCallback(function updateTenantFormField<
+    Field extends keyof TenantFormState,
+  >(field: Field, value: TenantFormState[Field]) {
+    setFormState(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  }, []);
+
+  const handleNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('name', event.target.value);
+    },
+    [updateFormField]
+  );
+
+  const handlePhoneNumberChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('phone_number', event.target.value);
+    },
+    [updateFormField]
+  );
+
+  const handleAddressChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('address', event.target.value);
+    },
+    [updateFormField]
+  );
+
+  const handleLoginEmailChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('login_email', event.target.value);
+    },
+    [updateFormField]
+  );
+
+  const handleLoginPasswordChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('login_password', event.target.value);
+    },
+    [updateFormField]
+  );
+
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setSearch(event.target.value);
+    },
+    []
+  );
+
+  const handleTenantTypeChange = useCallback((value: ClinicHierarchyType) => {
     setFormState(prev => ({
       ...prev,
       tenant_type: value,
       parent_id: value === 'child' ? prev.parent_id : '',
     }));
-  };
+  }, []);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleParentTenantChange = useCallback((value: string) => {
+    setFormState(prev => ({
+      ...prev,
+      parent_id: value === UNSELECTED_PARENT_VALUE ? '' : value,
+    }));
+  }, []);
+
+  const handleOperationStatusChange = useCallback(
+    (value: boolean) => {
+      updateFormField('is_active', value);
+    },
+    [updateFormField]
+  );
+
+  const handleStatusFilterChange = useCallback(
+    (value: ClinicStatusFilterValue) => {
+      setStatusFilter(value);
+    },
+    []
+  );
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setNotice(null);
 
@@ -221,11 +309,7 @@ export default function AdminTenantsPage() {
     if (updated) {
       syncClinicWithCurrentFilters(updated);
       await refreshTenantOptions();
-      setNotice(
-        clinic.is_active
-          ? 'クリニックを無効化しました'
-          : 'クリニックを有効化しました'
-      );
+      setNotice(buildClinicOperationNotice(clinic.is_active));
     }
   };
 
@@ -248,12 +332,7 @@ export default function AdminTenantsPage() {
                   <Input
                     id='clinic-name'
                     value={formState.name}
-                    onChange={event =>
-                      setFormState(prev => ({
-                        ...prev,
-                        name: event.target.value,
-                      }))
-                    }
+                    onChange={handleNameChange}
                     placeholder='例: 本院'
                   />
                 </div>
@@ -267,12 +346,7 @@ export default function AdminTenantsPage() {
                   <Input
                     id='clinic-phone-number'
                     value={formState.phone_number}
-                    onChange={event =>
-                      setFormState(prev => ({
-                        ...prev,
-                        phone_number: event.target.value,
-                      }))
-                    }
+                    onChange={handlePhoneNumberChange}
                     placeholder='例: 03-1234-5678'
                   />
                 </div>
@@ -288,30 +362,15 @@ export default function AdminTenantsPage() {
                   <Input
                     id='clinic-address'
                     value={formState.address}
-                    onChange={event =>
-                      setFormState(prev => ({
-                        ...prev,
-                        address: event.target.value,
-                      }))
-                    }
+                    onChange={handleAddressChange}
                     placeholder='例: 東京都千代田区'
                   />
                 </div>
-                <div className='flex items-center gap-3 pt-7'>
-                  <Switch
-                    id='clinic-active'
-                    checked={formState.is_active}
-                    onCheckedChange={value =>
-                      setFormState(prev => ({ ...prev, is_active: value }))
-                    }
-                  />
-                  <label
-                    htmlFor='clinic-active'
-                    className='text-sm text-gray-600 dark:text-gray-300'
-                  >
-                    有効
-                  </label>
-                </div>
+                <TenantOperationStatusControl
+                  id='clinic-active'
+                  isActive={formState.is_active}
+                  onChange={handleOperationStatusChange}
+                />
               </div>
               <div className='grid gap-4 md:grid-cols-2'>
                 <div className='space-y-2'>
@@ -349,13 +408,7 @@ export default function AdminTenantsPage() {
                   </label>
                   <Select
                     value={formState.parent_id || UNSELECTED_PARENT_VALUE}
-                    onValueChange={value =>
-                      setFormState(prev => ({
-                        ...prev,
-                        parent_id:
-                          value === UNSELECTED_PARENT_VALUE ? '' : value,
-                      }))
-                    }
+                    onValueChange={handleParentTenantChange}
                     disabled={
                       formState.tenant_type !== 'child' || shouldLockHierarchy
                     }
@@ -403,12 +456,7 @@ export default function AdminTenantsPage() {
                       id='clinic-login-email'
                       type='email'
                       value={formState.login_email}
-                      onChange={event =>
-                        setFormState(prev => ({
-                          ...prev,
-                          login_email: event.target.value,
-                        }))
-                      }
+                      onChange={handleLoginEmailChange}
                       placeholder='例: clinic-admin@example.com'
                       autoComplete='email'
                     />
@@ -424,12 +472,7 @@ export default function AdminTenantsPage() {
                       id='clinic-login-password'
                       type='password'
                       value={formState.login_password}
-                      onChange={event =>
-                        setFormState(prev => ({
-                          ...prev,
-                          login_password: event.target.value,
-                        }))
-                      }
+                      onChange={handleLoginPasswordChange}
                       placeholder='初期パスワードを設定'
                       autoComplete='new-password'
                     />
@@ -463,14 +506,14 @@ export default function AdminTenantsPage() {
             <div className='flex flex-wrap items-center gap-3'>
               <Input
                 value={search}
-                onChange={event => setSearch(event.target.value)}
+                onChange={handleSearchChange}
                 placeholder='クリニック名で検索'
                 className='max-w-xs'
               />
               <Select
                 value={statusFilter}
                 onValueChange={value =>
-                  setStatusFilter(value as ClinicStatusFilterValue)
+                  handleStatusFilterChange(value as ClinicStatusFilterValue)
                 }
               >
                 <SelectTrigger className='w-40'>
@@ -497,7 +540,7 @@ export default function AdminTenantsPage() {
                     <TableHead>名称</TableHead>
                     <TableHead>種別</TableHead>
                     <TableHead>親テナント</TableHead>
-                    <TableHead>状態</TableHead>
+                    <TableHead>運用状態</TableHead>
                     <TableHead>作成日</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
@@ -516,7 +559,9 @@ export default function AdminTenantsPage() {
                       <TableCell>{formatClinicTypeLabel(clinic)}</TableCell>
                       <TableCell>{buildParentLabel(clinic)}</TableCell>
                       <TableCell>
-                        {clinic.is_active ? '有効' : '無効'}
+                        <TenantOperationStatusBadge
+                          isActive={clinic.is_active}
+                        />
                       </TableCell>
                       <TableCell>
                         {formatClinicDate(clinic.created_at)}
@@ -536,7 +581,7 @@ export default function AdminTenantsPage() {
                           }
                           onClick={() => handleToggleActive(clinic)}
                         >
-                          {clinic.is_active ? '無効化' : '有効化'}
+                          {formatClinicOperationAction(clinic.is_active)}
                         </Button>
                       </TableCell>
                     </TableRow>
