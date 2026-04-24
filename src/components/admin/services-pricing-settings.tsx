@@ -1,501 +1,1194 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import {
-  Save,
-  Plus,
-  Edit,
-  Trash2,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  CheckCircle2,
   Clock,
-  Package,
-  Ticket,
+  CopyPlus,
+  Edit,
   Loader2,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
 } from 'lucide-react';
-import { useAdminSettings } from '@/hooks/useAdminSettings';
+import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import type { Menu } from '@/types/reservation';
 import { AdminMessage } from './AdminMessage';
 
-interface Service {
-  id: string;
+type MenuCategory = 'treatment' | 'massage' | 'rehabilitation' | 'other';
+
+interface MenuFormState {
   name: string;
   description: string;
-  duration: number;
+  durationMinutes: string;
+  price: string;
+  category: MenuCategory;
+  isInsuranceApplicable: boolean;
+  isActive: boolean;
+}
+
+interface MenuPayload {
+  clinic_id: string;
+  id?: string;
+  name: string;
+  description: string;
+  durationMinutes: number;
   price: number;
-  insuranceApplicable: boolean;
-  category: 'treatment' | 'massage' | 'rehabilitation' | 'other';
+  category: MenuCategory;
+  isInsuranceApplicable: boolean;
   isActive: boolean;
 }
 
-interface Product {
-  id: string;
+interface TemplatePayload {
+  owner_clinic_id: string;
+  id?: string;
   name: string;
   description: string;
+  durationMinutes: number;
   price: number;
-  stock: number;
-  category: 'supplement' | 'equipment' | 'accessory' | 'other';
+  category: MenuCategory;
+  isInsuranceApplicable: boolean;
   isActive: boolean;
+  displayOrder?: number;
 }
 
-interface ServicePackage {
+interface MenuTemplate {
   id: string;
+  ownerClinicId: string;
   name: string;
   description: string;
-  sessions: number;
-  originalPrice: number;
-  discountedPrice: number;
-  validityPeriod: number;
-  services: string[];
+  durationMinutes: number;
+  price: number;
+  category?: string;
+  isInsuranceApplicable: boolean;
   isActive: boolean;
+  displayOrder: number;
 }
 
-interface ServicesPricingData {
-  services: Service[];
-  products: Product[];
-  packages: ServicePackage[];
+interface TemplateScope {
+  templates: MenuTemplate[];
+  ownerClinicId: string;
+  ownerClinicName: string;
+  targetClinicId: string;
+  isOwnerClinic: boolean;
 }
 
-const initialData: ServicesPricingData = {
-  services: [
-    {
-      id: '1',
-      name: '整体治療',
-      description: '全身の骨格・筋肉の調整',
-      duration: 60,
-      price: 5000,
-      insuranceApplicable: true,
-      category: 'treatment',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'マッサージ',
-      description: 'リラクゼーションマッサージ',
-      duration: 45,
-      price: 4000,
-      insuranceApplicable: false,
-      category: 'massage',
-      isActive: true,
-    },
-  ],
-  products: [
-    {
-      id: '1',
-      name: 'サポーター（膝用）',
-      description: '膝の負担を軽減するサポーター',
-      price: 2500,
-      stock: 15,
-      category: 'equipment',
-      isActive: true,
-    },
-    {
-      id: '2',
-      name: 'グルコサミンサプリ',
-      description: '関節の健康をサポート',
-      price: 3800,
-      stock: 8,
-      category: 'supplement',
-      isActive: true,
-    },
-  ],
-  packages: [
-    {
-      id: '1',
-      name: '整体5回券',
-      description: '整体治療5回分のお得なパッケージ',
-      sessions: 5,
-      originalPrice: 25000,
-      discountedPrice: 22000,
-      validityPeriod: 90,
-      services: ['1'],
-      isActive: true,
-    },
-  ],
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+type CollectionUpdater<T> = (items: T[]) => T[];
+
+const EMPTY_FORM: MenuFormState = {
+  name: '',
+  description: '',
+  durationMinutes: '30',
+  price: '0',
+  category: 'treatment',
+  isInsuranceApplicable: false,
+  isActive: true,
 };
+
+const EMPTY_TEMPLATES: MenuTemplate[] = [];
+
+const upsertById = <T extends { id: string }>(items: T[], item: T): T[] => {
+  const index = items.findIndex(current => current.id === item.id);
+  if (index === -1) return [...items, item];
+
+  const next = [...items];
+  next[index] = item;
+  return next;
+};
+
+const MENU_CATEGORIES: Array<{ value: MenuCategory; label: string }> = [
+  { value: 'treatment', label: '治療' },
+  { value: 'massage', label: 'マッサージ' },
+  { value: 'rehabilitation', label: 'リハビリ' },
+  { value: 'other', label: 'その他' },
+];
+
+const getCategoryLabel = (value?: string) =>
+  MENU_CATEGORIES.find(category => category.value === value)?.label ?? 'その他';
+
+const buildMenuPayload = (
+  clinicId: string,
+  form: MenuFormState,
+  id?: string
+): MenuPayload => {
+  const durationMinutes = Number(form.durationMinutes);
+  const price = Number(form.price);
+
+  if (!form.name.trim()) {
+    throw new Error('メニュー名を入力してください');
+  }
+  if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+    throw new Error('所要時間は1分以上で入力してください');
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error('料金は0円以上で入力してください');
+  }
+
+  return {
+    clinic_id: clinicId,
+    id,
+    name: form.name.trim(),
+    description: form.description.trim(),
+    durationMinutes,
+    price,
+    category: form.category,
+    isInsuranceApplicable: form.isInsuranceApplicable,
+    isActive: form.isActive,
+  };
+};
+
+const buildTemplatePayload = (
+  ownerClinicId: string,
+  form: MenuFormState,
+  id?: string
+): TemplatePayload => {
+  const menuPayload = buildMenuPayload(ownerClinicId, form, id);
+
+  return {
+    owner_clinic_id: ownerClinicId,
+    id,
+    name: menuPayload.name,
+    description: menuPayload.description,
+    durationMinutes: menuPayload.durationMinutes,
+    price: menuPayload.price,
+    category: menuPayload.category,
+    isInsuranceApplicable: menuPayload.isInsuranceApplicable,
+    isActive: menuPayload.isActive,
+  };
+};
+
+const menuToForm = (menu: Menu): MenuFormState => ({
+  name: menu.name,
+  description: menu.description ?? '',
+  durationMinutes: String(menu.durationMinutes),
+  price: String(menu.price),
+  category: (menu.category as MenuCategory | undefined) ?? 'other',
+  isInsuranceApplicable: menu.isInsuranceApplicable ?? false,
+  isActive: menu.isActive,
+});
+
+const templateToForm = (template: MenuTemplate): MenuFormState => ({
+  name: template.name,
+  description: template.description ?? '',
+  durationMinutes: String(template.durationMinutes),
+  price: String(template.price),
+  category: (template.category as MenuCategory | undefined) ?? 'other',
+  isInsuranceApplicable: template.isInsuranceApplicable,
+  isActive: template.isActive,
+});
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+async function readApiResponse<T>(
+  response: Response,
+  fallbackMessage: string
+): Promise<T> {
+  const result = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok || !result.success || result.data === undefined) {
+    throw new Error(result.error || fallbackMessage);
+  }
+
+  return result.data;
+}
+
+const fetchMenus = async (
+  clinicId: string,
+  signal?: AbortSignal
+): Promise<Menu[]> => {
+  const response = await fetch(
+    `/api/menus?clinic_id=${encodeURIComponent(clinicId)}`,
+    { signal }
+  );
+  return readApiResponse<Menu[]>(response, '施術メニューの取得に失敗しました');
+};
+
+const fetchTemplateScope = async (
+  clinicId: string,
+  signal?: AbortSignal
+): Promise<TemplateScope> => {
+  const response = await fetch(
+    `/api/menu-templates?clinic_id=${encodeURIComponent(clinicId)}`,
+    { signal }
+  );
+  return readApiResponse<TemplateScope>(
+    response,
+    '共通テンプレートの取得に失敗しました'
+  );
+};
+
+interface MenuTemplateCardProps {
+  template: MenuTemplate;
+  clinicSelected: boolean;
+  isOwnerClinic: boolean;
+  saving: boolean;
+  onApply: (template: MenuTemplate) => void;
+  onEdit: (template: MenuTemplate) => void;
+  onDelete: (template: MenuTemplate) => void;
+}
+
+const MenuTemplateCard = memo(function MenuTemplateCard({
+  template,
+  clinicSelected,
+  isOwnerClinic,
+  saving,
+  onApply,
+  onEdit,
+  onDelete,
+}: MenuTemplateCardProps) {
+  return (
+    <div className='rounded-md border border-gray-200 bg-white p-4'>
+      <div className='mb-2 flex items-start justify-between gap-3'>
+        <div>
+          <div className='font-medium text-gray-900'>{template.name}</div>
+          <div className='text-xs text-gray-500'>
+            {getCategoryLabel(template.category)}
+          </div>
+        </div>
+        <Badge
+          variant={template.isInsuranceApplicable ? 'default' : 'secondary'}
+        >
+          {template.isInsuranceApplicable ? '保険' : '自費'}
+        </Badge>
+      </div>
+      <div className='mb-3 text-sm text-gray-600'>{template.description}</div>
+      <div className='mb-4 flex items-center justify-between text-sm'>
+        <span className='inline-flex items-center text-gray-600'>
+          <Clock className='mr-1 h-4 w-4' />
+          {template.durationMinutes}分
+        </span>
+        <span className='font-medium text-gray-900'>
+          {template.price.toLocaleString()}円
+        </span>
+      </div>
+      <div className='flex flex-wrap gap-2'>
+        <Button
+          type='button'
+          variant='outline'
+          className='flex-1'
+          onClick={() => onApply(template)}
+          disabled={saving || !clinicSelected || !template.isActive}
+        >
+          <CopyPlus className='mr-2 h-4 w-4' />
+          自院に追加
+        </Button>
+        {isOwnerClinic && (
+          <>
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              aria-label='テンプレート編集'
+              onClick={() => onEdit(template)}
+              disabled={saving}
+            >
+              <Edit className='h-4 w-4' />
+            </Button>
+            <Button
+              type='button'
+              variant='outline'
+              size='icon'
+              aria-label='テンプレート削除'
+              className='text-red-600'
+              onClick={() => onDelete(template)}
+              disabled={saving}
+            >
+              <Trash2 className='h-4 w-4' />
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
+
+interface MenuListItemProps {
+  menu: Menu;
+  saving: boolean;
+  onEdit: (menu: Menu) => void;
+  onToggleActive: (menu: Menu) => void;
+  onDelete: (menu: Menu) => void;
+}
+
+const MenuListItem = memo(function MenuListItem({
+  menu,
+  saving,
+  onEdit,
+  onToggleActive,
+  onDelete,
+}: MenuListItemProps) {
+  return (
+    <div className='flex flex-col gap-3 rounded-md border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='min-w-0'>
+        <div className='mb-2 flex flex-wrap items-center gap-2'>
+          <div className='font-medium text-gray-900'>{menu.name}</div>
+          <Badge variant={menu.isActive ? 'default' : 'secondary'}>
+            {menu.isActive ? '有効' : '無効'}
+          </Badge>
+          <Badge variant={menu.isInsuranceApplicable ? 'outline' : 'secondary'}>
+            {menu.isInsuranceApplicable ? '保険' : '自費'}
+          </Badge>
+        </div>
+        <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600'>
+          <span>{getCategoryLabel(menu.category)}</span>
+          <span>{menu.durationMinutes}分</span>
+          <span>{menu.price.toLocaleString()}円</span>
+        </div>
+        {menu.description && (
+          <div className='mt-1 text-sm text-gray-500'>{menu.description}</div>
+        )}
+      </div>
+      <div className='flex flex-wrap items-center gap-2'>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => onEdit(menu)}
+          disabled={saving}
+        >
+          <Edit className='mr-2 h-4 w-4' />
+          編集
+        </Button>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => onToggleActive(menu)}
+          disabled={saving}
+        >
+          <CheckCircle2 className='mr-2 h-4 w-4' />
+          {menu.isActive ? '無効化' : '有効化'}
+        </Button>
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          className='text-red-600'
+          onClick={() => onDelete(menu)}
+          disabled={saving}
+        >
+          <Trash2 className='mr-2 h-4 w-4' />
+          削除
+        </Button>
+      </div>
+    </div>
+  );
+});
 
 export function ServicesPricingSettings() {
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const { selectedClinicId } = useSelectedClinic();
+  const clinicId = selectedClinicId ?? profile?.clinicId ?? null;
 
-  const {
-    data: formData,
-    updateData,
-    loadingState,
-    handleSave,
-    isInitialized,
-  } = useAdminSettings(
-    initialData,
-    clinicId
-      ? {
-          clinicId,
-          category: 'services_pricing',
-          autoLoad: true,
-        }
-      : undefined
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [templateScope, setTemplateScope] = useState<TemplateScope | null>(
+    null
+  );
+  const [form, setForm] = useState<MenuFormState>(EMPTY_FORM);
+  const [templateForm, setTemplateForm] = useState<MenuFormState>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState('');
+  const templates = templateScope?.templates ?? EMPTY_TEMPLATES;
+  const isOwnerClinic = templateScope?.isOwnerClinic ?? false;
+
+  const sortedMenus = useMemo(
+    () =>
+      [...menus].sort((a, b) =>
+        a.name.localeCompare(b.name, 'ja', { numeric: true })
+      ),
+    [menus]
   );
 
-  const [activeTab, setActiveTab] = useState<
-    'services' | 'products' | 'packages'
-  >('services');
+  const sortedTemplates = useMemo(
+    () =>
+      [...templates].sort((a, b) => {
+        if (a.displayOrder !== b.displayOrder) {
+          return a.displayOrder - b.displayOrder;
+        }
+        return a.name.localeCompare(b.name, 'ja', { numeric: true });
+      }),
+    [templates]
+  );
 
-  const categoryNames = {
-    treatment: '治療',
-    massage: 'マッサージ',
-    rehabilitation: 'リハビリ',
-    supplement: 'サプリメント',
-    equipment: '器具・用品',
-    accessory: 'アクセサリー',
-    other: 'その他',
-  };
+  const refreshAll = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!clinicId) {
+        setMenus([]);
+        setTemplateScope(null);
+        setError(null);
+        setLoading(false);
+        setTemplateLoading(false);
+        return;
+      }
 
-  if (profileLoading || !isInitialized) {
+      setLoading(true);
+      setTemplateLoading(true);
+      setError(null);
+
+      const [menusResult, templateScopeResult] = await Promise.allSettled([
+        fetchMenus(clinicId, signal),
+        fetchTemplateScope(clinicId, signal),
+      ]);
+
+      if (signal?.aborted) return;
+
+      const errors: string[] = [];
+      if (menusResult.status === 'fulfilled') {
+        setMenus(menusResult.value);
+      } else {
+        setMenus([]);
+        errors.push(
+          getErrorMessage(
+            menusResult.reason,
+            '施術メニューの取得に失敗しました'
+          )
+        );
+      }
+
+      if (templateScopeResult.status === 'fulfilled') {
+        setTemplateScope(templateScopeResult.value);
+      } else {
+        setTemplateScope(null);
+        errors.push(
+          getErrorMessage(
+            templateScopeResult.reason,
+            '共通テンプレートの取得に失敗しました'
+          )
+        );
+      }
+
+      setError(errors[0] ?? null);
+      setLoading(false);
+      setTemplateLoading(false);
+    },
+    [clinicId]
+  );
+
+  const handleRefresh = useCallback(() => {
+    void refreshAll();
+  }, [refreshAll]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void refreshAll(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
+  }, [refreshAll]);
+
+  const resetForm = useCallback(() => {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+  }, []);
+
+  const resetTemplateForm = useCallback(() => {
+    setTemplateForm(EMPTY_FORM);
+    setEditingTemplateId(null);
+  }, []);
+
+  const updateTemplateList = useCallback(
+    (updater: CollectionUpdater<MenuTemplate>) => {
+      setTemplateScope(prev =>
+        prev
+          ? {
+              ...prev,
+              templates: updater(prev.templates),
+            }
+          : prev
+      );
+    },
+    []
+  );
+
+  const saveMenu = useCallback(
+    async (payload: MenuPayload, method: 'POST' | 'PATCH') => {
+      const response = await fetch('/api/menus', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      return readApiResponse<Menu>(
+        response,
+        '施術メニューの保存に失敗しました'
+      );
+    },
+    []
+  );
+
+  const saveTemplate = useCallback(
+    async (payload: TemplatePayload, method: 'POST' | 'PATCH') => {
+      const response = await fetch('/api/menu-templates', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      return readApiResponse<MenuTemplate>(
+        response,
+        '共通テンプレートの保存に失敗しました'
+      );
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!clinicId) {
+        setError('clinic_id が取得できません');
+        return;
+      }
+
+      const wasEditing = Boolean(editingId);
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const payload = buildMenuPayload(
+          clinicId,
+          form,
+          editingId ?? undefined
+        );
+        const savedMenu = await saveMenu(
+          payload,
+          wasEditing ? 'PATCH' : 'POST'
+        );
+        setMenus(prev => upsertById(prev, savedMenu));
+        resetForm();
+        setSavedMessage(
+          wasEditing ? 'メニューを更新しました' : 'メニューを追加しました'
+        );
+      } catch (err) {
+        setError(getErrorMessage(err, '施術メニューの保存に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clinicId, editingId, form, resetForm, saveMenu]
+  );
+
+  const handleTemplateSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const ownerClinicId = templateScope?.ownerClinicId;
+      if (!ownerClinicId || !isOwnerClinic) {
+        setError('共通テンプレートを編集できる対象クリニックではありません');
+        return;
+      }
+
+      const wasEditing = Boolean(editingTemplateId);
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const payload = buildTemplatePayload(
+          ownerClinicId,
+          templateForm,
+          editingTemplateId ?? undefined
+        );
+        const savedTemplate = await saveTemplate(
+          payload,
+          wasEditing ? 'PATCH' : 'POST'
+        );
+        updateTemplateList(prev => upsertById(prev, savedTemplate));
+        resetTemplateForm();
+        setSavedMessage(
+          wasEditing
+            ? '共通テンプレートを更新しました'
+            : '共通テンプレートを追加しました'
+        );
+      } catch (err) {
+        setError(getErrorMessage(err, '共通テンプレートの保存に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      editingTemplateId,
+      isOwnerClinic,
+      resetTemplateForm,
+      saveTemplate,
+      templateForm,
+      templateScope?.ownerClinicId,
+      updateTemplateList,
+    ]
+  );
+
+  const applyTemplate = useCallback(
+    async (template: MenuTemplate) => {
+      if (!clinicId) {
+        setError('clinic_id が取得できません');
+        return;
+      }
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const response = await fetch('/api/menu-templates/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            template_id: template.id,
+          }),
+        });
+        const savedMenu = await readApiResponse<Menu>(
+          response,
+          'テンプレートの追加に失敗しました'
+        );
+
+        setMenus(prev => upsertById(prev, savedMenu));
+        setSavedMessage(`${template.name} を追加しました`);
+      } catch (err) {
+        setError(getErrorMessage(err, 'テンプレートの追加に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clinicId]
+  );
+
+  const handleEdit = useCallback((menu: Menu) => {
+    setEditingId(menu.id);
+    setForm(menuToForm(menu));
+    setError(null);
+    setSavedMessage('');
+  }, []);
+
+  const handleTemplateEdit = useCallback((template: MenuTemplate) => {
+    setEditingTemplateId(template.id);
+    setTemplateForm(templateToForm(template));
+    setError(null);
+    setSavedMessage('');
+  }, []);
+
+  const handleTemplateDelete = useCallback(
+    async (template: MenuTemplate) => {
+      const ownerClinicId = templateScope?.ownerClinicId;
+      if (!ownerClinicId || !isOwnerClinic) return;
+      if (!window.confirm(`${template.name} を削除しますか？`)) return;
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const response = await fetch(
+          `/api/menu-templates?owner_clinic_id=${encodeURIComponent(
+            ownerClinicId
+          )}&id=${encodeURIComponent(template.id)}`,
+          { method: 'DELETE' }
+        );
+        await readApiResponse<{ deleted: true }>(
+          response,
+          '共通テンプレートの削除に失敗しました'
+        );
+
+        if (editingTemplateId === template.id) resetTemplateForm();
+        updateTemplateList(prev =>
+          prev.filter(current => current.id !== template.id)
+        );
+        setSavedMessage('共通テンプレートを削除しました');
+      } catch (err) {
+        setError(getErrorMessage(err, '共通テンプレートの削除に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      editingTemplateId,
+      isOwnerClinic,
+      resetTemplateForm,
+      templateScope?.ownerClinicId,
+      updateTemplateList,
+    ]
+  );
+
+  const handleToggleActive = useCallback(
+    async (menu: Menu) => {
+      if (!clinicId) return;
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const savedMenu = await saveMenu(
+          {
+            clinic_id: clinicId,
+            id: menu.id,
+            name: menu.name,
+            description: menu.description ?? '',
+            durationMinutes: menu.durationMinutes,
+            price: menu.price,
+            category: (menu.category as MenuCategory | undefined) ?? 'other',
+            isInsuranceApplicable: menu.isInsuranceApplicable ?? false,
+            isActive: !menu.isActive,
+          },
+          'PATCH'
+        );
+        setMenus(prev => upsertById(prev, savedMenu));
+        setSavedMessage(
+          menu.isActive
+            ? 'メニューを無効化しました'
+            : 'メニューを有効化しました'
+        );
+      } catch (err) {
+        setError(getErrorMessage(err, 'メニュー状態の更新に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clinicId, saveMenu]
+  );
+
+  const handleDelete = useCallback(
+    async (menu: Menu) => {
+      if (!clinicId) return;
+      if (!window.confirm(`${menu.name} を削除しますか？`)) return;
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const response = await fetch(
+          `/api/menus?clinic_id=${encodeURIComponent(
+            clinicId
+          )}&id=${encodeURIComponent(menu.id)}`,
+          { method: 'DELETE' }
+        );
+        await readApiResponse<{ deleted: true }>(
+          response,
+          '施術メニューの削除に失敗しました'
+        );
+
+        if (editingId === menu.id) resetForm();
+        setMenus(prev => prev.filter(current => current.id !== menu.id));
+        setSavedMessage('メニューを削除しました');
+      } catch (err) {
+        setError(getErrorMessage(err, '施術メニューの削除に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clinicId, editingId, resetForm]
+  );
+
+  if (profileLoading) {
     return (
       <div className='flex items-center justify-center py-12'>
-        <Loader2 className='w-8 h-8 animate-spin text-blue-500' />
+        <Loader2 className='h-8 w-8 animate-spin text-blue-500' />
         <span className='ml-2 text-gray-600'>設定を読み込み中...</span>
       </div>
     );
   }
 
-  const services = formData.services;
-  const products = formData.products;
-  const packages = formData.packages;
-
-  const onSave = async () => {
-    await handleSave();
-  };
-
-  const toggleServiceStatus = (serviceId: string) => {
-    updateData({
-      services: services.map(service =>
-        service.id === serviceId
-          ? { ...service, isActive: !service.isActive }
-          : service
-      ),
-    });
-  };
-
-  const toggleProductStatus = (productId: string) => {
-    updateData({
-      products: products.map(product =>
-        product.id === productId
-          ? { ...product, isActive: !product.isActive }
-          : product
-      ),
-    });
-  };
-
-  const togglePackageStatus = (packageId: string) => {
-    updateData({
-      packages: packages.map(pkg =>
-        pkg.id === packageId ? { ...pkg, isActive: !pkg.isActive } : pkg
-      ),
-    });
-  };
-
   return (
     <div className='space-y-6'>
-      {loadingState.error && (
-        <AdminMessage message={loadingState.error} type='error' />
-      )}
-      {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type='success' />
+      {error && <AdminMessage message={error} type='error' />}
+      {savedMessage && !error && (
+        <AdminMessage message={savedMessage} type='success' />
       )}
 
-      {/* タブナビゲーション */}
-      <div className='border-b border-gray-200'>
-        <nav className='-mb-px flex space-x-8'>
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'services'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            施術メニュー
-          </button>
-          <button
-            onClick={() => setActiveTab('products')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'products'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            物販商品
-          </button>
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'packages'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            回数券・パッケージ
-          </button>
-        </nav>
-      </div>
+      {!clinicId && (
+        <AdminMessage message='対象クリニックを選択してください' type='error' />
+      )}
 
-      {/* 施術メニュー */}
-      {activeTab === 'services' && (
-        <Card className='p-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-900'>
-              施術メニュー
-            </h3>
-            <Button className='flex items-center space-x-2'>
-              <Plus className='w-4 h-4' />
-              <span>新しいメニューを追加</span>
+      <Card>
+        <CardHeader className='pb-4'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+            <div>
+              <CardTitle className='text-xl'>施術メニュー</CardTitle>
+              <CardDescription>
+                {templateScope
+                  ? `${templateScope.ownerClinicName} の共通テンプレートを使用します`
+                  : '予約画面で使用するメニューを院ごとに管理します'}
+              </CardDescription>
+            </div>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={handleRefresh}
+              disabled={loading || templateLoading || !clinicId}
+            >
+              <RefreshCw className='mr-2 h-4 w-4' />
+              再読み込み
             </Button>
           </div>
-
-          <div className='space-y-4'>
-            {services.map(service => (
-              <div key={service.id} className='p-4 bg-gray-50 rounded-lg'>
-                <div className='flex items-start justify-between mb-3'>
-                  <div className='flex-1'>
-                    <div className='flex items-center space-x-3 mb-2'>
-                      <h4 className='font-medium text-gray-900'>
-                        {service.name}
-                      </h4>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          service.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {service.isActive ? '有効' : '無効'}
-                      </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          service.insuranceApplicable
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-orange-100 text-orange-800'
-                        }`}
-                      >
-                        {service.insuranceApplicable ? '保険適用' : '自費診療'}
-                      </span>
-                    </div>
-                    <p className='text-sm text-gray-600 mb-2'>
-                      {service.description}
-                    </p>
-                    <div className='flex items-center space-x-4 text-sm text-gray-500'>
-                      <div className='flex items-center space-x-1'>
-                        <Clock className='w-4 h-4' />
-                        <span>{service.duration}分</span>
-                      </div>
-                      <div className='font-medium text-gray-900'>
-                        {service.price.toLocaleString()}
-                      </div>
-                      <div>カテゴリ: {categoryNames[service.category]}</div>
-                    </div>
-                  </div>
-                  <div className='flex items-center space-x-2 ml-4'>
-                    <Button variant='outline' size='sm'>
-                      <Edit className='w-4 h-4' />
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => toggleServiceStatus(service.id)}
-                      className={
-                        service.isActive ? 'text-red-600' : 'text-green-600'
-                      }
-                    >
-                      {service.isActive ? '無効化' : '有効化'}
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='text-red-600'
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </Button>
-                  </div>
+        </CardHeader>
+        <CardContent className='space-y-5'>
+          {isOwnerClinic && (
+            <form
+              className='grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2'
+              onSubmit={handleTemplateSubmit}
+            >
+              <div className='space-y-2'>
+                <Label htmlFor='template-name'>テンプレート名</Label>
+                <Input
+                  id='template-name'
+                  value={templateForm.name}
+                  onChange={event =>
+                    setTemplateForm(prev => ({
+                      ...prev,
+                      name: event.target.value,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='template-category'>カテゴリ</Label>
+                <select
+                  id='template-category'
+                  className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+                  value={templateForm.category}
+                  onChange={event =>
+                    setTemplateForm(prev => ({
+                      ...prev,
+                      category: event.target.value as MenuCategory,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                >
+                  {MENU_CATEGORIES.map(category => (
+                    <option key={category.value} value={category.value}>
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='template-duration'>所要時間（分）</Label>
+                <Input
+                  id='template-duration'
+                  type='number'
+                  min={1}
+                  value={templateForm.durationMinutes}
+                  onChange={event =>
+                    setTemplateForm(prev => ({
+                      ...prev,
+                      durationMinutes: event.target.value,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='template-price'>料金（円）</Label>
+                <Input
+                  id='template-price'
+                  type='number'
+                  min={0}
+                  value={templateForm.price}
+                  onChange={event =>
+                    setTemplateForm(prev => ({
+                      ...prev,
+                      price: event.target.value,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+              </div>
+              <div className='space-y-2 md:col-span-2'>
+                <Label htmlFor='template-description'>説明</Label>
+                <Textarea
+                  id='template-description'
+                  value={templateForm.description}
+                  onChange={event =>
+                    setTemplateForm(prev => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+              </div>
+              <div className='flex flex-wrap items-center gap-6 md:col-span-2'>
+                <div className='flex items-center gap-2 text-sm text-gray-700'>
+                  <Switch
+                    aria-label='テンプレート保険適用'
+                    checked={templateForm.isInsuranceApplicable}
+                    onCheckedChange={checked =>
+                      setTemplateForm(prev => ({
+                        ...prev,
+                        isInsuranceApplicable: checked,
+                      }))
+                    }
+                    disabled={!clinicId || saving}
+                  />
+                  <span>保険適用</span>
+                </div>
+                <div className='flex items-center gap-2 text-sm text-gray-700'>
+                  <Switch
+                    aria-label='テンプレート有効'
+                    checked={templateForm.isActive}
+                    onCheckedChange={checked =>
+                      setTemplateForm(prev => ({
+                        ...prev,
+                        isActive: checked,
+                      }))
+                    }
+                    disabled={!clinicId || saving}
+                  />
+                  <span>有効</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 物販商品 */}
-      {activeTab === 'products' && (
-        <Card className='p-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-900'>物販商品</h3>
-            <Button className='flex items-center space-x-2'>
-              <Plus className='w-4 h-4' />
-              <span>新しい商品を追加</span>
-            </Button>
-          </div>
-
-          <div className='space-y-4'>
-            {products.map(product => (
-              <div key={product.id} className='p-4 bg-gray-50 rounded-lg'>
-                <div className='flex items-start justify-between mb-3'>
-                  <div className='flex-1'>
-                    <div className='flex items-center space-x-3 mb-2'>
-                      <Package className='w-5 h-5 text-blue-600' />
-                      <h4 className='font-medium text-gray-900'>
-                        {product.name}
-                      </h4>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          product.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {product.isActive ? '販売中' : '販売停止'}
-                      </span>
-                    </div>
-                    <p className='text-sm text-gray-600 mb-2'>
-                      {product.description}
-                    </p>
-                    <div className='flex items-center space-x-4 text-sm text-gray-500'>
-                      <div className='font-medium text-gray-900'>
-                        {product.price.toLocaleString()}
-                      </div>
-                      <div
-                        className={`${product.stock <= 5 ? 'text-red-600 font-medium' : ''}`}
-                      >
-                        在庫: {product.stock}個
-                      </div>
-                      <div>カテゴリ: {categoryNames[product.category]}</div>
-                    </div>
-                  </div>
-                  <div className='flex items-center space-x-2 ml-4'>
-                    <Button variant='outline' size='sm'>
-                      <Edit className='w-4 h-4' />
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => toggleProductStatus(product.id)}
-                      className={
-                        product.isActive ? 'text-red-600' : 'text-green-600'
-                      }
-                    >
-                      {product.isActive ? '販売停止' : '販売開始'}
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='text-red-600'
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </Button>
-                  </div>
-                </div>
+              <div className='flex justify-end gap-2 md:col-span-2'>
+                {editingTemplateId && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={resetTemplateForm}
+                    disabled={saving}
+                  >
+                    キャンセル
+                  </Button>
+                )}
+                <Button type='submit' disabled={!clinicId || saving}>
+                  {saving ? (
+                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  ) : editingTemplateId ? (
+                    <Save className='mr-2 h-4 w-4' />
+                  ) : (
+                    <Plus className='mr-2 h-4 w-4' />
+                  )}
+                  {editingTemplateId ? 'テンプレート更新' : 'テンプレート追加'}
+                </Button>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 回数券・パッケージ */}
-      {activeTab === 'packages' && (
-        <Card className='p-6'>
-          <div className='flex items-center justify-between mb-4'>
-            <h3 className='text-lg font-semibold text-gray-900'>
-              回数券・パッケージ
-            </h3>
-            <Button className='flex items-center space-x-2'>
-              <Plus className='w-4 h-4' />
-              <span>新しいパッケージを追加</span>
-            </Button>
-          </div>
-
-          <div className='space-y-4'>
-            {packages.map(pkg => (
-              <div key={pkg.id} className='p-4 bg-gray-50 rounded-lg'>
-                <div className='flex items-start justify-between mb-3'>
-                  <div className='flex-1'>
-                    <div className='flex items-center space-x-3 mb-2'>
-                      <Ticket className='w-5 h-5 text-purple-600' />
-                      <h4 className='font-medium text-gray-900'>{pkg.name}</h4>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          pkg.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {pkg.isActive ? '販売中' : '販売停止'}
-                      </span>
-                    </div>
-                    <p className='text-sm text-gray-600 mb-2'>
-                      {pkg.description}
-                    </p>
-                    <div className='flex items-center space-x-4 text-sm text-gray-500'>
-                      <div>{pkg.sessions}回分</div>
-                      <div className='flex items-center space-x-2'>
-                        <span className='line-through text-gray-400'>
-                          {pkg.originalPrice.toLocaleString()}
-                        </span>
-                        <span className='font-medium text-red-600'>
-                          {pkg.discountedPrice.toLocaleString()}
-                        </span>
-                        <span className='bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs'>
-                          {Math.round(
-                            (1 - pkg.discountedPrice / pkg.originalPrice) * 100
-                          )}
-                          % OFF
-                        </span>
-                      </div>
-                      <div>有効期限: {pkg.validityPeriod}日</div>
-                    </div>
-                  </div>
-                  <div className='flex items-center space-x-2 ml-4'>
-                    <Button variant='outline' size='sm'>
-                      <Edit className='w-4 h-4' />
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => togglePackageStatus(pkg.id)}
-                      className={
-                        pkg.isActive ? 'text-red-600' : 'text-green-600'
-                      }
-                    >
-                      {pkg.isActive ? '販売停止' : '販売開始'}
-                    </Button>
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      className='text-red-600'
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* 保存ボタン */}
-      <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
-        <Button variant='outline'>キャンセル</Button>
-        <Button
-          onClick={onSave}
-          disabled={loadingState.isLoading}
-          className='flex items-center space-x-2'
-        >
-          {loadingState.isLoading ? (
-            <Loader2 className='w-4 h-4 animate-spin' />
-          ) : (
-            <Save className='w-4 h-4' />
+            </form>
           )}
-          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
-        </Button>
-      </div>
+
+          {templateLoading && (
+            <div className='flex items-center py-4 text-sm text-gray-600'>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              共通テンプレートを読み込み中...
+            </div>
+          )}
+
+          {!templateLoading && sortedTemplates.length === 0 && (
+            <div className='rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500'>
+              共通テンプレートはありません
+            </div>
+          )}
+
+          <div className='grid gap-3 md:grid-cols-3'>
+            {sortedTemplates.map(template => (
+              <MenuTemplateCard
+                key={template.id}
+                template={template}
+                clinicSelected={Boolean(clinicId)}
+                isOwnerClinic={isOwnerClinic}
+                saving={saving}
+                onApply={applyTemplate}
+                onEdit={handleTemplateEdit}
+                onDelete={handleTemplateDelete}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-lg'>
+            {editingId ? 'メニュー編集' : '新規メニュー'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className='grid gap-4 md:grid-cols-2' onSubmit={handleSubmit}>
+            <div className='space-y-2'>
+              <Label htmlFor='menu-name'>メニュー名</Label>
+              <Input
+                id='menu-name'
+                value={form.name}
+                onChange={event =>
+                  setForm(prev => ({ ...prev, name: event.target.value }))
+                }
+                disabled={!clinicId || saving}
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='menu-category'>カテゴリ</Label>
+              <select
+                id='menu-category'
+                className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+                value={form.category}
+                onChange={event =>
+                  setForm(prev => ({
+                    ...prev,
+                    category: event.target.value as MenuCategory,
+                  }))
+                }
+                disabled={!clinicId || saving}
+              >
+                {MENU_CATEGORIES.map(category => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='menu-duration'>所要時間（分）</Label>
+              <Input
+                id='menu-duration'
+                type='number'
+                min={1}
+                value={form.durationMinutes}
+                onChange={event =>
+                  setForm(prev => ({
+                    ...prev,
+                    durationMinutes: event.target.value,
+                  }))
+                }
+                disabled={!clinicId || saving}
+              />
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='menu-price'>料金（円）</Label>
+              <Input
+                id='menu-price'
+                type='number'
+                min={0}
+                value={form.price}
+                onChange={event =>
+                  setForm(prev => ({ ...prev, price: event.target.value }))
+                }
+                disabled={!clinicId || saving}
+              />
+            </div>
+            <div className='space-y-2 md:col-span-2'>
+              <Label htmlFor='menu-description'>説明</Label>
+              <Textarea
+                id='menu-description'
+                value={form.description}
+                onChange={event =>
+                  setForm(prev => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+                disabled={!clinicId || saving}
+              />
+            </div>
+            <div className='flex items-center gap-6 md:col-span-2'>
+              <div className='flex items-center gap-2 text-sm text-gray-700'>
+                <Switch
+                  aria-label='保険適用'
+                  checked={form.isInsuranceApplicable}
+                  onCheckedChange={checked =>
+                    setForm(prev => ({
+                      ...prev,
+                      isInsuranceApplicable: checked,
+                    }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+                <span>保険適用</span>
+              </div>
+              <div className='flex items-center gap-2 text-sm text-gray-700'>
+                <Switch
+                  aria-label='有効'
+                  checked={form.isActive}
+                  onCheckedChange={checked =>
+                    setForm(prev => ({ ...prev, isActive: checked }))
+                  }
+                  disabled={!clinicId || saving}
+                />
+                <span>有効</span>
+              </div>
+            </div>
+            <div className='flex justify-end gap-2 md:col-span-2'>
+              {editingId && (
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={resetForm}
+                  disabled={saving}
+                >
+                  キャンセル
+                </Button>
+              )}
+              <Button type='submit' disabled={!clinicId || saving}>
+                {saving ? (
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                ) : editingId ? (
+                  <Save className='mr-2 h-4 w-4' />
+                ) : (
+                  <Plus className='mr-2 h-4 w-4' />
+                )}
+                {editingId ? '更新' : '追加'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-lg'>登録済みメニュー</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-3'>
+          {loading && (
+            <div className='flex items-center py-6 text-sm text-gray-600'>
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              メニューを読み込み中...
+            </div>
+          )}
+          {!loading && sortedMenus.length === 0 && (
+            <div className='rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500'>
+              登録済みメニューはありません
+            </div>
+          )}
+          {sortedMenus.map(menu => (
+            <MenuListItem
+              key={menu.id}
+              menu={menu}
+              saving={saving}
+              onEdit={handleEdit}
+              onToggleActive={handleToggleActive}
+              onDelete={handleDelete}
+            />
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

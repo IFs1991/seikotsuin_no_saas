@@ -11,10 +11,14 @@ import {
   menuInsertSchema,
   menuUpdateSchema,
   mapMenuInsertToRow,
+  mapMenuRowToApi,
   mapMenuUpdateToRow,
+  type MenuRow,
 } from './schema';
+import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 const PATH = '/api/menus';
+const MENU_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,15 +50,7 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = (data ?? []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      durationMinutes: row.duration_minutes,
-      price: row.price,
-      description: row.description ?? '',
-      isActive: row.is_active,
-      options: row.options ?? [],
-    }));
+    const mapped = ((data ?? []) as MenuRow[]).map(mapMenuRowToApi);
     return createSuccessResponse(mapped);
   } catch (error) {
     return handleRouteError(error, PATH);
@@ -63,7 +59,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await processClinicScopedBody(request, menuInsertSchema);
+    const result = await processClinicScopedBody(request, menuInsertSchema, {
+      allowedRoles: MENU_ADMIN_ROLES,
+    });
     if (!result.success) return result.error;
 
     const insertPayload = mapMenuInsertToRow(result.dto, result.auth.id);
@@ -73,7 +71,7 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
-    return createSuccessResponse(data, 201);
+    return createSuccessResponse(mapMenuRowToApi(data as MenuRow), 201);
   } catch (error) {
     return handleRouteError(error, PATH);
   }
@@ -81,7 +79,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const result = await processClinicScopedBody(request, menuUpdateSchema);
+    const result = await processClinicScopedBody(request, menuUpdateSchema, {
+      allowedRoles: MENU_ADMIN_ROLES,
+    });
     if (!result.success) return result.error;
 
     const updatePayload = mapMenuUpdateToRow(result.dto);
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest) {
       .select()
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
-    return createSuccessResponse(data);
+    return createSuccessResponse(mapMenuRowToApi(data as MenuRow));
   } catch (error) {
     return handleRouteError(error, PATH);
   }
@@ -108,6 +108,7 @@ export async function DELETE(request: NextRequest) {
     const guard = await processApiRequest(request, {
       clinicId,
       requireClinicMatch: true,
+      allowedRoles: MENU_ADMIN_ROLES,
     });
     if (!guard.success) return guard.error;
     const { data, error } = await guard.supabase

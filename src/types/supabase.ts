@@ -1317,6 +1317,75 @@ export type Database = {
         };
         Relationships: [];
       };
+      menu_templates: {
+        Row: {
+          category: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          display_order: number | null;
+          duration_minutes: number;
+          id: string;
+          is_active: boolean | null;
+          is_deleted: boolean | null;
+          is_insurance_applicable: boolean | null;
+          name: string;
+          options: Json | null;
+          owner_clinic_id: string;
+          price: number;
+          updated_at: string;
+        };
+        Insert: {
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          display_order?: number | null;
+          duration_minutes: number;
+          id?: string;
+          is_active?: boolean | null;
+          is_deleted?: boolean | null;
+          is_insurance_applicable?: boolean | null;
+          name: string;
+          options?: Json | null;
+          owner_clinic_id: string;
+          price: number;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          display_order?: number | null;
+          duration_minutes?: number;
+          id?: string;
+          is_active?: boolean | null;
+          is_deleted?: boolean | null;
+          is_insurance_applicable?: boolean | null;
+          name?: string;
+          options?: Json | null;
+          owner_clinic_id?: string;
+          price?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_templates_owner_clinic_id_fkey';
+            columns: ['owner_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_templates_owner_clinic_id_fkey';
+            columns: ['owner_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       menus: {
         Row: {
           body_parts: string[] | null;
