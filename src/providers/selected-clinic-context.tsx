@@ -10,11 +10,18 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import type { AccessibleClinic } from '@/hooks/useAccessibleClinics';
 
 interface SelectedClinicContextValue {
   selectedClinicId: string | null;
   setSelectedClinicId: Dispatch<SetStateAction<string | null>>;
+  clinics: readonly AccessibleClinic[];
+  currentClinicId: string | null;
+  clinicsLoading: boolean;
+  clinicsError: string | null;
 }
+
+const EMPTY_ACCESSIBLE_CLINICS: readonly AccessibleClinic[] = [];
 
 const SelectedClinicContext = createContext<
   SelectedClinicContextValue | undefined
@@ -22,9 +29,17 @@ const SelectedClinicContext = createContext<
 
 export function SelectedClinicProvider({
   initialClinicId,
+  clinics = EMPTY_ACCESSIBLE_CLINICS,
+  currentClinicId = null,
+  clinicsLoading = false,
+  clinicsError = null,
   children,
 }: {
   initialClinicId: string | null;
+  clinics?: readonly AccessibleClinic[];
+  currentClinicId?: string | null;
+  clinicsLoading?: boolean;
+  clinicsError?: string | null;
   children: ReactNode;
 }) {
   const [selectedClinicId, setSelectedClinicId] = useState<string | null>(
@@ -40,8 +55,15 @@ export function SelectedClinicProvider({
   }, [initialClinicId]);
 
   const value = useMemo(
-    () => ({ selectedClinicId, setSelectedClinicId }),
-    [selectedClinicId]
+    () => ({
+      selectedClinicId,
+      setSelectedClinicId,
+      clinics,
+      currentClinicId,
+      clinicsLoading,
+      clinicsError,
+    }),
+    [clinics, clinicsError, clinicsLoading, currentClinicId, selectedClinicId]
   );
 
   return (

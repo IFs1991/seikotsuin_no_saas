@@ -97,4 +97,14 @@ describe('useAccessibleClinics', () => {
     expect(result.current.currentClinicId).toBeNull();
     expect(result.current.error).toBe('クリニック一覧の取得に失敗しました');
   });
+
+  it('TC-CH05: disabled の場合はクリニック一覧を取得しない', () => {
+    const { result } = renderHook(() =>
+      useAccessibleClinics({ enabled: false })
+    );
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.clinics).toEqual([]);
+    expect(mockApi.api.clinics.getAccessible).not.toHaveBeenCalled();
+  });
 });

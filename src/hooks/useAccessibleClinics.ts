@@ -20,6 +20,10 @@ export interface UseAccessibleClinicsResult {
   error: string | null;
 }
 
+export interface UseAccessibleClinicsOptions {
+  enabled?: boolean;
+}
+
 const ACCESSIBLE_CLINICS_ERROR_MESSAGE = 'クリニック一覧の取得に失敗しました';
 const EMPTY_ACCESSIBLE_CLINICS: readonly AccessibleClinic[] = [];
 
@@ -27,6 +31,13 @@ const INITIAL_ACCESSIBLE_CLINICS_STATE: UseAccessibleClinicsResult = {
   clinics: EMPTY_ACCESSIBLE_CLINICS,
   currentClinicId: null,
   loading: true,
+  error: null,
+};
+
+const IDLE_ACCESSIBLE_CLINICS_STATE: UseAccessibleClinicsResult = {
+  clinics: EMPTY_ACCESSIBLE_CLINICS,
+  currentClinicId: null,
+  loading: false,
   error: null,
 };
 
@@ -59,12 +70,20 @@ function getAccessibleClinicsErrorMessage(error: unknown): string {
     : ACCESSIBLE_CLINICS_ERROR_MESSAGE;
 }
 
-export function useAccessibleClinics(): UseAccessibleClinicsResult {
+export function useAccessibleClinics(
+  options: UseAccessibleClinicsOptions = {}
+): UseAccessibleClinicsResult {
+  const { enabled = true } = options;
   const [state, setState] = useState<UseAccessibleClinicsResult>(
-    INITIAL_ACCESSIBLE_CLINICS_STATE
+    enabled ? INITIAL_ACCESSIBLE_CLINICS_STATE : IDLE_ACCESSIBLE_CLINICS_STATE
   );
 
   useEffect(() => {
+    if (!enabled) {
+      setState(IDLE_ACCESSIBLE_CLINICS_STATE);
+      return;
+    }
+
     let isMounted = true;
 
     async function loadClinics() {
@@ -116,7 +135,7 @@ export function useAccessibleClinics(): UseAccessibleClinicsResult {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [enabled]);
 
   return state;
 }

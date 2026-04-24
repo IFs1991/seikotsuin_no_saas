@@ -27,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     clinics,
     currentClinicId,
     loading: clinicsLoading,
+    error: clinicsError,
   } = useAccessibleClinics();
 
   const profileRole = profile?.role ?? null;
@@ -101,7 +102,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <UserProfileProvider value={userProfileContextValue}>
-        <SelectedClinicProvider initialClinicId={initialClinicId}>
+        <SelectedClinicProvider
+          initialClinicId={initialClinicId}
+          clinics={clinics}
+          currentClinicId={currentClinicId}
+          clinicsLoading={clinicsLoading}
+          clinicsError={clinicsError}
+        >
           <div
             className={
               isDarkMode

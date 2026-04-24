@@ -19,10 +19,13 @@ import {
 } from '@/providers/selected-clinic-context';
 
 function TestConsumer() {
-  const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
+  const { selectedClinicId, setSelectedClinicId, clinics, clinicsLoading } =
+    useSelectedClinic();
   return (
     <div>
       <span data-testid='clinic-id'>{selectedClinicId ?? 'null'}</span>
+      <span data-testid='clinic-count'>{clinics.length}</span>
+      <span data-testid='clinics-loading'>{String(clinicsLoading)}</span>
       <button onClick={() => setSelectedClinicId('clinic-new')}>Change</button>
     </div>
   );
@@ -68,6 +71,22 @@ describe('SelectedClinicContext', () => {
       </SelectedClinicProvider>
     );
     expect(screen.getByTestId('clinic-id').textContent).toBe('null');
+  });
+
+  it('利用可能クリニック一覧の状態を提供する', () => {
+    render(
+      <SelectedClinicProvider
+        initialClinicId='clinic-1'
+        clinics={[{ id: 'clinic-1', name: '本院' }]}
+        currentClinicId='clinic-1'
+        clinicsLoading={true}
+      >
+        <TestConsumer />
+      </SelectedClinicProvider>
+    );
+
+    expect(screen.getByTestId('clinic-count').textContent).toBe('1');
+    expect(screen.getByTestId('clinics-loading').textContent).toBe('true');
   });
 
   it('非同期に initialClinicId が入ったとき未選択 state を同期する', () => {
