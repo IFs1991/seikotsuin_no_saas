@@ -60,7 +60,7 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
   },
   { id: 'patients', label: '患者分析', href: '/patients' },
   { id: 'revenue', label: '収益分析', href: '/revenue' },
-  { id: 'staff', label: 'スタッフ管理', href: '/staff' },
+  { id: 'staff', label: 'スタッフ分析', href: '/staff' },
   { id: 'ai-insights', label: 'AI分析', href: '/ai-insights' },
 ];
 
@@ -72,7 +72,7 @@ const OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
 export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
-  { id: 'admin-users', label: 'ユーザー権限', href: '/admin/users' },
+  { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
   { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
   { id: 'admin-chat', label: 'AIチャット', href: '/admin/chat' },

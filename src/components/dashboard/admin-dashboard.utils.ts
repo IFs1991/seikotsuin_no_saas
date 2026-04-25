@@ -78,7 +78,7 @@ export const ADMIN_MANAGEMENT_ACTIONS = [
     cta: '店舗管理へ',
   },
   {
-    label: 'ユーザー権限',
+    label: 'スタッフ管理',
     description: 'admin / clinic_admin / manager などの割り当てを管理します。',
     href: '/admin/users',
     cta: '権限管理へ',

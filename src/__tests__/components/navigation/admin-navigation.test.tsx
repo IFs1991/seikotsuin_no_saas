@@ -46,7 +46,7 @@ describe('Admin navigation alignment', () => {
 
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('クリニック管理')).toBeInTheDocument();
-    expect(screen.getByText('ユーザー権限')).toBeInTheDocument();
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(screen.getByText('システム設定')).toBeInTheDocument();
     expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
     expect(screen.getByText('AIチャット')).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe('Admin navigation alignment', () => {
 
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('クリニック管理')).toBeInTheDocument();
-    expect(screen.getByText('ユーザー権限')).toBeInTheDocument();
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(screen.getByText('システム設定')).toBeInTheDocument();
     expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
     expect(screen.getByText('AIチャット')).toBeInTheDocument();
@@ -79,7 +79,8 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('予約管理')).not.toBeInTheDocument();
     expect(screen.queryByText('患者分析')).not.toBeInTheDocument();
     expect(screen.queryByText('収益分析')).not.toBeInTheDocument();
-    expect(screen.queryByText('スタッフ管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('スタッフ分析')).not.toBeInTheDocument();
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(screen.queryByText('クイックアクセス')).not.toBeInTheDocument();
 
     expect(screen.queryByText('マスタ管理')).not.toBeInTheDocument();
@@ -101,6 +102,7 @@ describe('Admin navigation alignment', () => {
 
     expect(screen.getByText('日報管理')).toBeInTheDocument();
     expect(screen.getByText('予約管理')).toBeInTheDocument();
+    expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('クリニック管理')).toBeInTheDocument();
