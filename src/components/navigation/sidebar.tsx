@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   ADMIN_MENU_ITEMS,
+  CLINIC_ADMIN_MENU_ITEMS,
   QUICK_ACCESS_ITEMS,
   getCurrentNavigationItemId,
   getNavigationMode,
@@ -83,6 +84,11 @@ export const Sidebar = React.memo(function Sidebar({
   const primaryMenuItems = useMemo(
     () => (navigationMode.isHqAdmin ? ADMIN_MENU_ITEMS : operationMenuItems),
     [navigationMode.isHqAdmin, operationMenuItems]
+  );
+  const adminSectionMenuItems = useMemo(
+    () =>
+      navigationMode.isHqAdmin ? ADMIN_MENU_ITEMS : CLINIC_ADMIN_MENU_ITEMS,
+    [navigationMode.isHqAdmin]
   );
   const openSubMenuIds = useMemo(() => new Set(openSubMenus), [openSubMenus]);
 
@@ -246,7 +252,7 @@ export const Sidebar = React.memo(function Sidebar({
                   管理セクション
                 </h2>
               )}
-              {ADMIN_MENU_ITEMS.map(item => (
+              {adminSectionMenuItems.map(item => (
                 <SidebarItemButton
                   key={item.id}
                   item={item}

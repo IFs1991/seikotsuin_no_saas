@@ -78,6 +78,9 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin-chat', label: 'AIチャット', href: '/admin/chat' },
 ];
 
+export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
+  ADMIN_MENU_ITEMS.filter(item => item.id === 'admin-users');
+
 const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
 const OPERATION_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   ...OPERATION_MENU_ITEMS,
