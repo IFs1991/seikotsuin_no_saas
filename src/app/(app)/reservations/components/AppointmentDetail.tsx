@@ -11,6 +11,30 @@ import { calculateEndTime, calculateDuration } from '../utils/time';
 import { X, Trash2, Edit, Check, Undo } from 'lucide-react';
 import { AppointmentSummary } from './AppointmentSummary';
 import { AppointmentEditForm } from './AppointmentEditForm';
+import { statusToColor } from '../hooks/statusToColor';
+
+const VISIT_STATUS_ACTIONS: {
+  status: NonNullable<Appointment['status']>;
+  label: string;
+  className: string;
+}[] = [
+  {
+    status: 'arrived',
+    label: '来院済み',
+    className:
+      'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+  },
+  {
+    status: 'no_show',
+    label: '来院なし',
+    className: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
+  },
+  {
+    status: 'cancelled',
+    label: 'キャンセル',
+    className: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
+  },
+];
 
 interface Props {
   appointment: Appointment;
@@ -36,10 +60,14 @@ export const AppointmentDetail: React.FC<Props> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<
+    Appointment['status'] | null
+  >(null);
 
   useEffect(() => {
     setFormData(appointment);
     setErrorMessage(null);
+    setUpdatingStatus(null);
   }, [appointment]);
 
   const handleInputChange = (field: keyof Appointment, value: any) => {
@@ -147,6 +175,35 @@ export const AppointmentDetail: React.FC<Props> = ({
     setErrorMessage(result.error ?? 'Failed to cancel reservation.');
   };
 
+  const handleStatusUpdate = async (
+    nextStatus: NonNullable<Appointment['status']>
+  ) => {
+    if (appointment.status === nextStatus || updatingStatus) return;
+
+    setErrorMessage(null);
+    setUpdatingStatus(nextStatus);
+
+    try {
+      const result = await onUpdate({
+        ...appointment,
+        status: nextStatus,
+        color: statusToColor(nextStatus),
+      });
+
+      if (!result.ok) {
+        setErrorMessage(result.error ?? 'Failed to update reservation status.');
+      }
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'Failed to update reservation status.'
+      );
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
   return (
     <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
       <div
@@ -204,6 +261,31 @@ export const AppointmentDetail: React.FC<Props> = ({
               options={options}
               onEdit={() => setIsEditing(true)}
             />
+          )}
+          {!isEditing && (
+            <div className='mt-5 border-t border-gray-100 pt-4'>
+              <div className='mb-2 text-xs font-bold text-gray-500'>
+                来院ステータス
+              </div>
+              <div className='grid grid-cols-3 gap-2'>
+                {VISIT_STATUS_ACTIONS.map(action => {
+                  const isCurrent = appointment.status === action.status;
+                  const isUpdating = updatingStatus === action.status;
+                  return (
+                    <button
+                      key={action.status}
+                      type='button'
+                      onClick={() => handleStatusUpdate(action.status)}
+                      disabled={isCurrent || updatingStatus !== null}
+                      className={`rounded-md border px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${action.className}`}
+                      aria-pressed={isCurrent}
+                    >
+                      {isUpdating ? '更新中...' : action.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
 
