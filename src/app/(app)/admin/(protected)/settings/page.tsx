@@ -12,6 +12,8 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminState } from '@/components/admin/admin-state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -333,9 +335,11 @@ function getSearchableCategories(
 
 function SettingsLoadingCard() {
   return (
-    <Card className='p-6'>
-      <div className='text-center py-12 text-gray-500'>設定を読み込み中...</div>
-    </Card>
+    <AdminState
+      variant='loading'
+      title='設定を読み込み中...'
+      className='bg-white dark:bg-gray-900'
+    />
   );
 }
 
@@ -520,24 +524,20 @@ function TemplateItemNotice() {
 
 function UnavailableSettingsCard({ description }: { description: string }) {
   return (
-    <Card className='p-6'>
-      <div className='text-center py-12'>
-        <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-          <Settings className='w-8 h-8 text-gray-400' />
+    <AdminState
+      variant='empty'
+      title='パイロット版では提供しておりません'
+      description={
+        <div className='space-y-2'>
+          <p>今後のアップデートで追加予定です。</p>
+          <p>予定機能: {description}</p>
+          <p>
+            フォームベースの設定変更、リアルタイム保存、変更履歴の管理を想定しています。
+          </p>
         </div>
-        <h3 className='text-lg font-medium text-gray-900 mb-2'>
-          パイロット版では提供しておりません
-        </h3>
-        <p className='text-gray-500 mb-4'>今後のアップデートで追加予定です。</p>
-        <div className='space-y-2 text-sm text-gray-400 max-w-md mx-auto'>
-          <p>この画面では以下の機能を提供予定：</p>
-          <p>• {description}</p>
-          <p>• フォームベースの設定変更</p>
-          <p>• リアルタイムの保存とバリデーション</p>
-          <p>• 変更履歴の管理</p>
-        </div>
-      </div>
-    </Card>
+      }
+      className='bg-white dark:bg-gray-900'
+    />
   );
 }
 
@@ -548,24 +548,28 @@ const SettingsContent = memo(function SettingsContent({
 }: SettingsContentProps) {
   if (!currentItem) {
     return (
-      <div className='text-center py-12'>
-        <p className='text-gray-500'>設定項目を選択してください</p>
-      </div>
+      <AdminState
+        variant='empty'
+        title='設定項目を選択してください'
+        description='左側の設定メニューから編集したい項目を選択してください。'
+        className='bg-white dark:bg-gray-900'
+      />
     );
   }
 
   return (
-    <div>
-      <div className='mb-8'>
+    <AdminPageShell
+      title={currentItem.title}
+      description={currentItem.description}
+      className='min-h-full bg-transparent p-0'
+      contentClassName='max-w-none'
+    >
+      <div>
         <div className='flex items-center text-sm text-gray-500 mb-2'>
           <span>{currentItem.category}</span>
           <ChevronRight className='w-4 h-4 mx-2' />
           <span>{currentItem.title}</span>
         </div>
-        <h1 className='text-3xl font-bold text-gray-900 mb-2'>
-          {currentItem.title}
-        </h1>
-        <p className='text-gray-600'>{currentItem.description}</p>
         {isTemplateItem && <TemplateItemNotice />}
       </div>
 
@@ -574,7 +578,7 @@ const SettingsContent = memo(function SettingsContent({
       ) : (
         <UnavailableSettingsCard description={currentItem.description} />
       )}
-    </div>
+    </AdminPageShell>
   );
 });
 

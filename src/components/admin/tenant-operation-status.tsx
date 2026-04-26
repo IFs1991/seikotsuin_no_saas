@@ -1,14 +1,9 @@
 'use client';
 
 import { memo } from 'react';
+import { AdminStatusBadge } from '@/components/admin/admin-status-badge';
 import { Switch } from '@/components/ui/switch';
 import { formatClinicOperationStatus } from '@/lib/admin/tenants';
-import { cn } from '@/lib/utils';
-
-const ACTIVE_BADGE_CLASS =
-  'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-800';
-const INACTIVE_BADGE_CLASS =
-  'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700';
 
 interface TenantOperationStatusControlProps {
   id: string;
@@ -64,15 +59,11 @@ function TenantOperationStatusBadgeComponent({
   className,
 }: TenantOperationStatusBadgeProps) {
   return (
-    <span
-      className={cn(
-        'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1',
-        isActive ? ACTIVE_BADGE_CLASS : INACTIVE_BADGE_CLASS,
-        className
-      )}
-    >
-      {formatClinicOperationStatus(isActive)}
-    </span>
+    <AdminStatusBadge
+      label={formatClinicOperationStatus(isActive)}
+      tone={isActive ? 'active' : 'inactive'}
+      className={className}
+    />
   );
 }
 

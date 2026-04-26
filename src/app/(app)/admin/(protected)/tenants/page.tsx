@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  memo,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -10,12 +11,15 @@ import {
   type FormEvent,
 } from 'react';
 import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
+import { AdminFormCard } from '@/components/admin/admin-form-card';
+import { AdminListCard } from '@/components/admin/admin-list-card';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminState } from '@/components/admin/admin-state';
 import {
   TenantOperationStatusBadge,
   TenantOperationStatusControl,
 } from '@/components/admin/tenant-operation-status';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -54,6 +58,45 @@ import {
   type ClinicHierarchyType,
   type TenantFormState,
 } from '@/lib/admin/tenants';
+
+interface TenantTableRowProps {
+  clinic: ClinicSummary;
+  onEdit: (clinic: ClinicSummary) => void;
+  onToggleActive: (clinic: ClinicSummary) => void;
+}
+
+const TenantTableRow = memo(function TenantTableRow({
+  clinic,
+  onEdit,
+  onToggleActive,
+}: TenantTableRowProps) {
+  return (
+    <TableRow>
+      <TableCell className='text-xs text-gray-500'>{clinic.id}</TableCell>
+      <TableCell className='font-medium'>
+        <div className={clinic.parent_id ? 'pl-4' : ''}>{clinic.name}</div>
+      </TableCell>
+      <TableCell>{formatClinicTypeLabel(clinic)}</TableCell>
+      <TableCell>{buildParentLabel(clinic)}</TableCell>
+      <TableCell>
+        <TenantOperationStatusBadge isActive={clinic.is_active} />
+      </TableCell>
+      <TableCell>{formatClinicDate(clinic.created_at)}</TableCell>
+      <TableCell className='space-x-2'>
+        <Button size='sm' variant='outline' onClick={() => onEdit(clinic)}>
+          編集
+        </Button>
+        <Button
+          size='sm'
+          variant={clinic.is_active ? 'destructive' : 'secondary'}
+          onClick={() => onToggleActive(clinic)}
+        >
+          {formatClinicOperationAction(clinic.is_active)}
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
 
 export default function AdminTenantsPage() {
   const {
@@ -222,12 +265,9 @@ export default function AdminTenantsPage() {
     [updateFormField]
   );
 
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setSearch(event.target.value);
-    },
-    []
-  );
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
 
   const handleTenantTypeChange = useCallback((value: ClinicHierarchyType) => {
     setFormState(prev => ({
@@ -258,269 +298,148 @@ export default function AdminTenantsPage() {
     []
   );
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setNotice(null);
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setNotice(null);
 
-    const validationMessage = buildFormValidationMessage(
-      formState,
-      isCreateMode
-    );
-    if (validationMessage) {
-      setNotice(validationMessage);
-      return;
-    }
-
-    if (editingId) {
-      const updated = await updateClinic(
-        editingId,
-        buildUpdateClinicPayload(formState)
+      const validationMessage = buildFormValidationMessage(
+        formState,
+        isCreateMode
       );
-      if (updated) {
-        syncClinicWithCurrentFilters(updated);
+      if (validationMessage) {
+        setNotice(validationMessage);
+        return;
+      }
+
+      if (editingId) {
+        const updated = await updateClinic(
+          editingId,
+          buildUpdateClinicPayload(formState)
+        );
+        if (updated) {
+          syncClinicWithCurrentFilters(updated);
+          await refreshTenantOptions();
+          setNotice('クリニックを更新しました');
+          resetForm();
+        }
+        return;
+      }
+
+      const created = await createClinic(buildCreateClinicPayload(formState));
+
+      if (created) {
+        syncClinicWithCurrentFilters(created);
         await refreshTenantOptions();
-        setNotice('クリニックを更新しました');
+        setNotice(buildCreateNotice(created));
         resetForm();
       }
-      return;
-    }
+    },
+    [
+      createClinic,
+      editingId,
+      formState,
+      isCreateMode,
+      refreshTenantOptions,
+      resetForm,
+      syncClinicWithCurrentFilters,
+      updateClinic,
+    ]
+  );
 
-    const created = await createClinic(buildCreateClinicPayload(formState));
-
-    if (created) {
-      syncClinicWithCurrentFilters(created);
-      await refreshTenantOptions();
-      setNotice(buildCreateNotice(created));
-      resetForm();
-    }
-  };
-
-  const handleEdit = (clinic: ClinicSummary) => {
+  const handleEdit = useCallback((clinic: ClinicSummary) => {
     setEditingId(clinic.id);
     setFormState(buildEditFormState(clinic));
     setNotice(null);
-  };
+  }, []);
 
-  const handleToggleActive = async (clinic: ClinicSummary) => {
-    setNotice(null);
-    const updated = await updateClinic(clinic.id, {
-      is_active: !clinic.is_active,
-    });
-    if (updated) {
-      syncClinicWithCurrentFilters(updated);
-      await refreshTenantOptions();
-      setNotice(buildClinicOperationNotice(clinic.is_active));
-    }
-  };
+  const handleToggleActive = useCallback(
+    async (clinic: ClinicSummary) => {
+      setNotice(null);
+      const updated = await updateClinic(clinic.id, {
+        is_active: !clinic.is_active,
+      });
+      if (updated) {
+        syncClinicWithCurrentFilters(updated);
+        await refreshTenantOptions();
+        setNotice(buildClinicOperationNotice(clinic.is_active));
+      }
+    },
+    [refreshTenantOptions, syncClinicWithCurrentFilters, updateClinic]
+  );
 
   return (
-    <div className='min-h-screen bg-white p-6 dark:bg-gray-800'>
-      <div className='mx-auto max-w-6xl space-y-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle className='text-xl font-semibold'>
-              クリニック管理
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className='space-y-4'>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label htmlFor='clinic-name' className='text-sm font-medium'>
-                    クリニック名
-                  </label>
-                  <Input
-                    id='clinic-name'
-                    value={formState.name}
-                    onChange={handleNameChange}
-                    placeholder='例: 本院'
-                  />
-                </div>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-phone-number'
-                    className='text-sm font-medium'
-                  >
-                    電話番号
-                  </label>
-                  <Input
-                    id='clinic-phone-number'
-                    value={formState.phone_number}
-                    onChange={handlePhoneNumberChange}
-                    placeholder='例: 03-1234-5678'
-                  />
-                </div>
-              </div>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-address'
-                    className='text-sm font-medium'
-                  >
-                    住所
-                  </label>
-                  <Input
-                    id='clinic-address'
-                    value={formState.address}
-                    onChange={handleAddressChange}
-                    placeholder='例: 東京都千代田区'
-                  />
-                </div>
-                <TenantOperationStatusControl
-                  id='clinic-active'
-                  isActive={formState.is_active}
-                  onChange={handleOperationStatusChange}
-                />
-              </div>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-tenant-type'
-                    className='text-sm font-medium'
-                  >
-                    テナント種別
-                  </label>
-                  <Select
-                    value={formState.tenant_type}
-                    onValueChange={value =>
-                      handleTenantTypeChange(value as ClinicHierarchyType)
-                    }
-                    disabled={shouldLockHierarchy}
-                  >
-                    <SelectTrigger id='clinic-tenant-type' className='w-full'>
-                      <SelectValue placeholder='種別を選択' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ADMIN_TENANT_TYPE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-parent-tenant'
-                    className='text-sm font-medium'
-                  >
-                    親テナント
-                  </label>
-                  <Select
-                    value={formState.parent_id || UNSELECTED_PARENT_VALUE}
-                    onValueChange={handleParentTenantChange}
-                    disabled={
-                      formState.tenant_type !== 'child' || shouldLockHierarchy
-                    }
-                  >
-                    <SelectTrigger id='clinic-parent-tenant' className='w-full'>
-                      <SelectValue
-                        placeholder={
-                          tenantOptionsLoading
-                            ? '親テナントを読み込み中'
-                            : '親テナントを選択'
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={UNSELECTED_PARENT_VALUE}>
-                        親テナントを選択
-                      </SelectItem>
-                      {parentTenantOptions.map(clinic => (
-                        <SelectItem key={clinic.id} value={clinic.id}>
-                          {buildParentOptionLabel(clinic)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
-                    本部/単独テナントは親なし、子テナントは同一スコープ内の本部配下に作成します
-                  </p>
-                  {shouldLockHierarchy && (
-                    <p className='text-xs text-amber-600 dark:text-amber-400'>
-                      子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
-                    </p>
-                  )}
-                </div>
-              </div>
-              {isCreateMode && (
-                <div className='grid gap-4 md:grid-cols-2'>
-                  <div className='space-y-2'>
-                    <label
-                      htmlFor='clinic-login-email'
-                      className='text-sm font-medium'
-                    >
-                      ログインID（メールアドレス）
-                    </label>
-                    <Input
-                      id='clinic-login-email'
-                      type='email'
-                      value={formState.login_email}
-                      onChange={handleLoginEmailChange}
-                      placeholder='例: clinic-admin@example.com'
-                      autoComplete='email'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <label
-                      htmlFor='clinic-login-password'
-                      className='text-sm font-medium'
-                    >
-                      初期パスワード
-                    </label>
-                    <Input
-                      id='clinic-login-password'
-                      type='password'
-                      value={formState.login_password}
-                      onChange={handleLoginPasswordChange}
-                      placeholder='初期パスワードを設定'
-                      autoComplete='new-password'
-                    />
-                    <p className='text-xs text-gray-500 dark:text-gray-400'>
-                      ログインは既存仕様どおりメールアドレスとパスワードで行います
-                    </p>
-                  </div>
-                </div>
-              )}
-              <div className='flex flex-wrap items-center gap-2'>
-                <Button type='submit' disabled={loading}>
-                  {editingId ? '更新する' : '作成する'}
-                </Button>
-                {editingId && (
-                  <Button type='button' variant='outline' onClick={resetForm}>
-                    編集をキャンセル
-                  </Button>
-                )}
-                {notice && (
-                  <span className='text-sm text-emerald-600'>{notice}</span>
-                )}
-                {error && <span className='text-sm text-red-500'>{error}</span>}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='space-y-3'>
-            <CardTitle className='text-lg font-semibold'>一覧</CardTitle>
-            <div className='flex flex-wrap items-center gap-3'>
+    <AdminPageShell
+      title='クリニック管理'
+      description='親子テナント、店舗ログイン、運用状態を管理します。'
+    >
+      <AdminFormCard title={isCreateMode ? 'クリニック作成' : 'クリニック編集'}>
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <label htmlFor='clinic-name' className='text-sm font-medium'>
+                クリニック名
+              </label>
               <Input
-                value={search}
-                onChange={handleSearchChange}
-                placeholder='クリニック名で検索'
-                className='max-w-xs'
+                id='clinic-name'
+                value={formState.name}
+                onChange={handleNameChange}
+                placeholder='例: 本院'
               />
-              <Select
-                value={statusFilter}
-                onValueChange={value =>
-                  handleStatusFilterChange(value as ClinicStatusFilterValue)
-                }
+            </div>
+            <div className='space-y-2'>
+              <label
+                htmlFor='clinic-phone-number'
+                className='text-sm font-medium'
               >
-                <SelectTrigger className='w-40'>
-                  <SelectValue placeholder='状態' />
+                電話番号
+              </label>
+              <Input
+                id='clinic-phone-number'
+                value={formState.phone_number}
+                onChange={handlePhoneNumberChange}
+                placeholder='例: 03-1234-5678'
+              />
+            </div>
+          </div>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <label htmlFor='clinic-address' className='text-sm font-medium'>
+                住所
+              </label>
+              <Input
+                id='clinic-address'
+                value={formState.address}
+                onChange={handleAddressChange}
+                placeholder='例: 東京都千代田区'
+              />
+            </div>
+            <TenantOperationStatusControl
+              id='clinic-active'
+              isActive={formState.is_active}
+              onChange={handleOperationStatusChange}
+            />
+          </div>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <label
+                htmlFor='clinic-tenant-type'
+                className='text-sm font-medium'
+              >
+                テナント種別
+              </label>
+              <Select
+                value={formState.tenant_type}
+                onValueChange={value =>
+                  handleTenantTypeChange(value as ClinicHierarchyType)
+                }
+                disabled={shouldLockHierarchy}
+              >
+                <SelectTrigger id='clinic-tenant-type' className='w-full'>
+                  <SelectValue placeholder='種別を選択' />
                 </SelectTrigger>
                 <SelectContent>
-                  {ADMIN_TENANT_STATUS_OPTIONS.map(option => (
+                  {ADMIN_TENANT_TYPE_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -528,77 +447,171 @@ export default function AdminTenantsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-          <CardContent>
-            {loading && clinics.length === 0 ? (
-              <p className='text-sm text-gray-500'>読み込み中...</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>名称</TableHead>
-                    <TableHead>種別</TableHead>
-                    <TableHead>親テナント</TableHead>
-                    <TableHead>運用状態</TableHead>
-                    <TableHead>作成日</TableHead>
-                    <TableHead>操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayClinics.map(clinic => (
-                    <TableRow key={clinic.id}>
-                      <TableCell className='text-xs text-gray-500'>
-                        {clinic.id}
-                      </TableCell>
-                      <TableCell className='font-medium'>
-                        <div className={clinic.parent_id ? 'pl-4' : ''}>
-                          {clinic.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatClinicTypeLabel(clinic)}</TableCell>
-                      <TableCell>{buildParentLabel(clinic)}</TableCell>
-                      <TableCell>
-                        <TenantOperationStatusBadge
-                          isActive={clinic.is_active}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {formatClinicDate(clinic.created_at)}
-                      </TableCell>
-                      <TableCell className='space-x-2'>
-                        <Button
-                          size='sm'
-                          variant='outline'
-                          onClick={() => handleEdit(clinic)}
-                        >
-                          編集
-                        </Button>
-                        <Button
-                          size='sm'
-                          variant={
-                            clinic.is_active ? 'destructive' : 'secondary'
-                          }
-                          onClick={() => handleToggleActive(clinic)}
-                        >
-                          {formatClinicOperationAction(clinic.is_active)}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+            <div className='space-y-2'>
+              <label
+                htmlFor='clinic-parent-tenant'
+                className='text-sm font-medium'
+              >
+                親テナント
+              </label>
+              <Select
+                value={formState.parent_id || UNSELECTED_PARENT_VALUE}
+                onValueChange={handleParentTenantChange}
+                disabled={
+                  formState.tenant_type !== 'child' || shouldLockHierarchy
+                }
+              >
+                <SelectTrigger id='clinic-parent-tenant' className='w-full'>
+                  <SelectValue
+                    placeholder={
+                      tenantOptionsLoading
+                        ? '親テナントを読み込み中'
+                        : '親テナントを選択'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNSELECTED_PARENT_VALUE}>
+                    親テナントを選択
+                  </SelectItem>
+                  {parentTenantOptions.map(clinic => (
+                    <SelectItem key={clinic.id} value={clinic.id}>
+                      {buildParentOptionLabel(clinic)}
+                    </SelectItem>
                   ))}
-                  {displayClinics.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className='text-center text-sm'>
-                        クリニックがありません
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                </SelectContent>
+              </Select>
+              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                本部/単独テナントは親なし、子テナントは同一スコープ内の本部配下に作成します
+              </p>
+              {shouldLockHierarchy && (
+                <p className='text-xs text-amber-600 dark:text-amber-400'>
+                  子テナントを持つ本部テナントは、先に子テナントを整理するまで親変更できません
+                </p>
+              )}
+            </div>
+          </div>
+          {isCreateMode && (
+            <div className='grid gap-4 md:grid-cols-2'>
+              <div className='space-y-2'>
+                <label
+                  htmlFor='clinic-login-email'
+                  className='text-sm font-medium'
+                >
+                  ログインID（メールアドレス）
+                </label>
+                <Input
+                  id='clinic-login-email'
+                  type='email'
+                  value={formState.login_email}
+                  onChange={handleLoginEmailChange}
+                  placeholder='例: clinic-admin@example.com'
+                  autoComplete='email'
+                />
+              </div>
+              <div className='space-y-2'>
+                <label
+                  htmlFor='clinic-login-password'
+                  className='text-sm font-medium'
+                >
+                  初期パスワード
+                </label>
+                <Input
+                  id='clinic-login-password'
+                  type='password'
+                  value={formState.login_password}
+                  onChange={handleLoginPasswordChange}
+                  placeholder='初期パスワードを設定'
+                  autoComplete='new-password'
+                />
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  ログインは既存仕様どおりメールアドレスとパスワードで行います
+                </p>
+              </div>
+            </div>
+          )}
+          <div className='flex flex-wrap items-center gap-2'>
+            <Button type='submit' disabled={loading}>
+              {editingId ? '更新する' : '作成する'}
+            </Button>
+            {editingId && (
+              <Button type='button' variant='outline' onClick={resetForm}>
+                編集をキャンセル
+              </Button>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            {notice && (
+              <span className='text-sm text-emerald-600'>{notice}</span>
+            )}
+            {error && <span className='text-sm text-red-500'>{error}</span>}
+          </div>
+        </form>
+      </AdminFormCard>
+
+      <AdminListCard
+        title='クリニック一覧'
+        searchId='admin-tenant-search'
+        searchValue={search}
+        searchPlaceholder='クリニック名で検索'
+        onSearchChange={handleSearchChange}
+        filters={
+          <Select
+            value={statusFilter}
+            onValueChange={value =>
+              handleStatusFilterChange(value as ClinicStatusFilterValue)
+            }
+          >
+            <SelectTrigger className='w-40'>
+              <SelectValue placeholder='状態' />
+            </SelectTrigger>
+            <SelectContent>
+              {ADMIN_TENANT_STATUS_OPTIONS.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      >
+        {loading && clinics.length === 0 ? (
+          <AdminState variant='loading' title='読み込み中...' />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>名称</TableHead>
+                <TableHead>種別</TableHead>
+                <TableHead>親テナント</TableHead>
+                <TableHead>運用状態</TableHead>
+                <TableHead>作成日</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {displayClinics.map(clinic => (
+                <TenantTableRow
+                  key={clinic.id}
+                  clinic={clinic}
+                  onEdit={handleEdit}
+                  onToggleActive={handleToggleActive}
+                />
+              ))}
+              {displayClinics.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <AdminState
+                      variant='empty'
+                      title='クリニックがありません'
+                      description='検索条件を変更するか、新しいクリニックを作成してください。'
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </AdminListCard>
+    </AdminPageShell>
   );
 }

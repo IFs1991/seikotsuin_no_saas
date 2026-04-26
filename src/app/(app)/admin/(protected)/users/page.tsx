@@ -7,16 +7,12 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { AdminFormCard } from '@/components/admin/admin-form-card';
+import { AdminListCard } from '@/components/admin/admin-list-card';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminState } from '@/components/admin/admin-state';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -366,6 +362,10 @@ export default function AdminUsersPage() {
     setIsUserPickerOpen(true);
   }, []);
 
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+
   const handleUserSelect = useCallback(
     (candidate: UserPermissionCandidate) => {
       const label = getCandidateInputLabel(candidate);
@@ -407,143 +407,45 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 p-6'>
-      <div className='mx-auto max-w-6xl space-y-6'>
-        <Card>
-          <CardHeader>
-            <CardTitle className='text-xl font-semibold'>
-              アカウント・権限管理
-            </CardTitle>
-            <CardDescription>
-              ログインできるアカウント、所属店舗、ロールを管理します。店舗スタッフの招待や勤務情報は店舗単位の管理画面で扱います。
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className='space-y-4'>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <UserCandidateCombobox
-                  candidates={userCandidates}
-                  disabled={Boolean(editingPermissionId)}
-                  error={userCandidatesError}
-                  hasSelectedUser={hasSelectedUser}
-                  inputId='admin-user-search'
-                  isOpen={isUserPickerOpen}
-                  listboxId='admin-user-candidates'
-                  loading={userCandidatesLoading}
-                  selectedUserId={formState.user_id}
-                  value={userSearch}
-                  onOpenChange={setIsUserPickerOpen}
-                  onSearchChange={handleUserSearchChange}
-                  onSelect={handleUserSelect}
-                />
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='admin-user-role'
-                    className='text-sm font-medium'
-                  >
-                    ロール
-                  </label>
-                  <Select
-                    value={formState.role}
-                    onValueChange={value =>
-                      setFormState(prev => ({
-                        ...prev,
-                        role: toAdminUserRole(value),
-                      }))
-                    }
-                  >
-                    <SelectTrigger id='admin-user-role'>
-                      <SelectValue placeholder='ロールを選択' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roleOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='admin-user-clinic'
-                    className='text-sm font-medium'
-                  >
-                    所属店舗
-                  </label>
-                  <Select
-                    value={formState.clinic_id || NO_CLINIC_VALUE}
-                    onValueChange={value =>
-                      setFormState(prev => ({
-                        ...prev,
-                        clinic_id: value === NO_CLINIC_VALUE ? '' : value,
-                      }))
-                    }
-                    disabled={formState.role === 'admin'}
-                  >
-                    <SelectTrigger id='admin-user-clinic'>
-                      <SelectValue placeholder='クリニックを選択' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
-                      {clinicOptions.map(clinic => (
-                        <SelectItem key={clinic.id} value={clinic.id}>
-                          {clinic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className='flex flex-wrap items-center gap-2'>
-                <Button
-                  type='submit'
-                  disabled={loading || roleOptions.length === 0}
-                >
-                  {editingPermissionId ? '権限を更新する' : '権限を付与する'}
-                </Button>
-                {editingPermissionId && (
-                  <Button type='button' variant='outline' onClick={resetForm}>
-                    編集をキャンセル
-                  </Button>
-                )}
-                {notice && (
-                  <span className='text-sm text-emerald-600'>{notice}</span>
-                )}
-                {error && <span className='text-sm text-red-500'>{error}</span>}
-                {clinicOptionsError && (
-                  <span className='text-sm text-red-500'>
-                    {clinicOptionsError}
-                  </span>
-                )}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='space-y-3'>
-            <CardTitle className='text-lg font-semibold'>
-              アカウント一覧
-            </CardTitle>
-            <div className='flex flex-wrap items-center gap-3'>
-              <Input
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder='氏名・メールで検索'
-                className='max-w-xs'
-              />
+    <AdminPageShell
+      title='アカウント・権限管理'
+      description='ログインできるアカウント、所属店舗、ロールを管理します。店舗スタッフの招待や勤務情報は店舗単位の管理画面で扱います。'
+    >
+      <AdminFormCard title={editingPermissionId ? '権限編集' : '権限付与'}>
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <UserCandidateCombobox
+              candidates={userCandidates}
+              disabled={Boolean(editingPermissionId)}
+              error={userCandidatesError}
+              hasSelectedUser={hasSelectedUser}
+              inputId='admin-user-search'
+              isOpen={isUserPickerOpen}
+              listboxId='admin-user-candidates'
+              loading={userCandidatesLoading}
+              selectedUserId={formState.user_id}
+              value={userSearch}
+              onOpenChange={setIsUserPickerOpen}
+              onSearchChange={handleUserSearchChange}
+              onSelect={handleUserSelect}
+            />
+            <div className='space-y-2'>
+              <label htmlFor='admin-user-role' className='text-sm font-medium'>
+                ロール
+              </label>
               <Select
-                value={roleFilter}
-                onValueChange={value => setRoleFilter(toRoleFilterValue(value))}
+                value={formState.role}
+                onValueChange={value =>
+                  setFormState(prev => ({
+                    ...prev,
+                    role: toAdminUserRole(value),
+                  }))
+                }
               >
-                <SelectTrigger className='w-40'>
-                  <SelectValue placeholder='ロール' />
+                <SelectTrigger id='admin-user-role'>
+                  <SelectValue placeholder='ロールを選択' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={ROLE_FILTER_ALL}>すべて</SelectItem>
                   {roleOptions.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -551,15 +453,31 @@ export default function AdminUsersPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={clinicFilter}
-                onValueChange={value => setClinicFilter(value)}
+            </div>
+          </div>
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <label
+                htmlFor='admin-user-clinic'
+                className='text-sm font-medium'
               >
-                <SelectTrigger className='w-56'>
-                  <SelectValue placeholder='所属店舗' />
+                所属店舗
+              </label>
+              <Select
+                value={formState.clinic_id || NO_CLINIC_VALUE}
+                onValueChange={value =>
+                  setFormState(prev => ({
+                    ...prev,
+                    clinic_id: value === NO_CLINIC_VALUE ? '' : value,
+                  }))
+                }
+                disabled={formState.role === 'admin'}
+              >
+                <SelectTrigger id='admin-user-clinic'>
+                  <SelectValue placeholder='クリニックを選択' />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={CLINIC_FILTER_ALL}>すべて</SelectItem>
+                  <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
                   {clinicOptions.map(clinic => (
                     <SelectItem key={clinic.id} value={clinic.id}>
                       {clinic.name}
@@ -568,45 +486,112 @@ export default function AdminUsersPage() {
                 </SelectContent>
               </Select>
             </div>
-          </CardHeader>
-          <CardContent>
-            {(loading || clinicOptionsLoading) && permissions.length === 0 ? (
-              <p className='text-sm text-gray-500'>読み込み中...</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>権限ID</TableHead>
-                    <TableHead>アカウント</TableHead>
-                    <TableHead>ロール</TableHead>
-                    <TableHead>所属店舗</TableHead>
-                    <TableHead>作成日</TableHead>
-                    <TableHead>操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {permissions.map(permission => (
-                    <PermissionTableRow
-                      key={permission.id}
-                      permission={permission}
-                      canManage={canManagePermission(permission)}
-                      onEdit={handleEdit}
-                      onRevoke={handleRevoke}
-                    />
-                  ))}
-                  {permissions.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className='text-center text-sm'>
-                        権限情報がありません
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+          </div>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Button
+              type='submit'
+              disabled={loading || roleOptions.length === 0}
+            >
+              {editingPermissionId ? '権限を更新する' : '権限を付与する'}
+            </Button>
+            {editingPermissionId && (
+              <Button type='button' variant='outline' onClick={resetForm}>
+                編集をキャンセル
+              </Button>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            {notice && (
+              <span className='text-sm text-emerald-600'>{notice}</span>
+            )}
+            {error && <span className='text-sm text-red-500'>{error}</span>}
+            {clinicOptionsError && (
+              <span className='text-sm text-red-500'>{clinicOptionsError}</span>
+            )}
+          </div>
+        </form>
+      </AdminFormCard>
+
+      <AdminListCard
+        title='アカウント一覧'
+        searchId='admin-user-permission-search'
+        searchValue={search}
+        searchPlaceholder='氏名・メールで検索'
+        onSearchChange={handleSearchChange}
+        filters={
+          <>
+            <Select
+              value={roleFilter}
+              onValueChange={value => setRoleFilter(toRoleFilterValue(value))}
+            >
+              <SelectTrigger className='w-40'>
+                <SelectValue placeholder='ロール' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ROLE_FILTER_ALL}>すべて</SelectItem>
+                {roleOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={clinicFilter}
+              onValueChange={value => setClinicFilter(value)}
+            >
+              <SelectTrigger className='w-56'>
+                <SelectValue placeholder='所属店舗' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CLINIC_FILTER_ALL}>すべて</SelectItem>
+                {clinicOptions.map(clinic => (
+                  <SelectItem key={clinic.id} value={clinic.id}>
+                    {clinic.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        }
+      >
+        {(loading || clinicOptionsLoading) && permissions.length === 0 ? (
+          <AdminState variant='loading' title='読み込み中...' />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>権限ID</TableHead>
+                <TableHead>アカウント</TableHead>
+                <TableHead>ロール</TableHead>
+                <TableHead>所属店舗</TableHead>
+                <TableHead>作成日</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {permissions.map(permission => (
+                <PermissionTableRow
+                  key={permission.id}
+                  permission={permission}
+                  canManage={canManagePermission(permission)}
+                  onEdit={handleEdit}
+                  onRevoke={handleRevoke}
+                />
+              ))}
+              {permissions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    <AdminState
+                      variant='empty'
+                      title='権限情報がありません'
+                      description='検索条件を変更するか、対象ユーザーに権限を付与してください。'
+                    />
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </AdminListCard>
+    </AdminPageShell>
   );
 }
