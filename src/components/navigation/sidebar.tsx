@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import {
   ADMIN_MENU_ITEMS,
   CLINIC_ADMIN_MENU_ITEMS,
-  QUICK_ACCESS_ITEMS,
   getCurrentNavigationItemId,
   getNavigationMode,
   getOperationMenuItems,
@@ -220,28 +219,6 @@ export const Sidebar = React.memo(function Sidebar({
             )}
           </div>
         </div>
-
-        {navigationMode.showOperationMenus && (
-          <div>
-            <Separator className='my-4 bg-[#2d4ba0]' />
-            {isExpanded && (
-              <div className='mb-4'>
-                <h2 className='text-sm font-bold mb-2'>クイックアクセス</h2>
-                {QUICK_ACCESS_ITEMS.map(item => (
-                  <SidebarItemButton
-                    key={item.id}
-                    item={item}
-                    isActive={currentMenuId === item.id}
-                    className='w-full mb-1 justify-start text-sm'
-                    onClick={handleCloseMenu}
-                  >
-                    {item.label}
-                  </SidebarItemButton>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {navigationMode.showAdminMenus && !navigationMode.isHqAdmin && (
           <div>

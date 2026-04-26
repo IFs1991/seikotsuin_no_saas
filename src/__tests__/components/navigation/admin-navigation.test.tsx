@@ -109,6 +109,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
     expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
     expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
+    expect(screen.queryByText('クイックアクセス')).not.toBeInTheDocument();
   });
 
   it('MobileBottomNav は HQ admin に店舗運用導線を表示しない', () => {
