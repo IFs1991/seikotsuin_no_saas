@@ -1,20 +1,26 @@
 import React from 'react';
-import { Appointment } from '../types';
+import { Appointment, AppointmentDensity } from '../types';
 import { COLORS } from '../constants';
 import { MessageCircle } from 'lucide-react';
+import {
+  formatAppointmentTime,
+  getAppointmentStatusLabel,
+} from '../utils/view';
 
 interface Props {
   appointment: Appointment;
   pixelsPerHour: number;
   startHourOfGrid: number;
   onClick: (appointment: Appointment) => void;
+  density: AppointmentDensity;
 }
 
-export const AppointmentBlock: React.FC<Props> = ({
+const AppointmentBlockComponent: React.FC<Props> = ({
   appointment,
   pixelsPerHour,
   startHourOfGrid,
   onClick,
+  density,
 }) => {
   const startOffsetMinutes =
     (appointment.startHour - startHourOfGrid) * 60 + appointment.startMinute;
@@ -32,8 +38,10 @@ export const AppointmentBlock: React.FC<Props> = ({
   // Specific styling for full-row events like "Staff Holiday"
   const isFullRow = appointment.type === 'holiday';
 
-  // Format time string
-  const timeString = `${String(appointment.startHour).padStart(2, '0')}:${String(appointment.startMinute).padStart(2, '0')}-${String(appointment.endHour).padStart(2, '0')}:${String(appointment.endMinute).padStart(2, '0')}`;
+  const timeString = formatAppointmentTime(appointment);
+  const statusLabel = getAppointmentStatusLabel(appointment);
+  const showSecondaryLine = density === 'comfortable' && width >= 88;
+  const showStatus = width >= 112;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData(
@@ -55,6 +63,8 @@ export const AppointmentBlock: React.FC<Props> = ({
         e.stopPropagation();
         onClick(appointment);
       }}
+      title={`${timeString} ${appointment.title} ${statusLabel}`}
+      aria-label={`${timeString} ${appointment.title} ${statusLabel}`}
       className={`absolute top-1 bottom-1 rounded shadow-sm text-xs overflow-hidden leading-tight flex flex-col justify-center px-2 transition-all hover:brightness-95 hover:shadow-md cursor-pointer z-10 ${colorClass} ${isFullRow ? 'opacity-90' : ''}`}
       style={{
         left: `${leftPos}px`,
@@ -70,17 +80,24 @@ export const AppointmentBlock: React.FC<Props> = ({
           </div>
         )}
         {timeString}
+        {showStatus && (
+          <span className='ml-auto rounded bg-white/30 px-1 py-0.5 font-sans text-[9px] font-bold'>
+            {statusLabel}
+          </span>
+        )}
       </div>
       <div className='font-bold truncate text-[11px] mt-0.5 pointer-events-none'>
         {appointment.title}
       </div>
-      {appointment.subTitle && (
-        <div className='mt-1 inline-flex pointer-events-none'>
+      {showSecondaryLine && (appointment.subTitle || appointment.menuName) && (
+        <div className='mt-1 inline-flex min-w-0 pointer-events-none'>
           <span className='bg-rose-600/80 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold truncate'>
-            {appointment.subTitle}
+            {appointment.subTitle || appointment.menuName}
           </span>
         </div>
       )}
     </div>
   );
 };
+
+export const AppointmentBlock = React.memo(AppointmentBlockComponent);

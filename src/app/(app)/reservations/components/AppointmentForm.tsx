@@ -57,6 +57,7 @@ interface Props {
     date?: string;
   };
   appointments: Appointment[];
+  embedded?: boolean;
 }
 
 export const AppointmentForm: React.FC<Props> = ({
@@ -67,6 +68,7 @@ export const AppointmentForm: React.FC<Props> = ({
   onCancel,
   initialData,
   appointments,
+  embedded = false,
 }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -306,10 +308,18 @@ export const AppointmentForm: React.FC<Props> = ({
   };
 
   return (
-    <div className='max-w-2xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg border border-gray-200 mt-4 sm:mt-8 animate-in fade-in slide-in-from-bottom-4 duration-300'>
-      <h2 className='text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200'>
-        新規予約登録
-      </h2>
+    <div
+      className={
+        embedded
+          ? 'p-4 sm:p-6'
+          : 'max-w-2xl mx-auto p-4 sm:p-6 bg-white shadow-lg rounded-lg border border-gray-200 mt-4 sm:mt-8 animate-in fade-in slide-in-from-bottom-4 duration-300'
+      }
+    >
+      {!embedded && (
+        <h2 className='text-xl font-bold text-gray-800 mb-6 pb-2 border-b border-gray-200'>
+          新規予約登録
+        </h2>
+      )}
       {errorMessage && (
         <div
           className='mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'

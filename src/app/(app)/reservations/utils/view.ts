@@ -1,0 +1,132 @@
+import type { Appointment } from '../types';
+
+export const APPOINTMENT_STATUS_LABELS: Record<
+  NonNullable<Appointment['status']>,
+  string
+> = {
+  tentative: '仮予約',
+  confirmed: '確定',
+  arrived: '来院済み',
+  completed: '完了',
+  cancelled: 'キャンセル',
+  no_show: '無断キャンセル',
+  unconfirmed: '未確定',
+  trial: '体験',
+};
+
+export const APPOINTMENT_STATUS_TONE: Record<
+  NonNullable<Appointment['status']>,
+  string
+> = {
+  tentative: 'bg-pink-50 text-pink-700 border-pink-200',
+  confirmed: 'bg-sky-50 text-sky-700 border-sky-200',
+  arrived: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
+  no_show: 'bg-gray-100 text-gray-600 border-gray-200',
+  unconfirmed: 'bg-orange-50 text-orange-700 border-orange-200',
+  trial: 'bg-violet-50 text-violet-700 border-violet-200',
+};
+
+export const getAppointmentStatusLabel = (
+  appointment: Pick<Appointment, 'status' | 'type'>
+) => {
+  if (appointment.status) {
+    return APPOINTMENT_STATUS_LABELS[appointment.status];
+  }
+
+  switch (appointment.type) {
+    case 'holiday':
+      return '休み';
+    case 'blocked':
+      return 'ブロック';
+    default:
+      return '予約';
+  }
+};
+
+export const getAppointmentStatusTone = (
+  appointment: Pick<Appointment, 'status'>
+) => {
+  if (!appointment.status) {
+    return 'bg-gray-50 text-gray-700 border-gray-200';
+  }
+
+  return APPOINTMENT_STATUS_TONE[appointment.status];
+};
+
+export const formatAppointmentTime = (
+  appointment: Pick<
+    Appointment,
+    'startHour' | 'startMinute' | 'endHour' | 'endMinute'
+  >
+) => {
+  return `${String(appointment.startHour).padStart(2, '0')}:${String(
+    appointment.startMinute
+  ).padStart(2, '0')}-${String(appointment.endHour).padStart(2, '0')}:${String(
+    appointment.endMinute
+  ).padStart(2, '0')}`;
+};
+
+export const groupAppointmentsByResource = (appointments: Appointment[]) => {
+  const grouped = new Map<string, Appointment[]>();
+
+  for (const appointment of appointments) {
+    const current = grouped.get(appointment.resourceId);
+    if (current) {
+      current.push(appointment);
+    } else {
+      grouped.set(appointment.resourceId, [appointment]);
+    }
+  }
+
+  return grouped;
+};
+
+export const summarizeAppointments = (appointments: Appointment[]) => {
+  let active = 0;
+  let unconfirmed = 0;
+  let arrived = 0;
+  let completed = 0;
+  let cancelled = 0;
+  const resourceIds = new Set<string>();
+
+  for (const appointment of appointments) {
+    resourceIds.add(appointment.resourceId);
+
+    if (
+      appointment.status === 'cancelled' ||
+      appointment.status === 'no_show'
+    ) {
+      cancelled += 1;
+      continue;
+    }
+
+    active += 1;
+
+    if (
+      appointment.status === 'unconfirmed' ||
+      appointment.status === 'tentative'
+    ) {
+      unconfirmed += 1;
+    }
+
+    if (appointment.status === 'arrived') {
+      arrived += 1;
+    }
+
+    if (appointment.status === 'completed') {
+      completed += 1;
+    }
+  }
+
+  return {
+    total: appointments.length,
+    active,
+    unconfirmed,
+    arrived,
+    completed,
+    cancelled,
+    assignedResources: resourceIds.size,
+  };
+};

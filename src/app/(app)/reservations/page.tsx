@@ -7,11 +7,13 @@ import { ControlBar } from './components/ControlBar';
 import { Scheduler } from './components/Scheduler';
 import { AppointmentList } from './components/AppointmentList';
 import { AppointmentDetail } from './components/AppointmentDetail';
-import { AppointmentForm } from './components/AppointmentForm';
+import { AppointmentFormModal } from './components/AppointmentFormModal';
 import { UnconfirmedReservationsModal } from './components/UnconfirmedReservationsModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { DaySummary } from './components/DaySummary';
 import {
   Appointment,
+  AppointmentDensity,
   AppointmentUpdateResult,
   Notification,
   SchedulerResource,
@@ -93,6 +95,8 @@ function ReservationsPageContent() {
   }, [menus]);
 
   const [currentView, setCurrentView] = useState<ViewMode>('timeline');
+  const [appointmentDensity, setAppointmentDensity] =
+    useState<AppointmentDensity>('comfortable');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
@@ -100,6 +104,7 @@ function ReservationsPageContent() {
 
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
   const {
     appointments,
@@ -132,6 +137,12 @@ function ReservationsPageContent() {
       viewParam === 'register' ||
       viewParam === 'timeline'
     ) {
+      if (viewParam === 'register') {
+        setCurrentView('timeline');
+        setShowAppointmentForm(true);
+        return;
+      }
+
       setCurrentView(viewParam as ViewMode);
     }
   }, [searchParams]);
@@ -158,10 +169,16 @@ function ReservationsPageContent() {
       startMinute: minute,
       date: dateStr,
     });
-    setCurrentView('register');
+    setShowAppointmentForm(true);
   };
 
   const handleViewChange = (view: ViewMode) => {
+    if (view === 'register') {
+      setFormInitialValues(undefined);
+      setShowAppointmentForm(true);
+      return;
+    }
+
     setCurrentView(view);
     const params = new URLSearchParams(searchParams.toString());
     params.set('view', view);
@@ -172,8 +189,14 @@ function ReservationsPageContent() {
     addAppointment(newAppointment);
     setSelectedAppointment(newAppointment);
     setFormInitialValues(undefined);
+    setShowAppointmentForm(false);
     setCurrentView('timeline');
     setUpdateError(null);
+  };
+
+  const handleCloseAppointmentForm = () => {
+    setShowAppointmentForm(false);
+    setFormInitialValues(undefined);
   };
 
   const handleUpdateAppointment = async (
@@ -253,6 +276,7 @@ function ReservationsPageContent() {
             onTimeSlotClick={handleTimeSlotClick}
             onAppointmentMove={handleMoveAppointment}
             onMoveError={msg => setUpdateError(msg)}
+            density={appointmentDensity}
           />
         );
       case 'list':
@@ -264,20 +288,7 @@ function ReservationsPageContent() {
           />
         );
       case 'register':
-        return (
-          <AppointmentForm
-            clinicId={clinicId ?? ''}
-            resources={resources}
-            menus={menus}
-            onSuccess={handleRegistrationSuccess}
-            onCancel={() => {
-              setCurrentView('timeline');
-              setFormInitialValues(undefined);
-            }}
-            initialData={formInitialValues}
-            appointments={appointments}
-          />
-        );
+        return null;
       default:
         return null;
     }
@@ -310,14 +321,22 @@ function ReservationsPageContent() {
           currentDate={currentDate}
           onDateChange={setCurrentDate}
           onRefresh={() => loadAppointments(currentDate)}
+          density={appointmentDensity}
+          onDensityChange={setAppointmentDensity}
         />
-        <main className='flex-grow overflow-hidden bg-gray-100 relative'>
+        <main className='flex flex-grow flex-col overflow-hidden bg-gray-100 relative'>
+          <DaySummary
+            appointments={appointments}
+            resourceCount={resources.length}
+          />
           {updateError && (
             <div className='mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
               {updateError}
             </div>
           )}
-          {renderContent()}
+          <div className='min-h-0 flex-grow overflow-hidden'>
+            {renderContent()}
+          </div>
 
           {(loading || masterLoading) && (
             <div className='absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center animate-in fade-in duration-200'>
@@ -338,6 +357,18 @@ function ReservationsPageContent() {
               onCancelAppointment={
                 canCancelReservation ? handleCancelAppointment : undefined
               }
+            />
+          )}
+
+          {showAppointmentForm && (
+            <AppointmentFormModal
+              clinicId={clinicId}
+              resources={resources}
+              menus={menus}
+              appointments={appointments}
+              onSuccess={handleRegistrationSuccess}
+              onClose={handleCloseAppointmentForm}
+              initialData={formInitialValues}
             />
           )}
 

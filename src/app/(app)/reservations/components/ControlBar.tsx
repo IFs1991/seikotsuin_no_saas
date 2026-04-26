@@ -5,8 +5,9 @@ import {
   LayoutList,
   CalendarDays,
   PlusCircle,
+  Rows3,
 } from 'lucide-react';
-import { ViewMode } from '../types';
+import { AppointmentDensity, ViewMode } from '../types';
 import { CalendarPopup } from './CalendarPopup';
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
   currentDate: Date;
   onDateChange: (date: Date) => void;
   onRefresh: () => void;
+  density: AppointmentDensity;
+  onDensityChange: (density: AppointmentDensity) => void;
 }
 
 export const ControlBar: React.FC<Props> = ({
@@ -23,6 +26,8 @@ export const ControlBar: React.FC<Props> = ({
   currentDate,
   onDateChange,
   onRefresh,
+  density,
+  onDensityChange,
 }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -131,7 +136,35 @@ export const ControlBar: React.FC<Props> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className='flex items-center gap-2 w-full sm:w-auto justify-end'>
+        <div className='flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end'>
+          <div className='flex rounded border border-gray-300 bg-gray-50 p-0.5'>
+            <button
+              type='button'
+              onClick={() => onDensityChange('comfortable')}
+              className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-bold transition-colors ${
+                density === 'comfortable'
+                  ? 'bg-white text-sky-700 shadow-sm'
+                  : 'text-gray-600 hover:bg-white/70'
+              }`}
+              title='通常密度'
+            >
+              <Rows3 className='h-3.5 w-3.5' />
+              通常
+            </button>
+            <button
+              type='button'
+              onClick={() => onDensityChange('compact')}
+              className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-bold transition-colors ${
+                density === 'compact'
+                  ? 'bg-white text-sky-700 shadow-sm'
+                  : 'text-gray-600 hover:bg-white/70'
+              }`}
+              title='コンパクト表示'
+            >
+              <Rows3 className='h-3.5 w-3.5' />
+              圧縮
+            </button>
+          </div>
           <button
             onClick={onRefresh}
             className='bg-teal-400 hover:bg-teal-500 text-white px-4 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow-sm transition-colors w-full sm:w-auto justify-center'

@@ -36,10 +36,10 @@ test.describe('予約UI統合テスト', () => {
     await page.goto('/reservations');
 
     await page.getByRole('button', { name: '新規登録' }).click();
-    await expect(page).toHaveURL(/view=register/);
     await expect(
-      page.getByRole('heading', { name: '新規予約登録' })
+      page.getByRole('dialog', { name: '新規予約登録' })
     ).toBeVisible();
+    await expect(page.locator('.timeline-scroll')).toBeVisible();
   });
 
   test('シナリオ4: /Reservation へのアクセスは404になる（旧プロトタイプ除去確認）', async ({

@@ -1,7 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Appointment, SchedulerResource } from '../types';
-import { COLORS } from '../constants';
 import { ArrowRight, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import {
+  formatAppointmentTime,
+  getAppointmentStatusLabel,
+  getAppointmentStatusTone,
+} from '../utils/view';
 
 interface Props {
   appointments: Appointment[];
@@ -61,8 +65,10 @@ export const AppointmentList: React.FC<Props> = ({
           break;
         }
         case 'status': {
-          // Sort by type (normal < holiday < blocked) for example
-          comparison = a.type.localeCompare(b.type);
+          comparison = getAppointmentStatusLabel(a).localeCompare(
+            getAppointmentStatusLabel(b),
+            'ja'
+          );
           break;
         }
       }
@@ -124,11 +130,7 @@ export const AppointmentList: React.FC<Props> = ({
                   onClick={() => onSelect(appt)}
                 >
                   <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono'>
-                    {String(appt.startHour).padStart(2, '0')}:
-                    {String(appt.startMinute).padStart(2, '0')}
-                    <span className='text-gray-400 mx-1'>-</span>
-                    {String(appt.endHour).padStart(2, '0')}:
-                    {String(appt.endMinute).padStart(2, '0')}
+                    {formatAppointmentTime(appt)}
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium'>
                     {getResourceName(appt.resourceId)}
@@ -143,13 +145,9 @@ export const AppointmentList: React.FC<Props> = ({
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${COLORS[appt.color].replace('text-white', 'text-gray-800').replace('bg-', 'bg-opacity-20 bg-')}`}
+                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${getAppointmentStatusTone(appt)}`}
                     >
-                      {appt.type === 'normal'
-                        ? '予約'
-                        : appt.type === 'holiday'
-                          ? '休み'
-                          : 'ブロック'}
+                      {getAppointmentStatusLabel(appt)}
                     </span>
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium'>

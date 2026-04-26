@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   PIXELS_PER_HOUR,
   SIDEBAR_WIDTH,
@@ -10,6 +10,7 @@ import {
 import { AppointmentBlock } from './AppointmentBlock';
 import {
   Appointment,
+  AppointmentDensity,
   AppointmentUpdateResult,
   SchedulerResource,
   TimeSlot,
@@ -21,6 +22,7 @@ import {
   timeToMinutes,
   hasTimeConflict,
 } from '../utils/time';
+import { groupAppointmentsByResource } from '../utils/view';
 
 interface Props {
   appointments: Appointment[];
@@ -35,6 +37,7 @@ interface Props {
     newStartMinute: number
   ) => Promise<AppointmentUpdateResult>;
   onMoveError?: (message: string) => void;
+  density: AppointmentDensity;
 }
 
 export const Scheduler: React.FC<Props> = ({
@@ -45,8 +48,14 @@ export const Scheduler: React.FC<Props> = ({
   onTimeSlotClick,
   onAppointmentMove,
   onMoveError,
+  density,
 }) => {
   const [now, setNow] = useState(new Date());
+  const appointmentsByResource = useMemo(
+    () => groupAppointmentsByResource(appointments),
+    [appointments]
+  );
+  const rowHeightClass = density === 'compact' ? 'h-14' : 'h-20';
 
   // Update current time every minute to keep the red line accurate
   useEffect(() => {
@@ -203,15 +212,13 @@ export const Scheduler: React.FC<Props> = ({
               );
             }
 
-            const resourceAppts = appointments.filter(
-              a => a.resourceId === resource.id
-            );
+            const resourceAppts = appointmentsByResource.get(resource.id) ?? [];
             const isFacility = resource.type === 'facility';
 
             return (
               <div
                 key={resource.id}
-                className='flex relative h-20 border-b border-gray-300 hover:bg-gray-50 transition-colors group'
+                className={`flex relative ${rowHeightClass} border-b border-gray-300 hover:bg-gray-50 transition-colors group`}
               >
                 {/* Resource Header */}
                 <div
@@ -266,6 +273,7 @@ export const Scheduler: React.FC<Props> = ({
                         pixelsPerHour={PIXELS_PER_HOUR}
                         startHourOfGrid={GRID_START_HOUR}
                         onClick={onAppointmentClick}
+                        density={density}
                       />
                     ))}
                   </div>

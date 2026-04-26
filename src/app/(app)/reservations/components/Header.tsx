@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Bell, Stethoscope } from 'lucide-react';
+import { Calendar, Bell } from 'lucide-react';
 
 interface Props {
   pendingCount?: number;
@@ -16,10 +16,7 @@ export const Header: React.FC<Props> = ({
 }) => {
   return (
     <header className='bg-white border-b border-gray-200 px-3 py-2 flex items-center justify-between shadow-sm sticky top-0 z-50'>
-      <div className='flex items-center gap-2 text-sky-600 font-bold text-lg shrink-0'>
-        <Stethoscope className='w-6 h-6' />
-        <span className='hidden sm:inline'>トップ</span>
-      </div>
+      <div aria-hidden='true' className='h-8 min-w-0 flex-1' />
 
       <div className='flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar'>
         {pendingCount > 0 ? (
@@ -61,10 +58,6 @@ export const Header: React.FC<Props> = ({
             <Bell className='w-4 h-4' />
           </button>
         )}
-
-        <div className='bg-white border border-gray-300 px-2 sm:px-3 py-1.5 rounded text-xs font-bold text-gray-700 shadow-sm hidden md:block whitespace-nowrap'>
-          ティラミス体験版
-        </div>
       </div>
     </header>
   );

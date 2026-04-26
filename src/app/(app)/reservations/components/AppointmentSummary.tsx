@@ -7,6 +7,10 @@ import {
 } from '../types';
 import { COLORS_LEFT_BORDER } from '../constants';
 import { Calendar, User, Scissors, Edit, MessageCircle } from 'lucide-react';
+import {
+  getAppointmentStatusLabel,
+  getAppointmentStatusTone,
+} from '../utils/view';
 
 interface Props {
   appointment: Appointment;
@@ -80,11 +84,18 @@ export const AppointmentSummary: React.FC<Props> = ({
               )}
             </h1>
           </div>
-          {appointment.subTitle && (
-            <span className='bg-white/80 border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded font-medium whitespace-nowrap'>
-              {appointment.subTitle}
+          <div className='flex flex-col items-end gap-2'>
+            <span
+              className={`rounded-full border px-2.5 py-1 text-xs font-bold whitespace-nowrap ${getAppointmentStatusTone(appointment)}`}
+            >
+              {getAppointmentStatusLabel(appointment)}
             </span>
-          )}
+            {appointment.subTitle && (
+              <span className='bg-white/80 border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded font-medium whitespace-nowrap'>
+                {appointment.subTitle}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className='space-y-4 mt-5'>

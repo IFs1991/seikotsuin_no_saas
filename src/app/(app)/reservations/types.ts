@@ -73,4 +73,5 @@ export interface TimeSlot {
 }
 
 export type ViewMode = 'timeline' | 'list' | 'register';
+export type AppointmentDensity = 'comfortable' | 'compact';
 export type AppointmentUpdateResult = { ok: boolean; error?: string };

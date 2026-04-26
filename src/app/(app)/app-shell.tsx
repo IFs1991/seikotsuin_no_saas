@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Header } from '@/components/navigation/header';
 import { Sidebar } from '@/components/navigation/sidebar';
 import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
@@ -16,6 +17,7 @@ import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
 const DARK_CLASS = 'dark';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const {
@@ -98,6 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }),
     [clinics, currentClinicId, profileClinicId]
   );
+  const shouldShowLegalFooter = !pathname.startsWith('/reservations');
 
   return (
     <QueryProvider>
@@ -161,9 +164,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     {children}
                   </div>
-                  <footer className='mx-auto mt-10 max-w-7xl border-t border-slate-200 pt-4 text-sm text-slate-500'>
-                    <LegalFooterLinks />
-                  </footer>
+                  {shouldShowLegalFooter && (
+                    <footer className='mx-auto mt-10 max-w-7xl border-t border-slate-200 pt-4 text-sm text-slate-500'>
+                      <LegalFooterLinks />
+                    </footer>
+                  )}
                 </div>
               </main>
             </div>
