@@ -16,19 +16,23 @@ interface Props {
 type SortField = 'time' | 'resource' | 'customer' | 'status';
 type SortDirection = 'asc' | 'desc';
 
-export const AppointmentList: React.FC<Props> = ({
+const AppointmentListComponent: React.FC<Props> = ({
   appointments,
   resources,
   onSelect,
 }) => {
   const [sortField, setSortField] = useState<SortField>('time');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const resourceNameById = useMemo(
+    () => new Map(resources.map(resource => [resource.id, resource.name])),
+    [resources]
+  );
 
   const getResourceName = useCallback(
     (id: string) => {
-      return resources.find(r => r.id === id)?.name || id;
+      return resourceNameById.get(id) || id;
     },
-    [resources]
+    [resourceNameById]
   );
 
   const handleSort = (field: SortField) => {
@@ -172,3 +176,5 @@ export const AppointmentList: React.FC<Props> = ({
     </div>
   );
 };
+
+export const AppointmentList = React.memo(AppointmentListComponent);

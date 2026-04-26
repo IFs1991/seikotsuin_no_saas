@@ -1,15 +1,18 @@
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from './components/Header';
 import { ControlBar } from './components/ControlBar';
 import { Scheduler } from './components/Scheduler';
 import { AppointmentList } from './components/AppointmentList';
-import { AppointmentDetail } from './components/AppointmentDetail';
-import { AppointmentFormModal } from './components/AppointmentFormModal';
-import { UnconfirmedReservationsModal } from './components/UnconfirmedReservationsModal';
-import { NotificationsModal } from './components/NotificationsModal';
 import { DaySummary } from './components/DaySummary';
 import {
   Appointment,
@@ -25,6 +28,38 @@ import { useReservationFormData } from '@/hooks/useReservationFormData';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { Loader2 } from 'lucide-react';
+
+const AppointmentDetail = dynamic(
+  () =>
+    import('./components/AppointmentDetail').then(
+      module => module.AppointmentDetail
+    ),
+  { ssr: false }
+);
+
+const AppointmentFormModal = dynamic(
+  () =>
+    import('./components/AppointmentFormModal').then(
+      module => module.AppointmentFormModal
+    ),
+  { ssr: false }
+);
+
+const UnconfirmedReservationsModal = dynamic(
+  () =>
+    import('./components/UnconfirmedReservationsModal').then(
+      module => module.UnconfirmedReservationsModal
+    ),
+  { ssr: false }
+);
+
+const NotificationsModal = dynamic(
+  () =>
+    import('./components/NotificationsModal').then(
+      module => module.NotificationsModal
+    ),
+  { ssr: false }
+);
 
 function ReservationsPageContent() {
   const router = useRouter();
@@ -153,110 +188,145 @@ function ReservationsPageContent() {
     }
   }, [clinicId, currentDate, loadAppointments]);
 
-  const handleTimeSlotClick = (
-    resourceId: string,
-    hour: number,
-    minute: number
-  ) => {
+  const currentDateString = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const day = String(currentDate.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
+    return `${year}-${month}-${day}`;
+  }, [currentDate]);
 
-    setFormInitialValues({
-      resourceId,
-      startHour: hour,
-      startMinute: minute,
-      date: dateStr,
-    });
-    setShowAppointmentForm(true);
-  };
-
-  const handleViewChange = (view: ViewMode) => {
-    if (view === 'register') {
-      setFormInitialValues(undefined);
+  const handleTimeSlotClick = useCallback(
+    (resourceId: string, hour: number, minute: number) => {
+      setFormInitialValues({
+        resourceId,
+        startHour: hour,
+        startMinute: minute,
+        date: currentDateString,
+      });
       setShowAppointmentForm(true);
-      return;
-    }
+    },
+    [currentDateString]
+  );
 
-    setCurrentView(view);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('view', view);
-    router.replace(`/reservations?${params.toString()}`);
-  };
+  const handleViewChange = useCallback(
+    (view: ViewMode) => {
+      if (view === 'register') {
+        setFormInitialValues(undefined);
+        setShowAppointmentForm(true);
+        return;
+      }
 
-  const handleRegistrationSuccess = (newAppointment: Appointment) => {
-    addAppointment(newAppointment);
-    setSelectedAppointment(newAppointment);
-    setFormInitialValues(undefined);
+      setCurrentView(view);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('view', view);
+      router.replace(`/reservations?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
+  const handleRegistrationSuccess = useCallback(
+    (newAppointment: Appointment) => {
+      addAppointment(newAppointment);
+      setSelectedAppointment(newAppointment);
+      setFormInitialValues(undefined);
+      setShowAppointmentForm(false);
+      setCurrentView('timeline');
+      setUpdateError(null);
+    },
+    [addAppointment]
+  );
+
+  const handleCloseAppointmentForm = useCallback(() => {
     setShowAppointmentForm(false);
-    setCurrentView('timeline');
-    setUpdateError(null);
-  };
-
-  const handleCloseAppointmentForm = () => {
-    setShowAppointmentForm(false);
     setFormInitialValues(undefined);
-  };
+  }, []);
 
-  const handleUpdateAppointment = async (
-    updatedAppointment: Appointment
-  ): Promise<AppointmentUpdateResult> => {
-    setUpdateError(null);
-    const result = await updateAppointment(updatedAppointment);
-    if (result.ok) {
-      setSelectedAppointment(updatedAppointment);
-    } else {
-      setUpdateError(result.error ?? 'Failed to update reservation.');
-    }
-    return result;
-  };
+  const handleUpdateAppointment = useCallback(
+    async (
+      updatedAppointment: Appointment
+    ): Promise<AppointmentUpdateResult> => {
+      setUpdateError(null);
+      const result = await updateAppointment(updatedAppointment);
+      if (result.ok) {
+        setSelectedAppointment(updatedAppointment);
+      } else {
+        setUpdateError(result.error ?? 'Failed to update reservation.');
+      }
+      return result;
+    },
+    [updateAppointment]
+  );
 
-  const handleMoveAppointment = async (
-    id: string,
-    newResourceId: string,
-    newStartHour: number,
-    newStartMinute: number
-  ): Promise<AppointmentUpdateResult> => {
-    setUpdateError(null);
-    const result = await moveAppointment(
-      id,
-      newResourceId,
-      newStartHour,
-      newStartMinute
-    );
-    if (!result.ok) {
-      setUpdateError(result.error ?? 'Failed to move reservation.');
-    }
-    return result;
-  };
+  const handleMoveAppointment = useCallback(
+    async (
+      id: string,
+      newResourceId: string,
+      newStartHour: number,
+      newStartMinute: number
+    ): Promise<AppointmentUpdateResult> => {
+      setUpdateError(null);
+      const result = await moveAppointment(
+        id,
+        newResourceId,
+        newStartHour,
+        newStartMinute
+      );
+      if (!result.ok) {
+        setUpdateError(result.error ?? 'Failed to move reservation.');
+      }
+      return result;
+    },
+    [moveAppointment]
+  );
 
   const canCancelReservation =
     role !== null &&
     ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'].includes(role);
 
-  const handleCancelAppointment = async (
-    id: string
-  ): Promise<AppointmentUpdateResult> => {
-    setUpdateError(null);
-    const result = await cancelAppointment(id);
-    if (!result.ok) {
-      setUpdateError(result.error ?? 'Failed to cancel reservation.');
-    }
-    return result;
-  };
+  const handleCancelAppointment = useCallback(
+    async (id: string): Promise<AppointmentUpdateResult> => {
+      setUpdateError(null);
+      const result = await cancelAppointment(id);
+      if (!result.ok) {
+        setUpdateError(result.error ?? 'Failed to cancel reservation.');
+      }
+      return result;
+    },
+    [cancelAppointment]
+  );
 
-  const handleConfirmPending = async (appt: Appointment) => {
-    return handleUpdateAppointment({
-      ...appt,
-      status: 'confirmed',
-      color: 'blue',
-    });
-  };
+  const handleConfirmPending = useCallback(
+    async (appt: Appointment) =>
+      handleUpdateAppointment({
+        ...appt,
+        status: 'confirmed',
+        color: 'blue',
+      }),
+    [handleUpdateAppointment]
+  );
 
-  const notifications = [] as Notification[];
+  const notifications = useMemo<Notification[]>(() => [], []);
+  const openPendingModal = useCallback(() => setShowPendingModal(true), []);
+  const closePendingModal = useCallback(() => setShowPendingModal(false), []);
+  const openNotificationsModal = useCallback(
+    () => setShowNotificationsModal(true),
+    []
+  );
+  const closeNotificationsModal = useCallback(
+    () => setShowNotificationsModal(false),
+    []
+  );
+  const refreshAppointments = useCallback(
+    () => loadAppointments(currentDate),
+    [currentDate, loadAppointments]
+  );
+  const showMoveError = useCallback((msg: string) => setUpdateError(msg), []);
+  const closeAppointmentDetail = useCallback(
+    () => setSelectedAppointment(null),
+    []
+  );
 
-  const renderContent = () => {
+  const content = useMemo(() => {
     if (error) {
       return (
         <div className='flex justify-center items-center h-full text-red-500'>
@@ -275,7 +345,7 @@ function ReservationsPageContent() {
             onAppointmentClick={setSelectedAppointment}
             onTimeSlotClick={handleTimeSlotClick}
             onAppointmentMove={handleMoveAppointment}
-            onMoveError={msg => setUpdateError(msg)}
+            onMoveError={showMoveError}
             density={appointmentDensity}
           />
         );
@@ -292,7 +362,17 @@ function ReservationsPageContent() {
       default:
         return null;
     }
-  };
+  }, [
+    appointmentDensity,
+    appointments,
+    currentView,
+    error,
+    handleMoveAppointment,
+    handleTimeSlotClick,
+    resources,
+    showMoveError,
+    timeSlots,
+  ]);
 
   if (profileLoading) {
     return <div className='p-6'>Loading profile...</div>;
@@ -311,8 +391,8 @@ function ReservationsPageContent() {
       <Header
         pendingCount={pendingAppointments.length}
         notificationCount={notifications.length}
-        onOpenReservations={() => setShowPendingModal(true)}
-        onOpenNotifications={() => setShowNotificationsModal(true)}
+        onOpenReservations={openPendingModal}
+        onOpenNotifications={openNotificationsModal}
       />
       <div className='flex-grow flex flex-col h-[calc(100vh-64px)]'>
         <ControlBar
@@ -320,7 +400,7 @@ function ReservationsPageContent() {
           onViewChange={handleViewChange}
           currentDate={currentDate}
           onDateChange={setCurrentDate}
-          onRefresh={() => loadAppointments(currentDate)}
+          onRefresh={refreshAppointments}
           density={appointmentDensity}
           onDensityChange={setAppointmentDensity}
         />
@@ -334,9 +414,7 @@ function ReservationsPageContent() {
               {updateError}
             </div>
           )}
-          <div className='min-h-0 flex-grow overflow-hidden'>
-            {renderContent()}
-          </div>
+          <div className='min-h-0 flex-grow overflow-hidden'>{content}</div>
 
           {(loading || masterLoading) && (
             <div className='absolute inset-0 bg-white/60 backdrop-blur-[1px] z-50 flex items-center justify-center animate-in fade-in duration-200'>
@@ -352,7 +430,7 @@ function ReservationsPageContent() {
               resources={resources}
               menus={menus}
               options={options}
-              onClose={() => setSelectedAppointment(null)}
+              onClose={closeAppointmentDetail}
               onUpdate={handleUpdateAppointment}
               onCancelAppointment={
                 canCancelReservation ? handleCancelAppointment : undefined
@@ -377,7 +455,7 @@ function ReservationsPageContent() {
               appointments={pendingAppointments}
               resources={resources}
               menus={menus}
-              onClose={() => setShowPendingModal(false)}
+              onClose={closePendingModal}
               onConfirm={handleConfirmPending}
             />
           )}
@@ -385,7 +463,7 @@ function ReservationsPageContent() {
           {showNotificationsModal && (
             <NotificationsModal
               notifications={notifications}
-              onClose={() => setShowNotificationsModal(false)}
+              onClose={closeNotificationsModal}
             />
           )}
         </main>

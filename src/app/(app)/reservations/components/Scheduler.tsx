@@ -40,7 +40,7 @@ interface Props {
   density: AppointmentDensity;
 }
 
-export const Scheduler: React.FC<Props> = ({
+const SchedulerComponent: React.FC<Props> = ({
   appointments,
   resources,
   timeSlots,
@@ -296,3 +296,5 @@ export const Scheduler: React.FC<Props> = ({
     </div>
   );
 };
+
+export const Scheduler = React.memo(SchedulerComponent);

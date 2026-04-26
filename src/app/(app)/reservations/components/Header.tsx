@@ -8,7 +8,7 @@ interface Props {
   onOpenNotifications?: () => void;
 }
 
-export const Header: React.FC<Props> = ({
+const HeaderComponent: React.FC<Props> = ({
   pendingCount = 0,
   notificationCount = 0,
   onOpenReservations,
@@ -62,3 +62,5 @@ export const Header: React.FC<Props> = ({
     </header>
   );
 };
+
+export const Header = React.memo(HeaderComponent);

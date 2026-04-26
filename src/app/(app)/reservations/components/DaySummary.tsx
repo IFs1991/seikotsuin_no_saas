@@ -25,7 +25,7 @@ const SummaryItem = ({
   </div>
 );
 
-export const DaySummary: React.FC<Props> = ({
+const DaySummaryComponent: React.FC<Props> = ({
   appointments,
   resourceCount,
 }) => {
@@ -90,3 +90,5 @@ export const DaySummary: React.FC<Props> = ({
     </section>
   );
 };
+
+export const DaySummary = React.memo(DaySummaryComponent);
