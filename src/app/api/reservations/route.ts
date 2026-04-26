@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
       start_date: request.nextUrl.searchParams.get('start_date') ?? undefined,
       end_date: request.nextUrl.searchParams.get('end_date') ?? undefined,
       staff_id: request.nextUrl.searchParams.get('staff_id') ?? undefined,
+      customer_id: request.nextUrl.searchParams.get('customer_id') ?? undefined,
     });
     if (!parsedQuery.success) {
       return createErrorResponse(
@@ -91,7 +92,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { clinic_id, id, start_date, end_date, staff_id } = parsedQuery.data;
+    const { clinic_id, id, start_date, end_date, staff_id, customer_id } =
+      parsedQuery.data;
 
     const auth = await processApiRequest(request, {
       clinicId: clinic_id,
@@ -137,9 +139,10 @@ export async function GET(request: NextRequest) {
     if (start_date) query.gte('start_time', start_date);
     if (end_date) query.lte('start_time', end_date);
     if (staff_id) query.eq('staff_id', staff_id);
+    if (customer_id) query.eq('customer_id', customer_id);
 
     const { data, error } = await query.order('start_time', {
-      ascending: true,
+      ascending: !customer_id,
     });
 
     if (error) {

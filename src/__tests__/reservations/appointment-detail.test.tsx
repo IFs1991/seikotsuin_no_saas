@@ -2,6 +2,13 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AppointmentDetail } from '@/app/(app)/reservations/components/AppointmentDetail';
 import type { Appointment } from '@/app/(app)/reservations/types';
+import { fetchCustomerReservations } from '@/app/(app)/reservations/api';
+
+jest.mock('@/app/(app)/reservations/api', () => ({
+  fetchCustomerReservations: jest.fn(),
+}));
+
+const fetchCustomerReservationsMock = fetchCustomerReservations as jest.Mock;
 
 const appointment: Appointment = {
   id: 'reservation-1',
@@ -23,6 +30,7 @@ const appointment: Appointment = {
 };
 
 const defaultProps = {
+  clinicId: 'clinic-1',
   appointment,
   resources: [{ id: 'staff-1', name: '田中先生', type: 'staff' as const }],
   menus: [{ id: 'menu-1', name: '整体', durationMinutes: 30, price: 3000 }],
@@ -72,5 +80,40 @@ describe('AppointmentDetail', () => {
     );
 
     expect(screen.getByRole('button', { name: '来院済み' })).toBeDisabled();
+  });
+
+  it('予約詳細から患者の予約履歴を開ける', async () => {
+    fetchCustomerReservationsMock.mockResolvedValueOnce([
+      {
+        id: 'reservation-old',
+        customerId: 'customer-1',
+        customerName: '山田 太郎',
+        menuId: 'menu-1',
+        menuName: '整体',
+        staffId: 'staff-1',
+        staffName: '田中先生',
+        startTime: '2026-04-20T10:00:00.000Z',
+        endTime: '2026-04-20T10:30:00.000Z',
+        status: 'no_show',
+        channel: 'phone',
+        selectedOptions: [],
+      },
+    ]);
+
+    render(<AppointmentDetail {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '予約履歴' }));
+
+    await waitFor(() => {
+      expect(fetchCustomerReservationsMock).toHaveBeenCalledWith(
+        'clinic-1',
+        'customer-1'
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText('整体').length).toBeGreaterThan(1);
+    });
+    expect(screen.getAllByText('来院なし').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('田中先生').length).toBeGreaterThan(1);
   });
 });

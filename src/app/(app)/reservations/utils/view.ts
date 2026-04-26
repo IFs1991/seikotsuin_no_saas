@@ -9,7 +9,7 @@ export const APPOINTMENT_STATUS_LABELS: Record<
   arrived: '来院済み',
   completed: '完了',
   cancelled: 'キャンセル',
-  no_show: '無断キャンセル',
+  no_show: '来院なし',
   unconfirmed: '未確定',
   trial: '体験',
 };

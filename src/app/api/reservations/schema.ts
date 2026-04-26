@@ -27,6 +27,7 @@ export const reservationsQuerySchema = z.object({
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   staff_id: z.string().uuid().optional(),
+  customer_id: z.string().uuid().optional(),
 });
 
 export const reservationInsertSchema = z

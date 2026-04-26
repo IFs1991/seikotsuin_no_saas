@@ -13,7 +13,10 @@ interface Props {
   resources: SchedulerResource[];
   menus: MenuItem[];
   options: MenuOptionItem[];
-  onChange: (field: keyof Appointment, value: any) => void;
+  onChange: (
+    field: keyof Appointment,
+    value: Appointment[keyof Appointment]
+  ) => void;
   onDurationChange?: (minutes: number) => void;
 }
 

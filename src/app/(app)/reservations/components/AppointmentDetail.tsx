@@ -8,10 +8,12 @@ import {
   SchedulerResource,
 } from '../types';
 import { calculateEndTime, calculateDuration } from '../utils/time';
-import { X, Trash2, Edit, Check, Undo } from 'lucide-react';
+import { X, Trash2, Edit, Check, Undo, History } from 'lucide-react';
 import { AppointmentSummary } from './AppointmentSummary';
 import { AppointmentEditForm } from './AppointmentEditForm';
+import { AppointmentHistoryPanel } from './AppointmentHistoryPanel';
 import { statusToColor } from '../hooks/statusToColor';
+import { fetchCustomerReservations, type ReservationApiItem } from '../api';
 
 const VISIT_STATUS_ACTIONS: {
   status: NonNullable<Appointment['status']>;
@@ -37,6 +39,7 @@ const VISIT_STATUS_ACTIONS: {
 ];
 
 interface Props {
+  clinicId?: string;
   appointment: Appointment;
   resources: SchedulerResource[];
   menus: MenuItem[];
@@ -49,6 +52,7 @@ interface Props {
 }
 
 export const AppointmentDetail: React.FC<Props> = ({
+  clinicId,
   appointment,
   resources,
   menus,
@@ -63,6 +67,13 @@ export const AppointmentDetail: React.FC<Props> = ({
   const [updatingStatus, setUpdatingStatus] = useState<
     Appointment['status'] | null
   >(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<ReservationApiItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyLoadedForCustomerId, setHistoryLoadedForCustomerId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     setFormData(appointment);
@@ -70,7 +81,17 @@ export const AppointmentDetail: React.FC<Props> = ({
     setUpdatingStatus(null);
   }, [appointment]);
 
-  const handleInputChange = (field: keyof Appointment, value: any) => {
+  useEffect(() => {
+    setHistoryOpen(false);
+    setHistoryItems([]);
+    setHistoryError(null);
+    setHistoryLoadedForCustomerId(null);
+  }, [appointment.id, appointment.customerId]);
+
+  const handleInputChange = (
+    field: keyof Appointment,
+    value: Appointment[keyof Appointment]
+  ) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
 
@@ -192,6 +213,12 @@ export const AppointmentDetail: React.FC<Props> = ({
 
       if (!result.ok) {
         setErrorMessage(result.error ?? 'Failed to update reservation status.');
+      } else {
+        setHistoryItems(prev =>
+          prev.map(item =>
+            item.id === appointment.id ? { ...item, status: nextStatus } : item
+          )
+        );
       }
     } catch (err) {
       setErrorMessage(
@@ -204,9 +231,45 @@ export const AppointmentDetail: React.FC<Props> = ({
     }
   };
 
+  const handleToggleHistory = async () => {
+    if (historyOpen) {
+      setHistoryOpen(false);
+      return;
+    }
+
+    setHistoryOpen(true);
+    if (!clinicId || !appointment.customerId) {
+      setHistoryError('患者に紐づく予約履歴を取得できません。');
+      return;
+    }
+
+    if (historyLoadedForCustomerId === appointment.customerId) {
+      return;
+    }
+
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const rows = await fetchCustomerReservations(
+        clinicId,
+        appointment.customerId
+      );
+      setHistoryItems(rows);
+      setHistoryLoadedForCustomerId(appointment.customerId);
+    } catch (err) {
+      setHistoryError(
+        err instanceof Error ? err.message : '予約履歴の取得に失敗しました'
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   return (
     <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
-      <div
+      <button
+        type='button'
+        aria-label='予約詳細を閉じる'
         className='absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity'
         onClick={onClose}
       />
@@ -287,6 +350,14 @@ export const AppointmentDetail: React.FC<Props> = ({
               </div>
             </div>
           )}
+          {!isEditing && historyOpen && (
+            <AppointmentHistoryPanel
+              items={historyItems}
+              loading={historyLoading}
+              error={historyError}
+              currentAppointmentId={appointment.id}
+            />
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -309,18 +380,29 @@ export const AppointmentDetail: React.FC<Props> = ({
             </div>
           ) : (
             <>
-              {appointment.customerId ? (
-                <Link
-                  href={`/patients/${appointment.customerId}`}
-                  className='text-xs font-bold text-sky-600 hover:underline'
+              <div className='flex items-center gap-3'>
+                <button
+                  type='button'
+                  onClick={handleToggleHistory}
+                  disabled={!appointment.customerId || !clinicId}
+                  className='inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-gray-400'
                 >
-                  詳細ページ
-                </Link>
-              ) : (
-                <span className='text-xs font-bold text-gray-400'>
-                  詳細ページ
-                </span>
-              )}
+                  <History className='h-4 w-4' />
+                  予約履歴
+                </button>
+                {appointment.customerId ? (
+                  <Link
+                    href={`/patients/${appointment.customerId}`}
+                    className='text-xs font-bold text-gray-600 hover:text-sky-700 hover:underline'
+                  >
+                    患者詳細
+                  </Link>
+                ) : (
+                  <span className='text-xs font-bold text-gray-400'>
+                    患者詳細
+                  </span>
+                )}
+              </div>
               <div className='flex gap-2'>
                 <button
                   onClick={() => setIsEditing(true)}

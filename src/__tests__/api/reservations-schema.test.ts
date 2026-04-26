@@ -1,4 +1,7 @@
-import { mapReservationUpdateToRow } from '@/app/api/reservations/schema';
+import {
+  mapReservationUpdateToRow,
+  reservationsQuerySchema,
+} from '@/app/api/reservations/schema';
 
 const baseDto = {
   clinic_id: '123e4567-e89b-12d3-a456-426614174000',
@@ -50,5 +53,21 @@ describe('mapReservationUpdateToRow', () => {
     expect(row).toHaveProperty('notes', 'メモ');
     expect(row).not.toHaveProperty('status');
     expect(row).not.toHaveProperty('start_time');
+  });
+});
+
+describe('reservationsQuerySchema', () => {
+  it('accepts customer_id for patient reservation history filtering', () => {
+    const parsed = reservationsQuerySchema.safeParse({
+      clinic_id: '123e4567-e89b-12d3-a456-426614174000',
+      customer_id: '123e4567-e89b-12d3-a456-426614174002',
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.customer_id).toBe(
+        '123e4567-e89b-12d3-a456-426614174002'
+      );
+    }
   });
 });

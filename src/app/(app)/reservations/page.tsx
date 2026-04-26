@@ -426,6 +426,7 @@ function ReservationsPageContent() {
 
           {selectedAppointment && (
             <AppointmentDetail
+              clinicId={clinicId}
               appointment={selectedAppointment}
               resources={resources}
               menus={menus}

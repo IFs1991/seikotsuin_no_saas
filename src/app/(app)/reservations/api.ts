@@ -67,6 +67,19 @@ export const fetchReservations = async (
   return handleJson(res);
 };
 
+export const fetchCustomerReservations = async (
+  clinicId: string,
+  customerId: string
+): Promise<ReservationApiItem[]> => {
+  const params = new URLSearchParams({
+    clinic_id: clinicId,
+    customer_id: customerId,
+  });
+
+  const res = await fetch(`/api/reservations?${params.toString()}`);
+  return handleJson(res);
+};
+
 export const fetchCustomers = async (
   clinicId: string,
   query: string
