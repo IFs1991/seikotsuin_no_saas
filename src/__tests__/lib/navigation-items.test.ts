@@ -1,8 +1,10 @@
 import {
   ADMIN_MENU_ITEMS,
+  CLINIC_ADMIN_MENU_ITEMS,
   OPERATION_MENU_ITEMS,
   getCurrentNavigationItemId,
   getNavigationMode,
+  getVisibleNavigationItems,
 } from '@/lib/navigation/items';
 
 describe('navigation items', () => {
@@ -28,6 +30,17 @@ describe('navigation items', () => {
     expect(mode.canAccessAdminNavigation).toBe(true);
     expect(mode.showAdminMenus).toBe(true);
     expect(mode.showOperationMenus).toBe(true);
+  });
+
+  it('clinic_admin の管理セクションはスタッフ管理と施術メニューに限定する', () => {
+    expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
+      'スタッフ管理',
+      '施術メニュー',
+    ]);
+    expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
+      '/admin/users',
+      '/reservations/settings/menus',
+    ]);
   });
 
   it('staff は店舗運用メニューのみ表示対象にする', () => {
@@ -62,5 +75,18 @@ describe('navigation items', () => {
     expect(
       getCurrentNavigationItemId('/daily-reports/input', OPERATION_MENU_ITEMS)
     ).toBe('daily-input');
+  });
+
+  it('clinic_admin の表示対象に院別メニュー設定を含める', () => {
+    const mode = getNavigationMode({
+      role: 'clinic_admin',
+      profileLoading: false,
+    });
+    const visibleItems = getVisibleNavigationItems(mode);
+
+    expect(
+      getCurrentNavigationItemId('/reservations/settings/menus', visibleItems)
+    ).toBe('clinic-menu-settings');
+    expect(visibleItems.map(item => item.label)).toContain('施術メニュー');
   });
 });

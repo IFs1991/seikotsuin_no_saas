@@ -89,7 +89,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('AIアシスタント')).not.toBeInTheDocument();
   });
 
-  it('Sidebar は clinic_admin に店舗運用導線とスタッフ管理だけを表示する', () => {
+  it('Sidebar は clinic_admin に店舗運用導線と店舗管理に必要な導線だけを表示する', () => {
     render(
       <Sidebar
         isOpen
@@ -104,6 +104,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('予約管理')).toBeInTheDocument();
     expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.getByText('施術メニュー')).toBeInTheDocument();
     expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
     expect(screen.queryByText('システム設定')).not.toBeInTheDocument();

@@ -78,8 +78,14 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin-chat', label: 'AIチャット', href: '/admin/chat' },
 ];
 
-export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
-  ADMIN_MENU_ITEMS.filter(item => item.id === 'admin-users');
+export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  {
+    id: 'clinic-menu-settings',
+    label: '施術メニュー',
+    href: '/reservations/settings/menus',
+  },
+];
 
 const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
 const OPERATION_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
@@ -90,6 +96,12 @@ const OPERATION_WITHOUT_AI_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   ...OPERATION_MENU_ITEMS_WITHOUT_AI,
   ...ADMIN_MENU_ITEMS,
 ];
+const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  ...OPERATION_MENU_ITEMS,
+  ...CLINIC_ADMIN_MENU_ITEMS,
+];
+const OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
+  [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...CLINIC_ADMIN_MENU_ITEMS];
 
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
   { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
@@ -113,11 +125,12 @@ export function getOperationMenuItems() {
 }
 
 export function getVisibleNavigationItems({
+  isHqAdmin,
   showOperationMenus,
   showAdminMenus,
 }: Pick<
   NavigationMode,
-  'showOperationMenus' | 'showAdminMenus'
+  'isHqAdmin' | 'showOperationMenus' | 'showAdminMenus'
 >): readonly NavigationItem[] {
   if (!showOperationMenus) {
     return showAdminMenus ? ADMIN_MENU_ITEMS : EMPTY_NAVIGATION_ITEMS;
@@ -129,6 +142,12 @@ export function getVisibleNavigationItems({
     return aiInsightsEnabled
       ? OPERATION_MENU_ITEMS
       : OPERATION_MENU_ITEMS_WITHOUT_AI;
+  }
+
+  if (!isHqAdmin) {
+    return aiInsightsEnabled
+      ? OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS
+      : OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS;
   }
 
   return aiInsightsEnabled
