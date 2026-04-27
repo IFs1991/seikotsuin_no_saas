@@ -103,6 +103,21 @@ const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 const OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
   [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...CLINIC_ADMIN_MENU_ITEMS];
 
+const OPERATION_MENU_ITEMS_BY_AI_FLAG = {
+  enabled: OPERATION_MENU_ITEMS,
+  disabled: OPERATION_MENU_ITEMS_WITHOUT_AI,
+} as const;
+
+const OPERATION_AND_HQ_ADMIN_MENU_ITEMS_BY_AI_FLAG = {
+  enabled: OPERATION_AND_ADMIN_MENU_ITEMS,
+  disabled: OPERATION_WITHOUT_AI_AND_ADMIN_MENU_ITEMS,
+} as const;
+
+const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS_BY_AI_FLAG = {
+  enabled: OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS,
+  disabled: OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS,
+} as const;
+
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
   { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
   {
@@ -120,8 +135,8 @@ export function isAiInsightsEnabled() {
 
 export function getOperationMenuItems() {
   return isAiInsightsEnabled()
-    ? OPERATION_MENU_ITEMS
-    : OPERATION_MENU_ITEMS_WITHOUT_AI;
+    ? OPERATION_MENU_ITEMS_BY_AI_FLAG.enabled
+    : OPERATION_MENU_ITEMS_BY_AI_FLAG.disabled;
 }
 
 export function getVisibleNavigationItems({
@@ -137,22 +152,17 @@ export function getVisibleNavigationItems({
   }
 
   const aiInsightsEnabled = isAiInsightsEnabled();
+  const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
 
   if (!showAdminMenus) {
-    return aiInsightsEnabled
-      ? OPERATION_MENU_ITEMS
-      : OPERATION_MENU_ITEMS_WITHOUT_AI;
+    return OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
   }
 
   if (!isHqAdmin) {
-    return aiInsightsEnabled
-      ? OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS
-      : OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS;
+    return OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS_BY_AI_FLAG[aiFlag];
   }
 
-  return aiInsightsEnabled
-    ? OPERATION_AND_ADMIN_MENU_ITEMS
-    : OPERATION_WITHOUT_AI_AND_ADMIN_MENU_ITEMS;
+  return OPERATION_AND_HQ_ADMIN_MENU_ITEMS_BY_AI_FLAG[aiFlag];
 }
 
 export function canUseAdminNavigation(
