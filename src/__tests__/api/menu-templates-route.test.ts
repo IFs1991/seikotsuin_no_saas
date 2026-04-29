@@ -1,6 +1,7 @@
 import { processApiRequest } from '@/lib/api-helpers';
+import { processClinicScopedBody } from '@/lib/route-helpers';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
-import { canAccessClinicScope } from '@/lib/supabase';
+import { createScopedAdminContext } from '@/lib/supabase';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -10,16 +11,25 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
+jest.mock('@/lib/route-helpers', () => {
+  const actual = jest.requireActual('@/lib/route-helpers');
+  return {
+    ...actual,
+    processClinicScopedBody: jest.fn(),
+  };
+});
+
 jest.mock('@/lib/supabase', () => {
   const actual = jest.requireActual('@/lib/supabase');
   return {
     ...actual,
-    canAccessClinicScope: jest.fn(),
+    createScopedAdminContext: jest.fn(),
   };
 });
 
 const processApiRequestMock = processApiRequest as jest.Mock;
-const canAccessClinicScopeMock = canAccessClinicScope as jest.Mock;
+const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
+const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 
 const parentClinicId = '00000000-0000-0000-0000-0000000000a1';
 const childClinicId = '00000000-0000-0000-0000-0000000000b1';
@@ -202,6 +212,7 @@ describe('POST /api/menu-templates/import', () => {
       if (table === 'menus') return { insert };
       return {};
     });
+    const assertClinicInScope = jest.fn();
 
     processApiRequestMock.mockResolvedValue({
       success: true,
@@ -217,7 +228,24 @@ describe('POST /api/menu-templates/import', () => {
       },
       supabase: { from },
     });
-    canAccessClinicScopeMock.mockReturnValue(true);
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: childClinicId,
+        template_id: templateId,
+      },
+      auth: { id: userId, email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: childClinicId,
+        clinic_scope_ids: [childClinicId],
+      },
+      supabase: { from },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
 
     const { POST } = await import('@/app/api/menu-templates/import/route');
     const response = await POST(
@@ -234,10 +262,15 @@ describe('POST /api/menu-templates/import', () => {
       durationMinutes: 30,
       isInsuranceApplicable: true,
     });
-    expect(canAccessClinicScopeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ clinic_scope_ids: [childClinicId] }),
-      childClinicId
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { allowedRoles: Array.from(CLINIC_ADMIN_ROLES) }
     );
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_scope_ids: [childClinicId] })
+    );
+    expect(assertClinicInScope).toHaveBeenCalledWith(childClinicId);
     expect(insert).toHaveBeenCalledWith(
       expect.objectContaining({
         clinic_id: childClinicId,

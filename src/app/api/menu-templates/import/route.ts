@@ -1,12 +1,8 @@
 import { NextRequest } from 'next/server';
-import {
-  createErrorResponse,
-  createSuccessResponse,
-  processApiRequest,
-} from '@/lib/api-helpers';
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
 import { normalizeSupabaseError } from '@/lib/error-handler';
-import { handleRouteError } from '@/lib/route-helpers';
-import { canAccessClinicScope } from '@/lib/supabase';
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
+import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 import { mapMenuRowToApi, type MenuRow } from '@/app/api/menus/schema';
 import { resolveTemplateOwnerScope } from '../helpers';
@@ -18,41 +14,35 @@ import {
 
 const PATH = '/api/menu-templates/import';
 const TEMPLATE_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
+const TEMPLATE_IMPORT_COLUMNS =
+  'id, owner_clinic_id, name, description, category, price, duration_minutes, is_insurance_applicable, options, is_active, display_order';
+const MENU_RESPONSE_COLUMNS =
+  'id, clinic_id, name, duration_minutes, price, description, category, is_insurance_applicable, is_active, options';
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await processApiRequest(request, {
-      requireBody: true,
-      allowedRoles: TEMPLATE_ADMIN_ROLES,
-    });
+    const result = await processClinicScopedBody(
+      request,
+      menuTemplateImportSchema,
+      {
+        allowedRoles: TEMPLATE_ADMIN_ROLES,
+      }
+    );
     if (!result.success) return result.error;
 
-    const parsed = menuTemplateImportSchema.safeParse(result.body);
-    if (!parsed.success) {
-      return createErrorResponse(
-        '入力値にエラーがあります',
-        400,
-        parsed.error.flatten()
-      );
-    }
-
-    if (!canAccessClinicScope(result.permissions, parsed.data.clinic_id)) {
-      return createErrorResponse(
-        'このクリニックへのアクセス権がありません',
-        403
-      );
-    }
-
-    const supabase = result.supabase as any;
+    const dto = result.dto;
+    const scopedAdmin = createScopedAdminContext(result.permissions);
+    scopedAdmin.assertClinicInScope(dto.clinic_id);
+    const supabase = scopedAdmin.client as any;
     const ownerScope = await resolveTemplateOwnerScope(
       supabase,
-      parsed.data.clinic_id,
+      dto.clinic_id,
       PATH
     );
     const { data: template, error: templateError } = await supabase
       .from('menu_templates')
-      .select('*')
-      .eq('id', parsed.data.template_id)
+      .select(TEMPLATE_IMPORT_COLUMNS)
+      .eq('id', dto.template_id)
       .eq('owner_clinic_id', ownerScope.ownerClinicId)
       .eq('is_deleted', false)
       .eq('is_active', true)
@@ -65,13 +55,13 @@ export async function POST(request: NextRequest) {
 
     const insertPayload = mapTemplateToMenuInsertRow(
       template as MenuTemplateRow,
-      parsed.data.clinic_id,
+      dto.clinic_id,
       result.auth.id
     );
     const { data, error } = await supabase
       .from('menus')
       .insert(insertPayload)
-      .select()
+      .select(MENU_RESPONSE_COLUMNS)
       .single();
 
     if (error) throw normalizeSupabaseError(error, PATH);

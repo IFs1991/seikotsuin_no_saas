@@ -6,6 +6,7 @@ import {
 } from '@/lib/api-helpers';
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
+import { createScopedAdminContext } from '@/lib/supabase';
 import {
   menusQuerySchema,
   menuInsertSchema,
@@ -19,6 +20,17 @@ import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 
 const PATH = '/api/menus';
 const MENU_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
+const MENU_RESPONSE_COLUMNS =
+  'id, clinic_id, name, duration_minutes, price, description, category, is_insurance_applicable, is_active, options';
+
+function createMenuMutationClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  const scopedAdmin = createScopedAdminContext(permissions);
+  scopedAdmin.assertClinicInScope(clinicId);
+  return scopedAdmin.client;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await guard.supabase
       .from('menus')
-      .select('*')
+      .select(MENU_RESPONSE_COLUMNS)
       .eq('clinic_id', clinic_id)
       .eq('is_deleted', false)
       .order('display_order', { ascending: true });
@@ -65,10 +77,14 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const insertPayload = mapMenuInsertToRow(result.dto, result.auth.id);
-    const { data, error } = await result.supabase
+    const supabase = createMenuMutationClient(
+      result.permissions,
+      result.dto.clinic_id
+    );
+    const { data, error } = await supabase
       .from('menus')
       .insert(insertPayload)
-      .select()
+      .select(MENU_RESPONSE_COLUMNS)
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(mapMenuRowToApi(data as MenuRow), 201);
@@ -85,12 +101,16 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const updatePayload = mapMenuUpdateToRow(result.dto);
-    const { data, error } = await result.supabase
+    const supabase = createMenuMutationClient(
+      result.permissions,
+      result.dto.clinic_id
+    );
+    const { data, error } = await supabase
       .from('menus')
       .update(updatePayload)
       .eq('id', result.dto.id)
       .eq('clinic_id', result.dto.clinic_id)
-      .select()
+      .select(MENU_RESPONSE_COLUMNS)
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(mapMenuRowToApi(data as MenuRow));
@@ -111,7 +131,8 @@ export async function DELETE(request: NextRequest) {
       allowedRoles: MENU_ADMIN_ROLES,
     });
     if (!guard.success) return guard.error;
-    const { data, error } = await guard.supabase
+    const supabase = createMenuMutationClient(guard.permissions, clinicId);
+    const { data, error } = await supabase
       .from('menus')
       .update({ is_deleted: true })
       .eq('id', id)
