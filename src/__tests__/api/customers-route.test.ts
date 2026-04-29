@@ -7,7 +7,7 @@
  * - error status の戻り値が変わらない
  */
 import { processApiRequest } from '@/lib/api-helpers';
-import { canAccessClinicScope } from '@/lib/supabase';
+import { canAccessClinicScope, createScopedAdminContext } from '@/lib/supabase';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -22,6 +22,7 @@ jest.mock('@/lib/supabase', () => {
   return {
     ...actual,
     canAccessClinicScope: jest.fn(),
+    createScopedAdminContext: jest.fn(),
   };
 });
 
@@ -31,6 +32,7 @@ jest.mock('@/lib/postgrest-sanitizer', () => ({
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const canAccessClinicScopeMock = canAccessClinicScope as jest.Mock;
+const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 
 const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
 const validId = '123e4567-e89b-12d3-a456-426614174001';
@@ -41,6 +43,7 @@ describe('POST /api/customers', () => {
   });
 
   it('verifies clinic scope when creating a customer (single processApiRequest call)', async () => {
+    const userScopedSupabase = { from: jest.fn() };
     const single = jest.fn().mockResolvedValue({
       data: { id: validId, name: 'Test', phone: '090-0000-0000' },
       error: null,
@@ -48,6 +51,12 @@ describe('POST /api/customers', () => {
     const select = jest.fn().mockReturnValue({ single });
     const insert = jest.fn().mockReturnValue({ select });
     const from = jest.fn().mockReturnValue({ insert });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'staff',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
 
     processApiRequestMock.mockResolvedValueOnce({
       success: true,
@@ -57,14 +66,14 @@ describe('POST /api/customers', () => {
         phone: '090-0000-0000',
       },
       auth: { id: 'user-1', email: 'test@example.com', role: 'staff' },
-      permissions: {
-        role: 'staff',
-        clinic_id: validClinicId,
-        clinic_scope_ids: [validClinicId],
-      },
-      supabase: { from },
+      permissions,
+      supabase: userScopedSupabase,
     });
     canAccessClinicScopeMock.mockReturnValue(true);
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
 
     const { POST } = await import('@/app/api/customers/route');
     const response = await POST({} as any);
@@ -77,6 +86,10 @@ describe('POST /api/customers', () => {
       expect.objectContaining({ clinic_id: validClinicId }),
       validClinicId
     );
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
+    expect(from).toHaveBeenCalledWith('customers');
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
   });
 
   it('returns auth error when processApiRequest fails on first call', async () => {
@@ -134,6 +147,7 @@ describe('PATCH /api/customers', () => {
   });
 
   it('verifies clinic_id scope on update', async () => {
+    const userScopedSupabase = { from: jest.fn() };
     const single = jest.fn().mockResolvedValue({
       data: { id: validId, name: 'Updated' },
       error: null,
@@ -143,6 +157,12 @@ describe('PATCH /api/customers', () => {
     const eq1 = jest.fn().mockReturnValue({ eq: eq2 });
     const update = jest.fn().mockReturnValue({ eq: eq1 });
     const from = jest.fn().mockReturnValue({ update });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'staff',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
 
     processApiRequestMock.mockResolvedValueOnce({
       success: true,
@@ -152,14 +172,14 @@ describe('PATCH /api/customers', () => {
         name: 'Updated Name',
       },
       auth: { id: 'user-1', email: 'test@example.com', role: 'staff' },
-      permissions: {
-        role: 'staff',
-        clinic_id: validClinicId,
-        clinic_scope_ids: [validClinicId],
-      },
-      supabase: { from },
+      permissions,
+      supabase: userScopedSupabase,
     });
     canAccessClinicScopeMock.mockReturnValue(true);
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
 
     const { PATCH } = await import('@/app/api/customers/route');
     const response = await PATCH({} as any);
@@ -170,6 +190,10 @@ describe('PATCH /api/customers', () => {
       expect.objectContaining({ clinic_id: validClinicId }),
       validClinicId
     );
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
+    expect(from).toHaveBeenCalledWith('customers');
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
   });
 
   it('returns 403 when clinic scope check rejects', async () => {

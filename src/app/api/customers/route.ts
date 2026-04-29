@@ -7,6 +7,7 @@ import {
 import { buildSafeSearchFilter } from '@/lib/postgrest-sanitizer';
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
+import { createScopedAdminContext } from '@/lib/supabase';
 import {
   customersQuerySchema,
   customerInsertSchema,
@@ -16,6 +17,36 @@ import {
 } from './schema';
 
 const PATH = '/api/customers';
+const CUSTOMER_RESPONSE_COLUMNS =
+  'id, name, phone, email, notes, custom_attributes';
+type CustomerResponseRow = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  notes: string | null;
+  custom_attributes: Record<string, unknown> | null;
+};
+
+function mapCustomerRowToApi(row: CustomerResponseRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    email: row.email ?? undefined,
+    notes: row.notes ?? undefined,
+    customAttributes: row.custom_attributes ?? undefined,
+  };
+}
+
+function createCustomerMutationClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  const scopedAdmin = createScopedAdminContext(permissions);
+  scopedAdmin.assertClinicInScope(clinicId);
+  return scopedAdmin.client;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,7 +73,7 @@ export async function GET(request: NextRequest) {
     if (id) {
       const { data, error } = await guard.supabase
         .from('customers')
-        .select('*')
+        .select(CUSTOMER_RESPONSE_COLUMNS)
         .eq('clinic_id', clinic_id)
         .eq('id', id)
         .eq('is_deleted', false)
@@ -58,20 +89,14 @@ export async function GET(request: NextRequest) {
         return createErrorResponse('顧客が見つかりません', 404);
       }
 
-      const mapped = {
-        id: data.id,
-        name: data.name,
-        phone: data.phone,
-        email: data.email ?? undefined,
-        notes: data.notes ?? undefined,
-        customAttributes: data.custom_attributes ?? undefined,
-      };
-      return createSuccessResponse(mapped);
+      return createSuccessResponse(
+        mapCustomerRowToApi(data as CustomerResponseRow)
+      );
     }
 
     let query = guard.supabase
       .from('customers')
-      .select('*')
+      .select(CUSTOMER_RESPONSE_COLUMNS)
       .eq('clinic_id', clinic_id)
       .eq('is_deleted', false);
     if (q) {
@@ -89,14 +114,9 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = (data ?? []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      phone: row.phone,
-      email: row.email ?? undefined,
-      notes: row.notes ?? undefined,
-      customAttributes: row.custom_attributes ?? undefined,
-    }));
+    const mapped = ((data ?? []) as CustomerResponseRow[]).map(
+      mapCustomerRowToApi
+    );
     return createSuccessResponse(mapped);
   } catch (error) {
     return handleRouteError(error, PATH);
@@ -109,10 +129,14 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const insertPayload = mapCustomerInsertToRow(result.dto, result.auth.id);
-    const { data, error } = await result.supabase
+    const supabase = createCustomerMutationClient(
+      result.permissions,
+      result.dto.clinic_id
+    );
+    const { data, error } = await supabase
       .from('customers')
       .insert(insertPayload)
-      .select()
+      .select(CUSTOMER_RESPONSE_COLUMNS)
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data, 201);
@@ -127,12 +151,16 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const updatePayload = mapCustomerUpdateToRow(result.dto);
-    const { data, error } = await result.supabase
+    const supabase = createCustomerMutationClient(
+      result.permissions,
+      result.dto.clinic_id
+    );
+    const { data, error } = await supabase
       .from('customers')
       .update(updatePayload)
       .eq('id', result.dto.id)
       .eq('clinic_id', result.dto.clinic_id)
-      .select()
+      .select(CUSTOMER_RESPONSE_COLUMNS)
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);
     return createSuccessResponse(data);

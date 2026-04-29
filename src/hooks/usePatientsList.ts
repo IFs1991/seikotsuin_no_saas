@@ -43,6 +43,45 @@ interface UsePatientsListResult {
 const DEBOUNCE_MS = 300;
 const MAX_PATIENTS = 50;
 
+type CustomerApiRow = {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string | null;
+  notes?: string | null;
+  customAttributes?: Record<string, unknown> | null;
+  custom_attributes?: Record<string, unknown> | null;
+};
+
+type ApiSuccess<T> = {
+  data: T;
+};
+
+type ApiErrorBody = {
+  message?: string;
+  error?: string;
+};
+
+function mapCustomerApiRow(row: CustomerApiRow): Patient {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    email: row.email ?? undefined,
+    notes: row.notes ?? undefined,
+    customAttributes:
+      row.customAttributes ?? row.custom_attributes ?? undefined,
+  };
+}
+
+async function readApiError(
+  response: Response,
+  fallback: string
+): Promise<Error> {
+  const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+  return new Error(body.message || body.error || fallback);
+}
+
 export function usePatientsList(): UsePatientsListResult {
   const { profile, loading: profileLoading } = useUserProfileContext();
   const clinicId = profile?.clinicId;
@@ -54,6 +93,7 @@ export function usePatientsList(): UsePatientsListResult {
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
   // デバウンス処理
   const setSearchQuery = useCallback((query: string) => {
@@ -74,12 +114,17 @@ export function usePatientsList(): UsePatientsListResult {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
+      fetchAbortRef.current?.abort();
     };
   }, []);
 
   // 患者一覧を取得
   const fetchPatients = useCallback(async () => {
     if (!clinicId) return;
+
+    fetchAbortRef.current?.abort();
+    const abortController = new AbortController();
+    fetchAbortRef.current = abortController;
 
     setIsLoading(true);
     setError(null);
@@ -92,6 +137,7 @@ export function usePatientsList(): UsePatientsListResult {
 
       const response = await fetch(`/api/customers?${params.toString()}`, {
         credentials: 'include',
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -99,14 +145,20 @@ export function usePatientsList(): UsePatientsListResult {
         throw new Error(text || '患者一覧の取得に失敗しました');
       }
 
-      const json = await response.json();
-      const incoming = (json.data ?? []).slice(0, MAX_PATIENTS);
+      const json = (await response.json()) as ApiSuccess<CustomerApiRow[]>;
+      const incoming = (json.data ?? [])
+        .slice(0, MAX_PATIENTS)
+        .map(mapCustomerApiRow);
       setPatients(incoming);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('fetchPatients error', err);
       setError(err instanceof Error ? err.message : '不明なエラー');
     } finally {
-      setIsLoading(false);
+      if (fetchAbortRef.current === abortController) {
+        fetchAbortRef.current = null;
+        setIsLoading(false);
+      }
     }
   }, [clinicId, debouncedQuery]);
 
@@ -150,19 +202,11 @@ export function usePatientsList(): UsePatientsListResult {
       });
 
       if (!response.ok) {
-        const json = await response.json().catch(() => ({}));
-        throw new Error(json.message || '患者の登録に失敗しました');
+        throw await readApiError(response, '患者の登録に失敗しました');
       }
 
-      const json = await response.json();
-      const newPatient: Patient = {
-        id: json.data.id,
-        name: json.data.name,
-        phone: json.data.phone,
-        email: json.data.email ?? undefined,
-        notes: json.data.notes ?? undefined,
-        customAttributes: json.data.custom_attributes ?? undefined,
-      };
+      const json = (await response.json()) as ApiSuccess<CustomerApiRow>;
+      const newPatient = mapCustomerApiRow(json.data);
 
       // 一覧を更新（先頭に追加）
       setPatients(prev => [newPatient, ...prev].slice(0, MAX_PATIENTS));
@@ -195,19 +239,11 @@ export function usePatientsList(): UsePatientsListResult {
       });
 
       if (!response.ok) {
-        const json = await response.json().catch(() => ({}));
-        throw new Error(json.message || '患者の更新に失敗しました');
+        throw await readApiError(response, '患者の更新に失敗しました');
       }
 
-      const json = await response.json();
-      const updatedPatient: Patient = {
-        id: json.data.id,
-        name: json.data.name,
-        phone: json.data.phone,
-        email: json.data.email ?? undefined,
-        notes: json.data.notes ?? undefined,
-        customAttributes: json.data.custom_attributes ?? undefined,
-      };
+      const json = (await response.json()) as ApiSuccess<CustomerApiRow>;
+      const updatedPatient = mapCustomerApiRow(json.data);
 
       // 一覧を更新
       setPatients(prev =>

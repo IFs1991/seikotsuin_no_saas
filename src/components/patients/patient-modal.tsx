@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +46,7 @@ interface PatientModalProps {
   mode: 'create' | 'edit';
 }
 
-export function PatientModal({
+function PatientModalComponent({
   isOpen,
   onClose,
   onSave,
@@ -296,3 +296,6 @@ export function PatientModal({
     </Dialog>
   );
 }
+
+export const PatientModal = memo(PatientModalComponent);
+PatientModal.displayName = 'PatientModal';

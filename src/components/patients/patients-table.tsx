@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import Link from 'next/link';
 import {
   Table,
@@ -19,7 +19,7 @@ interface PatientsTableProps {
   onEdit: (patient: Patient) => void;
 }
 
-export function PatientsTable({ patients, onEdit }: PatientsTableProps) {
+function PatientsTableComponent({ patients, onEdit }: PatientsTableProps) {
   if (patients.length === 0) {
     return (
       <div className='text-center py-8 text-gray-500'>
@@ -75,3 +75,6 @@ export function PatientsTable({ patients, onEdit }: PatientsTableProps) {
     </div>
   );
 }
+
+export const PatientsTable = memo(PatientsTableComponent);
+PatientsTable.displayName = 'PatientsTable';
