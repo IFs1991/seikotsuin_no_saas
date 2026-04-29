@@ -104,6 +104,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('予約管理')).toBeInTheDocument();
     expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.getByText('患者管理')).toBeInTheDocument();
     expect(screen.getByText('施術メニュー')).toBeInTheDocument();
     expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();

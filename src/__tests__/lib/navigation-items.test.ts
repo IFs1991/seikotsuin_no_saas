@@ -32,13 +32,15 @@ describe('navigation items', () => {
     expect(mode.showOperationMenus).toBe(true);
   });
 
-  it('clinic_admin の管理セクションはスタッフ管理と施術メニューに限定する', () => {
+  it('clinic_admin の管理セクションは店舗管理に必要な導線に限定する', () => {
     expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
       'スタッフ管理',
+      '患者管理',
       '施術メニュー',
     ]);
     expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
       '/admin/users',
+      '/patients/list',
       '/reservations/settings/menus',
     ]);
   });
@@ -88,5 +90,18 @@ describe('navigation items', () => {
       getCurrentNavigationItemId('/reservations/settings/menus', visibleItems)
     ).toBe('clinic-menu-settings');
     expect(visibleItems.map(item => item.label)).toContain('施術メニュー');
+  });
+
+  it('clinic_admin の表示対象に患者管理を含める', () => {
+    const mode = getNavigationMode({
+      role: 'clinic_admin',
+      profileLoading: false,
+    });
+    const visibleItems = getVisibleNavigationItems(mode);
+
+    expect(getCurrentNavigationItemId('/patients/list', visibleItems)).toBe(
+      'clinic-patients'
+    );
+    expect(visibleItems.map(item => item.label)).toContain('患者管理');
   });
 });

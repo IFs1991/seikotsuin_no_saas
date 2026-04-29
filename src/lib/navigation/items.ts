@@ -80,6 +80,7 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 
 export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  { id: 'clinic-patients', label: '患者管理', href: '/patients/list' },
   {
     id: 'clinic-menu-settings',
     label: '施術メニュー',
