@@ -54,21 +54,14 @@ const mockPatientData = {
     { name: '高橋四郎', ltv: 95000 },
   ],
   segmentData: {
-    age: [
-      { label: '20-30代', value: 35 },
-      { label: '31-50代', value: 45 },
-      { label: '51歳以上', value: 20 },
+    visit: [
+      { label: '軽度リピート', value: 35 },
+      { label: '中度リピート', value: 45 },
+      { label: '高度リピート', value: 20 },
     ],
-    symptom: [
-      { label: '腰痛', value: 40 },
-      { label: '肩こり', value: 30 },
-      { label: 'その他', value: 30 },
-    ],
-    area: [
-      { label: '地域A', value: 50 },
-      { label: '地域B', value: 30 },
-      { label: '地域C', value: 20 },
-    ],
+    age: [],
+    symptom: [],
+    area: [],
   },
   reservations: [],
   satisfactionCorrelation: {},
@@ -162,8 +155,8 @@ describe('PatientsPage', () => {
   test('should display segment analysis tabs', () => {
     render(<PatientsPage />);
 
-    expect(screen.getByText('年齢層')).toBeInTheDocument();
-    expect(screen.getByText('症状')).toBeInTheDocument();
-    expect(screen.getByText('地域')).toBeInTheDocument();
+    expect(screen.getByText('来院区分')).toBeInTheDocument();
+    expect(screen.getByText('軽度リピート')).toBeInTheDocument();
+    expect(screen.getByText('35人')).toBeInTheDocument();
   });
 });

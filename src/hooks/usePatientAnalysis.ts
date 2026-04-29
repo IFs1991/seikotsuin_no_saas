@@ -7,6 +7,8 @@ import {
   handleApiError,
 } from '@/lib/api-client';
 
+const DEFAULT_ANALYSIS_ERROR = '患者データの取得に失敗しました';
+
 interface ConversionData {
   stages: Array<{
     name: string;
@@ -34,6 +36,7 @@ interface LtvRanking {
 }
 
 interface SegmentData {
+  visit: Array<{ label: string; value: number }>;
   age: Array<{ label: string; value: number }>;
   symptom: Array<{ label: string; value: number }>;
   area: Array<{ label: string; value: number }>;
@@ -51,8 +54,8 @@ export interface PatientAnalysisViewModel {
   riskScores: RiskScore[];
   ltvRanking: LtvRanking[];
   segmentData: SegmentData;
-  reservations: any[];
-  satisfactionCorrelation: any;
+  reservations: unknown[];
+  satisfactionCorrelation: Record<string, unknown>;
   followUpList: FollowUpItem[];
 }
 
@@ -60,6 +63,72 @@ interface UsePatientAnalysisResult {
   data: PatientAnalysisViewModel | null;
   loading: boolean;
   error: string | null;
+}
+
+function toNumber(value: number | string | null | undefined): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toRiskLevel(
+  category: PatientAnalysisData['riskScores'][number]['category']
+) {
+  if (category === 'high' || category === 'medium') return category;
+  return 'low';
+}
+
+function mapSegmentItems(
+  items: Array<{ label: string; value: number }> | undefined
+) {
+  return (items ?? []).map(item => ({
+    label: item.label,
+    value: toNumber(item.value),
+  }));
+}
+
+export function mapPatientAnalysisData(
+  data: PatientAnalysisData
+): PatientAnalysisViewModel {
+  const stagesBase = data.conversionData.stages?.[0]?.value || 0;
+
+  return {
+    conversionData: {
+      stages: (data.conversionData.stages ?? []).map(stage => ({
+        name: stage.name,
+        value: stage.value,
+        percentage:
+          stagesBase > 0 ? Math.round((stage.value / stagesBase) * 100) : 0,
+      })),
+    },
+    visitCounts: {
+      average: toNumber(data.visitCounts?.average),
+      monthlyChange: toNumber(data.visitCounts?.monthlyChange),
+    },
+    riskScores: (data.riskScores ?? []).map((risk, index) => ({
+      id: index + 1,
+      name: risk.name,
+      lastVisit: risk.lastVisit || '-',
+      riskLevel: toRiskLevel(risk.category),
+      score: toNumber(risk.riskScore),
+    })),
+    ltvRanking: (data.ltvRanking ?? []).map(item => ({
+      name: item.name,
+      ltv: toNumber(item.ltv),
+    })),
+    segmentData: {
+      visit: mapSegmentItems(data.segmentData?.visit),
+      age: mapSegmentItems(data.segmentData?.age),
+      symptom: mapSegmentItems(data.segmentData?.symptom),
+      area: [],
+    },
+    reservations: [],
+    satisfactionCorrelation: {},
+    followUpList: (data.followUpList ?? []).map((followUp, index) => ({
+      id: index + 1,
+      name: followUp.name,
+      reason: followUp.reason,
+    })),
+  };
 }
 
 export const usePatientAnalysis = (
@@ -85,87 +154,20 @@ export const usePatientAnalysis = (
 
         const res = await api.customers.getAnalysis(clinicId);
         if (isSuccessResponse(res)) {
-          const d = res.data as PatientAnalysisData;
-
-          // 転換率ステージ（%は先頭段階を100%として相対算出）
-          const stagesBase = d.conversionData.stages?.[0]?.value || 0;
-          const stages = (d.conversionData.stages || []).map(s => ({
-            name: s.name,
-            value: s.value,
-            percentage:
-              stagesBase > 0 ? Math.round((s.value / stagesBase) * 100) : 0,
-          }));
-
-          // リスクスコア整形
-          const riskScores: RiskScore[] = (d.riskScores || []).map(
-            (r, idx) => ({
-              id: idx + 1,
-              name: r.name,
-              lastVisit: r.lastVisit || '-',
-              riskLevel:
-                (r.category as any) === 'high'
-                  ? 'high'
-                  : (r.category as any) === 'medium'
-                    ? 'medium'
-                    : 'low',
-              score: Number((r as any).riskScore || (r as any).score || 0),
-            })
-          );
-
-          // LTVランキング
-          const ltvRanking: LtvRanking[] = (d.ltvRanking || []).map(x => ({
-            name: x.name,
-            ltv: Number(x.ltv || 0),
-          }));
-
-          // セグメント
-          const segmentData: SegmentData = {
-            age: (d.segmentData?.age || []).map(x => ({
-              label: x.label,
-              value: Number(x.value || 0),
-            })),
-            symptom: (d.segmentData?.symptom || []).map(x => ({
-              label: x.label,
-              value: Number(x.value || 0),
-            })),
-            area: [],
-          };
-
-          // フォローアップ
-          const followUpList: FollowUpItem[] = (d.followUpList || []).map(
-            (f, i) => ({
-              id: i + 1,
-              name: f.name,
-              reason: f.reason,
-            })
-          );
-
           if (!cancelled) {
-            setData({
-              conversionData: { stages },
-              visitCounts: {
-                average: Number(d.visitCounts?.average || 0),
-                monthlyChange: Number(d.visitCounts?.monthlyChange || 0),
-              },
-              riskScores,
-              ltvRanking,
-              segmentData,
-              reservations: [],
-              satisfactionCorrelation: {},
-              followUpList,
-            });
+            setData(mapPatientAnalysisData(res.data as PatientAnalysisData));
           }
         } else if (isErrorResponse(res)) {
           const message = handleApiError(res.error);
           if (!cancelled) {
-            setError(message || '患者データの取得に失敗しました');
+            setError(message || DEFAULT_ANALYSIS_ERROR);
             setData(null);
           }
         }
       } catch (e) {
         if (!cancelled) {
           console.warn('usePatientAnalysis fetch error:', e);
-          setError('患者データの取得に失敗しました');
+          setError(DEFAULT_ANALYSIS_ERROR);
           setData(null);
         }
       } finally {

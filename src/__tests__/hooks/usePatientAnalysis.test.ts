@@ -64,11 +64,10 @@ describe('usePatientAnalysis', () => {
           },
         ],
         segmentData: {
-          age: [
-            { label: '20-30代', value: 35 },
-            { label: '31-50代', value: 45 },
+          visit: [
+            { label: '軽度リピート', value: 35 },
+            { label: '中度リピート', value: 45 },
           ],
-          symptom: [{ label: '腰痛', value: 40 }],
         },
         followUpList: [
           {
@@ -95,6 +94,10 @@ describe('usePatientAnalysis', () => {
     expect(result.current.data).not.toBeNull();
     expect(result.current.data?.conversionData.stages[0].percentage).toBe(100);
     expect(result.current.data?.riskScores[0].riskLevel).toBe('high');
+    expect(result.current.data?.segmentData.visit).toEqual([
+      { label: '軽度リピート', value: 35 },
+      { label: '中度リピート', value: 45 },
+    ]);
   });
 
   it('handles API error responses', async () => {
