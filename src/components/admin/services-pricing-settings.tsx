@@ -32,6 +32,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Clock,
   CopyPlus,
   Edit,
@@ -643,6 +645,7 @@ export function ServicesPricingSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const templates = templateScope?.templates ?? EMPTY_TEMPLATES;
   const isOwnerClinic = templateScope?.isOwnerClinic ?? false;
 
@@ -931,6 +934,7 @@ export function ServicesPricingSettings() {
   }, []);
 
   const handleTemplateEdit = useCallback((template: MenuTemplate) => {
+    setTemplatesOpen(true);
     setEditingTemplateId(template.id);
     setTemplateForm(templateToForm(template));
     setError(null);
@@ -1068,14 +1072,12 @@ export function ServicesPricingSettings() {
       )}
 
       <Card>
-        <CardHeader className='pb-4'>
+        <CardHeader>
           <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
             <div>
               <CardTitle className='text-xl'>施術メニュー</CardTitle>
               <CardDescription>
-                {templateScope
-                  ? `${templateScope.ownerClinicName} の共通テンプレートを使用します`
-                  : '予約画面で使用するメニューを院ごとに管理します'}
+                予約画面で使用する院別メニューを管理します
               </CardDescription>
             </div>
             <Button
@@ -1088,61 +1090,6 @@ export function ServicesPricingSettings() {
               再読み込み
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className='space-y-5'>
-          {isOwnerClinic && (
-            <div className='rounded-md border border-gray-200 p-4'>
-              <MenuEditorForm
-                form={templateForm}
-                setForm={setTemplateForm}
-                disabled={!clinicId || saving}
-                saving={saving}
-                editing={Boolean(editingTemplateId)}
-                idPrefix='template'
-                nameLabel='テンプレート名'
-                submitCreateLabel='テンプレート追加'
-                submitEditLabel='テンプレート更新'
-                insuranceAriaLabel='テンプレート保険適用'
-                activeAriaLabel='テンプレート有効'
-                onSubmit={handleTemplateSubmit}
-                onCancel={resetTemplateForm}
-              />
-            </div>
-          )}
-
-          {templateLoading && (
-            <div className='flex items-center py-4 text-sm text-gray-600'>
-              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-              共通テンプレートを読み込み中...
-            </div>
-          )}
-
-          {!templateLoading && sortedTemplates.length === 0 && (
-            <div className='rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500'>
-              共通テンプレートはありません
-            </div>
-          )}
-
-          <div className='grid gap-3 md:grid-cols-3'>
-            {sortedTemplates.map(template => (
-              <MenuTemplateCard
-                key={template.id}
-                template={template}
-                clinicSelected={Boolean(clinicId)}
-                isOwnerClinic={isOwnerClinic}
-                saving={saving}
-                onApply={applyTemplate}
-                onEdit={handleTemplateEdit}
-                onDelete={handleTemplateDelete}
-              />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className='text-lg'>新規メニュー</CardTitle>
         </CardHeader>
         <CardContent>
           <MenuEditorForm
@@ -1160,6 +1107,89 @@ export function ServicesPricingSettings() {
             onSubmit={handleSubmit}
           />
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className='pb-4'>
+          <button
+            type='button'
+            className='flex w-full items-start justify-between gap-3 text-left'
+            aria-expanded={templatesOpen}
+            onClick={() => setTemplatesOpen(prev => !prev)}
+          >
+            <div>
+              <CardTitle className='text-lg'>メニューテンプレート</CardTitle>
+              <CardDescription>
+                {templateScope
+                  ? `${templateScope.ownerClinicName} のテンプレートから院別メニューへ追加できます`
+                  : '親テナントが用意したメニューのコピー元です'}
+              </CardDescription>
+            </div>
+            <div className='flex items-center gap-2 text-sm text-gray-500'>
+              {templateLoading ? (
+                <Loader2 className='h-4 w-4 animate-spin' />
+              ) : (
+                <span>{sortedTemplates.length}件</span>
+              )}
+              {templatesOpen ? (
+                <ChevronDown className='h-4 w-4' />
+              ) : (
+                <ChevronRight className='h-4 w-4' />
+              )}
+            </div>
+          </button>
+        </CardHeader>
+        {templatesOpen && (
+          <CardContent className='space-y-5'>
+            {isOwnerClinic && (
+              <div className='rounded-md border border-gray-200 p-4'>
+                <MenuEditorForm
+                  form={templateForm}
+                  setForm={setTemplateForm}
+                  disabled={!clinicId || saving}
+                  saving={saving}
+                  editing={Boolean(editingTemplateId)}
+                  idPrefix='template'
+                  nameLabel='テンプレート名'
+                  submitCreateLabel='テンプレート追加'
+                  submitEditLabel='テンプレート更新'
+                  insuranceAriaLabel='テンプレート保険適用'
+                  activeAriaLabel='テンプレート有効'
+                  onSubmit={handleTemplateSubmit}
+                  onCancel={resetTemplateForm}
+                />
+              </div>
+            )}
+
+            {templateLoading && (
+              <div className='flex items-center py-4 text-sm text-gray-600'>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                メニューテンプレートを読み込み中...
+              </div>
+            )}
+
+            {!templateLoading && sortedTemplates.length === 0 && (
+              <div className='rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500'>
+                メニューテンプレートはありません
+              </div>
+            )}
+
+            <div className='grid gap-3 md:grid-cols-3'>
+              {sortedTemplates.map(template => (
+                <MenuTemplateCard
+                  key={template.id}
+                  template={template}
+                  clinicSelected={Boolean(clinicId)}
+                  isOwnerClinic={isOwnerClinic}
+                  saving={saving}
+                  onApply={applyTemplate}
+                  onEdit={handleTemplateEdit}
+                  onDelete={handleTemplateDelete}
+                />
+              ))}
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       <Card>
