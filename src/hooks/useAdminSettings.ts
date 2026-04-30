@@ -3,6 +3,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { LoadingState, SaveResult } from '@/types/admin';
 
+const SETTINGS_ENDPOINT = '/api/admin/settings';
+// E2E環境（dev環境）でのSupabase接続遅延に対応するためタイムアウトを延長
+const FETCH_TIMEOUT_MS = 12000;
+
 // 設定カテゴリの型定義
 export type SettingsCategory =
   | 'clinic_basic'
@@ -22,6 +26,34 @@ export interface PersistOptions {
   autoLoad?: boolean;
 }
 
+type AdminSettingsApiResponse<T> = {
+  success?: boolean;
+  data?: {
+    settings?: Partial<T>;
+    message?: string;
+  };
+  error?: string;
+};
+
+const buildSettingsUrl = (clinicId: string, category: SettingsCategory) => {
+  const params = new URLSearchParams({
+    clinic_id: clinicId,
+    category,
+  });
+
+  return `${SETTINGS_ENDPOINT}?${params.toString()}`;
+};
+
+const getRequestErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.name === 'AbortError') {
+    return fallback.includes('保存')
+      ? '設定の保存がタイムアウトしました'
+      : '設定の取得がタイムアウトしました';
+  }
+
+  return error instanceof Error ? error.message : fallback;
+};
+
 /**
  * 管理設定フック（API永続化対応版）
  *
@@ -36,8 +68,6 @@ export function useAdminSettings<T>(
   const category = persistOptions?.category ?? null;
   const autoLoad = persistOptions?.autoLoad;
   const hasPersist = Boolean(clinicId && category);
-  // E2E環境（dev環境）でのSupabase接続遅延に対応するためタイムアウトを延長
-  const FETCH_TIMEOUT_MS = 12000;
   const [data, setData] = useState<T>(initialData);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadingState, setLoadingState] = useState<LoadingState>({
@@ -48,7 +78,7 @@ export function useAdminSettings<T>(
 
   // API経由で設定を取得
   const fetchSettings = useCallback(async () => {
-    if (!hasPersist) {
+    if (!clinicId || !category) {
       setIsInitialized(true);
       return;
     }
@@ -67,16 +97,15 @@ export function useAdminSettings<T>(
     }));
 
     try {
-      const response = await fetch(
-        `/api/admin/settings?clinic_id=${clinicId}&category=${category}`,
-        { signal: abortController.signal }
-      );
+      const response = await fetch(buildSettingsUrl(clinicId, category), {
+        signal: abortController.signal,
+      });
 
       if (!response.ok) {
         throw new Error('設定の取得に失敗しました');
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as AdminSettingsApiResponse<T>;
 
       if (result.success && result.data?.settings) {
         setData(prev => ({ ...prev, ...result.data.settings }));
@@ -84,12 +113,10 @@ export function useAdminSettings<T>(
 
       setIsInitialized(true);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error && error.name === 'AbortError'
-          ? '設定の取得がタイムアウトしました'
-          : error instanceof Error
-            ? error.message
-            : '設定の取得に失敗しました';
+      const errorMessage = getRequestErrorMessage(
+        error,
+        '設定の取得に失敗しました'
+      );
       setLoadingState(prev => ({
         ...prev,
         error: errorMessage,
@@ -99,7 +126,7 @@ export function useAdminSettings<T>(
     } finally {
       clearTimeout(timeoutId);
     }
-  }, [clinicId, category, hasPersist]);
+  }, [clinicId, category]);
 
   // 初回ロード
   useEffect(() => {
@@ -127,37 +154,52 @@ export function useAdminSettings<T>(
   // API経由で設定を保存
   const saveToApi = useCallback(
     async (settingsData: T): Promise<SaveResult> => {
-      if (!hasPersist) {
+      if (!clinicId || !category) {
         return {
           success: false,
           message: '永続化オプションが設定されていません',
         };
       }
 
-      const response = await fetch('/api/admin/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clinic_id: clinicId,
-          category,
-          settings: settingsData,
-        }),
-      });
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(
+        () => abortController.abort(),
+        FETCH_TIMEOUT_MS
+      );
 
-      const result = await response.json();
+      try {
+        const response = await fetch(SETTINGS_ENDPOINT, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: abortController.signal,
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            category,
+            settings: settingsData,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(result.error || '設定の保存に失敗しました');
+        const result = (await response.json()) as AdminSettingsApiResponse<T>;
+
+        if (!response.ok) {
+          throw new Error(result.error || '設定の保存に失敗しました');
+        }
+
+        return {
+          success: Boolean(result.success),
+          message: result.data?.message || '設定を保存しました',
+        };
+      } catch (error) {
+        throw new Error(
+          getRequestErrorMessage(error, '設定の保存に失敗しました')
+        );
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      return {
-        success: result.success,
-        message: result.data?.message || '設定を保存しました',
-      };
     },
-    [clinicId, category, hasPersist]
+    [clinicId, category]
   );
 
   const handleSave = useCallback(
@@ -210,6 +252,13 @@ export function useAdminSettings<T>(
       }
     },
     [data, hasPersist, saveToApi]
+  );
+
+  const handleSaveData = useCallback(
+    async (settingsData: T): Promise<SaveResult> => {
+      return handleSave(() => saveToApi(settingsData));
+    },
+    [handleSave, saveToApi]
   );
 
   const handleAction = useCallback(
@@ -267,6 +316,7 @@ export function useAdminSettings<T>(
     updateData,
     loadingState,
     handleSave,
+    handleSaveData,
     handleAction,
     clearMessages,
     reload,

@@ -1,41 +1,24 @@
 'use client';
 
-import React from 'react';
+import { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Save, Plus, Loader2 } from 'lucide-react';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { AdminMessage } from './AdminMessage';
-
-interface TimeSlot {
-  start: string;
-  end: string;
-}
-
-interface DaySchedule {
-  isOpen: boolean;
-  timeSlots: TimeSlot[];
-}
-
-interface WeekSchedule {
-  [key: string]: DaySchedule;
-}
-
-interface SpecialDate {
-  date: string;
-  type: 'holiday' | 'specialHours';
-  label: string;
-  timeSlots?: TimeSlot[];
-}
-
-interface ClinicHoursData {
-  hoursByDay: WeekSchedule;
-  holidays: string[];
-  specialClosures: SpecialDate[];
-}
+import { ClinicHoursDayRow } from './clinic-hours-day-row';
+import { ClinicHoursSpecialDateRow } from './clinic-hours-special-date-row';
+import {
+  weekDays,
+  type ClinicHoursData,
+  type DaySchedule,
+  type TimeSlot,
+  type TimeSlotField,
+  type UpdateSpecialDate,
+  type WeekDay,
+  type WeekSchedule,
+} from './clinic-hours-settings.types';
 
 const initialData: ClinicHoursData = {
   hoursByDay: {
@@ -81,6 +64,57 @@ const initialData: ClinicHoursData = {
   specialClosures: [],
 };
 
+const createDefaultTimeSlot = (): TimeSlot => ({
+  start: '09:00',
+  end: '17:00',
+});
+
+function normalizeDaySchedule(
+  day: WeekDay,
+  sourceDaySchedule?: Partial<DaySchedule>
+): DaySchedule {
+  const fallback = initialData.hoursByDay[day];
+  const hasValidTimeSlots = Array.isArray(sourceDaySchedule?.timeSlots);
+
+  if (typeof sourceDaySchedule?.isOpen === 'boolean' && hasValidTimeSlots) {
+    return {
+      isOpen: sourceDaySchedule.isOpen,
+      timeSlots: sourceDaySchedule.timeSlots,
+    };
+  }
+
+  return {
+    ...fallback,
+    ...sourceDaySchedule,
+    isOpen:
+      typeof sourceDaySchedule?.isOpen === 'boolean'
+        ? sourceDaySchedule.isOpen
+        : fallback.isOpen,
+    timeSlots:
+      hasValidTimeSlots && sourceDaySchedule
+        ? sourceDaySchedule.timeSlots
+        : fallback.timeSlots,
+  };
+}
+
+function normalizeClinicHoursData(data: ClinicHoursData): ClinicHoursData {
+  const sourceHoursByDay = data.hoursByDay ?? initialData.hoursByDay;
+  const hoursByDay = weekDays.reduce<WeekSchedule>((normalized, day) => {
+    normalized[day] = normalizeDaySchedule(day, sourceHoursByDay[day]);
+
+    return normalized;
+  }, {} as WeekSchedule);
+
+  return {
+    ...data,
+    hoursByDay,
+    holidays: Array.isArray(data.holidays) ? data.holidays : [],
+    specialClosures: Array.isArray(data.specialClosures)
+      ? data.specialClosures
+      : [],
+  };
+}
+
 export function ClinicHoursSettings() {
   const { profile, loading: profileLoading } = useUserProfile();
   const clinicId = profile?.clinicId;
@@ -89,7 +123,7 @@ export function ClinicHoursSettings() {
     data: formData,
     updateData,
     loadingState,
-    handleSave,
+    handleSaveData,
     isInitialized,
   } = useAdminSettings(
     initialData,
@@ -102,6 +136,155 @@ export function ClinicHoursSettings() {
       : undefined
   );
 
+  const normalizedFormData = useMemo(
+    () => normalizeClinicHoursData(formData),
+    [formData]
+  );
+  const schedule = normalizedFormData.hoursByDay;
+  const specialDates = normalizedFormData.specialClosures;
+
+  const toggleDayOpen = useCallback(
+    (day: WeekDay) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+        const daySchedule = normalized.hoursByDay[day];
+
+        return {
+          ...normalized,
+          hoursByDay: {
+            ...normalized.hoursByDay,
+            [day]: {
+              ...daySchedule,
+              isOpen: !daySchedule.isOpen,
+              timeSlots: !daySchedule.isOpen ? [createDefaultTimeSlot()] : [],
+            },
+          },
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const addTimeSlot = useCallback(
+    (day: WeekDay) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+        const daySchedule = normalized.hoursByDay[day];
+
+        return {
+          ...normalized,
+          hoursByDay: {
+            ...normalized.hoursByDay,
+            [day]: {
+              ...daySchedule,
+              timeSlots: [...daySchedule.timeSlots, createDefaultTimeSlot()],
+            },
+          },
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const removeTimeSlot = useCallback(
+    (day: WeekDay, index: number) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+        const daySchedule = normalized.hoursByDay[day];
+
+        return {
+          ...normalized,
+          hoursByDay: {
+            ...normalized.hoursByDay,
+            [day]: {
+              ...daySchedule,
+              timeSlots: daySchedule.timeSlots.filter((_, i) => i !== index),
+            },
+          },
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const updateTimeSlot = useCallback(
+    (day: WeekDay, index: number, field: TimeSlotField, value: string) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+        const daySchedule = normalized.hoursByDay[day];
+
+        return {
+          ...normalized,
+          hoursByDay: {
+            ...normalized.hoursByDay,
+            [day]: {
+              ...daySchedule,
+              timeSlots: daySchedule.timeSlots.map((slot, i) =>
+                i === index ? { ...slot, [field]: value } : slot
+              ),
+            },
+          },
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const addSpecialDate = useCallback(() => {
+    updateData(previousData => {
+      const normalized = normalizeClinicHoursData(previousData);
+
+      return {
+        ...normalized,
+        specialClosures: [
+          ...normalized.specialClosures,
+          {
+            date: '',
+            type: 'holiday',
+            label: '',
+            timeSlots: [],
+          },
+        ],
+      };
+    });
+  }, [updateData]);
+
+  const removeSpecialDate = useCallback(
+    (index: number) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+
+        return {
+          ...normalized,
+          specialClosures: normalized.specialClosures.filter(
+            (_, i) => i !== index
+          ),
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const updateSpecialDate = useCallback<UpdateSpecialDate>(
+    (index, field, value) => {
+      updateData(previousData => {
+        const normalized = normalizeClinicHoursData(previousData);
+
+        return {
+          ...normalized,
+          specialClosures: normalized.specialClosures.map((date, i) =>
+            i === index ? { ...date, [field]: value } : date
+          ),
+        };
+      });
+    },
+    [updateData]
+  );
+
+  const onSave = useCallback(async () => {
+    await handleSaveData(normalizedFormData);
+  }, [handleSaveData, normalizedFormData]);
+
   // ローディング中
   if (profileLoading || !isInitialized) {
     return (
@@ -111,112 +294,6 @@ export function ClinicHoursSettings() {
       </div>
     );
   }
-
-  const schedule = formData.hoursByDay;
-  const specialDates = formData.specialClosures;
-
-  const dayNames = {
-    monday: '月曜日',
-    tuesday: '火曜日',
-    wednesday: '水曜日',
-    thursday: '木曜日',
-    friday: '金曜日',
-    saturday: '土曜日',
-    sunday: '日曜日',
-  };
-
-  const toggleDayOpen = (day: string) => {
-    const newSchedule = {
-      ...schedule,
-      [day]: {
-        ...schedule[day],
-        isOpen: !schedule[day].isOpen,
-        timeSlots: !schedule[day].isOpen
-          ? [{ start: '09:00', end: '17:00' }]
-          : [],
-      },
-    };
-    updateData({ hoursByDay: newSchedule });
-  };
-
-  const addTimeSlot = (day: string) => {
-    const newSchedule = {
-      ...schedule,
-      [day]: {
-        ...schedule[day],
-        timeSlots: [
-          ...schedule[day].timeSlots,
-          { start: '09:00', end: '17:00' },
-        ],
-      },
-    };
-    updateData({ hoursByDay: newSchedule });
-  };
-
-  const removeTimeSlot = (day: string, index: number) => {
-    const newSchedule = {
-      ...schedule,
-      [day]: {
-        ...schedule[day],
-        timeSlots: schedule[day].timeSlots.filter((_, i) => i !== index),
-      },
-    };
-    updateData({ hoursByDay: newSchedule });
-  };
-
-  const updateTimeSlot = (
-    day: string,
-    index: number,
-    field: 'start' | 'end',
-    value: string
-  ) => {
-    const newSchedule = {
-      ...schedule,
-      [day]: {
-        ...schedule[day],
-        timeSlots: schedule[day].timeSlots.map((slot, i) =>
-          i === index ? { ...slot, [field]: value } : slot
-        ),
-      },
-    };
-    updateData({ hoursByDay: newSchedule });
-  };
-
-  const addSpecialDate = () => {
-    updateData({
-      specialClosures: [
-        ...specialDates,
-        {
-          date: '',
-          type: 'holiday',
-          label: '',
-          timeSlots: [],
-        },
-      ],
-    });
-  };
-
-  const removeSpecialDate = (index: number) => {
-    updateData({
-      specialClosures: specialDates.filter((_, i) => i !== index),
-    });
-  };
-
-  const updateSpecialDate = (
-    index: number,
-    field: keyof SpecialDate,
-    value: any
-  ) => {
-    updateData({
-      specialClosures: specialDates.map((date, i) =>
-        i === index ? { ...date, [field]: value } : date
-      ),
-    });
-  };
-
-  const onSave = async () => {
-    await handleSave();
-  };
 
   return (
     <div className='space-y-6'>
@@ -234,82 +311,16 @@ export function ClinicHoursSettings() {
         </h3>
 
         <div className='space-y-4'>
-          {Object.entries(schedule).map(([day, daySchedule]) => (
-            <div
-              key={day}
-              className='flex items-start space-x-4 p-4 bg-gray-50 rounded-lg'
-            >
-              <div className='w-20'>
-                <Label className='font-medium text-gray-700'>
-                  {dayNames[day as keyof typeof dayNames]}
-                </Label>
-              </div>
-
-              <div className='flex-1'>
-                <div className='flex items-center space-x-4 mb-3'>
-                  <label className='flex items-center space-x-2'>
-                    <input
-                      type='checkbox'
-                      checked={daySchedule.isOpen}
-                      onChange={() => toggleDayOpen(day)}
-                      className='rounded border-gray-300'
-                    />
-                    <span className='text-sm text-gray-700'>営業日</span>
-                  </label>
-                </div>
-
-                {daySchedule.isOpen && (
-                  <div className='space-y-2'>
-                    {daySchedule.timeSlots.map((slot, index) => (
-                      <div key={index} className='flex items-center space-x-2'>
-                        <Input
-                          type='time'
-                          value={slot.start}
-                          onChange={e =>
-                            updateTimeSlot(day, index, 'start', e.target.value)
-                          }
-                          className='w-32'
-                        />
-                        <span className='text-gray-500'>〜</span>
-                        <Input
-                          type='time'
-                          value={slot.end}
-                          onChange={e =>
-                            updateTimeSlot(day, index, 'end', e.target.value)
-                          }
-                          className='w-32'
-                        />
-                        {daySchedule.timeSlots.length > 1 && (
-                          <Button
-                            type='button'
-                            variant='outline'
-                            size='sm'
-                            onClick={() => removeTimeSlot(day, index)}
-                            className='text-red-600 hover:text-red-700'
-                          >
-                            <Trash2 className='w-4 h-4' />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      type='button'
-                      variant='outline'
-                      size='sm'
-                      onClick={() => addTimeSlot(day)}
-                      className='flex items-center space-x-1'
-                    >
-                      <Plus className='w-4 h-4' />
-                      <span>時間帯を追加</span>
-                    </Button>
-                  </div>
-                )}
-
-                {!daySchedule.isOpen && (
-                  <div className='text-sm text-gray-500'>定休日</div>
-                )}
-              </div>
-            </div>
+          {weekDays.map(weekDay => (
+            <ClinicHoursDayRow
+              key={weekDay}
+              weekDay={weekDay}
+              daySchedule={schedule[weekDay]}
+              onToggleDayOpen={toggleDayOpen}
+              onAddTimeSlot={addTimeSlot}
+              onRemoveTimeSlot={removeTimeSlot}
+              onUpdateTimeSlot={updateTimeSlot}
+            />
           ))}
         </div>
       </Card>
@@ -333,105 +344,13 @@ export function ClinicHoursSettings() {
 
         <div className='space-y-4'>
           {specialDates.map((specialDate, index) => (
-            <div key={index} className='p-4 bg-gray-50 rounded-lg'>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-4'>
-                <div>
-                  <Label className='block text-sm font-medium text-gray-700 mb-1'>
-                    日付
-                  </Label>
-                  <Input
-                    type='date'
-                    value={specialDate.date}
-                    onChange={e =>
-                      updateSpecialDate(index, 'date', e.target.value)
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label className='block text-sm font-medium text-gray-700 mb-1'>
-                    種類
-                  </Label>
-                  <select
-                    value={specialDate.type}
-                    onChange={e =>
-                      updateSpecialDate(
-                        index,
-                        'type',
-                        e.target.value as 'holiday' | 'specialHours'
-                      )
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  >
-                    <option value='holiday'>休診日</option>
-                    <option value='specialHours'>特別営業時間</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label className='block text-sm font-medium text-gray-700 mb-1'>
-                    名称
-                  </Label>
-                  <Input
-                    type='text'
-                    value={specialDate.label}
-                    onChange={e =>
-                      updateSpecialDate(index, 'label', e.target.value)
-                    }
-                    placeholder='例: 年末年始、お盆休み'
-                  />
-                </div>
-              </div>
-
-              {specialDate.type === 'specialHours' && (
-                <div>
-                  <Label className='block text-sm font-medium text-gray-700 mb-2'>
-                    営業時間
-                  </Label>
-                  <div className='flex items-center space-x-2'>
-                    <Input
-                      type='time'
-                      value={specialDate.timeSlots?.[0]?.start || '09:00'}
-                      onChange={e =>
-                        updateSpecialDate(index, 'timeSlots', [
-                          {
-                            start: e.target.value,
-                            end: specialDate.timeSlots?.[0]?.end || '17:00',
-                          },
-                        ])
-                      }
-                      className='w-32'
-                    />
-                    <span className='text-gray-500'>〜</span>
-                    <Input
-                      type='time'
-                      value={specialDate.timeSlots?.[0]?.end || '17:00'}
-                      onChange={e =>
-                        updateSpecialDate(index, 'timeSlots', [
-                          {
-                            start: specialDate.timeSlots?.[0]?.start || '09:00',
-                            end: e.target.value,
-                          },
-                        ])
-                      }
-                      className='w-32'
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className='flex justify-end mt-4'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={() => removeSpecialDate(index)}
-                  className='text-red-600 hover:text-red-700'
-                >
-                  <Trash2 className='w-4 h-4 mr-1' />
-                  削除
-                </Button>
-              </div>
-            </div>
+            <ClinicHoursSpecialDateRow
+              key={index}
+              index={index}
+              specialDate={specialDate}
+              onRemoveSpecialDate={removeSpecialDate}
+              onUpdateSpecialDate={updateSpecialDate}
+            />
           ))}
 
           {specialDates.length === 0 && (
