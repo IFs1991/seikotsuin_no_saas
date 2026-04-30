@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 import type {
   AssignPermissionPayload,
+  CreateAccountPayload,
   PermissionEntry,
   PermissionFilters,
   UpdatePermissionPayload,
@@ -118,7 +119,7 @@ export function useAdminUsers() {
   );
 
   const assignPermission = useCallback(
-    async (payload: AssignPermissionPayload) => {
+    async (payload: AssignPermissionPayload | CreateAccountPayload) => {
       try {
         setLoading(true);
         setError(null);

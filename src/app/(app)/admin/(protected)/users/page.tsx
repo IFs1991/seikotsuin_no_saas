@@ -13,6 +13,7 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminState } from '@/components/admin/admin-state';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -30,10 +31,13 @@ import {
 } from '@/components/ui/table';
 import {
   CLINIC_FILTER_ALL,
+  CREATE_ACCOUNT_MODE_EXISTING,
+  CREATE_ACCOUNT_MODE_NEW,
   DEFAULT_ADMIN_USER_ROLE,
   NO_CLINIC_VALUE,
   ROLE_FILTER_ALL,
   USER_CANDIDATE_MIN_SEARCH_LENGTH,
+  getCreatableAdminAccountRoleOptions,
   buildPermissionFilters,
   canClinicAdminManagePermissionRole,
   createAssignPermissionPayload,
@@ -49,6 +53,7 @@ import {
   toAdminUserRole,
   toRoleFilterValue,
   validatePermissionForm,
+  type AccountCreateMode,
   type AdminUsersRoleFilter,
   type PermissionEntry,
   type PermissionFormState,
@@ -171,6 +176,10 @@ export default function AdminUsersPage() {
     () => getAssignableAdminUserRoleOptions(actorRole),
     [actorRole]
   );
+  const creatableRoleOptions = useMemo(
+    () => getCreatableAdminAccountRoleOptions(actorRole),
+    [actorRole]
+  );
   const defaultFormRole =
     actorRole === 'admin'
       ? DEFAULT_ADMIN_USER_ROLE
@@ -192,6 +201,11 @@ export default function AdminUsersPage() {
   );
   const [formState, setFormState] = useState<PermissionFormState>(() =>
     createEmptyPermissionFormState(defaultFormRole)
+  );
+  const isCreateAccountMode = formState.create_mode === CREATE_ACCOUNT_MODE_NEW;
+  const formRoleOptions = useMemo(
+    () => (isCreateAccountMode ? creatableRoleOptions : roleOptions),
+    [creatableRoleOptions, isCreateAccountMode, roleOptions]
   );
 
   const currentFilters = useMemo(
@@ -223,11 +237,24 @@ export default function AdminUsersPage() {
   }, [defaultFormRole, roleOptions]);
 
   useEffect(() => {
+    if (!isCreateAccountMode || creatableRoleOptions.length === 0) {
+      return;
+    }
+
+    setFormState(current =>
+      creatableRoleOptions.some(option => option.value === current.role)
+        ? current
+        : { ...current, role: creatableRoleOptions[0].value }
+    );
+  }, [creatableRoleOptions, isCreateAccountMode]);
+
+  useEffect(() => {
     const trimmedSearch = deferredUserSearch.trim();
     const selectedLabel = selectedUserLabel.trim();
 
     if (
       editingPermissionId ||
+      isCreateAccountMode ||
       !isUserPickerOpen ||
       trimmedSearch.length < USER_CANDIDATE_MIN_SEARCH_LENGTH ||
       (selectedLabel && trimmedSearch === selectedLabel)
@@ -250,6 +277,7 @@ export default function AdminUsersPage() {
     deferredUserSearch,
     editingPermissionId,
     fetchUserCandidates,
+    isCreateAccountMode,
     isUserPickerOpen,
     selectedUserLabel,
   ]);
@@ -313,7 +341,11 @@ export default function AdminUsersPage() {
         createAssignPermissionPayload(formState)
       );
       if (created) {
-        setNotice('権限を付与しました');
+        setNotice(
+          isCreateAccountMode
+            ? 'アカウントを作成しました'
+            : '権限を付与しました'
+        );
         syncPermissionList(created);
         resetForm();
       }
@@ -322,6 +354,7 @@ export default function AdminUsersPage() {
       assignPermission,
       editingPermissionId,
       formState,
+      isCreateAccountMode,
       resetForm,
       syncPermissionList,
       updatePermission,
@@ -366,6 +399,50 @@ export default function AdminUsersPage() {
     setSearch(value);
   }, []);
 
+  const handleRoleChange = useCallback((value: string) => {
+    setFormState(prev => ({
+      ...prev,
+      role: toAdminUserRole(value),
+    }));
+  }, []);
+
+  const handleClinicChange = useCallback((value: string) => {
+    setFormState(prev => ({
+      ...prev,
+      clinic_id: value === NO_CLINIC_VALUE ? '' : value,
+    }));
+  }, []);
+
+  const handleFullNameChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormState(prev => ({
+        ...prev,
+        full_name: event.target.value,
+      }));
+    },
+    []
+  );
+
+  const handleEmailChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormState(prev => ({
+        ...prev,
+        email: event.target.value,
+      }));
+    },
+    []
+  );
+
+  const handlePasswordChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormState(prev => ({
+        ...prev,
+        password: event.target.value,
+      }));
+    },
+    []
+  );
+
   const handleUserSelect = useCallback(
     (candidate: UserPermissionCandidate) => {
       const label = getCandidateInputLabel(candidate);
@@ -380,6 +457,32 @@ export default function AdminUsersPage() {
       clearCandidates();
     },
     [clearCandidates]
+  );
+
+  const handleCreateModeChange = useCallback(
+    (mode: AccountCreateMode) => {
+      const shouldCreateAccount = mode === CREATE_ACCOUNT_MODE_NEW;
+
+      setFormState(prev => ({
+        ...prev,
+        create_mode: mode,
+        user_id: shouldCreateAccount ? '' : prev.user_id,
+        full_name: shouldCreateAccount ? prev.full_name : '',
+        email: shouldCreateAccount ? prev.email : '',
+        password: '',
+        role:
+          shouldCreateAccount &&
+          !creatableRoleOptions.some(option => option.value === prev.role)
+            ? (creatableRoleOptions[0]?.value ?? defaultFormRole)
+            : prev.role,
+      }));
+      setUserSearch('');
+      setSelectedUserLabel('');
+      setIsUserPickerOpen(false);
+      clearCandidates();
+      setNotice(null);
+    },
+    [clearCandidates, creatableRoleOptions, defaultFormRole]
   );
 
   const handleRevoke = useCallback(
@@ -411,42 +514,95 @@ export default function AdminUsersPage() {
       title='アカウント・権限管理'
       description='ログインできるアカウント、所属店舗、ロールを管理します。店舗スタッフの招待や勤務情報は店舗単位の管理画面で扱います。'
     >
-      <AdminFormCard title={editingPermissionId ? '権限編集' : '権限付与'}>
+      <AdminFormCard
+        title={
+          editingPermissionId
+            ? '権限編集'
+            : isCreateAccountMode
+              ? 'アカウント作成'
+              : '権限付与'
+        }
+        description='招待メールに依存せず、店舗管理者・マネージャー・施術者・スタッフのログインアカウントを直接作成できます。'
+      >
         <form onSubmit={handleSubmit} className='space-y-4'>
+          {!editingPermissionId && (
+            <div className='flex flex-wrap gap-2 rounded-lg bg-slate-50 p-1'>
+              <Button
+                type='button'
+                variant={
+                  formState.create_mode === CREATE_ACCOUNT_MODE_EXISTING
+                    ? 'default'
+                    : 'ghost'
+                }
+                onClick={() =>
+                  handleCreateModeChange(CREATE_ACCOUNT_MODE_EXISTING)
+                }
+              >
+                既存ユーザーに権限付与
+              </Button>
+              <Button
+                type='button'
+                variant={
+                  formState.create_mode === CREATE_ACCOUNT_MODE_NEW
+                    ? 'default'
+                    : 'ghost'
+                }
+                onClick={() => handleCreateModeChange(CREATE_ACCOUNT_MODE_NEW)}
+                disabled={creatableRoleOptions.length === 0}
+              >
+                新規アカウント作成
+              </Button>
+            </div>
+          )}
+          {isCreateAccountMode && (
+            <div className='rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900'>
+              作成後すぐにログインできます。初期パスワードは安全な方法で本人へ共有してください。
+            </div>
+          )}
           <div className='grid gap-4 md:grid-cols-2'>
-            <UserCandidateCombobox
-              candidates={userCandidates}
-              disabled={Boolean(editingPermissionId)}
-              error={userCandidatesError}
-              hasSelectedUser={hasSelectedUser}
-              inputId='admin-user-search'
-              isOpen={isUserPickerOpen}
-              listboxId='admin-user-candidates'
-              loading={userCandidatesLoading}
-              selectedUserId={formState.user_id}
-              value={userSearch}
-              onOpenChange={setIsUserPickerOpen}
-              onSearchChange={handleUserSearchChange}
-              onSelect={handleUserSelect}
-            />
+            {!isCreateAccountMode ? (
+              <UserCandidateCombobox
+                candidates={userCandidates}
+                disabled={Boolean(editingPermissionId)}
+                error={userCandidatesError}
+                hasSelectedUser={hasSelectedUser}
+                inputId='admin-user-search'
+                isOpen={isUserPickerOpen}
+                listboxId='admin-user-candidates'
+                loading={userCandidatesLoading}
+                selectedUserId={formState.user_id}
+                value={userSearch}
+                onOpenChange={setIsUserPickerOpen}
+                onSearchChange={handleUserSearchChange}
+                onSelect={handleUserSelect}
+              />
+            ) : (
+              <div className='space-y-2'>
+                <label
+                  htmlFor='admin-new-user-full-name'
+                  className='text-sm font-medium'
+                >
+                  氏名
+                </label>
+                <Input
+                  id='admin-new-user-full-name'
+                  value={formState.full_name}
+                  onChange={handleFullNameChange}
+                  placeholder='例: 山田 太郎'
+                  autoComplete='name'
+                />
+              </div>
+            )}
             <div className='space-y-2'>
               <label htmlFor='admin-user-role' className='text-sm font-medium'>
                 ロール
               </label>
-              <Select
-                value={formState.role}
-                onValueChange={value =>
-                  setFormState(prev => ({
-                    ...prev,
-                    role: toAdminUserRole(value),
-                  }))
-                }
-              >
+              <Select value={formState.role} onValueChange={handleRoleChange}>
                 <SelectTrigger id='admin-user-role'>
                   <SelectValue placeholder='ロールを選択' />
                 </SelectTrigger>
                 <SelectContent>
-                  {roleOptions.map(option => (
+                  {formRoleOptions.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -455,6 +611,42 @@ export default function AdminUsersPage() {
               </Select>
             </div>
           </div>
+          {isCreateAccountMode && (
+            <div className='grid gap-4 md:grid-cols-2'>
+              <div className='space-y-2'>
+                <label
+                  htmlFor='admin-new-user-email'
+                  className='text-sm font-medium'
+                >
+                  ログインメールアドレス
+                </label>
+                <Input
+                  id='admin-new-user-email'
+                  type='email'
+                  value={formState.email}
+                  onChange={handleEmailChange}
+                  placeholder='user@example.com'
+                  autoComplete='email'
+                />
+              </div>
+              <div className='space-y-2'>
+                <label
+                  htmlFor='admin-new-user-password'
+                  className='text-sm font-medium'
+                >
+                  初期パスワード
+                </label>
+                <Input
+                  id='admin-new-user-password'
+                  type='password'
+                  value={formState.password}
+                  onChange={handlePasswordChange}
+                  placeholder='英大文字・小文字・数字・記号を含む'
+                  autoComplete='new-password'
+                />
+              </div>
+            </div>
+          )}
           <div className='grid gap-4 md:grid-cols-2'>
             <div className='space-y-2'>
               <label
@@ -465,12 +657,7 @@ export default function AdminUsersPage() {
               </label>
               <Select
                 value={formState.clinic_id || NO_CLINIC_VALUE}
-                onValueChange={value =>
-                  setFormState(prev => ({
-                    ...prev,
-                    clinic_id: value === NO_CLINIC_VALUE ? '' : value,
-                  }))
-                }
+                onValueChange={handleClinicChange}
                 disabled={formState.role === 'admin'}
               >
                 <SelectTrigger id='admin-user-clinic'>
@@ -490,9 +677,13 @@ export default function AdminUsersPage() {
           <div className='flex flex-wrap items-center gap-2'>
             <Button
               type='submit'
-              disabled={loading || roleOptions.length === 0}
+              disabled={loading || formRoleOptions.length === 0}
             >
-              {editingPermissionId ? '権限を更新する' : '権限を付与する'}
+              {editingPermissionId
+                ? '権限を更新する'
+                : isCreateAccountMode
+                  ? 'アカウントを作成する'
+                  : '権限を付与する'}
             </Button>
             {editingPermissionId && (
               <Button type='button' variant='outline' onClick={resetForm}>

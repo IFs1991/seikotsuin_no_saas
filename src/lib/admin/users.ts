@@ -16,8 +16,19 @@ export const CLINIC_FILTER_ALL = 'all';
 export const NO_CLINIC_VALUE = 'none';
 export const USER_CANDIDATE_MIN_SEARCH_LENGTH = 1;
 export const USER_CANDIDATE_LIMIT = 20;
+export const CREATE_ACCOUNT_MODE_EXISTING = 'existing';
+export const CREATE_ACCOUNT_MODE_NEW = 'new';
+export const CREATABLE_ADMIN_ACCOUNT_ROLES = [
+  'clinic_admin',
+  'manager',
+  'therapist',
+  'staff',
+] as const satisfies readonly AdminUserRole[];
 
 export type AdminUsersRoleFilter = AdminUserRole | typeof ROLE_FILTER_ALL;
+export type AccountCreateMode =
+  | typeof CREATE_ACCOUNT_MODE_EXISTING
+  | typeof CREATE_ACCOUNT_MODE_NEW;
 
 export type PermissionEntry = {
   id: string;
@@ -75,12 +86,25 @@ export type PermissionFormState = {
   user_id: string;
   role: AdminUserRole;
   clinic_id: string;
+  create_mode: AccountCreateMode;
+  full_name: string;
+  email: string;
+  password: string;
 };
 
 export type AssignPermissionPayload = {
   user_id: string;
   role: AdminUserRole;
   clinic_id: string | null;
+};
+
+export type CreateAccountPayload = {
+  create_account: true;
+  full_name: string;
+  email: string;
+  password: string;
+  role: AdminUserRole;
+  clinic_id: string;
 };
 
 export type UpdatePermissionPayload = {
@@ -101,6 +125,9 @@ type EditablePermission = Pick<
 
 const CLINIC_ADMIN_ASSIGNABLE_ROLE_SET = new Set<string>(
   CLINIC_ADMIN_ASSIGNABLE_ROLES
+);
+const CREATABLE_ADMIN_ACCOUNT_ROLE_SET = new Set<string>(
+  CREATABLE_ADMIN_ACCOUNT_ROLES
 );
 
 export function canClinicAdminManagePermissionRole(
@@ -129,6 +156,14 @@ export function getAssignableAdminUserRoleOptions(
   }
 
   return [];
+}
+
+export function getCreatableAdminAccountRoleOptions(
+  actorRole: string | null | undefined
+) {
+  return getAssignableAdminUserRoleOptions(actorRole).filter(option =>
+    CREATABLE_ADMIN_ACCOUNT_ROLE_SET.has(option.value)
+  );
 }
 
 export function getPermissionClinicName(
@@ -169,6 +204,10 @@ export function createEmptyPermissionFormState(
     user_id: '',
     role,
     clinic_id: '',
+    create_mode: CREATE_ACCOUNT_MODE_EXISTING,
+    full_name: '',
+    email: '',
+    password: '',
   };
 }
 
@@ -242,8 +281,26 @@ export function getPermissionClinicId(
 export function validatePermissionForm(
   formState: PermissionFormState
 ): string | null {
-  if (!formState.user_id.trim()) {
+  if (
+    formState.create_mode === CREATE_ACCOUNT_MODE_EXISTING &&
+    !formState.user_id.trim()
+  ) {
     return 'ユーザーを選択してください';
+  }
+
+  if (formState.create_mode === CREATE_ACCOUNT_MODE_NEW) {
+    if (!formState.full_name.trim()) {
+      return '氏名を入力してください';
+    }
+    if (!formState.email.trim()) {
+      return 'ログインメールアドレスを入力してください';
+    }
+    if (!formState.password.trim()) {
+      return '初期パスワードを入力してください';
+    }
+    if (!CREATABLE_ADMIN_ACCOUNT_ROLE_SET.has(formState.role)) {
+      return '新規作成できるロールを選択してください';
+    }
   }
 
   if (
@@ -258,11 +315,24 @@ export function validatePermissionForm(
 
 export function createAssignPermissionPayload(
   formState: PermissionFormState
-): AssignPermissionPayload {
+): AssignPermissionPayload | CreateAccountPayload {
+  const clinicId = getPermissionClinicId(formState.role, formState.clinic_id);
+
+  if (formState.create_mode === CREATE_ACCOUNT_MODE_NEW) {
+    return {
+      create_account: true,
+      full_name: formState.full_name.trim(),
+      email: formState.email.trim().toLowerCase(),
+      password: formState.password,
+      role: formState.role,
+      clinic_id: clinicId ?? '',
+    };
+  }
+
   return {
     user_id: formState.user_id.trim(),
     role: formState.role,
-    clinic_id: getPermissionClinicId(formState.role, formState.clinic_id),
+    clinic_id: clinicId,
   };
 }
 
@@ -282,6 +352,10 @@ export function createPermissionFormState(
     user_id: permission.user_id ?? '',
     role: toAdminUserRole(permission.role),
     clinic_id: permission.clinic_id ?? '',
+    create_mode: CREATE_ACCOUNT_MODE_EXISTING,
+    full_name: '',
+    email: '',
+    password: '',
   };
 }
 

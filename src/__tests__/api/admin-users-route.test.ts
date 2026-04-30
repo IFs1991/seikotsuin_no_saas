@@ -188,4 +188,138 @@ describe('GET /api/admin/users', () => {
     expect(body.error).toBe('このロールは店舗管理者では付与できません');
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
+
+  it('creates a store account without an invite', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
+    const createdUserId = '22222222-2222-4222-8222-222222222222';
+    const permissionId = '11111111-1111-4111-8111-111111111111';
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+      },
+      supabase: {},
+      body: {
+        create_account: true,
+        full_name: '山田 太郎',
+        email: 'yamada@example.com',
+        password: 'SafePass123!',
+        role: 'manager',
+        clinic_id: clinicId,
+      },
+    });
+
+    const baseUpsertQuery = { upsert: jest.fn().mockResolvedValue({ error: null }) };
+    const permissionWriteQuery = {
+      upsert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: createdUserId,
+          role: 'manager',
+          clinic_id: clinicId,
+          username: 'yamada@example.com',
+          clinics: { name: '渋谷院' },
+          created_at: '2026-04-30T00:00:00.000Z',
+        },
+        error: null,
+      }),
+    };
+
+    const adminClient = {
+      auth: {
+        admin: {
+          createUser: jest.fn().mockResolvedValue({
+            data: {
+              user: {
+                id: createdUserId,
+              },
+            },
+            error: null,
+          }),
+          deleteUser: jest.fn(),
+        },
+      },
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') {
+          return permissionWriteQuery;
+        }
+        if (['profiles', 'staff', 'resources'].includes(table)) {
+          return baseUpsertQuery;
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(
+      adminClient as unknown as ReturnType<typeof createAdminClient>
+    );
+
+    const { POST } = await import('@/app/api/admin/users/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          create_account: true,
+          full_name: '山田 太郎',
+          email: 'yamada@example.com',
+          password: 'SafePass123!',
+          role: 'manager',
+          clinic_id: clinicId,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(adminClient.auth.admin.createUser).toHaveBeenCalledWith({
+      email: 'yamada@example.com',
+      password: 'SafePass123!',
+      email_confirm: true,
+      user_metadata: {
+        full_name: '山田 太郎',
+      },
+    });
+    expect(adminClient.from).toHaveBeenCalledWith('profiles');
+    expect(adminClient.from).toHaveBeenCalledWith('staff');
+    expect(adminClient.from).toHaveBeenCalledWith('resources');
+    expect(permissionWriteQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staff_id: createdUserId,
+        clinic_id: clinicId,
+        role: 'manager',
+        username: 'yamada@example.com',
+      }),
+      { onConflict: 'staff_id' }
+    );
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        id: permissionId,
+        user_id: createdUserId,
+        role: 'manager',
+        clinic_id: clinicId,
+        profile_email: 'yamada@example.com',
+        profile_name: '山田 太郎',
+      })
+    );
+    expect(logAdminActionMock).toHaveBeenCalledWith(
+      'admin-1',
+      'admin@example.com',
+      'account_create',
+      permissionId,
+      {
+        user_id: createdUserId,
+        role: 'manager',
+        clinic_id: clinicId,
+      }
+    );
+  });
 });
