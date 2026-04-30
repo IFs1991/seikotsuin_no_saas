@@ -39,7 +39,7 @@ function mapCustomerRowToApi(row: CustomerResponseRow) {
   };
 }
 
-function createCustomerMutationClient(
+function createCustomerScopedClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
   clinicId: string
 ) {
@@ -70,8 +70,10 @@ export async function GET(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
+    const supabase = createCustomerScopedClient(guard.permissions, clinic_id);
+
     if (id) {
-      const { data, error } = await guard.supabase
+      const { data, error } = await supabase
         .from('customers')
         .select(CUSTOMER_RESPONSE_COLUMNS)
         .eq('clinic_id', clinic_id)
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let query = guard.supabase
+    let query = supabase
       .from('customers')
       .select(CUSTOMER_RESPONSE_COLUMNS)
       .eq('clinic_id', clinic_id)
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const insertPayload = mapCustomerInsertToRow(result.dto, result.auth.id);
-    const supabase = createCustomerMutationClient(
+    const supabase = createCustomerScopedClient(
       result.permissions,
       result.dto.clinic_id
     );
@@ -151,7 +153,7 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const updatePayload = mapCustomerUpdateToRow(result.dto);
-    const supabase = createCustomerMutationClient(
+    const supabase = createCustomerScopedClient(
       result.permissions,
       result.dto.clinic_id
     );

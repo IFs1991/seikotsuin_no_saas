@@ -37,6 +37,84 @@ const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
 const validId = '123e4567-e89b-12d3-a456-426614174001';
 
+describe('GET /api/customers', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('lists customers through scoped admin client after route-level scope guard', async () => {
+    const userScopedSupabase = { from: jest.fn() };
+    const order = jest.fn().mockReturnValue({
+      limit: jest.fn().mockResolvedValue({
+        data: [
+          {
+            id: validId,
+            name: 'Persisted Customer',
+            phone: '090-0000-0000',
+            email: null,
+            notes: null,
+            custom_attributes: null,
+          },
+        ],
+        error: null,
+      }),
+    });
+    const eqDeleted = jest.fn().mockReturnValue({ order });
+    const eqClinic = jest.fn().mockReturnValue({ eq: eqDeleted });
+    const select = jest.fn().mockReturnValue({ eq: eqClinic });
+    const from = jest.fn().mockReturnValue({ select });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'clinic_admin',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: {
+        id: 'user-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions,
+      supabase: userScopedSupabase,
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
+
+    const { GET } = await import('@/app/api/customers/route');
+    const request = {
+      nextUrl: {
+        searchParams: new URLSearchParams({ clinic_id: validClinicId }),
+      },
+      url: `http://localhost/api/customers?clinic_id=${validClinicId}`,
+      method: 'GET',
+    } as any;
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId: validClinicId,
+      requireClinicMatch: true,
+    });
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
+    expect(from).toHaveBeenCalledWith('customers');
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
+    expect(json.data).toEqual([
+      {
+        id: validId,
+        name: 'Persisted Customer',
+        phone: '090-0000-0000',
+      },
+    ]);
+  });
+});
+
 describe('POST /api/customers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
