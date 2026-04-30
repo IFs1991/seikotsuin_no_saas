@@ -232,6 +232,9 @@ describe('Admin tenants access alignment', () => {
     const staffQuery = {
       upsert: jest.fn().mockResolvedValue({ error: null }),
     };
+    const resourcesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
     const permissionsQuery = {
       upsert: jest.fn().mockResolvedValue({ error: null }),
     };
@@ -252,6 +255,9 @@ describe('Admin tenants access alignment', () => {
         }
         if (table === 'staff') {
           return staffQuery;
+        }
+        if (table === 'resources') {
+          return resourcesQuery;
         }
         if (table === 'user_permissions') {
           return permissionsQuery;
@@ -331,6 +337,20 @@ describe('Admin tenants access alignment', () => {
         email: 'clinic-admin@example.com',
         role: 'clinic_admin',
         password_hash: 'managed_by_supabase',
+        is_therapist: true,
+      }),
+      { onConflict: 'id' }
+    );
+    expect(resourcesQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'user-1',
+        clinic_id: createdClinic.id,
+        name: `${createdClinic.name} 管理者`,
+        type: 'staff',
+        email: 'clinic-admin@example.com',
+        is_active: true,
+        is_bookable: true,
+        is_deleted: false,
       }),
       { onConflict: 'id' }
     );
@@ -399,6 +419,9 @@ describe('Admin tenants access alignment', () => {
     const staffQuery = {
       upsert: jest.fn().mockResolvedValue({ error: null }),
     };
+    const resourcesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
     const permissionsQuery = {
       upsert: jest.fn().mockResolvedValue({ error: null }),
     };
@@ -419,6 +442,9 @@ describe('Admin tenants access alignment', () => {
         }
         if (table === 'staff') {
           return staffQuery;
+        }
+        if (table === 'resources') {
+          return resourcesQuery;
         }
         if (table === 'user_permissions') {
           return permissionsQuery;

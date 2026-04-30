@@ -73,6 +73,7 @@ const requireAdmin = (role: string) => role === 'admin';
 const CLINIC_ADMIN_ROLE = 'clinic_admin';
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 const TENANTS_ENDPOINT = '/api/admin/tenants';
+type AdminClient = ReturnType<typeof createAdminClient>;
 
 type ClinicCreateInput = z.infer<typeof ClinicCreateSchema>;
 type NormalizedClinicCreateInput = {
@@ -89,12 +90,13 @@ type NormalizedClinicCreateInput = {
 };
 type RollbackStage =
   | 'rollback_user_permissions'
+  | 'rollback_resources'
   | 'rollback_staff'
   | 'rollback_profiles'
   | 'rollback_clinic'
   | 'rollback_auth_user';
 type CreateClinicAdminResourcesInput = {
-  adminClient: ReturnType<typeof createAdminClient>;
+  adminClient: AdminClient;
   endpointUserId: string;
   clinicId: string;
   clinicName: string;
@@ -122,6 +124,22 @@ type ParentValidationResult =
       success: false;
       errorResponse: Response;
     };
+type ClinicAdminRecordInput = {
+  createdUserId: string;
+  clinicId: string;
+  clinicAdminName: string;
+  loginEmail: string;
+  timestamp: string;
+};
+type ClinicAdminPersistenceInput = ClinicAdminRecordInput & {
+  adminClient: AdminClient;
+  endpointUserId: string;
+};
+type ClinicAdminWriteFailure = {
+  stage: string;
+  message: string;
+  error: unknown;
+};
 
 function buildClinicAdminName(clinicName: string) {
   return `${clinicName} 管理者`;
@@ -257,7 +275,7 @@ function mapCreateUserErrorMessage(error?: { message?: string | null }) {
 }
 
 async function rollbackCreatedClinicAdminResources(
-  adminClient: ReturnType<typeof createAdminClient>,
+  adminClient: AdminClient,
   userId: string
 ) {
   const { error: deletePermissionError } = await adminClient
@@ -270,6 +288,14 @@ async function rollbackCreatedClinicAdminResources(
       userId,
       'rollback_user_permissions'
     );
+  }
+
+  const { error: deleteResourceError } = await adminClient
+    .from('resources')
+    .delete()
+    .eq('id', userId);
+  if (deleteResourceError) {
+    logTenantRollbackError(deleteResourceError, userId, 'rollback_resources');
   }
 
   const { error: deleteStaffError } = await adminClient
@@ -296,7 +322,7 @@ async function rollbackCreatedClinicAdminResources(
 }
 
 async function rollbackCreatedClinicRecord(
-  adminClient: ReturnType<typeof createAdminClient>,
+  adminClient: AdminClient,
   clinicId: string,
   userId: string
 ) {
@@ -310,6 +336,139 @@ async function rollbackCreatedClinicRecord(
       clinicId,
     });
   }
+}
+
+function buildClinicAdminProfileRow({
+  createdUserId,
+  clinicId,
+  clinicAdminName,
+  loginEmail,
+  timestamp,
+}: ClinicAdminRecordInput) {
+  return {
+    user_id: createdUserId,
+    clinic_id: clinicId,
+    email: loginEmail,
+    full_name: clinicAdminName,
+    role: CLINIC_ADMIN_ROLE,
+    is_active: true,
+    updated_at: timestamp,
+  };
+}
+
+function buildClinicAdminStaffRow({
+  createdUserId,
+  clinicId,
+  clinicAdminName,
+  loginEmail,
+  timestamp,
+}: ClinicAdminRecordInput) {
+  return {
+    id: createdUserId,
+    clinic_id: clinicId,
+    name: clinicAdminName,
+    role: CLINIC_ADMIN_ROLE,
+    email: loginEmail,
+    password_hash: MANAGED_PASSWORD_PLACEHOLDER,
+    is_therapist: true,
+    updated_at: timestamp,
+  };
+}
+
+function buildClinicAdminResourceRow({
+  createdUserId,
+  clinicId,
+  clinicAdminName,
+  loginEmail,
+  timestamp,
+  endpointUserId,
+}: ClinicAdminPersistenceInput) {
+  return {
+    id: createdUserId,
+    clinic_id: clinicId,
+    name: clinicAdminName,
+    type: 'staff',
+    staff_code: `clinic-admin-${createdUserId}`,
+    email: loginEmail,
+    max_concurrent: 1,
+    is_active: true,
+    is_bookable: true,
+    is_deleted: false,
+    updated_at: timestamp,
+    created_by: endpointUserId,
+  };
+}
+
+function buildClinicAdminPermissionRow({
+  createdUserId,
+  clinicId,
+  loginEmail,
+  timestamp,
+}: ClinicAdminRecordInput) {
+  return {
+    staff_id: createdUserId,
+    clinic_id: clinicId,
+    role: CLINIC_ADMIN_ROLE,
+    username: loginEmail,
+    hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
+    updated_at: timestamp,
+  };
+}
+
+async function resolveWriteFailure(
+  stage: string,
+  message: string,
+  promise: PromiseLike<{ error: unknown }>
+): Promise<ClinicAdminWriteFailure | null> {
+  try {
+    const result = await promise;
+    return result.error ? { stage, message, error: result.error } : null;
+  } catch (error) {
+    return { stage, message, error };
+  }
+}
+
+async function upsertClinicAdminBaseRecords(
+  input: ClinicAdminPersistenceInput
+): Promise<ClinicAdminWriteFailure | null> {
+  const { adminClient } = input;
+  const [profileFailure, staffFailure, resourceFailure] = await Promise.all([
+    resolveWriteFailure(
+      'upsert_profiles',
+      '店舗アカウントのプロフィール作成に失敗しました',
+      adminClient
+        .from('profiles')
+        .upsert(buildClinicAdminProfileRow(input), { onConflict: 'user_id' })
+    ),
+    resolveWriteFailure(
+      'upsert_staff',
+      '店舗アカウントの作成に失敗しました',
+      adminClient
+        .from('staff')
+        .upsert(buildClinicAdminStaffRow(input), { onConflict: 'id' })
+    ),
+    resolveWriteFailure(
+      'upsert_resources',
+      '店舗管理者の施術者リソース作成に失敗しました',
+      adminClient
+        .from('resources')
+        .upsert(buildClinicAdminResourceRow(input), { onConflict: 'id' })
+    ),
+  ]);
+
+  return profileFailure ?? staffFailure ?? resourceFailure;
+}
+
+async function upsertClinicAdminPermission(input: ClinicAdminPersistenceInput) {
+  return await resolveWriteFailure(
+    'upsert_user_permissions',
+    '店舗アカウントの権限設定に失敗しました',
+    input.adminClient
+      .from('user_permissions')
+      .upsert(buildClinicAdminPermissionRow(input), {
+        onConflict: 'staff_id',
+      })
+  );
 }
 
 async function createClinicAdminResources({
@@ -349,6 +508,15 @@ async function createClinicAdminResources({
   }
 
   const createdUserId = authData.user.id;
+  const persistenceInput = {
+    adminClient,
+    endpointUserId,
+    createdUserId,
+    clinicId,
+    clinicAdminName,
+    loginEmail,
+    timestamp,
+  };
 
   const cleanupAndReturn = async (
     error: unknown,
@@ -368,68 +536,22 @@ async function createClinicAdminResources({
     };
   };
 
-  const { error: profileError } = await adminClient.from('profiles').upsert(
-    {
-      user_id: createdUserId,
-      clinic_id: clinicId,
-      email: loginEmail,
-      full_name: clinicAdminName,
-      role: CLINIC_ADMIN_ROLE,
-      is_active: true,
-      updated_at: timestamp,
-    },
-    { onConflict: 'user_id' }
-  );
-
-  if (profileError) {
+  const baseRecordFailure =
+    await upsertClinicAdminBaseRecords(persistenceInput);
+  if (baseRecordFailure) {
     return await cleanupAndReturn(
-      profileError,
-      '店舗アカウントのプロフィール作成に失敗しました',
-      'upsert_profiles'
+      baseRecordFailure.error,
+      baseRecordFailure.message,
+      baseRecordFailure.stage
     );
   }
 
-  const { error: staffError } = await adminClient.from('staff').upsert(
-    {
-      id: createdUserId,
-      clinic_id: clinicId,
-      name: clinicAdminName,
-      role: CLINIC_ADMIN_ROLE,
-      email: loginEmail,
-      password_hash: MANAGED_PASSWORD_PLACEHOLDER,
-      is_therapist: false,
-      updated_at: timestamp,
-    },
-    { onConflict: 'id' }
-  );
-
-  if (staffError) {
+  const permissionFailure = await upsertClinicAdminPermission(persistenceInput);
+  if (permissionFailure) {
     return await cleanupAndReturn(
-      staffError,
-      '店舗アカウントの作成に失敗しました',
-      'upsert_staff'
-    );
-  }
-
-  const { error: permissionError } = await adminClient
-    .from('user_permissions')
-    .upsert(
-      {
-        staff_id: createdUserId,
-        clinic_id: clinicId,
-        role: CLINIC_ADMIN_ROLE,
-        username: loginEmail,
-        hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
-        updated_at: timestamp,
-      },
-      { onConflict: 'staff_id' }
-    );
-
-  if (permissionError) {
-    return await cleanupAndReturn(
-      permissionError,
-      '店舗アカウントの権限設定に失敗しました',
-      'upsert_user_permissions'
+      permissionFailure.error,
+      permissionFailure.message,
+      permissionFailure.stage
     );
   }
 

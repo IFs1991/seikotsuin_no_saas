@@ -15,6 +15,30 @@ import {
 } from './schema';
 
 const PATH = '/api/resources';
+const RESOURCE_LIST_SELECT =
+  'id, name, type, working_hours, supported_menus, max_concurrent, is_active, display_order';
+
+type ResourceListRow = {
+  id: string;
+  name: string;
+  type: string;
+  working_hours: Record<string, unknown> | null;
+  supported_menus: string[] | null;
+  max_concurrent: number | null;
+  is_active: boolean;
+};
+
+function mapResourceListRow(row: ResourceListRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    workingHours: row.working_hours ?? {},
+    supportedMenus: row.supported_menus ?? [],
+    maxConcurrent: row.max_concurrent ?? 1,
+    isActive: row.is_active,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     let query = guard.supabase
       .from('resources')
-      .select('*')
+      .select(RESOURCE_LIST_SELECT)
       .eq('clinic_id', clinic_id)
       .eq('is_deleted', false);
     if (type) query = query.eq('type', type);
@@ -47,15 +71,7 @@ export async function GET(request: NextRequest) {
     });
     if (error) throw normalizeSupabaseError(error, PATH);
 
-    const mapped = (data ?? []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      workingHours: row.working_hours ?? {},
-      supportedMenus: row.supported_menus ?? [],
-      maxConcurrent: row.max_concurrent ?? 1,
-      isActive: row.is_active,
-    }));
+    const mapped = ((data ?? []) as ResourceListRow[]).map(mapResourceListRow);
     return createSuccessResponse(mapped);
   } catch (error) {
     return handleRouteError(error, PATH);

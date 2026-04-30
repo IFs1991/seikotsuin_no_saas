@@ -11,15 +11,26 @@ export function useReservationFormData(clinicId: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!clinicId) return;
+    if (!clinicId) {
+      setCustomers([]);
+      setMenus([]);
+      setResources([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
+        const requestInit = { signal: controller.signal };
         const [custRes, menuRes, resRes] = await Promise.all([
-          fetch(`/api/customers?clinic_id=${clinicId}`),
-          fetch(`/api/menus?clinic_id=${clinicId}`),
-          fetch(`/api/resources?clinic_id=${clinicId}`),
+          fetch(`/api/customers?clinic_id=${clinicId}`, requestInit),
+          fetch(`/api/menus?clinic_id=${clinicId}`, requestInit),
+          fetch(`/api/resources?clinic_id=${clinicId}`, requestInit),
         ]);
         const [custJson, menuJson, resJson] = await Promise.all([
           custRes.json(),
@@ -44,6 +55,10 @@ export function useReservationFormData(clinicId: string | null) {
         setMenus(menuJson.data ?? []);
         setResources(resJson.data ?? []);
       } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') {
+          return;
+        }
+
         setCustomers([]);
         setMenus([]);
         setResources([]);
@@ -53,10 +68,14 @@ export function useReservationFormData(clinicId: string | null) {
             : '予約フォームデータの取得に失敗しました'
         );
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     load();
+
+    return () => controller.abort();
   }, [clinicId]);
 
   return { customers, menus, resources, loading, error };
