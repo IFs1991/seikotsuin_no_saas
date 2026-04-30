@@ -1,6 +1,15 @@
 import { processClinicScopedBody } from '@/lib/route-helpers';
+import { processApiRequest } from '@/lib/api-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+
+jest.mock('@/lib/api-helpers', () => {
+  const actual = jest.requireActual('@/lib/api-helpers');
+  return {
+    ...actual,
+    processApiRequest: jest.fn(),
+  };
+});
 
 jest.mock('@/lib/route-helpers', () => {
   const actual = jest.requireActual('@/lib/route-helpers');
@@ -19,10 +28,93 @@ jest.mock('@/lib/supabase', () => {
 });
 
 const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
+const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const userId = '123e4567-e89b-12d3-a456-426614174001';
+
+describe('GET /api/menus', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('lists clinic menus through scoped admin client after route-level scope guard', async () => {
+    const userScopedSupabase = { from: jest.fn() };
+    const menu = {
+      id: '123e4567-e89b-12d3-a456-426614174002',
+      clinic_id: clinicId,
+      name: '子院独自メニュー',
+      description: '子テナント登録',
+      category: 'treatment',
+      price: 4500,
+      duration_minutes: 45,
+      is_insurance_applicable: false,
+      options: [],
+      is_active: true,
+    };
+    const order = jest.fn().mockResolvedValue({ data: [menu], error: null });
+    const eqDeleted = jest.fn().mockReturnValue({ order });
+    const eqClinic = jest.fn().mockReturnValue({ eq: eqDeleted });
+    const select = jest.fn().mockReturnValue({ eq: eqClinic });
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'menus') return { select };
+        return {};
+      }),
+    };
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'clinic_admin',
+      clinic_id: clinicId,
+      clinic_scope_ids: [clinicId],
+    };
+    const request = {
+      nextUrl: {
+        searchParams: new URLSearchParams({ clinic_id: clinicId }),
+      },
+      url: `http://localhost/api/menus?clinic_id=${clinicId}`,
+      method: 'GET',
+    } as any;
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: {
+        id: userId,
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions,
+      supabase: userScopedSupabase,
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope,
+    });
+
+    const { GET } = await import('@/app/api/menus/route');
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId,
+      requireClinicMatch: true,
+    });
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(clinicId);
+    expect(adminClient.from).toHaveBeenCalledWith('menus');
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
+    expect(json.data).toEqual([
+      expect.objectContaining({
+        id: menu.id,
+        clinicId,
+        name: '子院独自メニュー',
+        durationMinutes: 45,
+      }),
+    ]);
+  });
+});
 
 describe('POST /api/menus', () => {
   beforeEach(() => {

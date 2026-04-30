@@ -6,7 +6,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type FormEvent,
+  type SetStateAction,
 } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -401,6 +403,152 @@ const MenuListItem = memo(function MenuListItem({
         </Button>
       </div>
     </div>
+  );
+});
+
+interface MenuEditorFormProps {
+  form: MenuFormState;
+  setForm: Dispatch<SetStateAction<MenuFormState>>;
+  disabled: boolean;
+  saving: boolean;
+  editing: boolean;
+  idPrefix: string;
+  nameLabel: string;
+  submitCreateLabel: string;
+  submitEditLabel: string;
+  insuranceAriaLabel: string;
+  activeAriaLabel: string;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onCancel?: () => void;
+}
+
+const MenuEditorForm = memo(function MenuEditorForm({
+  form,
+  setForm,
+  disabled,
+  saving,
+  editing,
+  idPrefix,
+  nameLabel,
+  submitCreateLabel,
+  submitEditLabel,
+  insuranceAriaLabel,
+  activeAriaLabel,
+  onSubmit,
+  onCancel,
+}: MenuEditorFormProps) {
+  const updateField = useCallback(
+    <K extends keyof MenuFormState>(key: K, value: MenuFormState[K]) => {
+      setForm(prev => ({ ...prev, [key]: value }));
+    },
+    [setForm]
+  );
+
+  return (
+    <form className='grid gap-4 md:grid-cols-2' onSubmit={onSubmit}>
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-name`}>{nameLabel}</Label>
+        <Input
+          id={`${idPrefix}-name`}
+          value={form.name}
+          onChange={event => updateField('name', event.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-category`}>カテゴリ</Label>
+        <select
+          id={`${idPrefix}-category`}
+          className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+          value={form.category}
+          onChange={event =>
+            updateField('category', event.target.value as MenuCategory)
+          }
+          disabled={disabled}
+        >
+          {MENU_CATEGORIES.map(category => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-duration`}>所要時間（分）</Label>
+        <Input
+          id={`${idPrefix}-duration`}
+          type='number'
+          min={1}
+          value={form.durationMinutes}
+          onChange={event => updateField('durationMinutes', event.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-price`}>料金（円）</Label>
+        <Input
+          id={`${idPrefix}-price`}
+          type='number'
+          min={0}
+          value={form.price}
+          onChange={event => updateField('price', event.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      <div className='space-y-2 md:col-span-2'>
+        <Label htmlFor={`${idPrefix}-description`}>説明</Label>
+        <Textarea
+          id={`${idPrefix}-description`}
+          value={form.description}
+          onChange={event => updateField('description', event.target.value)}
+          disabled={disabled}
+        />
+      </div>
+      <div className='flex flex-wrap items-center gap-6 md:col-span-2'>
+        <div className='flex items-center gap-2 text-sm text-gray-700'>
+          <Switch
+            aria-label={insuranceAriaLabel}
+            checked={form.isInsuranceApplicable}
+            onCheckedChange={checked =>
+              updateField('isInsuranceApplicable', checked)
+            }
+            disabled={disabled}
+          />
+          <span>保険適用</span>
+        </div>
+        <div className='flex items-center gap-2 text-sm text-gray-700'>
+          <Switch
+            aria-label={activeAriaLabel}
+            checked={form.isActive}
+            onCheckedChange={checked => updateField('isActive', checked)}
+            disabled={disabled}
+          />
+          <span>有効</span>
+        </div>
+      </div>
+      <div className='flex justify-end gap-2 md:col-span-2'>
+        {editing && onCancel && (
+          <Button
+            type='button'
+            variant='outline'
+            onClick={onCancel}
+            disabled={saving}
+          >
+            キャンセル
+          </Button>
+        )}
+        <Button type='submit' disabled={disabled}>
+          {saving ? (
+            <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+          ) : editing ? (
+            <Save className='mr-2 h-4 w-4' />
+          ) : (
+            <Plus className='mr-2 h-4 w-4' />
+          )}
+          {editing ? submitEditLabel : submitCreateLabel}
+        </Button>
+      </div>
+    </form>
   );
 });
 
@@ -855,144 +1003,23 @@ export function ServicesPricingSettings() {
         </CardHeader>
         <CardContent className='space-y-5'>
           {isOwnerClinic && (
-            <form
-              className='grid gap-4 rounded-md border border-gray-200 p-4 md:grid-cols-2'
-              onSubmit={handleTemplateSubmit}
-            >
-              <div className='space-y-2'>
-                <Label htmlFor='template-name'>テンプレート名</Label>
-                <Input
-                  id='template-name'
-                  value={templateForm.name}
-                  onChange={event =>
-                    setTemplateForm(prev => ({
-                      ...prev,
-                      name: event.target.value,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='template-category'>カテゴリ</Label>
-                <select
-                  id='template-category'
-                  className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
-                  value={templateForm.category}
-                  onChange={event =>
-                    setTemplateForm(prev => ({
-                      ...prev,
-                      category: event.target.value as MenuCategory,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                >
-                  {MENU_CATEGORIES.map(category => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='template-duration'>所要時間（分）</Label>
-                <Input
-                  id='template-duration'
-                  type='number'
-                  min={1}
-                  value={templateForm.durationMinutes}
-                  onChange={event =>
-                    setTemplateForm(prev => ({
-                      ...prev,
-                      durationMinutes: event.target.value,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='template-price'>料金（円）</Label>
-                <Input
-                  id='template-price'
-                  type='number'
-                  min={0}
-                  value={templateForm.price}
-                  onChange={event =>
-                    setTemplateForm(prev => ({
-                      ...prev,
-                      price: event.target.value,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-              </div>
-              <div className='space-y-2 md:col-span-2'>
-                <Label htmlFor='template-description'>説明</Label>
-                <Textarea
-                  id='template-description'
-                  value={templateForm.description}
-                  onChange={event =>
-                    setTemplateForm(prev => ({
-                      ...prev,
-                      description: event.target.value,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-              </div>
-              <div className='flex flex-wrap items-center gap-6 md:col-span-2'>
-                <div className='flex items-center gap-2 text-sm text-gray-700'>
-                  <Switch
-                    aria-label='テンプレート保険適用'
-                    checked={templateForm.isInsuranceApplicable}
-                    onCheckedChange={checked =>
-                      setTemplateForm(prev => ({
-                        ...prev,
-                        isInsuranceApplicable: checked,
-                      }))
-                    }
-                    disabled={!clinicId || saving}
-                  />
-                  <span>保険適用</span>
-                </div>
-                <div className='flex items-center gap-2 text-sm text-gray-700'>
-                  <Switch
-                    aria-label='テンプレート有効'
-                    checked={templateForm.isActive}
-                    onCheckedChange={checked =>
-                      setTemplateForm(prev => ({
-                        ...prev,
-                        isActive: checked,
-                      }))
-                    }
-                    disabled={!clinicId || saving}
-                  />
-                  <span>有効</span>
-                </div>
-              </div>
-              <div className='flex justify-end gap-2 md:col-span-2'>
-                {editingTemplateId && (
-                  <Button
-                    type='button'
-                    variant='outline'
-                    onClick={resetTemplateForm}
-                    disabled={saving}
-                  >
-                    キャンセル
-                  </Button>
-                )}
-                <Button type='submit' disabled={!clinicId || saving}>
-                  {saving ? (
-                    <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                  ) : editingTemplateId ? (
-                    <Save className='mr-2 h-4 w-4' />
-                  ) : (
-                    <Plus className='mr-2 h-4 w-4' />
-                  )}
-                  {editingTemplateId ? 'テンプレート更新' : 'テンプレート追加'}
-                </Button>
-              </div>
-            </form>
+            <div className='rounded-md border border-gray-200 p-4'>
+              <MenuEditorForm
+                form={templateForm}
+                setForm={setTemplateForm}
+                disabled={!clinicId || saving}
+                saving={saving}
+                editing={Boolean(editingTemplateId)}
+                idPrefix='template'
+                nameLabel='テンプレート名'
+                submitCreateLabel='テンプレート追加'
+                submitEditLabel='テンプレート更新'
+                insuranceAriaLabel='テンプレート保険適用'
+                activeAriaLabel='テンプレート有効'
+                onSubmit={handleTemplateSubmit}
+                onCancel={resetTemplateForm}
+              />
+            </div>
           )}
 
           {templateLoading && (
@@ -1032,132 +1059,21 @@ export function ServicesPricingSettings() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form className='grid gap-4 md:grid-cols-2' onSubmit={handleSubmit}>
-            <div className='space-y-2'>
-              <Label htmlFor='menu-name'>メニュー名</Label>
-              <Input
-                id='menu-name'
-                value={form.name}
-                onChange={event =>
-                  setForm(prev => ({ ...prev, name: event.target.value }))
-                }
-                disabled={!clinicId || saving}
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='menu-category'>カテゴリ</Label>
-              <select
-                id='menu-category'
-                className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
-                value={form.category}
-                onChange={event =>
-                  setForm(prev => ({
-                    ...prev,
-                    category: event.target.value as MenuCategory,
-                  }))
-                }
-                disabled={!clinicId || saving}
-              >
-                {MENU_CATEGORIES.map(category => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='menu-duration'>所要時間（分）</Label>
-              <Input
-                id='menu-duration'
-                type='number'
-                min={1}
-                value={form.durationMinutes}
-                onChange={event =>
-                  setForm(prev => ({
-                    ...prev,
-                    durationMinutes: event.target.value,
-                  }))
-                }
-                disabled={!clinicId || saving}
-              />
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='menu-price'>料金（円）</Label>
-              <Input
-                id='menu-price'
-                type='number'
-                min={0}
-                value={form.price}
-                onChange={event =>
-                  setForm(prev => ({ ...prev, price: event.target.value }))
-                }
-                disabled={!clinicId || saving}
-              />
-            </div>
-            <div className='space-y-2 md:col-span-2'>
-              <Label htmlFor='menu-description'>説明</Label>
-              <Textarea
-                id='menu-description'
-                value={form.description}
-                onChange={event =>
-                  setForm(prev => ({
-                    ...prev,
-                    description: event.target.value,
-                  }))
-                }
-                disabled={!clinicId || saving}
-              />
-            </div>
-            <div className='flex items-center gap-6 md:col-span-2'>
-              <div className='flex items-center gap-2 text-sm text-gray-700'>
-                <Switch
-                  aria-label='保険適用'
-                  checked={form.isInsuranceApplicable}
-                  onCheckedChange={checked =>
-                    setForm(prev => ({
-                      ...prev,
-                      isInsuranceApplicable: checked,
-                    }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-                <span>保険適用</span>
-              </div>
-              <div className='flex items-center gap-2 text-sm text-gray-700'>
-                <Switch
-                  aria-label='有効'
-                  checked={form.isActive}
-                  onCheckedChange={checked =>
-                    setForm(prev => ({ ...prev, isActive: checked }))
-                  }
-                  disabled={!clinicId || saving}
-                />
-                <span>有効</span>
-              </div>
-            </div>
-            <div className='flex justify-end gap-2 md:col-span-2'>
-              {editingId && (
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={resetForm}
-                  disabled={saving}
-                >
-                  キャンセル
-                </Button>
-              )}
-              <Button type='submit' disabled={!clinicId || saving}>
-                {saving ? (
-                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                ) : editingId ? (
-                  <Save className='mr-2 h-4 w-4' />
-                ) : (
-                  <Plus className='mr-2 h-4 w-4' />
-                )}
-                {editingId ? '更新' : '追加'}
-              </Button>
-            </div>
-          </form>
+          <MenuEditorForm
+            form={form}
+            setForm={setForm}
+            disabled={!clinicId || saving}
+            saving={saving}
+            editing={Boolean(editingId)}
+            idPrefix='menu'
+            nameLabel='メニュー名'
+            submitCreateLabel='追加'
+            submitEditLabel='更新'
+            insuranceAriaLabel='保険適用'
+            activeAriaLabel='有効'
+            onSubmit={handleSubmit}
+            onCancel={resetForm}
+          />
         </CardContent>
       </Card>
 

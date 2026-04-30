@@ -23,7 +23,7 @@ const MENU_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
 const MENU_RESPONSE_COLUMNS =
   'id, clinic_id, name, duration_minutes, price, description, category, is_insurance_applicable, is_active, options';
 
-function createMenuMutationClient(
+function createMenuScopedClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
   clinicId: string
 ) {
@@ -51,7 +51,8 @@ export async function GET(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
-    const { data, error } = await guard.supabase
+    const supabase = createMenuScopedClient(guard.permissions, clinic_id);
+    const { data, error } = await supabase
       .from('menus')
       .select(MENU_RESPONSE_COLUMNS)
       .eq('clinic_id', clinic_id)
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const insertPayload = mapMenuInsertToRow(result.dto, result.auth.id);
-    const supabase = createMenuMutationClient(
+    const supabase = createMenuScopedClient(
       result.permissions,
       result.dto.clinic_id
     );
@@ -101,7 +102,7 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const updatePayload = mapMenuUpdateToRow(result.dto);
-    const supabase = createMenuMutationClient(
+    const supabase = createMenuScopedClient(
       result.permissions,
       result.dto.clinic_id
     );
@@ -131,7 +132,7 @@ export async function DELETE(request: NextRequest) {
       allowedRoles: MENU_ADMIN_ROLES,
     });
     if (!guard.success) return guard.error;
-    const supabase = createMenuMutationClient(guard.permissions, clinicId);
+    const supabase = createMenuScopedClient(guard.permissions, clinicId);
     const { data, error } = await supabase
       .from('menus')
       .update({ is_deleted: true })
