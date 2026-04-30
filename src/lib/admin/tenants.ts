@@ -10,12 +10,37 @@ export const ADMIN_TENANT_TYPE_OPTIONS = [
 ] as const;
 
 export const UNSELECTED_PARENT_VALUE = '__unselected_parent__';
+export const TENANT_INITIAL_ACCESS_LATER = 'later';
+export const TENANT_INITIAL_ACCESS_NEW = 'new';
+export const TENANT_INITIAL_ACCESS_EXISTING = 'existing';
+export const TENANT_INITIAL_ACCESS_OPTIONS = [
+  {
+    label: 'あとで設定する',
+    value: TENANT_INITIAL_ACCESS_LATER,
+    description:
+      'テナントだけ作成し、管理者やスタッフの紐づけは後から行います。',
+  },
+  {
+    label: '新規管理者を作成',
+    value: TENANT_INITIAL_ACCESS_NEW,
+    description:
+      '店舗作成と同時に、最初にログインする店舗管理者を新規作成します。',
+  },
+  {
+    label: '既存ユーザーを割り当て',
+    value: TENANT_INITIAL_ACCESS_EXISTING,
+    description:
+      '既存の院長・施術者・管理者を、この店舗の初期管理者として紐づけます。',
+  },
+] as const;
 export const CLINIC_LIST_SELECT =
   'id, name, address, phone_number, is_active, created_at, parent_id';
 export const CLINIC_HIERARCHY_SELECT = 'id, name, parent_id';
 
 export type ClinicHierarchyType =
   (typeof ADMIN_TENANT_TYPE_OPTIONS)[number]['value'];
+export type TenantInitialAccessMode =
+  (typeof TENANT_INITIAL_ACCESS_OPTIONS)[number]['value'];
 export type ClinicStatusFilterValue =
   (typeof ADMIN_TENANT_STATUS_OPTIONS)[number]['value'];
 export type ClinicAdminAccount = {
@@ -85,6 +110,8 @@ export type TenantFormState = {
   phone_number: string;
   login_email: string;
   login_password: string;
+  initial_access_mode: TenantInitialAccessMode;
+  existing_admin_user_id: string;
   is_active: boolean;
   tenant_type: ClinicHierarchyType;
   parent_id: string;
@@ -96,6 +123,8 @@ export const INITIAL_TENANT_FORM_STATE: TenantFormState = {
   phone_number: '',
   login_email: '',
   login_password: '',
+  initial_access_mode: TENANT_INITIAL_ACCESS_LATER,
+  existing_admin_user_id: '',
   is_active: true,
   tenant_type: 'hq',
   parent_id: '',
@@ -223,12 +252,25 @@ export function buildFormValidationMessage(
     return null;
   }
 
-  if (!formState.login_email.trim()) {
-    return 'ログインID（メールアドレス）を入力してください';
+  if (
+    formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW &&
+    !formState.login_email.trim()
+  ) {
+    return '初期管理者メールアドレスを入力してください';
   }
 
-  if (!formState.login_password) {
+  if (
+    formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW &&
+    !formState.login_password
+  ) {
     return '初期パスワードを入力してください';
+  }
+
+  if (
+    formState.initial_access_mode === TENANT_INITIAL_ACCESS_EXISTING &&
+    !formState.existing_admin_user_id.trim()
+  ) {
+    return '初期管理者として割り当てる既存ユーザーを選択してください';
   }
 
   return null;
@@ -243,8 +285,14 @@ export function buildCreateClinicPayload(
     phone_number: formState.phone_number || undefined,
     is_active: formState.is_active,
     parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
-    login_email: formState.login_email || undefined,
-    login_password: formState.login_password || undefined,
+    login_email:
+      formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
+        ? formState.login_email || undefined
+        : undefined,
+    login_password:
+      formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
+        ? formState.login_password || undefined
+        : undefined,
   };
 }
 
@@ -286,6 +334,8 @@ export function buildEditFormState(
     phone_number: clinic.phone_number ?? '',
     login_email: '',
     login_password: '',
+    initial_access_mode: TENANT_INITIAL_ACCESS_LATER,
+    existing_admin_user_id: '',
     is_active: clinic.is_active,
     tenant_type: resolveClinicHierarchyType(clinic.parent_id),
     parent_id: clinic.parent_id ?? '',
