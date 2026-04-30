@@ -49,6 +49,7 @@ describe('GET /api/menu-templates', () => {
   });
 
   it('resolves a child clinic to its parent template owner', async () => {
+    const userScopedSupabase = { from: jest.fn() };
     const childClinicQuery = {
       select: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -110,12 +111,22 @@ describe('GET /api/menu-templates', () => {
       }
       return {};
     });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'clinic_admin',
+      clinic_id: childClinicId,
+      clinic_scope_ids: [childClinicId],
+    };
 
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: userId, email: 'admin@example.com', role: 'clinic_admin' },
-      permissions: { role: 'clinic_admin', clinic_id: childClinicId },
-      supabase: { from },
+      permissions,
+      supabase: userScopedSupabase,
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
     });
 
     const { GET } = await import('@/app/api/menu-templates/route');
@@ -135,6 +146,9 @@ describe('GET /api/menu-templates', () => {
         allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
       })
     );
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(childClinicId);
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
     expect(body.data).toMatchObject({
       ownerClinicId: parentClinicId,
       ownerClinicName: '本部院',

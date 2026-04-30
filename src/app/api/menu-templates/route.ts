@@ -6,7 +6,7 @@ import {
 } from '@/lib/api-helpers';
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError } from '@/lib/route-helpers';
-import { canAccessClinicScope } from '@/lib/supabase';
+import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 import { resolveTemplateOwnerScope } from './helpers';
 import {
@@ -22,6 +22,15 @@ import {
 
 const PATH = '/api/menu-templates';
 const TEMPLATE_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
+
+function createTemplateScopedClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  const scopedAdmin = createScopedAdminContext(permissions);
+  scopedAdmin.assertClinicInScope(clinicId);
+  return scopedAdmin.client as any;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +53,7 @@ export async function GET(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
-    const supabase = guard.supabase as any;
+    const supabase = createTemplateScopedClient(guard.permissions, clinic_id);
     const ownerScope = await resolveTemplateOwnerScope(
       supabase,
       clinic_id,
@@ -90,20 +99,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      !canAccessClinicScope(result.permissions, parsed.data.owner_clinic_id)
-    ) {
-      return createErrorResponse(
-        'このクリニックへのアクセス権がありません',
-        403
-      );
-    }
+    const supabase = createTemplateScopedClient(
+      result.permissions,
+      parsed.data.owner_clinic_id
+    );
 
     const insertPayload = mapMenuTemplateInsertToRow(
       parsed.data,
       result.auth.id
     );
-    const { data, error } = await (result.supabase as any)
+    const { data, error } = await supabase
       .from('menu_templates')
       .insert(insertPayload)
       .select()
@@ -133,17 +138,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (
-      !canAccessClinicScope(result.permissions, parsed.data.owner_clinic_id)
-    ) {
-      return createErrorResponse(
-        'このクリニックへのアクセス権がありません',
-        403
-      );
-    }
+    const supabase = createTemplateScopedClient(
+      result.permissions,
+      parsed.data.owner_clinic_id
+    );
 
     const updatePayload = mapMenuTemplateUpdateToRow(parsed.data);
-    const { data, error } = await (result.supabase as any)
+    const { data, error } = await supabase
       .from('menu_templates')
       .update(updatePayload)
       .eq('id', parsed.data.id)
@@ -180,7 +181,11 @@ export async function DELETE(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
-    const { data, error } = await (guard.supabase as any)
+    const supabase = createTemplateScopedClient(
+      guard.permissions,
+      parsedQuery.data.owner_clinic_id
+    );
+    const { data, error } = await supabase
       .from('menu_templates')
       .update({ is_deleted: true })
       .eq('id', parsedQuery.data.id)
