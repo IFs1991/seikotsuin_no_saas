@@ -12,6 +12,13 @@ import {
 } from 'react';
 import { Button } from '@/components/ui/button';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Card,
   CardContent,
   CardDescription,
@@ -552,6 +559,70 @@ const MenuEditorForm = memo(function MenuEditorForm({
   );
 });
 
+interface MenuEditDialogProps {
+  menu: Menu | null;
+  clinicSelected: boolean;
+  saving: boolean;
+  onSave: (menuId: string, form: MenuFormState) => Promise<void>;
+  onClose: () => void;
+}
+
+const MenuEditDialog = memo(function MenuEditDialog({
+  menu,
+  clinicSelected,
+  saving,
+  onSave,
+  onClose,
+}: MenuEditDialogProps) {
+  const [editForm, setEditForm] = useState<MenuFormState>(EMPTY_FORM);
+
+  useEffect(() => {
+    setEditForm(menu ? menuToForm(menu) : EMPTY_FORM);
+  }, [menu]);
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      if (!menu) return;
+      await onSave(menu.id, editForm);
+    },
+    [editForm, menu, onSave]
+  );
+
+  return (
+    <Dialog
+      open={Boolean(menu)}
+      onOpenChange={open => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className='max-w-2xl max-h-[85vh] overflow-y-auto'>
+        <DialogHeader>
+          <DialogTitle>メニュー編集</DialogTitle>
+          <DialogDescription>
+            登録済みメニューの内容を更新します。
+          </DialogDescription>
+        </DialogHeader>
+        <MenuEditorForm
+          form={editForm}
+          setForm={setEditForm}
+          disabled={!clinicSelected || saving}
+          saving={saving}
+          editing
+          idPrefix='menu-edit'
+          nameLabel='メニュー名'
+          submitCreateLabel='追加'
+          submitEditLabel='更新'
+          insuranceAriaLabel='保険適用'
+          activeAriaLabel='有効'
+          onSubmit={handleSubmit}
+          onCancel={onClose}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+});
+
 export function ServicesPricingSettings() {
   const { profile, loading: profileLoading } = useUserProfile();
   const { selectedClinicId } = useSelectedClinic();
@@ -563,7 +634,7 @@ export function ServicesPricingSettings() {
   );
   const [form, setForm] = useState<MenuFormState>(EMPTY_FORM);
   const [templateForm, setTemplateForm] = useState<MenuFormState>(EMPTY_FORM);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingMenu, setEditingMenu] = useState<Menu | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(
     null
   );
@@ -663,7 +734,10 @@ export function ServicesPricingSettings() {
 
   const resetForm = useCallback(() => {
     setForm(EMPTY_FORM);
-    setEditingId(null);
+  }, []);
+
+  const closeEditDialog = useCallback(() => {
+    setEditingMenu(null);
   }, []);
 
   const resetTemplateForm = useCallback(() => {
@@ -725,32 +799,47 @@ export function ServicesPricingSettings() {
         return;
       }
 
-      const wasEditing = Boolean(editingId);
       setSaving(true);
       setError(null);
       setSavedMessage('');
       try {
-        const payload = buildMenuPayload(
-          clinicId,
-          form,
-          editingId ?? undefined
-        );
-        const savedMenu = await saveMenu(
-          payload,
-          wasEditing ? 'PATCH' : 'POST'
-        );
+        const payload = buildMenuPayload(clinicId, form);
+        const savedMenu = await saveMenu(payload, 'POST');
         setMenus(prev => upsertById(prev, savedMenu));
         resetForm();
-        setSavedMessage(
-          wasEditing ? 'メニューを更新しました' : 'メニューを追加しました'
-        );
+        setSavedMessage('メニューを追加しました');
       } catch (err) {
         setError(getErrorMessage(err, '施術メニューの保存に失敗しました'));
       } finally {
         setSaving(false);
       }
     },
-    [clinicId, editingId, form, resetForm, saveMenu]
+    [clinicId, form, resetForm, saveMenu]
+  );
+
+  const saveEditedMenu = useCallback(
+    async (menuId: string, editForm: MenuFormState) => {
+      if (!clinicId) {
+        setError('編集対象のメニューが見つかりません');
+        return;
+      }
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const payload = buildMenuPayload(clinicId, editForm, menuId);
+        const savedMenu = await saveMenu(payload, 'PATCH');
+        setMenus(prev => upsertById(prev, savedMenu));
+        closeEditDialog();
+        setSavedMessage('メニューを更新しました');
+      } catch (err) {
+        setError(getErrorMessage(err, '施術メニューの保存に失敗しました'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [clinicId, closeEditDialog, saveMenu]
   );
 
   const handleTemplateSubmit = useCallback(
@@ -836,8 +925,7 @@ export function ServicesPricingSettings() {
   );
 
   const handleEdit = useCallback((menu: Menu) => {
-    setEditingId(menu.id);
-    setForm(menuToForm(menu));
+    setEditingMenu(menu);
     setError(null);
     setSavedMessage('');
   }, []);
@@ -947,7 +1035,7 @@ export function ServicesPricingSettings() {
           '施術メニューの削除に失敗しました'
         );
 
-        if (editingId === menu.id) resetForm();
+        if (editingMenu?.id === menu.id) closeEditDialog();
         setMenus(prev => prev.filter(current => current.id !== menu.id));
         setSavedMessage('メニューを削除しました');
       } catch (err) {
@@ -956,7 +1044,7 @@ export function ServicesPricingSettings() {
         setSaving(false);
       }
     },
-    [clinicId, editingId, resetForm]
+    [clinicId, closeEditDialog, editingMenu?.id]
   );
 
   if (profileLoading) {
@@ -1054,9 +1142,7 @@ export function ServicesPricingSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle className='text-lg'>
-            {editingId ? 'メニュー編集' : '新規メニュー'}
-          </CardTitle>
+          <CardTitle className='text-lg'>新規メニュー</CardTitle>
         </CardHeader>
         <CardContent>
           <MenuEditorForm
@@ -1064,7 +1150,7 @@ export function ServicesPricingSettings() {
             setForm={setForm}
             disabled={!clinicId || saving}
             saving={saving}
-            editing={Boolean(editingId)}
+            editing={false}
             idPrefix='menu'
             nameLabel='メニュー名'
             submitCreateLabel='追加'
@@ -1072,7 +1158,6 @@ export function ServicesPricingSettings() {
             insuranceAriaLabel='保険適用'
             activeAriaLabel='有効'
             onSubmit={handleSubmit}
-            onCancel={resetForm}
           />
         </CardContent>
       </Card>
@@ -1105,6 +1190,14 @@ export function ServicesPricingSettings() {
           ))}
         </CardContent>
       </Card>
+
+      <MenuEditDialog
+        menu={editingMenu}
+        clinicSelected={Boolean(clinicId)}
+        saving={saving}
+        onSave={saveEditedMenu}
+        onClose={closeEditDialog}
+      />
     </div>
   );
 }
