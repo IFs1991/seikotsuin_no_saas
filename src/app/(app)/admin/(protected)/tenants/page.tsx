@@ -14,6 +14,7 @@ import { useAdminTenants, type ClinicSummary } from '@/hooks/useAdminTenants';
 import { AdminFormCard } from '@/components/admin/admin-form-card';
 import { AdminListCard } from '@/components/admin/admin-list-card';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
 import {
   TenantOperationStatusBadge,
@@ -58,6 +59,24 @@ import {
   type ClinicHierarchyType,
   type TenantFormState,
 } from '@/lib/admin/tenants';
+
+const TENANT_SCOPE_NOTICE_ITEMS = [
+  {
+    label: 'この画面で作るもの',
+    description:
+      '本部/単独テナント、子テナント、店舗単位の運用状態を管理します。',
+  },
+  {
+    label: '初期ログイン',
+    description:
+      '店舗作成時に同時作成するのは、その店舗の初期管理者アカウントです。',
+  },
+  {
+    label: '別画面で扱うもの',
+    description:
+      'マネージャー、施術者、スタッフの追加や権限変更はアカウント・権限管理で行います。',
+  },
+] as const;
 
 interface TenantTableRowProps {
   clinic: ClinicSummary;
@@ -371,14 +390,23 @@ export default function AdminTenantsPage() {
   return (
     <AdminPageShell
       title='クリニック管理'
-      description='親子テナント、店舗ログイン、運用状態を管理します。'
+      description='親子テナントと店舗の運用状態を管理します。スタッフや権限ユーザーの追加はアカウント・権限管理で扱います。'
     >
-      <AdminFormCard title={isCreateMode ? 'クリニック作成' : 'クリニック編集'}>
+      <AdminScopeNotice
+        title='この画面の役割'
+        description='店舗という箱を作る画面です。人を増やす操作とは分けて管理します。'
+        items={TENANT_SCOPE_NOTICE_ITEMS}
+        action={{ href: '/admin/users', label: '店舗ユーザーを作成する' }}
+      />
+
+      <AdminFormCard
+        title={isCreateMode ? 'テナント/店舗作成' : 'テナント/店舗編集'}
+      >
         <form onSubmit={handleSubmit} className='space-y-4'>
           <div className='grid gap-4 md:grid-cols-2'>
             <div className='space-y-2'>
               <label htmlFor='clinic-name' className='text-sm font-medium'>
-                クリニック名
+                店舗/テナント名
               </label>
               <Input
                 id='clinic-name'
@@ -492,43 +520,53 @@ export default function AdminTenantsPage() {
             </div>
           </div>
           {isCreateMode && (
-            <div className='grid gap-4 md:grid-cols-2'>
-              <div className='space-y-2'>
-                <label
-                  htmlFor='clinic-login-email'
-                  className='text-sm font-medium'
-                >
-                  ログインID（メールアドレス）
-                </label>
-                <Input
-                  id='clinic-login-email'
-                  type='email'
-                  value={formState.login_email}
-                  onChange={handleLoginEmailChange}
-                  placeholder='例: clinic-admin@example.com'
-                  autoComplete='email'
-                />
-              </div>
-              <div className='space-y-2'>
-                <label
-                  htmlFor='clinic-login-password'
-                  className='text-sm font-medium'
-                >
-                  初期パスワード
-                </label>
-                <Input
-                  id='clinic-login-password'
-                  type='password'
-                  value={formState.login_password}
-                  onChange={handleLoginPasswordChange}
-                  placeholder='初期パスワードを設定'
-                  autoComplete='new-password'
-                />
-                <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  ログインは既存仕様どおりメールアドレスとパスワードで行います
+            <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40'>
+              <div>
+                <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
+                  初期店舗管理者のログイン情報
+                </h3>
+                <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300'>
+                  子テナント作成と同時に、最初に店舗へログインする管理者を1名作成します。追加のマネージャー、施術者、スタッフはアカウント・権限管理で作成します。
                 </p>
               </div>
-            </div>
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-login-email'
+                    className='text-sm font-medium'
+                  >
+                    初期管理者メールアドレス
+                  </label>
+                  <Input
+                    id='clinic-login-email'
+                    type='email'
+                    value={formState.login_email}
+                    onChange={handleLoginEmailChange}
+                    placeholder='例: clinic-admin@example.com'
+                    autoComplete='email'
+                  />
+                </div>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-login-password'
+                    className='text-sm font-medium'
+                  >
+                    初期パスワード
+                  </label>
+                  <Input
+                    id='clinic-login-password'
+                    type='password'
+                    value={formState.login_password}
+                    onChange={handleLoginPasswordChange}
+                    placeholder='初期パスワードを設定'
+                    autoComplete='new-password'
+                  />
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    ログインはメールアドレスとパスワードで行います
+                  </p>
+                </div>
+              </div>
+            </section>
           )}
           <div className='flex flex-wrap items-center gap-2'>
             <Button type='submit' disabled={loading}>

@@ -10,6 +10,7 @@ import React, {
 import { AdminFormCard } from '@/components/admin/admin-form-card';
 import { AdminListCard } from '@/components/admin/admin-list-card';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,24 @@ import { useAdminTenants } from '@/hooks/useAdminTenants';
 import { getRoleLabel, normalizeRole } from '@/lib/constants/roles';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+
+const ACCOUNT_SCOPE_NOTICE_ITEMS = [
+  {
+    label: 'この画面で作るもの',
+    description:
+      '既存店舗に所属する人のログインアカウントとロールを管理します。',
+  },
+  {
+    label: '作らないもの',
+    description:
+      '子テナントや店舗レコード自体は作成しません。所属店舗を選んで人を紐づけます。',
+  },
+  {
+    label: '店舗を増やす場合',
+    description:
+      '先にクリニック管理で子テナントを作成し、その後この画面で管理者やスタッフを追加します。',
+  },
+] as const;
 
 const formatDate = (value?: string | null) => {
   if (!value) return '-';
@@ -512,17 +531,24 @@ export default function AdminUsersPage() {
   return (
     <AdminPageShell
       title='アカウント・権限管理'
-      description='ログインできるアカウント、所属店舗、ロールを管理します。店舗スタッフの招待や勤務情報は店舗単位の管理画面で扱います。'
+      description='既存店舗にログインできる人とロールを管理します。子テナントや店舗そのものの作成はクリニック管理で扱います。'
     >
+      <AdminScopeNotice
+        title='この画面の役割'
+        description='人・ログイン権限を管理する画面です。店舗そのものの作成とは分けて扱います。'
+        items={ACCOUNT_SCOPE_NOTICE_ITEMS}
+        action={{ href: '/admin/tenants', label: '子テナントを作成する' }}
+      />
+
       <AdminFormCard
         title={
           editingPermissionId
             ? '権限編集'
             : isCreateAccountMode
-              ? 'アカウント作成'
-              : '権限付与'
+              ? '店舗ユーザー作成'
+              : '既存アカウントへの権限付与'
         }
-        description='招待メールに依存せず、店舗管理者・マネージャー・施術者・スタッフのログインアカウントを直接作成できます。'
+        description='店舗を作る画面ではありません。選択済みの所属店舗へログインできる人を追加・管理します。'
       >
         <form onSubmit={handleSubmit} className='space-y-4'>
           {!editingPermissionId && (
@@ -550,13 +576,14 @@ export default function AdminUsersPage() {
                 onClick={() => handleCreateModeChange(CREATE_ACCOUNT_MODE_NEW)}
                 disabled={creatableRoleOptions.length === 0}
               >
-                新規アカウント作成
+                新規店舗ユーザーを作成
               </Button>
             </div>
           )}
           {isCreateAccountMode && (
             <div className='rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900'>
-              作成後すぐにログインできます。初期パスワードは安全な方法で本人へ共有してください。
+              作成するのは子テナントではなく、所属店舗に紐づくログインアカウントです。作成後すぐにログインできます。
+              初期パスワードは安全な方法で本人へ共有してください。
             </div>
           )}
           <div className='grid gap-4 md:grid-cols-2'>
@@ -653,7 +680,7 @@ export default function AdminUsersPage() {
                 htmlFor='admin-user-clinic'
                 className='text-sm font-medium'
               >
-                所属店舗
+                所属先店舗（作成済みテナント）
               </label>
               <Select
                 value={formState.clinic_id || NO_CLINIC_VALUE}
