@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import {
   applyRateLimits,
   getPathRateLimit,
 } from '@/lib/rate-limiting/middleware';
 import { CSPConfig } from '@/lib/security/csp-config';
+import type { Database } from '@/types/supabase';
 
 /**
  * 保護対象ルート（認証必須）
@@ -32,6 +34,8 @@ const PROTECTED_ROUTE_PREFIXES = [
 const ADMIN_ONLY_PREFIXES = ['/admin'] as const;
 const ADMIN_PUBLIC_ROUTES = ['/admin/login', '/admin/callback'] as const;
 const CLINIC_PUBLIC_ROUTES = ['/login', '/invite'] as const;
+const AUTH_COOKIE_PREFIX = 'sb-';
+const AUTH_COOKIE_SUFFIX = '-auth-token';
 const PILOT_BLOCKED_ROUTE_PREFIXES = [
   '/chat',
   '/ai-insights',
@@ -51,8 +55,48 @@ function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
   return request.cookies.getAll().some(cookie => {
     const baseName = cookie.name.split('.')[0];
-    return baseName.startsWith('sb-') && baseName.endsWith('-auth-token');
+    return (
+      baseName.startsWith(AUTH_COOKIE_PREFIX) &&
+      baseName.endsWith(AUTH_COOKIE_SUFFIX)
+    );
   });
+}
+
+async function hasVerifiedSupabaseSession(
+  request: NextRequest,
+  response: NextResponse
+): Promise<boolean> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return false;
+  }
+
+  try {
+    const requestCookies = request.cookies.getAll();
+    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return requestCookies;
+        },
+        setAll(cookiesToSet) {
+          for (const { name, value, options } of cookiesToSet) {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          }
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    return !error && Boolean(user);
+  } catch {
+    return false;
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -118,7 +162,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  if (!hasSupabaseAuthCookie(request)) {
+  if (
+    !hasSupabaseAuthCookie(request) ||
+    !(await hasVerifiedSupabaseSession(request, response))
+  ) {
     // 未認証時のリダイレクト先を分岐
     // /admin/** → /admin/login、その他 → /login
     const isAdminRoute = matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES);

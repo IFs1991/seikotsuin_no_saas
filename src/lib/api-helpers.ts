@@ -41,6 +41,8 @@ export interface ApiSuccessResponse<T = unknown> {
 
 export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
+const isProduction = () => process.env.NODE_ENV === 'production';
+
 /**
  * 管理者認証・認可チェック
  * ADMIN_UI_ROLES (admin, clinic_admin) を持つユーザーのみ許可
@@ -131,12 +133,16 @@ export function sanitizeInput(value: unknown): unknown {
 }
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+let cachedAppUrl: string | undefined;
+let cachedBaseAllowedOrigins: Set<string> | null = null;
 
-function buildAllowedOrigins(requestOrigin: string): Set<string> {
-  const allowed = new Set(ALLOWED_REDIRECT_ORIGINS);
-  allowed.add(requestOrigin);
-
+function getBaseAllowedOrigins(): Set<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (cachedBaseAllowedOrigins && cachedAppUrl === appUrl) {
+    return cachedBaseAllowedOrigins;
+  }
+
+  const allowed = new Set(ALLOWED_REDIRECT_ORIGINS);
   if (appUrl) {
     try {
       allowed.add(new URL(appUrl).origin);
@@ -148,6 +154,14 @@ function buildAllowedOrigins(requestOrigin: string): Set<string> {
     }
   }
 
+  cachedAppUrl = appUrl;
+  cachedBaseAllowedOrigins = allowed;
+  return allowed;
+}
+
+function buildAllowedOrigins(requestOrigin: string): Set<string> {
+  const allowed = new Set(getBaseAllowedOrigins());
+  allowed.add(requestOrigin);
   return allowed;
 }
 
@@ -169,10 +183,6 @@ function resolveOriginFromHeaders(request: NextRequest): string | null {
   return null;
 }
 
-function isAllowedOrigin(origin: string, allowed: Set<string>): boolean {
-  return allowed.has(origin);
-}
-
 /**
  * 統一されたAPIエラーレスポンス生成
  */
@@ -187,7 +197,7 @@ export function createErrorResponse(
     error,
   };
 
-  if (details !== undefined) response.details = details;
+  if (details !== undefined && !isProduction()) response.details = details;
   if (code !== undefined) response.code = code;
 
   return NextResponse.json(response, { status });
@@ -253,7 +263,7 @@ export async function processApiRequest(
 
       if (originHeader) {
         const allowedOrigins = buildAllowedOrigins(requestOrigin);
-        if (!isAllowedOrigin(originHeader, allowedOrigins)) {
+        if (!allowedOrigins.has(originHeader)) {
           logger.warn('Blocked request from disallowed origin', {
             path,
             method,
@@ -270,6 +280,11 @@ export async function processApiRequest(
           path,
           method,
         });
+
+        return {
+          success: false,
+          error: createErrorResponse('不正なリクエスト元です', 403),
+        };
       }
     }
 
@@ -353,6 +368,15 @@ export function logError(
     params?: unknown;
   }
 ): void {
+  const serializedError =
+    error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message,
+          ...(!isProduction() ? { stack: error.stack } : {}),
+        }
+      : error;
+
   const logData = {
     timestamp: new Date().toISOString(),
     level: 'error',
@@ -360,14 +384,11 @@ export function logError(
     userId: context.userId,
     method: context.method,
     params: context.params,
-    error:
-      error instanceof Error
-        ? { name: error.name, message: error.message, stack: error.stack }
-        : error,
+    error: serializedError,
   };
 
   // 本番環境では構造化ログを外部サービスに送信
-  if (process.env.NODE_ENV === 'production') {
+  if (isProduction()) {
     // TODO: Datadog, Sentry等の外部サービスへの送信
     logger.error(JSON.stringify(logData));
   } else {

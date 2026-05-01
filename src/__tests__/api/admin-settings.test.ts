@@ -199,6 +199,13 @@ describe('admin settings API', () => {
         url: `https://example.com/api/admin/settings?clinic_id=${TEST_CLINIC_ID}&category=clinic_basic`,
       } as any);
 
+      expect(processApiRequestMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          clinicId: TEST_CLINIC_ID,
+          requireClinicMatch: true,
+        })
+      );
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);

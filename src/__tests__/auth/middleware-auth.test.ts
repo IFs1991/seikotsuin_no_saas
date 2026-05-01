@@ -5,6 +5,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+
+const mockSupabaseGetUser = jest.fn();
+
+jest.mock('@supabase/ssr', () => ({
+  createServerClient: jest.fn(() => ({
+    auth: {
+      getUser: mockSupabaseGetUser,
+    },
+  })),
+}));
 
 jest.mock('@/lib/security/csp-config', () => ({
   CSPConfig: {
@@ -23,6 +34,8 @@ jest.mock('@/lib/rate-limiting/middleware', () => ({
 
 import { middleware } from '../../../middleware';
 
+const createServerClientMock = createServerClient as jest.Mock;
+
 describe('認証と権限制御 Middleware', () => {
   const originalEnv = process.env;
 
@@ -38,6 +51,15 @@ describe('認証と権限制御 Middleware', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSupabaseGetUser.mockResolvedValue({
+      data: { user: { id: 'user-1' } },
+      error: null,
+    });
+    createServerClientMock.mockReturnValue({
+      auth: {
+        getUser: mockSupabaseGetUser,
+      },
+    });
     process.env = { ...originalEnv };
     delete process.env.NEXT_PUBLIC_PILOT_MODE;
   });
@@ -98,7 +120,7 @@ describe('認証と権限制御 Middleware', () => {
 
   describe('認証 cookie がある場合の挙動', () => {
     test.each(['/dashboard', '/admin/settings', '/multi-store'])(
-      '認証 cookie があると %s は middleware で通過する',
+      '認証 cookie と検証済みセッションがあると %s は middleware で通過する',
       async route => {
         const response = await middleware(
           createMockRequest(route, 'sb-test-auth-token=session')
@@ -107,6 +129,20 @@ describe('認証と権限制御 Middleware', () => {
         expect(response.status).not.toBe(307);
       }
     );
+
+    test('認証 cookie があっても Supabase 検証に失敗すると /login にリダイレクト', async () => {
+      mockSupabaseGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      const response = await middleware(
+        createMockRequest('/dashboard', 'sb-test-auth-token=invalid')
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get('location')).toContain('/login');
+    });
 
     test('chunked な Supabase auth cookie でも通過する', async () => {
       const response = await middleware(

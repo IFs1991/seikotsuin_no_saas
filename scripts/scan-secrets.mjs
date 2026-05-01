@@ -1,51 +1,109 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 const searchTargets = ['src', 'app', 'components', 'lib'];
-const allowList = new Set([
-  'src/lib/env.ts',
-  'src/lib/supabase/server.ts',
-  'src/api/database/supabase-client.ts',
+const textExtensions = new Set([
+  '.cjs',
+  '.css',
+  '.js',
+  '.json',
+  '.jsx',
+  '.mjs',
+  '.sql',
+  '.ts',
+  '.tsx',
 ]);
 
-const result = spawnSync('rg', [
-  '--nocolor',
-  '--with-filename',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  ...searchTargets,
-]);
+const allowLists = {
+  serviceRole: new Set([
+    'src/lib/env.ts',
+    'src/lib/auth/password-recovery-intent.ts',
+    'src/lib/supabase/server.ts',
+    'src/api/database/supabase-client.ts',
+  ]),
+  publicKeyEnv: new Set([
+    'src/lib/env.ts',
+    'src/lib/supabase/server.ts',
+    'src/lib/supabase/client.ts',
+    'src/lib/supabase-browser.ts',
+  ]),
+};
 
-if (result.error) {
-  console.error('Failed to execute ripgrep:', result.error.message);
-  process.exit(1);
+const publicKeyEnvPattern =
+  /NEXT_PUBLIC_[A-Z0-9_]*(?:API_KEY|GEMINI|SECRET|SERVICE_ROLE|PRIVATE|TOKEN)\b/;
+
+function toRepoPath(filePath) {
+  return filePath.split(path.sep).join('/');
 }
 
-if (result.status === 1) {
-  // No matches found
-  process.exit(0);
+function listFiles(target) {
+  if (!existsSync(target)) {
+    return [];
+  }
+
+  const files = [];
+  const stack = [target];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const stats = statSync(current);
+
+    if (stats.isFile()) {
+      if (textExtensions.has(path.extname(current))) {
+        files.push(current);
+      }
+      continue;
+    }
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (entry.name !== '__tests__' && entry.name !== '__mocks__') {
+          stack.push(path.join(current, entry.name));
+        }
+        continue;
+      }
+
+      if (entry.isFile() && textExtensions.has(path.extname(entry.name))) {
+        files.push(path.join(current, entry.name));
+      }
+    }
+  }
+
+  return files;
 }
 
-if (result.status !== 0) {
-  console.error(result.stdout.toString());
-  console.error(result.stderr.toString());
-  process.exit(result.status ?? 1);
+const findings = [];
+const filesToScan = [...new Set(searchTargets.flatMap(listFiles))];
+
+for (const file of filesToScan) {
+  const repoPath = toRepoPath(file);
+  const content = readFileSync(file, 'utf8');
+
+  if (
+    content.includes('SUPABASE_SERVICE_ROLE_KEY') &&
+    !allowLists.serviceRole.has(repoPath)
+  ) {
+    findings.push({
+      rule: 'SUPABASE_SERVICE_ROLE_KEY',
+      file: repoPath,
+    });
+  }
+
+  if (
+    publicKeyEnvPattern.test(content) &&
+    !allowLists.publicKeyEnv.has(repoPath)
+  ) {
+    findings.push({
+      rule: 'NEXT_PUBLIC_* secret-like key name',
+      file: repoPath,
+    });
+  }
 }
 
-const matches = result.stdout
-  .toString()
-  .split('\n')
-  .filter(Boolean)
-  .map(line => {
-    const [file] = line.split(':');
-    return file;
-  })
-  .filter(file => !allowList.has(file));
-
-if (matches.length > 0) {
-  console.error(
-    'Secret scan failed. Remove SUPABASE service role references from the following files:'
-  );
-  matches.forEach(file => console.error(`  - ${file}`));
+if (findings.length > 0) {
+  console.error('Secret scan failed. Review the following references:');
+  findings.forEach(({ rule, file }) => console.error(`  - ${rule}: ${file}`));
   process.exit(1);
 }

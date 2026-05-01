@@ -54,7 +54,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ioredis": "^5.3.2",
-    "isomorphic-dompurify": "^2.26.0",
+    "isomorphic-dompurify": "^3.11.0",
     "lucide-react": "^0.469.0",
     "next": "^15.4.5",
     "qrcode": "^1.5.3",
@@ -105,7 +105,7 @@
     "undici": "^7.16.0"
   },
   "engines": {
-    "node": ">=18.18.0",
+    "node": ">=20.19.0",
     "npm": ">=10.0.0"
   },
   "overrides": {

@@ -5,6 +5,7 @@ import {
   mfaRateLimit,
   sessionCreationRateLimit,
 } from '@/lib/rate-limiting/middleware';
+import { RATE_LIMIT_CONFIG } from '@/lib/rate-limiting/rate-limiter';
 
 describe('getPathRateLimit', () => {
   it('applies public API rate limits only to public endpoints', () => {
@@ -37,5 +38,12 @@ describe('getPathRateLimit', () => {
       mfaRateLimit,
     ]);
     expect(getPathRateLimit('/api/admin/security/events')).toEqual([]);
+  });
+
+  it('login attempts are limited to 3 with at least a 5 minute initial block', () => {
+    expect(RATE_LIMIT_CONFIG.LOGIN_ATTEMPTS.MAX_ATTEMPTS).toBe(3);
+    expect(
+      RATE_LIMIT_CONFIG.LOGIN_ATTEMPTS.BLOCK_DURATION[0]
+    ).toBeGreaterThanOrEqual(300);
   });
 });
