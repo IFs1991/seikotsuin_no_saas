@@ -34,6 +34,8 @@ const PROTECTED_ROUTE_PREFIXES = [
 const ADMIN_ONLY_PREFIXES = ['/admin'] as const;
 const ADMIN_PUBLIC_ROUTES = ['/admin/login', '/admin/callback'] as const;
 const CLINIC_PUBLIC_ROUTES = ['/login', '/invite'] as const;
+const AUTH_COOKIE_PREFIX = 'sb-';
+const AUTH_COOKIE_SUFFIX = '-auth-token';
 const PILOT_BLOCKED_ROUTE_PREFIXES = [
   '/chat',
   '/ai-insights',
@@ -53,7 +55,10 @@ function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
   return request.cookies.getAll().some(cookie => {
     const baseName = cookie.name.split('.')[0];
-    return baseName.startsWith('sb-') && baseName.endsWith('-auth-token');
+    return (
+      baseName.startsWith(AUTH_COOKIE_PREFIX) &&
+      baseName.endsWith(AUTH_COOKIE_SUFFIX)
+    );
   });
 }
 
@@ -68,18 +73,17 @@ async function hasVerifiedSupabaseSession(
   }
 
   try {
+    const requestCookies = request.cookies.getAll();
     const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
-          return request.cookies.getAll();
+          return requestCookies;
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          for (const { name, value, options } of cookiesToSet) {
+            request.cookies.set(name, value);
+            response.cookies.set(name, value, options);
+          }
         },
       },
     });

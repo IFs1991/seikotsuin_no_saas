@@ -33,6 +33,8 @@ import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
 // 管理者権限チェック（クリニック設定管理が可能なロール）
 const canManageSettings = (role: string) =>
   CLINIC_ADMIN_ROLES.has(role as Role);
+const STAFF_ROLE_LIST = Array.from(STAFF_ROLES);
+const CLINIC_ADMIN_ROLE_LIST = Array.from(CLINIC_ADMIN_ROLES);
 
 /**
  * GET /api/admin/settings
@@ -45,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(STAFF_ROLES),
+      allowedRoles: STAFF_ROLE_LIST,
       clinicId,
       requireClinicMatch: true,
     });
@@ -133,7 +135,7 @@ export async function PUT(request: NextRequest) {
 
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
+      allowedRoles: CLINIC_ADMIN_ROLE_LIST,
       clinicId: clinicIdForAuth,
     });
 

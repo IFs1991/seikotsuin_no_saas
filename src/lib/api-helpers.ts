@@ -133,12 +133,16 @@ export function sanitizeInput(value: unknown): unknown {
 }
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+let cachedAppUrl: string | undefined;
+let cachedBaseAllowedOrigins: Set<string> | null = null;
 
-function buildAllowedOrigins(requestOrigin: string): Set<string> {
-  const allowed = new Set(ALLOWED_REDIRECT_ORIGINS);
-  allowed.add(requestOrigin);
-
+function getBaseAllowedOrigins(): Set<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (cachedBaseAllowedOrigins && cachedAppUrl === appUrl) {
+    return cachedBaseAllowedOrigins;
+  }
+
+  const allowed = new Set(ALLOWED_REDIRECT_ORIGINS);
   if (appUrl) {
     try {
       allowed.add(new URL(appUrl).origin);
@@ -150,6 +154,14 @@ function buildAllowedOrigins(requestOrigin: string): Set<string> {
     }
   }
 
+  cachedAppUrl = appUrl;
+  cachedBaseAllowedOrigins = allowed;
+  return allowed;
+}
+
+function buildAllowedOrigins(requestOrigin: string): Set<string> {
+  const allowed = new Set(getBaseAllowedOrigins());
+  allowed.add(requestOrigin);
   return allowed;
 }
 
@@ -169,10 +181,6 @@ function resolveOriginFromHeaders(request: NextRequest): string | null {
   }
 
   return null;
-}
-
-function isAllowedOrigin(origin: string, allowed: Set<string>): boolean {
-  return allowed.has(origin);
 }
 
 /**
@@ -255,7 +263,7 @@ export async function processApiRequest(
 
       if (originHeader) {
         const allowedOrigins = buildAllowedOrigins(requestOrigin);
-        if (!isAllowedOrigin(originHeader, allowedOrigins)) {
+        if (!allowedOrigins.has(originHeader)) {
           logger.warn('Blocked request from disallowed origin', {
             path,
             method,

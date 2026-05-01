@@ -43,29 +43,41 @@ function listFiles(target) {
     return [];
   }
 
-  const stats = statSync(target);
-  if (stats.isFile()) {
-    return [target];
+  const files = [];
+  const stack = [target];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    const stats = statSync(current);
+
+    if (stats.isFile()) {
+      if (textExtensions.has(path.extname(current))) {
+        files.push(current);
+      }
+      continue;
+    }
+
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (entry.name !== '__tests__' && entry.name !== '__mocks__') {
+          stack.push(path.join(current, entry.name));
+        }
+        continue;
+      }
+
+      if (entry.isFile() && textExtensions.has(path.extname(entry.name))) {
+        files.push(path.join(current, entry.name));
+      }
+    }
   }
 
-  return readdirSync(target, { withFileTypes: true }).flatMap(entry => {
-    const childPath = path.join(target, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === '__tests__' || entry.name === '__mocks__') {
-        return [];
-      }
-      return listFiles(childPath);
-    }
-    if (!entry.isFile() || !textExtensions.has(path.extname(entry.name))) {
-      return [];
-    }
-    return [childPath];
-  });
+  return files;
 }
 
 const findings = [];
+const filesToScan = [...new Set(searchTargets.flatMap(listFiles))];
 
-for (const file of searchTargets.flatMap(listFiles)) {
+for (const file of filesToScan) {
   const repoPath = toRepoPath(file);
   const content = readFileSync(file, 'utf8');
 
