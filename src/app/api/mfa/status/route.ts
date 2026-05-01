@@ -5,33 +5,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
-import { createClient } from '@/lib/supabase';
+import { createErrorResponse, processApiRequest } from '@/lib/api-helpers';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('MFAStatusRoute');
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    const result = await processApiRequest(request);
+    if (!result.success) {
+      return result.error;
     }
 
     // MFA状態取得
-    const mfaStatus = await mfaManager.getMFAStatus(user.id);
+    const mfaStatus = await mfaManager.getMFAStatus(result.auth.id);
 
     return NextResponse.json(mfaStatus);
   } catch (error) {
-    console.error('MFA状態取得エラー:', error);
+    log.error('MFA状態取得エラー:', error);
 
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'MFA状態取得に失敗しました',
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('MFA状態取得に失敗しました', 500);
   }
 }

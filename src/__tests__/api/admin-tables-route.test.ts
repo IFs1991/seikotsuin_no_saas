@@ -70,4 +70,18 @@ describe('PR-08: admin/tables blast-radius 縮小', () => {
       expect(content).toContain('isWritableTable');
     });
   });
+
+  describe('GET のクエリ制御', () => {
+    it('sort_by は tableConfig.columns に限定され、limit は上限を持つこと', () => {
+      const routePath = path.resolve(
+        process.cwd(),
+        'src/app/api/admin/tables/route.ts'
+      );
+      const content = fs.readFileSync(routePath, 'utf-8');
+
+      expect(content).toContain('MAX_TABLE_PAGE_SIZE');
+      expect(content).toContain('resolveSortColumn');
+      expect(content).toContain('tableConfig.columns');
+    });
+  });
 });

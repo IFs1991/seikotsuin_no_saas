@@ -38,7 +38,6 @@ interface MFASetupWizardProps {
 }
 
 interface SetupData {
-  secretKey: string;
   qrCodeUrl: string;
   backupCodes: string[];
   manualEntryKey: string;
@@ -56,8 +55,6 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
   isOpen,
   onClose,
   onComplete,
-  userId,
-  clinicId,
 }) => {
   const [currentStep, setCurrentStep] = useState<SetupStep>('introduction');
   const [setupData, setSetupData] = useState<SetupData | null>(null);
@@ -75,10 +72,6 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
     try {
       const response = await fetch('/api/mfa/setup/initiate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, clinicId }),
       });
 
       if (!response.ok) {
@@ -112,7 +105,6 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
           token: verificationCode,
         }),
       });
@@ -143,8 +135,8 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
           return newSet;
         });
       }, 3000);
-    } catch (err) {
-      console.error('コピーに失敗しました:', err);
+    } catch {
+      setError('クリップボードへのコピーに失敗しました');
     }
   };
 

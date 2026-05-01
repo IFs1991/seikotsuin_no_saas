@@ -6,8 +6,27 @@ import {
   sessionCreationRateLimit,
 } from '@/lib/rate-limiting/middleware';
 import { RATE_LIMIT_CONFIG } from '@/lib/rate-limiting/rate-limiter';
+import type { NextRequest } from 'next/server';
 
 describe('getPathRateLimit', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalUpstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalUpstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    if (originalUpstashUrl === undefined) {
+      delete process.env.UPSTASH_REDIS_REST_URL;
+    } else {
+      process.env.UPSTASH_REDIS_REST_URL = originalUpstashUrl;
+    }
+    if (originalUpstashToken === undefined) {
+      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    } else {
+      process.env.UPSTASH_REDIS_REST_TOKEN = originalUpstashToken;
+    }
+  });
+
   it('applies public API rate limits only to public endpoints', () => {
     expect(getPathRateLimit('/api/public/reservations')).toEqual([apiRateLimit]);
     expect(getPathRateLimit('/api/public/menus')).toEqual([apiRateLimit]);
@@ -45,5 +64,19 @@ describe('getPathRateLimit', () => {
     expect(
       RATE_LIMIT_CONFIG.LOGIN_ATTEMPTS.BLOCK_DURATION[0]
     ).toBeGreaterThanOrEqual(300);
+  });
+
+  it('fails closed in production when the rate limit backend is missing', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const response = await mfaRateLimit(
+      new Request('http://localhost/api/mfa/verify', {
+        method: 'POST',
+      }) as unknown as NextRequest
+    );
+
+    expect(response?.status).toBe(503);
   });
 });

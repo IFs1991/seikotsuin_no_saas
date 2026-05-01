@@ -7,7 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mfaManager } from '@/lib/mfa/mfa-manager';
 import { backupCodeManager } from '@/lib/mfa/backup-codes';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase';
+import { createErrorResponse, processApiRequest } from '@/lib/api-helpers';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('MFAVerifyRoute');
 
 // リクエストスキーマ
 const VerifyMFASchema = z.object({
@@ -20,19 +23,20 @@ const VerifyMFASchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    const result = await processApiRequest(request, { requireBody: true });
+    if (!result.success) {
+      return result.error;
     }
 
-    // リクエストボディを解析
-    const body = await request.json();
-    const { type, code, window } = VerifyMFASchema.parse(body);
+    const parsed = VerifyMFASchema.safeParse(result.body);
+    if (!parsed.success) {
+      return createErrorResponse(
+        '入力値が無効です',
+        400,
+        parsed.error.flatten()
+      );
+    }
+    const { type, code, window } = parsed.data;
 
     let isValid = false;
     let additionalInfo = {};
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      isValid = await mfaManager.verifyTOTP(user.id, code, window);
+      isValid = await mfaManager.verifyTOTP(result.auth.id, code, window);
     } else if (type === 'backup') {
       // バックアップコード検証
       if (code.length !== 8) {
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
       }
 
       const backupResult = await backupCodeManager.verifyAndMarkBackupCode(
-        user.id,
+        result.auth.id,
         code
       );
       isValid = backupResult.isValid;
@@ -72,24 +76,8 @@ export async function POST(request: NextRequest) {
       ...additionalInfo,
     });
   } catch (error) {
-    console.error('MFA認証検証エラー:', error);
+    log.error('MFA認証検証エラー:', error);
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: '入力値が無効です',
-          details: error.errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : 'MFA認証検証に失敗しました',
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('MFA認証検証に失敗しました', 500);
   }
 }

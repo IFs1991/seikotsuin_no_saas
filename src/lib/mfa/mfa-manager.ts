@@ -9,16 +9,20 @@ import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { backupCodeManager } from '@/lib/mfa/backup-codes';
+import {
+  decryptMfaSecret,
+  encryptMfaSecret,
+  hashBackupCodes,
+} from '@/lib/mfa/crypto';
+import type { Json } from '@/types/supabase';
 
 const log = createLogger('MFAManager');
+const MFA_SETUP_SESSION_TTL_MS = 10 * 60 * 1000;
 
 // MFA設定スキーマ
 const MFAConfigSchema = z.object({
   userId: z.string().min(1, 'ユーザーIDが必要です'),
   clinicId: z.string().min(1, 'クリニックIDが必要です'),
-  secretKey: z.string().optional(),
-  backupCodes: z.array(z.string()).optional(),
-  isEnabled: z.boolean().default(false),
 });
 
 const MFAVerificationSchema = z.object({
@@ -31,7 +35,6 @@ export type MFAConfig = z.infer<typeof MFAConfigSchema>;
 export type MFAVerification = z.infer<typeof MFAVerificationSchema>;
 
 export interface MFASetupResult {
-  secretKey: string;
   qrCodeUrl: string;
   backupCodes: string[];
   manualEntryKey: string;
@@ -91,20 +94,23 @@ export class MFAManager {
 
       // バックアップコード生成（10個）
       const backupCodes = this.generateBackupCodes();
+      const encryptedSecret = encryptMfaSecret(secret.base32);
+      const hashedBackupCodes = hashBackupCodes(backupCodes);
 
-      // データベースに一時保存（セットアップ完了まで）
+      // データベースには復元不能なバックアップコードと暗号化済みTOTP secretのみ保存する
       const supabase = await this.getSupabase();
       await supabase.from('mfa_setup_sessions').insert({
         user_id: validatedData.userId,
         clinic_id: validatedData.clinicId,
-        secret_key: secret.base32,
-        backup_codes: backupCodes,
-        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15分有効
+        secret_key: encryptedSecret,
+        backup_codes: hashedBackupCodes,
+        expires_at: new Date(
+          Date.now() + MFA_SETUP_SESSION_TTL_MS
+        ).toISOString(),
         created_at: new Date().toISOString(),
       });
 
       return {
-        secretKey: secret.base32,
         qrCodeUrl,
         backupCodes,
         manualEntryKey: this.formatSecretForManualEntry(secret.base32),
@@ -145,9 +151,11 @@ export class MFAManager {
         );
       }
 
+      const secretKey = decryptMfaSecret(setupSession.secret_key);
+
       // TOTPトークン検証
       const isValidToken = speakeasy.totp.verify({
-        secret: setupSession.secret_key,
+        secret: secretKey,
         encoding: 'base32',
         token: validatedVerification.token,
         window: 2, // セットアップ時は少し寛容に
@@ -173,7 +181,7 @@ export class MFAManager {
       await supabase
         .from('mfa_setup_sessions')
         .delete()
-        .eq('id', setupSession.id);
+        .eq('user_id', validatedVerification.userId);
 
       return true;
     } catch (error) {
@@ -213,9 +221,11 @@ export class MFAManager {
         throw new Error('MFA設定が見つかりません');
       }
 
+      const secretKey = decryptMfaSecret(mfaSettings.secret_key);
+
       // TOTP検証
       const isValid = speakeasy.totp.verify({
-        secret: mfaSettings.secret_key,
+        secret: secretKey,
         encoding: 'base32',
         token: validatedVerification.token,
         window: validatedVerification.window,
@@ -348,7 +358,7 @@ export class MFAManager {
           light: '#FFFFFF',
         },
       });
-    } catch (error) {
+    } catch {
       throw new Error('QRコード生成に失敗しました');
     }
   }
@@ -374,7 +384,7 @@ export class MFAManager {
   private async logMFAEvent(event: {
     userId: string;
     eventType: string;
-    details?: Record<string, any>;
+    details?: Record<string, Json>;
   }): Promise<void> {
     try {
       const supabase = await this.getSupabase();

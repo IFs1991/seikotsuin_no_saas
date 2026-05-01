@@ -18,10 +18,50 @@ import {
 } from '@/lib/table-metadata';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import { HQ_ROLES } from '@/lib/constants/roles';
+import type { TableConfig } from '@/types/admin';
 
 // ================================================================
 // データベーステーブル管理 API - 動的スキーマ版
 // ================================================================
+const DEFAULT_TABLE_PAGE_SIZE = 20;
+const MAX_TABLE_PAGE_SIZE = 100;
+
+type AdminTableRecord = Record<string, unknown> & { id?: string };
+
+function parsePositiveInt(value: string | null, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function resolveSortColumn(
+  tableConfig: TableConfig,
+  requestedSortBy: string | null
+): string {
+  if (
+    requestedSortBy &&
+    Object.prototype.hasOwnProperty.call(tableConfig.columns, requestedSortBy)
+  ) {
+    return requestedSortBy;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(tableConfig.columns, 'created_at')) {
+    return 'created_at';
+  }
+
+  return Object.keys(tableConfig.columns)[0] ?? 'id';
+}
+
+function getRecordId(record: unknown): string {
+  if (record && typeof record === 'object' && 'id' in record) {
+    const id = (record as AdminTableRecord).id;
+    if (typeof id === 'string') {
+      return id;
+    }
+  }
+
+  return '';
+}
+
 // テーブル一覧取得エンドポイント (GET /api/admin/tables)
 // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md - HQ専用（Q1決定）
 export async function GET(request: NextRequest) {
@@ -105,16 +145,23 @@ async function getTableData(
     }
 
     // クエリパラメータ
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parsePositiveInt(searchParams.get('page'), 1);
+    const requestedLimit = parsePositiveInt(
+      searchParams.get('limit'),
+      DEFAULT_TABLE_PAGE_SIZE
+    );
+    const limit = Math.min(requestedLimit, MAX_TABLE_PAGE_SIZE);
     const search = searchParams.get('search') || '';
-    const sortBy = searchParams.get('sort_by') || 'created_at';
-    const sortOrder = searchParams.get('sort_order') || 'desc';
+    const sortBy = resolveSortColumn(tableConfig, searchParams.get('sort_by'));
+    const sortOrder = searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc';
 
     const offset = (page - 1) * limit;
 
     // クエリ構築
-    let query = supabase.from(tableName as any).select('*', { count: 'exact' });
+    const supportedTableName = tableName as SupportedTableName;
+    let query = supabase
+      .from(supportedTableName)
+      .select('*', { count: 'exact' });
 
     // 検索条件
     if (search) {
@@ -229,10 +276,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const supportedTableName = table_name as SupportedTableName;
+    const insertRecord = validationResult.data as never;
+
     // データベースに挿入
     const { data: newRecord, error } = await supabase
-      .from(table_name as any)
-      .insert([validationResult.data] as any)
+      .from(supportedTableName)
+      .insert([insertRecord])
       .select()
       .single();
 
@@ -251,7 +301,7 @@ export async function POST(request: NextRequest) {
       auth?.id || '',
       auth?.email || '',
       table_name,
-      (newRecord as any).id,
+      getRecordId(newRecord),
       validationResult.data
     );
 
@@ -325,10 +375,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const supportedTableName = table_name as SupportedTableName;
+    const updateRecord = validationResult.data as never;
+
     // データベースを更新
     const { data: updatedRecord, error } = await supabase
-      .from(table_name as any)
-      .update(validationResult.data as any)
+      .from(supportedTableName)
+      .update(updateRecord)
       .eq('id', id)
       .select()
       .single();

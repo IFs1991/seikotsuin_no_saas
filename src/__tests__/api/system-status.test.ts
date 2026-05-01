@@ -89,6 +89,11 @@ describe('GET /api/system/status', () => {
       'clinic-2',
       'clinic-3',
     ]);
+    expect(aiQuery.in).toHaveBeenCalledWith('clinic_id', [
+      'clinic-1',
+      'clinic-2',
+      'clinic-3',
+    ]);
   });
 
   it('TC-S05: ai_comments が当日0件なら aiAnalysisStatus は inactive', async () => {

@@ -4,8 +4,13 @@
  */
 
 import { createClient } from '@/lib/supabase';
-import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
+import {
+  hashBackupCodes,
+  normalizeBackupCode,
+  verifyBackupCodeHash,
+} from '@/lib/mfa/crypto';
+import type { Json } from '@/types/supabase';
 
 const log = createLogger('BackupCodeManager');
 
@@ -17,28 +22,6 @@ export const BACKUP_CODE_CONFIG = {
   MIN_REMAINING_WARNING: 3, // 残りコード数の警告閾値
 } as const;
 
-// バックアップコードスキーマ
-const BackupCodeSchema = z.object({
-  code: z
-    .string()
-    .length(
-      BACKUP_CODE_CONFIG.LENGTH,
-      `バックアップコードは${BACKUP_CODE_CONFIG.LENGTH}桁である必要があります`
-    ),
-  isUsed: z.boolean().default(false),
-  usedAt: z.date().optional(),
-});
-
-const BackupCodeSetSchema = z.object({
-  userId: z.string().min(1, 'ユーザーIDが必要です'),
-  clinicId: z.string().min(1, 'クリニックIDが必要です'),
-  codes: z.array(BackupCodeSchema).length(BACKUP_CODE_CONFIG.COUNT),
-  generatedAt: z.date(),
-});
-
-export type BackupCode = z.infer<typeof BackupCodeSchema>;
-export type BackupCodeSet = z.infer<typeof BackupCodeSetSchema>;
-
 export interface BackupCodeUsage {
   totalGenerated: number;
   totalUsed: number;
@@ -46,6 +29,12 @@ export interface BackupCodeUsage {
   lastUsed?: Date;
   generatedAt: Date;
   warningLevel: 'none' | 'low' | 'critical';
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }
 
 /**
@@ -105,7 +94,7 @@ export class BackupCodeManager {
   }> {
     try {
       // 入力コードの正規化
-      const normalizedCode = inputCode.toUpperCase().trim();
+      const normalizedCode = normalizeBackupCode(inputCode);
 
       if (normalizedCode.length !== BACKUP_CODE_CONFIG.LENGTH) {
         return {
@@ -128,32 +117,34 @@ export class BackupCodeManager {
         throw new Error('MFA設定が見つかりません');
       }
 
-      const backupCodes = (mfaSettings.backup_codes as string[]) || [];
-      const codeIndex = backupCodes.indexOf(normalizedCode);
+      const backupCodeHashes = toStringArray(mfaSettings.backup_codes);
+      const codeIndex = backupCodeHashes.findIndex(storedHash =>
+        verifyBackupCodeHash(normalizedCode, storedHash)
+      );
 
       if (codeIndex === -1) {
         // 無効なコードの試行をログ記録
         await this.logBackupCodeEvent(userId, 'invalid_attempt', {
           code: normalizedCode.slice(0, 2) + '****',
-          remainingCodes: backupCodes.length,
+          remainingCodes: backupCodeHashes.length,
         });
 
         return {
           isValid: false,
-          remainingCodes: backupCodes.length,
-          warningLevel: this.getWarningLevel(backupCodes.length),
+          remainingCodes: backupCodeHashes.length,
+          warningLevel: this.getWarningLevel(backupCodeHashes.length),
         };
       }
 
       // バックアップコードを使用済みとしてマーク（削除）
-      const updatedBackupCodes = [...backupCodes];
-      updatedBackupCodes.splice(codeIndex, 1);
+      const updatedBackupCodeHashes = [...backupCodeHashes];
+      updatedBackupCodeHashes.splice(codeIndex, 1);
 
       // データベース更新
       await supabase
         .from('user_mfa_settings')
         .update({
-          backup_codes: updatedBackupCodes,
+          backup_codes: updatedBackupCodeHashes,
           last_used_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
@@ -161,22 +152,22 @@ export class BackupCodeManager {
       // 使用ログ記録
       await this.logBackupCodeEvent(userId, 'code_used', {
         code: normalizedCode.slice(0, 2) + '****',
-        remainingCodes: updatedBackupCodes.length,
+        remainingCodes: updatedBackupCodeHashes.length,
       });
 
-      const warningLevel = this.getWarningLevel(updatedBackupCodes.length);
+      const warningLevel = this.getWarningLevel(updatedBackupCodeHashes.length);
 
       // 残りコードが少ない場合の警告
       if (warningLevel !== 'none') {
         await this.logBackupCodeEvent(userId, 'low_codes_warning', {
-          remainingCodes: updatedBackupCodes.length,
+          remainingCodes: updatedBackupCodeHashes.length,
           warningLevel,
         });
       }
 
       return {
         isValid: true,
-        remainingCodes: updatedBackupCodes.length,
+        remainingCodes: updatedBackupCodeHashes.length,
         warningLevel,
       };
     } catch (error) {
@@ -202,8 +193,8 @@ export class BackupCodeManager {
         throw new Error('MFA設定が見つかりません');
       }
 
-      const backupCodes = (mfaSettings.backup_codes as string[]) || [];
-      const remainingCount = backupCodes.length;
+      const backupCodeHashes = toStringArray(mfaSettings.backup_codes);
+      const remainingCount = backupCodeHashes.length;
       const totalUsed = BACKUP_CODE_CONFIG.COUNT - remainingCount;
 
       return {
@@ -236,13 +227,14 @@ export class BackupCodeManager {
     try {
       // 新しいバックアップコード生成
       const newBackupCodes = this.generateBackupCodes();
+      const newBackupCodeHashes = hashBackupCodes(newBackupCodes);
 
       // データベース更新
       const supabase = await this.getSupabase();
       const { error } = await supabase
         .from('user_mfa_settings')
         .update({
-          backup_codes: newBackupCodes,
+          backup_codes: newBackupCodeHashes,
           backup_codes_regenerated_at: new Date().toISOString(),
         })
         .eq('user_id', userId)
@@ -296,8 +288,8 @@ export class BackupCodeManager {
       let totalCodesRemaining = 0;
 
       for (const user of mfaUsers) {
-        const codes = (user.backup_codes as string[]) || [];
-        const remainingCount = codes.length;
+        const backupCodeHashes = toStringArray(user.backup_codes);
+        const remainingCount = backupCodeHashes.length;
 
         if (remainingCount > 0) {
           usersWithBackupCodes++;
@@ -357,8 +349,7 @@ export class BackupCodeManager {
    * バックアップコードの検証（フォーマット済み入力対応）
    */
   normalizeBackupCodeInput(input: string): string {
-    // ハイフン、スペース、小文字を正規化
-    return input.toUpperCase().replace(/[-\s]/g, '').trim();
+    return normalizeBackupCode(input);
   }
 
   /**
@@ -413,7 +404,7 @@ export class BackupCodeManager {
   private async logBackupCodeEvent(
     userId: string,
     eventType: string,
-    details: Record<string, unknown>
+    details: Record<string, Json>
   ): Promise<void> {
     try {
       const supabase = await this.getSupabase();
@@ -422,7 +413,7 @@ export class BackupCodeManager {
         user_id: userId,
         event_category: 'mfa',
         event_description: `MFA backup code event: ${eventType}`,
-        event_data: details as any,
+        event_data: details,
         ip_address: '',
         user_agent: '',
         created_at: new Date().toISOString(),

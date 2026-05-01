@@ -6,7 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { backupCodeManager } from '@/lib/mfa/backup-codes';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase';
+import { createErrorResponse, processApiRequest } from '@/lib/api-helpers';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('MFABackupCodeRegenerateRoute');
 
 // リクエストスキーマ
 const RegenerateBackupCodesSchema = z.object({
@@ -15,24 +18,24 @@ const RegenerateBackupCodesSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    const result = await processApiRequest(request, { requireBody: true });
+    if (!result.success) {
+      return result.error;
     }
 
-    // リクエストボディを解析
-    const body = await request.json();
-    RegenerateBackupCodesSchema.parse(body);
+    const validation = RegenerateBackupCodesSchema.safeParse(result.body);
+    if (!validation.success) {
+      return createErrorResponse(
+        '入力値が無効です',
+        400,
+        validation.error.flatten()
+      );
+    }
 
     // バックアップコード再生成
     const newBackupCodes = await backupCodeManager.regenerateBackupCodes(
-      user.id,
-      user.id
+      result.auth.id,
+      result.auth.id
     );
 
     return NextResponse.json({
@@ -41,26 +44,8 @@ export async function POST(request: NextRequest) {
       count: newBackupCodes.length,
     });
   } catch (error) {
-    console.error('バックアップコード再生成エラー:', error);
+    log.error('バックアップコード再生成エラー:', error);
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          error: '入力値が無効です',
-          details: error.errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'バックアップコード再生成に失敗しました',
-      },
-      { status: 500 }
-    );
+    return createErrorResponse('バックアップコード再生成に失敗しました', 500);
   }
 }

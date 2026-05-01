@@ -4,7 +4,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimiter, RateLimitType } from './rate-limiter';
+import {
+  rateLimiter,
+  RateLimitType,
+  type RateLimitResult,
+} from './rate-limiter';
 import { logger } from '@/lib/logger';
 
 // レート制限設定
@@ -12,12 +16,34 @@ interface RateLimitConfig {
   type: RateLimitType;
   keyGenerator: (request: NextRequest) => string;
   skipIf?: (request: NextRequest) => boolean;
-  onLimitExceeded?: (request: NextRequest, result: any) => NextResponse;
+  onLimitExceeded?: (
+    request: NextRequest,
+    result: RateLimitResult
+  ) => NextResponse;
 }
 
-const hasRateLimitBackend = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-);
+function hasRateLimitBackend(): boolean {
+  return Boolean(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
+}
+
+function createUnavailableResponse(): NextResponse {
+  return new NextResponse(
+    JSON.stringify({
+      error: 'Rate limit backend unavailable',
+      message:
+        'リクエスト制限の確認に失敗しました。時間をおいて再試行してください。',
+    }),
+    {
+      status: 503,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': '60',
+      },
+    }
+  );
+}
 
 /**
  * レート制限ミドルウェア生成関数
@@ -25,7 +51,11 @@ const hasRateLimitBackend = Boolean(
 export function createRateLimitMiddleware(config: RateLimitConfig) {
   return async (request: NextRequest): Promise<NextResponse | null> => {
     try {
-      if (!hasRateLimitBackend) {
+      if (!hasRateLimitBackend()) {
+        if (process.env.NODE_ENV === 'production') {
+          logger.error('Rate limiter backend is missing in production');
+          return createUnavailableResponse();
+        }
         return null;
       }
 
@@ -58,7 +88,7 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
         return new NextResponse(
           JSON.stringify({
             error: 'Rate limit exceeded',
-            message: getRateLimitMessage(config.type, result),
+            message: getRateLimitMessage(config.type),
             retryAfter: result.retryAfter,
             blockLevel: result.blockLevel,
           }),
@@ -85,7 +115,9 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       });
     } catch (error) {
       logger.error('レート制限ミドルウェアエラー:', error);
-      // エラー時は制限しない（フェイルオープン）
+      if (process.env.NODE_ENV === 'production') {
+        return createUnavailableResponse();
+      }
       return null;
     }
   };
@@ -100,7 +132,7 @@ export const loginRateLimit = createRateLimitMiddleware({
     const ip = getClientIP(request);
     return `login:${ip}`;
   },
-  onLimitExceeded: (request, result) => {
+  onLimitExceeded: (_request, result) => {
     const message =
       result.blockLevel && result.blockLevel > 0
         ? `ログイン試行が多すぎます。${Math.floor((result.retryAfter || 0) / 60)}分後に再試行してください。`
@@ -148,7 +180,7 @@ export const sessionCreationRateLimit = createRateLimitMiddleware({
     const ip = getClientIP(request);
     return `session:${ip}`;
   },
-  onLimitExceeded: (request, result) => {
+  onLimitExceeded: (_request, result) => {
     return new NextResponse(
       JSON.stringify({
         error: 'Session creation rate limit exceeded',
@@ -173,7 +205,7 @@ export const mfaRateLimit = createRateLimitMiddleware({
     const ip = getClientIP(request);
     return `mfa:${ip}`;
   },
-  onLimitExceeded: (request, result) => {
+  onLimitExceeded: (_request, result) => {
     return new NextResponse(
       JSON.stringify({
         error: 'MFA verification rate limit exceeded',
@@ -291,7 +323,7 @@ function isMfaPath(pathname: string): boolean {
   return pathname.startsWith('/api/mfa/');
 }
 
-function getRateLimitMessage(type: RateLimitType, result: any): string {
+function getRateLimitMessage(type: RateLimitType): string {
   switch (type) {
     case 'login_attempts':
       return 'ログイン試行回数が制限に達しました。時間をおいて再試行してください。';

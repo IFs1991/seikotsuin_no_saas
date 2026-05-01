@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       adminSupabase
         .from('ai_comments')
         .select('*', { count: 'exact', head: true })
+        .in('clinic_id', clinicIds)
         .gte('created_at', todayStart.toISOString()),
     ]);
 

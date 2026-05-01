@@ -23,6 +23,7 @@ export const env = {
   // eslint-disable-next-line no-restricted-syntax
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? '',
+  ENCRYPTION_KEY: process.env.ENCRYPTION_KEY ?? '',
 } as const;
 
 export function assertEnv(name: keyof typeof env) {
