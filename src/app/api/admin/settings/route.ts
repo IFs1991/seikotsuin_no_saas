@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
     const processResult = await processApiRequest(request, {
       allowedRoles: Array.from(STAFF_ROLES),
       clinicId,
+      requireClinicMatch: true,
     });
 
     if (!processResult.success) {

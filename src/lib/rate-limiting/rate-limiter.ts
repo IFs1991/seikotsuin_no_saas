@@ -17,8 +17,8 @@ export const RATE_LIMIT_CONFIG = {
   // ログイン試行制限
   LOGIN_ATTEMPTS: {
     WINDOW: 900, // 15分（秒）
-    MAX_ATTEMPTS: 5,
-    BLOCK_DURATION: [60, 300, 3600, 86400], // 1分→5分→1時間→24時間
+    MAX_ATTEMPTS: 3,
+    BLOCK_DURATION: [300, 900, 3600, 86400], // 5分→15分→1時間→24時間
   },
 
   // API呼び出し制限

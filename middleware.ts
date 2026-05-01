@@ -1,9 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import {
   applyRateLimits,
   getPathRateLimit,
 } from '@/lib/rate-limiting/middleware';
 import { CSPConfig } from '@/lib/security/csp-config';
+import type { Database } from '@/types/supabase';
 
 /**
  * 保護対象ルート（認証必須）
@@ -53,6 +55,44 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
     const baseName = cookie.name.split('.')[0];
     return baseName.startsWith('sb-') && baseName.endsWith('-auth-token');
   });
+}
+
+async function hasVerifiedSupabaseSession(
+  request: NextRequest,
+  response: NextResponse
+): Promise<boolean> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return false;
+  }
+
+  try {
+    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    return !error && Boolean(user);
+  } catch {
+    return false;
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -118,7 +158,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  if (!hasSupabaseAuthCookie(request)) {
+  if (
+    !hasSupabaseAuthCookie(request) ||
+    !(await hasVerifiedSupabaseSession(request, response))
+  ) {
     // 未認証時のリダイレクト先を分岐
     // /admin/** → /admin/login、その他 → /login
     const isAdminRoute = matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES);

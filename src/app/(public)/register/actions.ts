@@ -55,7 +55,7 @@ function extractFormValues(formData: FormData) {
  * 初回オーナー登録アクション
  *
  * 設計原則:
- * - SUPABASE_SERVICE_ROLE_KEY をクライアントで使わない（Section 6.5）
+ * - Supabase service role key をクライアントで使わない（Section 6.5）
  * - 既存メールかどうかを示す文言を返さない（AC-03）
  * - AuditLogger に成功/失敗を記録（Section 6.5）
  */
