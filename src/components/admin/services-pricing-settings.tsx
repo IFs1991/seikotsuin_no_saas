@@ -38,7 +38,6 @@ import {
   Clock,
   CopyPlus,
   Edit,
-  ExternalLink,
   Loader2,
   Plus,
   RefreshCw,
@@ -643,6 +642,7 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
 }: BookingPreviewCardProps) {
   const [origin, setOrigin] = useState('');
   const [copyMessage, setCopyMessage] = useState('');
+  const [previewMode, setPreviewMode] = useState<'web' | 'line' | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -660,6 +660,11 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
 
   const previewUrl = origin && previewPath ? `${origin}${previewPath}` : '';
   const lineUrl = origin && linePath ? `${origin}${linePath}` : '';
+  const activePreviewPath = previewMode === 'line' ? linePath : previewPath;
+  const activePreviewTitle =
+    previewMode === 'line'
+      ? 'LINE導線のプレビュー'
+      : 'Web予約フォームのプレビュー';
 
   const handleCopy = useCallback(async (url: string, label: string) => {
     if (!url) return;
@@ -715,9 +720,9 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
             <Button
               type='button'
               disabled={!previewPath}
-              onClick={() => window.open(previewPath, '_blank', 'noopener')}
+              onClick={() => setPreviewMode('web')}
             >
-              <ExternalLink className='mr-2 h-4 w-4' />
+              <Clock className='mr-2 h-4 w-4' />
               プレビュー
             </Button>
           </div>
@@ -746,9 +751,9 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
               type='button'
               variant='outline'
               disabled={!linePath}
-              onClick={() => window.open(linePath, '_blank', 'noopener')}
+              onClick={() => setPreviewMode('line')}
             >
-              <ExternalLink className='mr-2 h-4 w-4' />
+              <Clock className='mr-2 h-4 w-4' />
               LINE表示
             </Button>
           </div>
@@ -760,6 +765,31 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
           </div>
         )}
       </CardContent>
+
+      <Dialog
+        open={Boolean(previewMode)}
+        onOpenChange={open => {
+          if (!open) setPreviewMode(null);
+        }}
+      >
+        <DialogContent className='max-h-[92vh] max-w-5xl overflow-hidden p-0'>
+          <DialogHeader className='border-b px-5 py-4'>
+            <DialogTitle>{activePreviewTitle}</DialogTitle>
+            <DialogDescription>
+              実際に患者さんへ表示される予約フォームです。
+            </DialogDescription>
+          </DialogHeader>
+          <div className='h-[78vh] bg-gray-50'>
+            {activePreviewPath && (
+              <iframe
+                title={activePreviewTitle}
+                src={activePreviewPath}
+                className='h-full w-full border-0'
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 });
