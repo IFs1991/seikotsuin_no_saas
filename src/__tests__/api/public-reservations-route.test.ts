@@ -100,13 +100,10 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
     },
     resources: {
       select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: { id: VALID_RESOURCE_ID },
-              error: null,
-            }),
-          }),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: VALID_RESOURCE_ID },
+          error: null,
         }),
       }),
     },
@@ -114,7 +111,9 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
       eq: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           lt: jest.fn().mockReturnValue({
-            gt: jest.fn().mockResolvedValue(EMPTY_LIST),
+            gt: jest.fn().mockReturnValue({
+              not: jest.fn().mockResolvedValue(EMPTY_LIST),
+            }),
           }),
         }),
       }),
@@ -159,7 +158,7 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
             id: VALID_RESERVATION_ID,
             start_time: '2026-03-17T10:00:00.000Z',
             end_time: '2026-03-17T11:00:00.000Z',
-            status: 'pending',
+            status: 'unconfirmed',
           },
           error: null,
         }),
@@ -311,7 +310,7 @@ describe('POST /api/public/reservations', () => {
       menu_name: '標準施術',
       start_time: '2026-03-17T10:00:00.000Z',
       end_time: '2026-03-17T11:00:00.000Z',
-      status: 'pending',
+      status: 'unconfirmed',
     });
   });
 
@@ -321,9 +320,11 @@ describe('POST /api/public/reservations', () => {
         eq: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
             lt: jest.fn().mockReturnValue({
-              gt: jest.fn().mockResolvedValue({
-                data: [{ id: VALID_RESERVATION_ID }],
-                error: null,
+              gt: jest.fn().mockReturnValue({
+                not: jest.fn().mockResolvedValue({
+                  data: [{ id: VALID_RESERVATION_ID }],
+                  error: null,
+                }),
               }),
             }),
           }),

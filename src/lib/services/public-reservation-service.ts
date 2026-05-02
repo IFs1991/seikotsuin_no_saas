@@ -186,6 +186,10 @@ export class PublicReservationService {
       .select('id')
       .eq('id', resourceId)
       .eq('clinic_id', this.clinicId)
+      .eq('type', 'staff')
+      .eq('is_active', true)
+      .eq('is_bookable', true)
+      .eq('is_deleted', false)
       .single();
 
     if (error || !data) {
@@ -226,7 +230,8 @@ export class PublicReservationService {
       .eq('clinic_id', this.clinicId)
       .eq('staff_id', resourceId)
       .lt('start_time', endIso)
-      .gt('end_time', startIso);
+      .gt('end_time', startIso)
+      .not('status', 'in', '("cancelled","no_show")');
 
     if (overlapError) {
       throw new Error('Failed to validate reservation slot');
@@ -317,7 +322,7 @@ export class PublicReservationService {
       staff_id: params.resourceId,
       start_time: params.startIso,
       end_time: params.endIso,
-      status: 'pending',
+      status: 'unconfirmed',
       notes: params.notes,
       channel: params.channel,
     };

@@ -1,8 +1,8 @@
 /**
- * GET /api/public/menus
+ * GET /api/public/resources
  *
- * Non-authenticated customer API for viewing menus
- * Uses service role to bypass RLS, with explicit clinic_id validation
+ * Non-authenticated customer API for viewing bookable resources.
+ * Uses service role to bypass RLS, with explicit clinic_id validation.
  *
  * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md - Customer Access Model
  */
@@ -13,21 +13,19 @@ import {
   ClinicNotFoundError,
   ClinicInactiveError,
 } from '@/lib/supabase/scoped-admin';
-import { menusQuerySchema } from '../schema';
+import { resourcesQuerySchema } from '../schema';
 import { PUBLIC_BOOKING_CACHE_HEADERS } from '../cache';
+
+const PUBLIC_RESOURCE_COLUMNS = 'id, name, type, max_concurrent, display_order';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-
-    // Extract query parameters
-    const rawParams = {
+    const parsed = resourcesQuerySchema.safeParse({
       clinic_id: searchParams.get('clinic_id'),
-      category: searchParams.get('category') ?? undefined,
-    };
+      type: searchParams.get('type') ?? undefined,
+    });
 
-    // Validate input
-    const parsed = menusQuerySchema.safeParse(rawParams);
     if (!parsed.success) {
       return NextResponse.json(
         {
@@ -39,9 +37,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { clinic_id, category } = parsed.data;
+    const { clinic_id, type } = parsed.data;
 
-    // Validate clinic exists and is active via scoped admin context
     let clinicCtx;
     try {
       clinicCtx = await createPublicClinicContext(clinic_id);
@@ -61,31 +58,26 @@ export async function GET(request: NextRequest) {
       throw e;
     }
 
-    const { client: supabase, clinic } = clinicCtx;
-
-    // Build menus query with clinic_id scope
-    let query = supabase
-      .from('menus')
-      .select(
-        'id, name, description, price, duration_minutes, category, is_insurance_applicable'
-      )
+    let query = clinicCtx.client
+      .from('resources')
+      .select(PUBLIC_RESOURCE_COLUMNS)
       .eq('clinic_id', clinic_id)
       .eq('is_active', true)
-      .eq('is_public', true)
-      .eq('is_deleted', false)
-      .order('display_order', { ascending: true });
+      .eq('is_bookable', true)
+      .eq('is_deleted', false);
 
-    // Optional category filter
-    if (category) {
-      query = query.eq('category', category);
+    if (type) {
+      query = query.eq('type', type);
     }
 
-    const { data: menus, error: menusError } = await query;
+    const { data: resources, error } = await query.order('display_order', {
+      ascending: true,
+    });
 
-    if (menusError) {
-      console.error('Menus fetch error:', menusError);
+    if (error) {
+      console.error('Public resources fetch error:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch menus' },
+        { success: false, error: 'Failed to fetch resources' },
         { status: 500 }
       );
     }
@@ -95,14 +87,14 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           clinic_id,
-          clinic_name: clinic.name,
-          menus: menus ?? [],
+          clinic_name: clinicCtx.clinic.name,
+          resources: resources ?? [],
         },
       },
       { headers: PUBLIC_BOOKING_CACHE_HEADERS }
     );
   } catch (error) {
-    console.error('Public menus API error:', error);
+    console.error('Public resources API error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

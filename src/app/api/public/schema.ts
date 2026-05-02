@@ -25,6 +25,17 @@ export const menusQuerySchema = z.object({
 export type MenusQueryDTO = z.infer<typeof menusQuerySchema>;
 
 // ================================================================
+// GET /api/public/resources - Public Resource Listing
+// ================================================================
+
+export const resourcesQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+  type: z.enum(['staff', 'room', 'bed', 'device']).optional(),
+});
+
+export type ResourcesQueryDTO = z.infer<typeof resourcesQuerySchema>;
+
+// ================================================================
 // POST /api/public/reservations - Reservation Creation
 // ================================================================
 

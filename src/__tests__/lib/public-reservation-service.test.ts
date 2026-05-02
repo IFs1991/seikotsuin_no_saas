@@ -47,7 +47,10 @@ const validInput = () => ({
  * Creates a chainable mock that simulates Supabase query builder.
  * eq/lt/gt chain into each other, and terminal methods resolve the result.
  */
-function mockChain(result: unknown, terminal: 'single' | 'list' = 'single') {
+function mockChain(
+  result: unknown,
+  terminal: 'single' | 'list' | 'listWithNot' = 'single'
+) {
   if (terminal === 'list') {
     // For queries that return arrays (overlap checks)
     const chain: Record<string, jest.Mock> = {
@@ -58,6 +61,19 @@ function mockChain(result: unknown, terminal: 'single' | 'list' = 'single') {
     chain.eq.mockReturnValue(chain);
     chain.lt.mockReturnValue(chain);
     chain.gt.mockImplementation(() => Promise.resolve(result));
+    return chain;
+  }
+  if (terminal === 'listWithNot') {
+    const chain: Record<string, jest.Mock> = {
+      eq: jest.fn(),
+      lt: jest.fn(),
+      gt: jest.fn(),
+      not: jest.fn(),
+    };
+    chain.eq.mockReturnValue(chain);
+    chain.lt.mockReturnValue(chain);
+    chain.gt.mockReturnValue(chain);
+    chain.not.mockResolvedValue(result);
     return chain;
   }
   // For queries that end with .single()
@@ -103,7 +119,7 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
       ),
     }),
     reservations_overlap: () => ({
-      select: jest.fn().mockReturnValue(mockChain(EMPTY, 'list')),
+      select: jest.fn().mockReturnValue(mockChain(EMPTY, 'listWithNot')),
     }),
     blocks: () => ({
       select: jest.fn().mockReturnValue(mockChain(EMPTY, 'list')),
@@ -131,7 +147,7 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
               id: RESERVATION_ID,
               start_time: '2026-03-17T10:00:00.000Z',
               end_time: '2026-03-17T11:00:00.000Z',
-              status: 'pending',
+              status: 'unconfirmed',
             },
             error: null,
           }),
@@ -237,6 +253,32 @@ describe('PublicReservationService', () => {
       await expect(service.verifyResource(RESOURCE_ID)).resolves.not.toThrow();
     });
 
+    it('公開予約で使えるスタッフリソースだけを検証対象にする', async () => {
+      const single = jest.fn().mockResolvedValue({
+        data: { id: RESOURCE_ID },
+        error: null,
+      });
+      const query = {
+        eq: jest.fn().mockReturnThis(),
+        single,
+      };
+      const client = {
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue(query),
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      await expect(service.verifyResource(RESOURCE_ID)).resolves.not.toThrow();
+
+      expect(query.eq).toHaveBeenCalledWith('id', RESOURCE_ID);
+      expect(query.eq).toHaveBeenCalledWith('clinic_id', CLINIC_ID);
+      expect(query.eq).toHaveBeenCalledWith('type', 'staff');
+      expect(query.eq).toHaveBeenCalledWith('is_active', true);
+      expect(query.eq).toHaveBeenCalledWith('is_bookable', true);
+      expect(query.eq).toHaveBeenCalledWith('is_deleted', false);
+    });
+
     it('リソースが存在しない場合は ResourceNotFoundError を投げる', async () => {
       const client = buildClient({
         resources: () => ({
@@ -265,11 +307,51 @@ describe('PublicReservationService', () => {
       ).resolves.not.toThrow();
     });
 
+    it('キャンセル済みと来院なしは重複チェックから除外する', async () => {
+      const not = jest.fn().mockResolvedValue(EMPTY);
+      const reservationsChain = {
+        eq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        not,
+      };
+      const blocksChain = mockChain(EMPTY, 'list');
+      const client = {
+        from: jest.fn((table: string) => {
+          if (table === 'reservations') {
+            return { select: jest.fn().mockReturnValue(reservationsChain) };
+          }
+          if (table === 'blocks') {
+            return { select: jest.fn().mockReturnValue(blocksChain) };
+          }
+          throw new Error(`Unexpected table: ${table}`);
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      await expect(
+        service.checkSlotAvailability(
+          RESOURCE_ID,
+          '2026-03-17T10:00:00.000Z',
+          '2026-03-17T11:00:00.000Z'
+        )
+      ).resolves.not.toThrow();
+
+      expect(not).toHaveBeenCalledWith(
+        'status',
+        'in',
+        '("cancelled","no_show")'
+      );
+    });
+
     it('重複予約がある場合は SlotConflictError を投げる', async () => {
       const client = buildClient({
         reservations_overlap: () => ({
           select: jest.fn().mockReturnValue(
-            mockChain({ data: [{ id: 'existing' }], error: null }, 'list')
+            mockChain(
+              { data: [{ id: 'existing' }], error: null },
+              'listWithNot'
+            )
           ),
         }),
       });
@@ -387,7 +469,7 @@ describe('PublicReservationService', () => {
                   id: RESERVATION_ID,
                   start_time: '2026-03-17T10:00:00.000Z',
                   end_time: '2026-03-17T11:00:00.000Z',
-                  status: 'pending',
+                  status: 'unconfirmed',
                 },
                 error: null,
               }),
@@ -411,7 +493,7 @@ describe('PublicReservationService', () => {
         id: RESERVATION_ID,
         start_time: '2026-03-17T10:00:00.000Z',
         end_time: '2026-03-17T11:00:00.000Z',
-        status: 'pending',
+        status: 'unconfirmed',
       });
     });
 
