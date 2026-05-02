@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -28,12 +28,17 @@ interface HeaderProps {
   clinics?: readonly ClinicOption[];
   /** クリニック一覧取得中フラグ */
   clinicsLoading?: boolean;
+  /** クリニック一覧取得エラー */
+  clinicsError?: string | null;
+  /** クリニック一覧が空でも所属店舗名を表示するためのフォールバック */
+  fallbackClinic?: ClinicOption | null;
 }
 
 interface ClinicSelectProps {
   selectedClinicId: string | null;
   clinics: readonly ClinicOption[];
   clinicsLoading: boolean;
+  clinicsError?: string | null;
   onClinicChange: (clinicId: string | null) => void;
   className?: string;
 }
@@ -43,6 +48,7 @@ const BASE_CLINIC_SELECT_CLASS =
   'bg-[#2563eb] text-white px-3 py-1 rounded border border-blue-300/40';
 const CLINIC_SELECT_PLACEHOLDER = '操作対象店舗を選択';
 const EMPTY_CLINIC_SELECT_LABEL = '利用可能な店舗なし';
+const CLINIC_SELECT_ERROR_LABEL = '店舗一覧を取得できません';
 const USER_MENU_ITEM_CLASS =
   'block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none';
 const MOBILE_LOGOUT_LINK_CLASS =
@@ -65,17 +71,35 @@ interface AdminMenuLinksProps {
   itemClassName: string;
 }
 
+function buildDisplayClinics(
+  clinics: readonly ClinicOption[],
+  fallbackClinic: ClinicOption | null
+): readonly ClinicOption[] {
+  if (!fallbackClinic) {
+    return clinics;
+  }
+
+  if (clinics.some(clinic => clinic.id === fallbackClinic.id)) {
+    return clinics;
+  }
+
+  return [fallbackClinic, ...clinics];
+}
+
 const ClinicSelect = React.memo(function ClinicSelect({
   selectedClinicId,
   clinics,
   clinicsLoading,
+  clinicsError = null,
   onClinicChange,
   className,
 }: ClinicSelectProps) {
   const hasClinics = clinics.length > 0;
   const placeholderLabel = hasClinics
     ? CLINIC_SELECT_PLACEHOLDER
-    : EMPTY_CLINIC_SELECT_LABEL;
+    : clinicsError
+      ? CLINIC_SELECT_ERROR_LABEL
+      : EMPTY_CLINIC_SELECT_LABEL;
   const selectClassName = `${BASE_CLINIC_SELECT_CLASS}${
     selectedClinicId ? '' : ' ring-2 ring-amber-300/80'
   }${className ? ` ${className}` : ''}`;
@@ -92,10 +116,11 @@ const ClinicSelect = React.memo(function ClinicSelect({
       aria-label='操作対象店舗'
       value={selectedClinicId ?? ''}
       onChange={handleChange}
-      disabled={clinicsLoading || !hasClinics}
+      disabled={!hasClinics}
+      title={clinicsError ?? undefined}
       className={selectClassName}
     >
-      {clinicsLoading ? (
+      {clinicsLoading && !hasClinics ? (
         <option value=''>読み込み中...</option>
       ) : (
         <>
@@ -177,6 +202,8 @@ export const Header = React.memo(function Header({
   notificationCount,
   clinics = EMPTY_CLINICS,
   clinicsLoading = false,
+  clinicsError = null,
+  fallbackClinic = null,
 }: HeaderProps) {
   const router = useRouter();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -274,6 +301,10 @@ export const Header = React.memo(function Header({
   const badgeLabel =
     effectiveNotificationCount >= 100 ? '99+' : effectiveNotificationCount;
   const logoutHref = isAdmin ? '/admin/logout' : '/logout';
+  const displayClinics = useMemo(
+    () => buildDisplayClinics(clinics, fallbackClinic),
+    [clinics, fallbackClinic]
+  );
 
   return (
     <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-[#1e3a8a] text-white flex items-center justify-between'>
@@ -313,8 +344,9 @@ export const Header = React.memo(function Header({
       <div className='hidden md:flex items-center space-x-6 relative'>
         <ClinicSelect
           selectedClinicId={selectedClinicId}
-          clinics={clinics}
+          clinics={displayClinics}
           clinicsLoading={clinicsLoading}
+          clinicsError={clinicsError}
           onClinicChange={handleClinicChange}
         />
 
@@ -429,8 +461,9 @@ export const Header = React.memo(function Header({
           <div className='absolute top-16 right-4 bg-[#1e3a8a] p-4 rounded shadow-lg md:hidden w-60 space-y-3 z-50'>
             <ClinicSelect
               selectedClinicId={selectedClinicId}
-              clinics={clinics}
+              clinics={displayClinics}
               clinicsLoading={clinicsLoading}
+              clinicsError={clinicsError}
               onClinicChange={handleClinicChange}
               className='w-full'
             />

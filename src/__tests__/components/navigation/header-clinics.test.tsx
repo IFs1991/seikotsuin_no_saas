@@ -10,6 +10,7 @@
  * [x] ハードコードされた店舗名が表示されない
  * [x] 選択変更で Context の setSelectedClinicId が呼ばれる（統合）
  * [x] 複数店舗かつ未選択では操作対象店舗の明示選択を促す
+ * [x] 店舗一覧が空でも所属店舗名をフォールバック表示する
  */
 
 import React from 'react';
@@ -121,6 +122,55 @@ describe('Header クリニック選択', () => {
       screen.getByRole('option', { name: '利用可能な店舗なし' })
     ).toBeInTheDocument();
     expect(selects[0]).toBeDisabled();
+  });
+
+  it('店舗一覧が空でも所属店舗名をフォールバック表示する', () => {
+    renderWithProvider(
+      {
+        clinics: [],
+        fallbackClinic: { id: 'clinic-1', name: '健康堂整骨院' },
+      },
+      'clinic-1'
+    );
+
+    const selects = screen.getAllByRole('combobox', {
+      name: '操作対象店舗',
+    });
+    expect(
+      screen.getByRole('option', { name: '健康堂整骨院' })
+    ).toBeInTheDocument();
+    expect(selects[0]).not.toBeDisabled();
+    expect((selects[0] as HTMLSelectElement).value).toBe('clinic-1');
+  });
+
+  it('店舗一覧ロード中でも所属店舗名を優先表示する', () => {
+    renderWithProvider(
+      {
+        clinics: [],
+        clinicsLoading: true,
+        fallbackClinic: { id: 'clinic-1', name: '健康堂整骨院' },
+      },
+      'clinic-1'
+    );
+
+    expect(
+      screen.getByRole('option', { name: '健康堂整骨院' })
+    ).toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
+  });
+
+  it('店舗一覧取得エラー時は原因が分かる文言を表示する', () => {
+    renderWithProvider(
+      {
+        clinics: [],
+        clinicsError: 'ネットワークエラー',
+      },
+      null
+    );
+
+    expect(
+      screen.getByRole('option', { name: '店舗一覧を取得できません' })
+    ).toBeInTheDocument();
   });
 
   // Context 統合: 選択変更でコンテキストが更新される（子コンポーネントで確認）

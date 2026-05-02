@@ -3,6 +3,7 @@ export interface UserProfile {
   email: string | null;
   role: string | null;
   clinicId: string | null;
+  clinicName: string | null;
   isActive: boolean;
   isAdmin: boolean;
 }

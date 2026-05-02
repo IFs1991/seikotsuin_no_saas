@@ -62,6 +62,7 @@ const buildProfileFromUser = (user: User): UserProfile => {
     email: user.email ?? null,
     role,
     clinicId,
+    clinicName: null,
     isActive: true,
     isAdmin: role ? ADMIN_ROLES.has(role as Role) : false,
   };

@@ -16,6 +16,20 @@ import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
 
 const DARK_CLASS = 'dark';
 
+function buildFallbackClinic(
+  clinicId: string | null,
+  clinicName: string | null
+) {
+  if (!clinicId || !clinicName) {
+    return null;
+  }
+
+  return {
+    id: clinicId,
+    name: clinicName,
+  };
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
@@ -100,6 +114,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }),
     [clinics, currentClinicId, profileClinicId]
   );
+  const fallbackClinic = React.useMemo(
+    () =>
+      buildFallbackClinic(
+        profile?.clinicId ?? null,
+        profile?.clinicName ?? null
+      ),
+    [profile?.clinicId, profile?.clinicName]
+  );
   const shouldShowLegalFooter = !pathname.startsWith('/reservations');
 
   return (
@@ -128,6 +150,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isAdmin={canAccessAdminNavigation}
               clinics={clinics}
               clinicsLoading={clinicsLoading}
+              clinicsError={clinicsError}
+              fallbackClinic={fallbackClinic}
             />
 
             <div className='flex pt-16'>
