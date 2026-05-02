@@ -34,9 +34,11 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Copy,
   Clock,
   CopyPlus,
   Edit,
+  ExternalLink,
   Loader2,
   Plus,
   RefreshCw,
@@ -218,6 +220,13 @@ const templateToForm = (template: MenuTemplate): MenuFormState => ({
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
+
+const buildBookingPreviewPath = (clinicId: string, channel?: 'line') => {
+  const encodedClinicId = encodeURIComponent(clinicId);
+  return channel
+    ? `/booking/${encodedClinicId}?channel=${channel}`
+    : `/booking/${encodedClinicId}`;
+};
 
 async function readApiResponse<T>(
   response: Response,
@@ -622,6 +631,136 @@ const MenuEditDialog = memo(function MenuEditDialog({
         />
       </DialogContent>
     </Dialog>
+  );
+});
+
+interface BookingPreviewCardProps {
+  clinicId: string | null;
+}
+
+const BookingPreviewCard = memo(function BookingPreviewCard({
+  clinicId,
+}: BookingPreviewCardProps) {
+  const [origin, setOrigin] = useState('');
+  const [copyMessage, setCopyMessage] = useState('');
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const previewPath = useMemo(
+    () => (clinicId ? buildBookingPreviewPath(clinicId) : ''),
+    [clinicId]
+  );
+
+  const linePath = useMemo(
+    () => (clinicId ? buildBookingPreviewPath(clinicId, 'line') : ''),
+    [clinicId]
+  );
+
+  const previewUrl = origin && previewPath ? `${origin}${previewPath}` : '';
+  const lineUrl = origin && linePath ? `${origin}${linePath}` : '';
+
+  const handleCopy = useCallback(async (url: string, label: string) => {
+    if (!url) return;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyMessage(`${label}をコピーしました`);
+    } catch {
+      setCopyMessage('コピーできませんでした。URLを開いて確認してください');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!copyMessage) return;
+
+    const timeoutId = window.setTimeout(() => setCopyMessage(''), 2500);
+    return () => window.clearTimeout(timeoutId);
+  }, [copyMessage]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+          <div>
+            <CardTitle className='text-lg'>予約フォームプレビュー</CardTitle>
+            <CardDescription>
+              患者さんに公開される予約フォームを現在の院で確認できます
+            </CardDescription>
+          </div>
+          <Badge variant={clinicId ? 'default' : 'secondary'}>
+            {clinicId ? '公開URL生成済み' : '院未選択'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className='space-y-4'>
+        <div className='grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center'>
+          <div className='min-w-0 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'>
+            <div className='text-xs font-medium text-gray-500'>Web予約URL</div>
+            <div className='mt-1 truncate font-mono'>
+              {previewUrl || '対象クリニックを選択してください'}
+            </div>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={!previewUrl}
+              onClick={() => handleCopy(previewUrl, 'Web予約URL')}
+            >
+              <Copy className='mr-2 h-4 w-4' />
+              コピー
+            </Button>
+            <Button
+              type='button'
+              disabled={!previewPath}
+              onClick={() => window.open(previewPath, '_blank', 'noopener')}
+            >
+              <ExternalLink className='mr-2 h-4 w-4' />
+              プレビュー
+            </Button>
+          </div>
+        </div>
+
+        <div className='grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center'>
+          <div className='min-w-0 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'>
+            <div className='text-xs font-medium text-gray-500'>
+              LINE導線用URL
+            </div>
+            <div className='mt-1 truncate font-mono'>
+              {lineUrl || '対象クリニックを選択してください'}
+            </div>
+          </div>
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={!lineUrl}
+              onClick={() => handleCopy(lineUrl, 'LINE導線用URL')}
+            >
+              <Copy className='mr-2 h-4 w-4' />
+              コピー
+            </Button>
+            <Button
+              type='button'
+              variant='outline'
+              disabled={!linePath}
+              onClick={() => window.open(linePath, '_blank', 'noopener')}
+            >
+              <ExternalLink className='mr-2 h-4 w-4' />
+              LINE表示
+            </Button>
+          </div>
+        </div>
+
+        {copyMessage && (
+          <div className='text-sm font-medium text-green-700'>
+            {copyMessage}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 });
 
@@ -1070,6 +1209,8 @@ export function ServicesPricingSettings() {
       {!clinicId && (
         <AdminMessage message='対象クリニックを選択してください' type='error' />
       )}
+
+      <BookingPreviewCard clinicId={clinicId} />
 
       <Card>
         <CardHeader>
