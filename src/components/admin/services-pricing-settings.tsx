@@ -10,6 +10,7 @@ import {
   type FormEvent,
   type SetStateAction,
 } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -47,7 +48,6 @@ import {
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Menu } from '@/types/reservation';
-import { PublicBookingForm } from '@/app/(public)/booking/[clinic_id]/page';
 import { AdminMessage } from './AdminMessage';
 
 type MenuCategory = 'treatment' | 'massage' | 'rehabilitation' | 'other';
@@ -127,6 +127,22 @@ const EMPTY_FORM: MenuFormState = {
 };
 
 const EMPTY_TEMPLATES: MenuTemplate[] = [];
+
+const PublicBookingFormPreview = dynamic(
+  () =>
+    import('@/app/(public)/booking/[clinic_id]/page').then(
+      module => module.PublicBookingForm
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className='flex h-full items-center justify-center text-sm text-gray-600'>
+        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+        予約フォームを読み込み中...
+      </div>
+    ),
+  }
+);
 
 const upsertById = <T extends { id: string }>(items: T[], item: T): T[] => {
   const index = items.findIndex(current => current.id === item.id);
@@ -781,8 +797,8 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
             </DialogDescription>
           </DialogHeader>
           <div className='h-[78vh] overflow-y-auto bg-gray-50'>
-            {clinicId && (
-              <PublicBookingForm
+            {previewMode && clinicId && (
+              <PublicBookingFormPreview
                 clinicId={clinicId}
                 channel={activePreviewChannel}
                 embedded

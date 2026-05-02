@@ -3,9 +3,10 @@ import {
   ERROR_CODES,
   normalizeSupabaseError,
 } from '@/lib/error-handler';
+import type { SupabaseServerClient } from '@/lib/supabase';
 
 type SupabaseLike = {
-  from: (table: string) => any;
+  from: SupabaseServerClient['from'];
 };
 
 interface ClinicRow {

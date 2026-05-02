@@ -22,6 +22,8 @@ import {
 
 const PATH = '/api/menu-templates';
 const TEMPLATE_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
+const TEMPLATE_RESPONSE_COLUMNS =
+  'id, owner_clinic_id, name, description, category, price, duration_minutes, is_insurance_applicable, options, is_active, display_order';
 
 function createTemplateScopedClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
@@ -29,7 +31,7 @@ function createTemplateScopedClient(
 ) {
   const scopedAdmin = createScopedAdminContext(permissions);
   scopedAdmin.assertClinicInScope(clinicId);
-  return scopedAdmin.client as any;
+  return scopedAdmin.client;
 }
 
 export async function GET(request: NextRequest) {
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
     );
     const { data, error } = await supabase
       .from('menu_templates')
-      .select('*')
+      .select(TEMPLATE_RESPONSE_COLUMNS)
       .eq('owner_clinic_id', ownerScope.ownerClinicId)
       .eq('is_deleted', false)
       .order('display_order', { ascending: true });
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('menu_templates')
       .insert(insertPayload)
-      .select()
+      .select(TEMPLATE_RESPONSE_COLUMNS)
       .single();
 
     if (error) throw normalizeSupabaseError(error, PATH);
@@ -150,7 +152,7 @@ export async function PATCH(request: NextRequest) {
       .eq('id', parsed.data.id)
       .eq('owner_clinic_id', parsed.data.owner_clinic_id)
       .eq('is_deleted', false)
-      .select()
+      .select(TEMPLATE_RESPONSE_COLUMNS)
       .single();
 
     if (error) throw normalizeSupabaseError(error, PATH);

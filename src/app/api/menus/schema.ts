@@ -1,14 +1,15 @@
 import { z } from 'zod';
 import type { Database } from '@/types/supabase';
 import type { Menu } from '@/types/reservation';
+import {
+  mapMenuOptionsToJson,
+  menuOptionsSchema,
+  normalizeMenuOptions,
+} from '@/app/api/menu-options';
 
-const optionSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1).max(100),
-  priceDelta: z.number().default(0),
-  durationDeltaMinutes: z.number().default(0),
-  isActive: z.boolean().default(true),
-});
+type MenuInsertRow = Database['public']['Tables']['menus']['Insert'];
+type MenuUpdateRow = Database['public']['Tables']['menus']['Update'];
+type MenuDbRow = Database['public']['Tables']['menus']['Row'];
 
 export const menusQuerySchema = z.object({
   clinic_id: z.string().uuid(),
@@ -24,7 +25,7 @@ export const menuInsertSchema = z
     durationMinutes: z.number().int().min(1),
     isInsuranceApplicable: z.boolean().optional(),
     isActive: z.boolean().default(true),
-    options: z.array(optionSchema).optional(),
+    options: menuOptionsSchema.optional(),
   })
   .strict();
 export type MenuInsertDTO = z.infer<typeof menuInsertSchema>;
@@ -40,28 +41,29 @@ export const menuUpdateSchema = z
     durationMinutes: z.number().int().min(1).optional(),
     isInsuranceApplicable: z.boolean().optional(),
     isActive: z.boolean().optional(),
-    options: z.array(optionSchema).optional(),
+    options: menuOptionsSchema.optional(),
   })
   .strict();
 export type MenuUpdateDTO = z.infer<typeof menuUpdateSchema>;
 
-export interface MenuRow {
-  id: string;
-  clinic_id?: string | null;
-  name: string;
-  duration_minutes: number;
-  price: number | string;
-  description?: string | null;
-  category?: string | null;
-  is_insurance_applicable?: boolean | null;
-  is_active?: boolean | null;
-  options?: unknown;
-}
+export type MenuRow = Pick<
+  MenuDbRow,
+  | 'id'
+  | 'clinic_id'
+  | 'name'
+  | 'duration_minutes'
+  | 'price'
+  | 'description'
+  | 'category'
+  | 'is_insurance_applicable'
+  | 'is_active'
+  | 'options'
+>;
 
 export function mapMenuInsertToRow(
   dto: MenuInsertDTO,
   userId: string
-): Database['public']['Tables']['menus']['Insert'] {
+): MenuInsertRow {
   return {
     clinic_id: dto.clinic_id,
     name: dto.name,
@@ -71,15 +73,13 @@ export function mapMenuInsertToRow(
     duration_minutes: dto.durationMinutes,
     is_insurance_applicable: dto.isInsuranceApplicable ?? false,
     is_active: dto.isActive,
-    options: dto.options ?? [],
+    options: mapMenuOptionsToJson(dto.options),
     created_by: userId,
-  } as any;
+  };
 }
 
-export function mapMenuUpdateToRow(
-  dto: MenuUpdateDTO
-): Database['public']['Tables']['menus']['Update'] {
-  const row: Record<string, unknown> = {};
+export function mapMenuUpdateToRow(dto: MenuUpdateDTO): MenuUpdateRow {
+  const row: MenuUpdateRow = {};
 
   if (dto.name !== undefined) row.name = dto.name;
   if (dto.description !== undefined) row.description = dto.description || null;
@@ -91,9 +91,11 @@ export function mapMenuUpdateToRow(
     row.is_insurance_applicable = dto.isInsuranceApplicable;
   }
   if (dto.isActive !== undefined) row.is_active = dto.isActive;
-  if (dto.options !== undefined) row.options = dto.options;
+  if (dto.options !== undefined) {
+    row.options = mapMenuOptionsToJson(dto.options);
+  }
 
-  return row as any;
+  return row;
 }
 
 export function mapMenuRowToApi(row: MenuRow): Menu {
@@ -107,6 +109,6 @@ export function mapMenuRowToApi(row: MenuRow): Menu {
     category: row.category ?? undefined,
     isInsuranceApplicable: row.is_insurance_applicable ?? false,
     isActive: row.is_active ?? true,
-    options: Array.isArray(row.options) ? row.options : [],
+    options: normalizeMenuOptions(row.options),
   };
 }

@@ -354,6 +354,23 @@ describe('POST /api/public/reservations', () => {
     expect(data.error).toBe('Validation error');
   });
 
+  it('開始時間が30分刻みではない場合は 400 を返す', async () => {
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        start_time: '2026-03-17T10:15',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe('Validation error');
+    expect(data.details.fieldErrors.start_time).toContain(
+      'start_time must be on a 30-minute boundary'
+    );
+  });
+
   it('不正なJSONの場合は 400 を返す', async () => {
     const badRequest = {
       json: async () => {

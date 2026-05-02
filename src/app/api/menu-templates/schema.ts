@@ -1,13 +1,18 @@
 import { z } from 'zod';
 import type { Database } from '@/types/supabase';
+import type { MenuOption } from '@/types/reservation';
+import {
+  mapMenuOptionsToJson,
+  menuOptionsSchema,
+  normalizeMenuOptions,
+} from '@/app/api/menu-options';
 
-const optionSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1).max(100),
-  priceDelta: z.number().default(0),
-  durationDeltaMinutes: z.number().default(0),
-  isActive: z.boolean().default(true),
-});
+type MenuInsertRow = Database['public']['Tables']['menus']['Insert'];
+type MenuTemplateInsertRow =
+  Database['public']['Tables']['menu_templates']['Insert'];
+type MenuTemplateUpdateRow =
+  Database['public']['Tables']['menu_templates']['Update'];
+type MenuTemplateDbRow = Database['public']['Tables']['menu_templates']['Row'];
 
 export const menuTemplatesQuerySchema = z.object({
   clinic_id: z.string().uuid(),
@@ -37,7 +42,7 @@ export const menuTemplateInsertSchema = z
     isInsuranceApplicable: z.boolean().optional(),
     isActive: z.boolean().default(true),
     displayOrder: z.number().int().optional(),
-    options: z.array(optionSchema).optional(),
+    options: menuOptionsSchema.optional(),
   })
   .strict();
 export type MenuTemplateInsertDTO = z.infer<typeof menuTemplateInsertSchema>;
@@ -54,24 +59,25 @@ export const menuTemplateUpdateSchema = z
     isInsuranceApplicable: z.boolean().optional(),
     isActive: z.boolean().optional(),
     displayOrder: z.number().int().optional(),
-    options: z.array(optionSchema).optional(),
+    options: menuOptionsSchema.optional(),
   })
   .strict();
 export type MenuTemplateUpdateDTO = z.infer<typeof menuTemplateUpdateSchema>;
 
-export interface MenuTemplateRow {
-  id: string;
-  owner_clinic_id: string;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  price: number | string;
-  duration_minutes: number;
-  is_insurance_applicable?: boolean | null;
-  options?: unknown;
-  is_active?: boolean | null;
-  display_order?: number | null;
-}
+export type MenuTemplateRow = Pick<
+  MenuTemplateDbRow,
+  | 'id'
+  | 'owner_clinic_id'
+  | 'name'
+  | 'description'
+  | 'category'
+  | 'price'
+  | 'duration_minutes'
+  | 'is_insurance_applicable'
+  | 'options'
+  | 'is_active'
+  | 'display_order'
+>;
 
 export interface MenuTemplateApi {
   id: string;
@@ -82,7 +88,7 @@ export interface MenuTemplateApi {
   price: number;
   durationMinutes: number;
   isInsuranceApplicable: boolean;
-  options: unknown[];
+  options: MenuOption[];
   isActive: boolean;
   displayOrder: number;
 }
@@ -90,7 +96,7 @@ export interface MenuTemplateApi {
 export function mapMenuTemplateInsertToRow(
   dto: MenuTemplateInsertDTO,
   userId: string
-) {
+): MenuTemplateInsertRow {
   return {
     owner_clinic_id: dto.owner_clinic_id,
     name: dto.name,
@@ -101,13 +107,15 @@ export function mapMenuTemplateInsertToRow(
     is_insurance_applicable: dto.isInsuranceApplicable ?? false,
     is_active: dto.isActive,
     display_order: dto.displayOrder ?? 0,
-    options: dto.options ?? [],
+    options: mapMenuOptionsToJson(dto.options),
     created_by: userId,
   };
 }
 
-export function mapMenuTemplateUpdateToRow(dto: MenuTemplateUpdateDTO) {
-  const row: Record<string, unknown> = {};
+export function mapMenuTemplateUpdateToRow(
+  dto: MenuTemplateUpdateDTO
+): MenuTemplateUpdateRow {
+  const row: MenuTemplateUpdateRow = {};
 
   if (dto.name !== undefined) row.name = dto.name;
   if (dto.description !== undefined) row.description = dto.description || null;
@@ -121,7 +129,9 @@ export function mapMenuTemplateUpdateToRow(dto: MenuTemplateUpdateDTO) {
   }
   if (dto.isActive !== undefined) row.is_active = dto.isActive;
   if (dto.displayOrder !== undefined) row.display_order = dto.displayOrder;
-  if (dto.options !== undefined) row.options = dto.options;
+  if (dto.options !== undefined) {
+    row.options = mapMenuOptionsToJson(dto.options);
+  }
 
   return row;
 }
@@ -136,7 +146,7 @@ export function mapMenuTemplateRowToApi(row: MenuTemplateRow): MenuTemplateApi {
     price: Number(row.price),
     durationMinutes: row.duration_minutes,
     isInsuranceApplicable: row.is_insurance_applicable ?? false,
-    options: Array.isArray(row.options) ? row.options : [],
+    options: normalizeMenuOptions(row.options),
     isActive: row.is_active ?? true,
     displayOrder: row.display_order ?? 0,
   };
@@ -146,7 +156,7 @@ export function mapTemplateToMenuInsertRow(
   template: MenuTemplateRow,
   targetClinicId: string,
   userId: string
-): Database['public']['Tables']['menus']['Insert'] {
+): MenuInsertRow {
   return {
     clinic_id: targetClinicId,
     name: template.name,
@@ -157,7 +167,7 @@ export function mapTemplateToMenuInsertRow(
     is_insurance_applicable: template.is_insurance_applicable ?? false,
     is_active: true,
     display_order: template.display_order ?? 0,
-    options: Array.isArray(template.options) ? template.options : [],
+    options: mapMenuOptionsToJson(template.options),
     created_by: userId,
-  } as any;
+  };
 }

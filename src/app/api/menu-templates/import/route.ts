@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const dto = result.dto;
     const scopedAdmin = createScopedAdminContext(result.permissions);
     scopedAdmin.assertClinicInScope(dto.clinic_id);
-    const supabase = scopedAdmin.client as any;
+    const supabase = scopedAdmin.client;
     const ownerScope = await resolveTemplateOwnerScope(
       supabase,
       dto.clinic_id,

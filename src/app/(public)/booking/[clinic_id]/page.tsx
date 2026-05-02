@@ -63,6 +63,29 @@ const fieldClassName = 'min-h-12 text-base';
 const selectClassName =
   'min-h-12 w-full rounded-md border border-input bg-background px-3 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2';
 const labelClassName = 'space-y-2 text-sm font-semibold text-slate-800';
+const BOOKING_SLOT_INTERVAL_MINUTES = 30;
+const BOOKING_SLOT_START_MINUTES = 9 * 60;
+const BOOKING_SLOT_END_MINUTES = 20 * 60 + 30;
+
+const formatMinutesAsTime = (totalMinutes: number) => {
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+};
+
+const TIME_SLOT_OPTIONS = Array.from(
+  {
+    length:
+      Math.floor(
+        (BOOKING_SLOT_END_MINUTES - BOOKING_SLOT_START_MINUTES) /
+          BOOKING_SLOT_INTERVAL_MINUTES
+      ) + 1,
+  },
+  (_, index) =>
+    formatMinutesAsTime(
+      BOOKING_SLOT_START_MINUTES + index * BOOKING_SLOT_INTERVAL_MINUTES
+    )
+);
 
 async function fetchJson<T>(url: string, signal: AbortSignal): Promise<T> {
   const response = await fetch(url, {
@@ -520,14 +543,18 @@ export function PublicBookingForm({
                     <Clock className='h-4 w-4' />
                     時間
                   </span>
-                  <Input
-                    className={fieldClassName}
-                    type='time'
-                    step={300}
+                  <select
+                    className={selectClassName}
                     value={formData.time}
                     onChange={event => handleChange('time', event.target.value)}
                     required
-                  />
+                  >
+                    {TIME_SLOT_OPTIONS.map(time => (
+                      <option key={time} value={time}>
+                        {time}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 

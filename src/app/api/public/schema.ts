@@ -39,6 +39,11 @@ export type ResourcesQueryDTO = z.infer<typeof resourcesQuerySchema>;
 // POST /api/public/reservations - Reservation Creation
 // ================================================================
 
+const isThirtyMinuteBoundary = (value: string) => {
+  const match = value.match(/T\d{2}:(\d{2})/);
+  return match ? match[1] === '00' || match[1] === '30' : false;
+};
+
 export const reservationCreateSchema = z.object({
   clinic_id: clinicIdSchema,
   customer_name: z
@@ -59,6 +64,10 @@ export const reservationCreateSchema = z.object({
     .regex(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
       'start_time must be ISO 8601 format'
+    )
+    .refine(
+      isThirtyMinuteBoundary,
+      'start_time must be on a 30-minute boundary'
     ),
   notes: z
     .string()
