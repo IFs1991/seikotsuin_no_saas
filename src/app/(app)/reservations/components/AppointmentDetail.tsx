@@ -49,6 +49,7 @@ interface Props {
     updatedAppointment: Appointment
   ) => Promise<AppointmentUpdateResult>;
   onCancelAppointment?: (id: string) => Promise<AppointmentUpdateResult>;
+  readOnly?: boolean;
 }
 
 export const AppointmentDetail: React.FC<Props> = ({
@@ -60,6 +61,7 @@ export const AppointmentDetail: React.FC<Props> = ({
   onClose,
   onUpdate,
   onCancelAppointment,
+  readOnly = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
@@ -152,6 +154,11 @@ export const AppointmentDetail: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
+    if (readOnly) {
+      setErrorMessage('他院の予約は閲覧専用です。');
+      return;
+    }
+
     setErrorMessage(null);
     const title =
       formData.lastName && formData.firstName
@@ -182,7 +189,7 @@ export const AppointmentDetail: React.FC<Props> = ({
     appointment.status === 'cancelled' || appointment.status === 'no_show';
 
   const handleCancelReservation = async () => {
-    if (!onCancelAppointment || isAlreadyCancelled) return;
+    if (readOnly || !onCancelAppointment || isAlreadyCancelled) return;
 
     const confirmed = window.confirm('この予約を取消しますか？');
     if (!confirmed) return;
@@ -199,7 +206,7 @@ export const AppointmentDetail: React.FC<Props> = ({
   const handleStatusUpdate = async (
     nextStatus: NonNullable<Appointment['status']>
   ) => {
-    if (appointment.status === nextStatus || updatingStatus) return;
+    if (readOnly || appointment.status === nextStatus || updatingStatus) return;
 
     setErrorMessage(null);
     setUpdatingStatus(nextStatus);
@@ -307,6 +314,11 @@ export const AppointmentDetail: React.FC<Props> = ({
               {errorMessage}
             </div>
           )}
+          {readOnly && (
+            <div className='mb-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700'>
+              他院の予約は閲覧専用です。
+            </div>
+          )}
           {isEditing ? (
             <AppointmentEditForm
               formData={formData}
@@ -322,10 +334,10 @@ export const AppointmentDetail: React.FC<Props> = ({
               resources={resources}
               menus={menus}
               options={options}
-              onEdit={() => setIsEditing(true)}
+              onEdit={readOnly ? undefined : () => setIsEditing(true)}
             />
           )}
-          {!isEditing && (
+          {!isEditing && !readOnly && (
             <div className='mt-5 border-t border-gray-100 pt-4'>
               <div className='mb-2 text-xs font-bold text-gray-500'>
                 来院ステータス
@@ -384,13 +396,13 @@ export const AppointmentDetail: React.FC<Props> = ({
                 <button
                   type='button'
                   onClick={handleToggleHistory}
-                  disabled={!appointment.customerId || !clinicId}
+                  disabled={readOnly || !appointment.customerId || !clinicId}
                   className='inline-flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-gray-400'
                 >
                   <History className='h-4 w-4' />
                   予約履歴
                 </button>
-                {appointment.customerId ? (
+                {appointment.customerId && !readOnly ? (
                   <Link
                     href={`/patients/${appointment.customerId}`}
                     className='text-xs font-bold text-gray-600 hover:text-sky-700 hover:underline'
@@ -404,12 +416,14 @@ export const AppointmentDetail: React.FC<Props> = ({
                 )}
               </div>
               <div className='flex gap-2'>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className='px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center gap-1'
-                >
-                  <Edit className='w-4 h-4' /> 編集
-                </button>
+                {!readOnly && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className='px-4 py-2 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 flex items-center gap-1'
+                  >
+                    <Edit className='w-4 h-4' /> 編集
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   className='px-4 py-2 bg-gray-600 border border-transparent rounded-md text-sm font-bold text-white shadow-sm hover:bg-gray-700'

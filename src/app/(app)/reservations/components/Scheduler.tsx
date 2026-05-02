@@ -38,6 +38,7 @@ interface Props {
   ) => Promise<AppointmentUpdateResult>;
   onMoveError?: (message: string) => void;
   density: AppointmentDensity;
+  readOnly?: boolean;
 }
 
 const SchedulerComponent: React.FC<Props> = ({
@@ -49,6 +50,7 @@ const SchedulerComponent: React.FC<Props> = ({
   onAppointmentMove,
   onMoveError,
   density,
+  readOnly = false,
 }) => {
   const [now, setNow] = useState(new Date());
   const appointmentsByResource = useMemo(
@@ -81,6 +83,8 @@ const SchedulerComponent: React.FC<Props> = ({
   }
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (readOnly) return;
+
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
@@ -89,6 +93,8 @@ const SchedulerComponent: React.FC<Props> = ({
     e: React.DragEvent<HTMLDivElement>,
     targetResourceId: string
   ) => {
+    if (readOnly) return;
+
     e.preventDefault();
     const data = e.dataTransfer.getData('application/json');
 
@@ -150,8 +156,8 @@ const SchedulerComponent: React.FC<Props> = ({
         newStartHour,
         newStartMinute
       );
-    } catch (err) {
-      console.error('Failed to parse drag data', err);
+    } catch {
+      onMoveError?.('予約移動データを読み取れませんでした。');
     }
   };
 
@@ -159,6 +165,8 @@ const SchedulerComponent: React.FC<Props> = ({
     e: React.MouseEvent<HTMLDivElement>,
     resourceId: string
   ) => {
+    if (readOnly) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
 
@@ -166,6 +174,18 @@ const SchedulerComponent: React.FC<Props> = ({
     const { hour, minute } = calculateTimeFromX(x, CLICK_SNAP_MINUTES);
 
     onTimeSlotClick(resourceId, hour, minute);
+  };
+
+  const handleSlotKeyDown = (
+    e: React.KeyboardEvent<HTMLDivElement>,
+    resourceId: string
+  ) => {
+    if (readOnly || (e.key !== 'Enter' && e.key !== ' ')) {
+      return;
+    }
+
+    e.preventDefault();
+    onTimeSlotClick(resourceId, GRID_START_HOUR, 0);
   };
 
   return (
@@ -248,10 +268,15 @@ const SchedulerComponent: React.FC<Props> = ({
 
                 {/* Timeline Area */}
                 <div
-                  className='relative flex bg-white cursor-pointer transition-colors'
+                  role='button'
+                  tabIndex={readOnly ? -1 : 0}
+                  className={`relative flex bg-white transition-colors ${
+                    readOnly ? 'cursor-default' : 'cursor-pointer'
+                  }`}
                   onDragOver={handleDragOver}
                   onDrop={e => handleDrop(e, resource.id)}
                   onClick={e => handleSlotClick(e, resource.id)}
+                  onKeyDown={e => handleSlotKeyDown(e, resource.id)}
                 >
                   {/* Grid Lines */}
                   {timeSlots.map(slot => (
@@ -274,6 +299,7 @@ const SchedulerComponent: React.FC<Props> = ({
                         startHourOfGrid={GRID_START_HOUR}
                         onClick={onAppointmentClick}
                         density={density}
+                        draggable={!readOnly}
                       />
                     ))}
                   </div>

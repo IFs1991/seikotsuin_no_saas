@@ -22,6 +22,20 @@ type CustomAttributeField = {
   placeholder?: string;
 };
 
+type AppointmentFormState = {
+  resourceId: string;
+  lastName: string;
+  firstName: string;
+  date: string;
+  startHour: number;
+  startMinute: number;
+  menuId: string;
+  optionId: string;
+  phone: string;
+  type: 'normal';
+  customAttributes: Record<string, string>;
+};
+
 const CUSTOM_ATTR_TEMPLATE: CustomAttributeField[] = [
   {
     key: 'symptom',
@@ -76,7 +90,7 @@ export const AppointmentForm: React.FC<Props> = ({
   // Today's date YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AppointmentFormState>({
     resourceId: initialData?.resourceId || resources[0]?.id || '',
     lastName: '',
     firstName: '',
@@ -293,7 +307,10 @@ export const AppointmentForm: React.FC<Props> = ({
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = <K extends keyof AppointmentFormState>(
+    field: K,
+    value: AppointmentFormState[K]
+  ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

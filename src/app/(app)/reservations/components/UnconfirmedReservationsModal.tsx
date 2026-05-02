@@ -13,6 +13,7 @@ interface Props {
   menus: MenuItem[];
   onClose: () => void;
   onConfirm: (appointment: Appointment) => Promise<AppointmentUpdateResult>;
+  canConfirm?: boolean;
 }
 
 export const UnconfirmedReservationsModal: React.FC<Props> = ({
@@ -21,6 +22,7 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
   menus,
   onClose,
   onConfirm,
+  canConfirm = true,
 }) => {
   // Local state to simulate list reducing as user confirms
   const [list, setList] = useState(initialAppointments);
@@ -55,7 +57,9 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
   return (
     <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
       {/* Backdrop */}
-      <div
+      <button
+        type='button'
+        aria-label='未確認予約モーダルを閉じる'
         className='absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity'
         onClick={onClose}
       />
@@ -81,6 +85,11 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
           {errorMessage && (
             <div className='px-6 py-3 text-sm text-red-700 bg-red-50 border-b border-red-100'>
               {errorMessage}
+            </div>
+          )}
+          {!canConfirm && (
+            <div className='px-6 py-3 text-sm text-sky-700 bg-sky-50 border-b border-sky-100'>
+              他院の予約は閲覧専用です。
             </div>
           )}
           {list.length === 0 ? (
@@ -135,6 +144,7 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
                     <div className='flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4'>
                       <button
                         onClick={() => handleConfirm(appt)}
+                        disabled={!canConfirm}
                         className='flex-1 sm:flex-none px-4 py-2 bg-sky-600 text-white text-sm font-bold rounded shadow-sm hover:bg-sky-700 flex items-center justify-center gap-1 min-w-[100px]'
                       >
                         <Check className='w-4 h-4' />

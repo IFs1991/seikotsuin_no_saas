@@ -28,6 +28,12 @@ import { useReservationFormData } from '@/hooks/useReservationFormData';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { Loader2 } from 'lucide-react';
+import {
+  canWriteReservationsForClinic,
+  isCrossClinicReservationView,
+} from './permissions';
+
+const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
 
 const AppointmentDetail = dynamic(
   () =>
@@ -69,13 +75,31 @@ function ReservationsPageContent() {
   const { selectedClinicId } = useSelectedClinic();
   const clinicId = selectedClinicId;
   const role = profile?.role ?? null;
+  const profileClinicId = profile?.clinicId ?? null;
+  const canWriteReservations = useMemo(
+    () =>
+      canWriteReservationsForClinic({
+        selectedClinicId: clinicId,
+        profileClinicId,
+        role,
+      }),
+    [clinicId, profileClinicId, role]
+  );
+  const isCrossClinicView = useMemo(
+    () =>
+      isCrossClinicReservationView({
+        selectedClinicId: clinicId,
+        profileClinicId,
+      }),
+    [clinicId, profileClinicId]
+  );
 
   const {
     menus: rawMenus,
     resources: rawResources,
     loading: masterLoading,
     error: masterError,
-  } = useReservationFormData(clinicId);
+  } = useReservationFormData(clinicId, { includeCustomers: false });
 
   const menus = useMemo(
     () => (rawMenus ?? []).filter(menu => menu.isActive),
@@ -173,6 +197,13 @@ function ReservationsPageContent() {
       viewParam === 'timeline'
     ) {
       if (viewParam === 'register') {
+        if (!canWriteReservations) {
+          setCurrentView('timeline');
+          setShowAppointmentForm(false);
+          setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+          return;
+        }
+
         setCurrentView('timeline');
         setShowAppointmentForm(true);
         return;
@@ -180,7 +211,14 @@ function ReservationsPageContent() {
 
       setCurrentView(viewParam as ViewMode);
     }
-  }, [searchParams]);
+  }, [canWriteReservations, searchParams]);
+
+  useEffect(() => {
+    if (!canWriteReservations) {
+      setShowAppointmentForm(false);
+      setFormInitialValues(undefined);
+    }
+  }, [canWriteReservations]);
 
   useEffect(() => {
     if (clinicId) {
@@ -197,6 +235,11 @@ function ReservationsPageContent() {
 
   const handleTimeSlotClick = useCallback(
     (resourceId: string, hour: number, minute: number) => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return;
+      }
+
       setFormInitialValues({
         resourceId,
         startHour: hour,
@@ -205,12 +248,17 @@ function ReservationsPageContent() {
       });
       setShowAppointmentForm(true);
     },
-    [currentDateString]
+    [canWriteReservations, currentDateString]
   );
 
   const handleViewChange = useCallback(
     (view: ViewMode) => {
       if (view === 'register') {
+        if (!canWriteReservations) {
+          setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+          return;
+        }
+
         setFormInitialValues(undefined);
         setShowAppointmentForm(true);
         return;
@@ -221,11 +269,16 @@ function ReservationsPageContent() {
       params.set('view', view);
       router.replace(`/reservations?${params.toString()}`);
     },
-    [router, searchParams]
+    [canWriteReservations, router, searchParams]
   );
 
   const handleRegistrationSuccess = useCallback(
     (newAppointment: Appointment) => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return;
+      }
+
       addAppointment(newAppointment);
       setSelectedAppointment(newAppointment);
       setFormInitialValues(undefined);
@@ -233,7 +286,7 @@ function ReservationsPageContent() {
       setCurrentView('timeline');
       setUpdateError(null);
     },
-    [addAppointment]
+    [addAppointment, canWriteReservations]
   );
 
   const handleCloseAppointmentForm = useCallback(() => {
@@ -245,6 +298,11 @@ function ReservationsPageContent() {
     async (
       updatedAppointment: Appointment
     ): Promise<AppointmentUpdateResult> => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+      }
+
       setUpdateError(null);
       const result = await updateAppointment(updatedAppointment);
       if (result.ok) {
@@ -254,7 +312,7 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [updateAppointment]
+    [canWriteReservations, updateAppointment]
   );
 
   const handleMoveAppointment = useCallback(
@@ -264,6 +322,11 @@ function ReservationsPageContent() {
       newStartHour: number,
       newStartMinute: number
     ): Promise<AppointmentUpdateResult> => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+      }
+
       setUpdateError(null);
       const result = await moveAppointment(
         id,
@@ -276,15 +339,18 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [moveAppointment]
+    [canWriteReservations, moveAppointment]
   );
 
-  const canCancelReservation =
-    role !== null &&
-    ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'].includes(role);
+  const canCancelReservation = canWriteReservations;
 
   const handleCancelAppointment = useCallback(
     async (id: string): Promise<AppointmentUpdateResult> => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+      }
+
       setUpdateError(null);
       const result = await cancelAppointment(id);
       if (!result.ok) {
@@ -292,17 +358,23 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [cancelAppointment]
+    [canWriteReservations, cancelAppointment]
   );
 
   const handleConfirmPending = useCallback(
-    async (appt: Appointment) =>
-      handleUpdateAppointment({
+    async (appt: Appointment) => {
+      if (!canWriteReservations) {
+        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+      }
+
+      return handleUpdateAppointment({
         ...appt,
         status: 'confirmed',
         color: 'blue',
-      }),
-    [handleUpdateAppointment]
+      });
+    },
+    [canWriteReservations, handleUpdateAppointment]
   );
 
   const notifications = useMemo<Notification[]>(() => [], []);
@@ -347,6 +419,7 @@ function ReservationsPageContent() {
             onAppointmentMove={handleMoveAppointment}
             onMoveError={showMoveError}
             density={appointmentDensity}
+            readOnly={!canWriteReservations}
           />
         );
       case 'list':
@@ -365,6 +438,7 @@ function ReservationsPageContent() {
   }, [
     appointmentDensity,
     appointments,
+    canWriteReservations,
     currentView,
     error,
     handleMoveAppointment,
@@ -403,6 +477,7 @@ function ReservationsPageContent() {
           onRefresh={refreshAppointments}
           density={appointmentDensity}
           onDensityChange={setAppointmentDensity}
+          canCreateReservation={canWriteReservations}
         />
         <main className='flex flex-grow flex-col overflow-hidden bg-gray-100 relative'>
           <DaySummary
@@ -412,6 +487,11 @@ function ReservationsPageContent() {
           {updateError && (
             <div className='mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
               {updateError}
+            </div>
+          )}
+          {isCrossClinicView && (
+            <div className='mx-4 mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700'>
+              他院の予約状況を閲覧中です。新規登録・編集・キャンセルは所属院でのみ行えます。
             </div>
           )}
           <div className='min-h-0 flex-grow overflow-hidden'>{content}</div>
@@ -436,10 +516,11 @@ function ReservationsPageContent() {
               onCancelAppointment={
                 canCancelReservation ? handleCancelAppointment : undefined
               }
+              readOnly={!canWriteReservations}
             />
           )}
 
-          {showAppointmentForm && (
+          {showAppointmentForm && canWriteReservations && (
             <AppointmentFormModal
               clinicId={clinicId}
               resources={resources}
@@ -458,6 +539,7 @@ function ReservationsPageContent() {
               menus={menus}
               onClose={closePendingModal}
               onConfirm={handleConfirmPending}
+              canConfirm={canWriteReservations}
             />
           )}
 

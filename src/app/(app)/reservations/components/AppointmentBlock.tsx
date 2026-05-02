@@ -13,6 +13,7 @@ interface Props {
   startHourOfGrid: number;
   onClick: (appointment: Appointment) => void;
   density: AppointmentDensity;
+  draggable?: boolean;
 }
 
 const AppointmentBlockComponent: React.FC<Props> = ({
@@ -21,6 +22,7 @@ const AppointmentBlockComponent: React.FC<Props> = ({
   startHourOfGrid,
   onClick,
   density,
+  draggable = true,
 }) => {
   const startOffsetMinutes =
     (appointment.startHour - startHourOfGrid) * 60 + appointment.startMinute;
@@ -44,6 +46,11 @@ const AppointmentBlockComponent: React.FC<Props> = ({
   const showStatus = width >= 112;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggable) {
+      e.preventDefault();
+      return;
+    }
+
     e.dataTransfer.setData(
       'application/json',
       JSON.stringify({
@@ -55,14 +62,26 @@ const AppointmentBlockComponent: React.FC<Props> = ({
     // Optional: Set a custom drag image or style here
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') {
+      return;
+    }
+
+    e.preventDefault();
+    onClick(appointment);
+  };
+
   return (
     <div
-      draggable={true}
+      role='button'
+      tabIndex={0}
+      draggable={draggable}
       onDragStart={handleDragStart}
       onClick={e => {
         e.stopPropagation();
         onClick(appointment);
       }}
+      onKeyDown={handleKeyDown}
       title={`${timeString} ${appointment.title} ${statusLabel}`}
       aria-label={`${timeString} ${appointment.title} ${statusLabel}`}
       className={`absolute top-1 bottom-1 rounded shadow-sm text-xs overflow-hidden leading-tight flex flex-col justify-center px-2 transition-all hover:brightness-95 hover:shadow-md cursor-pointer z-10 ${colorClass} ${isFullRow ? 'opacity-90' : ''}`}
