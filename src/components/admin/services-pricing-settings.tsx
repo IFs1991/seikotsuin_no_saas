@@ -47,6 +47,7 @@ import {
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Menu } from '@/types/reservation';
+import { PublicBookingForm } from '@/app/(public)/booking/[clinic_id]/page';
 import { AdminMessage } from './AdminMessage';
 
 type MenuCategory = 'treatment' | 'massage' | 'rehabilitation' | 'other';
@@ -660,7 +661,7 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
 
   const previewUrl = origin && previewPath ? `${origin}${previewPath}` : '';
   const lineUrl = origin && linePath ? `${origin}${linePath}` : '';
-  const activePreviewPath = previewMode === 'line' ? linePath : previewPath;
+  const activePreviewChannel = previewMode === 'line' ? 'line' : 'web';
   const activePreviewTitle =
     previewMode === 'line'
       ? 'LINE導線のプレビュー'
@@ -779,12 +780,12 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
               実際に患者さんへ表示される予約フォームです。
             </DialogDescription>
           </DialogHeader>
-          <div className='h-[78vh] bg-gray-50'>
-            {activePreviewPath && (
-              <iframe
-                title={activePreviewTitle}
-                src={activePreviewPath}
-                className='h-full w-full border-0'
+          <div className='h-[78vh] overflow-y-auto bg-gray-50'>
+            {clinicId && (
+              <PublicBookingForm
+                clinicId={clinicId}
+                channel={activePreviewChannel}
+                embedded
               />
             )}
           </div>

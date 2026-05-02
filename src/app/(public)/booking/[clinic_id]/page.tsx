@@ -36,6 +36,12 @@ type SubmitState =
   | { status: 'success'; message: string; reservationId: string }
   | { status: 'error'; message: string; reservationId?: never };
 
+interface PublicBookingFormProps {
+  clinicId: string | null | undefined;
+  channel?: 'web' | 'line';
+  embedded?: boolean;
+}
+
 const EMPTY_MENUS: PublicMenu[] = [];
 const EMPTY_RESOURCES: PublicResource[] = [];
 
@@ -87,9 +93,15 @@ function createStartTimeIso(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
 }
 
-function BookingLoadingState() {
+function BookingLoadingState({ embedded = false }: { embedded?: boolean }) {
   return (
-    <main className='min-h-screen bg-slate-50 px-0 py-0 sm:px-4 sm:py-10'>
+    <main
+      className={
+        embedded
+          ? 'min-h-full bg-slate-50 px-0 py-0'
+          : 'min-h-screen bg-slate-50 px-0 py-0 sm:px-4 sm:py-10'
+      }
+    >
       <div className='mx-auto flex w-full max-w-2xl flex-col gap-0 sm:gap-4'>
         <div className='space-y-2 px-4 pb-3 pt-5 sm:px-0 sm:pb-0 sm:pt-0'>
           <div className='h-4 w-32 animate-pulse rounded bg-slate-200' />
@@ -108,11 +120,11 @@ function BookingLoadingState() {
   );
 }
 
-export default function PublicBookingPage() {
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const clinicId = getFirstParam(params?.clinic_id);
-  const channel = searchParams.get('channel') === 'line' ? 'line' : 'web';
+export function PublicBookingForm({
+  clinicId,
+  channel = 'web',
+  embedded = false,
+}: PublicBookingFormProps) {
   const todayString = useMemo(() => createLocalDateString(), []);
 
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
@@ -323,12 +335,18 @@ export default function PublicBookingPage() {
   );
 
   if (loading) {
-    return <BookingLoadingState />;
+    return <BookingLoadingState embedded={embedded} />;
   }
 
   if (loadError || !bookingData) {
     return (
-      <main className='flex min-h-screen items-center justify-center bg-slate-50 p-4'>
+      <main
+        className={
+          embedded
+            ? 'flex min-h-full items-center justify-center bg-slate-50 p-4'
+            : 'flex min-h-screen items-center justify-center bg-slate-50 p-4'
+        }
+      >
         <Card className='w-full max-w-md p-6 text-center'>
           <h1 className='text-lg font-semibold text-slate-900'>
             予約情報を表示できません
@@ -341,7 +359,13 @@ export default function PublicBookingPage() {
 
   if (!hasBookableChoices) {
     return (
-      <main className='flex min-h-screen items-center justify-center bg-slate-50 p-4'>
+      <main
+        className={
+          embedded
+            ? 'flex min-h-full items-center justify-center bg-slate-50 p-4'
+            : 'flex min-h-screen items-center justify-center bg-slate-50 p-4'
+        }
+      >
         <Card className='w-full max-w-md p-6 text-center'>
           <h1 className='text-lg font-semibold text-slate-900'>
             現在予約できる枠がありません
@@ -355,7 +379,13 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <main className='min-h-screen bg-slate-50 px-0 py-0 sm:px-4 sm:py-10'>
+    <main
+      className={
+        embedded
+          ? 'min-h-full bg-slate-50 px-0 py-0'
+          : 'min-h-screen bg-slate-50 px-0 py-0 sm:px-4 sm:py-10'
+      }
+    >
       <div className='mx-auto flex w-full max-w-2xl flex-col gap-0 sm:gap-4'>
         <header className='space-y-1 px-4 pb-3 pt-5 sm:px-0 sm:pb-0 sm:pt-0'>
           <p className='text-sm font-medium text-sky-700'>
@@ -542,4 +572,13 @@ export default function PublicBookingPage() {
       </div>
     </main>
   );
+}
+
+export default function PublicBookingPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const clinicId = getFirstParam(params?.clinic_id);
+  const channel = searchParams.get('channel') === 'line' ? 'line' : 'web';
+
+  return <PublicBookingForm clinicId={clinicId} channel={channel} />;
 }
