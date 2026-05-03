@@ -274,7 +274,13 @@ export const AppointmentForm: React.FC<Props> = ({
 
     setLoading(true);
     try {
-      const customers = await fetchCustomers(clinicId, normalizedPhone);
+      const customers = await fetchCustomers(clinicId, normalizedPhone).catch(
+        error => {
+          throw new Error(
+            `患者データの検索に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+          );
+        }
+      );
       const matchedCustomer = customers.find(
         customer => customer.phone === normalizedPhone
       );
@@ -285,6 +291,10 @@ export const AppointmentForm: React.FC<Props> = ({
             name: customerName,
             phone: normalizedPhone,
             customAttributes: customAttributesPayload,
+          }).catch(error => {
+            throw new Error(
+              `患者データの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+            );
           });
 
       const startTime = new Date(formData.date);
@@ -301,6 +311,10 @@ export const AppointmentForm: React.FC<Props> = ({
         endTime: endTimeDate,
         channel: 'phone',
         selectedOptions,
+      }).catch(error => {
+        throw new Error(
+          `予約データの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
+        );
       });
 
       const displayName = matchedCustomer?.name ?? customerName;

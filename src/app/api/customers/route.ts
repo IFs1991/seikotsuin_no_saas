@@ -28,6 +28,11 @@ type CustomerResponseRow = {
   custom_attributes: Record<string, unknown> | null;
 };
 
+type PostgresConstraintError = {
+  code?: string;
+  message?: string;
+};
+
 function mapCustomerRowToApi(row: CustomerResponseRow) {
   return {
     id: row.id,
@@ -46,6 +51,22 @@ function createCustomerScopedClient(
   const scopedAdmin = createScopedAdminContext(permissions);
   scopedAdmin.assertClinicInScope(clinicId);
   return scopedAdmin.client;
+}
+
+function getCustomerReferenceErrorMessage(
+  error: PostgresConstraintError
+): string | null {
+  if (error.code !== '23503') return null;
+
+  const message = error.message ?? '';
+  if (message.includes('customers_clinic_id_fkey')) {
+    return '患者を登録する院データが見つかりません。院の選択を確認してください';
+  }
+  if (message.includes('customers_created_by_fkey')) {
+    return '患者を登録するユーザー情報が見つかりません。再ログインしてからお試しください';
+  }
+
+  return '患者登録に必要な関連データが見つかりません';
 }
 
 export async function GET(request: NextRequest) {
@@ -140,7 +161,13 @@ export async function POST(request: NextRequest) {
       .insert(insertPayload)
       .select(CUSTOMER_RESPONSE_COLUMNS)
       .single();
-    if (error) throw normalizeSupabaseError(error, PATH);
+    if (error) {
+      const referenceErrorMessage = getCustomerReferenceErrorMessage(error);
+      if (referenceErrorMessage) {
+        return createErrorResponse(referenceErrorMessage, 400);
+      }
+      throw normalizeSupabaseError(error, PATH);
+    }
     return createSuccessResponse(data, 201);
   } catch (error) {
     return handleRouteError(error, PATH);

@@ -8,6 +8,7 @@
  */
 import { processApiRequest } from '@/lib/api-helpers';
 import { canAccessClinicScope, createScopedAdminContext } from '@/lib/supabase';
+import type { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -92,7 +93,7 @@ describe('GET /api/customers', () => {
       },
       url: `http://localhost/api/customers?clinic_id=${validClinicId}`,
       method: 'GET',
-    } as any;
+    } as unknown as NextRequest;
     const response = await GET(request);
     const json = await response.json();
 
@@ -154,7 +155,7 @@ describe('POST /api/customers', () => {
     });
 
     const { POST } = await import('@/app/api/customers/route');
-    const response = await POST({} as any);
+    const response = await POST({} as unknown as NextRequest);
 
     expect(response.status).toBe(201);
     // processApiRequest is now called only once (not twice)
@@ -178,7 +179,7 @@ describe('POST /api/customers', () => {
     });
 
     const { POST } = await import('@/app/api/customers/route');
-    const response = await POST({} as any);
+    const response = await POST({} as unknown as NextRequest);
 
     expect(response.status).toBe(401);
   });
@@ -193,7 +194,7 @@ describe('POST /api/customers', () => {
     });
 
     const { POST } = await import('@/app/api/customers/route');
-    const response = await POST({} as any);
+    const response = await POST({} as unknown as NextRequest);
 
     expect(response.status).toBe(400);
   });
@@ -213,9 +214,55 @@ describe('POST /api/customers', () => {
     canAccessClinicScopeMock.mockReturnValue(false);
 
     const { POST } = await import('@/app/api/customers/route');
-    const response = await POST({} as any);
+    const response = await POST({} as unknown as NextRequest);
 
     expect(response.status).toBe(403);
+  });
+
+  it('returns a specific message when customer clinic reference is missing', async () => {
+    const single = jest.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: '23503',
+        message:
+          'insert or update on table "customers" violates foreign key constraint "customers_clinic_id_fkey"',
+      },
+    });
+    const select = jest.fn().mockReturnValue({ single });
+    const insert = jest.fn().mockReturnValue({ select });
+    const from = jest.fn().mockReturnValue({ insert });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'staff',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      body: {
+        clinic_id: validClinicId,
+        name: 'Test',
+        phone: '090-0000-0000',
+      },
+      auth: { id: 'user-1', email: 'a@b.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    canAccessClinicScopeMock.mockReturnValue(true);
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
+
+    const { POST } = await import('@/app/api/customers/route');
+    const response = await POST({} as unknown as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe(
+      '患者を登録する院データが見つかりません。院の選択を確認してください'
+    );
   });
 });
 
@@ -260,7 +307,7 @@ describe('PATCH /api/customers', () => {
     });
 
     const { PATCH } = await import('@/app/api/customers/route');
-    const response = await PATCH({} as any);
+    const response = await PATCH({} as unknown as NextRequest);
 
     expect(response.status).toBe(200);
     // Clinic scope is checked via canAccessClinicScope (not second processApiRequest)
@@ -289,7 +336,7 @@ describe('PATCH /api/customers', () => {
     canAccessClinicScopeMock.mockReturnValue(false);
 
     const { PATCH } = await import('@/app/api/customers/route');
-    const response = await PATCH({} as any);
+    const response = await PATCH({} as unknown as NextRequest);
 
     expect(response.status).toBe(403);
   });
