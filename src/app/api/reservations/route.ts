@@ -26,27 +26,20 @@ import {
 } from '@/lib/notifications/email/reservation-enqueue';
 import type { ReservationSnapshot } from '@/lib/notifications/email/types';
 import type { ReservationOptionSelection } from '@/types/reservation';
+import {
+  getPermissionCandidateName,
+  isLegacyBookableStaffCandidate,
+  isPermissionBookableStaffCandidate,
+  isPermissionStaffResourceRole,
+  PERMISSION_STAFF_RESOURCE_ROLES,
+  type LegacyStaffCandidate,
+  type PermissionStaffCandidate,
+  type StaffProfileSummary,
+} from '@/lib/reservations/staff-resource-candidates';
 
 const PATH = '/api/reservations';
 type ReservationListViewRow =
   Database['public']['Views']['reservation_list_view']['Row'];
-type StaffResourceCandidateRow = {
-  id: string;
-  clinic_id: string | null;
-  name: string;
-  email: string | null;
-  role: string;
-  is_therapist: boolean | null;
-};
-
-const RESERVATION_BOOKABLE_STAFF_ROLES = new Set([
-  'clinic_admin',
-  'clinic_manager',
-  'manager',
-  'practitioner',
-  'therapist',
-]);
-
 function isReservationOptionSelection(
   value: unknown
 ): value is ReservationOptionSelection {
@@ -68,7 +61,7 @@ function mapSelectedOptions(value: ReservationListViewRow['selected_options']) {
 }
 
 function buildStaffResourceFromCandidate(
-  row: StaffResourceCandidateRow,
+  row: LegacyStaffCandidate,
   clinicId: string,
   createdBy: string
 ): Database['public']['Tables']['resources']['Insert'] {
@@ -81,9 +74,28 @@ function buildStaffResourceFromCandidate(
     email: row.email,
     max_concurrent: 1,
     is_active: true,
-    is_bookable:
-      row.is_therapist === true ||
-      RESERVATION_BOOKABLE_STAFF_ROLES.has(row.role),
+    is_bookable: isLegacyBookableStaffCandidate(row),
+    is_deleted: false,
+    created_by: createdBy,
+  };
+}
+
+function buildStaffResourceFromPermissionCandidate(
+  row: PermissionStaffCandidate & { staff_id: string },
+  profile: Pick<StaffProfileSummary, 'email' | 'full_name'> | null,
+  clinicId: string,
+  createdBy: string
+): Database['public']['Tables']['resources']['Insert'] {
+  return {
+    id: row.staff_id,
+    clinic_id: clinicId,
+    name: getPermissionCandidateName(row, profile),
+    type: 'staff',
+    staff_code: `${row.role}-${row.staff_id}`,
+    email: profile?.email ?? row.username,
+    max_concurrent: 1,
+    is_active: true,
+    is_bookable: isPermissionStaffResourceRole(row.role),
     is_deleted: false,
     created_by: createdBy,
   };
@@ -170,10 +182,52 @@ async function ensureReservationStaffResource(
     throw normalizeSupabaseError(staffError, PATH);
   }
   if (!staff) {
-    return {
-      ok: false as const,
-      error: '担当スタッフのリソースが見つかりません',
-    };
+    const { data: permission, error: permissionError } = await supabase
+      .from('user_permissions')
+      .select('staff_id, clinic_id, role, username')
+      .eq('clinic_id', params.clinicId)
+      .eq('staff_id', params.staffId)
+      .in('role', [...PERMISSION_STAFF_RESOURCE_ROLES])
+      .maybeSingle();
+
+    if (permissionError) {
+      throw normalizeSupabaseError(permissionError, PATH);
+    }
+
+    if (!permission || !isPermissionBookableStaffCandidate(permission)) {
+      return {
+        ok: false as const,
+        error: '担当スタッフのリソースが見つかりません',
+      };
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('user_id, email, full_name')
+      .eq('user_id', params.staffId)
+      .maybeSingle();
+
+    if (profileError) {
+      throw normalizeSupabaseError(profileError, PATH);
+    }
+
+    const { error: permissionUpsertError } = await supabase
+      .from('resources')
+      .upsert(
+        buildStaffResourceFromPermissionCandidate(
+          permission,
+          profile,
+          params.clinicId,
+          params.createdBy
+        ),
+        { onConflict: 'id' }
+      );
+
+    if (permissionUpsertError) {
+      throw normalizeSupabaseError(permissionUpsertError, PATH);
+    }
+
+    return { ok: true as const };
   }
 
   const { error: upsertError } = await supabase

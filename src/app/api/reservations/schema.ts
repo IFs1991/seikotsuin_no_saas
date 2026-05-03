@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import type { Database } from '@/types/supabase';
 
+type ReservationInsertRow =
+  Database['public']['Tables']['reservations']['Insert'];
+type ReservationUpdateRow =
+  Database['public']['Tables']['reservations']['Update'];
+
 const statusEnum = z.enum([
   'tentative',
   'confirmed',
@@ -62,7 +67,7 @@ export type ReservationUpdateDTO = z.infer<typeof reservationUpdateSchema>;
 export function mapReservationInsertToRow(
   dto: ReservationInsertDTO,
   userId: string
-): Database['public']['Tables']['reservations']['Insert'] {
+): ReservationInsertRow {
   return {
     clinic_id: dto.clinic_id,
     customer_id: dto.customerId,
@@ -75,13 +80,13 @@ export function mapReservationInsertToRow(
     selected_options: dto.selectedOptions ?? [],
     status: 'unconfirmed',
     created_by: userId,
-  } as any;
+  };
 }
 
 export function mapReservationUpdateToRow(
   dto: ReservationUpdateDTO
-): Database['public']['Tables']['reservations']['Update'] {
-  const row: Record<string, unknown> = {};
+): ReservationUpdateRow {
+  const row: ReservationUpdateRow = {};
 
   if (dto.status !== undefined) row.status = dto.status;
   if (dto.startTime !== undefined) row.start_time = dto.startTime;
@@ -91,5 +96,5 @@ export function mapReservationUpdateToRow(
   if (dto.selectedOptions !== undefined)
     row.selected_options = dto.selectedOptions;
 
-  return row as any;
+  return row;
 }

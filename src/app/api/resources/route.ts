@@ -14,6 +14,15 @@ import {
   mapResourceUpdateToRow,
 } from './schema';
 import type { Json } from '@/types/supabase';
+import {
+  getPermissionCandidateName,
+  isLegacyBookableStaffCandidate,
+  isPermissionBookableStaffCandidate,
+  PERMISSION_STAFF_RESOURCE_ROLES,
+  type LegacyStaffCandidate,
+  type PermissionStaffCandidate,
+  type StaffProfileSummary,
+} from '@/lib/reservations/staff-resource-candidates';
 
 const PATH = '/api/resources';
 const RESOURCE_LIST_SELECT =
@@ -28,21 +37,6 @@ type ResourceListRow = {
   max_concurrent: number | null;
   is_active: boolean | null;
 };
-type StaffResourceCandidateRow = {
-  id: string;
-  name: string;
-  role: string;
-  is_therapist: boolean | null;
-};
-
-const STAFF_RESOURCE_FALLBACK_ROLES = new Set([
-  'clinic_admin',
-  'clinic_manager',
-  'manager',
-  'practitioner',
-  'therapist',
-]);
-
 function isJsonRecord(
   value: Json | null
 ): value is Record<string, Json | undefined> {
@@ -61,13 +55,7 @@ function mapResourceListRow(row: ResourceListRow) {
   };
 }
 
-function shouldExposeStaffCandidate(row: StaffResourceCandidateRow) {
-  return (
-    row.is_therapist === true || STAFF_RESOURCE_FALLBACK_ROLES.has(row.role)
-  );
-}
-
-function mapStaffCandidateToResource(row: StaffResourceCandidateRow) {
+function mapStaffCandidateToResource(row: LegacyStaffCandidate) {
   return {
     id: row.id,
     name: row.name,
@@ -76,6 +64,21 @@ function mapStaffCandidateToResource(row: StaffResourceCandidateRow) {
     supportedMenus: [],
     maxConcurrent: 1,
     isActive: true,
+  };
+}
+
+function mapPermissionCandidateToResource(
+  row: PermissionStaffCandidate & { staff_id: string },
+  profile?: StaffProfileSummary
+) {
+  return {
+    id: row.staff_id,
+    name: getPermissionCandidateName(row, profile),
+    type: 'staff',
+    workingHours: {},
+    supportedMenus: [],
+    maxConcurrent: 1,
+    isActive: profile?.is_active !== false,
   };
 }
 
@@ -127,10 +130,56 @@ export async function GET(request: NextRequest) {
       const existingResourceIds = new Set(mapped.map(resource => resource.id));
       const staffFallbackResources = (staffData ?? [])
         .filter(row => !existingResourceIds.has(row.id))
-        .filter(shouldExposeStaffCandidate)
+        .filter(isLegacyBookableStaffCandidate)
         .map(mapStaffCandidateToResource);
 
       mapped = [...mapped, ...staffFallbackResources];
+    }
+
+    const shouldLoadPermissionFallback =
+      (type === undefined || type === 'staff') &&
+      !mapped.some(resource => resource.type === 'staff' && resource.isActive);
+
+    if (shouldLoadPermissionFallback) {
+      const { data: permissionData, error: permissionError } =
+        await guard.supabase
+          .from('user_permissions')
+          .select('staff_id, role, username')
+          .eq('clinic_id', clinic_id)
+          .in('role', [...PERMISSION_STAFF_RESOURCE_ROLES]);
+
+      if (permissionError) throw normalizeSupabaseError(permissionError, PATH);
+
+      const permissionRows = (permissionData ?? []).filter(
+        isPermissionBookableStaffCandidate
+      );
+      const permissionStaffIds = Array.from(
+        new Set(permissionRows.map(row => row.staff_id))
+      );
+      const profileMap = new Map<string, StaffProfileSummary>();
+
+      if (permissionStaffIds.length > 0) {
+        const { data: profiles, error: profileError } = await guard.supabase
+          .from('profiles')
+          .select('user_id, email, full_name, is_active')
+          .in('user_id', permissionStaffIds);
+
+        if (profileError) throw normalizeSupabaseError(profileError, PATH);
+
+        (profiles ?? []).forEach(profile => {
+          profileMap.set(profile.user_id, profile);
+        });
+      }
+
+      const existingResourceIds = new Set(mapped.map(resource => resource.id));
+      const permissionFallbackResources = permissionRows
+        .filter(row => !existingResourceIds.has(row.staff_id))
+        .map(row =>
+          mapPermissionCandidateToResource(row, profileMap.get(row.staff_id))
+        )
+        .filter(resource => resource.isActive);
+
+      mapped = [...mapped, ...permissionFallbackResources];
     }
 
     return createSuccessResponse(mapped);

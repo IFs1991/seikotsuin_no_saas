@@ -1,7 +1,18 @@
 import { z } from 'zod';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
 
 const typeEnum = z.enum(['staff', 'room', 'bed', 'device']);
+const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonSchema),
+    z.record(jsonSchema),
+  ])
+);
+const workingHoursSchema = z.record(jsonSchema);
 
 export const resourcesQuerySchema = z.object({
   clinic_id: z.string().uuid(),
@@ -13,7 +24,7 @@ export const resourceInsertSchema = z
     clinic_id: z.string().uuid(),
     name: z.string().trim().min(1).max(255),
     type: typeEnum,
-    workingHours: z.record(z.any()).optional(),
+    workingHours: workingHoursSchema.optional(),
     supportedMenus: z.array(z.string().uuid()).optional(),
     maxConcurrent: z.number().int().min(1).default(1),
     isActive: z.boolean().default(true),
@@ -26,7 +37,7 @@ export const resourceUpdateSchema = z
     clinic_id: z.string().uuid(),
     id: z.string().uuid(),
     name: z.string().trim().min(1).max(255).optional(),
-    workingHours: z.record(z.any()).optional(),
+    workingHours: workingHoursSchema.optional(),
     supportedMenus: z.array(z.string().uuid()).optional(),
     maxConcurrent: z.number().int().min(1).optional(),
     isActive: z.boolean().optional(),
@@ -47,7 +58,7 @@ export function mapResourceInsertToRow(
     max_concurrent: dto.maxConcurrent,
     is_active: dto.isActive,
     created_by: userId,
-  } as any;
+  };
 }
 
 export function mapResourceUpdateToRow(
@@ -59,5 +70,5 @@ export function mapResourceUpdateToRow(
     supported_menus: dto.supportedMenus,
     max_concurrent: dto.maxConcurrent,
     is_active: dto.isActive,
-  } as any;
+  };
 }

@@ -28,16 +28,48 @@ type StaffCandidateRow = {
   role: string;
   is_therapist: boolean | null;
 };
+type PermissionCandidateRow = {
+  staff_id: string | null;
+  role: string;
+  username: string | null;
+};
+type ProfileRow = {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  is_active: boolean | null;
+};
 type ResourceQuery = {
   select: jest.MockedFunction<(columns: string) => ResourceQuery>;
   eq: jest.MockedFunction<(field: string, value: unknown) => ResourceQuery>;
   order: jest.MockedFunction<
-    (field: string, options: { ascending: boolean }) => Promise<QueryResult<ResourceRow>>
+    (
+      field: string,
+      options: { ascending: boolean }
+    ) => Promise<QueryResult<ResourceRow>>
   >;
 };
 type StaffQuery = {
   select: jest.MockedFunction<(columns: string) => StaffQuery>;
-  eq: jest.MockedFunction<(field: string, value: unknown) => Promise<QueryResult<StaffCandidateRow>>>;
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => Promise<QueryResult<StaffCandidateRow>>
+  >;
+};
+type PermissionQuery = {
+  select: jest.MockedFunction<(columns: string) => PermissionQuery>;
+  eq: jest.MockedFunction<(field: string, value: unknown) => PermissionQuery>;
+  in: jest.MockedFunction<
+    (
+      field: string,
+      values: unknown[]
+    ) => Promise<QueryResult<PermissionCandidateRow>>
+  >;
+};
+type ProfileQuery = {
+  select: jest.MockedFunction<(columns: string) => ProfileQuery>;
+  in: jest.MockedFunction<
+    (field: string, values: unknown[]) => Promise<QueryResult<ProfileRow>>
+  >;
 };
 
 function buildRequest(path = `/api/resources?clinic_id=${VALID_CLINIC_ID}`) {
@@ -56,6 +88,23 @@ function createStaffQuery(rows: StaffCandidateRow[]): StaffQuery {
   const query = {} as StaffQuery;
   query.select = jest.fn().mockReturnValue(query);
   query.eq = jest.fn().mockResolvedValue({ data: rows, error: null });
+  return query;
+}
+
+function createPermissionQuery(
+  rows: PermissionCandidateRow[]
+): PermissionQuery {
+  const query = {} as PermissionQuery;
+  query.select = jest.fn().mockReturnValue(query);
+  query.eq = jest.fn().mockReturnValue(query);
+  query.in = jest.fn().mockResolvedValue({ data: rows, error: null });
+  return query;
+}
+
+function createProfileQuery(rows: ProfileRow[]): ProfileQuery {
+  const query = {} as ProfileQuery;
+  query.select = jest.fn().mockReturnValue(query);
+  query.in = jest.fn().mockResolvedValue({ data: rows, error: null });
   return query;
 }
 
@@ -147,5 +196,63 @@ describe('GET /api/resources', () => {
     ]);
     expect(supabase.from).toHaveBeenCalledWith('resources');
     expect(supabase.from).toHaveBeenCalledWith('staff');
+  });
+
+  it('staff/resource がない場合は user_permissions の施術者を補完する', async () => {
+    const resourceQuery = createResourceQuery([]);
+    const staffQuery = createStaffQuery([]);
+    const permissionQuery = createPermissionQuery([
+      {
+        staff_id: 'therapist-1',
+        role: 'therapist',
+        username: 'therapist@example.com',
+      },
+      {
+        staff_id: 'staff-1',
+        role: 'staff',
+        username: 'staff@example.com',
+      },
+    ]);
+    const profileQuery = createProfileQuery([
+      {
+        user_id: 'therapist-1',
+        email: 'therapist@example.com',
+        full_name: '山田先生',
+        is_active: true,
+      },
+    ]);
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'resources') return resourceQuery;
+        if (table === 'staff') return staffQuery;
+        if (table === 'user_permissions') return permissionQuery;
+        if (table === 'profiles') return profileQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      supabase,
+    });
+
+    const { GET } = await import('@/app/api/resources/route');
+    const response = await GET(buildRequest());
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data).toEqual([
+      expect.objectContaining({
+        id: 'therapist-1',
+        name: '山田先生',
+        type: 'staff',
+        isActive: true,
+      }),
+    ]);
+    expect(supabase.from).toHaveBeenCalledWith('user_permissions');
+    expect(supabase.from).toHaveBeenCalledWith('profiles');
+    expect(permissionQuery.in).toHaveBeenCalledWith(
+      'role',
+      expect.arrayContaining(['therapist'])
+    );
   });
 });

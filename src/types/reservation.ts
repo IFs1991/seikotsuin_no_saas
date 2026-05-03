@@ -8,7 +8,7 @@ export interface Customer {
   phone: string;
   email?: string;
   lineUserId?: string;
-  customAttributes?: Record<string, any>;
+  customAttributes?: Record<string, unknown>;
   consentMarketing: boolean;
   consentReminder: boolean;
   createdAt: Date;
