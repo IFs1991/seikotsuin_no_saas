@@ -40,6 +40,11 @@ import {
 const PATH = '/api/reservations';
 type ReservationListViewRow =
   Database['public']['Views']['reservation_list_view']['Row'];
+type PostgresReservationError = {
+  code?: string;
+  message?: string;
+};
+
 function isReservationOptionSelection(
   value: unknown
 ): value is ReservationOptionSelection {
@@ -128,6 +133,58 @@ function createScopedReservationStaffResourceClient(
   const scopedAdmin = createScopedAdminContext(permissions);
   scopedAdmin.assertClinicInScope(clinicId);
   return scopedAdmin.client;
+}
+
+function getReservationConstraintErrorMessage(
+  error: PostgresReservationError
+): string | null {
+  const message = error.message ?? '';
+
+  if (error.code === '23503') {
+    if (
+      message.includes('reservations_customer_id_fkey') ||
+      message.includes('customers.id not found')
+    ) {
+      return '予約に紐づく患者データが見つかりません';
+    }
+    if (
+      message.includes('reservations_menu_id_fkey') ||
+      message.includes('menus.id not found')
+    ) {
+      return '予約に紐づくメニューが見つかりません。メニュー管理で有効なメニューを登録してください';
+    }
+    if (
+      message.includes('reservations_staff_id_fkey') ||
+      message.includes('resources.id not found')
+    ) {
+      return '予約に紐づく施術者リソースが見つかりません';
+    }
+    if (message.includes('reservations_clinic_id_fkey')) {
+      return '予約を登録する院データが見つかりません。院の選択を確認してください';
+    }
+    if (message.includes('reservations_created_by_fkey')) {
+      return '予約を登録するユーザー情報が見つかりません。再ログインしてからお試しください';
+    }
+
+    return '予約登録に必要な関連データが見つかりません';
+  }
+
+  if (error.code === '23514') {
+    if (message.includes('reservations.customer_id clinic mismatch')) {
+      return '選択した患者データが現在の院に紐づいていません';
+    }
+    if (message.includes('reservations.menu_id clinic mismatch')) {
+      return '選択したメニューが現在の院に紐づいていません';
+    }
+    if (message.includes('reservations.staff_id clinic mismatch')) {
+      return '選択した施術者リソースが現在の院に紐づいていません';
+    }
+    if (message.includes('reservations.clinic_id is required')) {
+      return '予約を登録する院データが指定されていません';
+    }
+  }
+
+  return null;
 }
 
 async function hasReservationConflict(
@@ -381,6 +438,11 @@ export async function GET(request: NextRequest) {
     });
 
     if (error) {
+      const constraintErrorMessage =
+        getReservationConstraintErrorMessage(error);
+      if (constraintErrorMessage) {
+        return createErrorResponse(constraintErrorMessage, 400);
+      }
       throw normalizeSupabaseError(error, PATH);
     }
 
@@ -463,6 +525,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      const constraintErrorMessage =
+        getReservationConstraintErrorMessage(error);
+      if (constraintErrorMessage) {
+        return createErrorResponse(constraintErrorMessage, 400);
+      }
       throw normalizeSupabaseError(error, PATH);
     }
 

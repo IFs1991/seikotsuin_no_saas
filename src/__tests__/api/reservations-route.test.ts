@@ -275,6 +275,108 @@ describe('POST /api/reservations', () => {
     expect(supabase.from).toHaveBeenCalledWith('reservations');
     expect(supabase.from).not.toHaveBeenCalledWith('resources');
   });
+
+  it('returns a specific message when reservation insert trigger reports missing customer', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+    const adminResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest
+        .fn()
+        .mockResolvedValueOnce({ data: { id: selectedStaffId }, error: null })
+        .mockResolvedValueOnce({ data: { id: selectedStaffId }, error: null }),
+    };
+    const adminCustomerSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: validCustomerId },
+        error: null,
+      }),
+    };
+    const adminMenuSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: menuId },
+        error: null,
+      }),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') {
+          return {
+            select: jest.fn().mockReturnValue(adminResourceSelect),
+          };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn().mockReturnValue(adminCustomerSelect) };
+        }
+        if (table === 'menus') {
+          return { select: jest.fn().mockReturnValue(adminMenuSelect) };
+        }
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 0, error: null }),
+    };
+    const insertSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '23503',
+          message: 'customers.id not found',
+        },
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(insertSelect),
+      }),
+    };
+    const supabase = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId,
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase,
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+
+    const response = await POST({} as unknown as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe('予約に紐づく患者データが見つかりません');
+  });
 });
 
 describe('PATCH /api/reservations', () => {
