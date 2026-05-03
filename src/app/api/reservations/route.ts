@@ -121,6 +121,15 @@ function createNotificationClient(
   }
 }
 
+function createScopedReservationStaffResourceClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  const scopedAdmin = createScopedAdminContext(permissions);
+  scopedAdmin.assertClinicInScope(clinicId);
+  return scopedAdmin.client;
+}
+
 async function hasReservationConflict(
   supabase: SupabaseServerClient,
   params: {
@@ -351,8 +360,12 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
+    const staffResourceClient = createScopedReservationStaffResourceClient(
+      result.permissions,
+      dto.clinic_id
+    );
     const staffResource = await ensureReservationStaffResource(
-      result.supabase,
+      staffResourceClient,
       {
         clinicId: dto.clinic_id,
         staffId: dto.staffId,
@@ -450,8 +463,12 @@ export async function PATCH(request: NextRequest) {
       const nextEndTime = dto.endTime ?? existing.end_time;
 
       if (dto.staffId) {
+        const staffResourceClient = createScopedReservationStaffResourceClient(
+          result.permissions,
+          dto.clinic_id
+        );
         const staffResource = await ensureReservationStaffResource(
-          result.supabase,
+          staffResourceClient,
           {
             clinicId: dto.clinic_id,
             staffId: dto.staffId,

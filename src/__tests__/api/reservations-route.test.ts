@@ -1,7 +1,11 @@
+import type { NextRequest } from 'next/server';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { processApiRequest } from '@/lib/api-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
-import { enqueueReservationChange } from '@/lib/notifications/email/reservation-enqueue';
+import {
+  enqueueReservationCreated,
+  enqueueReservationChange,
+} from '@/lib/notifications/email/reservation-enqueue';
 import { STAFF_ROLES } from '@/lib/constants/roles';
 
 jest.mock('@/lib/api-helpers', () => {
@@ -36,6 +40,7 @@ jest.mock('@/lib/notifications/email/reservation-enqueue', () => ({
 const processApiRequestMock = processApiRequest as jest.Mock;
 const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
+const enqueueReservationCreatedMock = enqueueReservationCreated as jest.Mock;
 const enqueueReservationChangeMock = enqueueReservationChange as jest.Mock;
 
 const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
@@ -88,7 +93,7 @@ describe('GET /api/reservations', () => {
       nextUrl: new URL(
         `http://localhost/api/reservations?clinic_id=${validClinicId}&customer_id=${validCustomerId}`
       ),
-    } as any;
+    } as unknown as NextRequest;
 
     const response = await GET(request);
     const json = await response.json();
@@ -101,6 +106,148 @@ describe('GET /api/reservations', () => {
     expect(query.order).toHaveBeenCalledWith('start_time', {
       ascending: false,
     });
+  });
+});
+
+describe('POST /api/reservations', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('uses scoped admin only for staff resource synchronization', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const adminResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    const adminStaffSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    const adminPermissionSelect = {
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          staff_id: selectedStaffId,
+          clinic_id: validClinicId,
+          role: 'therapist',
+          username: 'therapist@example.com',
+        },
+        error: null,
+      }),
+    };
+    const adminProfileSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          user_id: selectedStaffId,
+          email: 'therapist@example.com',
+          full_name: '田中先生',
+        },
+        error: null,
+      }),
+    };
+    const adminResourcesTable = {
+      select: jest.fn().mockReturnValue(adminResourceSelect),
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') return adminResourcesTable;
+        if (table === 'staff') {
+          return { select: jest.fn().mockReturnValue(adminStaffSelect) };
+        }
+        if (table === 'user_permissions') {
+          return { select: jest.fn().mockReturnValue(adminPermissionSelect) };
+        }
+        if (table === 'profiles') {
+          return { select: jest.fn().mockReturnValue(adminProfileSelect) };
+        }
+        return {};
+      }),
+    };
+    const assertClinicInScope = jest.fn();
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope,
+    });
+
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 0, error: null }),
+    };
+    const insertSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: validId,
+          clinic_id: validClinicId,
+          customer_id: validCustomerId,
+          menu_id: '123e4567-e89b-12d3-a456-426614174003',
+          status: 'confirmed',
+          start_time: '2026-04-15T10:00:00.000Z',
+          end_time: '2026-04-15T10:30:00.000Z',
+          staff_id: selectedStaffId,
+          updated_at: '2026-04-14T09:00:00.000Z',
+        },
+        error: null,
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(insertSelect),
+      }),
+    };
+    const supabase = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId: '123e4567-e89b-12d3-a456-426614174003',
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        status: 'confirmed',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase,
+    });
+    enqueueReservationCreatedMock.mockResolvedValueOnce({ id: 'outbox-1' });
+
+    const { POST } = await import('@/app/api/reservations/route');
+
+    const response = await POST({} as unknown as NextRequest);
+
+    expect(response.status).toBe(201);
+    expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
+    expect(adminClient.from).toHaveBeenCalledWith('resources');
+    expect(adminResourcesTable.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: selectedStaffId,
+        clinic_id: validClinicId,
+        type: 'staff',
+        is_bookable: true,
+      }),
+      { onConflict: 'id' }
+    );
+    expect(supabase.from).toHaveBeenCalledWith('reservations');
+    expect(supabase.from).not.toHaveBeenCalledWith('resources');
   });
 });
 
@@ -151,7 +298,7 @@ describe('PATCH /api/reservations', () => {
         if (table === 'reservations') return reservationsTable;
         return {};
       }),
-    } as any;
+    };
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -172,7 +319,7 @@ describe('PATCH /api/reservations', () => {
 
     const { PATCH } = await import('@/app/api/reservations/route');
 
-    const response = await PATCH({} as any);
+    const response = await PATCH({} as unknown as NextRequest);
 
     expect(response.status).toBe(200);
     expect(processClinicScopedBodyMock).toHaveBeenCalledTimes(1);
