@@ -126,7 +126,7 @@ function createNotificationClient(
   }
 }
 
-function createScopedReservationMutationClient(
+function createScopedReservationClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
   clinicId: string
 ) {
@@ -392,7 +392,7 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.success) return auth.error;
 
-    const { supabase } = auth;
+    const supabase = createScopedReservationClient(auth.permissions, clinic_id);
 
     const query = supabase
       .from('reservation_list_view')
@@ -477,7 +477,7 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
-    const reservationMutationClient = createScopedReservationMutationClient(
+    const reservationMutationClient = createScopedReservationClient(
       result.permissions,
       dto.clinic_id
     );
@@ -577,7 +577,7 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
-    const reservationMutationClient = createScopedReservationMutationClient(
+    const reservationMutationClient = createScopedReservationClient(
       result.permissions,
       dto.clinic_id
     );

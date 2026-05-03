@@ -82,10 +82,24 @@ describe('GET /api/reservations', () => {
     const supabase = {
       from: jest.fn().mockReturnValue(query),
     };
+    const userScopedSupabase = {
+      from: jest.fn(),
+    };
+    const permissions = {
+      role: 'clinic_admin',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+    const assertClinicInScope = jest.fn();
 
     processApiRequestMock.mockResolvedValueOnce({
       success: true,
-      supabase,
+      permissions,
+      supabase: userScopedSupabase,
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: supabase,
+      assertClinicInScope,
     });
 
     const { GET } = await import('@/app/api/reservations/route');
@@ -100,7 +114,10 @@ describe('GET /api/reservations', () => {
 
     expect(response.status).toBe(200);
     expect(json.success).toBe(true);
+    expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
+    expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
     expect(supabase.from).toHaveBeenCalledWith('reservation_list_view');
+    expect(userScopedSupabase.from).not.toHaveBeenCalled();
     expect(query.eq).toHaveBeenCalledWith('clinic_id', validClinicId);
     expect(query.eq).toHaveBeenCalledWith('customer_id', validCustomerId);
     expect(query.order).toHaveBeenCalledWith('start_time', {
