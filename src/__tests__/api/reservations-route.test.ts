@@ -190,6 +190,7 @@ describe('POST /api/reservations', () => {
         if (table === 'menus') {
           return { select: jest.fn().mockReturnValue(adminMenuSelect) };
         }
+        if (table === 'reservations') return reservationsTable;
         return {};
       }),
     };
@@ -272,7 +273,8 @@ describe('POST /api/reservations', () => {
       }),
       { onConflict: 'id' }
     );
-    expect(supabase.from).toHaveBeenCalledWith('reservations');
+    expect(adminClient.from).toHaveBeenCalledWith('reservations');
+    expect(supabase.from).not.toHaveBeenCalledWith('reservations');
     expect(supabase.from).not.toHaveBeenCalledWith('resources');
   });
 
@@ -313,6 +315,7 @@ describe('POST /api/reservations', () => {
         if (table === 'menus') {
           return { select: jest.fn().mockReturnValue(adminMenuSelect) };
         }
+        if (table === 'reservations') return reservationsTable;
         return {};
       }),
     };
@@ -385,12 +388,6 @@ describe('PATCH /api/reservations', () => {
   });
 
   it('passes allowedRoles to processClinicScopedBody for role guard', async () => {
-    const notificationClient = { from: jest.fn() };
-    createScopedAdminContextMock.mockReturnValue({
-      client: notificationClient,
-      assertClinicInScope: jest.fn(),
-    });
-
     const existingRow = {
       id: validId,
       clinic_id: validClinicId,
@@ -421,6 +418,16 @@ describe('PATCH /api/reservations', () => {
       select: jest.fn().mockReturnValue(existingSelect),
       update: jest.fn().mockReturnValue(updateSelect),
     };
+    const scopedClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedClient,
+      assertClinicInScope: jest.fn(),
+    });
     const supabase = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;

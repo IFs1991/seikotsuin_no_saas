@@ -126,7 +126,7 @@ function createNotificationClient(
   }
 }
 
-function createScopedReservationStaffResourceClient(
+function createScopedReservationMutationClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
   clinicId: string
 ) {
@@ -477,12 +477,12 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
-    const staffResourceClient = createScopedReservationStaffResourceClient(
+    const reservationMutationClient = createScopedReservationMutationClient(
       result.permissions,
       dto.clinic_id
     );
     const staffResource = await ensureReservationStaffResource(
-      staffResourceClient,
+      reservationMutationClient,
       {
         clinicId: dto.clinic_id,
         staffId: dto.staffId,
@@ -494,7 +494,7 @@ export async function POST(request: NextRequest) {
     }
 
     const referenceError = await validateReservationReferences(
-      staffResourceClient,
+      reservationMutationClient,
       {
         clinicId: dto.clinic_id,
         customerId: dto.customerId,
@@ -506,7 +506,7 @@ export async function POST(request: NextRequest) {
       return createErrorResponse(referenceError, 400);
     }
 
-    const conflict = await hasReservationConflict(result.supabase, {
+    const conflict = await hasReservationConflict(reservationMutationClient, {
       clinicId: dto.clinic_id,
       staffId: dto.staffId,
       startTime: dto.startTime,
@@ -518,7 +518,7 @@ export async function POST(request: NextRequest) {
 
     const insertPayload = mapReservationInsertToRow(dto, result.auth.id);
 
-    const { data, error } = await result.supabase
+    const { data, error } = await reservationMutationClient
       .from('reservations')
       .insert(insertPayload)
       .select()
@@ -577,16 +577,21 @@ export async function PATCH(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
+    const reservationMutationClient = createScopedReservationMutationClient(
+      result.permissions,
+      dto.clinic_id
+    );
 
     // 更新前レコードを取得 (conflict check + メール通知差分検知に使用)
-    const { data: existing, error: existingError } = await result.supabase
-      .from('reservations')
-      .select(
-        'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes'
-      )
-      .eq('id', dto.id)
-      .eq('clinic_id', dto.clinic_id)
-      .single();
+    const { data: existing, error: existingError } =
+      await reservationMutationClient
+        .from('reservations')
+        .select(
+          'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes'
+        )
+        .eq('id', dto.id)
+        .eq('clinic_id', dto.clinic_id)
+        .single();
 
     if (existingError) {
       throw normalizeSupabaseError(existingError, PATH);
@@ -598,12 +603,8 @@ export async function PATCH(request: NextRequest) {
       const nextEndTime = dto.endTime ?? existing.end_time;
 
       if (dto.staffId) {
-        const staffResourceClient = createScopedReservationStaffResourceClient(
-          result.permissions,
-          dto.clinic_id
-        );
         const staffResource = await ensureReservationStaffResource(
-          staffResourceClient,
+          reservationMutationClient,
           {
             clinicId: dto.clinic_id,
             staffId: dto.staffId,
@@ -615,7 +616,7 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      const conflict = await hasReservationConflict(result.supabase, {
+      const conflict = await hasReservationConflict(reservationMutationClient, {
         clinicId: dto.clinic_id,
         staffId: nextStaffId,
         startTime: nextStartTime,
@@ -629,7 +630,7 @@ export async function PATCH(request: NextRequest) {
 
     const updatePayload = mapReservationUpdateToRow(dto);
 
-    const { data, error } = await result.supabase
+    const { data, error } = await reservationMutationClient
       .from('reservations')
       .update(updatePayload)
       .eq('id', dto.id)
