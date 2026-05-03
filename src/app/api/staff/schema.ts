@@ -56,3 +56,23 @@ export function mapStaffInsertToRow(
     is_therapist: dto.is_therapist,
   };
 }
+
+export function mapStaffInsertToResourceRow(
+  dto: StaffInsertDTO,
+  staffId: string,
+  createdBy: string
+): Database['public']['Tables']['resources']['Insert'] {
+  return {
+    id: staffId,
+    clinic_id: dto.clinic_id,
+    name: dto.name,
+    type: 'staff',
+    staff_code: `staff-${staffId}`,
+    email: dto.email,
+    max_concurrent: 1,
+    is_active: true,
+    is_bookable: dto.is_therapist || dto.role === 'practitioner',
+    is_deleted: false,
+    created_by: createdBy,
+  };
+}

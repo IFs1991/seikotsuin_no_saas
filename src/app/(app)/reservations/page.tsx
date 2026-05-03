@@ -35,6 +35,9 @@ import {
 
 const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
 
+const getResourceSortRank = (resourceType?: string) =>
+  resourceType === 'staff' ? 0 : 1;
+
 const AppointmentDetail = dynamic(
   () =>
     import('./components/AppointmentDetail').then(
@@ -109,7 +112,13 @@ function ReservationsPageContent() {
   const resources = useMemo<SchedulerResource[]>(
     () =>
       (rawResources ?? [])
-        .filter(resource => resource.isActive)
+        .filter(resource => resource.isActive !== false)
+        .slice()
+        .sort(
+          (a, b) =>
+            getResourceSortRank(a.type) - getResourceSortRank(b.type) ||
+            a.name.localeCompare(b.name, 'ja')
+        )
         .map(resource => ({
           id: resource.id,
           name: resource.name,

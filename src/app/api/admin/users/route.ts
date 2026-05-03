@@ -62,6 +62,15 @@ type CreatedAccountPersistenceInput = {
   clinicId: string;
   timestamp: string;
 };
+type StaffResourcePersistenceInput = {
+  actorUserId: string;
+  staffId: string;
+  clinicId: string;
+  name: string;
+  email: string;
+  role: AdminUserRole;
+  timestamp: string;
+};
 type AccountWriteFailure = {
   stage: string;
   message: string;
@@ -69,6 +78,11 @@ type AccountWriteFailure = {
 };
 
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
+  'clinic_admin',
+  'manager',
+  'therapist',
+]);
 
 const mapCreateAccountErrorMessage = (error?: { message?: string | null }) => {
   const normalizedMessage = error?.message?.toLowerCase();
@@ -100,28 +114,39 @@ const buildCreatedStaffRow = ({
   updated_at: timestamp,
 });
 
-const buildCreatedResourceRow = ({
+const buildStaffResourceRow = ({
   actorUserId,
-  createdUserId,
+  staffId,
   clinicId,
-  fullName,
+  name,
   email,
   role,
   timestamp,
-}: CreatedAccountPersistenceInput) => ({
-  id: createdUserId,
+}: StaffResourcePersistenceInput) => ({
+  id: staffId,
   clinic_id: clinicId,
-  name: fullName,
+  name,
   type: 'staff',
-  staff_code: `${role}-${createdUserId}`,
+  staff_code: `${role}-${staffId}`,
   email,
   max_concurrent: 1,
   is_active: true,
-  is_bookable: role === 'therapist',
+  is_bookable: BOOKABLE_STAFF_RESOURCE_ROLES.has(role),
   is_deleted: false,
   updated_at: timestamp,
   created_by: actorUserId,
 });
+
+const buildCreatedResourceRow = (input: CreatedAccountPersistenceInput) =>
+  buildStaffResourceRow({
+    actorUserId: input.actorUserId,
+    staffId: input.createdUserId,
+    clinicId: input.clinicId,
+    name: input.fullName,
+    email: input.email,
+    role: input.role,
+    timestamp: input.timestamp,
+  });
 
 const buildCreatedProfileRow = ({
   createdUserId,
@@ -221,6 +246,45 @@ async function createAccountPermission(input: CreatedAccountPersistenceInput) {
       'id, staff_id, role, clinic_id, username, created_at, clinics(name)'
     )
     .single();
+}
+
+async function syncAssignedStaffResource({
+  adminClient,
+  actorUserId,
+  targetUserId,
+  clinicId,
+  name,
+  email,
+  role,
+}: {
+  adminClient: AdminClient;
+  actorUserId: string;
+  targetUserId: string;
+  clinicId: string | null;
+  name: string | null;
+  email: string;
+  role: AdminUserRole;
+}): Promise<AccountWriteFailure | null> {
+  if (role === 'admin' || !clinicId) {
+    return null;
+  }
+
+  return resolveAccountWriteFailure(
+    'upsert_resources',
+    'スタッフリソースの同期に失敗しました',
+    adminClient.from('resources').upsert(
+      buildStaffResourceRow({
+        actorUserId,
+        staffId: targetUserId,
+        clinicId,
+        name: name?.trim() || email,
+        email,
+        role,
+        timestamp: new Date().toISOString(),
+      }),
+      { onConflict: 'id' }
+    )
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -657,6 +721,30 @@ export async function POST(request: NextRequest) {
         params: { user_id, role, clinic_id: targetClinicId },
       });
       return createErrorResponse('権限の付与に失敗しました', 500);
+    }
+
+    const resourceSyncFailure = await syncAssignedStaffResource({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      targetUserId: user_id,
+      clinicId: targetClinicId,
+      name: profile.full_name,
+      email: profile.email,
+      role,
+    });
+    if (resourceSyncFailure) {
+      logError(resourceSyncFailure.error, {
+        endpoint: '/api/admin/users',
+        method: 'POST',
+        userId: auth.id,
+        params: {
+          user_id,
+          role,
+          clinic_id: targetClinicId,
+          stage: resourceSyncFailure.stage,
+        },
+      });
+      return createErrorResponse(resourceSyncFailure.message, 500);
     }
 
     void AuditLogger.logAdminAction(

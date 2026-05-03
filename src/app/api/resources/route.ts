@@ -13,6 +13,7 @@ import {
   mapResourceInsertToRow,
   mapResourceUpdateToRow,
 } from './schema';
+import type { Json } from '@/types/supabase';
 
 const PATH = '/api/resources';
 const RESOURCE_LIST_SELECT =
@@ -22,21 +23,59 @@ type ResourceListRow = {
   id: string;
   name: string;
   type: string;
-  working_hours: Record<string, unknown> | null;
+  working_hours: Json | null;
   supported_menus: string[] | null;
   max_concurrent: number | null;
-  is_active: boolean;
+  is_active: boolean | null;
 };
+type StaffResourceCandidateRow = {
+  id: string;
+  name: string;
+  role: string;
+  is_therapist: boolean | null;
+};
+
+const STAFF_RESOURCE_FALLBACK_ROLES = new Set([
+  'clinic_admin',
+  'clinic_manager',
+  'manager',
+  'practitioner',
+  'therapist',
+]);
+
+function isJsonRecord(
+  value: Json | null
+): value is Record<string, Json | undefined> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 function mapResourceListRow(row: ResourceListRow) {
   return {
     id: row.id,
     name: row.name,
     type: row.type,
-    workingHours: row.working_hours ?? {},
+    workingHours: isJsonRecord(row.working_hours) ? row.working_hours : {},
     supportedMenus: row.supported_menus ?? [],
     maxConcurrent: row.max_concurrent ?? 1,
-    isActive: row.is_active,
+    isActive: row.is_active !== false,
+  };
+}
+
+function shouldExposeStaffCandidate(row: StaffResourceCandidateRow) {
+  return (
+    row.is_therapist === true || STAFF_RESOURCE_FALLBACK_ROLES.has(row.role)
+  );
+}
+
+function mapStaffCandidateToResource(row: StaffResourceCandidateRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    type: 'staff',
+    workingHours: {},
+    supportedMenus: [],
+    maxConcurrent: 1,
+    isActive: true,
   };
 }
 
@@ -71,7 +110,29 @@ export async function GET(request: NextRequest) {
     });
     if (error) throw normalizeSupabaseError(error, PATH);
 
-    const mapped = ((data ?? []) as ResourceListRow[]).map(mapResourceListRow);
+    let mapped = (data ?? []).map(mapResourceListRow);
+
+    const shouldLoadStaffFallback =
+      (type === undefined || type === 'staff') &&
+      !mapped.some(resource => resource.type === 'staff' && resource.isActive);
+
+    if (shouldLoadStaffFallback) {
+      const { data: staffData, error: staffError } = await guard.supabase
+        .from('staff')
+        .select('id, name, role, is_therapist')
+        .eq('clinic_id', clinic_id);
+
+      if (staffError) throw normalizeSupabaseError(staffError, PATH);
+
+      const existingResourceIds = new Set(mapped.map(resource => resource.id));
+      const staffFallbackResources = (staffData ?? [])
+        .filter(row => !existingResourceIds.has(row.id))
+        .filter(shouldExposeStaffCandidate)
+        .map(mapStaffCandidateToResource);
+
+      mapped = [...mapped, ...staffFallbackResources];
+    }
+
     return createSuccessResponse(mapped);
   } catch (error) {
     return handleRouteError(error, PATH);

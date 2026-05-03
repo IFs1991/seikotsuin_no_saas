@@ -4,6 +4,7 @@ import {
   enqueueReservationChange,
   enqueueReservationCreated,
 } from '@/lib/notifications/email/reservation-enqueue';
+import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/route-helpers', () => {
   const actual = jest.requireActual('@/lib/route-helpers');
@@ -31,8 +32,50 @@ const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const enqueueReservationCreatedMock = enqueueReservationCreated as jest.Mock;
 const enqueueReservationChangeMock = enqueueReservationChange as jest.Mock;
 
+type QueryResult<T> = { data: T; error: null };
+type CountResult = { count: number; error: null };
+
+type PendingCountQuery = {
+  eq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  lt: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  gt: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  not: jest.MockedFunction<
+    (field: string, operator: string, value: unknown) => PendingCountQuery
+  >;
+  neq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  then: Promise<CountResult>['then'];
+};
+
+type SingleSelectBuilder<T> = {
+  eq: jest.MockedFunction<(field: string, value: unknown) => SingleSelectBuilder<T>>;
+  single: jest.MockedFunction<() => Promise<QueryResult<T>>>;
+};
+
+type MaybeSingleSelectBuilder<T> = {
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => MaybeSingleSelectBuilder<T>
+  >;
+  maybeSingle: jest.MockedFunction<() => Promise<QueryResult<T>>>;
+};
+
+type InsertBuilder<T> = {
+  select: jest.MockedFunction<() => InsertBuilder<T>>;
+  single: jest.MockedFunction<() => Promise<QueryResult<T>>>;
+};
+
+type UpdateBuilder<T> = {
+  eq: jest.MockedFunction<(field: string, value: unknown) => UpdateBuilder<T>>;
+  select: jest.MockedFunction<() => UpdateBuilder<T>>;
+  single: jest.MockedFunction<() => Promise<QueryResult<T>>>;
+};
+
+const buildRequest = () =>
+  new NextRequest('http://localhost/api/reservations', {
+    method: 'POST',
+  });
+
 function createPendingCountQuery(count: number) {
-  const query: any = {};
+  const query = {} as PendingCountQuery;
   query.eq = jest.fn().mockReturnValue(query);
   query.lt = jest.fn().mockReturnValue(query);
   query.gt = jest.fn().mockReturnValue(query);
@@ -49,22 +92,29 @@ function createPendingCountQuery(count: number) {
   return query;
 }
 
-function createSingleSelectBuilder(data: any) {
-  const builder: any = {};
+function createSingleSelectBuilder<T>(data: T) {
+  const builder = {} as SingleSelectBuilder<T>;
   builder.eq = jest.fn().mockReturnValue(builder);
   builder.single = jest.fn().mockResolvedValue({ data, error: null });
   return builder;
 }
 
-function createInsertBuilder(data: any) {
-  const builder: any = {};
+function createMaybeSingleSelectBuilder<T>(data: T) {
+  const builder = {} as MaybeSingleSelectBuilder<T>;
+  builder.eq = jest.fn().mockReturnValue(builder);
+  builder.maybeSingle = jest.fn().mockResolvedValue({ data, error: null });
+  return builder;
+}
+
+function createInsertBuilder<T>(data: T) {
+  const builder = {} as InsertBuilder<T>;
   builder.select = jest.fn().mockReturnValue(builder);
   builder.single = jest.fn().mockResolvedValue({ data, error: null });
   return builder;
 }
 
-function createUpdateBuilder(data: any) {
-  const builder: any = {};
+function createUpdateBuilder<T>(data: T) {
+  const builder = {} as UpdateBuilder<T>;
   builder.eq = jest.fn().mockReturnValue(builder);
   builder.select = jest.fn().mockReturnValue(builder);
   builder.single = jest.fn().mockResolvedValue({ data, error: null });
@@ -101,12 +151,18 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       select: jest.fn().mockReturnValue(conflictQuery),
       insert: jest.fn().mockReturnValue(createInsertBuilder(insertedRow)),
     };
+    const resourcesTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'staff-001' })),
+    };
     const supabase = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
+        if (table === 'resources') return resourcesTable;
         return {};
       }),
-    } as any;
+    };
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -131,7 +187,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     enqueueReservationCreatedMock.mockResolvedValueOnce({ id: 'outbox-001' });
 
     const { POST } = await import('@/app/api/reservations/route');
-    const response = await POST({} as any);
+    const response = await POST(buildRequest());
 
     expect(response.status).toBe(201);
     expect(createScopedAdminContextMock).toHaveBeenCalledWith({
@@ -175,12 +231,18 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       select: jest.fn().mockReturnValue(conflictQuery),
       insert: jest.fn().mockReturnValue(createInsertBuilder(insertedRow)),
     };
+    const resourcesTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'staff-001' })),
+    };
     const supabase = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
+        if (table === 'resources') return resourcesTable;
         return {};
       }),
-    } as any;
+    };
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -206,7 +268,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     );
 
     const { POST } = await import('@/app/api/reservations/route');
-    const response = await POST({} as any);
+    const response = await POST(buildRequest());
 
     expect(response.status).toBe(201);
     expect(enqueueReservationCreatedMock).toHaveBeenCalledTimes(1);
@@ -247,7 +309,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
         if (table === 'reservations') return reservationsTable;
         return {};
       }),
-    } as any;
+    };
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -270,7 +332,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     );
 
     const { PATCH } = await import('@/app/api/reservations/route');
-    const response = await PATCH({} as any);
+    const response = await PATCH(buildRequest());
 
     expect(response.status).toBe(200);
     expect(createScopedAdminContextMock).toHaveBeenCalledWith({

@@ -10,6 +10,7 @@ import {
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import {
   mapStaffInsertToRow,
+  mapStaffInsertToResourceRow,
   staffInsertSchema,
   staffQuerySchema,
 } from './schema';
@@ -20,6 +21,12 @@ import {
 } from '@/lib/constants/roles';
 
 const PATH = '/api/staff';
+type PerformanceTrendPoint = {
+  date: string;
+  revenue: number;
+  patients: number;
+  satisfaction: number;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -143,7 +150,7 @@ export async function GET(request: NextRequest) {
           });
           return acc;
         },
-        {} as Record<string, any[]>
+        {} as Record<string, PerformanceTrendPoint[]>
       ) || {};
 
     // シフト分析：時間帯別予約数を取得
@@ -345,7 +352,7 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
 
-    const { supabase } = await ensureClinicAccess(
+    const { supabase, user } = await ensureClinicAccess(
       request,
       PATH,
       dto.clinic_id,
@@ -365,6 +372,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       throw normalizeSupabaseError(error, PATH);
+    }
+
+    const { error: resourceError } = await supabase
+      .from('resources')
+      .upsert(mapStaffInsertToResourceRow(dto, data.id, user.id), {
+        onConflict: 'id',
+      });
+
+    if (resourceError) {
+      throw normalizeSupabaseError(resourceError, PATH);
     }
 
     return createSuccessResponse(data, 201);

@@ -124,12 +124,12 @@ describe('GET /api/admin/users', () => {
       }),
     };
 
-    createAdminClientMock.mockReturnValue(
-      adminClient as unknown as ReturnType<typeof createAdminClient>
-    );
+    createAdminClientMock.mockReturnValue(adminClient);
 
     const { GET } = await import('@/app/api/admin/users/route');
-    const response = await GET(new NextRequest('http://localhost/api/admin/users'));
+    const response = await GET(
+      new NextRequest('http://localhost/api/admin/users')
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -216,7 +216,9 @@ describe('GET /api/admin/users', () => {
       },
     });
 
-    const baseUpsertQuery = { upsert: jest.fn().mockResolvedValue({ error: null }) };
+    const baseUpsertQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
     const permissionWriteQuery = {
       upsert: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -259,9 +261,7 @@ describe('GET /api/admin/users', () => {
       }),
     };
 
-    createAdminClientMock.mockReturnValue(
-      adminClient as unknown as ReturnType<typeof createAdminClient>
-    );
+    createAdminClientMock.mockReturnValue(adminClient);
 
     const { POST } = await import('@/app/api/admin/users/route');
     const response = await POST(
@@ -291,6 +291,18 @@ describe('GET /api/admin/users', () => {
     expect(adminClient.from).toHaveBeenCalledWith('profiles');
     expect(adminClient.from).toHaveBeenCalledWith('staff');
     expect(adminClient.from).toHaveBeenCalledWith('resources');
+    expect(baseUpsertQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: createdUserId,
+        clinic_id: clinicId,
+        name: '山田 太郎',
+        type: 'staff',
+        is_active: true,
+        is_bookable: true,
+        is_deleted: false,
+      }),
+      { onConflict: 'id' }
+    );
     expect(permissionWriteQuery.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         staff_id: createdUserId,

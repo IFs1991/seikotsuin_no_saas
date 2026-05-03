@@ -58,6 +58,12 @@ const createInitialCustomAttributes = () =>
     return acc;
   }, {});
 
+const isSelectableResource = (resource: SchedulerResource) =>
+  resource.id !== 'separator';
+
+const formatResourceLabel = (resource: SchedulerResource) =>
+  `${resource.name}${resource.capacity ? ` (${resource.capacity})` : ''}`;
+
 interface Props {
   clinicId: string;
   resources: SchedulerResource[];
@@ -89,9 +95,28 @@ export const AppointmentForm: React.FC<Props> = ({
 
   // Today's date YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
+  const staffResources = useMemo(
+    () =>
+      resources.filter(
+        resource => isSelectableResource(resource) && resource.type === 'staff'
+      ),
+    [resources]
+  );
+  const facilityResources = useMemo(
+    () =>
+      resources.filter(
+        resource =>
+          isSelectableResource(resource) && resource.type === 'facility'
+      ),
+    [resources]
+  );
+  const selectableResources = useMemo(
+    () => [...staffResources, ...facilityResources],
+    [facilityResources, staffResources]
+  );
 
   const [formData, setFormData] = useState<AppointmentFormState>({
-    resourceId: initialData?.resourceId || resources[0]?.id || '',
+    resourceId: initialData?.resourceId || selectableResources[0]?.id || '',
     lastName: '',
     firstName: '',
     date: initialData?.date || todayStr,
@@ -105,10 +130,22 @@ export const AppointmentForm: React.FC<Props> = ({
   });
 
   useEffect(() => {
-    if (!formData.resourceId && resources.length > 0) {
-      setFormData(prev => ({ ...prev, resourceId: resources[0].id }));
+    const selectedResourceExists = selectableResources.some(
+      resource => resource.id === formData.resourceId
+    );
+
+    if (formData.resourceId && !selectedResourceExists) {
+      setFormData(prev => ({
+        ...prev,
+        resourceId: selectableResources[0]?.id ?? '',
+      }));
+      return;
     }
-  }, [resources, formData.resourceId]);
+
+    if (!formData.resourceId && selectableResources.length > 0) {
+      setFormData(prev => ({ ...prev, resourceId: selectableResources[0].id }));
+    }
+  }, [selectableResources, formData.resourceId]);
 
   useEffect(() => {
     if (!formData.menuId && menus.length > 0) {
@@ -426,15 +463,32 @@ export const AppointmentForm: React.FC<Props> = ({
             value={formData.resourceId}
             onChange={e => handleInputChange('resourceId', e.target.value)}
             className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
+            disabled={selectableResources.length === 0}
           >
-            {resources
-              .filter(r => r.id !== 'separator')
-              .map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.name} {r.capacity ? `(${r.capacity})` : ''}
-                </option>
-              ))}
+            {staffResources.length > 0 && (
+              <optgroup label='施術者'>
+                {staffResources.map(resource => (
+                  <option key={resource.id} value={resource.id}>
+                    {formatResourceLabel(resource)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {facilityResources.length > 0 && (
+              <optgroup label='設備・施術室'>
+                {facilityResources.map(resource => (
+                  <option key={resource.id} value={resource.id}>
+                    {formatResourceLabel(resource)}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
+          {staffResources.length === 0 && (
+            <p className='mt-2 text-xs text-amber-700'>
+              施術者リソースが未登録です。スタッフ管理またはリソース管理で施術者を追加してください。
+            </p>
+          )}
         </div>
 
         {/* Menu & Options */}

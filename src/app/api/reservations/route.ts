@@ -7,7 +7,11 @@ import {
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import { logger } from '@/lib/logger';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
-import { createScopedAdminContext } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 import {
   reservationsQuerySchema,
   reservationInsertSchema,
@@ -21,8 +25,69 @@ import {
   enqueueReservationChange,
 } from '@/lib/notifications/email/reservation-enqueue';
 import type { ReservationSnapshot } from '@/lib/notifications/email/types';
+import type { ReservationOptionSelection } from '@/types/reservation';
 
 const PATH = '/api/reservations';
+type ReservationListViewRow =
+  Database['public']['Views']['reservation_list_view']['Row'];
+type StaffResourceCandidateRow = {
+  id: string;
+  clinic_id: string | null;
+  name: string;
+  email: string | null;
+  role: string;
+  is_therapist: boolean | null;
+};
+
+const RESERVATION_BOOKABLE_STAFF_ROLES = new Set([
+  'clinic_admin',
+  'clinic_manager',
+  'manager',
+  'practitioner',
+  'therapist',
+]);
+
+function isReservationOptionSelection(
+  value: unknown
+): value is ReservationOptionSelection {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const option = value as Record<string, unknown>;
+  return (
+    typeof option.optionId === 'string' &&
+    typeof option.name === 'string' &&
+    typeof option.priceDelta === 'number' &&
+    typeof option.durationDeltaMinutes === 'number'
+  );
+}
+
+function mapSelectedOptions(value: ReservationListViewRow['selected_options']) {
+  return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
+}
+
+function buildStaffResourceFromCandidate(
+  row: StaffResourceCandidateRow,
+  clinicId: string,
+  createdBy: string
+): Database['public']['Tables']['resources']['Insert'] {
+  return {
+    id: row.id,
+    clinic_id: clinicId,
+    name: row.name,
+    type: 'staff',
+    staff_code: `staff-${row.id}`,
+    email: row.email,
+    max_concurrent: 1,
+    is_active: true,
+    is_bookable:
+      row.is_therapist === true ||
+      RESERVATION_BOOKABLE_STAFF_ROLES.has(row.role),
+    is_deleted: false,
+    created_by: createdBy,
+  };
+}
 
 function createNotificationClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
@@ -45,7 +110,7 @@ function createNotificationClient(
 }
 
 async function hasReservationConflict(
-  supabase: any,
+  supabase: SupabaseServerClient,
   params: {
     clinicId: string;
     staffId: string;
@@ -72,6 +137,57 @@ async function hasReservationConflict(
     throw normalizeSupabaseError(error, PATH);
   }
   return (count ?? 0) > 0;
+}
+
+async function ensureReservationStaffResource(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    staffId: string;
+    createdBy: string;
+  }
+) {
+  const { data: resource, error: resourceError } = await supabase
+    .from('resources')
+    .select('id')
+    .eq('clinic_id', params.clinicId)
+    .eq('id', params.staffId)
+    .maybeSingle();
+
+  if (resourceError) {
+    throw normalizeSupabaseError(resourceError, PATH);
+  }
+  if (resource) return { ok: true as const };
+
+  const { data: staff, error: staffError } = await supabase
+    .from('staff')
+    .select('id, clinic_id, name, email, role, is_therapist')
+    .eq('clinic_id', params.clinicId)
+    .eq('id', params.staffId)
+    .maybeSingle();
+
+  if (staffError) {
+    throw normalizeSupabaseError(staffError, PATH);
+  }
+  if (!staff) {
+    return {
+      ok: false as const,
+      error: '担当スタッフのリソースが見つかりません',
+    };
+  }
+
+  const { error: upsertError } = await supabase
+    .from('resources')
+    .upsert(
+      buildStaffResourceFromCandidate(staff, params.clinicId, params.createdBy),
+      { onConflict: 'id' }
+    );
+
+  if (upsertError) {
+    throw normalizeSupabaseError(upsertError, PATH);
+  }
+
+  return { ok: true as const };
 }
 
 export async function GET(request: NextRequest) {
@@ -117,20 +233,21 @@ export async function GET(request: NextRequest) {
         return createErrorResponse('予約が見つかりません', 404);
       }
 
+      const row = data;
       const mapped = {
-        id: data.id,
-        customerId: data.customer_id,
-        customerName: data.customer_name,
-        menuId: data.menu_id,
-        menuName: data.menu_name,
-        staffId: data.staff_id,
-        staffName: data.staff_name,
-        startTime: data.start_time,
-        endTime: data.end_time,
-        status: data.status,
-        channel: data.channel,
-        notes: data.notes ?? undefined,
-        selectedOptions: data.selected_options ?? [],
+        id: row.id ?? '',
+        customerId: row.customer_id ?? '',
+        customerName: row.customer_name,
+        menuId: row.menu_id ?? '',
+        menuName: row.menu_name,
+        staffId: row.staff_id ?? '',
+        staffName: row.staff_name,
+        startTime: row.start_time ?? '',
+        endTime: row.end_time ?? '',
+        status: row.status,
+        channel: row.channel,
+        notes: row.notes ?? undefined,
+        selectedOptions: mapSelectedOptions(row.selected_options),
       };
 
       return createSuccessResponse(mapped);
@@ -149,20 +266,20 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = (data ?? []).map((row: any) => ({
-      id: row.id,
-      customerId: row.customer_id,
+    const mapped = (data ?? []).map(row => ({
+      id: row.id ?? '',
+      customerId: row.customer_id ?? '',
       customerName: row.customer_name,
-      menuId: row.menu_id,
+      menuId: row.menu_id ?? '',
       menuName: row.menu_name,
-      staffId: row.staff_id,
+      staffId: row.staff_id ?? '',
       staffName: row.staff_name,
-      startTime: row.start_time,
-      endTime: row.end_time,
+      startTime: row.start_time ?? '',
+      endTime: row.end_time ?? '',
       status: row.status,
       channel: row.channel,
       notes: row.notes ?? undefined,
-      selectedOptions: row.selected_options ?? [],
+      selectedOptions: mapSelectedOptions(row.selected_options),
     }));
 
     return createSuccessResponse(mapped);
@@ -180,6 +297,18 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
+    const staffResource = await ensureReservationStaffResource(
+      result.supabase,
+      {
+        clinicId: dto.clinic_id,
+        staffId: dto.staffId,
+        createdBy: result.auth.id,
+      }
+    );
+    if (!staffResource.ok) {
+      return createErrorResponse(staffResource.error, 400);
+    }
+
     const conflict = await hasReservationConflict(result.supabase, {
       clinicId: dto.clinic_id,
       staffId: dto.staffId,
@@ -265,6 +394,20 @@ export async function PATCH(request: NextRequest) {
       const nextStaffId = dto.staffId ?? existing.staff_id;
       const nextStartTime = dto.startTime ?? existing.start_time;
       const nextEndTime = dto.endTime ?? existing.end_time;
+
+      if (dto.staffId) {
+        const staffResource = await ensureReservationStaffResource(
+          result.supabase,
+          {
+            clinicId: dto.clinic_id,
+            staffId: dto.staffId,
+            createdBy: result.auth.id,
+          }
+        );
+        if (!staffResource.ok) {
+          return createErrorResponse(staffResource.error, 400);
+        }
+      }
 
       const conflict = await hasReservationConflict(result.supabase, {
         clinicId: dto.clinic_id,

@@ -9,7 +9,11 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AppointmentForm } from '@/app/(app)/reservations/components/AppointmentForm';
-import type { MenuItem, SchedulerResource } from '@/app/(app)/reservations/types';
+import type {
+  Appointment,
+  MenuItem,
+  SchedulerResource,
+} from '@/app/(app)/reservations/types';
 
 // API モック
 jest.mock('@/app/(app)/reservations/api', () => ({
@@ -51,7 +55,7 @@ const mockMenus: MenuItem[] = [
   },
 ];
 
-const mockAppointments = [] as any[];
+const mockAppointments: Appointment[] = [];
 
 const renderForm = (
   overrides?: Partial<Parameters<typeof AppointmentForm>[0]>
@@ -121,6 +125,30 @@ describe('2-2: フォームフィールド順序', () => {
 
     expect(staffSelect).toBeInTheDocument();
     expect(isBeforeInDocument(staffSelect!, phoneInput)).toBe(true);
+  });
+
+  it('担当・設備セレクトで施術者と設備を分けて表示する', () => {
+    renderForm({
+      resources: [
+        { id: 'staff-1', name: '田中 花子', type: 'staff' },
+        { id: 'room-1', name: '施術室1', type: 'facility' },
+      ],
+    });
+
+    expect(document.querySelector('optgroup[label="施術者"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('optgroup[label="設備・施術室"]')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '田中 花子' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '施術室1' })).toBeInTheDocument();
+  });
+
+  it('施術者リソースがない場合は未登録メッセージを表示する', () => {
+    renderForm({
+      resources: [{ id: 'room-1', name: '施術室1', type: 'facility' }],
+    });
+
+    expect(screen.getByText(/施術者リソースが未登録です/)).toBeInTheDocument();
   });
 
   it('メニューセレクトボックスが電話番号フィールドより前に表示される', () => {
