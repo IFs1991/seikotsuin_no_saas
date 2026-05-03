@@ -14,7 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { ReservationOptionSelection } from '@/types/reservation';
+import type {
+  MenuOption,
+  ReservationOptionSelection,
+} from '@/types/reservation';
 import { useReservationFormData } from '@/hooks/useReservationFormData';
 
 export interface ReservationFormProps {
@@ -60,7 +63,7 @@ export function ReservationForm({
 
   const availableOptions = selectedMenu?.options?.filter(o => o.isActive) ?? [];
 
-  const handleToggleOption = (option: any) => {
+  const handleToggleOption = (option: MenuOption) => {
     setSelectedOptions(prev => {
       const exists = prev.find(o => o.optionId === option.id);
       if (exists) return prev.filter(o => o.optionId !== option.id);

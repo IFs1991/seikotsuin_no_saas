@@ -160,6 +160,61 @@ async function hasReservationConflict(
   return (count ?? 0) > 0;
 }
 
+async function validateReservationReferences(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    customerId: string;
+    menuId: string;
+    staffId: string;
+  }
+): Promise<string | null> {
+  const [customerResult, menuResult, resourceResult] = await Promise.all([
+    supabase
+      .from('customers')
+      .select('id')
+      .eq('clinic_id', params.clinicId)
+      .eq('id', params.customerId)
+      .eq('is_deleted', false)
+      .maybeSingle(),
+    supabase
+      .from('menus')
+      .select('id')
+      .eq('clinic_id', params.clinicId)
+      .eq('id', params.menuId)
+      .eq('is_deleted', false)
+      .maybeSingle(),
+    supabase
+      .from('resources')
+      .select('id')
+      .eq('clinic_id', params.clinicId)
+      .eq('id', params.staffId)
+      .maybeSingle(),
+  ]);
+
+  if (customerResult.error) {
+    throw normalizeSupabaseError(customerResult.error, PATH);
+  }
+  if (menuResult.error) {
+    throw normalizeSupabaseError(menuResult.error, PATH);
+  }
+  if (resourceResult.error) {
+    throw normalizeSupabaseError(resourceResult.error, PATH);
+  }
+
+  if (!customerResult.data) {
+    return '選択した顧客データが見つかりません';
+  }
+  if (!menuResult.data) {
+    return '選択したメニューが見つかりません。メニュー管理で有効なメニューを登録してください';
+  }
+  if (!resourceResult.data) {
+    return '選択した施術者リソースが見つかりません';
+  }
+
+  return null;
+}
+
 async function ensureReservationStaffResource(
   supabase: SupabaseServerClient,
   params: {
@@ -374,6 +429,19 @@ export async function POST(request: NextRequest) {
     );
     if (!staffResource.ok) {
       return createErrorResponse(staffResource.error, 400);
+    }
+
+    const referenceError = await validateReservationReferences(
+      staffResourceClient,
+      {
+        clinicId: dto.clinic_id,
+        customerId: dto.customerId,
+        menuId: dto.menuId,
+        staffId: dto.staffId,
+      }
+    );
+    if (referenceError) {
+      return createErrorResponse(referenceError, 400);
     }
 
     const conflict = await hasReservationConflict(result.supabase, {

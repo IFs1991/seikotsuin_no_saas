@@ -118,7 +118,13 @@ describe('POST /api/reservations', () => {
     const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
     const adminResourceSelect = {
       eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      maybeSingle: jest
+        .fn()
+        .mockResolvedValueOnce({ data: null, error: null })
+        .mockResolvedValueOnce({
+          data: { id: selectedStaffId },
+          error: null,
+        }),
     };
     const adminStaffSelect = {
       eq: jest.fn().mockReturnThis(),
@@ -152,6 +158,20 @@ describe('POST /api/reservations', () => {
       select: jest.fn().mockReturnValue(adminResourceSelect),
       upsert: jest.fn().mockResolvedValue({ error: null }),
     };
+    const adminCustomerSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: validCustomerId },
+        error: null,
+      }),
+    };
+    const adminMenuSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: '123e4567-e89b-12d3-a456-426614174003' },
+        error: null,
+      }),
+    };
     const adminClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'resources') return adminResourcesTable;
@@ -163,6 +183,12 @@ describe('POST /api/reservations', () => {
         }
         if (table === 'profiles') {
           return { select: jest.fn().mockReturnValue(adminProfileSelect) };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn().mockReturnValue(adminCustomerSelect) };
+        }
+        if (table === 'menus') {
+          return { select: jest.fn().mockReturnValue(adminMenuSelect) };
         }
         return {};
       }),

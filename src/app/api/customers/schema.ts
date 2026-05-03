@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
+
+type CustomerInsertRow = Database['public']['Tables']['customers']['Insert'];
+type CustomerUpdateRow = Database['public']['Tables']['customers']['Update'];
 
 /**
  * 検索クエリ用スキーマ
@@ -28,7 +31,18 @@ const optionalTrimmedString = (max: number) =>
       return trimmed.length === 0 ? undefined : trimmed;
     });
 
-const optionalCustomAttributes = z.record(z.unknown()).optional();
+const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonSchema),
+    z.record(jsonSchema),
+  ])
+);
+
+const optionalCustomAttributes = z.record(jsonSchema).optional();
 
 export const customersQuerySchema = z.object({
   clinic_id: z.string().uuid('有効なクリニックIDを指定してください'),
@@ -64,7 +78,7 @@ export type CustomerUpdateDTO = z.infer<typeof customerUpdateSchema>;
 export function mapCustomerInsertToRow(
   dto: CustomerInsertDTO,
   userId: string
-): Database['public']['Tables']['customers']['Insert'] {
+): CustomerInsertRow {
   return {
     clinic_id: dto.clinic_id,
     name: dto.name,
@@ -73,12 +87,12 @@ export function mapCustomerInsertToRow(
     notes: dto.notes ?? null,
     custom_attributes: dto.customAttributes ?? null,
     created_by: userId,
-  } as any;
+  };
 }
 
 export function mapCustomerUpdateToRow(
   dto: CustomerUpdateDTO
-): Database['public']['Tables']['customers']['Update'] {
+): CustomerUpdateRow {
   return {
     name: dto.name,
     phone: dto.phone,
@@ -87,5 +101,5 @@ export function mapCustomerUpdateToRow(
     ...(dto.customAttributes !== undefined
       ? { custom_attributes: dto.customAttributes }
       : {}),
-  } as any;
+  };
 }
