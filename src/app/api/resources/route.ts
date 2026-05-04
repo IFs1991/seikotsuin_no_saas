@@ -26,7 +26,7 @@ import {
 
 const PATH = '/api/resources';
 const RESOURCE_LIST_SELECT =
-  'id, name, type, working_hours, supported_menus, max_concurrent, is_active, display_order';
+  'id, name, type, working_hours, supported_menus, max_concurrent, is_active, is_bookable, display_order';
 
 type ResourceListRow = {
   id: string;
@@ -36,6 +36,7 @@ type ResourceListRow = {
   supported_menus: string[] | null;
   max_concurrent: number | null;
   is_active: boolean | null;
+  is_bookable: boolean | null;
 };
 function isJsonRecord(
   value: Json | null
@@ -52,6 +53,7 @@ function mapResourceListRow(row: ResourceListRow) {
     supportedMenus: row.supported_menus ?? [],
     maxConcurrent: row.max_concurrent ?? 1,
     isActive: row.is_active !== false,
+    isBookable: row.is_bookable !== false,
   };
 }
 
@@ -64,6 +66,7 @@ function mapStaffCandidateToResource(row: LegacyStaffCandidate) {
     supportedMenus: [],
     maxConcurrent: 1,
     isActive: true,
+    isBookable: true,
   };
 }
 
@@ -79,7 +82,17 @@ function mapPermissionCandidateToResource(
     supportedMenus: [],
     maxConcurrent: 1,
     isActive: profile?.is_active !== false,
+    isBookable: true,
   };
+}
+
+function hasActiveBookableStaffResource(
+  resources: ReturnType<typeof mapResourceListRow>[]
+) {
+  return resources.some(
+    resource =>
+      resource.type === 'staff' && resource.isActive && resource.isBookable
+  );
 }
 
 export async function GET(request: NextRequest) {
@@ -117,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     const shouldLoadStaffFallback =
       (type === undefined || type === 'staff') &&
-      !mapped.some(resource => resource.type === 'staff' && resource.isActive);
+      !hasActiveBookableStaffResource(mapped);
 
     if (shouldLoadStaffFallback) {
       const { data: staffData, error: staffError } = await guard.supabase
@@ -138,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     const shouldLoadPermissionFallback =
       (type === undefined || type === 'staff') &&
-      !mapped.some(resource => resource.type === 'staff' && resource.isActive);
+      !hasActiveBookableStaffResource(mapped);
 
     if (shouldLoadPermissionFallback) {
       const { data: permissionData, error: permissionError } =

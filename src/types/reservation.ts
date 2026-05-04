@@ -68,6 +68,7 @@ export interface Resource {
   maxConcurrent: number;
   supportedMenus: string[];
   isActive: boolean;
+  isBookable?: boolean;
 }
 
 export interface Reservation {

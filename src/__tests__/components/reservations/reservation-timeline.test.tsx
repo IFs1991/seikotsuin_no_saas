@@ -57,6 +57,7 @@ jest.mock('@/hooks/useReservationFormData', () => ({
         id: 'staff1',
         name: '田中先生',
         isActive: true,
+        isBookable: true,
         type: 'staff',
         maxConcurrent: 1,
       },
@@ -64,6 +65,7 @@ jest.mock('@/hooks/useReservationFormData', () => ({
         id: 'staff2',
         name: '佐藤先生',
         isActive: true,
+        isBookable: false,
         type: 'staff',
         maxConcurrent: 1,
       },
@@ -104,12 +106,12 @@ describe('ReservationsPage', () => {
       });
     });
 
-    test('リソース（スタッフ）が表示される', async () => {
+    test('予約担当にできるスタッフだけが表示される', async () => {
       render(<ReservationTimelinePage />);
 
       await waitFor(() => {
         expect(screen.getByText('田中先生')).toBeInTheDocument();
-        expect(screen.getByText('佐藤先生')).toBeInTheDocument();
+        expect(screen.queryByText('佐藤先生')).not.toBeInTheDocument();
       });
     });
   });

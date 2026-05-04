@@ -32,11 +32,57 @@ import {
   canWriteReservationsForClinic,
   isCrossClinicReservationView,
 } from './permissions';
+import type { Resource } from '@/types/reservation';
 
 const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
 
 const getResourceSortRank = (resourceType?: string) =>
   resourceType === 'staff' ? 0 : 1;
+
+type ReservationFormResource = Pick<
+  Resource,
+  'id' | 'name' | 'type' | 'maxConcurrent' | 'isActive' | 'isBookable'
+>;
+
+const canUseResourceForReservationForm = (
+  resource: ReservationFormResource
+) => {
+  if (resource.isActive === false) {
+    return false;
+  }
+
+  return resource.type !== 'staff' || resource.isBookable === true;
+};
+
+const mapToSchedulerResource = (
+  resource: ReservationFormResource
+): SchedulerResource => ({
+  id: resource.id,
+  name: resource.name,
+  capacity: resource.maxConcurrent,
+  subLabel: resource.type !== 'staff' ? resource.type : undefined,
+  type: resource.type === 'staff' ? 'staff' : 'facility',
+});
+
+const buildSchedulerResources = (
+  rawResources: ReservationFormResource[] | null | undefined
+) => {
+  const resources: SchedulerResource[] = [];
+
+  for (const resource of rawResources ?? []) {
+    if (canUseResourceForReservationForm(resource)) {
+      resources.push(mapToSchedulerResource(resource));
+    }
+  }
+
+  resources.sort(
+    (a, b) =>
+      getResourceSortRank(a.type) - getResourceSortRank(b.type) ||
+      a.name.localeCompare(b.name, 'ja')
+  );
+
+  return resources;
+};
 
 const AppointmentDetail = dynamic(
   () =>
@@ -110,22 +156,7 @@ function ReservationsPageContent() {
   );
 
   const resources = useMemo<SchedulerResource[]>(
-    () =>
-      (rawResources ?? [])
-        .filter(resource => resource.isActive !== false)
-        .slice()
-        .sort(
-          (a, b) =>
-            getResourceSortRank(a.type) - getResourceSortRank(b.type) ||
-            a.name.localeCompare(b.name, 'ja')
-        )
-        .map(resource => ({
-          id: resource.id,
-          name: resource.name,
-          capacity: resource.maxConcurrent,
-          subLabel: resource.type !== 'staff' ? resource.type : undefined,
-          type: resource.type === 'staff' ? 'staff' : 'facility',
-        })),
+    () => buildSchedulerResources(rawResources),
     [rawResources]
   );
 

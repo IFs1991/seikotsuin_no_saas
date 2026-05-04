@@ -23,6 +23,7 @@ import {
   isAdminUsersActor,
   isClinicAdminActor,
 } from '../access';
+import { isPermissionStaffResourceRole } from '@/lib/reservations/staff-resource-candidates';
 
 const PermissionUpdateSchema = z
   .object({
@@ -47,6 +48,141 @@ type ExistingPermissionRow = {
   clinic_id: string | null;
   username: string;
 };
+type PermissionMutationRow = ExistingPermissionRow & {
+  created_at?: string | null;
+  clinics?: unknown;
+};
+
+const PERMISSION_RESOURCE_SELECT = 'id, staff_id, role, clinic_id, username';
+
+const buildPermissionStaffResourceRow = ({
+  actorUserId,
+  permission,
+  timestamp,
+}: {
+  actorUserId: string;
+  permission: PermissionMutationRow;
+  timestamp: string;
+}) => {
+  if (
+    !permission.staff_id ||
+    !permission.clinic_id ||
+    !isPermissionStaffResourceRole(permission.role)
+  ) {
+    return null;
+  }
+
+  return {
+    id: permission.staff_id,
+    clinic_id: permission.clinic_id,
+    name: permission.username,
+    type: 'staff',
+    staff_code: `${permission.role}-${permission.staff_id}`,
+    email: permission.username,
+    max_concurrent: 1,
+    is_active: true,
+    is_bookable: true,
+    is_deleted: false,
+    updated_at: timestamp,
+    created_by: actorUserId,
+  };
+};
+
+async function syncPermissionStaffResource({
+  adminSupabase,
+  actorUserId,
+  permission,
+  timestamp,
+}: {
+  adminSupabase: ReturnType<typeof createAdminClient>;
+  actorUserId: string;
+  permission: PermissionMutationRow;
+  timestamp: string;
+}) {
+  if (!permission.staff_id) {
+    return { error: null };
+  }
+
+  if (
+    !permission.clinic_id ||
+    !isPermissionStaffResourceRole(permission.role)
+  ) {
+    return disablePermissionStaffResource({
+      adminSupabase,
+      permission,
+      timestamp,
+    });
+  }
+
+  const resourceRow = buildPermissionStaffResourceRow({
+    actorUserId,
+    permission,
+    timestamp,
+  });
+
+  if (!resourceRow) {
+    return { error: null };
+  }
+
+  return adminSupabase
+    .from('resources')
+    .upsert(resourceRow, { onConflict: 'id' });
+}
+
+async function disablePermissionStaffResource({
+  adminSupabase,
+  permission,
+  timestamp,
+}: {
+  adminSupabase: ReturnType<typeof createAdminClient>;
+  permission: ExistingPermissionRow | null;
+  timestamp: string;
+}) {
+  if (!permission?.staff_id) {
+    return { error: null };
+  }
+
+  return adminSupabase
+    .from('resources')
+    .update({
+      is_bookable: false,
+      updated_at: timestamp,
+    })
+    .eq('id', permission.staff_id);
+}
+
+async function loadExistingPermission(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  permissionId: string
+) {
+  return adminSupabase
+    .from('user_permissions')
+    .select(PERMISSION_RESOURCE_SELECT)
+    .eq('id', permissionId)
+    .maybeSingle();
+}
+
+async function deletePermission(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  permissionId: string,
+  knownPermission: ExistingPermissionRow | null
+) {
+  if (knownPermission) {
+    const { error } = await adminSupabase
+      .from('user_permissions')
+      .delete()
+      .eq('id', permissionId);
+
+    return { data: knownPermission, error };
+  }
+
+  return adminSupabase
+    .from('user_permissions')
+    .delete()
+    .eq('id', permissionId)
+    .select(PERMISSION_RESOURCE_SELECT)
+    .maybeSingle();
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -83,11 +219,10 @@ export async function PATCH(
     let existingPermission: ExistingPermissionRow | null = null;
 
     if (isClinicAdminActor(permissions)) {
-      const { data, error } = await adminSupabase
-        .from('user_permissions')
-        .select('id, staff_id, role, clinic_id, username')
-        .eq('id', permission_id)
-        .maybeSingle();
+      const { data, error } = await loadExistingPermission(
+        adminSupabase,
+        permission_id
+      );
 
       if (error) {
         logError(error, {
@@ -123,10 +258,12 @@ export async function PATCH(
     }
 
     if (parsed.data.revoke) {
-      const { error } = await adminSupabase
-        .from('user_permissions')
-        .delete()
-        .eq('id', permission_id);
+      const timestamp = new Date().toISOString();
+      const { data: revokedPermission, error } = await deletePermission(
+        adminSupabase,
+        permission_id,
+        existingPermission
+      );
 
       if (error) {
         logError(error, {
@@ -136,6 +273,21 @@ export async function PATCH(
           params: { permission_id },
         });
         return createErrorResponse('権限の剥奪に失敗しました', 500);
+      }
+
+      const resourceSyncResult = await disablePermissionStaffResource({
+        adminSupabase,
+        permission: (revokedPermission as ExistingPermissionRow | null) ?? null,
+        timestamp,
+      });
+      if (resourceSyncResult.error) {
+        logError(resourceSyncResult.error, {
+          endpoint: '/api/admin/users/[permission_id]',
+          method: 'PATCH',
+          userId: auth.id,
+          params: { permission_id, stage: 'disable_staff_resource' },
+        });
+        return createErrorResponse('スタッフリソースの同期に失敗しました', 500);
       }
 
       await AuditLogger.logAdminAction(
@@ -148,12 +300,13 @@ export async function PATCH(
       return createSuccessResponse({ id: permission_id, revoked: true });
     }
 
+    const timestamp = new Date().toISOString();
     const updatePayload: {
       updated_at: string;
       role?: AdminUserRole;
       clinic_id?: string | null;
     } = {
-      updated_at: new Date().toISOString(),
+      updated_at: timestamp,
     };
 
     if (parsed.data.role !== undefined) updatePayload.role = parsed.data.role;
@@ -214,6 +367,22 @@ export async function PATCH(
       permission_id,
       updatePayload
     );
+
+    const resourceSyncResult = await syncPermissionStaffResource({
+      adminSupabase,
+      actorUserId: auth.id,
+      permission: data as PermissionMutationRow,
+      timestamp,
+    });
+    if (resourceSyncResult.error) {
+      logError(resourceSyncResult.error, {
+        endpoint: '/api/admin/users/[permission_id]',
+        method: 'PATCH',
+        userId: auth.id,
+        params: { permission_id, stage: 'sync_staff_resource' },
+      });
+      return createErrorResponse('スタッフリソースの同期に失敗しました', 500);
+    }
 
     return createSuccessResponse(toPermissionEntry(data));
   } catch (error) {

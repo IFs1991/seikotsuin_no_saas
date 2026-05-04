@@ -75,13 +75,15 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         error: null,
       }),
     };
+    const resourcesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
 
     createAdminClientMock.mockReturnValue({
       from: jest.fn((table: string) => {
-        if (table !== 'user_permissions') {
-          throw new Error(`Unexpected table: ${table}`);
-        }
-        return updateQuery;
+        if (table === 'user_permissions') return updateQuery;
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
       }),
     });
 
@@ -96,7 +98,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       },
     });
 
-    const { PATCH } = await import('@/app/api/admin/users/[permission_id]/route');
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
     const response = await PATCH(
       new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
         method: 'PATCH',
@@ -139,6 +142,201 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         }),
       })
     );
+  });
+
+  it('ロール更新時に予約担当 resource の予約可否を同期する', async () => {
+    const updateQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'therapist',
+          clinic_id: clinicId,
+          clinics: { name: '新宿院' },
+          username: 'therapist@example.com',
+          created_at: '2026-04-24T00:00:00.000Z',
+        },
+        error: null,
+      }),
+    };
+    const resourcesQuery = {
+      upsert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') return updateQuery;
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+      body: {
+        role: 'therapist',
+        clinic_id: clinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'therapist',
+          clinic_id: clinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(resourcesQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: userId,
+        clinic_id: clinicId,
+        name: 'therapist@example.com',
+        type: 'staff',
+        is_active: true,
+        is_bookable: true,
+        is_deleted: false,
+      }),
+      { onConflict: 'id' }
+    );
+  });
+
+  it('権限剥奪時に予約担当 resource を予約不可にする', async () => {
+    const permissionQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'therapist',
+          clinic_id: clinicId,
+          username: 'therapist@example.com',
+        },
+        error: null,
+      }),
+      delete: jest.fn().mockReturnThis(),
+    };
+    const resourcesQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') return permissionQuery;
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+      body: {
+        revoke: true,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ revoke: true }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(permissionQuery.maybeSingle).toHaveBeenCalled();
+    expect(permissionQuery.delete).toHaveBeenCalled();
+    expect(resourcesQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_bookable: false,
+        updated_at: expect.any(String),
+      })
+    );
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+  });
+
+  it('予約担当外ロールへの更新時に既存 resource を予約不可にする', async () => {
+    const updateQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'staff',
+          clinic_id: clinicId,
+          clinics: { name: '新宿院' },
+          username: 'staff@example.com',
+          created_at: '2026-04-24T00:00:00.000Z',
+        },
+        error: null,
+      }),
+    };
+    const resourcesQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') return updateQuery;
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+      body: {
+        role: 'staff',
+        clinic_id: clinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'staff',
+          clinic_id: clinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(resourcesQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_bookable: false,
+        updated_at: expect.any(String),
+      })
+    );
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
   });
 
   it('prevents clinic_admin from updating permissions outside scoped clinics', async () => {
@@ -194,7 +392,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       },
     });
 
-    const { PATCH } = await import('@/app/api/admin/users/[permission_id]/route');
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
     const response = await PATCH(
       new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
         method: 'PATCH',

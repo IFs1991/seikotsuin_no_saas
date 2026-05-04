@@ -21,6 +21,7 @@ type ResourceRow = {
   supported_menus: string[] | null;
   max_concurrent: number | null;
   is_active: boolean | null;
+  is_bookable: boolean | null;
 };
 type StaffCandidateRow = {
   id: string;
@@ -123,6 +124,7 @@ describe('GET /api/resources', () => {
         supported_menus: null,
         max_concurrent: 1,
         is_active: true,
+        is_bookable: true,
       },
     ]);
     const supabase = {
@@ -147,10 +149,127 @@ describe('GET /api/resources', () => {
         name: '田中先生',
         type: 'staff',
         isActive: true,
+        isBookable: true,
       }),
     ]);
     expect(supabase.from).toHaveBeenCalledTimes(1);
     expect(supabase.from).toHaveBeenCalledWith('resources');
+  });
+
+  it('staff resource の予約可否を isBookable として返す', async () => {
+    const resourceQuery = createResourceQuery([
+      {
+        id: 'resource-1',
+        name: '予約担当',
+        type: 'staff',
+        working_hours: null,
+        supported_menus: null,
+        max_concurrent: 1,
+        is_active: true,
+        is_bookable: true,
+      },
+      {
+        id: 'resource-2',
+        name: '受付スタッフ',
+        type: 'staff',
+        working_hours: null,
+        supported_menus: null,
+        max_concurrent: 1,
+        is_active: true,
+        is_bookable: false,
+      },
+    ]);
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'resources') return resourceQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      supabase,
+    });
+
+    const { GET } = await import('@/app/api/resources/route');
+    const response = await GET(buildRequest());
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data).toEqual([
+      expect.objectContaining({
+        id: 'resource-1',
+        isBookable: true,
+      }),
+      expect.objectContaining({
+        id: 'resource-2',
+        isBookable: false,
+      }),
+    ]);
+    expect(resourceQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('is_bookable')
+    );
+  });
+
+  it('active でも予約不可の staff resource だけなら権限由来の施術者候補を補完する', async () => {
+    const resourceQuery = createResourceQuery([
+      {
+        id: 'staff-1',
+        name: '受付スタッフ',
+        type: 'staff',
+        working_hours: null,
+        supported_menus: null,
+        max_concurrent: 1,
+        is_active: true,
+        is_bookable: false,
+      },
+    ]);
+    const staffQuery = createStaffQuery([]);
+    const permissionQuery = createPermissionQuery([
+      {
+        staff_id: 'therapist-1',
+        role: 'therapist',
+        username: 'therapist@example.com',
+      },
+    ]);
+    const profileQuery = createProfileQuery([
+      {
+        user_id: 'therapist-1',
+        email: 'therapist@example.com',
+        full_name: '予約担当者',
+        is_active: true,
+      },
+    ]);
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'resources') return resourceQuery;
+        if (table === 'staff') return staffQuery;
+        if (table === 'user_permissions') return permissionQuery;
+        if (table === 'profiles') return profileQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      supabase,
+    });
+
+    const { GET } = await import('@/app/api/resources/route');
+    const response = await GET(buildRequest());
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.data).toEqual([
+      expect.objectContaining({
+        id: 'staff-1',
+        isBookable: false,
+      }),
+      expect.objectContaining({
+        id: 'therapist-1',
+        name: '予約担当者',
+        isBookable: true,
+      }),
+    ]);
+    expect(supabase.from).toHaveBeenCalledWith('user_permissions');
   });
 
   it('staff resource がない場合だけ staff から施術者候補を補完する', async () => {
