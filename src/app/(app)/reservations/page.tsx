@@ -282,7 +282,7 @@ function ReservationsPageContent() {
   );
 
   const handleRegistrationSuccess = useCallback(
-    (newAppointment: Appointment) => {
+    async (newAppointment: Appointment) => {
       if (!canWriteReservations) {
         setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
         return;
@@ -294,8 +294,11 @@ function ReservationsPageContent() {
       setShowAppointmentForm(false);
       setCurrentView('timeline');
       setUpdateError(null);
+
+      // 楽観追加分をサーバ真値で再同期する
+      await loadAppointments(currentDate);
     },
-    [addAppointment, canWriteReservations]
+    [addAppointment, canWriteReservations, currentDate, loadAppointments]
   );
 
   const handleCloseAppointmentForm = useCallback(() => {
