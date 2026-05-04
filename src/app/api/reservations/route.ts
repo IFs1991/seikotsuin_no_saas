@@ -65,6 +65,24 @@ function mapSelectedOptions(value: ReservationListViewRow['selected_options']) {
   return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
 }
 
+function mapReservationListViewRow(row: ReservationListViewRow) {
+  return {
+    id: row.id ?? '',
+    customerId: row.customer_id ?? '',
+    customerName: row.customer_name,
+    menuId: row.menu_id ?? '',
+    menuName: row.menu_name,
+    staffId: row.staff_id ?? '',
+    staffName: row.staff_name,
+    startTime: row.start_time ?? '',
+    endTime: row.end_time ?? '',
+    status: row.status,
+    channel: row.channel,
+    notes: row.notes ?? undefined,
+    selectedOptions: mapSelectedOptions(row.selected_options),
+  };
+}
+
 function buildStaffResourceFromCandidate(
   row: LegacyStaffCandidate,
   clinicId: string,
@@ -408,24 +426,7 @@ export async function GET(request: NextRequest) {
         return createErrorResponse('予約が見つかりません', 404);
       }
 
-      const row = data;
-      const mapped = {
-        id: row.id ?? '',
-        customerId: row.customer_id ?? '',
-        customerName: row.customer_name,
-        menuId: row.menu_id ?? '',
-        menuName: row.menu_name,
-        staffId: row.staff_id ?? '',
-        staffName: row.staff_name,
-        startTime: row.start_time ?? '',
-        endTime: row.end_time ?? '',
-        status: row.status,
-        channel: row.channel,
-        notes: row.notes ?? undefined,
-        selectedOptions: mapSelectedOptions(row.selected_options),
-      };
-
-      return createSuccessResponse(mapped);
+      return createSuccessResponse(mapReservationListViewRow(data));
     }
 
     if (start_date) query.gte('start_time', start_date);
@@ -446,21 +447,7 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = (data ?? []).map(row => ({
-      id: row.id ?? '',
-      customerId: row.customer_id ?? '',
-      customerName: row.customer_name,
-      menuId: row.menu_id ?? '',
-      menuName: row.menu_name,
-      staffId: row.staff_id ?? '',
-      staffName: row.staff_name,
-      startTime: row.start_time ?? '',
-      endTime: row.end_time ?? '',
-      status: row.status,
-      channel: row.channel,
-      notes: row.notes ?? undefined,
-      selectedOptions: mapSelectedOptions(row.selected_options),
-    }));
+    const mapped = (data ?? []).map(mapReservationListViewRow);
 
     return createSuccessResponse(mapped);
   } catch (error) {
@@ -533,6 +520,36 @@ export async function POST(request: NextRequest) {
       throw normalizeSupabaseError(error, PATH);
     }
 
+    // GET と同じ view から再取得し shape を揃える。view から見えない場合は
+    // INNER JOIN / is_deleted / clinic_id 不整合の可能性があるため 500 で落とす。
+    const { data: viewRow, error: viewError } = await reservationMutationClient
+      .from('reservation_list_view')
+      .select('*')
+      .eq('clinic_id', dto.clinic_id)
+      .eq('id', data.id)
+      .maybeSingle();
+
+    if (viewError) {
+      throw normalizeSupabaseError(viewError, PATH);
+    }
+
+    if (!viewRow) {
+      logger.error(
+        'Created reservation is not visible in reservation_list_view',
+        {
+          reservationId: data.id,
+          clinicId: dto.clinic_id,
+          customerId: dto.customerId,
+          menuId: dto.menuId,
+          staffId: dto.staffId,
+        }
+      );
+      return createErrorResponse(
+        '予約は作成されましたが、予約一覧への反映に失敗しました',
+        500
+      );
+    }
+
     // メール通知エンキュー (失敗しても予約は成功扱い)
     const notificationSupabase = createNotificationClient(
       result.permissions,
@@ -561,7 +578,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return createSuccessResponse(data, 201);
+    return createSuccessResponse(mapReservationListViewRow(viewRow), 201);
   } catch (error) {
     return handleRouteError(error, PATH);
   }
