@@ -68,7 +68,7 @@ interface Props {
   clinicId: string;
   resources: SchedulerResource[];
   menus: MenuItem[];
-  onSuccess: (newAppointment: Appointment) => void;
+  onSuccess: (newAppointment: Appointment) => void | Promise<void>;
   onCancel: () => void;
   initialData?: {
     resourceId?: string;
@@ -323,7 +323,7 @@ export const AppointmentForm: React.FC<Props> = ({
       )?.name;
       const menuName = menus.find(m => m.id === formData.menuId)?.name;
 
-      onSuccess({
+      await onSuccess({
         id: reservation.id,
         resourceId: formData.resourceId,
         date: formData.date,

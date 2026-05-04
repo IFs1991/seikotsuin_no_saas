@@ -8,7 +8,7 @@ interface Props {
   resources: SchedulerResource[];
   menus: MenuItem[];
   appointments: Appointment[];
-  onSuccess: (newAppointment: Appointment) => void;
+  onSuccess: (newAppointment: Appointment) => void | Promise<void>;
   onClose: () => void;
   initialData?: {
     resourceId?: string;

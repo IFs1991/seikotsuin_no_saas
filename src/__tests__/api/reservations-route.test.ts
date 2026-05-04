@@ -47,6 +47,14 @@ const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
 const validId = '123e4567-e89b-12d3-a456-426614174001';
 const validCustomerId = '123e4567-e89b-12d3-a456-426614174002';
 
+const buildUsableResourceRow = (id: string) => ({
+  id,
+  type: 'staff',
+  is_deleted: false,
+  is_active: true,
+  is_bookable: true,
+});
+
 describe('GET /api/reservations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -139,7 +147,7 @@ describe('POST /api/reservations', () => {
         .fn()
         .mockResolvedValueOnce({ data: null, error: null })
         .mockResolvedValueOnce({
-          data: { id: selectedStaffId },
+          data: buildUsableResourceRow(selectedStaffId),
           error: null,
         }),
     };
@@ -328,8 +336,14 @@ describe('POST /api/reservations', () => {
       eq: jest.fn().mockReturnThis(),
       maybeSingle: jest
         .fn()
-        .mockResolvedValueOnce({ data: { id: selectedStaffId }, error: null })
-        .mockResolvedValueOnce({ data: { id: selectedStaffId }, error: null }),
+        .mockResolvedValueOnce({
+          data: buildUsableResourceRow(selectedStaffId),
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: buildUsableResourceRow(selectedStaffId),
+          error: null,
+        }),
     };
     const adminCustomerSelect = {
       eq: jest.fn().mockReturnThis(),
@@ -431,7 +445,7 @@ describe('POST /api/reservations', () => {
     const adminResourceSelect = {
       eq: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({
-        data: { id: selectedStaffId },
+        data: buildUsableResourceRow(selectedStaffId),
         error: null,
       }),
     };
@@ -594,6 +608,72 @@ describe('POST /api/reservations', () => {
     });
   });
 
+  it('rejects a staff resource that cannot appear in reservation_list_view before inserting', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+
+    const ensureResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: selectedStaffId,
+          type: 'staff',
+          is_deleted: true,
+          is_active: true,
+          is_bookable: true,
+        },
+        error: null,
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn(),
+      insert: jest.fn(),
+    };
+    const resourcesTable = {
+      select: jest.fn().mockReturnValue(ensureResourceSelect),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') return resourcesTable;
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope: jest.fn(),
+    });
+
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId,
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+
+    const response = await POST({} as unknown as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe('選択した施術者リソースは予約に使用できません');
+    expect(reservationsTable.insert).not.toHaveBeenCalled();
+  });
+
   it('returns 500 when inserted reservation is not visible in reservation_list_view', async () => {
     const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
     const menuId = '123e4567-e89b-12d3-a456-426614174003';
@@ -601,7 +681,7 @@ describe('POST /api/reservations', () => {
     const adminResourceSelect = {
       eq: jest.fn().mockReturnThis(),
       maybeSingle: jest.fn().mockResolvedValue({
-        data: { id: selectedStaffId },
+        data: buildUsableResourceRow(selectedStaffId),
         error: null,
       }),
     };

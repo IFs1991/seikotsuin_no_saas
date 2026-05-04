@@ -28,7 +28,9 @@ jest.mock('@/app/(app)/reservations/api', () => ({
 }));
 
 // モック参照（三角測量テストで status を変更するため）
-const { createReservation } = jest.requireMock('@/app/(app)/reservations/api') as {
+const { createReservation } = jest.requireMock(
+  '@/app/(app)/reservations/api'
+) as {
   createReservation: jest.Mock;
 };
 
@@ -135,11 +137,15 @@ describe('2-2: フォームフィールド順序', () => {
       ],
     });
 
-    expect(document.querySelector('optgroup[label="施術者"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('optgroup[label="施術者"]')
+    ).toBeInTheDocument();
     expect(
       document.querySelector('optgroup[label="設備・施術室"]')
     ).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '田中 花子' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: '田中 花子' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '施術室1' })).toBeInTheDocument();
   });
 
@@ -304,5 +310,46 @@ describe('2-3 Option A: カラー選択UI削除', () => {
     // statusToColor('confirmed') = 'blue'
     expect(calledWith.color).toBe('blue');
     expect(calledWith.status).toBe('confirmed');
+  });
+
+  it('onSuccess の非同期処理が終わるまで登録中表示を維持する', async () => {
+    let resolveSuccess: () => void = () => {};
+    const onSuccess = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          resolveSuccess = resolve;
+        })
+    );
+    renderForm({ onSuccess });
+
+    fireEvent.change(document.querySelector('input[type="date"]')!, {
+      target: { value: '2026-02-22' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('090-1234-5678'), {
+      target: { value: '090-1234-5678' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('姓 (例: 山田)'), {
+      target: { value: '山田' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('名 (例: 太郎)'), {
+      target: { value: '太郎' },
+    });
+
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form')!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByRole('button', { name: '登録中...' })).toBeDisabled();
+
+    resolveSuccess();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '登録する' })).toBeEnabled();
+    });
   });
 });

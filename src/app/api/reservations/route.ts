@@ -40,6 +40,10 @@ import {
 const PATH = '/api/reservations';
 type ReservationListViewRow =
   Database['public']['Views']['reservation_list_view']['Row'];
+type ReservationResourceGuardRow = Pick<
+  Database['public']['Tables']['resources']['Row'],
+  'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable'
+>;
 type PostgresReservationError = {
   code?: string;
   message?: string;
@@ -81,6 +85,18 @@ function mapReservationListViewRow(row: ReservationListViewRow) {
     notes: row.notes ?? undefined,
     selectedOptions: mapSelectedOptions(row.selected_options),
   };
+}
+
+function isUsableReservationResource(
+  resource: ReservationResourceGuardRow | null
+) {
+  return (
+    resource !== null &&
+    resource.type === 'staff' &&
+    resource.is_deleted === false &&
+    resource.is_active === true &&
+    resource.is_bookable === true
+  );
 }
 
 function buildStaffResourceFromCandidate(
@@ -261,9 +277,13 @@ async function validateReservationReferences(
       .maybeSingle(),
     supabase
       .from('resources')
-      .select('id')
+      .select('id, type, is_deleted, is_active, is_bookable')
       .eq('clinic_id', params.clinicId)
       .eq('id', params.staffId)
+      .eq('type', 'staff')
+      .eq('is_deleted', false)
+      .eq('is_active', true)
+      .eq('is_bookable', true)
       .maybeSingle(),
   ]);
 
@@ -284,7 +304,7 @@ async function validateReservationReferences(
     return '選択したメニューが見つかりません。メニュー管理で有効なメニューを登録してください';
   }
   if (!resourceResult.data) {
-    return '選択した施術者リソースが見つかりません';
+    return '選択した施術者リソースは予約に使用できません';
   }
 
   return null;
@@ -300,7 +320,7 @@ async function ensureReservationStaffResource(
 ) {
   const { data: resource, error: resourceError } = await supabase
     .from('resources')
-    .select('id')
+    .select('id, type, is_deleted, is_active, is_bookable')
     .eq('clinic_id', params.clinicId)
     .eq('id', params.staffId)
     .maybeSingle();
@@ -308,7 +328,16 @@ async function ensureReservationStaffResource(
   if (resourceError) {
     throw normalizeSupabaseError(resourceError, PATH);
   }
-  if (resource) return { ok: true as const };
+  if (resource) {
+    if (isUsableReservationResource(resource)) {
+      return { ok: true as const };
+    }
+
+    return {
+      ok: false as const,
+      error: '選択した施術者リソースは予約に使用できません',
+    };
+  }
 
   const { data: staff, error: staffError } = await supabase
     .from('staff')
