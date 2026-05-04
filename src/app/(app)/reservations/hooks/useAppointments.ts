@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Appointment, AppointmentUpdateResult } from '../types';
 import {
   fetchReservations,
@@ -32,10 +32,12 @@ export const useAppointments = (clinicId: string | null) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadSeqRef = useRef(0);
 
   const loadAppointments = useCallback(
     async (currentDate: Date) => {
       if (!clinicId) return;
+      const seq = ++loadSeqRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -45,6 +47,9 @@ export const useAppointments = (clinicId: string | null) => {
         endDate.setHours(23, 59, 59, 999);
 
         const rows = await fetchReservations(clinicId, startDate, endDate);
+        if (seq !== loadSeqRef.current) {
+          return;
+        }
         const mapped = rows.map(row => {
           const start = new Date(row.startTime);
           const end = new Date(row.endTime);
@@ -79,11 +84,16 @@ export const useAppointments = (clinicId: string | null) => {
 
         setAppointments(mapped);
       } catch (err) {
+        if (seq !== loadSeqRef.current) {
+          return;
+        }
         setError(
           err instanceof Error ? err.message : 'Failed to load appointments'
         );
       } finally {
-        setLoading(false);
+        if (seq === loadSeqRef.current) {
+          setLoading(false);
+        }
       }
     },
     [clinicId]
