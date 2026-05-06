@@ -28,10 +28,12 @@ jest.mock('@/app/(app)/reservations/api', () => ({
 }));
 
 // モック参照（三角測量テストで status を変更するため）
-const { createReservation } = jest.requireMock(
+const { createCustomer, createReservation, fetchCustomers } = jest.requireMock(
   '@/app/(app)/reservations/api'
 ) as {
+  createCustomer: jest.Mock;
   createReservation: jest.Mock;
+  fetchCustomers: jest.Mock;
 };
 
 afterEach(() => {
@@ -41,6 +43,8 @@ afterEach(() => {
     id: 'reservation-1',
     status: 'unconfirmed',
   });
+  createCustomer.mockResolvedValue({ id: 'customer-1', name: '山田 太郎' });
+  fetchCustomers.mockResolvedValue([]);
 });
 
 const mockResources: SchedulerResource[] = [
@@ -89,6 +93,31 @@ const getInputNearLabel = (labelText: string): HTMLElement | null => {
   if (!label) return null;
   const container = label.closest('div');
   return container?.querySelector('input, select, textarea') ?? null;
+};
+
+const fillRequiredFields = (values: {
+  date?: string;
+  phone?: string;
+  lastName?: string;
+  firstName?: string;
+}) => {
+  const dateInput = document.querySelector('input[type="date"]');
+  if (!dateInput) {
+    throw new Error('date input not found');
+  }
+
+  fireEvent.change(dateInput, {
+    target: { value: values.date ?? '2026-02-22' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('090-1234-5678'), {
+    target: { value: values.phone ?? '090-1234-5678' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('姓 (例: 山田)'), {
+    target: { value: values.lastName ?? '山田' },
+  });
+  fireEvent.change(screen.getByPlaceholderText('名 (例: 太郎)'), {
+    target: { value: values.firstName ?? '太郎' },
+  });
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -192,6 +221,81 @@ describe('セルフレビュー修正1: スペーシング整合性', () => {
     const phoneInput = screen.getByPlaceholderText('090-1234-5678');
     // 電話番号 input の親 div が mt-4 を持つと他セクションとスペーシングが不整合になる
     expect(phoneInput.parentElement?.className).not.toContain('mt-4');
+  });
+});
+
+describe('患者紐付け', () => {
+  it('電話番号が同じでも名前が違う場合は既存患者に紐付けず新規患者を作成する', async () => {
+    fetchCustomers.mockResolvedValue([
+      {
+        id: 'existing-customer',
+        name: '佐藤 花子',
+        phone: '090-1234-5678',
+      },
+    ]);
+    createCustomer.mockResolvedValue({
+      id: 'new-customer',
+      name: '山田 太郎',
+    });
+
+    renderForm();
+    fillRequiredFields({
+      phone: '090-1234-5678',
+      lastName: '山田',
+      firstName: '太郎',
+    });
+
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form');
+    if (!form) {
+      throw new Error('form not found');
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(createCustomer).toHaveBeenCalledWith({
+        clinicId: 'clinic-1',
+        name: '山田 太郎',
+        phone: '090-1234-5678',
+        customAttributes: undefined,
+      });
+    });
+    expect(createReservation).toHaveBeenCalledWith(
+      expect.objectContaining({ customerId: 'new-customer' })
+    );
+  });
+
+  it('電話番号と名前が同じ場合だけ既存患者を再利用する', async () => {
+    fetchCustomers.mockResolvedValue([
+      {
+        id: 'existing-customer',
+        name: '山田 太郎',
+        phone: '090-1234-5678',
+      },
+    ]);
+
+    renderForm();
+    fillRequiredFields({
+      phone: '090-1234-5678',
+      lastName: '山田',
+      firstName: '太郎',
+    });
+
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form');
+    if (!form) {
+      throw new Error('form not found');
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(createReservation).toHaveBeenCalledWith(
+        expect.objectContaining({ customerId: 'existing-customer' })
+      );
+    });
+    expect(createCustomer).not.toHaveBeenCalled();
   });
 });
 

@@ -64,6 +64,9 @@ const isSelectableResource = (resource: SchedulerResource) =>
 const formatResourceLabel = (resource: SchedulerResource) =>
   `${resource.name}${resource.capacity ? ` (${resource.capacity})` : ''}`;
 
+const normalizeCustomerIdentity = (value: string) =>
+  value.replace(/\s+/g, '').trim();
+
 interface Props {
   clinicId: string;
   resources: SchedulerResource[];
@@ -281,8 +284,11 @@ export const AppointmentForm: React.FC<Props> = ({
           );
         }
       );
+      const normalizedCustomerName = normalizeCustomerIdentity(customerName);
       const matchedCustomer = customers.find(
-        customer => customer.phone === normalizedPhone
+        customer =>
+          customer.phone === normalizedPhone &&
+          normalizeCustomerIdentity(customer.name) === normalizedCustomerName
       );
       const customer = matchedCustomer
         ? { id: matchedCustomer.id, name: matchedCustomer.name }

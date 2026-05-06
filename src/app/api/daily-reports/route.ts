@@ -2,8 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AppError } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { STAFF_ROLES } from '@/lib/constants/roles';
 
 const PATH = '/api/daily-reports';
+
+type MonthlyTrend = {
+  month: string;
+  reports: number;
+  totalPatients: number;
+  totalRevenue: number;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function getStaffNameFromReport(report: unknown) {
+  if (!isRecord(report)) {
+    return '未設定';
+  }
+
+  const staff = report.staff;
+  if (Array.isArray(staff)) {
+    const firstStaff = staff[0];
+    return isRecord(firstStaff) && typeof firstStaff.name === 'string'
+      ? firstStaff.name
+      : '未設定';
+  }
+
+  return isRecord(staff) && typeof staff.name === 'string'
+    ? staff.name
+    : '未設定';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +82,7 @@ export async function GET(request: NextRequest) {
         data: {
           id: report.id,
           reportDate: report.report_date,
-          staffName: (report.staff as any)?.name || '未設定',
+          staffName: getStaffNameFromReport(report),
           totalPatients: report.total_patients,
           newPatients: report.new_patients,
           totalRevenue: report.total_revenue ?? 0,
@@ -125,7 +155,7 @@ export async function GET(request: NextRequest) {
           acc[month].totalRevenue += report.total_revenue ?? 0;
           return acc;
         },
-        {} as Record<string, any>
+        {} as Record<string, MonthlyTrend>
       ) || {};
 
     return NextResponse.json({
@@ -135,7 +165,7 @@ export async function GET(request: NextRequest) {
           reports?.map(report => ({
             id: report.id,
             reportDate: report.report_date,
-            staffName: (report.staff as any)?.name || '未設定',
+            staffName: getStaffNameFromReport(report),
             totalPatients: report.total_patients,
             newPatients: report.new_patients,
             totalRevenue: report.total_revenue ?? 0,
@@ -191,7 +221,7 @@ export async function POST(request: NextRequest) {
       PATH,
       payload.clinic_id,
       {
-        allowedRoles: ['manager'],
+        allowedRoles: Array.from(STAFF_ROLES),
       }
     );
 
