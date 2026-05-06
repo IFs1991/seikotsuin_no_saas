@@ -40,6 +40,22 @@ import {
 const PATH = '/api/reservations';
 type ReservationListViewRow =
   Database['public']['Views']['reservation_list_view']['Row'];
+type ReservationListApiRow = Pick<
+  ReservationListViewRow,
+  | 'id'
+  | 'customer_id'
+  | 'customer_name'
+  | 'menu_id'
+  | 'menu_name'
+  | 'staff_id'
+  | 'staff_name'
+  | 'start_time'
+  | 'end_time'
+  | 'status'
+  | 'channel'
+  | 'notes'
+  | 'selected_options'
+>;
 type ReservationResourceGuardRow = Pick<
   Database['public']['Tables']['resources']['Row'],
   'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable'
@@ -48,6 +64,8 @@ type PostgresReservationError = {
   code?: string;
   message?: string;
 };
+const RESERVATION_LIST_SELECT =
+  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options';
 
 function isReservationOptionSelection(
   value: unknown
@@ -69,7 +87,7 @@ function mapSelectedOptions(value: ReservationListViewRow['selected_options']) {
   return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
 }
 
-function mapReservationListViewRow(row: ReservationListViewRow) {
+function mapReservationListViewRow(row: ReservationListApiRow) {
   return {
     id: row.id ?? '',
     customerId: row.customer_id ?? '',
@@ -443,7 +461,7 @@ export async function GET(request: NextRequest) {
 
     const query = supabase
       .from('reservation_list_view')
-      .select('*')
+      .select(RESERVATION_LIST_SELECT)
       .eq('clinic_id', clinic_id);
 
     if (id) {
@@ -553,7 +571,7 @@ export async function POST(request: NextRequest) {
     // INNER JOIN / is_deleted / clinic_id 不整合の可能性があるため 500 で落とす。
     const { data: viewRow, error: viewError } = await reservationMutationClient
       .from('reservation_list_view')
-      .select('*')
+      .select(RESERVATION_LIST_SELECT)
       .eq('clinic_id', dto.clinic_id)
       .eq('id', data.id)
       .maybeSingle();

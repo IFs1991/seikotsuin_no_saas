@@ -2,7 +2,10 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { useAppointments } from '@/app/(app)/reservations/hooks/useAppointments';
-import type { Appointment } from '@/app/(app)/reservations/types';
+import type {
+  Appointment,
+  AppointmentUpdateResult,
+} from '@/app/(app)/reservations/types';
 import * as reservationApi from '@/app/(app)/reservations/api';
 
 jest.mock('@/app/(app)/reservations/api', () => ({
@@ -86,6 +89,75 @@ describe('useAppointments reservation behavior', () => {
         selectedOptions: apptWithOptions.selectedOptions,
       })
     );
+  });
+
+  it('moves appointment optimistically while update request is pending', async () => {
+    type ReservationApiItem = Awaited<
+      ReturnType<typeof reservationApi.updateReservation>
+    >;
+    let resolveUpdate: (row: ReservationApiItem) => void = () => {};
+    const updatePromise = new Promise<ReservationApiItem>(resolve => {
+      resolveUpdate = resolve;
+    });
+    mockApi.updateReservation.mockReturnValueOnce(updatePromise);
+
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+
+    act(() => {
+      result.current.addAppointment(baseAppointment);
+    });
+
+    let movePromise: Promise<AppointmentUpdateResult> | null = null;
+    act(() => {
+      movePromise = result.current.moveAppointment('appt-1', 'staff-2', 9, 30);
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.appointments[0]).toMatchObject({
+      resourceId: 'staff-2',
+      startHour: 9,
+      startMinute: 30,
+    });
+
+    resolveUpdate({
+      id: 'appt-1',
+      customerId: 'cust-1',
+      menuId: 'menu-1',
+      staffId: 'staff-2',
+      startTime: '2026-02-22T00:30:00.000Z',
+      endTime: '2026-02-22T01:30:00.000Z',
+    });
+    if (movePromise === null) {
+      throw new Error('moveAppointment was not started');
+    }
+    await act(async () => {
+      await movePromise;
+    });
+  });
+
+  it('rolls back optimistic move when update request fails', async () => {
+    mockApi.updateReservation.mockRejectedValueOnce(new Error('conflict'));
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+
+    act(() => {
+      result.current.addAppointment(baseAppointment);
+    });
+
+    await act(async () => {
+      const response = await result.current.moveAppointment(
+        'appt-1',
+        'staff-2',
+        9,
+        30
+      );
+      expect(response.ok).toBe(false);
+    });
+
+    expect(result.current.appointments[0]).toMatchObject({
+      resourceId: 'staff-1',
+      startHour: 10,
+      startMinute: 0,
+    });
   });
 
   it('uses cancelReservation API for cancellation', async () => {

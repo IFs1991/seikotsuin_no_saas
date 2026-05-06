@@ -22,7 +22,10 @@ import {
   timeToMinutes,
   hasTimeConflict,
 } from '../utils/time';
-import { groupAppointmentsByResource } from '../utils/view';
+import {
+  groupAppointmentsByResource,
+  positionAppointmentsInTwoLanes,
+} from '../utils/view';
 
 interface Props {
   appointments: Appointment[];
@@ -57,6 +60,18 @@ const SchedulerComponent: React.FC<Props> = ({
     () => groupAppointmentsByResource(appointments),
     [appointments]
   );
+  const positionedAppointmentsByResource = useMemo(() => {
+    const positioned = new Map(
+      Array.from(appointmentsByResource.entries()).map(
+        ([resourceId, resourceAppointments]) => [
+          resourceId,
+          positionAppointmentsInTwoLanes(resourceAppointments),
+        ]
+      )
+    );
+
+    return positioned;
+  }, [appointmentsByResource]);
   const rowHeightClass = density === 'compact' ? 'h-14' : 'h-20';
 
   // Update current time every minute to keep the red line accurate
@@ -232,7 +247,8 @@ const SchedulerComponent: React.FC<Props> = ({
               );
             }
 
-            const resourceAppts = appointmentsByResource.get(resource.id) ?? [];
+            const positionedAppointments =
+              positionedAppointmentsByResource.get(resource.id) ?? [];
             const isFacility = resource.type === 'facility';
 
             return (
@@ -285,21 +301,39 @@ const SchedulerComponent: React.FC<Props> = ({
                       className='flex-shrink-0 border-r border-gray-200 h-full relative pointer-events-none'
                       style={{ width: `${PIXELS_PER_HOUR}px` }}
                     >
-                      <div className='absolute left-1/2 top-0 bottom-0 border-r border-gray-100 w-0'></div>
+                      {Array.from({ length: 11 }, (_, index) => {
+                        const lineNumber = index + 1;
+
+                        return (
+                          <div
+                            key={lineNumber}
+                            className={`absolute top-0 bottom-0 w-0 ${
+                              lineNumber === 6
+                                ? 'border-l border-gray-200'
+                                : 'border-l border-gray-100'
+                            }`}
+                            style={{
+                              left: `${(lineNumber / 12) * 100}%`,
+                            }}
+                          ></div>
+                        );
+                      })}
                     </div>
                   ))}
 
                   {/* Appointments Layer */}
                   <div className='absolute top-0 bottom-0 left-0 right-0'>
-                    {resourceAppts.map(appt => (
+                    {positionedAppointments.map(positionedAppointment => (
                       <AppointmentBlock
-                        key={appt.id}
-                        appointment={appt}
+                        key={positionedAppointment.appointment.id}
+                        appointment={positionedAppointment.appointment}
                         pixelsPerHour={PIXELS_PER_HOUR}
                         startHourOfGrid={GRID_START_HOUR}
                         onClick={onAppointmentClick}
                         density={density}
                         draggable={!readOnly}
+                        laneIndex={positionedAppointment.laneIndex}
+                        laneCount={positionedAppointment.laneCount}
                       />
                     ))}
                   </div>

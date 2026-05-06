@@ -2,6 +2,7 @@ import {
   formatAppointmentTime,
   getAppointmentStatusLabel,
   groupAppointmentsByResource,
+  positionAppointmentsInTwoLanes,
   summarizeAppointments,
 } from '@/app/(app)/reservations/utils/view';
 import type { Appointment } from '@/app/(app)/reservations/types';
@@ -55,6 +56,44 @@ describe('reservation view utils', () => {
 
     expect(grouped.get('staff-1')).toHaveLength(2);
     expect(grouped.get('staff-2')).toHaveLength(1);
+  });
+
+  it('同じリソース内で時間が重なる予約を上下2段に分ける', () => {
+    const positionedAppointments = positionAppointmentsInTwoLanes([
+      appointment({
+        id: 'a',
+        startHour: 9,
+        startMinute: 0,
+        endHour: 10,
+        endMinute: 0,
+      }),
+      appointment({
+        id: 'b',
+        startHour: 9,
+        startMinute: 30,
+        endHour: 10,
+        endMinute: 30,
+      }),
+      appointment({
+        id: 'c',
+        startHour: 10,
+        startMinute: 30,
+        endHour: 11,
+        endMinute: 0,
+      }),
+    ]);
+
+    expect(
+      positionedAppointments.map(positionedAppointment => ({
+        id: positionedAppointment.appointment.id,
+        laneIndex: positionedAppointment.laneIndex,
+        laneCount: positionedAppointment.laneCount,
+      }))
+    ).toEqual([
+      { id: 'a', laneIndex: 0, laneCount: 2 },
+      { id: 'b', laneIndex: 1, laneCount: 2 },
+      { id: 'c', laneIndex: 0, laneCount: 1 },
+    ]);
   });
 
   it('DB追加なしで当日サマリに必要な件数を集計する', () => {

@@ -1,4 +1,5 @@
 import type { Appointment } from '../types';
+import { hasTimeConflict, timeToMinutes } from './time';
 
 export const APPOINTMENT_STATUS_LABELS: Record<
   NonNullable<Appointment['status']>,
@@ -81,6 +82,80 @@ export const groupAppointmentsByResource = (appointments: Appointment[]) => {
   }
 
   return grouped;
+};
+
+export interface PositionedAppointment {
+  appointment: Appointment;
+  laneIndex: 0 | 1;
+  laneCount: 1 | 2;
+}
+
+const getAppointmentStartMinutes = (appointment: Appointment) =>
+  timeToMinutes(appointment.startHour, appointment.startMinute);
+
+const getAppointmentEndMinutes = (appointment: Appointment) =>
+  timeToMinutes(appointment.endHour, appointment.endMinute);
+
+const appointmentHasOverlap = (
+  appointment: Appointment,
+  appointments: Appointment[]
+) => {
+  const start = getAppointmentStartMinutes(appointment);
+  const end = getAppointmentEndMinutes(appointment);
+
+  return appointments.some(otherAppointment => {
+    if (otherAppointment.id === appointment.id) {
+      return false;
+    }
+
+    return hasTimeConflict(
+      start,
+      end,
+      getAppointmentStartMinutes(otherAppointment),
+      getAppointmentEndMinutes(otherAppointment)
+    );
+  });
+};
+
+export const positionAppointmentsInTwoLanes = (
+  appointments: Appointment[]
+): PositionedAppointment[] => {
+  const sortedAppointments = [...appointments].sort((a, b) => {
+    const startDiff =
+      getAppointmentStartMinutes(a) - getAppointmentStartMinutes(b);
+
+    if (startDiff !== 0) {
+      return startDiff;
+    }
+
+    return getAppointmentEndMinutes(a) - getAppointmentEndMinutes(b);
+  });
+  const laneEndMinutes: [number, number] = [0, 0];
+
+  return sortedAppointments.map(appointment => {
+    const start = getAppointmentStartMinutes(appointment);
+    const end = getAppointmentEndMinutes(appointment);
+    const laneCount = appointmentHasOverlap(appointment, appointments) ? 2 : 1;
+    let laneIndex: 0 | 1 = 0;
+
+    if (laneCount === 2) {
+      if (laneEndMinutes[0] <= start) {
+        laneIndex = 0;
+      } else if (laneEndMinutes[1] <= start) {
+        laneIndex = 1;
+      } else {
+        laneIndex = laneEndMinutes[0] <= laneEndMinutes[1] ? 0 : 1;
+      }
+    }
+
+    laneEndMinutes[laneIndex] = Math.max(laneEndMinutes[laneIndex], end);
+
+    return {
+      appointment,
+      laneIndex,
+      laneCount,
+    };
+  });
 };
 
 export const summarizeAppointments = (appointments: Appointment[]) => {

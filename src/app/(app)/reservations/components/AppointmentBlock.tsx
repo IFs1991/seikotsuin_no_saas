@@ -14,6 +14,8 @@ interface Props {
   onClick: (appointment: Appointment) => void;
   density: AppointmentDensity;
   draggable?: boolean;
+  laneIndex?: 0 | 1;
+  laneCount?: 1 | 2;
 }
 
 const AppointmentBlockComponent: React.FC<Props> = ({
@@ -23,6 +25,8 @@ const AppointmentBlockComponent: React.FC<Props> = ({
   onClick,
   density,
   draggable = true,
+  laneIndex = 0,
+  laneCount = 1,
 }) => {
   const startOffsetMinutes =
     (appointment.startHour - startHourOfGrid) * 60 + appointment.startMinute;
@@ -44,6 +48,16 @@ const AppointmentBlockComponent: React.FC<Props> = ({
   const statusLabel = getAppointmentStatusLabel(appointment);
   const showSecondaryLine = density === 'comfortable' && width >= 88;
   const showStatus = width >= 112;
+  const verticalStyle =
+    laneCount === 2
+      ? {
+          top: laneIndex === 0 ? '2px' : 'calc(50% + 1px)',
+          height: 'calc(50% - 3px)',
+        }
+      : {
+          top: '4px',
+          height: 'calc(100% - 8px)',
+        };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     if (!draggable) {
@@ -84,12 +98,11 @@ const AppointmentBlockComponent: React.FC<Props> = ({
       onKeyDown={handleKeyDown}
       title={`${timeString} ${appointment.title} ${statusLabel}`}
       aria-label={`${timeString} ${appointment.title} ${statusLabel}`}
-      className={`absolute top-1 bottom-1 rounded shadow-sm text-xs overflow-hidden leading-tight flex flex-col justify-center px-2 transition-all hover:brightness-95 hover:shadow-md cursor-pointer z-10 ${colorClass} ${isFullRow ? 'opacity-90' : ''}`}
+      className={`absolute rounded shadow-sm text-xs overflow-hidden leading-tight flex flex-col justify-center px-2 transition-all hover:brightness-95 hover:shadow-md cursor-pointer z-10 ${colorClass} ${isFullRow ? 'opacity-90' : ''}`}
       style={{
         left: `${leftPos}px`,
         width: `${width}px`,
-        // If it's a holiday, span the whole height but visually it's just a block
-        height: 'calc(100% - 4px)',
+        ...verticalStyle,
       }}
     >
       <div className='flex items-center gap-1 font-mono opacity-90 text-[10px] whitespace-nowrap pointer-events-none'>

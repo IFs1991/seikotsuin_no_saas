@@ -41,20 +41,39 @@ class ApiError extends Error {
   }
 }
 
-const handleJson = async (res: Response) => {
-  const json = await res.json();
-  if (!res.ok || !json.success) {
-    const message = json?.error || 'Request failed';
+interface ApiEnvelope {
+  success?: unknown;
+  error?: unknown;
+  data?: unknown;
+}
+
+interface FetchReservationsOptions {
+  signal?: AbortSignal;
+}
+
+const isApiEnvelope = (value: unknown): value is ApiEnvelope =>
+  typeof value === 'object' && value !== null;
+
+const getApiEnvelopeError = (json: unknown) =>
+  isApiEnvelope(json) && typeof json.error === 'string'
+    ? json.error
+    : 'Request failed';
+
+const handleJson = async <T>(res: Response): Promise<T> => {
+  const json: unknown = await res.json();
+  if (!isApiEnvelope(json) || !res.ok || json.success !== true) {
+    const message = getApiEnvelopeError(json);
     throw new ApiError(message, res.status);
   }
-  return json.data;
+  return json.data as T;
 };
 
 export const fetchReservations = async (
   clinicId: string,
   startDate: Date,
   endDate: Date,
-  staffId?: string
+  staffId?: string,
+  options: FetchReservationsOptions = {}
 ): Promise<ReservationApiItem[]> => {
   const params = new URLSearchParams({
     clinic_id: clinicId,
@@ -63,8 +82,10 @@ export const fetchReservations = async (
   });
   if (staffId) params.set('staff_id', staffId);
 
-  const res = await fetch(`/api/reservations?${params.toString()}`);
-  return handleJson(res);
+  const res = await fetch(`/api/reservations?${params.toString()}`, {
+    signal: options.signal,
+  });
+  return handleJson<ReservationApiItem[]>(res);
 };
 
 export const fetchCustomerReservations = async (
@@ -77,7 +98,7 @@ export const fetchCustomerReservations = async (
   });
 
   const res = await fetch(`/api/reservations?${params.toString()}`);
-  return handleJson(res);
+  return handleJson<ReservationApiItem[]>(res);
 };
 
 export const fetchCustomers = async (
@@ -89,7 +110,7 @@ export const fetchCustomers = async (
     q: query,
   });
   const res = await fetch(`/api/customers?${params.toString()}`);
-  return handleJson(res);
+  return handleJson<CustomerApiItem[]>(res);
 };
 
 export const createCustomer = async (payload: {
@@ -110,7 +131,7 @@ export const createCustomer = async (payload: {
       customAttributes: payload.customAttributes,
     }),
   });
-  return handleJson(res);
+  return handleJson<{ id: string; name: string }>(res);
 };
 
 export const createReservation = async (payload: {
@@ -139,7 +160,7 @@ export const createReservation = async (payload: {
       selectedOptions: payload.selectedOptions,
     }),
   });
-  return handleJson(res);
+  return handleJson<ReservationApiItem>(res);
 };
 
 export const updateReservation = async (payload: {
@@ -166,7 +187,7 @@ export const updateReservation = async (payload: {
       selectedOptions: payload.selectedOptions,
     }),
   });
-  return handleJson(res);
+  return handleJson<ReservationApiItem>(res);
 };
 
 export const cancelReservation = async (payload: {

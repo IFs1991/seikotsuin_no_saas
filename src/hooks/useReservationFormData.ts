@@ -15,6 +15,26 @@ interface ApiObjectResponse {
 
 const RESERVATION_FORM_DATA_ERROR_MESSAGE =
   '予約フォームデータの取得に失敗しました';
+const RESERVATION_FORM_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface ReservationFormDataCacheEntry {
+  customers: Customer[];
+  menus: Menu[];
+  resources: Resource[];
+  fetchedAt: number;
+}
+
+const reservationFormDataCache = new Map<
+  string,
+  ReservationFormDataCacheEntry
+>();
+
+const isReservationFormDataCacheEnabled = () => process.env.NODE_ENV !== 'test';
+
+const getReservationFormDataCacheKey = (
+  clinicId: string,
+  includeCustomers: boolean
+) => `${clinicId}:${includeCustomers ? 'with-customers' : 'masters-only'}`;
 
 function isApiObjectResponse(value: unknown): value is ApiObjectResponse {
   return typeof value === 'object' && value !== null;
@@ -64,9 +84,30 @@ export function useReservationFormData(
     }
 
     const controller = new AbortController();
+    const cacheKey = getReservationFormDataCacheKey(clinicId, includeCustomers);
+    const cached = isReservationFormDataCacheEnabled()
+      ? reservationFormDataCache.get(cacheKey)
+      : undefined;
+    const cacheIsFresh =
+      cached !== undefined &&
+      Date.now() - cached.fetchedAt < RESERVATION_FORM_DATA_CACHE_TTL_MS;
+
+    if (cached) {
+      setCustomers(cached.customers);
+      setMenus(cached.menus);
+      setResources(cached.resources);
+      setError(null);
+      setLoading(false);
+
+      if (cacheIsFresh) {
+        return () => controller.abort();
+      }
+    }
 
     const load = async () => {
-      setLoading(true);
+      if (!cached) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const requestInit = { signal: controller.signal };
@@ -99,19 +140,29 @@ export function useReservationFormData(
         setCustomers(nextCustomers);
         setMenus(nextMenus);
         setResources(nextResources);
+        if (isReservationFormDataCacheEnabled()) {
+          reservationFormDataCache.set(cacheKey, {
+            customers: nextCustomers,
+            menus: nextMenus,
+            resources: nextResources,
+            fetchedAt: Date.now(),
+          });
+        }
       } catch (e) {
         if (e instanceof Error && e.name === 'AbortError') {
           return;
         }
 
-        setCustomers([]);
-        setMenus([]);
-        setResources([]);
-        setError(
-          e instanceof Error ? e.message : RESERVATION_FORM_DATA_ERROR_MESSAGE
-        );
+        if (!cached) {
+          setCustomers([]);
+          setMenus([]);
+          setResources([]);
+          setError(
+            e instanceof Error ? e.message : RESERVATION_FORM_DATA_ERROR_MESSAGE
+          );
+        }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && !cached) {
           setLoading(false);
         }
       }
