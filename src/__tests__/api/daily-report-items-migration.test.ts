@@ -30,6 +30,8 @@ describe('Daily report items migration', () => {
     expect(sql).toContain('daily_report_items_payment_method_id_fkey');
     expect(sql).toContain('daily_report_items_next_reservation_id_fkey');
     expect(sql).toContain('daily_report_items_clinic_reservation_unique');
+    expect(sql).toContain('idx_daily_report_items_clinic_date_created_at');
+    expect(sql).toContain('idx_reservations_clinic_staff_time_active');
     expect(sql).toContain('public.validate_daily_report_items_clinic_refs()');
   });
 
@@ -48,6 +50,7 @@ describe('Daily report items migration', () => {
     expect(sql).toContain(
       'public.sync_arrived_reservation_daily_report_item()'
     );
+    expect(sql).not.toMatch(/set\s+[^;]*new_patients\s*=/i);
   });
 
   test('rollback removes triggers, functions, and the table', () => {
@@ -60,5 +63,8 @@ describe('Daily report items migration', () => {
       'drop function if exists public.sync_arrived_reservation_daily_report_item()'
     );
     expect(sql).toContain('drop table if exists public.daily_report_items');
+    expect(sql).toContain(
+      'drop index if exists public.idx_reservations_clinic_staff_time_active'
+    );
   });
 });

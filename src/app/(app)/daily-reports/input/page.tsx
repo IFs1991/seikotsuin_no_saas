@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -66,6 +72,17 @@ type ItemPatchPayload = {
   paymentMethodId?: string | null;
   nextReservationStartTime?: string | null;
   notes?: string | null;
+};
+
+type LoadItemsOptions = {
+  signal?: AbortSignal;
+  includePaymentMethods?: boolean;
+  showSpinner?: boolean;
+};
+
+type ParsedItemsResponse = {
+  items: DailyReportItem[];
+  paymentMethods?: PaymentMethod[];
 };
 
 const emptyNewItem: NewItemForm = {
@@ -180,6 +197,96 @@ function canUseNextReservation(item: DailyReportItem) {
   return Boolean(item.customerId && item.menuId && item.staffResourceId);
 }
 
+function parseItemsResponse(payload: unknown): ParsedItemsResponse | null {
+  if (!isRecord(payload) || payload.success !== true) {
+    return null;
+  }
+
+  const data = payload.data;
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const items = Array.isArray(data.items)
+    ? data.items.filter(isDailyReportItem)
+    : [];
+  const paymentMethods = Array.isArray(data.paymentMethods)
+    ? data.paymentMethods.filter(isPaymentMethod)
+    : undefined;
+
+  return paymentMethods ? { items, paymentMethods } : { items };
+}
+
+function normalizeComparableDateTime(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+function isSameDateTime(left: string | null, right: string | null) {
+  return (
+    normalizeComparableDateTime(left) === normalizeComparableDateTime(right)
+  );
+}
+
+function getChangedItemPatch(
+  savedItem: DailyReportItem,
+  patch: ItemPatchPayload
+): ItemPatchPayload | null {
+  const changed: ItemPatchPayload = {};
+
+  if (
+    patch.patientName !== undefined &&
+    patch.patientName !== savedItem.patientName
+  ) {
+    changed.patientName = patch.patientName;
+  }
+  if (
+    patch.treatmentName !== undefined &&
+    patch.treatmentName !== savedItem.treatmentName
+  ) {
+    changed.treatmentName = patch.treatmentName;
+  }
+  if (
+    patch.durationMinutes !== undefined &&
+    patch.durationMinutes !== savedItem.durationMinutes
+  ) {
+    changed.durationMinutes = patch.durationMinutes;
+  }
+  if (patch.fee !== undefined && patch.fee !== savedItem.fee) {
+    changed.fee = patch.fee;
+  }
+  if (
+    patch.billingType !== undefined &&
+    patch.billingType !== savedItem.billingType
+  ) {
+    changed.billingType = patch.billingType;
+  }
+  if (
+    patch.paymentMethodId !== undefined &&
+    patch.paymentMethodId !== savedItem.paymentMethodId
+  ) {
+    changed.paymentMethodId = patch.paymentMethodId;
+  }
+  if (
+    patch.nextReservationStartTime !== undefined &&
+    !isSameDateTime(
+      patch.nextReservationStartTime,
+      savedItem.nextReservationStartTime
+    )
+  ) {
+    changed.nextReservationStartTime = patch.nextReservationStartTime;
+  }
+  if (patch.notes !== undefined && patch.notes !== savedItem.notes) {
+    changed.notes = patch.notes;
+  }
+
+  return Object.keys(changed).length > 0 ? changed : null;
+}
+
 export default function DailyReportInputPage() {
   const router = useRouter();
   const {
@@ -205,69 +312,102 @@ export default function DailyReportInputPage() {
   const [isSavingReport, setIsSavingReport] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
+  const loadRequestIdRef = useRef(0);
 
   const hasClinic = Boolean(clinicId);
   const isLoading = profileLoading || isLoadingItems;
   const errorMessage = profileError;
 
-  const loadItems = useCallback(async () => {
-    if (!clinicId) {
-      setItems([]);
-      setPaymentMethods([]);
-      setNextReservationDrafts({});
-      return;
-    }
+  const replaceSavedItems = useCallback((nextItems: DailyReportItem[]) => {
+    savedItemsRef.current = new Map(
+      nextItems.map(item => [item.id, item] as const)
+    );
+  }, []);
 
-    setIsLoadingItems(true);
-    setLoadError(null);
+  const loadItems = useCallback(
+    async (options: LoadItemsOptions = {}) => {
+      const {
+        signal,
+        includePaymentMethods = true,
+        showSpinner = true,
+      } = options;
+      const requestId = loadRequestIdRef.current + 1;
+      loadRequestIdRef.current = requestId;
 
-    try {
-      const params = new URLSearchParams({
-        clinic_id: clinicId,
-        report_date: date,
-      });
-      const response = await fetch(`/api/daily-reports/items?${params}`);
-      const payload = await readJson(response);
+      if (!clinicId) {
+        setItems([]);
+        setPaymentMethods([]);
+        setNextReservationDrafts({});
+        replaceSavedItems([]);
+        setIsLoadingItems(false);
+        return;
+      }
 
-      if (!response.ok) {
+      if (showSpinner) {
+        setIsLoadingItems(true);
+      }
+      setLoadError(null);
+
+      try {
+        const params = new URLSearchParams({
+          clinic_id: clinicId,
+          report_date: date,
+        });
+        if (!includePaymentMethods) {
+          params.set('include_payment_methods', 'false');
+        }
+
+        const response = await fetch(`/api/daily-reports/items?${params}`, {
+          signal,
+        });
+        const payload = await readJson(response);
+
+        if (signal?.aborted || requestId !== loadRequestIdRef.current) {
+          return;
+        }
+
+        if (!response.ok) {
+          setLoadError(
+            getApiErrorMessage(payload, '日報明細の取得に失敗しました')
+          );
+          return;
+        }
+
+        const parsed = parseItemsResponse(payload);
+        if (!parsed) {
+          setLoadError('日報明細の取得に失敗しました');
+          return;
+        }
+
+        setItems(parsed.items);
+        replaceSavedItems(parsed.items);
+        if (parsed.paymentMethods) {
+          setPaymentMethods(parsed.paymentMethods);
+        }
+        setNextReservationDrafts(buildNextReservationDrafts(parsed.items));
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
         setLoadError(
-          getApiErrorMessage(payload, '日報明細の取得に失敗しました')
+          error instanceof Error
+            ? error.message
+            : '日報明細の取得に失敗しました'
         );
-        return;
+      } finally {
+        if (requestId === loadRequestIdRef.current) {
+          setIsLoadingItems(false);
+        }
       }
-
-      if (!isRecord(payload) || payload.success !== true) {
-        setLoadError('日報明細の取得に失敗しました');
-        return;
-      }
-
-      const data = payload.data;
-      if (!isRecord(data)) {
-        setLoadError('日報明細の取得に失敗しました');
-        return;
-      }
-
-      const nextItems = Array.isArray(data.items)
-        ? data.items.filter(isDailyReportItem)
-        : [];
-      const nextPaymentMethods = Array.isArray(data.paymentMethods)
-        ? data.paymentMethods.filter(isPaymentMethod)
-        : [];
-
-      setItems(nextItems);
-      setPaymentMethods(nextPaymentMethods);
-      setNextReservationDrafts(buildNextReservationDrafts(nextItems));
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : '日報明細の取得に失敗しました'
-      );
-    } finally {
-      setIsLoadingItems(false);
-    }
-  }, [clinicId, date]);
+    },
+    [clinicId, date, replaceSavedItems]
+  );
 
   useEffect(() => {
-    loadItems();
+    const controller = new AbortController();
+    void loadItems({ signal: controller.signal });
+    return () => controller.abort();
   }, [loadItems]);
 
   const updateItemLocal = (id: string, partial: Partial<DailyReportItem>) => {
@@ -282,6 +422,15 @@ export default function DailyReportInputPage() {
       return;
     }
 
+    const savedItem = savedItemsRef.current.get(id);
+    const changedPatch = savedItem
+      ? getChangedItemPatch(savedItem, patch)
+      : patch;
+    if (!changedPatch) {
+      setFormError(null);
+      return;
+    }
+
     setSavingItemId(id);
     setFormError(null);
 
@@ -292,14 +441,14 @@ export default function DailyReportInputPage() {
         body: JSON.stringify({
           clinic_id: clinicId,
           id,
-          ...patch,
+          ...changedPatch,
         }),
       });
       const payload = await readJson(response);
 
       if (!response.ok) {
         setFormError(getApiErrorMessage(payload, '明細の保存に失敗しました'));
-        await loadItems();
+        await loadItems({ includePaymentMethods: false, showSpinner: false });
         return;
       }
 
@@ -309,6 +458,7 @@ export default function DailyReportInputPage() {
         isDailyReportItem(payload.data)
       ) {
         const savedItem = payload.data;
+        savedItemsRef.current.set(id, savedItem);
         updateItemLocal(id, savedItem);
         setNextReservationDrafts(prev => ({
           ...prev,
@@ -319,7 +469,7 @@ export default function DailyReportInputPage() {
       setFormError(
         error instanceof Error ? error.message : '明細の保存に失敗しました'
       );
-      await loadItems();
+      await loadItems({ includePaymentMethods: false, showSpinner: false });
     } finally {
       setSavingItemId(null);
     }
@@ -367,6 +517,7 @@ export default function DailyReportInputPage() {
         isDailyReportItem(payload.data)
       ) {
         const createdItem = payload.data;
+        savedItemsRef.current.set(createdItem.id, createdItem);
         setItems(prev => [...prev, createdItem]);
         setNextReservationDrafts(prev => ({
           ...prev,
@@ -408,6 +559,7 @@ export default function DailyReportInputPage() {
       }
 
       setItems(prev => prev.filter(item => item.id !== id));
+      savedItemsRef.current.delete(id);
       setNextReservationDrafts(prev => {
         const next = { ...prev };
         delete next[id];
@@ -929,7 +1081,9 @@ export default function DailyReportInputPage() {
                           <Button
                             variant='outline'
                             size='sm'
-                            onClick={() => loadItems()}
+                            onClick={() =>
+                              loadItems({ includePaymentMethods: false })
+                            }
                             disabled={itemSaving}
                           >
                             更新

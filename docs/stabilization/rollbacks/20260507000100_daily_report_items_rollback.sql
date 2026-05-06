@@ -12,3 +12,4 @@ drop function if exists public.recalculate_daily_report_totals(uuid);
 drop function if exists public.validate_daily_report_items_clinic_refs();
 
 drop table if exists public.daily_report_items;
+drop index if exists public.idx_reservations_clinic_staff_time_active;

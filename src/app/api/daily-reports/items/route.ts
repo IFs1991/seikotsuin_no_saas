@@ -61,7 +61,10 @@ type DailyReportItemApi = {
 const billingTypeSchema = z.enum(['insurance', 'private']);
 const isoDateSchema = z
   .string()
-  .regex(/\d{4}-\d{2}-\d{2}/, 'report_dateはYYYY-MM-DD形式で指定してください');
+  .regex(
+    /^\d{4}-\d{2}-\d{2}$/,
+    'report_dateはYYYY-MM-DD形式で指定してください'
+  );
 const nullableUuidSchema = z.string().uuid().nullable().optional();
 const nextReservationStartSchema = z
   .string()
@@ -72,6 +75,7 @@ const nextReservationStartSchema = z
 const itemsQuerySchema = z.object({
   clinic_id: z.string().uuid('clinic_id はUUID形式で指定してください'),
   report_date: isoDateSchema,
+  include_payment_methods: z.enum(['true', 'false']).optional(),
 });
 
 const itemCreateSchema = z
@@ -324,6 +328,7 @@ async function hasReservationConflict(
     .select('id', { count: 'exact', head: true })
     .eq('clinic_id', params.clinicId)
     .eq('staff_id', params.staffId)
+    .eq('is_deleted', false)
     .lt('start_time', params.endTime)
     .gt('end_time', params.startTime)
     .not('status', 'in', '("cancelled","no_show")');
@@ -337,6 +342,29 @@ async function hasReservationConflict(
     throw normalizeSupabaseError(error, PATH);
   }
   return (count ?? 0) > 0;
+}
+
+async function cancelReservation(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    reservationId: string;
+  }
+): Promise<void> {
+  const cancelPayload: ReservationUpdate = {
+    status: 'cancelled',
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from('reservations')
+    .update(cancelPayload)
+    .eq('clinic_id', params.clinicId)
+    .eq('id', params.reservationId);
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
 }
 
 type NextReservationRefs = {
@@ -433,20 +461,10 @@ async function syncNextReservationForUpdate(
 
   if (params.nextReservationStartTime === null) {
     if (params.item.next_reservation_id) {
-      const cancelPayload: ReservationUpdate = {
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase
-        .from('reservations')
-        .update(cancelPayload)
-        .eq('clinic_id', params.clinicId)
-        .eq('id', params.item.next_reservation_id);
-
-      if (error) {
-        throw normalizeSupabaseError(error, PATH);
-      }
+      await cancelReservation(supabase, {
+        clinicId: params.clinicId,
+        reservationId: params.item.next_reservation_id,
+      });
     }
 
     return {
@@ -560,6 +578,9 @@ export async function GET(request: NextRequest) {
     const parsedQuery = itemsQuerySchema.safeParse({
       clinic_id: request.nextUrl.searchParams.get('clinic_id'),
       report_date: request.nextUrl.searchParams.get('report_date'),
+      include_payment_methods:
+        request.nextUrl.searchParams.get('include_payment_methods') ??
+        undefined,
     });
 
     if (!parsedQuery.success) {
@@ -571,21 +592,38 @@ export async function GET(request: NextRequest) {
     }
 
     const { clinic_id, report_date } = parsedQuery.data;
+    const includePaymentMethods =
+      parsedQuery.data.include_payment_methods !== 'false';
     const auth = await processApiRequest(request, {
       clinicId: clinic_id,
       requireClinicMatch: true,
+      allowedRoles: Array.from(STAFF_ROLES),
     });
     if (!auth.success) return auth.error;
 
     const supabase = createScopedDailyReportClient(auth.permissions, clinic_id);
 
+    const itemsQuery = supabase
+      .from('daily_report_items')
+      .select(ITEM_SELECT)
+      .eq('clinic_id', clinic_id)
+      .eq('report_date', report_date)
+      .order('created_at', { ascending: true });
+
+    if (!includePaymentMethods) {
+      const itemsResult = await itemsQuery;
+
+      if (itemsResult.error) {
+        throw normalizeSupabaseError(itemsResult.error, PATH);
+      }
+
+      return createSuccessResponse({
+        items: (itemsResult.data ?? []).map(mapDailyReportItem),
+      });
+    }
+
     const [itemsResult, paymentMethodsResult] = await Promise.all([
-      supabase
-        .from('daily_report_items')
-        .select(ITEM_SELECT)
-        .eq('clinic_id', clinic_id)
-        .eq('report_date', report_date)
-        .order('created_at', { ascending: true }),
+      itemsQuery,
       supabase
         .from('master_payment_methods')
         .select(PAYMENT_METHOD_SELECT)
@@ -654,6 +692,7 @@ export async function POST(request: NextRequest) {
       created_by: result.auth.id,
       updated_by: result.auth.id,
     };
+    let nextReservationIdForCleanup: string | null = null;
 
     if (dto.nextReservationStartTime) {
       const refs = resolveNextReservationRefs({
@@ -690,6 +729,7 @@ export async function POST(request: NextRequest) {
         return createErrorResponse('次回予約の時間帯に既存予約があります', 409);
       }
 
+      nextReservationIdForCleanup = nextReservationId;
       insertPayload.next_reservation_start_time = window.startTime;
       insertPayload.next_reservation_end_time = window.endTime;
       insertPayload.next_reservation_id = nextReservationId;
@@ -702,6 +742,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (nextReservationIdForCleanup) {
+        await cancelReservation(supabase, {
+          clinicId: dto.clinic_id,
+          reservationId: nextReservationIdForCleanup,
+        });
+      }
+
       const message = getConstraintErrorMessage(error);
       if (message) {
         return createErrorResponse(message, 400);
@@ -756,31 +803,58 @@ export async function PATCH(request: NextRequest) {
       return createErrorResponse(nextSync.message, nextSync.status);
     }
 
+    let hasItemChanges = Object.keys(nextSync.patch).length > 0;
     const updatePayload: DailyReportItemUpdate = {
       ...nextSync.patch,
       updated_by: result.auth.id,
     };
 
-    if (dto.patientName !== undefined) {
+    if (
+      dto.patientName !== undefined &&
+      dto.patientName !== existing.patient_name
+    ) {
       updatePayload.patient_name = dto.patientName;
+      hasItemChanges = true;
     }
-    if (dto.treatmentName !== undefined) {
+    if (
+      dto.treatmentName !== undefined &&
+      dto.treatmentName !== existing.treatment_name
+    ) {
       updatePayload.treatment_name = dto.treatmentName;
+      hasItemChanges = true;
     }
-    if (dto.durationMinutes !== undefined) {
+    if (
+      dto.durationMinutes !== undefined &&
+      dto.durationMinutes !== existing.duration_minutes
+    ) {
       updatePayload.duration_minutes = dto.durationMinutes;
+      hasItemChanges = true;
     }
-    if (dto.fee !== undefined) {
+    if (dto.fee !== undefined && dto.fee !== Number(existing.fee)) {
       updatePayload.fee = dto.fee;
+      hasItemChanges = true;
     }
-    if (dto.billingType !== undefined) {
+    if (
+      dto.billingType !== undefined &&
+      dto.billingType !== normalizeBillingType(existing.billing_type)
+    ) {
       updatePayload.billing_type = dto.billingType;
+      hasItemChanges = true;
     }
-    if (dto.paymentMethodId !== undefined) {
+    if (
+      dto.paymentMethodId !== undefined &&
+      dto.paymentMethodId !== existing.payment_method_id
+    ) {
       updatePayload.payment_method_id = dto.paymentMethodId;
+      hasItemChanges = true;
     }
-    if (dto.notes !== undefined) {
+    if (dto.notes !== undefined && dto.notes !== existing.notes) {
       updatePayload.notes = dto.notes;
+      hasItemChanges = true;
+    }
+
+    if (!hasItemChanges) {
+      return createSuccessResponse(mapDailyReportItem(existing));
     }
 
     const { data, error } = await supabase
@@ -835,19 +909,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (existing.next_reservation_id) {
-      const cancelPayload: ReservationUpdate = {
-        status: 'cancelled',
-        updated_at: new Date().toISOString(),
-      };
-      const { error: cancelError } = await supabase
-        .from('reservations')
-        .update(cancelPayload)
-        .eq('clinic_id', clinic_id)
-        .eq('id', existing.next_reservation_id);
-
-      if (cancelError) {
-        throw normalizeSupabaseError(cancelError, PATH);
-      }
+      await cancelReservation(supabase, {
+        clinicId: clinic_id,
+        reservationId: existing.next_reservation_id,
+      });
     }
 
     const { error } = await supabase

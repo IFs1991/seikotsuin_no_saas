@@ -1,4 +1,4 @@
-import type { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
@@ -122,17 +122,23 @@ describe('/api/daily-reports/items', () => {
     });
 
     const { GET } = await import('@/app/api/daily-reports/items/route');
-    const request = {
-      nextUrl: new URL(
-        `http://localhost/api/daily-reports/items?clinic_id=${clinicId}&report_date=2026-05-07`
-      ),
-    } as unknown as NextRequest;
+    const request = new NextRequest(
+      `http://localhost/api/daily-reports/items?clinic_id=${clinicId}&report_date=2026-05-07`
+    );
 
     const response = await GET(request);
     const json = await response.json();
 
     expect(response.status).toBe(200);
     expect(json.success).toBe(true);
+    expect(processApiRequestMock).toHaveBeenCalledWith(
+      request,
+      expect.objectContaining({
+        clinicId,
+        requireClinicMatch: true,
+        allowedRoles: expect.arrayContaining(['staff', 'therapist']),
+      })
+    );
     expect(assertClinicInScope).toHaveBeenCalledWith(clinicId);
     expect(client.from).toHaveBeenCalledWith('daily_report_items');
     expect(client.from).toHaveBeenCalledWith('master_payment_methods');
@@ -142,6 +148,48 @@ describe('/api/daily-reports/items', () => {
       fee: 5000,
     });
     expect(json.data.paymentMethods[0]).toMatchObject({ name: '現金' });
+  });
+
+  test('GET can skip payment methods for lightweight item refreshes', async () => {
+    const itemQuery = {
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({
+        data: [buildItemRow()],
+        error: null,
+      }),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') {
+          return { select: jest.fn().mockReturnValue(itemQuery) };
+        }
+        return {};
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { GET } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      `http://localhost/api/daily-reports/items?clinic_id=${clinicId}&report_date=2026-05-07&include_payment_methods=false`
+    );
+
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(client.from).toHaveBeenCalledWith('daily_report_items');
+    expect(client.from).not.toHaveBeenCalledWith('master_payment_methods');
+    expect(json.data.paymentMethods).toBeUndefined();
   });
 
   test('POST rejects inactive or unknown payment methods', async () => {
@@ -180,7 +228,13 @@ describe('/api/daily-reports/items', () => {
     });
 
     const { POST } = await import('@/app/api/daily-reports/items/route');
-    const response = await POST({} as unknown as NextRequest);
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'POST',
+      }
+    );
+    const response = await POST(request);
     const json = await response.json();
 
     expect(response.status).toBe(400);
@@ -235,12 +289,71 @@ describe('/api/daily-reports/items', () => {
     });
 
     const { PATCH } = await import('@/app/api/daily-reports/items/route');
-    const response = await PATCH({} as unknown as NextRequest);
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'PATCH',
+      }
+    );
+    const response = await PATCH(request);
     const json = await response.json();
 
     expect(response.status).toBe(409);
     expect(json.error).toBe('次回予約の時間帯に既存予約があります');
     expect(dailyReportItemsTable.update).not.toHaveBeenCalled();
     expect(reservationsTable.insert).not.toHaveBeenCalled();
+  });
+
+  test('PATCH returns the existing item without writing when no fields changed', async () => {
+    const itemQuery = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildItemRow(),
+        error: null,
+      }),
+    };
+    const dailyReportItemsTable = {
+      select: jest.fn().mockReturnValue(itemQuery),
+      update: jest.fn(),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: itemId,
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'PATCH',
+      }
+    );
+    const response = await PATCH(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data).toMatchObject({
+      id: itemId,
+      patientName: '山田 太郎',
+    });
+    expect(dailyReportItemsTable.update).not.toHaveBeenCalled();
   });
 });

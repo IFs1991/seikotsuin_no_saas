@@ -57,8 +57,8 @@ create unique index if not exists daily_report_items_clinic_reservation_unique
   on public.daily_report_items (clinic_id, reservation_id)
   where reservation_id is not null;
 
-create index if not exists idx_daily_report_items_clinic_date
-  on public.daily_report_items (clinic_id, report_date);
+create index if not exists idx_daily_report_items_clinic_date_created_at
+  on public.daily_report_items (clinic_id, report_date, created_at);
 
 create index if not exists idx_daily_report_items_daily_report_id
   on public.daily_report_items (daily_report_id);
@@ -68,6 +68,11 @@ create index if not exists idx_daily_report_items_payment_method_id
 
 create index if not exists idx_daily_report_items_next_reservation_id
   on public.daily_report_items (next_reservation_id);
+
+create index if not exists idx_reservations_clinic_staff_time_active
+  on public.reservations (clinic_id, staff_id, start_time, end_time)
+  where is_deleted = false
+    and status not in ('cancelled', 'no_show');
 
 create or replace function public.validate_daily_report_items_clinic_refs()
 returns trigger
@@ -185,7 +190,6 @@ begin
   update public.daily_reports
   set
     total_patients = v_total_patients,
-    new_patients = 0,
     total_revenue = v_total_revenue,
     insurance_revenue = v_insurance_revenue,
     private_revenue = v_private_revenue,
