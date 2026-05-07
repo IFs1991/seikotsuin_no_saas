@@ -46,6 +46,7 @@ const AppointmentBlockComponent: React.FC<Props> = ({
 
   const timeString = formatAppointmentTime(appointment);
   const statusLabel = getAppointmentStatusLabel(appointment);
+  const nominationLabel = appointment.isStaffRequested ? ' 指名' : '';
   const showSecondaryLine = density === 'comfortable' && width >= 88;
   const showStatus = width >= 112;
   const verticalStyle =
@@ -96,8 +97,8 @@ const AppointmentBlockComponent: React.FC<Props> = ({
         onClick(appointment);
       }}
       onKeyDown={handleKeyDown}
-      title={`${timeString} ${appointment.title} ${statusLabel}`}
-      aria-label={`${timeString} ${appointment.title} ${statusLabel}`}
+      title={`${timeString} ${appointment.title} ${statusLabel}${nominationLabel}`}
+      aria-label={`${timeString} ${appointment.title} ${statusLabel}${nominationLabel}`}
       className={`absolute rounded shadow-sm text-xs overflow-hidden leading-tight flex flex-col justify-center px-2 transition-all hover:brightness-95 hover:shadow-md cursor-pointer z-10 ${colorClass} ${isFullRow ? 'opacity-90' : ''}`}
       style={{
         left: `${leftPos}px`,
@@ -125,6 +126,13 @@ const AppointmentBlockComponent: React.FC<Props> = ({
         <div className='mt-1 inline-flex min-w-0 pointer-events-none'>
           <span className='bg-rose-600/80 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold truncate'>
             {appointment.subTitle || appointment.menuName}
+          </span>
+        </div>
+      )}
+      {appointment.isStaffRequested && width >= 72 && (
+        <div className='mt-1 pointer-events-none'>
+          <span className='rounded bg-sky-700/80 px-1.5 py-0.5 text-[9px] font-bold text-white'>
+            指名
           </span>
         </div>
       )}

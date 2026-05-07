@@ -18,6 +18,7 @@ import {
   reservationUpdateSchema,
   mapReservationInsertToRow,
   mapReservationUpdateToRow,
+  type ReservationPricingSnapshot,
 } from './schema';
 import { STAFF_ROLES } from '@/lib/constants/roles';
 import {
@@ -55,17 +56,38 @@ type ReservationListApiRow = Pick<
   | 'channel'
   | 'notes'
   | 'selected_options'
+  | 'is_staff_requested'
+  | 'staff_nomination_fee'
 >;
 type ReservationResourceGuardRow = Pick<
   Database['public']['Tables']['resources']['Row'],
-  'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable'
+  'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable' | 'nomination_fee'
 >;
+type ReservationMenuPricingRow = Pick<
+  Database['public']['Tables']['menus']['Row'],
+  'id' | 'price'
+>;
+type ReservationPricingInputs = {
+  menuPrice: number;
+  staffNominationFee: number;
+};
+type ReservationMenuPricingResult =
+  | { ok: true; menuPrice: number }
+  | { ok: false; error: string };
+type ReservationReferenceValidationResult =
+  | { ok: true; pricingInputs: ReservationPricingInputs }
+  | { ok: false; error: string };
+type ReservationStaffResourceResult =
+  | { ok: true; resource: ReservationResourceGuardRow }
+  | { ok: false; error: string };
 type PostgresReservationError = {
   code?: string;
   message?: string;
 };
 const RESERVATION_LIST_SELECT =
-  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options';
+  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, is_staff_requested, staff_nomination_fee';
+const RESERVATION_INSERT_RETURN_SELECT =
+  'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
 
 function isReservationOptionSelection(
   value: unknown
@@ -83,8 +105,59 @@ function isReservationOptionSelection(
   );
 }
 
-function mapSelectedOptions(value: ReservationListViewRow['selected_options']) {
+function mapSelectedOptions(value: unknown): ReservationOptionSelection[] {
   return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
+}
+
+function normalizePriceAmount(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function getSelectedOptionsPriceDelta(
+  selectedOptions: ReservationOptionSelection[]
+) {
+  return selectedOptions.reduce(
+    (sum, option) => sum + normalizePriceAmount(option.priceDelta),
+    0
+  );
+}
+
+function normalizeDtoSelectedOptions(
+  selectedOptions:
+    | {
+        optionId?: string;
+        name?: string;
+        priceDelta?: number;
+        durationDeltaMinutes?: number;
+      }[]
+    | undefined
+): ReservationOptionSelection[] {
+  return (selectedOptions ?? []).map(option => ({
+    optionId: option.optionId ?? '',
+    name: option.name ?? '',
+    priceDelta: option.priceDelta ?? 0,
+    durationDeltaMinutes: option.durationDeltaMinutes ?? 0,
+  }));
+}
+
+function buildReservationPricingSnapshot(params: {
+  isStaffRequested: boolean;
+  menuPrice: number;
+  staffNominationFee: number;
+  selectedOptions: ReservationOptionSelection[];
+}): ReservationPricingSnapshot {
+  const staffNominationFee = params.isStaffRequested
+    ? normalizePriceAmount(params.staffNominationFee)
+    : 0;
+
+  return {
+    isStaffRequested: params.isStaffRequested,
+    staffNominationFee,
+    price:
+      normalizePriceAmount(params.menuPrice) +
+      getSelectedOptionsPriceDelta(params.selectedOptions) +
+      staffNominationFee,
+  };
 }
 
 function mapReservationListViewRow(row: ReservationListApiRow) {
@@ -102,6 +175,8 @@ function mapReservationListViewRow(row: ReservationListApiRow) {
     channel: row.channel,
     notes: row.notes ?? undefined,
     selectedOptions: mapSelectedOptions(row.selected_options),
+    isStaffRequested: row.is_staff_requested ?? false,
+    staffNominationFee: row.staff_nomination_fee ?? 0,
   };
 }
 
@@ -269,16 +344,15 @@ async function hasReservationConflict(
   return (count ?? 0) > 0;
 }
 
-async function validateReservationReferences(
+async function validateReservationCustomerAndMenuPricing(
   supabase: SupabaseServerClient,
   params: {
     clinicId: string;
     customerId: string;
     menuId: string;
-    staffId: string;
   }
-): Promise<string | null> {
-  const [customerResult, menuResult, resourceResult] = await Promise.all([
+): Promise<ReservationMenuPricingResult> {
+  const [customerResult, menuPricing] = await Promise.all([
     supabase
       .from('customers')
       .select('id')
@@ -286,46 +360,125 @@ async function validateReservationReferences(
       .eq('id', params.customerId)
       .eq('is_deleted', false)
       .maybeSingle(),
-    supabase
-      .from('menus')
-      .select('id')
-      .eq('clinic_id', params.clinicId)
-      .eq('id', params.menuId)
-      .eq('is_deleted', false)
-      .maybeSingle(),
-    supabase
-      .from('resources')
-      .select('id, type, is_deleted, is_active, is_bookable')
-      .eq('clinic_id', params.clinicId)
-      .eq('id', params.staffId)
-      .eq('type', 'staff')
-      .eq('is_deleted', false)
-      .eq('is_active', true)
-      .eq('is_bookable', true)
-      .maybeSingle(),
+    getReservationMenuPricing(supabase, {
+      clinicId: params.clinicId,
+      menuId: params.menuId,
+    }),
   ]);
 
   if (customerResult.error) {
     throw normalizeSupabaseError(customerResult.error, PATH);
   }
-  if (menuResult.error) {
-    throw normalizeSupabaseError(menuResult.error, PATH);
-  }
-  if (resourceResult.error) {
-    throw normalizeSupabaseError(resourceResult.error, PATH);
-  }
 
   if (!customerResult.data) {
-    return '選択した顧客データが見つかりません';
-  }
-  if (!menuResult.data) {
-    return '選択したメニューが見つかりません。メニュー管理で有効なメニューを登録してください';
-  }
-  if (!resourceResult.data) {
-    return '選択した施術者リソースは予約に使用できません';
+    return { ok: false, error: '選択した顧客データが見つかりません' };
   }
 
-  return null;
+  if (menuPricing.ok === false) {
+    return menuPricing;
+  }
+
+  return menuPricing;
+}
+
+async function getReservationMenuPricing(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    menuId: string;
+  }
+): Promise<ReservationMenuPricingResult> {
+  const { data, error } = await supabase
+    .from('menus')
+    .select('id, price')
+    .eq('clinic_id', params.clinicId)
+    .eq('id', params.menuId)
+    .eq('is_deleted', false)
+    .maybeSingle();
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  if (!data) {
+    return {
+      ok: false,
+      error:
+        '選択したメニューが見つかりません。メニュー管理で有効なメニューを登録してください',
+    };
+  }
+
+  const menu = data as ReservationMenuPricingRow;
+  return { ok: true, menuPrice: normalizePriceAmount(menu.price) };
+}
+
+async function findUsableReservationStaffResource(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    staffId: string;
+  }
+): Promise<ReservationResourceGuardRow | null> {
+  const { data, error } = await supabase
+    .from('resources')
+    .select('id, type, is_deleted, is_active, is_bookable, nomination_fee')
+    .eq('clinic_id', params.clinicId)
+    .eq('id', params.staffId)
+    .eq('type', 'staff')
+    .eq('is_deleted', false)
+    .eq('is_active', true)
+    .eq('is_bookable', true)
+    .maybeSingle();
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  return data ? (data as ReservationResourceGuardRow) : null;
+}
+
+async function getReservationPricingInputs(
+  supabase: SupabaseServerClient,
+  params: {
+    clinicId: string;
+    menuId: string;
+    staffId: string;
+    staffResource?: ReservationResourceGuardRow;
+  }
+): Promise<ReservationReferenceValidationResult> {
+  const staffResourcePromise = params.staffResource
+    ? Promise.resolve(params.staffResource)
+    : findUsableReservationStaffResource(supabase, {
+        clinicId: params.clinicId,
+        staffId: params.staffId,
+      });
+
+  const [menuPricing, staffResource] = await Promise.all([
+    getReservationMenuPricing(supabase, {
+      clinicId: params.clinicId,
+      menuId: params.menuId,
+    }),
+    staffResourcePromise,
+  ]);
+
+  if (menuPricing.ok === false) {
+    return menuPricing;
+  }
+
+  if (!staffResource) {
+    return {
+      ok: false,
+      error: '選択した施術者リソースは予約に使用できません',
+    };
+  }
+
+  return {
+    ok: true,
+    pricingInputs: {
+      menuPrice: menuPricing.menuPrice,
+      staffNominationFee: normalizePriceAmount(staffResource.nomination_fee),
+    },
+  };
 }
 
 async function ensureReservationStaffResource(
@@ -335,10 +488,10 @@ async function ensureReservationStaffResource(
     staffId: string;
     createdBy: string;
   }
-) {
+): Promise<ReservationStaffResourceResult> {
   const { data: resource, error: resourceError } = await supabase
     .from('resources')
-    .select('id, type, is_deleted, is_active, is_bookable')
+    .select('id, type, is_deleted, is_active, is_bookable, nomination_fee')
     .eq('clinic_id', params.clinicId)
     .eq('id', params.staffId)
     .maybeSingle();
@@ -348,11 +501,14 @@ async function ensureReservationStaffResource(
   }
   if (resource) {
     if (isUsableReservationResource(resource)) {
-      return { ok: true as const };
+      return {
+        ok: true,
+        resource: resource as ReservationResourceGuardRow,
+      };
     }
 
     return {
-      ok: false as const,
+      ok: false,
       error: '選択した施術者リソースは予約に使用できません',
     };
   }
@@ -382,7 +538,7 @@ async function ensureReservationStaffResource(
 
     if (!permission || !isPermissionBookableStaffCandidate(permission)) {
       return {
-        ok: false as const,
+        ok: false,
         error: '担当スタッフのリソースが見つかりません',
       };
     }
@@ -397,37 +553,62 @@ async function ensureReservationStaffResource(
       throw normalizeSupabaseError(profileError, PATH);
     }
 
-    const { error: permissionUpsertError } = await supabase
-      .from('resources')
-      .upsert(
-        buildStaffResourceFromPermissionCandidate(
-          permission,
-          profile,
-          params.clinicId,
-          params.createdBy
-        ),
-        { onConflict: 'id' }
-      );
+    const permissionResource = buildStaffResourceFromPermissionCandidate(
+      permission,
+      profile,
+      params.clinicId,
+      params.createdBy
+    );
+    const { data: upsertedPermissionResource, error: permissionUpsertError } =
+      await supabase
+        .from('resources')
+        .upsert(permissionResource, { onConflict: 'id' })
+        .select('id, type, is_deleted, is_active, is_bookable, nomination_fee')
+        .single();
 
     if (permissionUpsertError) {
       throw normalizeSupabaseError(permissionUpsertError, PATH);
     }
 
-    return { ok: true as const };
+    if (!isUsableReservationResource(upsertedPermissionResource)) {
+      return {
+        ok: false,
+        error: '選択した施術者リソースは予約に使用できません',
+      };
+    }
+
+    return {
+      ok: true,
+      resource: upsertedPermissionResource as ReservationResourceGuardRow,
+    };
   }
 
-  const { error: upsertError } = await supabase
+  const staffResource = buildStaffResourceFromCandidate(
+    staff,
+    params.clinicId,
+    params.createdBy
+  );
+  const { data: upsertedStaffResource, error: upsertError } = await supabase
     .from('resources')
-    .upsert(
-      buildStaffResourceFromCandidate(staff, params.clinicId, params.createdBy),
-      { onConflict: 'id' }
-    );
+    .upsert(staffResource, { onConflict: 'id' })
+    .select('id, type, is_deleted, is_active, is_bookable, nomination_fee')
+    .single();
 
   if (upsertError) {
     throw normalizeSupabaseError(upsertError, PATH);
   }
 
-  return { ok: true as const };
+  if (!isUsableReservationResource(upsertedStaffResource)) {
+    return {
+      ok: false,
+      error: '選択した施術者リソースは予約に使用できません',
+    };
+  }
+
+  return {
+    ok: true,
+    resource: upsertedStaffResource as ReservationResourceGuardRow,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -515,29 +696,25 @@ export async function POST(request: NextRequest) {
       result.permissions,
       dto.clinic_id
     );
-    const staffResource = await ensureReservationStaffResource(
-      reservationMutationClient,
-      {
+    const [staffResource, references] = await Promise.all([
+      ensureReservationStaffResource(reservationMutationClient, {
         clinicId: dto.clinic_id,
         staffId: dto.staffId,
         createdBy: result.auth.id,
-      }
-    );
-    if (!staffResource.ok) {
-      return createErrorResponse(staffResource.error, 400);
-    }
-
-    const referenceError = await validateReservationReferences(
-      reservationMutationClient,
-      {
+      }),
+      validateReservationCustomerAndMenuPricing(reservationMutationClient, {
         clinicId: dto.clinic_id,
         customerId: dto.customerId,
         menuId: dto.menuId,
-        staffId: dto.staffId,
-      }
-    );
-    if (referenceError) {
-      return createErrorResponse(referenceError, 400);
+      }),
+    ]);
+
+    if (staffResource.ok === false) {
+      return createErrorResponse(staffResource.error, 400);
+    }
+
+    if (references.ok === false) {
+      return createErrorResponse(references.error, 400);
     }
 
     const conflict = await hasReservationConflict(reservationMutationClient, {
@@ -550,12 +727,24 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('同時間帯に既存予約があります', 409);
     }
 
-    const insertPayload = mapReservationInsertToRow(dto, result.auth.id);
+    const pricing = buildReservationPricingSnapshot({
+      isStaffRequested: dto.isStaffRequested ?? false,
+      menuPrice: references.menuPrice,
+      staffNominationFee: normalizePriceAmount(
+        staffResource.resource.nomination_fee
+      ),
+      selectedOptions: normalizeDtoSelectedOptions(dto.selectedOptions),
+    });
+    const insertPayload = mapReservationInsertToRow(
+      dto,
+      result.auth.id,
+      pricing
+    );
 
     const { data, error } = await reservationMutationClient
       .from('reservations')
       .insert(insertPayload)
-      .select()
+      .select(RESERVATION_INSERT_RETURN_SELECT)
       .single();
 
     if (error) {
@@ -651,7 +840,7 @@ export async function PATCH(request: NextRequest) {
       await reservationMutationClient
         .from('reservations')
         .select(
-          'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes'
+          'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, selected_options, is_staff_requested'
         )
         .eq('id', dto.id)
         .eq('clinic_id', dto.clinic_id)
@@ -661,13 +850,16 @@ export async function PATCH(request: NextRequest) {
       throw normalizeSupabaseError(existingError, PATH);
     }
 
+    let existingStaffResource: ReservationResourceGuardRow | undefined;
+
     if (dto.staffId || dto.startTime || dto.endTime) {
       const nextStaffId = dto.staffId ?? existing.staff_id;
       const nextStartTime = dto.startTime ?? existing.start_time;
       const nextEndTime = dto.endTime ?? existing.end_time;
 
+      let staffResource: ReservationResourceGuardRow | undefined;
       if (dto.staffId) {
-        const staffResource = await ensureReservationStaffResource(
+        const staffResourceResult = await ensureReservationStaffResource(
           reservationMutationClient,
           {
             clinicId: dto.clinic_id,
@@ -675,9 +867,10 @@ export async function PATCH(request: NextRequest) {
             createdBy: result.auth.id,
           }
         );
-        if (!staffResource.ok) {
-          return createErrorResponse(staffResource.error, 400);
+        if (staffResourceResult.ok === false) {
+          return createErrorResponse(staffResourceResult.error, 400);
         }
+        staffResource = staffResourceResult.resource;
       }
 
       const conflict = await hasReservationConflict(reservationMutationClient, {
@@ -690,9 +883,47 @@ export async function PATCH(request: NextRequest) {
       if (conflict) {
         return createErrorResponse('同時間帯に既存予約があります', 409);
       }
+
+      if (staffResource) {
+        existingStaffResource = staffResource;
+      }
     }
 
-    const updatePayload = mapReservationUpdateToRow(dto);
+    let pricing: ReservationPricingSnapshot | undefined;
+    const shouldReprice =
+      dto.staffId !== undefined ||
+      dto.selectedOptions !== undefined ||
+      dto.isStaffRequested !== undefined;
+
+    if (shouldReprice) {
+      const nextStaffId = dto.staffId ?? existing.staff_id;
+      const references = await getReservationPricingInputs(
+        reservationMutationClient,
+        {
+          clinicId: dto.clinic_id,
+          menuId: existing.menu_id,
+          staffId: nextStaffId,
+          staffResource: existingStaffResource,
+        }
+      );
+
+      if (references.ok === false) {
+        return createErrorResponse(references.error, 400);
+      }
+
+      pricing = buildReservationPricingSnapshot({
+        isStaffRequested:
+          dto.isStaffRequested ?? existing.is_staff_requested ?? false,
+        menuPrice: references.pricingInputs.menuPrice,
+        staffNominationFee: references.pricingInputs.staffNominationFee,
+        selectedOptions:
+          dto.selectedOptions !== undefined
+            ? normalizeDtoSelectedOptions(dto.selectedOptions)
+            : mapSelectedOptions(existing.selected_options),
+      });
+    }
+
+    const updatePayload = mapReservationUpdateToRow(dto, pricing);
 
     const { data, error } = await reservationMutationClient
       .from('reservations')

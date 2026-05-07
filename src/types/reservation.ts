@@ -66,6 +66,7 @@ export interface Resource {
     sunday?: { start: string; end: string } | null;
   };
   maxConcurrent: number;
+  nominationFee?: number;
   supportedMenus: string[];
   isActive: boolean;
   isBookable?: boolean;

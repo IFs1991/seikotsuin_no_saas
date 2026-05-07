@@ -21,6 +21,9 @@ interface Props {
   className?: string;
 }
 
+const formatYen = (amount: number) =>
+  `${Number.isFinite(amount) ? amount.toLocaleString('ja-JP') : 0}円`;
+
 export const AppointmentSummary: React.FC<Props> = ({
   appointment,
   resources,
@@ -129,7 +132,19 @@ export const AppointmentSummary: React.FC<Props> = ({
               <div className='text-xs font-bold text-gray-500 uppercase'>
                 担当スタッフ
               </div>
-              <div className='text-gray-900 font-medium'>{resourceName}</div>
+              <div className='flex flex-wrap items-center gap-2 text-gray-900 font-medium'>
+                <span>{resourceName}</span>
+                {appointment.isStaffRequested && (
+                  <span className='rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700'>
+                    指名
+                  </span>
+                )}
+              </div>
+              {appointment.isStaffRequested && (
+                <div className='mt-1 text-xs text-gray-500'>
+                  指名料 {formatYen(appointment.staffNominationFee ?? 0)}
+                </div>
+              )}
             </div>
           </div>
 

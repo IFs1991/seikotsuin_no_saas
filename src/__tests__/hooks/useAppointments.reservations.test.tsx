@@ -91,6 +91,30 @@ describe('useAppointments reservation behavior', () => {
     );
   });
 
+  it('passes isStaffRequested to updateReservation when moving appointment', async () => {
+    const requestedAppointment: Appointment = {
+      ...baseAppointment,
+      id: 'appt-requested',
+      isStaffRequested: true,
+      staffNominationFee: 1200,
+    };
+    const { result } = renderHook(() => useAppointments('clinic-1'));
+
+    act(() => {
+      result.current.addAppointment(requestedAppointment);
+    });
+
+    await act(async () => {
+      await result.current.moveAppointment('appt-requested', 'staff-2', 9, 30);
+    });
+
+    expect(mockApi.updateReservation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isStaffRequested: true,
+      })
+    );
+  });
+
   it('moves appointment optimistically while update request is pending', async () => {
     type ReservationApiItem = Awaited<
       ReturnType<typeof reservationApi.updateReservation>

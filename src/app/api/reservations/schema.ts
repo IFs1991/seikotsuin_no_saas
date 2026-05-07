@@ -6,6 +6,12 @@ type ReservationInsertRow =
 type ReservationUpdateRow =
   Database['public']['Tables']['reservations']['Update'];
 
+export type ReservationPricingSnapshot = {
+  isStaffRequested: boolean;
+  staffNominationFee: number;
+  price: number;
+};
+
 const statusEnum = z.enum([
   'tentative',
   'confirmed',
@@ -46,6 +52,7 @@ export const reservationInsertSchema = z
     channel: channelEnum,
     notes: z.string().optional(),
     selectedOptions: z.array(optionSelectionSchema).optional(),
+    isStaffRequested: z.boolean().default(false),
   })
   .strict();
 export type ReservationInsertDTO = z.infer<typeof reservationInsertSchema>;
@@ -60,13 +67,15 @@ export const reservationUpdateSchema = z
     staffId: z.string().uuid().optional(),
     notes: z.string().optional(),
     selectedOptions: z.array(optionSelectionSchema).optional(),
+    isStaffRequested: z.boolean().optional(),
   })
   .strict();
 export type ReservationUpdateDTO = z.infer<typeof reservationUpdateSchema>;
 
 export function mapReservationInsertToRow(
   dto: ReservationInsertDTO,
-  userId: string
+  userId: string,
+  pricing: ReservationPricingSnapshot
 ): ReservationInsertRow {
   return {
     clinic_id: dto.clinic_id,
@@ -78,13 +87,17 @@ export function mapReservationInsertToRow(
     channel: dto.channel,
     notes: dto.notes ?? null,
     selected_options: dto.selectedOptions ?? [],
+    is_staff_requested: pricing.isStaffRequested,
+    staff_nomination_fee: pricing.staffNominationFee,
+    price: pricing.price,
     status: 'unconfirmed',
     created_by: userId,
   };
 }
 
 export function mapReservationUpdateToRow(
-  dto: ReservationUpdateDTO
+  dto: ReservationUpdateDTO,
+  pricing?: ReservationPricingSnapshot
 ): ReservationUpdateRow {
   const row: ReservationUpdateRow = {};
 
@@ -95,6 +108,11 @@ export function mapReservationUpdateToRow(
   if (dto.notes !== undefined) row.notes = dto.notes;
   if (dto.selectedOptions !== undefined)
     row.selected_options = dto.selectedOptions;
+  if (pricing !== undefined) {
+    row.is_staff_requested = pricing.isStaffRequested;
+    row.staff_nomination_fee = pricing.staffNominationFee;
+    row.price = pricing.price;
+  }
 
   return row;
 }

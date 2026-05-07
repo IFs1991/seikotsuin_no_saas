@@ -42,7 +42,13 @@ const getResourceSortRank = (resourceType?: string) =>
 
 type ReservationFormResource = Pick<
   Resource,
-  'id' | 'name' | 'type' | 'maxConcurrent' | 'isActive' | 'isBookable'
+  | 'id'
+  | 'name'
+  | 'type'
+  | 'maxConcurrent'
+  | 'nominationFee'
+  | 'isActive'
+  | 'isBookable'
 >;
 
 const canUseResourceForReservationForm = (
@@ -63,6 +69,7 @@ const mapToSchedulerResource = (
   capacity: resource.maxConcurrent,
   subLabel: resource.type !== 'staff' ? resource.type : undefined,
   type: resource.type === 'staff' ? 'staff' : 'facility',
+  nominationFee: resource.nominationFee ?? 0,
 });
 
 const buildSchedulerResources = (

@@ -105,6 +105,7 @@ export const AppointmentHistoryPanel = memo(function AppointmentHistoryPanel({
                     </div>
                     <div className='mt-1 text-xs text-gray-500'>
                       {item.staffName ?? '担当未設定'}
+                      {item.isStaffRequested ? ' / 指名' : ''}
                     </div>
                   </div>
                   <span

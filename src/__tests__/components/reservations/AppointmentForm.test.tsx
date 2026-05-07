@@ -268,6 +268,77 @@ describe('料金表示', () => {
       screen.getByText(/基本料金 5,000円.*オプション 800円/)
     ).toBeInTheDocument();
   });
+
+  it('指名チェックONで指名料を合計し予約作成に指名状態を渡す', async () => {
+    renderForm({
+      resources: [
+        {
+          id: 'resource-1',
+          name: '田中 花子',
+          type: 'staff',
+          nominationFee: 1200,
+        },
+      ],
+    });
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /この施術者を指名/ })
+    );
+
+    expect(screen.getByText('6,200円')).toBeInTheDocument();
+    expect(
+      screen.getByText(/基本料金 5,000円.*指名料 1,200円/)
+    ).toBeInTheDocument();
+
+    fillRequiredFields({});
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form');
+    if (!form) {
+      throw new Error('form not found');
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(createReservation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isStaffRequested: true,
+        })
+      );
+    });
+  });
+
+  it('指名未チェックでは指名料を合計しない', async () => {
+    renderForm({
+      resources: [
+        {
+          id: 'resource-1',
+          name: '田中 花子',
+          type: 'staff',
+          nominationFee: 1200,
+        },
+      ],
+    });
+
+    expect(screen.getByText('5,000円')).toBeInTheDocument();
+
+    fillRequiredFields({});
+    const form = screen
+      .getByRole('button', { name: '登録する' })
+      .closest('form');
+    if (!form) {
+      throw new Error('form not found');
+    }
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(createReservation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isStaffRequested: false,
+        })
+      );
+    });
+  });
 });
 
 describe('患者紐付け', () => {

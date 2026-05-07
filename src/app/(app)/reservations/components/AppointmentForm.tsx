@@ -31,6 +31,7 @@ type AppointmentFormState = {
   startMinute: number;
   menuId: string;
   optionId: string;
+  isStaffRequested: boolean;
   phone: string;
   type: 'normal';
   customAttributes: Record<string, string>;
@@ -139,6 +140,7 @@ export const AppointmentForm: React.FC<Props> = ({
     startMinute: initialData?.startMinute ?? 0,
     menuId: menus[0]?.id || '',
     optionId: 'none',
+    isStaffRequested: false,
     phone: '',
     type: 'normal' as const,
     customAttributes: createInitialCustomAttributes(),
@@ -172,6 +174,11 @@ export const AppointmentForm: React.FC<Props> = ({
     () => menus.find(menu => menu.id === formData.menuId),
     [menus, formData.menuId]
   );
+  const selectedResource = useMemo(
+    () =>
+      selectableResources.find(resource => resource.id === formData.resourceId),
+    [selectableResources, formData.resourceId]
+  );
 
   const optionItems = useMemo<MenuOptionItem[]>(() => {
     const base = (selectedMenu?.options ?? []).filter(
@@ -193,10 +200,33 @@ export const AppointmentForm: React.FC<Props> = ({
     [optionItems, formData.optionId]
   );
 
-  const selectedTotalPrice =
-    (selectedMenu?.price ?? 0) + (selectedOption?.priceDelta ?? 0);
+  const selectedStaffNominationFee =
+    selectedResource?.type === 'staff' && formData.isStaffRequested
+      ? (selectedResource.nominationFee ?? 0)
+      : 0;
 
-  const [endTime, setEndTime] = useState({ hour: 11, minute: 0 });
+  const selectedTotalPrice =
+    (selectedMenu?.price ?? 0) +
+    (selectedOption?.priceDelta ?? 0) +
+    selectedStaffNominationFee;
+
+  const endTime = useMemo(() => {
+    const duration =
+      (selectedMenu?.durationMinutes ?? 0) +
+      (selectedOption?.durationDeltaMinutes ?? 0);
+    const { endHour, endMinute } = calculateEndTime(
+      formData.startHour,
+      formData.startMinute,
+      duration
+    );
+
+    return { hour: endHour, minute: endMinute };
+  }, [
+    formData.startHour,
+    formData.startMinute,
+    selectedMenu?.durationMinutes,
+    selectedOption?.durationDeltaMinutes,
+  ]);
 
   useEffect(() => {
     if (!optionItems.find(option => option.id === formData.optionId)) {
@@ -204,29 +234,11 @@ export const AppointmentForm: React.FC<Props> = ({
     }
   }, [optionItems, formData.optionId]);
 
-  // Auto-calculate end time based on menu duration
   useEffect(() => {
-    const menu = menus.find(m => m.id === formData.menuId);
-    const option = optionItems.find(o => o.id === formData.optionId);
-
-    const duration =
-      (menu?.durationMinutes || 0) + (option?.durationDeltaMinutes || 0);
-
-    const { endHour, endMinute } = calculateEndTime(
-      formData.startHour,
-      formData.startMinute,
-      duration
-    );
-
-    setEndTime({ hour: endHour, minute: endMinute });
-  }, [
-    formData.startHour,
-    formData.startMinute,
-    formData.menuId,
-    formData.optionId,
-    menus,
-    optionItems,
-  ]);
+    if (selectedResource?.type !== 'staff' && formData.isStaffRequested) {
+      setFormData(prev => ({ ...prev, isStaffRequested: false }));
+    }
+  }, [selectedResource?.type, formData.isStaffRequested]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,6 +348,8 @@ export const AppointmentForm: React.FC<Props> = ({
         endTime: endTimeDate,
         channel: 'phone',
         selectedOptions,
+        isStaffRequested:
+          selectedResource?.type === 'staff' && formData.isStaffRequested,
       }).catch(error => {
         throw new Error(
           `予約データの作成に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`
@@ -371,6 +385,14 @@ export const AppointmentForm: React.FC<Props> = ({
         menuName,
         staffName: resourceName,
         selectedOptions,
+        isStaffRequested:
+          reservation.isStaffRequested ??
+          (selectedResource?.type === 'staff' && formData.isStaffRequested),
+        staffNominationFee:
+          reservation.staffNominationFee ??
+          (selectedResource?.type === 'staff' && formData.isStaffRequested
+            ? (selectedResource.nominationFee ?? 0)
+            : 0),
       });
     } catch (err) {
       setErrorMessage(
@@ -528,6 +550,26 @@ export const AppointmentForm: React.FC<Props> = ({
               施術者リソースが未登録です。スタッフ管理またはリソース管理で施術者を追加してください。
             </p>
           )}
+          {selectedResource?.type === 'staff' && (
+            <label className='mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2'>
+              <span>
+                <span className='block text-sm font-medium text-gray-800'>
+                  この施術者を指名
+                </span>
+                <span className='block text-xs text-gray-500'>
+                  指名料 {formatYen(selectedResource.nominationFee ?? 0)}
+                </span>
+              </span>
+              <input
+                type='checkbox'
+                checked={formData.isStaffRequested}
+                onChange={e =>
+                  handleInputChange('isStaffRequested', e.target.checked)
+                }
+                className='h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500'
+              />
+            </label>
+          )}
         </div>
 
         {/* Menu & Options */}
@@ -579,6 +621,9 @@ export const AppointmentForm: React.FC<Props> = ({
               基本料金 {formatYen(selectedMenu.price)}
               {selectedOption && selectedOption.id !== 'none'
                 ? ` / オプション ${formatYen(selectedOption.priceDelta)}`
+                : ''}
+              {selectedStaffNominationFee > 0
+                ? ` / 指名料 ${formatYen(selectedStaffNominationFee)}`
                 : ''}
             </div>
           )}

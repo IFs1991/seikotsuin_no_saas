@@ -26,7 +26,7 @@ import {
 
 const PATH = '/api/resources';
 const RESOURCE_LIST_SELECT =
-  'id, name, type, working_hours, supported_menus, max_concurrent, is_active, is_bookable, display_order';
+  'id, name, type, working_hours, supported_menus, max_concurrent, nomination_fee, is_active, is_bookable, display_order';
 
 type ResourceListRow = {
   id: string;
@@ -35,6 +35,7 @@ type ResourceListRow = {
   working_hours: Json | null;
   supported_menus: string[] | null;
   max_concurrent: number | null;
+  nomination_fee: number | null;
   is_active: boolean | null;
   is_bookable: boolean | null;
 };
@@ -52,6 +53,7 @@ function mapResourceListRow(row: ResourceListRow) {
     workingHours: isJsonRecord(row.working_hours) ? row.working_hours : {},
     supportedMenus: row.supported_menus ?? [],
     maxConcurrent: row.max_concurrent ?? 1,
+    nominationFee: row.nomination_fee ?? 0,
     isActive: row.is_active !== false,
     isBookable: row.is_bookable !== false,
   };
@@ -65,6 +67,7 @@ function mapStaffCandidateToResource(row: LegacyStaffCandidate) {
     workingHours: {},
     supportedMenus: [],
     maxConcurrent: 1,
+    nominationFee: 0,
     isActive: true,
     isBookable: true,
   };
@@ -81,6 +84,7 @@ function mapPermissionCandidateToResource(
     workingHours: {},
     supportedMenus: [],
     maxConcurrent: 1,
+    nominationFee: 0,
     isActive: profile?.is_active !== false,
     isBookable: true,
   };

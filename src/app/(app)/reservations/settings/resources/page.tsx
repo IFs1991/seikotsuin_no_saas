@@ -24,6 +24,17 @@ const TYPE_LABELS: Record<Resource['type'], string> = {
   device: '設備',
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(item => typeof item === 'string');
+
+const normalizeFeeInput = (value: string) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
 export default function ResourceSettingsPage() {
   const { profile } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
@@ -34,6 +45,7 @@ export default function ResourceSettingsPage() {
     name: '',
     type: 'staff' as Resource['type'],
     maxConcurrent: 1,
+    nominationFee: 0,
     supportedMenusJson: '[]',
     workingHoursJson: '{}',
   });
@@ -57,11 +69,19 @@ export default function ResourceSettingsPage() {
   const handleCreate = async () => {
     if (!clinicId || !newResource.name.trim()) return;
     let supportedMenus: string[] = [];
-    let workingHours: Record<string, any> = {};
+    let workingHours: Record<string, unknown> = {};
     try {
-      supportedMenus = JSON.parse(newResource.supportedMenusJson || '[]');
-      if (!Array.isArray(supportedMenus)) supportedMenus = [];
-      workingHours = JSON.parse(newResource.workingHoursJson || '{}');
+      const parsedSupportedMenus: unknown = JSON.parse(
+        newResource.supportedMenusJson || '[]'
+      );
+      const parsedWorkingHours: unknown = JSON.parse(
+        newResource.workingHoursJson || '{}'
+      );
+
+      supportedMenus = isStringArray(parsedSupportedMenus)
+        ? parsedSupportedMenus
+        : [];
+      workingHours = isRecord(parsedWorkingHours) ? parsedWorkingHours : {};
     } catch {
       alert('JSONの形式が不正です');
       return;
@@ -77,6 +97,10 @@ export default function ResourceSettingsPage() {
           name: newResource.name,
           type: newResource.type,
           maxConcurrent: Number(newResource.maxConcurrent),
+          nominationFee:
+            newResource.type === 'staff'
+              ? Number(newResource.nominationFee)
+              : 0,
           supportedMenus,
           workingHours,
           isActive: true,
@@ -88,6 +112,7 @@ export default function ResourceSettingsPage() {
         name: '',
         type: 'staff',
         maxConcurrent: 1,
+        nominationFee: 0,
         supportedMenusJson: '[]',
         workingHoursJson: '{}',
       });
@@ -113,6 +138,29 @@ export default function ResourceSettingsPage() {
         clinic_id: clinicId,
         id: resource.id,
         isActive: !resource.isActive,
+      }),
+    });
+  };
+
+  const handleNominationFeeChange = (resourceId: string, value: string) => {
+    const nominationFee = normalizeFeeInput(value);
+    setResources(prev =>
+      prev.map(resource =>
+        resource.id === resourceId ? { ...resource, nominationFee } : resource
+      )
+    );
+  };
+
+  const handleNominationFeeBlur = async (resource: Resource) => {
+    if (!clinicId || resource.type !== 'staff') return;
+
+    await fetch('/api/resources', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clinic_id: clinicId,
+        id: resource.id,
+        nominationFee: resource.nominationFee ?? 0,
       }),
     });
   };
@@ -180,6 +228,23 @@ export default function ResourceSettingsPage() {
               }
             />
           </div>
+          {newResource.type === 'staff' && (
+            <div>
+              <Label>指名料</Label>
+              <Input
+                type='number'
+                min={0}
+                step={100}
+                value={newResource.nominationFee}
+                onChange={e =>
+                  setNewResource(prev => ({
+                    ...prev,
+                    nominationFee: normalizeFeeInput(e.target.value),
+                  }))
+                }
+              />
+            </div>
+          )}
           <div className='md:col-span-2'>
             <Label>対応メニュー(JSON/UUID配列)</Label>
             <Textarea
@@ -236,6 +301,24 @@ export default function ResourceSettingsPage() {
                 <div className='text-xs text-muted-foreground'>
                   同時対応: {resource.maxConcurrent}
                 </div>
+                {resource.type === 'staff' && (
+                  <div className='mt-2 flex items-center gap-2'>
+                    <Label className='text-xs text-muted-foreground'>
+                      指名料
+                    </Label>
+                    <Input
+                      type='number'
+                      min={0}
+                      step={100}
+                      value={resource.nominationFee ?? 0}
+                      onChange={e =>
+                        handleNominationFeeChange(resource.id, e.target.value)
+                      }
+                      onBlur={() => handleNominationFeeBlur(resource)}
+                      className='h-8 w-28'
+                    />
+                  </div>
+                )}
               </div>
               <div className='flex items-center gap-3'>
                 <div className='flex items-center gap-2'>

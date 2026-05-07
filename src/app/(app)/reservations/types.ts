@@ -6,6 +6,7 @@ export interface SchedulerResource {
   capacity?: number;
   subLabel?: string;
   type: 'staff' | 'facility';
+  nominationFee?: number;
 }
 
 export interface MenuOptionItem {
@@ -56,6 +57,8 @@ export interface Appointment {
   menuName?: string;
   staffName?: string;
   selectedOptions?: ReservationOptionSelection[];
+  isStaffRequested?: boolean;
+  staffNominationFee?: number;
 }
 
 export interface Notification {

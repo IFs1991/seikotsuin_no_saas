@@ -22,6 +22,8 @@ export interface ReservationApiItem {
   channel?: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
   selectedOptions?: ReservationOptionSelection[];
+  isStaffRequested?: boolean;
+  staffNominationFee?: number;
 }
 
 export interface CustomerApiItem {
@@ -144,6 +146,7 @@ export const createReservation = async (payload: {
   channel: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
   selectedOptions?: ReservationOptionSelection[];
+  isStaffRequested?: boolean;
 }): Promise<ReservationApiItem> => {
   const res = await fetch('/api/reservations', {
     method: 'POST',
@@ -158,6 +161,7 @@ export const createReservation = async (payload: {
       channel: payload.channel,
       notes: payload.notes,
       selectedOptions: payload.selectedOptions,
+      isStaffRequested: payload.isStaffRequested,
     }),
   });
   return handleJson<ReservationApiItem>(res);
@@ -172,6 +176,7 @@ export const updateReservation = async (payload: {
   status?: ReservationApiItem['status'];
   notes?: string;
   selectedOptions?: ReservationOptionSelection[];
+  isStaffRequested?: boolean;
 }): Promise<ReservationApiItem> => {
   const res = await fetch('/api/reservations', {
     method: 'PATCH',
@@ -185,6 +190,7 @@ export const updateReservation = async (payload: {
       status: payload.status,
       notes: payload.notes,
       selectedOptions: payload.selectedOptions,
+      isStaffRequested: payload.isStaffRequested,
     }),
   });
   return handleJson<ReservationApiItem>(res);

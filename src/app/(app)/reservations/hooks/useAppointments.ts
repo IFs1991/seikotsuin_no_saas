@@ -83,6 +83,8 @@ const mapReservationRowsToAppointments = (
       menuName: row.menuName,
       staffName: row.staffName,
       selectedOptions: row.selectedOptions ?? [],
+      isStaffRequested: row.isStaffRequested ?? false,
+      staffNominationFee: row.staffNominationFee ?? 0,
     };
   });
 
@@ -307,6 +309,7 @@ export const useAppointments = (clinicId: string | null) => {
           endTime: end,
           notes: updatedAppointment.memo,
           selectedOptions: updatedAppointment.selectedOptions,
+          isStaffRequested: updatedAppointment.isStaffRequested ?? false,
           status: updatedAppointment.status,
         });
         return { ok: true };
@@ -384,6 +387,7 @@ export const useAppointments = (clinicId: string | null) => {
           endTime: end,
           notes: current.memo,
           selectedOptions: current.selectedOptions,
+          isStaffRequested: current.isStaffRequested ?? false,
         });
         return { ok: true };
       } catch (err) {

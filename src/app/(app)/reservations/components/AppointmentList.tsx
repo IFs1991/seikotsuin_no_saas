@@ -137,7 +137,14 @@ const AppointmentListComponent: React.FC<Props> = ({
                     {formatAppointmentTime(appt)}
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium'>
-                    {getResourceName(appt.resourceId)}
+                    <span className='inline-flex items-center gap-2'>
+                      {getResourceName(appt.resourceId)}
+                      {appt.isStaffRequested && (
+                        <span className='rounded border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700'>
+                          指名
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className='px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800'>
                     {appt.title}

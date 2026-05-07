@@ -2166,6 +2166,7 @@ export type Database = {
           end_time: string;
           id: string;
           is_deleted: boolean | null;
+          is_staff_requested: boolean;
           is_recurring: boolean | null;
           menu_id: string;
           no_show_reason: string | null;
@@ -2177,6 +2178,7 @@ export type Database = {
           reminder_sent_at: string | null;
           reservation_group_id: string | null;
           selected_options: Json | null;
+          staff_nomination_fee: number;
           staff_id: string;
           start_time: string;
           status: string;
@@ -2199,6 +2201,7 @@ export type Database = {
           end_time: string;
           id?: string;
           is_deleted?: boolean | null;
+          is_staff_requested?: boolean;
           is_recurring?: boolean | null;
           menu_id: string;
           no_show_reason?: string | null;
@@ -2210,6 +2213,7 @@ export type Database = {
           reminder_sent_at?: string | null;
           reservation_group_id?: string | null;
           selected_options?: Json | null;
+          staff_nomination_fee?: number;
           staff_id: string;
           start_time: string;
           status?: string;
@@ -2232,6 +2236,7 @@ export type Database = {
           end_time?: string;
           id?: string;
           is_deleted?: boolean | null;
+          is_staff_requested?: boolean;
           is_recurring?: boolean | null;
           menu_id?: string;
           no_show_reason?: string | null;
@@ -2243,6 +2248,7 @@ export type Database = {
           reminder_sent_at?: string | null;
           reservation_group_id?: string | null;
           selected_options?: Json | null;
+          staff_nomination_fee?: number;
           staff_id?: string;
           start_time?: string;
           status?: string;
@@ -2316,6 +2322,7 @@ export type Database = {
           is_deleted: boolean | null;
           max_concurrent: number | null;
           name: string;
+          nomination_fee: number;
           phone: string | null;
           qualifications: string[] | null;
           specialties: string[] | null;
@@ -2340,6 +2347,7 @@ export type Database = {
           is_deleted?: boolean | null;
           max_concurrent?: number | null;
           name: string;
+          nomination_fee?: number;
           phone?: string | null;
           qualifications?: string[] | null;
           specialties?: string[] | null;
@@ -2364,6 +2372,7 @@ export type Database = {
           is_deleted?: boolean | null;
           max_concurrent?: number | null;
           name?: string;
+          nomination_fee?: number;
           phone?: string | null;
           qualifications?: string[] | null;
           specialties?: string[] | null;
@@ -3618,6 +3627,7 @@ export type Database = {
           duration_minutes: number | null;
           end_time: string | null;
           id: string | null;
+          is_staff_requested: boolean | null;
           menu_id: string | null;
           menu_name: string | null;
           menu_price: number | null;
@@ -3627,6 +3637,7 @@ export type Database = {
           reservation_group_id: string | null;
           resource_type: string | null;
           selected_options: Json | null;
+          staff_nomination_fee: number | null;
           staff_id: string | null;
           staff_name: string | null;
           start_time: string | null;

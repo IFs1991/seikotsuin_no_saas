@@ -27,6 +27,7 @@ export const resourceInsertSchema = z
     workingHours: workingHoursSchema.optional(),
     supportedMenus: z.array(z.string().uuid()).optional(),
     maxConcurrent: z.number().int().min(1).default(1),
+    nominationFee: z.number().min(0).default(0),
     isActive: z.boolean().default(true),
   })
   .strict();
@@ -40,6 +41,7 @@ export const resourceUpdateSchema = z
     workingHours: workingHoursSchema.optional(),
     supportedMenus: z.array(z.string().uuid()).optional(),
     maxConcurrent: z.number().int().min(1).optional(),
+    nominationFee: z.number().min(0).optional(),
     isActive: z.boolean().optional(),
   })
   .strict();
@@ -56,6 +58,7 @@ export function mapResourceInsertToRow(
     working_hours: dto.workingHours ?? undefined,
     supported_menus: dto.supportedMenus ?? undefined,
     max_concurrent: dto.maxConcurrent,
+    nomination_fee: dto.type === 'staff' ? dto.nominationFee : 0,
     is_active: dto.isActive,
     created_by: userId,
   };
@@ -69,6 +72,7 @@ export function mapResourceUpdateToRow(
     working_hours: dto.workingHours,
     supported_menus: dto.supportedMenus,
     max_concurrent: dto.maxConcurrent,
+    nomination_fee: dto.nominationFee,
     is_active: dto.isActive,
   };
 }

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
+import { processClinicScopedBody } from '@/lib/route-helpers';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -9,7 +10,16 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
+jest.mock('@/lib/route-helpers', () => {
+  const actual = jest.requireActual('@/lib/route-helpers');
+  return {
+    ...actual,
+    processClinicScopedBody: jest.fn(),
+  };
+});
+
 const processApiRequestMock = processApiRequest as jest.Mock;
+const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
 const VALID_CLINIC_ID = '123e4567-e89b-12d3-a456-426614174000';
 
 type QueryResult<T> = { data: T[]; error: null };
@@ -20,6 +30,7 @@ type ResourceRow = {
   working_hours: Record<string, unknown> | null;
   supported_menus: string[] | null;
   max_concurrent: number | null;
+  nomination_fee?: number | null;
   is_active: boolean | null;
   is_bookable: boolean | null;
 };
@@ -123,6 +134,7 @@ describe('GET /api/resources', () => {
         working_hours: null,
         supported_menus: null,
         max_concurrent: 1,
+        nomination_fee: 1500,
         is_active: true,
         is_bookable: true,
       },
@@ -150,6 +162,7 @@ describe('GET /api/resources', () => {
         type: 'staff',
         isActive: true,
         isBookable: true,
+        nominationFee: 1500,
       }),
     ]);
     expect(supabase.from).toHaveBeenCalledTimes(1);
@@ -207,6 +220,9 @@ describe('GET /api/resources', () => {
     ]);
     expect(resourceQuery.select).toHaveBeenCalledWith(
       expect.stringContaining('is_bookable')
+    );
+    expect(resourceQuery.select).toHaveBeenCalledWith(
+      expect.stringContaining('nomination_fee')
     );
   });
 
@@ -372,6 +388,99 @@ describe('GET /api/resources', () => {
     expect(permissionQuery.in).toHaveBeenCalledWith(
       'role',
       expect.arrayContaining(['therapist'])
+    );
+  });
+});
+
+describe('POST /api/resources', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('nominationFee を nomination_fee として staff resource に保存する', async () => {
+    const insertSingle = jest.fn().mockResolvedValue({
+      data: { id: 'resource-1', nomination_fee: 1200 },
+      error: null,
+    });
+    const insertSelect = jest.fn().mockReturnValue({ single: insertSingle });
+    const insert = jest.fn().mockReturnValue({ select: insertSelect });
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'resources') return { insert };
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: VALID_CLINIC_ID,
+        name: '田中先生',
+        type: 'staff',
+        maxConcurrent: 1,
+        nominationFee: 1200,
+        isActive: true,
+      },
+      auth: { id: 'user-1' },
+      supabase,
+    });
+
+    const { POST } = await import('@/app/api/resources/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/resources')
+    );
+
+    expect(response.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nomination_fee: 1200,
+      })
+    );
+  });
+});
+
+describe('PATCH /api/resources', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('nominationFee を nomination_fee として更新する', async () => {
+    const updateSingle = jest.fn().mockResolvedValue({
+      data: { id: 'resource-1', nomination_fee: 1800 },
+      error: null,
+    });
+    const updateSelect = jest.fn().mockReturnValue({ single: updateSingle });
+    const updateEqClinic = jest.fn().mockReturnValue({ select: updateSelect });
+    const updateEqId = jest.fn().mockReturnValue({ eq: updateEqClinic });
+    const update = jest.fn().mockReturnValue({ eq: updateEqId });
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'resources') return { update };
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: VALID_CLINIC_ID,
+        id: '123e4567-e89b-12d3-a456-426614174010',
+        nominationFee: 1800,
+      },
+      auth: { id: 'user-1' },
+      supabase,
+    });
+
+    const { PATCH } = await import('@/app/api/resources/route');
+    const response = await PATCH(
+      new NextRequest('http://localhost/api/resources')
+    );
+
+    expect(response.status).toBe(200);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nomination_fee: 1800,
+      })
     );
   });
 });

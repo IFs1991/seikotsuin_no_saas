@@ -117,6 +117,22 @@ describe('AppointmentDetail', () => {
     expect(screen.getAllByText('田中先生').length).toBeGreaterThan(1);
   });
 
+  it('指名予約の場合は詳細に指名状態と指名料を表示する', () => {
+    render(
+      <AppointmentDetail
+        {...defaultProps}
+        appointment={{
+          ...appointment,
+          isStaffRequested: true,
+          staffNominationFee: 1200,
+        }}
+      />
+    );
+
+    expect(screen.getByText('指名')).toBeInTheDocument();
+    expect(screen.getByText('指名料 1,200円')).toBeInTheDocument();
+  });
+
   it('閲覧専用では編集・ステータス更新・患者詳細への遷移を出さない', () => {
     render(<AppointmentDetail {...defaultProps} readOnly />);
 
