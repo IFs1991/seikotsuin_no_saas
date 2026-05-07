@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AlertCircle, CalendarCheck, Users } from 'lucide-react';
 import type { Appointment } from '../types';
 import { summarizeAppointments } from '../utils/view';
@@ -6,30 +6,57 @@ import { summarizeAppointments } from '../utils/view';
 interface Props {
   appointments: Appointment[];
   resourceCount: number;
+  onOpenCancelledAppointments?: () => void;
 }
 
-const SummaryItem = ({
+const SummaryItemComponent = ({
   label,
   value,
   tone = 'text-gray-900',
+  onClick,
 }: {
   label: string;
   value: number;
   tone?: string;
-}) => (
-  <div className='min-w-[88px] rounded border border-gray-200 bg-white px-3 py-2'>
-    <div className='text-[11px] font-medium text-gray-500'>{label}</div>
-    <div className={`mt-0.5 text-lg font-bold leading-none ${tone}`}>
-      {value}
-    </div>
-  </div>
-);
+  onClick?: () => void;
+}) => {
+  const className =
+    'min-w-[88px] rounded border border-gray-200 bg-white px-3 py-2 text-left transition-colors';
+  const content = (
+    <>
+      <div className='text-[11px] font-medium text-gray-500'>{label}</div>
+      <div className={`mt-0.5 text-lg font-bold leading-none ${tone}`}>
+        {value}
+      </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type='button'
+        className={`${className} hover:border-sky-300 hover:bg-sky-50`}
+        onClick={onClick}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
+};
+
+const SummaryItem = React.memo(SummaryItemComponent);
 
 const DaySummaryComponent: React.FC<Props> = ({
   appointments,
   resourceCount,
+  onOpenCancelledAppointments,
 }) => {
-  const summary = summarizeAppointments(appointments);
+  const summary = useMemo(
+    () => summarizeAppointments(appointments),
+    [appointments]
+  );
 
   return (
     <section
@@ -68,6 +95,7 @@ const DaySummaryComponent: React.FC<Props> = ({
             label='取消/不来院'
             value={summary.cancelled}
             tone='text-gray-600'
+            onClick={onOpenCancelledAppointments}
           />
           <div className='min-w-[128px] rounded border border-gray-200 bg-white px-3 py-2'>
             <div className='flex items-center gap-1 text-[11px] font-medium text-gray-500'>

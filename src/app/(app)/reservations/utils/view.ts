@@ -69,6 +69,10 @@ export const formatAppointmentTime = (
   ).padStart(2, '0')}`;
 };
 
+export const isCancelledOrNoShowAppointment = (
+  appointment: Pick<Appointment, 'status'>
+) => appointment.status === 'cancelled' || appointment.status === 'no_show';
+
 export const groupAppointmentsByResource = (appointments: Appointment[]) => {
   const grouped = new Map<string, Appointment[]>();
 
@@ -96,25 +100,37 @@ const getAppointmentStartMinutes = (appointment: Appointment) =>
 const getAppointmentEndMinutes = (appointment: Appointment) =>
   timeToMinutes(appointment.endHour, appointment.endMinute);
 
-const appointmentHasOverlap = (
-  appointment: Appointment,
-  appointments: Appointment[]
-) => {
-  const start = getAppointmentStartMinutes(appointment);
-  const end = getAppointmentEndMinutes(appointment);
+const getOverlappingAppointmentIds = (appointments: Appointment[]) => {
+  const overlappingIds = new Set<string>();
+  const activeAppointments: Appointment[] = [];
 
-  return appointments.some(otherAppointment => {
-    if (otherAppointment.id === appointment.id) {
-      return false;
+  for (const appointment of appointments) {
+    const start = getAppointmentStartMinutes(appointment);
+
+    for (let index = activeAppointments.length - 1; index >= 0; index -= 1) {
+      if (getAppointmentEndMinutes(activeAppointments[index]) <= start) {
+        activeAppointments.splice(index, 1);
+      }
     }
 
-    return hasTimeConflict(
-      start,
-      end,
-      getAppointmentStartMinutes(otherAppointment),
-      getAppointmentEndMinutes(otherAppointment)
-    );
-  });
+    for (const activeAppointment of activeAppointments) {
+      if (
+        hasTimeConflict(
+          start,
+          getAppointmentEndMinutes(appointment),
+          getAppointmentStartMinutes(activeAppointment),
+          getAppointmentEndMinutes(activeAppointment)
+        )
+      ) {
+        overlappingIds.add(appointment.id);
+        overlappingIds.add(activeAppointment.id);
+      }
+    }
+
+    activeAppointments.push(appointment);
+  }
+
+  return overlappingIds;
 };
 
 export const positionAppointmentsInTwoLanes = (
@@ -130,12 +146,13 @@ export const positionAppointmentsInTwoLanes = (
 
     return getAppointmentEndMinutes(a) - getAppointmentEndMinutes(b);
   });
+  const overlappingIds = getOverlappingAppointmentIds(sortedAppointments);
   const laneEndMinutes: [number, number] = [0, 0];
 
   return sortedAppointments.map(appointment => {
     const start = getAppointmentStartMinutes(appointment);
     const end = getAppointmentEndMinutes(appointment);
-    const laneCount = appointmentHasOverlap(appointment, appointments) ? 2 : 1;
+    const laneCount = overlappingIds.has(appointment.id) ? 2 : 1;
     let laneIndex: 0 | 1 = 0;
 
     if (laneCount === 2) {
@@ -169,10 +186,7 @@ export const summarizeAppointments = (appointments: Appointment[]) => {
   for (const appointment of appointments) {
     resourceIds.add(appointment.resourceId);
 
-    if (
-      appointment.status === 'cancelled' ||
-      appointment.status === 'no_show'
-    ) {
+    if (isCancelledOrNoShowAppointment(appointment)) {
       cancelled += 1;
       continue;
     }

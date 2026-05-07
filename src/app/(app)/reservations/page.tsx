@@ -32,6 +32,7 @@ import {
   canWriteReservationsForClinic,
   isCrossClinicReservationView,
 } from './permissions';
+import { isCancelledOrNoShowAppointment } from './utils/view';
 import type { Resource } from '@/types/reservation';
 
 const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
@@ -104,6 +105,14 @@ const UnconfirmedReservationsModal = dynamic(
   () =>
     import('./components/UnconfirmedReservationsModal').then(
       module => module.UnconfirmedReservationsModal
+    ),
+  { ssr: false }
+);
+
+const CancelledReservationsModal = dynamic(
+  () =>
+    import('./components/CancelledReservationsModal').then(
+      module => module.CancelledReservationsModal
     ),
   { ssr: false }
 );
@@ -202,6 +211,7 @@ function ReservationsPageContent() {
   const [updateError, setUpdateError] = useState<string | null>(null);
 
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [showCancelledModal, setShowCancelledModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
@@ -218,6 +228,23 @@ function ReservationsPageContent() {
   } = useAppointments(clinicId);
 
   const timeSlots = useMemo(() => buildTimeSlots(), []);
+  const { cancelledAppointments, visibleTimelineAppointments } = useMemo(() => {
+    const cancelled: Appointment[] = [];
+    const visible: Appointment[] = [];
+
+    for (const appointment of appointments) {
+      if (isCancelledOrNoShowAppointment(appointment)) {
+        cancelled.push(appointment);
+      } else {
+        visible.push(appointment);
+      }
+    }
+
+    return {
+      cancelledAppointments: cancelled,
+      visibleTimelineAppointments: visible,
+    };
+  }, [appointments]);
 
   const [formInitialValues, setFormInitialValues] = useState<
     | {
@@ -423,6 +450,17 @@ function ReservationsPageContent() {
   const notifications = useMemo<Notification[]>(() => [], []);
   const openPendingModal = useCallback(() => setShowPendingModal(true), []);
   const closePendingModal = useCallback(() => setShowPendingModal(false), []);
+  const openCancelledModal = useCallback(() => setShowCancelledModal(true), []);
+  const closeCancelledModal = useCallback(
+    () => setShowCancelledModal(false),
+    []
+  );
+  const handleSelectCancelledAppointment = useCallback(
+    (appointment: Appointment) => {
+      setSelectedAppointment(appointment);
+    },
+    []
+  );
   const openNotificationsModal = useCallback(
     () => setShowNotificationsModal(true),
     []
@@ -454,7 +492,7 @@ function ReservationsPageContent() {
       case 'timeline':
         return (
           <Scheduler
-            appointments={appointments}
+            appointments={visibleTimelineAppointments}
             resources={resources}
             timeSlots={timeSlots}
             onAppointmentClick={setSelectedAppointment}
@@ -480,7 +518,6 @@ function ReservationsPageContent() {
     }
   }, [
     appointmentDensity,
-    appointments,
     canWriteReservations,
     currentView,
     error,
@@ -489,6 +526,7 @@ function ReservationsPageContent() {
     resources,
     showMoveError,
     timeSlots,
+    visibleTimelineAppointments,
   ]);
 
   if (profileLoading) {
@@ -526,6 +564,7 @@ function ReservationsPageContent() {
           <DaySummary
             appointments={appointments}
             resourceCount={resources.length}
+            onOpenCancelledAppointments={openCancelledModal}
           />
           {updateError && (
             <div className='mx-4 mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
@@ -583,6 +622,16 @@ function ReservationsPageContent() {
               onClose={closePendingModal}
               onConfirm={handleConfirmPending}
               canConfirm={canWriteReservations}
+            />
+          )}
+
+          {showCancelledModal && (
+            <CancelledReservationsModal
+              appointments={cancelledAppointments}
+              resources={resources}
+              menus={menus}
+              onClose={closeCancelledModal}
+              onSelect={handleSelectCancelledAppointment}
             />
           )}
 

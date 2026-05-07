@@ -6,8 +6,9 @@
 /** @jest-environment jsdom */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import type { Appointment } from '@/app/(app)/reservations/types';
 
 // next/navigationをモック
 const mockRouter = {
@@ -75,10 +76,52 @@ jest.mock('@/hooks/useReservationFormData', () => ({
   }),
 }));
 
+const mockAppointments: Appointment[] = [
+  {
+    id: 'reservation-active',
+    resourceId: 'staff1',
+    date: '2026-05-07',
+    startHour: 10,
+    startMinute: 0,
+    endHour: 10,
+    endMinute: 30,
+    title: '表示される予約',
+    type: 'normal',
+    color: 'blue',
+    status: 'confirmed',
+  },
+  {
+    id: 'reservation-cancelled',
+    resourceId: 'staff1',
+    date: '2026-05-07',
+    startHour: 11,
+    startMinute: 0,
+    endHour: 11,
+    endMinute: 30,
+    title: 'キャンセル予約',
+    type: 'normal',
+    color: 'grey',
+    status: 'cancelled',
+  },
+  {
+    id: 'reservation-no-show',
+    resourceId: 'staff1',
+    date: '2026-05-07',
+    startHour: 12,
+    startMinute: 0,
+    endHour: 12,
+    endMinute: 30,
+    title: '来院なし予約',
+    type: 'normal',
+    color: 'grey',
+    status: 'no_show',
+  },
+];
+
 // useAppointmentsをモック
 jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
   useAppointments: () => ({
-    appointments: [],
+    appointments: mockAppointments,
     pendingAppointments: [],
     loading: false,
     error: null,
@@ -86,6 +129,7 @@ jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
     addAppointment: jest.fn(),
     updateAppointment: jest.fn().mockResolvedValue({ ok: true }),
     moveAppointment: jest.fn().mockResolvedValue({ ok: true }),
+    cancelAppointment: jest.fn().mockResolvedValue({ ok: true }),
   }),
 }));
 
@@ -125,6 +169,30 @@ describe('ReservationsPage', () => {
         // スタッフ名が表示されていれば、Schedulerがレンダリングされている
         expect(screen.getByText('田中先生')).toBeInTheDocument();
       });
+    });
+
+    test('取消・来院なしの予約は通常非表示で、取消/不来院から一覧と詳細を開ける', async () => {
+      render(<ReservationTimelinePage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('表示される予約')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('キャンセル予約')).not.toBeInTheDocument();
+      expect(screen.queryByText('来院なし予約')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /取消\/不来院/ }));
+
+      expect(
+        await screen.findByRole('heading', { name: /取消・不来院予約/ })
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'キャンセル予約' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '来院なし予約' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'キャンセル予約' }));
+
+      expect(
+        await screen.findByRole('heading', { name: '予約詳細' })
+      ).toBeInTheDocument();
     });
   });
 
