@@ -72,10 +72,22 @@ describe('Supabase security advisor lint hardening', () => {
     __dirname,
     '../../../supabase/rollbacks/20260507000200_security_advisor_rpc_hardening_rollback.sql'
   );
+  const rpcPolicyRepairMigrationPath = path.resolve(
+    __dirname,
+    '../../../supabase/migrations/20260507000300_repair_app_private_policy_references.sql'
+  );
+  const rpcPolicyRepairRollbackPath = path.resolve(
+    __dirname,
+    '../../../supabase/rollbacks/20260507000300_repair_app_private_policy_references_rollback.sql'
+  );
   const configPath = path.resolve(__dirname, '../../../supabase/config.toml');
   const operationsDocPath = path.resolve(
     __dirname,
     '../../../docs/operations/supabase-advisor-security-lints-2026-05-07.md'
+  );
+  const rpcPolicyRepairSpecPath = path.resolve(
+    __dirname,
+    '../../../docs/stabilization/spec-rls-policy-helper-rewrite-repair-2026-05-07.md'
   );
   const inviteActionsPath = path.resolve(
     __dirname,
@@ -93,7 +105,10 @@ describe('Supabase security advisor lint hardening', () => {
     expect(fs.existsSync(securityDefinerViewRollbackPath)).toBe(true);
     expect(fs.existsSync(rpcHardeningMigrationPath)).toBe(true);
     expect(fs.existsSync(rpcHardeningRollbackPath)).toBe(true);
+    expect(fs.existsSync(rpcPolicyRepairMigrationPath)).toBe(true);
+    expect(fs.existsSync(rpcPolicyRepairRollbackPath)).toBe(true);
     expect(fs.existsSync(operationsDocPath)).toBe(true);
+    expect(fs.existsSync(rpcPolicyRepairSpecPath)).toBe(true);
   });
 
   test('migration が security advisor warning の対策を含む', () => {
@@ -182,6 +197,27 @@ describe('Supabase security advisor lint hardening', () => {
     expect(config).not.toMatch(
       /uri = "pg-functions:\/\/postgres\/public\/custom_access_token_hook"/
     );
+  });
+
+  test('RPC policy repair migration は unqualified RLS helper も app_private に差し替える', () => {
+    const sql = fs.readFileSync(rpcPolicyRepairMigrationPath, 'utf-8');
+    const rollbackSql = fs.readFileSync(
+      rpcPolicyRepairRollbackPath,
+      'utf-8'
+    );
+    const spec = fs.readFileSync(rpcPolicyRepairSpecPath, 'utf-8');
+
+    expect(sql).toMatch(/rewrite_app_private_policy_helpers/);
+    expect(sql).toContain('get_current_role\\(\\)');
+    expect(sql).toContain('can_access_clinic\\(');
+    expect(sql).toMatch(/app_private\.get_current_role\(\)/);
+    expect(sql).toMatch(/app_private\.can_access_clinic\(/);
+    expect(sql).not.toMatch(/grant execute on function public\.can_access_clinic\(uuid\) to anon, authenticated/);
+
+    expect(rollbackSql).toMatch(/rewrite_public_policy_helpers/);
+    expect(rollbackSql).toMatch(/grant execute on function public\.can_access_clinic\(uuid\) to anon, authenticated/);
+    expect(spec).toMatch(/Rollback Plan/);
+    expect(spec).toMatch(/DOD-08/);
   });
 
   test('招待とオンボーディングは対象 RPC を直接呼ばない', () => {

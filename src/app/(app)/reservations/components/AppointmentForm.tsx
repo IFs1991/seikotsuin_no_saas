@@ -67,6 +67,18 @@ const formatResourceLabel = (resource: SchedulerResource) =>
 const normalizeCustomerIdentity = (value: string) =>
   value.replace(/\s+/g, '').trim();
 
+const normalizePriceAmount = (amount: number) =>
+  Number.isFinite(amount) ? amount : 0;
+
+const formatYen = (amount: number) =>
+  `${normalizePriceAmount(amount).toLocaleString('ja-JP')}円`;
+
+const formatPriceDelta = (amount: number) => {
+  if (amount === 0) return '';
+  const prefix = amount > 0 ? '+' : '-';
+  return ` (${prefix}${formatYen(Math.abs(amount))})`;
+};
+
 interface Props {
   clinicId: string;
   resources: SchedulerResource[];
@@ -176,6 +188,14 @@ export const AppointmentForm: React.FC<Props> = ({
     ];
   }, [selectedMenu]);
 
+  const selectedOption = useMemo(
+    () => optionItems.find(option => option.id === formData.optionId),
+    [optionItems, formData.optionId]
+  );
+
+  const selectedTotalPrice =
+    (selectedMenu?.price ?? 0) + (selectedOption?.priceDelta ?? 0);
+
   const [endTime, setEndTime] = useState({ hour: 11, minute: 0 });
 
   useEffect(() => {
@@ -262,7 +282,6 @@ export const AppointmentForm: React.FC<Props> = ({
     const customAttributesPayload =
       Object.keys(customAttributes).length > 0 ? customAttributes : undefined;
 
-    const selectedOption = optionItems.find(o => o.id === formData.optionId);
     const selectedOptions =
       selectedOption && selectedOption.id !== 'none'
         ? [
@@ -524,7 +543,7 @@ export const AppointmentForm: React.FC<Props> = ({
             >
               {menus.map(m => (
                 <option key={m.id} value={m.id}>
-                  {m.name} ({m.durationMinutes}分)
+                  {m.name} ({m.durationMinutes}分 / {formatYen(m.price)})
                 </option>
               ))}
             </select>
@@ -541,10 +560,28 @@ export const AppointmentForm: React.FC<Props> = ({
               {optionItems.map(o => (
                 <option key={o.id} value={o.id}>
                   {o.name}
+                  {formatPriceDelta(o.priceDelta)}
                 </option>
               ))}
             </select>
           </div>
+        </div>
+
+        <div className='rounded-md border border-gray-200 bg-gray-50 px-4 py-3'>
+          <div className='flex items-center justify-between gap-4'>
+            <span className='text-sm font-medium text-gray-700'>料金</span>
+            <span className='text-lg font-semibold text-gray-900'>
+              {selectedMenu ? formatYen(selectedTotalPrice) : 'メニュー未選択'}
+            </span>
+          </div>
+          {selectedMenu && (
+            <div className='mt-1 text-xs text-gray-500'>
+              基本料金 {formatYen(selectedMenu.price)}
+              {selectedOption && selectedOption.id !== 'none'
+                ? ` / オプション ${formatYen(selectedOption.priceDelta)}`
+                : ''}
+            </div>
+          )}
         </div>
 
         {/* Customer Fields */}

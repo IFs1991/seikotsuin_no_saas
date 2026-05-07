@@ -224,6 +224,52 @@ describe('セルフレビュー修正1: スペーシング整合性', () => {
   });
 });
 
+describe('料金表示', () => {
+  it('メニュー選択肢と選択中の料金に価格を表示する', () => {
+    renderForm();
+
+    expect(
+      screen.getByRole('option', { name: '全身矯正 (60分 / 5,000円)' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('料金')).toBeInTheDocument();
+    expect(screen.getByText('5,000円')).toBeInTheDocument();
+  });
+
+  it('オプション選択時に価格差分を表示し合計料金を更新する', () => {
+    renderForm({
+      menus: [
+        {
+          id: 'menu-1',
+          name: '全身矯正',
+          durationMinutes: 60,
+          price: 5000,
+          options: [
+            {
+              id: 'option-1',
+              name: 'テーピング',
+              priceDelta: 800,
+              durationDeltaMinutes: 10,
+              isActive: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(
+      screen.getByRole('option', { name: 'テーピング (+800円)' })
+    ).toBeInTheDocument();
+
+    const optionSelect = getInputNearLabel('オプション') as HTMLSelectElement;
+    fireEvent.change(optionSelect, { target: { value: 'option-1' } });
+
+    expect(screen.getByText('5,800円')).toBeInTheDocument();
+    expect(
+      screen.getByText(/基本料金 5,000円.*オプション 800円/)
+    ).toBeInTheDocument();
+  });
+});
+
 describe('患者紐付け', () => {
   it('電話番号が同じでも名前が違う場合は既存患者に紐付けず新規患者を作成する', async () => {
     fetchCustomers.mockResolvedValue([
