@@ -262,7 +262,7 @@ max_frequency = "5s"
 # @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
 [auth.hook.custom_access_token]
 enabled = true
-uri = "pg-functions://postgres/public/custom_access_token_hook"
+uri = "pg-functions://postgres/app_private/custom_access_token_hook"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]

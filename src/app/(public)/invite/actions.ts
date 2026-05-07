@@ -10,8 +10,9 @@ import {
   type AuthResponse,
 } from '@/lib/schemas/auth';
 import { assertEnv } from '@/lib/env';
-import { getServerClient } from '@/lib/supabase';
+import { createAdminClient, getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
+import type { Database } from '@/types/supabase';
 
 /**
  * @file actions.ts
@@ -20,6 +21,18 @@ import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
  */
 
 const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
+const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type AdminClient = ReturnType<typeof createAdminClient>;
+type StaffInviteRow = Database['public']['Tables']['staff_invites']['Row'];
+
+interface InviteAcceptanceResult {
+  success: boolean;
+  error?: string;
+  clinicId?: string;
+}
 
 function isRedirectLikeError(error: unknown): error is Error {
   if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
@@ -48,6 +61,108 @@ function extractAuthFormValues(formData: FormData) {
   };
 }
 
+function isUuid(value: string) {
+  return UUID_PATTERN.test(value);
+}
+
+async function fetchOpenInvite(
+  adminClient: AdminClient,
+  token: string
+): Promise<StaffInviteRow | null> {
+  if (!isUuid(token)) {
+    return null;
+  }
+
+  const { data, error } = await adminClient
+    .from('staff_invites')
+    .select(
+      'accepted_at, accepted_by, clinic_id, created_at, created_by, email, expires_at, id, role, token, updated_at'
+    )
+    .eq('token', token)
+    .gt('expires_at', new Date().toISOString())
+    .is('accepted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Invite] staff_invites lookup error:', error);
+    throw new Error('招待情報の取得に失敗しました');
+  }
+
+  return data;
+}
+
+async function acceptInviteForUser(
+  token: string,
+  userId: string
+): Promise<InviteAcceptanceResult> {
+  const adminClient = createAdminClient();
+  const invite = await fetchOpenInvite(adminClient, token);
+
+  if (!invite) {
+    return { success: false, error: '有効な招待が見つかりません' };
+  }
+
+  const now = new Date().toISOString();
+
+  const { error: inviteUpdateError } = await adminClient
+    .from('staff_invites')
+    .update({
+      accepted_at: now,
+      accepted_by: userId,
+      updated_at: now,
+    })
+    .eq('id', invite.id)
+    .is('accepted_at', null);
+
+  if (inviteUpdateError) {
+    console.error(
+      '[Invite] staff_invites accept update error:',
+      inviteUpdateError
+    );
+    return { success: false, error: '招待の受諾に失敗しました' };
+  }
+
+  const { error: profileUpdateError } = await adminClient
+    .from('profiles')
+    .update({
+      clinic_id: invite.clinic_id,
+      role: invite.role,
+      updated_at: now,
+    })
+    .eq('user_id', userId);
+
+  if (profileUpdateError) {
+    console.error('[Invite] profile assignment error:', profileUpdateError);
+    return { success: false, error: '招待の受諾に失敗しました' };
+  }
+
+  const { error: permissionUpsertError } = await adminClient
+    .from('user_permissions')
+    .upsert(
+      {
+        staff_id: userId,
+        clinic_id: invite.clinic_id,
+        role: invite.role,
+        username: invite.email,
+        hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
+      },
+      { onConflict: 'staff_id' }
+    );
+
+  if (permissionUpsertError) {
+    console.error(
+      '[Invite] user_permissions upsert error:',
+      permissionUpsertError
+    );
+    return { success: false, error: '招待の受諾に失敗しました' };
+  }
+
+  return {
+    success: true,
+    clinicId: invite.clinic_id,
+  };
+}
+
 export type InviteInfo = {
   id: string;
   clinic_id: string;
@@ -64,23 +179,37 @@ export type InviteInfo = {
 export async function getInviteByToken(
   token: string
 ): Promise<{ success: boolean; invite?: InviteInfo; error?: string }> {
-  const supabase = await getServerClient();
+  const adminClient = createAdminClient();
 
   try {
-    const { data, error } = await supabase.rpc('get_invite_by_token', {
-      invite_token: token,
-    });
-
-    if (error) {
-      console.error('[Invite] get_invite_by_token error:', error);
-      return { success: false, error: '招待情報の取得に失敗しました' };
-    }
-
-    if (!data || data.length === 0) {
+    const invite = await fetchOpenInvite(adminClient, token);
+    if (!invite) {
       return { success: false, error: '有効な招待が見つかりません' };
     }
 
-    return { success: true, invite: data[0] as InviteInfo };
+    const { data: clinic, error: clinicError } = await adminClient
+      .from('clinics')
+      .select('name')
+      .eq('id', invite.clinic_id)
+      .maybeSingle();
+
+    if (clinicError) {
+      console.error('[Invite] clinic lookup error:', clinicError);
+      return { success: false, error: '招待情報の取得に失敗しました' };
+    }
+
+    return {
+      success: true,
+      invite: {
+        id: invite.id,
+        clinic_id: invite.clinic_id,
+        email: invite.email,
+        role: invite.role,
+        clinic_name: clinic?.name ?? '',
+        expires_at: invite.expires_at,
+        accepted_at: invite.accepted_at,
+      },
+    };
   } catch (error) {
     console.error('[Invite] getInviteByToken error:', error);
     return { success: false, error: GENERIC_AUTH_ERROR_MESSAGE };
@@ -106,31 +235,17 @@ export async function acceptInvite(
       return { success: false, error: 'ログインが必要です' };
     }
 
-    // accept_invite RPC を呼び出し
-    const { data, error } = await supabase.rpc('accept_invite', {
-      invite_token: token,
-    });
-
-    if (error) {
-      console.error('[Invite] accept_invite error:', error);
-      return { success: false, error: '招待の受諾に失敗しました' };
-    }
-
-    const rpcResult = data as {
-      success?: boolean;
-      error?: string;
-      clinic_id?: string;
-    } | null;
-    if (!rpcResult?.success) {
+    const result = await acceptInviteForUser(token, user.id);
+    if (!result.success) {
       return {
         success: false,
-        error: rpcResult?.error || '招待の受諾に失敗しました',
+        error: result.error || '招待の受諾に失敗しました',
       };
     }
 
     console.info('[Auth] Invite accepted:', {
       userId: user.id,
-      clinicId: rpcResult.clinic_id,
+      clinicId: result.clinicId,
       timestamp: new Date().toISOString(),
     });
 
@@ -218,21 +333,11 @@ export async function signupAndAcceptInvite(
         });
       }
 
-      // 4. 招待を受諾
-      const { data: acceptData, error: acceptError } = await supabase.rpc(
-        'accept_invite',
-        { invite_token: token }
-      );
-
-      const acceptResult = acceptData as {
-        success?: boolean;
-        clinic_id?: string;
-      } | null;
-      if (acceptError || !acceptResult?.success) {
-        console.error(
-          '[Invite] Accept invite after signup error:',
-          acceptError
-        );
+      const acceptResult = await acceptInviteForUser(token, signupData.user.id);
+      if (!acceptResult.success) {
+        console.error('[Invite] Accept invite after signup error:', {
+          error: acceptResult.error,
+        });
         // サインアップは成功しているので、後で招待を受諾できるようにメッセージを返す
         return {
           success: true,
@@ -244,7 +349,7 @@ export async function signupAndAcceptInvite(
       console.info('[Auth] Signup and invite accepted:', {
         userId: signupData.user.id,
         email: sanitizedEmail,
-        clinicId: acceptResult.clinic_id,
+        clinicId: acceptResult.clinicId,
         timestamp: new Date().toISOString(),
       });
 
@@ -341,22 +446,14 @@ export async function loginAndAcceptInvite(
       userAgent
     );
 
-    // 3. 招待を受諾
-    const { data: acceptData, error: acceptError } = await supabase.rpc(
-      'accept_invite',
-      { invite_token: token }
-    );
-
-    const acceptResult2 = acceptData as {
-      success?: boolean;
-      error?: string;
-      clinic_id?: string;
-    } | null;
-    if (acceptError || !acceptResult2?.success) {
-      console.error('[Invite] Accept invite after login error:', acceptError);
+    const acceptResult = await acceptInviteForUser(token, loginData.user.id);
+    if (!acceptResult.success) {
+      console.error('[Invite] Accept invite after login error:', {
+        error: acceptResult.error,
+      });
       return {
         success: false,
-        errors: { _form: [acceptResult2?.error || '招待の受諾に失敗しました'] },
+        errors: { _form: [acceptResult.error || '招待の受諾に失敗しました'] },
       };
     }
 
@@ -369,7 +466,7 @@ export async function loginAndAcceptInvite(
     console.info('[Auth] Login and invite accepted:', {
       userId: loginData.user.id,
       email: sanitizedEmail,
-      clinicId: acceptResult2.clinic_id,
+      clinicId: acceptResult.clinicId,
       timestamp: new Date().toISOString(),
     });
 

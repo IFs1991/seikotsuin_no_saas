@@ -313,18 +313,44 @@ describe('Onboarding API Integration', () => {
           return profileBuilder;
         }
 
+        return createQueryBuilder();
+      });
+
+      const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
+      const profileUpdateBuilder = createQueryBuilder({});
+      const permissionUpsertBuilder = createQueryBuilder({});
+      const onboardingStateUpsertBuilder = createQueryBuilder({});
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'staff') {
           return staffBuilders.shift() ?? createQueryBuilder();
+        }
+
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+
+        if (table === 'profiles') {
+          return profileUpdateBuilder;
+        }
+
+        if (table === 'user_permissions') {
+          return permissionUpsertBuilder;
+        }
+
+        if (table === 'onboarding_states') {
+          return onboardingStateUpsertBuilder;
         }
 
         return createQueryBuilder();
       });
 
-      // RPC関数のモック
-      mockSupabaseClient.rpc.mockResolvedValue({
-        data: { success: true, clinic_id: 'clinic-1' },
-        error: null,
-      });
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
 
       const { POST } = await import('@/app/api/onboarding/clinic/route');
 
@@ -344,6 +370,37 @@ describe('Onboarding API Integration', () => {
       expect(json.success).toBe(true);
       expect(json.data.clinic_id).toBe('clinic-1');
       expect(json.data.next_step).toBe('invites');
+      expect(mockAdminSupabaseClient.rpc).not.toHaveBeenCalled();
+      expect(clinicInsertBuilder.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'テストクリニック',
+          address: '東京都渋谷区1-1-1',
+          parent_id: null,
+        })
+      );
+      expect(profileUpdateBuilder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: 'clinic-1',
+          role: 'admin',
+        })
+      );
+      expect(permissionUpsertBuilder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          staff_id: 'test-user-id',
+          clinic_id: 'clinic-1',
+          role: 'admin',
+          username: 'test@example.com',
+        }),
+        { onConflict: 'staff_id' }
+      );
+      expect(onboardingStateUpsertBuilder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'test-user-id',
+          clinic_id: 'clinic-1',
+          current_step: 'invites',
+        }),
+        { onConflict: 'user_id' }
+      );
       expect(staffInsertBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'test-user-id',
@@ -383,12 +440,39 @@ describe('Onboarding API Integration', () => {
       expect(json.success).toBe(false);
     });
 
-    test('RPC関数エラー時は500エラーを返す', async () => {
-      // RPC関数のエラーモック
-      mockSupabaseClient.rpc.mockResolvedValue({
-        data: null,
-        error: { message: 'RPC error' },
+    test('clinics INSERT エラー時は500エラーを返す', async () => {
+      const profileBuilder = createQueryBuilder({ full_name: '山田太郎' });
+      const staffLookupBuilder = createQueryBuilder({ id: 'test-user-id' });
+      const clinicInsertBuilder = createQueryBuilder(null, {
+        message: 'insert error',
       });
+
+      mockSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return profileBuilder;
+        }
+
+        return createQueryBuilder();
+      });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'staff') {
+          return staffLookupBuilder;
+        }
+
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+
+        return createQueryBuilder();
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
 
       const { POST } = await import('@/app/api/onboarding/clinic/route');
 
@@ -406,9 +490,10 @@ describe('Onboarding API Integration', () => {
 
       const json = await response.json();
       expect(json.success).toBe(false);
+      expect(mockAdminSupabaseClient.rpc).not.toHaveBeenCalled();
     });
 
-    test('staff のプレースホルダ作成に失敗した場合は RPC を呼ばずに500を返す', async () => {
+    test('staff のプレースホルダ作成に失敗した場合は clinic INSERT へ進まず500を返す', async () => {
       const profileBuilder = createQueryBuilder({ full_name: '山田太郎' });
       const staffLookupBuilder = createQueryBuilder(null);
       const staffInsertBuilder = createQueryBuilder(null, {

@@ -2,7 +2,7 @@
  * POST /api/onboarding/clinic
  *
  * Step 2: クリニック作成 + profiles/user_permissions更新
- * RPC関数を使用してトランザクション内で一括処理
+ * service role で明示的にテーブル更新する
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -133,41 +133,113 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // RPC関数でトランザクション内で一括処理
-    // parent_id support: @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md (Option 2)
-    const { data: result, error: rpcError } = await supabase.rpc(
-      'create_clinic_with_admin',
-      {
-        p_name: name,
-        p_address: address ?? null,
-        p_phone_number: phone_number ?? null,
-        p_opening_date: opening_date ?? null,
-        p_parent_id: parent_id ?? null,
-      }
-    );
+    if (parent_id) {
+      const { data: parentClinic, error: parentLookupError } = await adminClient
+        .from('clinics')
+        .select('id')
+        .eq('id', parent_id)
+        .maybeSingle();
 
-    if (rpcError) {
-      console.error('Clinic creation RPC error:', rpcError);
+      if (parentLookupError) {
+        console.error('Parent clinic lookup error:', parentLookupError);
+        return NextResponse.json(
+          { success: false, error: 'クリニックの作成に失敗しました' },
+          { status: 500 }
+        );
+      }
+
+      if (!parentClinic) {
+        return NextResponse.json(
+          { success: false, error: '親クリニックが見つかりません' },
+          { status: 500 }
+        );
+      }
+    }
+
+    const now = new Date().toISOString();
+    const { data: clinic, error: clinicInsertError } = await adminClient
+      .from('clinics')
+      .insert({
+        name,
+        address: address ?? null,
+        phone_number: phone_number ?? null,
+        opening_date: opening_date ?? null,
+        parent_id: parent_id ?? null,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+
+    if (clinicInsertError) {
+      console.error('Clinic insert error:', clinicInsertError);
       return NextResponse.json(
         { success: false, error: 'クリニックの作成に失敗しました' },
         { status: 500 }
       );
     }
 
-    // RPC関数の結果を確認
-    const rpcResult = result as {
-      success: boolean;
-      clinic_id?: string;
-      error?: string;
-    };
+    const clinicId = clinic.id;
 
-    if (!rpcResult.success) {
-      console.error('Clinic creation failed:', rpcResult.error);
+    const { error: profileUpdateError } = await adminClient
+      .from('profiles')
+      .update({
+        clinic_id: clinicId,
+        role: 'admin',
+        updated_at: now,
+      })
+      .eq('user_id', user.id);
+
+    if (profileUpdateError) {
+      console.error('Onboarding profile assignment error:', profileUpdateError);
       return NextResponse.json(
+        { success: false, error: 'クリニックの作成に失敗しました' },
+        { status: 500 }
+      );
+    }
+
+    const { error: permissionUpsertError } = await adminClient
+      .from('user_permissions')
+      .upsert(
         {
-          success: false,
-          error: rpcResult.error || 'クリニックの作成に失敗しました',
+          staff_id: user.id,
+          clinic_id: clinicId,
+          role: 'admin',
+          username: staffEmail,
+          hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
         },
+        { onConflict: 'staff_id' }
+      );
+
+    if (permissionUpsertError) {
+      console.error(
+        'Onboarding user permission upsert error:',
+        permissionUpsertError
+      );
+      return NextResponse.json(
+        { success: false, error: 'クリニックの作成に失敗しました' },
+        { status: 500 }
+      );
+    }
+
+    const { error: onboardingStateUpsertError } = await adminClient
+      .from('onboarding_states')
+      .upsert(
+        {
+          user_id: user.id,
+          clinic_id: clinicId,
+          current_step: 'invites',
+          updated_at: now,
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (onboardingStateUpsertError) {
+      console.error(
+        'Onboarding state upsert error:',
+        onboardingStateUpsertError
+      );
+      return NextResponse.json(
+        { success: false, error: 'クリニックの作成に失敗しました' },
         { status: 500 }
       );
     }
@@ -175,11 +247,11 @@ export async function POST(request: NextRequest) {
     const { error: staffSyncError } = await adminClient
       .from('staff')
       .update({
-        clinic_id: rpcResult.clinic_id,
+        clinic_id: clinicId,
         name: staffName,
         role: 'admin',
         email: staffEmail,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq('id', user.id);
 
@@ -191,7 +263,7 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         data: {
-          clinic_id: rpcResult.clinic_id,
+          clinic_id: clinicId,
           next_step: 'invites',
         },
       },
