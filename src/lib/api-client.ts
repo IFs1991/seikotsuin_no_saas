@@ -2,7 +2,7 @@
 // API Client Utilities - APIクライアントユーティリティ
 // =================================================================
 
-import { ApiResponse, ApiError } from '../types/api';
+import { ApiResponse, ApiError, RevenueAnalysisData } from '../types/api';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -34,6 +34,17 @@ const DEFAULT_CONFIG: Required<ApiClientConfig> = {
   retryCount: 3,
   retryDelay: 1000, // 1秒
 };
+
+interface RevenueCreateRequest {
+  clinic_id: string;
+  patient_id?: string | null;
+  visit_id?: string | null;
+  amount: number;
+  insurance_revenue?: number;
+  private_revenue?: number;
+  menu_id?: string | null;
+  payment_method_id?: string | null;
+}
 
 /**
  * APIクライアントクラス
@@ -364,11 +375,12 @@ export const api = {
   // 収益分析
   revenue: {
     getAnalysis: (clinicId: string, period?: string) =>
-      apiClient.get('/api/revenue', {
+      apiClient.get<RevenueAnalysisData>('/api/revenue', {
         clinic_id: clinicId,
         ...(period && { period }),
       }),
-    create: (data: any) => apiClient.post('/api/revenue', data),
+    create: (data: RevenueCreateRequest) =>
+      apiClient.post('/api/revenue', data),
   },
 
   // スタッフ分析

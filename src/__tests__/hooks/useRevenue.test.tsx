@@ -48,6 +48,9 @@ describe('useRevenue', () => {
       (response: any) => response?.success === false
     );
     (mockApi.api.revenue.getAnalysis as jest.Mock).mockReset();
+    (mockApi.api.revenue.getAnalysis as jest.Mock).mockImplementation(
+      () => new Promise(() => undefined)
+    );
   });
 
   describe('clinicId必須バリデーション', () => {

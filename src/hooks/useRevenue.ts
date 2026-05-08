@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api, isSuccessResponse } from '@/lib/api-client';
+import type { RevenueAnalysisData } from '@/types/api';
 
 interface MenuRanking {
   menu: string;
@@ -44,6 +45,37 @@ const INITIAL_DATA: RevenueData = {
   staffRevenueContribution: '',
 };
 
+function mapMenuRanking(
+  menuRanking: RevenueAnalysisData['menuRanking']
+): MenuRanking[] {
+  return menuRanking.map(menu => ({
+    menu: menu.menu_name,
+    revenue: Number(menu.total_revenue || 0),
+    count: Number(menu.transaction_count || 0),
+  }));
+}
+
+function summarizeHourlyRevenue(
+  hourlyRevenue: RevenueAnalysisData['hourlyRevenue']
+): string {
+  return hourlyRevenue.length > 0
+    ? `データ点: ${hourlyRevenue.length}件`
+    : 'データなし';
+}
+
+function estimateLastYearRevenue(data: RevenueAnalysisData): number {
+  if (!data.growthRate.endsWith('%')) {
+    return 0;
+  }
+
+  const growthRate = Number.parseFloat(data.growthRate.replace('%', '')) / 100;
+  if (Number.isNaN(growthRate) || growthRate === -1) {
+    return 0;
+  }
+
+  return Math.round(data.monthlyRevenue / (1 + growthRate));
+}
+
 export const useRevenue = (clinicId: string): UseRevenueReturn => {
   const [data, setData] = useState<RevenueData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
@@ -69,56 +101,33 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
 
         if (!isMounted) return;
 
-        if (isSuccessResponse(res)) {
-          const d = res.data as any;
-          const menuRanking: MenuRanking[] = (d.menuRanking || []).map(
-            (m: any) => ({
-              menu: m.menu_name || '',
-              revenue: Number(m.total_revenue || 0),
-              count: Number(m.transaction_count || 0),
-            })
-          );
-
-          const hourly = Array.isArray(d.hourlyRevenue) ? d.hourlyRevenue : [];
-          const hourlySummary =
-            hourly.length > 0 ? `データ点: ${hourly.length}件` : 'データなし';
-
-          // growthRate から前年を概算
-          let lastYearRevenue = 0;
-          if (typeof d.growthRate === 'string' && d.growthRate.endsWith('%')) {
-            const gr = parseFloat(d.growthRate.replace('%', '')) / 100;
-            if (!Number.isNaN(gr) && gr !== -1) {
-              lastYearRevenue = Math.round(
-                Number(d.monthlyRevenue || 0) / (1 + gr)
-              );
-            }
-          }
+        if (res && isSuccessResponse(res)) {
+          const revenueData = res.data;
 
           setData({
-            dailyRevenue: Number(d.dailyRevenue || 0),
-            weeklyRevenue: Number(d.weeklyRevenue || 0),
-            monthlyRevenue: Number(d.monthlyRevenue || 0),
-            insuranceRevenue: Number(d.insuranceRevenue || 0),
-            selfPayRevenue: Number(d.selfPayRevenue || 0),
-            menuRanking,
-            hourlyRevenue: hourlySummary,
+            dailyRevenue: Number(revenueData.dailyRevenue || 0),
+            weeklyRevenue: Number(revenueData.weeklyRevenue || 0),
+            monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
+            insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
+            selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
+            menuRanking: mapMenuRanking(revenueData.menuRanking),
+            hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
             dailyRevenueByDayOfWeek: '',
-            lastYearRevenue,
-            growthRate: String(d.growthRate || '0%'),
-            revenueForecast: Number(d.revenueForecast || 0),
-            costAnalysis: String(d.costAnalysis || ''),
+            lastYearRevenue: estimateLastYearRevenue(revenueData),
+            growthRate: revenueData.growthRate || '0%',
+            revenueForecast: Number(revenueData.revenueForecast || 0),
+            costAnalysis: revenueData.costAnalysis || '',
             staffRevenueContribution: '',
           });
         } else {
           // APIエラー時はサンプル値にフォールバックせずエラー状態にする
           const errorMessage =
-            res.error?.message || '収益データの取得に失敗しました';
+            res?.error?.message || '収益データの取得に失敗しました';
           setError(errorMessage);
           setData(INITIAL_DATA);
         }
-      } catch (e) {
+      } catch {
         if (isMounted) {
-          console.error('useRevenue error:', e);
           setError('収益データの取得に失敗しました');
           setData(INITIAL_DATA);
         }
