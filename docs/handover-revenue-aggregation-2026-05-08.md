@@ -6,6 +6,14 @@
 - **関連コミット**: `da24867 fix: daily-reports/input と revenue の JST 統一・revenue 自動再フェッチ`
 - **状況**: クライアント側の問題を 2 件修正済み。**RLS 関数を修正しても改善せず**、未解決のまま引き継ぎ。
 
+## 2026-05-08 Codex 追記
+
+未解決だった原因は、現行の RLS ポリシー参照先が `public.*` ではなく `app_private.*` に移っていたこと。
+
+`20260507000200_security_advisor_rpc_hardening.sql` と `20260507000300_repair_app_private_policy_references.sql` により、tenant-scoped RLS ポリシーは `app_private.get_current_role()` / `app_private.jwt_clinic_id()` / `app_private.can_access_clinic()` を呼ぶ。したがって、`20260508000200_jwt_app_metadata_aware_rls_helpers.sql` で `public` 側だけを修正しても revenue の SELECT には効かない。
+
+対策として `supabase/migrations/20260508000300_app_private_jwt_app_metadata_rls_helpers.sql` を追加した。これは active な `app_private` ヘルパーを `claims.app_metadata.*` 対応にし、`role: "authenticated"` をアプリケーションロールとして返さないようにする。rollback は `supabase/rollbacks/20260508000300_app_private_jwt_app_metadata_rls_helpers_rollback.sql`、spec は `docs/stabilization/spec-revenue-rls-app-private-jwt-2026-05-08.md`。
+
 ---
 
 ## 1. 報告された症状
@@ -200,7 +208,7 @@ end;
 $$;
 ```
 
-**注意**: 上記には `app_private` スキーマの双子関数も存在するが、RLS ポリシーが参照しているのは `public` 側なので `public` のみ更新。`app_private` 側も同様に修正するか、両者を同期する設計判断が必要。
+**2026-05-08 Codex 補足**: 上記の「RLS ポリシーが参照しているのは `public` 側」という前提は、`20260507000200_security_advisor_rpc_hardening.sql` / `20260507000300_repair_app_private_policy_references.sql` 適用後の実態と逆だった。現行ポリシーは `app_private` 側を参照するため、追加対策 `20260508000300_app_private_jwt_app_metadata_rls_helpers.sql` で `app_private` 側を修正した。
 
 ---
 
