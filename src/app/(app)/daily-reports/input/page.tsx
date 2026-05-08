@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { toJSTDateString } from '@/lib/jst';
 
 type BillingType = 'insurance' | 'private';
 
@@ -97,9 +98,9 @@ const emptyNewItem: NewItemForm = {
 const managerRoles = new Set(['admin', 'clinic_admin', 'manager']);
 
 function getTodayDateInputValue() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
+  // revenue 集計が JST 基準で today を判定するため、入力側も JST に合わせる。
+  // これにより report_date と /api/revenue の dateRange.lte が確実に一致する。
+  return toJSTDateString();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

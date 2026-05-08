@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, isSuccessResponse } from '@/lib/api-client';
 import type { RevenueAnalysisData } from '@/types/api';
 
@@ -80,9 +80,9 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
   const [data, setData] = useState<RevenueData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    // clinicIdのバリデーション
+  const fetchData = useCallback(async () => {
     if (!clinicId) {
       setLoading(false);
       setError('clinic_idは必須です');
@@ -90,60 +90,80 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
       return;
     }
 
-    let isMounted = true;
+    try {
+      setLoading(true);
+      setError(null);
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      const res = await api.revenue.getAnalysis(clinicId);
 
-        const res = await api.revenue.getAnalysis(clinicId);
+      if (!isMountedRef.current) return;
 
-        if (!isMounted) return;
+      if (res && isSuccessResponse(res)) {
+        const revenueData = res.data;
 
-        if (res && isSuccessResponse(res)) {
-          const revenueData = res.data;
+        setData({
+          dailyRevenue: Number(revenueData.dailyRevenue || 0),
+          weeklyRevenue: Number(revenueData.weeklyRevenue || 0),
+          monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
+          insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
+          selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
+          menuRanking: mapMenuRanking(revenueData.menuRanking),
+          hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
+          dailyRevenueByDayOfWeek: '',
+          lastYearRevenue: estimateLastYearRevenue(revenueData),
+          growthRate: revenueData.growthRate || '0%',
+          revenueForecast: Number(revenueData.revenueForecast || 0),
+          costAnalysis: revenueData.costAnalysis || '',
+          staffRevenueContribution: '',
+        });
+      } else {
+        // APIエラー時はサンプル値にフォールバックせずエラー状態にする
+        const errorMessage =
+          res?.error?.message || '収益データの取得に失敗しました';
+        setError(errorMessage);
+        setData(INITIAL_DATA);
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setError('収益データの取得に失敗しました');
+        setData(INITIAL_DATA);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [clinicId]);
 
-          setData({
-            dailyRevenue: Number(revenueData.dailyRevenue || 0),
-            weeklyRevenue: Number(revenueData.weeklyRevenue || 0),
-            monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
-            insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
-            selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
-            menuRanking: mapMenuRanking(revenueData.menuRanking),
-            hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
-            dailyRevenueByDayOfWeek: '',
-            lastYearRevenue: estimateLastYearRevenue(revenueData),
-            growthRate: revenueData.growthRate || '0%',
-            revenueForecast: Number(revenueData.revenueForecast || 0),
-            costAnalysis: revenueData.costAnalysis || '',
-            staffRevenueContribution: '',
-          });
-        } else {
-          // APIエラー時はサンプル値にフォールバックせずエラー状態にする
-          const errorMessage =
-            res?.error?.message || '収益データの取得に失敗しました';
-          setError(errorMessage);
-          setData(INITIAL_DATA);
-        }
-      } catch {
-        if (isMounted) {
-          setError('収益データの取得に失敗しました');
-          setData(INITIAL_DATA);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+  useEffect(() => {
+    isMountedRef.current = true;
+    void fetchData();
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [fetchData]);
+
+  // 日報入力後に revenue ページへ戻ってきた / タブ復帰時に最新値を取得する
+  useEffect(() => {
+    if (!clinicId) return;
+    if (typeof window === 'undefined') return;
+
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchData();
       }
     };
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
+    const handleFocus = () => {
+      void fetchData();
     };
-  }, [clinicId]);
+
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [clinicId, fetchData]);
 
   return {
     ...data,
