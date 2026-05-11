@@ -124,6 +124,16 @@ type ParentValidationResult =
       success: false;
       errorResponse: Response;
     };
+
+const CLINIC_SCOPE_FILTER_COLUMNS = ['id', 'parent_id'] as const;
+
+function buildClinicScopeOrFilter(scopedClinicIds: readonly string[]) {
+  const scopeValues = scopedClinicIds.join(',');
+  return CLINIC_SCOPE_FILTER_COLUMNS.map(
+    column => `${column}.in.(${scopeValues})`
+  ).join(',');
+}
+
 type ClinicAdminRecordInput = {
   createdUserId: string;
   clinicId: string;
@@ -604,11 +614,14 @@ export async function GET(request: NextRequest) {
     }
 
     const adminSupabase = adminCtx.client;
+    const clinicScopeFilter = buildClinicScopeOrFilter(
+      adminCtx.scopedClinicIds
+    );
 
     let query = adminSupabase
       .from('clinics')
       .select(CLINIC_LIST_SELECT)
-      .in('id', adminCtx.scopedClinicIds)
+      .or(clinicScopeFilter)
       .order('created_at', { ascending: false });
 
     if (search) {
@@ -625,7 +638,7 @@ export async function GET(request: NextRequest) {
         adminSupabase
           .from('clinics')
           .select(CLINIC_HIERARCHY_SELECT)
-          .in('id', adminCtx.scopedClinicIds),
+          .or(clinicScopeFilter),
       ]);
 
     if (error || hierarchyError) {

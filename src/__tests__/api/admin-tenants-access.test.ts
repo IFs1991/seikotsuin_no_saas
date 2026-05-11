@@ -35,6 +35,9 @@ jest.mock('@/lib/supabase', () => {
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
+const SCOPED_CLINIC_IDS = ['clinic-1', 'clinic-2'] as const;
+const CLINIC_SCOPE_OR_FILTER =
+  'id.in.(clinic-1,clinic-2),parent_id.in.(clinic-1,clinic-2)';
 
 function createListQueryMock(result: unknown[]) {
   const query = {
@@ -42,7 +45,7 @@ function createListQueryMock(result: unknown[]) {
     order: jest.fn().mockReturnThis(),
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    in: jest.fn().mockReturnThis(),
+    or: jest.fn().mockReturnThis(),
     then(
       resolve: (value: { data: unknown[]; error: null }) => unknown,
       reject?: (reason: unknown) => unknown
@@ -83,7 +86,7 @@ describe('Admin tenants access alignment', () => {
     jest.clearAllMocks();
   });
 
-  it('GET /api/admin/tenants scopes list by clinic_scope_ids for HQ admin', async () => {
+  it('GET /api/admin/tenants scopes list by clinic_scope_ids and scoped parent_id for HQ admin', async () => {
     const clinics = [
       {
         id: 'clinic-1',
@@ -93,6 +96,15 @@ describe('Admin tenants access alignment', () => {
         is_active: true,
         created_at: '2026-04-20T00:00:00.000Z',
         parent_id: null,
+      },
+      {
+        id: 'clinic-new-child',
+        name: 'New Child Clinic',
+        address: null,
+        phone_number: null,
+        is_active: true,
+        created_at: '2026-04-21T00:00:00.000Z',
+        parent_id: 'clinic-1',
       },
     ];
     const clinicsQuery = createListQueryMock(clinics);
@@ -106,13 +118,13 @@ describe('Admin tenants access alignment', () => {
       permissions: {
         role: 'admin',
         clinic_id: null,
-        clinic_scope_ids: ['clinic-1', 'clinic-2'],
+        clinic_scope_ids: [...SCOPED_CLINIC_IDS],
       },
       supabase: {},
     });
     createScopedAdminContextMock.mockReturnValue({
       client: mockAdminClient,
-      scopedClinicIds: ['clinic-1', 'clinic-2'],
+      scopedClinicIds: [...SCOPED_CLINIC_IDS],
       assertClinicInScope: jest.fn(),
     });
 
@@ -123,10 +135,7 @@ describe('Admin tenants access alignment', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
-      'clinic-1',
-      'clinic-2',
-    ]);
+    expect(clinicsQuery.or).toHaveBeenCalledWith(CLINIC_SCOPE_OR_FILTER);
     expect(body.data.items).toEqual([
       expect.objectContaining({
         id: 'clinic-1',
@@ -134,6 +143,14 @@ describe('Admin tenants access alignment', () => {
         parent_id: null,
         parent_name: null,
         clinic_type: 'hq',
+        child_count: 1,
+      }),
+      expect.objectContaining({
+        id: 'clinic-new-child',
+        name: 'New Child Clinic',
+        parent_id: 'clinic-1',
+        parent_name: 'Scope Clinic',
+        clinic_type: 'child',
         child_count: 0,
       }),
     ]);
