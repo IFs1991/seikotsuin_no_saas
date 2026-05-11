@@ -35,7 +35,6 @@ import {
  * Clinic Create Schema for admin tenant management.
  *
  * Supports:
- * - Standalone/HQ clinic creation (parent_id = null)
  * - Child clinic creation under an in-scope HQ clinic (parent_id != null)
  *
  * Parent selection is validated at the application layer because this route
@@ -48,10 +47,11 @@ const ClinicCreateSchema = z
     phone_number: z.string().max(50).optional(),
     is_active: z.boolean().optional(),
     parent_id: z
-      .string()
-      .uuid('親テナントIDの形式が不正です')
-      .optional()
-      .nullable(),
+      .string({
+        required_error: '親テナントを選択してください',
+        invalid_type_error: '親テナントを選択してください',
+      })
+      .uuid('親テナントIDの形式が不正です'),
     login_email: emailSchema.optional(),
     login_password: passwordSchema.optional(),
   })
@@ -82,7 +82,7 @@ type NormalizedClinicCreateInput = {
     address: string | null;
     phone_number: string | null;
     is_active: boolean;
-    parent_id: string | null;
+    parent_id: string;
   };
   loginEmail: string | null;
   loginPassword: string | null;
@@ -193,7 +193,7 @@ function normalizeClinicCreateInput(
           ? (sanitizeInput(input.phone_number) as string) || null
           : null,
       is_active: input.is_active ?? true,
-      parent_id: input.parent_id ?? null,
+      parent_id: input.parent_id,
     },
     loginEmail,
     loginPassword,
@@ -204,15 +204,8 @@ function normalizeClinicCreateInput(
 async function validateParentClinic(
   adminClient: ReturnType<typeof createAdminClient>,
   scopedClinicIds: string[],
-  parentId: string | null
+  parentId: string
 ): Promise<ParentValidationResult> {
-  if (!parentId) {
-    return {
-      success: true,
-      parent: null,
-    };
-  }
-
   if (!scopedClinicIds.includes(parentId)) {
     return {
       success: false,

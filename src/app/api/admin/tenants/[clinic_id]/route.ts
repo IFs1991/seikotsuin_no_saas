@@ -173,9 +173,11 @@ async function validateHierarchyChange(
 
   if (requestedParentId === null) {
     return {
-      success: true,
-      childCount,
-      parentClinic: null,
+      success: false,
+      errorResponse: createErrorResponse(
+        '子テナントを本部/単独テナントへ変更することはできません',
+        400
+      ),
     };
   }
 

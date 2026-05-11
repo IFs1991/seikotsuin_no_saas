@@ -91,7 +91,7 @@ export interface CreateClinicPayload {
   address?: string;
   phone_number?: string;
   is_active?: boolean;
-  parent_id?: string | null;
+  parent_id: string;
   login_email?: string;
   login_password?: string;
 }
@@ -126,7 +126,7 @@ export const INITIAL_TENANT_FORM_STATE: TenantFormState = {
   initial_access_mode: TENANT_INITIAL_ACCESS_LATER,
   existing_admin_user_id: '',
   is_active: true,
-  tenant_type: 'hq',
+  tenant_type: 'child',
   parent_id: '',
 };
 
@@ -244,8 +244,11 @@ export function buildFormValidationMessage(
     return 'クリニック名を入力してください';
   }
 
-  if (formState.tenant_type === 'child' && !formState.parent_id) {
-    return '子テナントを作成する場合は親テナントを選択してください';
+  if (
+    (isCreateMode || formState.tenant_type === 'child') &&
+    !formState.parent_id
+  ) {
+    return '親テナントを選択してください';
   }
 
   if (!isCreateMode) {
@@ -284,7 +287,7 @@ export function buildCreateClinicPayload(
     address: formState.address || undefined,
     phone_number: formState.phone_number || undefined,
     is_active: formState.is_active,
-    parent_id: formState.tenant_type === 'child' ? formState.parent_id : null,
+    parent_id: formState.parent_id,
     login_email:
       formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
         ? formState.login_email || undefined

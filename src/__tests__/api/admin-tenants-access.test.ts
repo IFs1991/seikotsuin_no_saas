@@ -197,7 +197,90 @@ describe('Admin tenants access alignment', () => {
     expect(body.success).toBe(false);
   });
 
-  it('POST /api/admin/tenants creates a clinic_admin account when login credentials are provided', async () => {
+  it('POST /api/admin/tenants rejects standalone HQ creation before insert', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: ['11111111-1111-4111-8111-111111111111'],
+      },
+      supabase: {},
+      body: {
+        name: 'スコープ外本部',
+        address: '東京都新宿区',
+        phone_number: '03-9999-0000',
+        is_active: true,
+        parent_id: null,
+        login_email: 'clinic-admin@example.com',
+        login_password: 'StorePass1!',
+      },
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'スコープ外本部',
+          address: '東京都新宿区',
+          phone_number: '03-9999-0000',
+          is_active: true,
+          parent_id: null,
+          login_email: 'clinic-admin@example.com',
+          login_password: 'StorePass1!',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/admin/tenants rejects missing parent_id before insert', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: ['11111111-1111-4111-8111-111111111111'],
+      },
+      supabase: {},
+      body: {
+        name: '親なしテナント',
+        address: '東京都新宿区',
+        phone_number: '03-9999-0000',
+        is_active: true,
+      },
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: '親なしテナント',
+          address: '東京都新宿区',
+          phone_number: '03-9999-0000',
+          is_active: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/admin/tenants creates a clinic_admin account for an in-scope child tenant', async () => {
+    const hqClinicId = '11111111-1111-4111-8111-111111111111';
     const createdClinic = {
       id: 'clinic-new',
       name: '新宿西口院',
@@ -205,16 +288,28 @@ describe('Admin tenants access alignment', () => {
       phone_number: '03-9999-0000',
       is_active: true,
       created_at: '2026-04-20T00:00:00.000Z',
-      parent_id: null,
+      parent_id: hqClinicId,
     };
 
     const clinicsInsertQuery = {
       insert: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
-      single: jest.fn().mockResolvedValue({
-        data: createdClinic,
-        error: null,
-      }),
+      eq: jest.fn().mockReturnThis(),
+      single: jest
+        .fn()
+        .mockResolvedValueOnce({
+          data: {
+            id: hqClinicId,
+            name: '本部',
+            parent_id: null,
+            is_active: true,
+          },
+          error: null,
+        })
+        .mockResolvedValueOnce({
+          data: createdClinic,
+          error: null,
+        }),
     };
 
     const scopedAdminClient = {
@@ -272,7 +367,7 @@ describe('Admin tenants access alignment', () => {
       permissions: {
         role: 'admin',
         clinic_id: null,
-        clinic_scope_ids: ['hq-1'],
+        clinic_scope_ids: [hqClinicId],
       },
       supabase: {},
       body: {
@@ -280,13 +375,14 @@ describe('Admin tenants access alignment', () => {
         address: createdClinic.address,
         phone_number: createdClinic.phone_number,
         is_active: true,
+        parent_id: hqClinicId,
         login_email: 'clinic-admin@example.com',
         login_password: 'StorePass1!',
       },
     });
     createScopedAdminContextMock.mockReturnValue({
       client: scopedAdminClient,
-      scopedClinicIds: ['hq-1'],
+      scopedClinicIds: [hqClinicId],
       assertClinicInScope: jest.fn(),
     });
     createAdminClientMock.mockReturnValue(adminClient);
@@ -300,6 +396,7 @@ describe('Admin tenants access alignment', () => {
           address: createdClinic.address,
           phone_number: createdClinic.phone_number,
           is_active: true,
+          parent_id: hqClinicId,
           login_email: 'clinic-admin@example.com',
           login_password: 'StorePass1!',
         }),
@@ -311,7 +408,7 @@ describe('Admin tenants access alignment', () => {
     expect(clinicsInsertQuery.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         name: createdClinic.name,
-        parent_id: null,
+        parent_id: hqClinicId,
       })
     );
     expect(adminClient.auth.admin.createUser).toHaveBeenCalledWith(
@@ -368,6 +465,13 @@ describe('Admin tenants access alignment', () => {
       email: 'clinic-admin@example.com',
       role: 'clinic_admin',
     });
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        parent_id: hqClinicId,
+        parent_name: '本部',
+        clinic_type: 'child',
+      })
+    );
   });
 
   it('POST /api/admin/tenants allows creating a child tenant under an in-scope HQ tenant', async () => {
@@ -511,6 +615,71 @@ describe('Admin tenants access alignment', () => {
         child_count: 0,
       })
     );
+  });
+
+  it('PATCH /api/admin/tenants/[clinic_id] rejects changing a child tenant to standalone HQ', async () => {
+    const currentParentId = '11111111-1111-4111-8111-111111111111';
+    const childClinicId = '22222222-2222-4222-8222-222222222222';
+    const currentClinicQuery = createSingleClinicQuery({
+      id: childClinicId,
+      name: '渋谷支店',
+      parent_id: currentParentId,
+      is_active: true,
+    });
+    const childCountQuery = createCountQuery(0);
+    const updateQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn(),
+    };
+
+    const queries = [currentClinicQuery, childCountQuery, updateQuery];
+    const scopedAdminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table !== 'clinics') {
+          throw new Error(`Unexpected scoped table: ${table}`);
+        }
+
+        const nextQuery = queries.shift();
+        if (!nextQuery) {
+          throw new Error('Unexpected extra clinics query');
+        }
+
+        return nextQuery;
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [currentParentId, childClinicId],
+      },
+      supabase: {},
+      body: { parent_id: null },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedAdminClient,
+      scopedClinicIds: [currentParentId, childClinicId],
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/admin/tenants/[clinic_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/tenants/${childClinicId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parent_id: null }),
+      }),
+      { params: { clinic_id: childClinicId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(updateQuery.update).not.toHaveBeenCalled();
   });
 
   it('PATCH /api/admin/tenants/[clinic_id] allows moving a child tenant to another in-scope HQ tenant', async () => {

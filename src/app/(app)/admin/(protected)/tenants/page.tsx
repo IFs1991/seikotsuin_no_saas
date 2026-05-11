@@ -76,7 +76,7 @@ const TENANT_SCOPE_NOTICE_ITEMS = [
   {
     label: 'この画面で作るもの',
     description:
-      '本部/単独テナント、子テナント、店舗単位の運用状態を管理します。',
+      '同一スコープ内の本部配下に、子テナントと店舗単位の運用状態を作成・管理します。',
   },
   {
     label: '初期アクセス',
@@ -291,6 +291,16 @@ export default function AdminTenantsPage() {
   }, [editingId, tenantOptions, clinics]);
 
   const shouldLockHierarchy = !isCreateMode && isHierarchyLocked(editingClinic);
+  const isEditingChildTenant =
+    !isCreateMode && Boolean(editingClinic?.parent_id);
+  const shouldRestrictTenantTypeToChild = isCreateMode || isEditingChildTenant;
+  const tenantTypeOptions = useMemo(
+    () =>
+      shouldRestrictTenantTypeToChild
+        ? ADMIN_TENANT_TYPE_OPTIONS.filter(option => option.value === 'child')
+        : ADMIN_TENANT_TYPE_OPTIONS,
+    [shouldRestrictTenantTypeToChild]
+  );
 
   const parentTenantOptions = useMemo(
     () =>
@@ -407,13 +417,20 @@ export default function AdminTenantsPage() {
     setSearch(value);
   }, []);
 
-  const handleTenantTypeChange = useCallback((value: ClinicHierarchyType) => {
-    setFormState(prev => ({
-      ...prev,
-      tenant_type: value,
-      parent_id: value === 'child' ? prev.parent_id : '',
-    }));
-  }, []);
+  const handleTenantTypeChange = useCallback(
+    (value: ClinicHierarchyType) => {
+      setFormState(prev => {
+        const tenantType = shouldRestrictTenantTypeToChild ? 'child' : value;
+
+        return {
+          ...prev,
+          tenant_type: tenantType,
+          parent_id: tenantType === 'child' ? prev.parent_id : '',
+        };
+      });
+    },
+    [shouldRestrictTenantTypeToChild]
+  );
 
   const handleParentTenantChange = useCallback((value: string) => {
     setFormState(prev => ({
@@ -531,7 +548,7 @@ export default function AdminTenantsPage() {
   return (
     <AdminPageShell
       title='クリニック管理'
-      description='親子テナントと店舗の運用状態を管理します。スタッフや権限ユーザーの追加はアカウント・権限管理で扱います。'
+      description='同一スコープ内の本部配下に子テナントを作成し、店舗の運用状態を管理します。スタッフや権限ユーザーの追加はアカウント・権限管理で扱います。'
     >
       <AdminScopeNotice
         title='この画面の役割'
@@ -602,13 +619,15 @@ export default function AdminTenantsPage() {
                 onValueChange={value =>
                   handleTenantTypeChange(value as ClinicHierarchyType)
                 }
-                disabled={shouldLockHierarchy}
+                disabled={
+                  shouldLockHierarchy || shouldRestrictTenantTypeToChild
+                }
               >
                 <SelectTrigger id='clinic-tenant-type' className='w-full'>
                   <SelectValue placeholder='種別を選択' />
                 </SelectTrigger>
                 <SelectContent>
-                  {ADMIN_TENANT_TYPE_OPTIONS.map(option => (
+                  {tenantTypeOptions.map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -651,7 +670,7 @@ export default function AdminTenantsPage() {
                 </SelectContent>
               </Select>
               <p className='text-xs text-gray-500 dark:text-gray-400'>
-                本部/単独テナントは親なし、子テナントは同一スコープ内の本部配下に作成します
+                子テナントは同一スコープ内の本部配下に作成します
               </p>
               {shouldLockHierarchy && (
                 <p className='text-xs text-amber-600 dark:text-amber-400'>

@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import AdminTenantsPage from '@/app/(app)/admin/(protected)/tenants/page';
 
 const mockFetch = jest.fn();
@@ -19,6 +20,14 @@ function createJsonResponse(payload: unknown) {
 
 beforeAll(() => {
   global.fetch = mockFetch as unknown as typeof fetch;
+  Element.prototype.hasPointerCapture =
+    Element.prototype.hasPointerCapture ?? (() => false);
+  Element.prototype.setPointerCapture =
+    Element.prototype.setPointerCapture ?? (() => {});
+  Element.prototype.releasePointerCapture =
+    Element.prototype.releasePointerCapture ?? (() => {});
+  Element.prototype.scrollIntoView =
+    Element.prototype.scrollIntoView ?? (() => {});
 });
 
 describe('AdminTenantsPage', () => {
@@ -33,6 +42,19 @@ describe('AdminTenantsPage', () => {
   });
 
   it('作成したクリニックを一覧再取得なしで反映する', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const hqClinic = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: '本部',
+      address: '東京都千代田区',
+      phone_number: '03-1111-2222',
+      is_active: true,
+      created_at: '2026-04-01T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 0,
+    };
     const createdClinic = {
       id: 'clinic-new',
       name: '新宿西口院',
@@ -40,9 +62,9 @@ describe('AdminTenantsPage', () => {
       phone_number: '03-9999-0000',
       is_active: true,
       created_at: '2026-04-20T00:00:00.000Z',
-      parent_id: null,
-      parent_name: null,
-      clinic_type: 'hq',
+      parent_id: hqClinic.id,
+      parent_name: hqClinic.name,
+      clinic_type: 'child',
       child_count: 0,
       admin_account: {
         email: 'clinic-admin@example.com',
@@ -52,7 +74,7 @@ describe('AdminTenantsPage', () => {
 
     mockFetch
       .mockResolvedValueOnce(
-        createJsonResponse({ success: true, data: { items: [] } })
+        createJsonResponse({ success: true, data: { items: [hqClinic] } })
       )
       .mockResolvedValueOnce(
         createJsonResponse({ success: true, data: { items: [] } })
@@ -61,7 +83,10 @@ describe('AdminTenantsPage', () => {
         createJsonResponse({ success: true, data: createdClinic })
       )
       .mockResolvedValueOnce(
-        createJsonResponse({ success: true, data: { items: [createdClinic] } })
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, createdClinic] },
+        })
       );
 
     render(<AdminTenantsPage />);
@@ -83,6 +108,11 @@ describe('AdminTenantsPage', () => {
     fireEvent.change(screen.getByPlaceholderText('例: 03-1234-5678'), {
       target: { value: createdClinic.phone_number },
     });
+    await user.click(screen.getByLabelText('親テナント'));
+    await user.click(
+      await screen.findByText(hqClinic.name, { selector: 'span' })
+    );
+    await user.click(screen.getByRole('radio', { name: /新規管理者を作成/ }));
     fireEvent.change(
       screen.getByPlaceholderText('例: clinic-admin@example.com'),
       {
@@ -103,7 +133,7 @@ describe('AdminTenantsPage', () => {
 
     expect(
       screen.getByText(
-        'クリニックと店舗管理者アカウントを作成しました（ID: clinic-admin@example.com）'
+        '子テナントと店舗管理者アカウントを作成しました（親: 本部 / ID: clinic-admin@example.com）'
       )
     ).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledTimes(4);
@@ -128,7 +158,7 @@ describe('AdminTenantsPage', () => {
         address: createdClinic.address,
         phone_number: createdClinic.phone_number,
         is_active: true,
-        parent_id: null,
+        parent_id: hqClinic.id,
         login_email: createdClinic.admin_account.email,
         login_password: 'StorePass1!',
       })
