@@ -185,16 +185,25 @@ describe('GET /api/clinics/accessible', () => {
       {
         id: '3d9f420f-6c5d-4a96-bf9e-fcb8c95f88e2',
         name: '池袋院',
+        parent_id: 'parent-1',
       },
     ];
     const clinicsQuery = createClinicsQueryMock(clinics);
 
     const from = jest.fn().mockReturnValue(clinicsQuery);
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      scopedClinicIds: ['parent-1'],
+    });
 
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'user-3', email: 'u3@example.com', role: 'clinic_admin' },
-      permissions: { role: 'clinic_admin', clinic_id: 'clinic-1' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'parent-1',
+        clinic_scope_ids: ['parent-1'],
+      },
       supabase: { from },
     });
 
@@ -206,5 +215,48 @@ describe('GET /api/clinics/accessible', () => {
 
     expect(body.data.clinics[0].name).toBe('池袋院');
     expect(body.data.clinics[0].name).not.toBe(body.data.clinics[0].id);
+  });
+
+  it('TC-C10: clinic_admin も parent_id スコープで子店舗を返す', async () => {
+    const clinics = [
+      { id: 'parent-1', name: '本部', parent_id: null },
+      { id: 'child-1', name: '新宿院', parent_id: 'parent-1' },
+      { id: 'child-2', name: '池袋院', parent_id: 'parent-1' },
+    ];
+    const clinicsQuery = createClinicsQueryMock(clinics);
+    const from = jest.fn().mockReturnValue(clinicsQuery);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'clinic-admin-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'parent-1',
+        clinic_scope_ids: ['parent-1'],
+      },
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      scopedClinicIds: ['parent-1'],
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(clinicsQuery.or).toHaveBeenCalledWith(PARENT_SCOPE_FILTER);
+    expect(body.data.clinics).toEqual([
+      { id: 'child-1', name: '新宿院' },
+      { id: 'child-2', name: '池袋院' },
+    ]);
+    expect(body.data.currentClinicId).toBeNull();
   });
 });

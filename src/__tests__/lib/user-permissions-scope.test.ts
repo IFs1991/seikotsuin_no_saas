@@ -16,7 +16,10 @@ function createUserPermissionsQuery(row: UserPermissionsRow) {
   };
 }
 
-function createClinicsQuery(rows: ClinicScopeRow[], error: Error | null = null) {
+function createClinicsQuery(
+  rows: ClinicScopeRow[],
+  error: Error | null = null
+) {
   return {
     select: jest.fn().mockReturnThis(),
     or: jest.fn().mockReturnThis(),
@@ -26,10 +29,11 @@ function createClinicsQuery(rows: ClinicScopeRow[], error: Error | null = null) 
 
 function createSessionClient(
   userId: string,
-  clinicScopeIds: readonly string[]
+  clinicScopeIds: readonly string[],
+  role = 'admin'
 ) {
   const appMetadata = {
-    user_role: 'admin',
+    user_role: role,
     clinic_id: 'parent-1',
     clinic_scope_ids: [...clinicScopeIds],
   };
@@ -84,9 +88,8 @@ async function importServerWithClients(
 ) {
   jest.resetModules();
 
-  const createServerClientMock = jest.fn(
-    (_url: string, key: string) =>
-      key === 'mock-service-role-key' ? adminClient : sessionClient
+  const createServerClientMock = jest.fn((_url: string, key: string) =>
+    key === 'mock-service-role-key' ? adminClient : sessionClient
   );
   const logErrorMock = jest.fn();
   const envValues: Record<string, string> = {
@@ -143,10 +146,7 @@ describe('getUserPermissions clinic scope expansion', () => {
     });
     const clinicsQuery = createClinicsQuery([]);
     const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
-    const sessionClient = createSessionClient('user-1', [
-      'child-1',
-      'child-2',
-    ]);
+    const sessionClient = createSessionClient('user-1', ['child-1', 'child-2']);
 
     const { getUserPermissions, resetSupabaseClientFactory } =
       await importServerWithClients(sessionClient, adminClient);
@@ -175,10 +175,7 @@ describe('getUserPermissions clinic scope expansion', () => {
     const firstPermissions = await getUserPermissions('user-cache');
     const secondPermissions = await getUserPermissions('user-cache');
 
-    expect(firstPermissions?.clinic_scope_ids).toEqual([
-      'parent-1',
-      'child-1',
-    ]);
+    expect(firstPermissions?.clinic_scope_ids).toEqual(['parent-1', 'child-1']);
     expect(secondPermissions?.clinic_scope_ids).toEqual([
       'parent-1',
       'child-1',
@@ -188,12 +185,43 @@ describe('getUserPermissions clinic scope expansion', () => {
     resetSupabaseClientFactory();
   });
 
+  it('expands clinic_admin parent scope to direct child clinic ids', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'clinic_admin',
+      clinic_id: 'parent-1',
+    });
+    const clinicsQuery = createClinicsQuery([
+      { id: 'parent-1', parent_id: null },
+      { id: 'child-1', parent_id: 'parent-1' },
+      { id: 'child-2', parent_id: 'parent-1' },
+    ]);
+    const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
+    const sessionClient = createSessionClient('clinic-admin-1', ['parent-1']);
+
+    const { getUserPermissions, resetSupabaseClientFactory } =
+      await importServerWithClients(sessionClient, adminClient);
+    const permissions = await getUserPermissions('clinic-admin-1');
+
+    expect(permissions?.clinic_scope_ids).toEqual([
+      'parent-1',
+      'child-1',
+      'child-2',
+    ]);
+    expect(clinicsQuery.or).toHaveBeenCalledWith(
+      'id.in.(parent-1),parent_id.in.(parent-1)'
+    );
+    resetSupabaseClientFactory();
+  });
+
   it('logs and falls back to JWT scope when hierarchy expansion fails', async () => {
     const userPermissionsQuery = createUserPermissionsQuery({
       role: 'admin',
       clinic_id: 'parent-1',
     });
-    const clinicsQuery = createClinicsQuery([], new Error('clinics unavailable'));
+    const clinicsQuery = createClinicsQuery(
+      [],
+      new Error('clinics unavailable')
+    );
     const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
     const sessionClient = createSessionClient('user-log', ['parent-1']);
 

@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 import { assertEnv } from '@/lib/env';
 import {
   canAccessAdminUIWithCompat,
-  canAccessCrossClinicWithCompat,
+  canManageClinicSettingsWithCompat,
 } from '@/lib/constants/roles';
 import { logError } from '@/lib/error-handler';
 import {
@@ -161,7 +161,7 @@ async function resolveHierarchicalClinicScopeIds(
   if (
     !scopedClinicIds ||
     scopedClinicIds.length === 0 ||
-    !canAccessCrossClinicWithCompat(permissions.role)
+    !canManageClinicSettingsWithCompat(permissions.role)
   ) {
     return permissions.clinic_scope_ids;
   }

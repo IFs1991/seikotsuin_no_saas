@@ -5,7 +5,10 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { STAFF_ROLES } from '@/lib/constants/roles';
+import {
+  canManageClinicSettingsWithCompat,
+  STAFF_ROLES,
+} from '@/lib/constants/roles';
 import {
   createScopedAdminContext,
   resolveScopedClinicIds,
@@ -111,7 +114,7 @@ export async function GET(request: NextRequest) {
     }
 
     let clinicsResult: AccessibleClinicsFetchResult;
-    if (auth.role === 'admin') {
+    if (canManageClinicSettingsWithCompat(auth.role)) {
       try {
         const adminCtx = createScopedAdminContext(permissions);
         clinicsResult = await fetchScopedAdminClinics(
