@@ -26,6 +26,7 @@ function createQueryMock(result: unknown[]) {
   const query = {
     select: jest.fn(),
     in: jest.fn(),
+    or: jest.fn(),
     order: jest.fn(),
     returns: jest.fn().mockResolvedValue({
       data: result,
@@ -35,6 +36,7 @@ function createQueryMock(result: unknown[]) {
 
   query.select.mockReturnValue(query);
   query.in.mockReturnValue(query);
+  query.or.mockReturnValue(query);
   query.order.mockReturnValue(query);
 
   return query;
@@ -89,13 +91,13 @@ describe('GET /api/admin/dashboard', () => {
       permissions: {
         role: 'admin',
         clinic_id: 'parent-1',
-        clinic_scope_ids: ['parent-1', 'child-1'],
+        clinic_scope_ids: ['parent-1'],
       },
       supabase: { from: jest.fn() },
     });
     createScopedAdminContextMock.mockReturnValue({
       client: adminClient,
-      scopedClinicIds: ['parent-1', 'child-1'],
+      scopedClinicIds: ['parent-1'],
       assertClinicInScope: jest.fn(),
     });
 
@@ -106,10 +108,9 @@ describe('GET /api/admin/dashboard', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
-      'parent-1',
-      'child-1',
-    ]);
+    expect(clinicsQuery.or).toHaveBeenCalledWith(
+      'id.in.(parent-1),parent_id.in.(parent-1)'
+    );
     expect(reportsQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
     expect(staffQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
     expect(body.data.clinicsData).toEqual([
