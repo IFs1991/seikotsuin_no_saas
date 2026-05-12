@@ -1,11 +1,6 @@
 'use client';
 
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, RefreshCw, X } from 'lucide-react';
 import { Scheduler } from '@/app/(app)/reservations/components/Scheduler';
@@ -64,12 +59,8 @@ export const ClinicReservationsPreviewModal: React.FC<Props> = ({
     error: masterError,
   } = useReservationFormData(clinicId, { includeCustomers: false });
 
-  const {
-    appointments,
-    loading,
-    error,
-    loadAppointments,
-  } = useAppointments(clinicId);
+  const { appointments, loading, error, loadAppointments } =
+    useAppointments(clinicId);
 
   const menus = useMemo(
     () => (rawMenus ?? []).filter(menu => menu.isActive),
@@ -183,7 +174,9 @@ export const ClinicReservationsPreviewModal: React.FC<Props> = ({
         {/* Header */}
         <div className='flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-white'>
           <div className='flex flex-col'>
-            <span className='text-xs text-gray-500'>予約タイムライン（閲覧専用）</span>
+            <span className='text-xs text-gray-500'>
+              予約タイムライン（閲覧専用）
+            </span>
             <span className='text-lg font-bold text-gray-800'>
               {clinicName ?? '店舗'}
             </span>
