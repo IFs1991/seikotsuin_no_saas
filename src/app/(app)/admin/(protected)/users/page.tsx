@@ -12,9 +12,9 @@ import { AdminListCard } from '@/components/admin/admin-list-card';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
+import { AdminAccountCreateFields } from '@/components/admin/admin-account-create-fields';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -528,6 +528,26 @@ export default function AdminUsersPage() {
     [formState.user_id, selectedUserLabel, userSearch]
   );
 
+  const roleField = (
+    <div className='space-y-2'>
+      <label htmlFor='admin-user-role' className='text-sm font-medium'>
+        ロール
+      </label>
+      <Select value={formState.role} onValueChange={handleRoleChange}>
+        <SelectTrigger id='admin-user-role'>
+          <SelectValue placeholder='ロールを選択' />
+        </SelectTrigger>
+        <SelectContent>
+          {formRoleOptions.map(option => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   return (
     <AdminPageShell
       title='アカウント・権限管理'
@@ -586,8 +606,8 @@ export default function AdminUsersPage() {
               初期パスワードは安全な方法で本人へ共有してください。
             </div>
           )}
-          <div className='grid gap-4 md:grid-cols-2'>
-            {!isCreateAccountMode ? (
+          {!isCreateAccountMode ? (
+            <div className='grid gap-4 md:grid-cols-2'>
               <UserCandidateCombobox
                 candidates={userCandidates}
                 disabled={Boolean(editingPermissionId)}
@@ -603,76 +623,23 @@ export default function AdminUsersPage() {
                 onSearchChange={handleUserSearchChange}
                 onSelect={handleUserSelect}
               />
-            ) : (
-              <div className='space-y-2'>
-                <label
-                  htmlFor='admin-new-user-full-name'
-                  className='text-sm font-medium'
-                >
-                  氏名
-                </label>
-                <Input
-                  id='admin-new-user-full-name'
-                  value={formState.full_name}
-                  onChange={handleFullNameChange}
-                  placeholder='例: 山田 太郎'
-                  autoComplete='name'
-                />
-              </div>
-            )}
-            <div className='space-y-2'>
-              <label htmlFor='admin-user-role' className='text-sm font-medium'>
-                ロール
-              </label>
-              <Select value={formState.role} onValueChange={handleRoleChange}>
-                <SelectTrigger id='admin-user-role'>
-                  <SelectValue placeholder='ロールを選択' />
-                </SelectTrigger>
-                <SelectContent>
-                  {formRoleOptions.map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {roleField}
             </div>
-          </div>
-          {isCreateAccountMode && (
-            <div className='grid gap-4 md:grid-cols-2'>
-              <div className='space-y-2'>
-                <label
-                  htmlFor='admin-new-user-email'
-                  className='text-sm font-medium'
-                >
-                  ログインメールアドレス
-                </label>
-                <Input
-                  id='admin-new-user-email'
-                  type='email'
-                  value={formState.email}
-                  onChange={handleEmailChange}
-                  placeholder='user@example.com'
-                  autoComplete='email'
-                />
-              </div>
-              <div className='space-y-2'>
-                <label
-                  htmlFor='admin-new-user-password'
-                  className='text-sm font-medium'
-                >
-                  初期パスワード
-                </label>
-                <Input
-                  id='admin-new-user-password'
-                  type='password'
-                  value={formState.password}
-                  onChange={handlePasswordChange}
-                  placeholder='英大文字・小文字・数字・記号を含む'
-                  autoComplete='new-password'
-                />
-              </div>
-            </div>
+          ) : (
+            <>
+              <AdminAccountCreateFields
+                fullName={formState.full_name}
+                email={formState.email}
+                password={formState.password}
+                fullNameInputId='admin-new-user-full-name'
+                emailInputId='admin-new-user-email'
+                passwordInputId='admin-new-user-password'
+                onFullNameChange={handleFullNameChange}
+                onEmailChange={handleEmailChange}
+                onPasswordChange={handlePasswordChange}
+              />
+              <div className='grid gap-4 md:grid-cols-2'>{roleField}</div>
+            </>
           )}
           <div className='grid gap-4 md:grid-cols-2'>
             <div className='space-y-2'>

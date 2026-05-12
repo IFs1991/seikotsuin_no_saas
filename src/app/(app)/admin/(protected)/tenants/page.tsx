@@ -17,6 +17,7 @@ import { AdminListCard } from '@/components/admin/admin-list-card';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
+import { AdminAccountCreateFields } from '@/components/admin/admin-account-create-fields';
 import {
   TenantOperationStatusBadge,
   TenantOperationStatusControl,
@@ -141,7 +142,11 @@ export default function AdminTenantsPage() {
     updateClinic,
     setClinics,
   } = useAdminTenants();
-  const { assignPermission, loading: permissionLoading } = useAdminUsers();
+  const {
+    assignPermission,
+    loading: permissionLoading,
+    error: permissionError,
+  } = useAdminUsers();
   const {
     candidates: userCandidates,
     loading: userCandidatesLoading,
@@ -358,6 +363,13 @@ export default function AdminTenantsPage() {
     [updateFormField]
   );
 
+  const handleLoginFullNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      updateFormField('login_full_name', event.target.value);
+    },
+    [updateFormField]
+  );
+
   const handleLoginEmailChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       updateFormField('login_email', event.target.value);
@@ -377,6 +389,8 @@ export default function AdminTenantsPage() {
       setFormState(prev => ({
         ...prev,
         initial_access_mode: mode,
+        login_full_name:
+          mode === TENANT_INITIAL_ACCESS_NEW ? prev.login_full_name : '',
         login_email: mode === TENANT_INITIAL_ACCESS_NEW ? prev.login_email : '',
         login_password:
           mode === TENANT_INITIAL_ACCESS_NEW ? prev.login_password : '',
@@ -549,7 +563,7 @@ export default function AdminTenantsPage() {
       formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
         ? await assignPermission({
             create_account: true,
-            full_name: `${formState.name.trim()} 管理者`,
+            full_name: formState.login_full_name.trim(),
             email: formState.login_email,
             password: formState.login_password,
             role: 'clinic_admin',
@@ -562,7 +576,7 @@ export default function AdminTenantsPage() {
           });
 
     if (!permission) {
-      setNotice('店舗管理者の設定に失敗しました');
+      setNotice(null);
       return;
     }
 
@@ -573,6 +587,7 @@ export default function AdminTenantsPage() {
     );
     setFormState(prev => ({
       ...prev,
+      login_full_name: '',
       login_email: '',
       login_password: '',
       existing_admin_user_id: '',
@@ -801,43 +816,20 @@ export default function AdminTenantsPage() {
               </p>
             )}
             {isNewInitialAdminMode && (
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-login-email'
-                    className='text-sm font-medium'
-                  >
-                    管理者メールアドレス
-                  </label>
-                  <Input
-                    id='clinic-login-email'
-                    type='email'
-                    value={formState.login_email}
-                    onChange={handleLoginEmailChange}
-                    placeholder='例: clinic-admin@example.com'
-                    autoComplete='email'
-                  />
-                </div>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='clinic-login-password'
-                    className='text-sm font-medium'
-                  >
-                    初期パスワード
-                  </label>
-                  <Input
-                    id='clinic-login-password'
-                    type='password'
-                    value={formState.login_password}
-                    onChange={handleLoginPasswordChange}
-                    placeholder='初期パスワードを設定'
-                    autoComplete='new-password'
-                  />
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
-                    ログインはメールアドレスとパスワードで行います
-                  </p>
-                </div>
-              </div>
+              <AdminAccountCreateFields
+                fullName={formState.login_full_name}
+                email={formState.login_email}
+                password={formState.login_password}
+                fullNameInputId='clinic-login-full-name'
+                emailInputId='clinic-login-email'
+                passwordInputId='clinic-login-password'
+                emailPlaceholder='例: clinic-admin@example.com'
+                passwordPlaceholder='初期パスワードを設定'
+                passwordHelpText='ログインはメールアドレスとパスワードで行います'
+                onFullNameChange={handleLoginFullNameChange}
+                onEmailChange={handleLoginEmailChange}
+                onPasswordChange={handleLoginPasswordChange}
+              />
             )}
             {isExistingInitialAdminMode && (
               <UserCandidateCombobox
@@ -880,6 +872,9 @@ export default function AdminTenantsPage() {
               <span className='text-sm text-emerald-600'>{notice}</span>
             )}
             {error && <span className='text-sm text-red-500'>{error}</span>}
+            {permissionError && (
+              <span className='text-sm text-red-500'>{permissionError}</span>
+            )}
           </div>
         </form>
       </AdminFormCard>

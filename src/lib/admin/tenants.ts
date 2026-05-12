@@ -92,6 +92,7 @@ export interface CreateClinicPayload {
   phone_number?: string;
   is_active?: boolean;
   parent_id: string;
+  login_full_name?: string;
   login_email?: string;
   login_password?: string;
 }
@@ -108,6 +109,7 @@ export type TenantFormState = {
   name: string;
   address: string;
   phone_number: string;
+  login_full_name: string;
   login_email: string;
   login_password: string;
   initial_access_mode: TenantInitialAccessMode;
@@ -121,6 +123,7 @@ export const INITIAL_TENANT_FORM_STATE: TenantFormState = {
   name: '',
   address: '',
   phone_number: '',
+  login_full_name: '',
   login_email: '',
   login_password: '',
   initial_access_mode: TENANT_INITIAL_ACCESS_LATER,
@@ -263,6 +266,13 @@ export function buildTenantAdminAccessValidationMessage(
 ) {
   if (
     formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW &&
+    !formState.login_full_name.trim()
+  ) {
+    return '管理者氏名を入力してください';
+  }
+
+  if (
+    formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW &&
     !formState.login_email.trim()
   ) {
     return '初期管理者メールアドレスを入力してください';
@@ -294,6 +304,10 @@ export function buildCreateClinicPayload(
     phone_number: formState.phone_number || undefined,
     is_active: formState.is_active,
     parent_id: formState.parent_id,
+    login_full_name:
+      formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
+        ? formState.login_full_name || undefined
+        : undefined,
     login_email:
       formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
         ? formState.login_email || undefined
@@ -341,6 +355,7 @@ export function buildEditFormState(
     name: clinic.name,
     address: clinic.address ?? '',
     phone_number: clinic.phone_number ?? '',
+    login_full_name: '',
     login_email: '',
     login_password: '',
     initial_access_mode: TENANT_INITIAL_ACCESS_LATER,

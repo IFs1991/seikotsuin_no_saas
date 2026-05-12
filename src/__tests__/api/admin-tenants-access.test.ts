@@ -296,7 +296,7 @@ describe('Admin tenants access alignment', () => {
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it('POST /api/admin/tenants creates a clinic_admin account for an in-scope child tenant', async () => {
+  it('POST /api/admin/tenants creates a clinic_admin account with the supplied full name', async () => {
     const hqClinicId = '11111111-1111-4111-8111-111111111111';
     const createdClinic = {
       id: 'clinic-new',
@@ -307,6 +307,7 @@ describe('Admin tenants access alignment', () => {
       created_at: '2026-04-20T00:00:00.000Z',
       parent_id: hqClinicId,
     };
+    const clinicAdminName = '山田 院長';
 
     const clinicsInsertQuery = {
       insert: jest.fn().mockReturnThis(),
@@ -393,6 +394,7 @@ describe('Admin tenants access alignment', () => {
         phone_number: createdClinic.phone_number,
         is_active: true,
         parent_id: hqClinicId,
+        login_full_name: clinicAdminName,
         login_email: 'clinic-admin@example.com',
         login_password: 'StorePass1!',
       },
@@ -414,6 +416,7 @@ describe('Admin tenants access alignment', () => {
           phone_number: createdClinic.phone_number,
           is_active: true,
           parent_id: hqClinicId,
+          login_full_name: clinicAdminName,
           login_email: 'clinic-admin@example.com',
           login_password: 'StorePass1!',
         }),
@@ -433,6 +436,9 @@ describe('Admin tenants access alignment', () => {
         email: 'clinic-admin@example.com',
         password: 'StorePass1!',
         email_confirm: true,
+        user_metadata: {
+          full_name: clinicAdminName,
+        },
       })
     );
     expect(profilesQuery.upsert).toHaveBeenCalledWith(
@@ -440,6 +446,7 @@ describe('Admin tenants access alignment', () => {
         user_id: 'user-1',
         clinic_id: createdClinic.id,
         email: 'clinic-admin@example.com',
+        full_name: clinicAdminName,
         role: 'clinic_admin',
       }),
       { onConflict: 'user_id' }
@@ -448,6 +455,7 @@ describe('Admin tenants access alignment', () => {
       expect.objectContaining({
         id: 'user-1',
         clinic_id: createdClinic.id,
+        name: clinicAdminName,
         email: 'clinic-admin@example.com',
         role: 'clinic_admin',
         password_hash: 'managed_by_supabase',
@@ -459,7 +467,7 @@ describe('Admin tenants access alignment', () => {
       expect.objectContaining({
         id: 'user-1',
         clinic_id: createdClinic.id,
-        name: `${createdClinic.name} 管理者`,
+        name: clinicAdminName,
         type: 'staff',
         email: 'clinic-admin@example.com',
         is_active: true,
@@ -491,7 +499,7 @@ describe('Admin tenants access alignment', () => {
     );
   });
 
-  it('POST /api/admin/tenants allows creating a child tenant under an in-scope HQ tenant', async () => {
+  it('POST /api/admin/tenants uses the legacy admin name fallback when full name is omitted', async () => {
     const hqClinicId = '11111111-1111-4111-8111-111111111111';
     const childClinicId = '22222222-2222-4222-8222-222222222222';
     const createdClinic = {
@@ -503,6 +511,7 @@ describe('Admin tenants access alignment', () => {
       created_at: '2026-04-20T00:00:00.000Z',
       parent_id: hqClinicId,
     };
+    const fallbackAdminName = `${createdClinic.name} 管理者`;
 
     const clinicsInsertQuery = {
       insert: jest.fn().mockReturnThis(),
@@ -623,6 +632,31 @@ describe('Admin tenants access alignment', () => {
         name: createdClinic.name,
         parent_id: hqClinicId,
       })
+    );
+    expect(adminClient.auth.admin.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_metadata: {
+          full_name: fallbackAdminName,
+        },
+      })
+    );
+    expect(profilesQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        full_name: fallbackAdminName,
+      }),
+      { onConflict: 'user_id' }
+    );
+    expect(staffQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: fallbackAdminName,
+      }),
+      { onConflict: 'id' }
+    );
+    expect(resourcesQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: fallbackAdminName,
+      }),
+      { onConflict: 'id' }
     );
     expect(body.data).toEqual(
       expect.objectContaining({

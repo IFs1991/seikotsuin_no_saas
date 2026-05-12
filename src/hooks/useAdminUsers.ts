@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 import type {
   AssignPermissionPayload,
   CreateAccountPayload,
@@ -15,6 +16,7 @@ type ApiResponse<T> = {
   success: boolean;
   data?: T;
   error?: string;
+  details?: unknown;
 };
 
 type PermissionListPayload = {
@@ -57,7 +59,7 @@ const buildUserCandidateListUrl = (search: string): string => {
 const readApiResponse = async <T>(response: Response): Promise<T> => {
   const result = (await response.json()) as ApiResponse<T>;
   if (!result.success) {
-    throw new Error(result.error || ERROR_MESSAGES.SERVER_ERROR);
+    throw new Error(getApiErrorMessage(result, ERROR_MESSAGES.SERVER_ERROR));
   }
   return result.data as T;
 };

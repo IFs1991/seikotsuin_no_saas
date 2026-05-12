@@ -53,6 +53,7 @@ const ClinicCreateSchema = z
         invalid_type_error: '親テナントを選択してください',
       })
       .uuid('親テナントIDの形式が不正です'),
+    login_full_name: z.string().trim().min(1).max(255).optional(),
     login_email: emailSchema.optional(),
     login_password: passwordSchema.optional(),
   })
@@ -85,6 +86,7 @@ type NormalizedClinicCreateInput = {
     is_active: boolean;
     parent_id: string;
   };
+  loginFullName: string | null;
   loginEmail: string | null;
   loginPassword: string | null;
   shouldCreateClinicAdmin: boolean;
@@ -101,6 +103,7 @@ type CreateClinicAdminResourcesInput = {
   endpointUserId: string;
   clinicId: string;
   clinicName: string;
+  clinicAdminName: string;
   loginEmail: string;
   loginPassword: string;
 };
@@ -176,6 +179,9 @@ function normalizeClinicCreateInput(
   input: ClinicCreateInput
 ): NormalizedClinicCreateInput {
   const clinicName = sanitizeInput(input.name) as string;
+  const loginFullName = input.login_full_name
+    ? (sanitizeInput(input.login_full_name) as string)
+    : null;
   const loginEmail = input.login_email
     ? sanitizeAuthInput(input.login_email).toLowerCase()
     : null;
@@ -197,6 +203,7 @@ function normalizeClinicCreateInput(
       is_active: input.is_active ?? true,
       parent_id: input.parent_id,
     },
+    loginFullName,
     loginEmail,
     loginPassword,
     shouldCreateClinicAdmin: loginEmail !== null && loginPassword !== null,
@@ -471,10 +478,10 @@ async function createClinicAdminResources({
   endpointUserId,
   clinicId,
   clinicName,
+  clinicAdminName,
   loginEmail,
   loginPassword,
 }: CreateClinicAdminResourcesInput): Promise<CreateClinicAdminResourcesResult> {
-  const clinicAdminName = buildClinicAdminName(clinicName);
   const timestamp = new Date().toISOString();
 
   const { data: authData, error: createUserError } =
@@ -755,6 +762,9 @@ export async function POST(request: NextRequest) {
         endpointUserId: auth.id,
         clinicId: data.id,
         clinicName: normalizedInput.clinic.name,
+        clinicAdminName:
+          normalizedInput.loginFullName ??
+          buildClinicAdminName(normalizedInput.clinic.name),
         loginEmail: normalizedInput.loginEmail,
         loginPassword: normalizedInput.loginPassword,
       });
@@ -776,6 +786,7 @@ export async function POST(request: NextRequest) {
         name: normalizedInput.clinic.name,
         parent_id: normalizedInput.clinic.parent_id,
         parent_name: parentValidation.parent?.name ?? null,
+        login_full_name: normalizedInput.loginFullName,
         login_email: normalizedInput.loginEmail,
         created_clinic_admin: normalizedInput.shouldCreateClinicAdmin,
       }

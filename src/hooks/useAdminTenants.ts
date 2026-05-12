@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 import type {
   ClinicFilters,
   ClinicSummary,
@@ -41,24 +42,6 @@ interface ClinicsListResponse {
   items: ClinicSummary[];
 }
 
-function extractApiErrorMessage(response: TenantApiErrorResponse): string {
-  if (typeof response.error === 'string' && response.error.trim()) {
-    return response.error;
-  }
-
-  if (
-    response.error &&
-    typeof response.error === 'object' &&
-    'message' in response.error &&
-    typeof response.error.message === 'string' &&
-    response.error.message.trim()
-  ) {
-    return response.error.message;
-  }
-
-  return ERROR_MESSAGES.SERVER_ERROR;
-}
-
 function buildTenantsUrl(filters: ClinicFilters = {}) {
   const params = new URLSearchParams();
   const normalizedSearch = filters.search?.trim();
@@ -90,7 +73,7 @@ async function parseTenantResponse<T>(response: Response): Promise<T> {
   const result = (await response.json()) as TenantApiResponse<T>;
 
   if (result.success === false) {
-    throw new Error(extractApiErrorMessage(result));
+    throw new Error(getApiErrorMessage(result, ERROR_MESSAGES.SERVER_ERROR));
   }
 
   return result.data;

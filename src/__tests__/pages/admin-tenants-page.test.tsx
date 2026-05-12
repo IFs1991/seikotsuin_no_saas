@@ -71,6 +71,7 @@ describe('AdminTenantsPage', () => {
         role: 'clinic_admin',
       },
     };
+    const clinicAdminName = '山田 院長';
 
     mockFetch
       .mockResolvedValueOnce(
@@ -113,6 +114,9 @@ describe('AdminTenantsPage', () => {
       await screen.findByText(hqClinic.name, { selector: 'span' })
     );
     await user.click(screen.getByRole('radio', { name: /新規管理者を作成/ }));
+    fireEvent.change(screen.getByPlaceholderText('例: 山田 太郎'), {
+      target: { value: clinicAdminName },
+    });
     fireEvent.change(
       screen.getByPlaceholderText('例: clinic-admin@example.com'),
       {
@@ -159,6 +163,7 @@ describe('AdminTenantsPage', () => {
         phone_number: createdClinic.phone_number,
         is_active: true,
         parent_id: hqClinic.id,
+        login_full_name: clinicAdminName,
         login_email: createdClinic.admin_account.email,
         login_password: 'StorePass1!',
       })
@@ -273,6 +278,7 @@ describe('AdminTenantsPage', () => {
       clinic_type: 'child',
       child_count: 0,
     };
+    const clinicAdminName = '佐藤 管理者';
 
     mockFetch
       .mockResolvedValueOnce(
@@ -313,6 +319,9 @@ describe('AdminTenantsPage', () => {
     });
 
     fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
+    fireEvent.change(screen.getByPlaceholderText('例: 山田 太郎'), {
+      target: { value: clinicAdminName },
+    });
     fireEvent.change(
       screen.getByPlaceholderText('例: clinic-admin@example.com'),
       {
@@ -344,12 +353,102 @@ describe('AdminTenantsPage', () => {
     const requestInit = mockFetch.mock.calls[2][1] as RequestInit;
     expect(JSON.parse(String(requestInit.body))).toEqual({
       create_account: true,
-      full_name: `${childClinic.name} 管理者`,
+      full_name: clinicAdminName,
       email: 'new-admin@example.com',
       password: 'StorePass1!',
       role: 'clinic_admin',
       clinic_id: childClinic.id,
     });
+  });
+
+  it('編集画面で新規管理者作成に失敗した場合は具体的な項目エラーを表示する', async () => {
+    const hqClinic = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: '本部',
+      address: '東京都千代田区',
+      phone_number: '03-1111-2222',
+      is_active: true,
+      created_at: '2026-04-01T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 1,
+    };
+    const childClinic = {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: '新宿西口院',
+      address: '東京都新宿区',
+      phone_number: '03-9999-0000',
+      is_active: true,
+      created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: hqClinic.id,
+      parent_name: hqClinic.name,
+      clinic_type: 'child',
+      child_count: 0,
+    };
+    const fieldError =
+      'パスワードには大文字を1文字以上含める必要があります';
+
+    mockFetch
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: false,
+          error: '入力値にエラーがあります',
+          details: {
+            fieldErrors: {
+              password: [fieldError],
+            },
+          },
+        })
+      );
+
+    render(<AdminTenantsPage />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('cell', { name: childClinic.name })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
+    fireEvent.change(screen.getByPlaceholderText('例: 山田 太郎'), {
+      target: { value: '佐藤 管理者' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText('例: clinic-admin@example.com'),
+      {
+        target: { value: 'new-admin@example.com' },
+      }
+    );
+    fireEvent.change(screen.getByPlaceholderText('初期パスワードを設定'), {
+      target: { value: 'storepass' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: '店舗管理者を設定する' })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(fieldError)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('店舗管理者の設定に失敗しました')
+    ).not.toBeInTheDocument();
   });
 
   it('編集画面で既存ユーザーをテナント管理者として割り当てる', async () => {
