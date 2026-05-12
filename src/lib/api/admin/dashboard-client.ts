@@ -6,6 +6,16 @@ import type {
 
 export type { AggregatedClinicData, AdminDashboardPayload };
 
+export class AdminDashboardRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = 'AdminDashboardRequestError';
+  }
+}
+
 function buildUrl(base: string, params?: Record<string, unknown>) {
   if (!params) return base;
   const searchParams = new URLSearchParams();
@@ -18,21 +28,40 @@ function buildUrl(base: string, params?: Record<string, unknown>) {
 }
 
 export async function fetchAdminDashboard(
-  params?: Record<string, unknown>
+  params?: Record<string, unknown>,
+  signal?: AbortSignal
 ): Promise<AdminDashboardPayload> {
   const url = buildUrl('/api/admin/dashboard', params);
   const response = await fetch(url, {
     method: 'GET',
     credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+    signal,
   });
 
-  const payload = (await response.json()) as ApiResponse<AdminDashboardPayload>;
+  const payload = (await response
+    .json()
+    .catch(() => null)) as ApiResponse<AdminDashboardPayload> | null;
 
-  if (!response.ok || payload.success === false || !('data' in payload)) {
-    const errorPayload = payload as unknown as { error?: string };
-    const message = errorPayload.error || response.statusText;
-    throw new Error(message || 'ダッシュボードデータの取得に失敗しました');
+  if (!payload) {
+    throw new AdminDashboardRequestError(
+      response.statusText || 'ダッシュボードデータの取得に失敗しました',
+      response.status
+    );
   }
 
-  return payload.data as AdminDashboardPayload;
+  if (!response.ok || payload.success === false || payload.data === undefined) {
+    const message =
+      typeof payload.error === 'string'
+        ? payload.error
+        : payload.error?.message || response.statusText;
+    throw new AdminDashboardRequestError(
+      message || 'ダッシュボードデータの取得に失敗しました',
+      response.status
+    );
+  }
+
+  return payload.data;
 }

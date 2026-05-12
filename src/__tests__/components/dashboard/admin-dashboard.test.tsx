@@ -77,7 +77,11 @@ describe('AdminDashboard', () => {
       screen.getByText(ADMIN_DASHBOARD_COPY.signalTitle)
     ).toBeInTheDocument();
     expect(screen.getByText('注意店舗')).toBeInTheDocument();
-    expect(screen.getByText('梅田院')).toBeInTheDocument();
+    expect(
+      screen.getByText(ADMIN_DASHBOARD_COPY.clinicPerformanceTitle)
+    ).toBeInTheDocument();
+    expect(screen.getByText('本町院')).toBeInTheDocument();
+    expect(screen.getAllByText('梅田院')).not.toHaveLength(0);
     expect(screen.getByText('クリニック管理')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(

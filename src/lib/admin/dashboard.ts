@@ -24,13 +24,13 @@ export interface ClinicDashboardRow {
 
 export interface DailyReportAggregateRow {
   clinic_id: string;
-  total_patients: number | null;
+  total_patients: number | string | null;
   total_revenue: number | string | null;
 }
 
 export interface StaffPerformanceAggregateRow {
   clinic_id: string;
-  performance_score: number | null;
+  performance_score: number | string | null;
 }
 
 export function createEmptyOverallKpis(): OverallKpis {
@@ -50,6 +50,11 @@ export function createEmptyAdminDashboardPayload(): AdminDashboardPayload {
 
 function toRevenue(value: number | string | null): number {
   return typeof value === 'number' ? value : Number(value ?? 0);
+}
+
+function toNumber(value: number | string | null): number {
+  const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 function buildOverallKpis(clinicsData: AggregatedClinicData[]): OverallKpis {
@@ -101,7 +106,7 @@ export function buildAdminDashboardPayload(
     }
 
     clinic.totalRevenue += toRevenue(report.total_revenue);
-    clinic.totalPatientCount += report.total_patients ?? 0;
+    clinic.totalPatientCount += toNumber(report.total_patients);
   }
 
   const performanceTotals = new Map<string, { sum: number; count: number }>();
@@ -112,7 +117,7 @@ export function buildAdminDashboardPayload(
       count: 0,
     };
 
-    current.sum += performance.performance_score ?? 0;
+    current.sum += toNumber(performance.performance_score);
     current.count += 1;
     performanceTotals.set(performance.clinic_id, current);
   }

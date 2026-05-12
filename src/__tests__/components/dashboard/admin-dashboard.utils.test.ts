@@ -1,4 +1,5 @@
 import {
+  buildAdminHomeViewModel,
   buildManagementSignals,
   buildSummaryMetrics,
   decorateDashboardClinics,
@@ -129,6 +130,39 @@ describe('admin-dashboard utils', () => {
         totalPatientCount: 60,
         averagePerformanceScore: 4.4,
       },
+    ]);
+  });
+
+  it('includes all dashboard clinics in the admin home view model', () => {
+    const clinics = [
+      {
+        id: 'clinic-1',
+        name: '本町院',
+        totalRevenue: 500000,
+        totalPatientCount: 30,
+        averagePerformanceScore: 2.8,
+      },
+      {
+        id: 'clinic-2',
+        name: '梅田院',
+        totalRevenue: 900000,
+        totalPatientCount: 60,
+        averagePerformanceScore: 4.4,
+      },
+    ];
+
+    const viewModel = buildAdminHomeViewModel(clinics, {
+      totalGroupRevenue: 1400000,
+      totalGroupPatientCount: 90,
+      averageGroupPerformance: 3.6,
+    });
+
+    expect(viewModel.dashboardClinics).toEqual([
+      { ...clinics[0], isProblematic: true },
+      { ...clinics[1], isProblematic: false },
+    ]);
+    expect(viewModel.problematicClinics).toEqual([
+      { ...clinics[0], isProblematic: true },
     ]);
   });
 });

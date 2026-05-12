@@ -78,4 +78,31 @@ describe('admin dashboard domain helpers', () => {
       },
     });
   });
+
+  it('normalizes string aggregate values returned by PostgREST', () => {
+    const payload = buildAdminDashboardPayload(
+      [{ id: 'clinic-1', name: '本町院' }],
+      [
+        {
+          clinic_id: 'clinic-1',
+          total_patients: '120',
+          total_revenue: '750000',
+        },
+      ],
+      [
+        {
+          clinic_id: 'clinic-1',
+          performance_score: '4.25',
+        },
+      ]
+    );
+
+    expect(payload.clinicsData[0]).toEqual({
+      id: 'clinic-1',
+      name: '本町院',
+      totalRevenue: 750000,
+      totalPatientCount: 120,
+      averagePerformanceScore: 4.25,
+    });
+  });
 });

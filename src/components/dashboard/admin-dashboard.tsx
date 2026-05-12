@@ -197,6 +197,92 @@ const AttentionClinicCard = memo(function AttentionClinicCard({
   );
 });
 
+const ClinicPerformanceCard = memo(function ClinicPerformanceCard({
+  clinic,
+}: {
+  clinic: DashboardClinic;
+}) {
+  return (
+    <Card className={ADMIN_DASHBOARD_STYLES.clinicPerformanceCard}>
+      <div className={ADMIN_DASHBOARD_STYLES.clinicPerformanceHeader}>
+        <CardTitle className={ADMIN_DASHBOARD_STYLES.clinicPerformanceName}>
+          {clinic.name}
+        </CardTitle>
+        <span
+          className={cn(
+            ADMIN_DASHBOARD_STYLES.clinicPerformanceBadge,
+            clinic.isProblematic
+              ? ADMIN_DASHBOARD_STYLES.clinicPerformanceBadgeWarning
+              : ADMIN_DASHBOARD_STYLES.clinicPerformanceBadgeStable
+          )}
+        >
+          {clinic.isProblematic
+            ? ADMIN_DASHBOARD_COPY.attentionBadge
+            : ADMIN_DASHBOARD_COPY.stableBadge}
+        </span>
+      </div>
+      <CardContent className='p-0'>
+        <p className={ADMIN_DASHBOARD_STYLES.clinicPerformanceScore}>
+          {clinic.averagePerformanceScore.toFixed(2)} / 5.0
+        </p>
+        <dl className={ADMIN_DASHBOARD_STYLES.clinicPerformanceMeta}>
+          <div>
+            <dt>{ADMIN_DASHBOARD_COPY.summaryLabels[0]}</dt>
+            <dd className='font-semibold text-slate-950'>
+              {formatCurrency(clinic.totalRevenue)}
+            </dd>
+          </div>
+          <div>
+            <dt>{ADMIN_DASHBOARD_COPY.summaryLabels[1]}</dt>
+            <dd className='font-semibold text-slate-950'>
+              {clinic.totalPatientCount.toLocaleString()}人
+            </dd>
+          </div>
+        </dl>
+      </CardContent>
+    </Card>
+  );
+});
+
+const ClinicPerformancePanel = memo(function ClinicPerformancePanel({
+  clinics,
+}: {
+  clinics: readonly DashboardClinic[];
+}) {
+  if (clinics.length === 0) {
+    return (
+      <Card className={ADMIN_DASHBOARD_STYLES.signalNeutral}>
+        <CardHeader>
+          <CardTitle className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+            {ADMIN_DASHBOARD_COPY.noClinicPerformanceTitle}
+          </CardTitle>
+          <CardDescription>
+            {ADMIN_DASHBOARD_COPY.noClinicPerformanceDescription}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <section>
+      <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
+        <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
+          {ADMIN_DASHBOARD_COPY.clinicPerformanceTitle}
+        </h3>
+        <p className={ADMIN_DASHBOARD_STYLES.sectionDescription}>
+          {ADMIN_DASHBOARD_COPY.clinicPerformanceDescription}
+        </p>
+      </div>
+      <div className={ADMIN_DASHBOARD_STYLES.clinicPerformanceGrid}>
+        {clinics.map(clinic => (
+          <ClinicPerformanceCard key={clinic.id} clinic={clinic} />
+        ))}
+      </div>
+    </section>
+  );
+});
+
 const AttentionClinicsPanel = memo(function AttentionClinicsPanel({
   clinics,
 }: {
@@ -247,7 +333,12 @@ export default function AdminDashboard() {
     isRefreshing,
   } = useAdminDashboard();
 
-  const { summaryMetrics, managementSignals, problematicClinics } = useMemo(
+  const {
+    summaryMetrics,
+    managementSignals,
+    dashboardClinics,
+    problematicClinics,
+  } = useMemo(
     () => buildAdminHomeViewModel(clinicsData, overallKpis),
     [clinicsData, overallKpis]
   );
@@ -304,6 +395,7 @@ export default function AdminDashboard() {
 
                 <SummaryMetricsGrid metrics={summaryMetrics} />
                 <ManagementSignalsGrid signals={managementSignals} />
+                <ClinicPerformancePanel clinics={dashboardClinics} />
                 <AttentionClinicsPanel clinics={problematicClinics} />
                 <ManagementActionsSection />
               </>

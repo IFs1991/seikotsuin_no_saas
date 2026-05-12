@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAdminDashboard } from '@/lib/api/admin/dashboard-client';
+import {
+  AdminDashboardRequestError,
+  fetchAdminDashboard,
+} from '@/lib/api/admin/dashboard-client';
 import type {
   AggregatedClinicData,
   AdminDashboardPayload,
@@ -33,11 +36,25 @@ export default function useAdminDashboard(): UseAdminDashboardReturn {
 
   const query = useQuery({
     queryKey: ['admin-dashboard', clinicFilter ?? 'all'],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       fetchAdminDashboard(
-        clinicFilter ? { clinic_id: clinicFilter } : undefined
+        clinicFilter ? { clinic_id: clinicFilter } : undefined,
+        signal
       ),
     placeholderData: previousData => previousData,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (
+        error instanceof AdminDashboardRequestError &&
+        (error.status === 401 || error.status === 403 || error.status === 404)
+      ) {
+        return false;
+      }
+
+      return failureCount < 2;
+    },
   });
 
   const sortedData = useMemo(() => {

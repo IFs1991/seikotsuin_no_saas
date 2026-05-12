@@ -13,10 +13,106 @@ import {
   type StaffPerformanceAggregateRow,
 } from '@/lib/admin/dashboard';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import type { SupabaseServerClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  ScopeNotConfiguredError,
+} from '@/lib/supabase/scoped-admin';
 
 type ClinicRow = ClinicDashboardRow & {
   is_active?: boolean | null;
+  parent_id?: string | null;
 };
+
+const DASHBOARD_CLINIC_SELECT = 'id, name, parent_id, is_active';
+
+const STAFF_PERFORMANCE_SELECTORS = [
+  'clinic_id, performance_score:satisfaction_score.avg()',
+  'clinic_id, performance_score:performance_score.avg()',
+  'clinic_id, performance_score:satisfaction_score',
+  'clinic_id, performance_score:performance_score',
+] as const;
+
+async function fetchStaffPerformanceRows(
+  supabase: SupabaseServerClient,
+  clinicIds: string[],
+  userId: string
+): Promise<StaffPerformanceAggregateRow[]> {
+  let lastError: unknown = null;
+
+  for (const selector of STAFF_PERFORMANCE_SELECTORS) {
+    const { data, error } = await supabase
+      .from('staff_performance')
+      .select(selector)
+      .in('clinic_id', clinicIds)
+      .returns<StaffPerformanceAggregateRow[]>();
+
+    if (!error) {
+      return data ?? [];
+    }
+
+    lastError = error;
+  }
+
+  logError(lastError, {
+    endpoint: '/api/admin/dashboard',
+    method: 'GET',
+    userId,
+    params: {
+      metric: 'staff_performance',
+      fallback: 'empty_staff_performance_rows',
+    },
+  });
+
+  return [];
+}
+
+async function fetchScopedChildClinicRows(
+  supabase: SupabaseServerClient,
+  scopedClinicIds: string[],
+  userId: string
+): Promise<ClinicRow[] | Response> {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(DASHBOARD_CLINIC_SELECT)
+    .in('id', scopedClinicIds)
+    .order('name')
+    .returns<ClinicRow[]>();
+
+  if (error) {
+    logError(error, {
+      endpoint: '/api/admin/dashboard',
+      method: 'GET',
+      userId,
+    });
+    return createErrorResponse('クリニック情報の取得に失敗しました', 500);
+  }
+
+  return (data ?? []).filter(clinic => clinic.parent_id !== null);
+}
+
+async function fetchSingleClinicRow(
+  supabase: SupabaseServerClient,
+  clinicId: string,
+  userId: string
+): Promise<ClinicRow[] | Response> {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(DASHBOARD_CLINIC_SELECT)
+    .eq('id', clinicId)
+    .returns<ClinicRow[]>();
+
+  if (error) {
+    logError(error, {
+      endpoint: '/api/admin/dashboard',
+      method: 'GET',
+      userId,
+    });
+    return createErrorResponse('クリニック情報の取得に失敗しました', 500);
+  }
+
+  return data ?? [];
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -31,46 +127,83 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { supabase, permissions, auth } = processResult;
 
-    let clinicFilter = normalizedClinicId;
-    if (!clinicFilter && permissions.role === 'clinic_admin') {
-      clinicFilter = permissions.clinic_id ?? undefined;
+    let analyticsClient = supabase;
+    let clinicRows: ClinicRow[] = [];
+
+    if (normalizedClinicId) {
+      const rows = await fetchSingleClinicRow(
+        supabase,
+        normalizedClinicId,
+        auth.id
+      );
+      if (rows instanceof Response) {
+        return rows;
+      }
+      clinicRows = rows;
+    } else if (auth.role === 'admin') {
+      try {
+        const adminCtx = createScopedAdminContext(permissions);
+        analyticsClient = adminCtx.client;
+        const rows = await fetchScopedChildClinicRows(
+          analyticsClient,
+          adminCtx.scopedClinicIds,
+          auth.id
+        );
+        if (rows instanceof Response) {
+          return rows;
+        }
+        clinicRows = rows;
+      } catch (error) {
+        if (error instanceof ScopeNotConfiguredError) {
+          return createErrorResponse(error.message, 403);
+        }
+        throw error;
+      }
+    } else if (permissions.clinic_id) {
+      const rows = await fetchSingleClinicRow(
+        supabase,
+        permissions.clinic_id,
+        auth.id
+      );
+      if (rows instanceof Response) {
+        return rows;
+      }
+      clinicRows = rows;
     }
-
-    let clinicQuery = supabase
-      .from('clinics')
-      .select('id, name, is_active')
-      .order('name');
-
-    if (clinicFilter) {
-      clinicQuery = clinicQuery.in('id', [clinicFilter]);
-    }
-
-    const { data: clinics, error: clinicError } = await clinicQuery;
-    if (clinicError) {
-      logError(clinicError, {
-        endpoint: '/api/admin/dashboard',
-        method: 'GET',
-        userId: auth.id,
-      });
-      return createErrorResponse('クリニック情報の取得に失敗しました', 500);
-    }
-
-    const clinicRows: ClinicRow[] = (clinics ?? []) as ClinicRow[];
 
     const clinicIds = clinicRows.map(clinic => clinic.id);
     if (clinicIds.length === 0) {
       return createSuccessResponse(createEmptyAdminDashboardPayload());
     }
 
-    const { data: dailyReports, error: reportsError } = await supabase
-      .from('daily_reports')
-      .select('clinic_id, total_patients, total_revenue')
-      .in('clinic_id', clinicIds);
+    const [reportsResult, staffPerformance] = await Promise.all([
+      analyticsClient
+        .from('daily_reports')
+        .select(
+          'clinic_id, total_patients:total_patients.sum(), total_revenue:total_revenue.sum()'
+        )
+        .in('clinic_id', clinicIds)
+        .returns<DailyReportAggregateRow[]>(),
+      fetchStaffPerformanceRows(analyticsClient, clinicIds, auth.id),
+    ]);
+
+    let dailyReports = reportsResult.data;
+    let reportsError = reportsResult.error;
+    if (reportsError) {
+      const rawReportsResult = await analyticsClient
+        .from('daily_reports')
+        .select('clinic_id, total_patients, total_revenue')
+        .in('clinic_id', clinicIds)
+        .returns<DailyReportAggregateRow[]>();
+
+      dailyReports = rawReportsResult.data;
+      reportsError = rawReportsResult.error;
+    }
 
     if (reportsError) {
       logError(reportsError, {
@@ -81,30 +214,12 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('日報データの取得に失敗しました', 500);
     }
 
-    const { data: staffPerformance, error: staffError } = await supabase
-      .from('staff_performance')
-      .select('clinic_id, performance_score')
-      .in('clinic_id', clinicIds);
-
-    if (staffError) {
-      logError(staffError, {
-        endpoint: '/api/admin/dashboard',
-        method: 'GET',
-        userId: auth.id,
-      });
-      return createErrorResponse(
-        'スタッフパフォーマンスの取得に失敗しました',
-        500
-      );
-    }
-
-    const reportRows: DailyReportAggregateRow[] = (dailyReports ??
-      []) as DailyReportAggregateRow[];
-    const performanceRows: StaffPerformanceAggregateRow[] = (staffPerformance ??
-      []) as unknown as StaffPerformanceAggregateRow[];
-
     return createSuccessResponse(
-      buildAdminDashboardPayload(clinicRows, reportRows, performanceRows)
+      buildAdminDashboardPayload(
+        clinicRows,
+        dailyReports ?? [],
+        staffPerformance
+      )
     );
   } catch (error) {
     logError(error, {

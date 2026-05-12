@@ -31,6 +31,7 @@ export interface DashboardClinic extends AggregatedClinicData {
 export interface AdminHomeViewModel {
   summaryMetrics: SummaryMetric[];
   managementSignals: ManagementSignal[];
+  dashboardClinics: DashboardClinic[];
   problematicClinics: DashboardClinic[];
 }
 
@@ -61,6 +62,14 @@ export const ADMIN_DASHBOARD_COPY = {
   alertTitle: '要確認店舗',
   alertDescription:
     '平均パフォーマンスが基準を下回っています。原因の比較は店舗比較分析で確認してください。',
+  clinicPerformanceTitle: '子テナント別パフォーマンス',
+  clinicPerformanceDescription:
+    '本部スコープ内の子テナントごとの売上、患者数、平均スコアです。',
+  noClinicPerformanceTitle: '表示できる子テナントはありません',
+  noClinicPerformanceDescription:
+    '本部配下の子テナントが作成されると、ここに店舗別パフォーマンスが表示されます。',
+  attentionBadge: '要確認',
+  stableBadge: '通常',
   noAlertsTitle: '要確認店舗はありません',
   noAlertsDescription:
     '現時点では平均パフォーマンス基準を下回る店舗は検出されていません。',
@@ -129,6 +138,17 @@ export const ADMIN_DASHBOARD_STYLES = {
   alertCard: 'border-l-4 border-amber-500 bg-amber-50 p-4 shadow-sm',
   alertTitle: 'flex items-center text-lg font-semibold text-amber-900',
   alertBody: 'mt-2 text-slate-800',
+  clinicPerformanceGrid: 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3',
+  clinicPerformanceCard:
+    'min-h-[148px] border border-slate-200 bg-white p-4 shadow-sm',
+  clinicPerformanceHeader: 'flex items-start justify-between gap-3',
+  clinicPerformanceName: 'text-base font-semibold text-slate-950',
+  clinicPerformanceBadge:
+    'shrink-0 rounded-full px-2 py-1 text-xs font-semibold',
+  clinicPerformanceBadgeWarning: 'bg-amber-100 text-amber-900',
+  clinicPerformanceBadgeStable: 'bg-emerald-100 text-emerald-900',
+  clinicPerformanceScore: 'mt-3 text-2xl font-bold text-slate-950',
+  clinicPerformanceMeta: 'mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600',
   clinicCard: 'border border-slate-200 bg-white p-4 shadow-sm',
   problematicClinicCard: 'border-2 border-amber-300 bg-amber-50/70',
   clinicTitle: 'text-md font-bold text-slate-950',
@@ -278,6 +298,7 @@ export function buildAdminHomeViewModel(
       problematicClinicCount: insights.problematicClinics.length,
       inactiveDataClinics: insights.inactiveDataClinics,
     }),
+    dashboardClinics: insights.dashboardClinics,
     problematicClinics: insights.problematicClinics,
   };
 }
