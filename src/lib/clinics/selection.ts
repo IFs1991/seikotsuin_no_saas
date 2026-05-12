@@ -14,7 +14,12 @@ export function resolveInitialSelectedClinicId({
   clinics,
 }: ResolveInitialSelectedClinicIdParams): string | null {
   const explicitClinicId = profileClinicId ?? currentClinicId;
-  if (explicitClinicId) {
+  const hasLoadedClinicOptions = clinics.length > 0;
+  if (
+    explicitClinicId &&
+    (!hasLoadedClinicOptions ||
+      clinics.some(clinic => clinic.id === explicitClinicId))
+  ) {
     return explicitClinicId;
   }
 

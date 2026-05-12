@@ -6,7 +6,78 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { STAFF_ROLES } from '@/lib/constants/roles';
-import { resolveScopedClinicIds } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  resolveScopedClinicIds,
+  ScopeNotConfiguredError,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
+import {
+  buildClinicScopeOrFilter,
+  selectReservableAdminClinicRows,
+} from '@/lib/clinics/scope';
+
+type AccessibleClinicRow = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+};
+
+type AccessibleClinicOption = Pick<AccessibleClinicRow, 'id' | 'name'>;
+type AccessibleClinicsFetchResult = {
+  clinics: AccessibleClinicOption[] | null;
+  error: unknown | null;
+};
+
+const ACCESSIBLE_CLINIC_SELECT = 'id, name';
+const ACCESSIBLE_ADMIN_CLINIC_SELECT = 'id, name, parent_id';
+const ACCESSIBLE_CLINICS_ENDPOINT = '/api/clinics/accessible';
+
+function toClinicOptions(
+  rows: readonly AccessibleClinicRow[]
+): AccessibleClinicOption[] {
+  return rows.map(row => ({ id: row.id, name: row.name }));
+}
+
+async function fetchScopedAdminClinics(
+  supabase: SupabaseServerClient,
+  scopedClinicIds: readonly string[]
+): Promise<AccessibleClinicsFetchResult> {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(ACCESSIBLE_ADMIN_CLINIC_SELECT)
+    .or(buildClinicScopeOrFilter(scopedClinicIds))
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+    .returns<AccessibleClinicRow[]>();
+
+  if (error) {
+    return { clinics: null, error };
+  }
+
+  return {
+    clinics: toClinicOptions(selectReservableAdminClinicRows(data ?? [])),
+    error: null,
+  };
+}
+
+async function fetchDirectScopedClinics(
+  supabase: SupabaseServerClient,
+  scopedClinicIds: readonly string[]
+): Promise<AccessibleClinicsFetchResult> {
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(ACCESSIBLE_CLINIC_SELECT)
+    .in('id', scopedClinicIds)
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+    .returns<AccessibleClinicOption[]>();
+
+  return {
+    clinics: data ?? null,
+    error,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +87,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { supabase, auth, permissions } = processResult;
@@ -26,19 +97,27 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('クリニックスコープが設定されていません', 403);
     }
 
-    let query = supabase.from('clinics').select('id, name');
-
-    if ('in' in query && typeof query.in === 'function') {
-      query = query.in('id', scopedClinicIds);
+    let clinicsResult: AccessibleClinicsFetchResult;
+    if (auth.role === 'admin') {
+      try {
+        const adminCtx = createScopedAdminContext(permissions);
+        clinicsResult = await fetchScopedAdminClinics(
+          adminCtx.client,
+          adminCtx.scopedClinicIds
+        );
+      } catch (error) {
+        if (error instanceof ScopeNotConfiguredError) {
+          return createErrorResponse(error.message, 403);
+        }
+        throw error;
+      }
+    } else {
+      clinicsResult = await fetchDirectScopedClinics(supabase, scopedClinicIds);
     }
 
-    const { data, error } = await query
-      .eq('is_active', true)
-      .order('name', { ascending: true });
-
-    if (error) {
-      logError(error, {
-        endpoint: '/api/clinics/accessible',
+    if (clinicsResult.error) {
+      logError(clinicsResult.error, {
+        endpoint: ACCESSIBLE_CLINICS_ENDPOINT,
         method: 'GET',
         userId: auth.id,
       });
@@ -49,12 +128,12 @@ export async function GET(request: NextRequest) {
     }
 
     return createSuccessResponse({
-      clinics: data ?? [],
+      clinics: clinicsResult.clinics ?? [],
       currentClinicId: permissions.clinic_id,
     });
   } catch (error) {
     logError(error, {
-      endpoint: '/api/clinics/accessible',
+      endpoint: ACCESSIBLE_CLINICS_ENDPOINT,
       method: 'GET',
       userId: 'unknown',
     });

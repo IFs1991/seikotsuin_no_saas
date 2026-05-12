@@ -1,4 +1,6 @@
 import { processApiRequest } from '@/lib/api-helpers';
+import { createScopedAdminContext } from '@/lib/supabase';
+import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -9,13 +11,28 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
+jest.mock('@/lib/supabase', () => {
+  const actual = jest.requireActual('@/lib/supabase');
+  return {
+    ...actual,
+    createScopedAdminContext: jest.fn(),
+  };
+});
+
 const processApiRequestMock = processApiRequest as jest.Mock;
+const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
+const PARENT_SCOPE_FILTER = 'id.in.(parent-1),parent_id.in.(parent-1)';
 
 function createClinicsQueryMock(data: unknown[], error: unknown = null) {
-  const order = jest.fn().mockResolvedValue({ data, error });
-  const eq = jest.fn().mockReturnValue({ order });
-  const select = jest.fn().mockReturnValue({ eq });
-  return { select, eq, order };
+  const query = {
+    select: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
+    or: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    returns: jest.fn().mockResolvedValue({ data, error }),
+  };
+  return query;
 }
 
 describe('GET /api/clinics/accessible', () => {
@@ -27,12 +44,7 @@ describe('GET /api/clinics/accessible', () => {
     const clinics = [{ id: 'clinic-1', name: '本院' }];
     const clinicsQuery = createClinicsQueryMock(clinics);
 
-    const from = jest.fn().mockImplementation((table: string) => {
-      if (table === 'clinics') {
-        return { select: clinicsQuery.select };
-      }
-      return null;
-    });
+    const from = jest.fn().mockReturnValue(clinicsQuery);
 
     processApiRequestMock.mockResolvedValue({
       success: true,
@@ -43,7 +55,7 @@ describe('GET /api/clinics/accessible', () => {
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
     const response = await GET(
-      new Request('http://localhost/api/clinics/accessible') as any
+      new NextRequest('http://localhost/api/clinics/accessible')
     );
     const body = await response.json();
 
@@ -51,17 +63,17 @@ describe('GET /api/clinics/accessible', () => {
     expect(body.success).toBe(true);
     expect(body.data.clinics).toEqual(clinics);
     expect(body.data.currentClinicId).toBe('clinic-1');
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', ['clinic-1']);
   });
 
   it('TC-C05: 非アクティブクリニック (is_active=false) は含まれない', async () => {
-    const clinics = [{ id: 'clinic-2', name: '新宿院' }];
+    const clinics = [{ id: 'clinic-2', name: '新宿院', parent_id: null }];
     const clinicsQuery = createClinicsQueryMock(clinics);
 
-    const from = jest.fn().mockImplementation((table: string) => {
-      if (table === 'clinics') {
-        return { select: clinicsQuery.select };
-      }
-      return null;
+    const from = jest.fn().mockReturnValue(clinicsQuery);
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      scopedClinicIds: ['clinic-2', 'clinic-3'],
     });
 
     processApiRequestMock.mockResolvedValue({
@@ -76,9 +88,47 @@ describe('GET /api/clinics/accessible', () => {
     });
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
-    await GET(new Request('http://localhost/api/clinics/accessible') as any);
+    await GET(new NextRequest('http://localhost/api/clinics/accessible'));
 
     expect(clinicsQuery.eq).toHaveBeenCalledWith('is_active', true);
+  });
+
+  it('TC-C08: HQ admin は admin/tenants と同じ parent_id スコープで子店舗を返す', async () => {
+    const clinics = [
+      { id: 'parent-1', name: '本部', parent_id: null },
+      { id: 'child-1', name: '新宿院', parent_id: 'parent-1' },
+      { id: 'child-2', name: '池袋院', parent_id: 'parent-1' },
+    ];
+    const clinicsQuery = createClinicsQueryMock(clinics);
+    const from = jest.fn().mockReturnValue(clinicsQuery);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'parent-1',
+        clinic_scope_ids: ['parent-1'],
+      },
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      scopedClinicIds: ['parent-1'],
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(clinicsQuery.or).toHaveBeenCalledWith(PARENT_SCOPE_FILTER);
+    expect(body.data.clinics).toEqual([
+      { id: 'child-1', name: '新宿院' },
+      { id: 'child-2', name: '池袋院' },
+    ]);
   });
 
   it('TC-C06: 未認証リクエストは 401 を返す', async () => {
@@ -92,7 +142,7 @@ describe('GET /api/clinics/accessible', () => {
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
     const response = await GET(
-      new Request('http://localhost/api/clinics/accessible') as any
+      new NextRequest('http://localhost/api/clinics/accessible')
     );
 
     expect(response.status).toBe(401);
@@ -107,12 +157,7 @@ describe('GET /api/clinics/accessible', () => {
     ];
     const clinicsQuery = createClinicsQueryMock(clinics);
 
-    const from = jest.fn().mockImplementation((table: string) => {
-      if (table === 'clinics') {
-        return { select: clinicsQuery.select };
-      }
-      return null;
-    });
+    const from = jest.fn().mockReturnValue(clinicsQuery);
 
     processApiRequestMock.mockResolvedValue({
       success: true,
@@ -123,7 +168,7 @@ describe('GET /api/clinics/accessible', () => {
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
     const response = await GET(
-      new Request('http://localhost/api/clinics/accessible') as any
+      new NextRequest('http://localhost/api/clinics/accessible')
     );
     const body = await response.json();
 

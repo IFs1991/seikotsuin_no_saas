@@ -75,15 +75,11 @@ function buildDisplayClinics(
   clinics: readonly ClinicOption[],
   fallbackClinic: ClinicOption | null
 ): readonly ClinicOption[] {
-  if (!fallbackClinic) {
+  if (!fallbackClinic || clinics.length > 0) {
     return clinics;
   }
 
-  if (clinics.some(clinic => clinic.id === fallbackClinic.id)) {
-    return clinics;
-  }
-
-  return [fallbackClinic, ...clinics];
+  return [fallbackClinic];
 }
 
 const ClinicSelect = React.memo(function ClinicSelect({

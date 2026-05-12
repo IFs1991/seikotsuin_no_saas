@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Header } from '@/components/navigation/header';
 import {
   SelectedClinicProvider,
@@ -141,6 +141,49 @@ describe('Header クリニック選択', () => {
     ).toBeInTheDocument();
     expect(selects[0]).not.toBeDisabled();
     expect((selects[0] as HTMLSelectElement).value).toBe('clinic-1');
+  });
+
+  it('取得済み店舗がある場合は所属店舗フォールバックを追加しない', () => {
+    renderWithProvider(
+      {
+        clinics: [{ id: 'child-1', name: '新宿院' }],
+        fallbackClinic: { id: 'parent-1', name: '本部' },
+      },
+      null
+    );
+
+    expect(
+      screen.getAllByRole('option', { name: '新宿院' }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole('option', { name: '本部' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('選択中店舗が取得済み店舗に含まれない場合は単一店舗へ戻す', async () => {
+    function ContextDisplay() {
+      const { selectedClinicId } = useSelectedClinic();
+      return <span data-testid='selected'>{selectedClinicId ?? ''}</span>;
+    }
+
+    const clinics = [{ id: 'child-1', name: '新宿院' }];
+    render(
+      <SelectedClinicProvider initialClinicId='parent-1' clinics={clinics}>
+        <Header
+          onToggleSidebar={jest.fn()}
+          onToggleDarkMode={jest.fn()}
+          isDarkMode={false}
+          clinics={clinics}
+          fallbackClinic={{ id: 'parent-1', name: '本部' }}
+          notificationCount={0}
+        />
+        <ContextDisplay />
+      </SelectedClinicProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected')).toHaveTextContent('child-1');
+    });
   });
 
   it('店舗一覧ロード中でも所属店舗名を優先表示する', () => {

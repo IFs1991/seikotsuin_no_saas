@@ -42,6 +42,7 @@ function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     in: jest.fn().mockReturnThis(),
+    or: jest.fn().mockReturnThis(),
     then: jest.fn(
       (resolve: (value: { data: unknown; error: unknown }) => void) =>
         resolve({ data: finalData, error: finalError })
@@ -62,6 +63,7 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       phone_number: '03-1234-5678',
       is_active: true,
       created_at: '2024-01-01T00:00:00Z',
+      parent_id: null,
     },
     {
       id: 'clinic-2',
@@ -70,6 +72,7 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       phone_number: '06-1234-5678',
       is_active: true,
       created_at: '2024-01-02T00:00:00Z',
+      parent_id: null,
     },
   ];
 
@@ -180,10 +183,9 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
-        'clinic-1',
-        'clinic-2',
-      ]);
+      expect(clinicsQuery.or).toHaveBeenCalledWith(
+        'id.in.(clinic-1,clinic-2),parent_id.in.(clinic-1,clinic-2)'
+      );
     });
   });
 
@@ -245,6 +247,7 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
           phone_number: '092-1234-5678',
           is_active: true,
           created_at: '2024-01-03T00:00:00Z',
+          parent_id: null,
         },
       ];
 

@@ -30,6 +30,7 @@ import {
   type ClinicListRow,
   type ScopedClinicLookupRow,
 } from '@/lib/admin/tenants';
+import { buildClinicScopeOrFilter } from '@/lib/clinics/scope';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -124,15 +125,6 @@ type ParentValidationResult =
       success: false;
       errorResponse: Response;
     };
-
-const CLINIC_SCOPE_FILTER_COLUMNS = ['id', 'parent_id'] as const;
-
-function buildClinicScopeOrFilter(scopedClinicIds: readonly string[]) {
-  const scopeValues = scopedClinicIds.join(',');
-  return CLINIC_SCOPE_FILTER_COLUMNS.map(
-    column => `${column}.in.(${scopeValues})`
-  ).join(',');
-}
 
 type ClinicAdminRecordInput = {
   createdUserId: string;

@@ -6,7 +6,7 @@ describe('resolveInitialSelectedClinicId', () => {
       resolveInitialSelectedClinicId({
         profileClinicId: 'profile-clinic',
         currentClinicId: 'current-clinic',
-        clinics: [{ id: 'only-clinic' }],
+        clinics: [{ id: 'profile-clinic' }, { id: 'only-clinic' }],
       })
     ).toBe('profile-clinic');
   });
@@ -16,9 +16,19 @@ describe('resolveInitialSelectedClinicId', () => {
       resolveInitialSelectedClinicId({
         profileClinicId: null,
         currentClinicId: 'current-clinic',
-        clinics: [{ id: 'only-clinic' }],
+        clinics: [{ id: 'current-clinic' }, { id: 'only-clinic' }],
       })
     ).toBe('current-clinic');
+  });
+
+  it('読み込み済み店舗に含まれない profile clinic id は選択しない', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        profileClinicId: 'parent-clinic',
+        currentClinicId: null,
+        clinics: [{ id: 'child-1' }, { id: 'child-2' }],
+      })
+    ).toBeNull();
   });
 
   it('明示的な clinic id がなく単一店舗だけなら自動選択する', () => {

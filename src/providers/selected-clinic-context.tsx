@@ -27,6 +27,13 @@ const SelectedClinicContext = createContext<
   SelectedClinicContextValue | undefined
 >(undefined);
 
+function isSelectableClinic(
+  clinics: readonly AccessibleClinic[],
+  clinicId: string | null
+) {
+  return Boolean(clinicId && clinics.some(clinic => clinic.id === clinicId));
+}
+
 export function SelectedClinicProvider({
   initialClinicId,
   clinics = EMPTY_ACCESSIBLE_CLINICS,
@@ -47,12 +54,22 @@ export function SelectedClinicProvider({
   );
 
   useEffect(() => {
-    if (!initialClinicId) {
-      return;
-    }
+    setSelectedClinicId(currentClinicId => {
+      if (clinics.length === 0) {
+        return currentClinicId ?? initialClinicId;
+      }
 
-    setSelectedClinicId(currentClinicId => currentClinicId ?? initialClinicId);
-  }, [initialClinicId]);
+      if (isSelectableClinic(clinics, currentClinicId)) {
+        return currentClinicId;
+      }
+
+      if (isSelectableClinic(clinics, initialClinicId)) {
+        return initialClinicId;
+      }
+
+      return clinics.length === 1 ? (clinics[0]?.id ?? null) : null;
+    });
+  }, [clinics, initialClinicId]);
 
   const value = useMemo(
     () => ({

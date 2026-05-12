@@ -4,7 +4,15 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
-import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  canAccessAdminUIWithCompat,
+  canAccessCrossClinicWithCompat,
+} from '@/lib/constants/roles';
+import {
+  buildClinicScopeOrFilter,
+  mergeScopedClinicHierarchyIds,
+  type ClinicScopeRow,
+} from '@/lib/clinics/scope';
 import type { Database } from '@/types/supabase';
 import {
   buildUserAuthAccessContext,
@@ -138,6 +146,32 @@ export function resolveScopedClinicIds(
   return null;
 }
 
+async function resolveHierarchicalClinicScopeIds(
+  adminClient: SupabaseServerClient,
+  permissions: UserPermissions
+): Promise<string[] | undefined> {
+  const scopedClinicIds = resolveScopedClinicIds(permissions);
+  if (
+    !scopedClinicIds ||
+    scopedClinicIds.length === 0 ||
+    !canAccessCrossClinicWithCompat(permissions.role)
+  ) {
+    return permissions.clinic_scope_ids;
+  }
+
+  const { data, error } = await adminClient
+    .from('clinics')
+    .select('id, parent_id')
+    .or(buildClinicScopeOrFilter(scopedClinicIds))
+    .returns<ClinicScopeRow[]>();
+
+  if (error) {
+    return permissions.clinic_scope_ids;
+  }
+
+  return mergeScopedClinicHierarchyIds(scopedClinicIds, data ?? []);
+}
+
 export async function getUserPermissions(
   userId: string,
   client?: SupabaseServerClient
@@ -187,10 +221,18 @@ export async function getUserPermissions(
     // JWT parsing failed, fall back to single clinic_id
   }
 
+  const expandedClinicScopeIds = await resolveHierarchicalClinicScopeIds(
+    adminClient,
+    {
+      ...permissions,
+      clinic_scope_ids,
+    }
+  );
+
   return {
     ...permissions,
-    clinic_scope_ids,
-  } as UserPermissions;
+    clinic_scope_ids: expandedClinicScopeIds,
+  };
 }
 
 /**

@@ -18,6 +18,7 @@ import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
+import { buildClinicScopeOrFilter } from '@/lib/clinics/scope';
 
 type ClinicRow = ClinicDashboardRow & {
   is_active?: boolean | null;
@@ -25,7 +26,6 @@ type ClinicRow = ClinicDashboardRow & {
 };
 
 const DASHBOARD_CLINIC_SELECT = 'id, name, parent_id, is_active';
-const CLINIC_SCOPE_FILTER_COLUMNS = ['id', 'parent_id'] as const;
 
 const STAFF_PERFORMANCE_SELECTORS = [
   'clinic_id, performance_score:satisfaction_score.avg()',
@@ -66,13 +66,6 @@ async function fetchStaffPerformanceRows(
   });
 
   return [];
-}
-
-function buildClinicScopeOrFilter(scopedClinicIds: readonly string[]) {
-  const scopeValues = scopedClinicIds.join(',');
-  return CLINIC_SCOPE_FILTER_COLUMNS.map(
-    column => `${column}.in.(${scopeValues})`
-  ).join(',');
 }
 
 async function fetchScopedChildClinicRows(
