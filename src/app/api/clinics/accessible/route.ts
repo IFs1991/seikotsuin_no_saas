@@ -39,6 +39,19 @@ function toClinicOptions(
   return rows.map(row => ({ id: row.id, name: row.name }));
 }
 
+function resolveCurrentAccessibleClinicId(
+  clinics: readonly AccessibleClinicOption[],
+  currentClinicId: string | null
+) {
+  if (!currentClinicId) {
+    return null;
+  }
+
+  return clinics.some(clinic => clinic.id === currentClinicId)
+    ? currentClinicId
+    : null;
+}
+
 async function fetchScopedAdminClinics(
   supabase: SupabaseServerClient,
   scopedClinicIds: readonly string[]
@@ -127,9 +140,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const clinics = clinicsResult.clinics ?? [];
+
     return createSuccessResponse({
-      clinics: clinicsResult.clinics ?? [],
-      currentClinicId: permissions.clinic_id,
+      clinics,
+      currentClinicId: resolveCurrentAccessibleClinicId(
+        clinics,
+        permissions.clinic_id
+      ),
     });
   } catch (error) {
     logError(error, {

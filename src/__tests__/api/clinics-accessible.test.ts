@@ -129,6 +129,38 @@ describe('GET /api/clinics/accessible', () => {
       { id: 'child-1', name: '新宿院' },
       { id: 'child-2', name: '池袋院' },
     ]);
+    expect(body.data.currentClinicId).toBeNull();
+  });
+
+  it('TC-C09: HQ admin のスコープ内に予約対象の子店舗がない場合は空配列を返す', async () => {
+    const clinics = [{ id: 'parent-1', name: '本部', parent_id: null }];
+    const clinicsQuery = createClinicsQueryMock(clinics);
+    const from = jest.fn().mockReturnValue(clinicsQuery);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'parent-1',
+        clinic_scope_ids: ['parent-1'],
+      },
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      scopedClinicIds: ['parent-1'],
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.clinics).toEqual([]);
+    expect(body.data.currentClinicId).toBeNull();
   });
 
   it('TC-C06: 未認証リクエストは 401 を返す', async () => {

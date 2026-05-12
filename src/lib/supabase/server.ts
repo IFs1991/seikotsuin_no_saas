@@ -8,6 +8,7 @@ import {
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
 } from '@/lib/constants/roles';
+import { logError } from '@/lib/error-handler';
 import {
   buildClinicScopeOrFilter,
   mergeScopedClinicHierarchyIds,
@@ -63,6 +64,10 @@ type GlobalScopeWithFactory = typeof globalThis & {
 };
 
 const globalScope = globalThis as GlobalScopeWithFactory;
+let userPermissionsRequestCache = new WeakMap<
+  SupabaseServerClient,
+  Map<string, Promise<UserPermissions | null>>
+>();
 
 function resolveSupabaseClientFactory(): SupabaseServerClientFactory {
   return globalScope[FACTORY_KEY] ?? createSupabaseClient;
@@ -74,6 +79,7 @@ export function setSupabaseClientFactory(factory: SupabaseServerClientFactory) {
 
 export function resetSupabaseClientFactory() {
   delete globalScope[FACTORY_KEY];
+  userPermissionsRequestCache = new WeakMap();
 }
 
 export async function getServerClient(): Promise<SupabaseServerClient> {
@@ -148,6 +154,7 @@ export function resolveScopedClinicIds(
 
 async function resolveHierarchicalClinicScopeIds(
   adminClient: SupabaseServerClient,
+  userId: string,
   permissions: UserPermissions
 ): Promise<string[] | undefined> {
   const scopedClinicIds = resolveScopedClinicIds(permissions);
@@ -159,22 +166,47 @@ async function resolveHierarchicalClinicScopeIds(
     return permissions.clinic_scope_ids;
   }
 
+  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 1) {
+    return permissions.clinic_scope_ids;
+  }
+
+  let clinicScopeFilter: string;
+  try {
+    clinicScopeFilter = buildClinicScopeOrFilter(scopedClinicIds);
+  } catch (error) {
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      operation: 'resolveHierarchicalClinicScopeIds',
+      userId,
+      role: permissions.role,
+      clinicId: permissions.clinic_id,
+      scopedClinicIds,
+    });
+    return permissions.clinic_scope_ids;
+  }
+
   const { data, error } = await adminClient
     .from('clinics')
     .select('id, parent_id')
-    .or(buildClinicScopeOrFilter(scopedClinicIds))
+    .or(clinicScopeFilter)
     .returns<ClinicScopeRow[]>();
 
   if (error) {
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      operation: 'resolveHierarchicalClinicScopeIds',
+      userId,
+      role: permissions.role,
+      clinicId: permissions.clinic_id,
+      scopedClinicIds,
+    });
     return permissions.clinic_scope_ids;
   }
 
   return mergeScopedClinicHierarchyIds(scopedClinicIds, data ?? []);
 }
 
-export async function getUserPermissions(
+async function getUserPermissionsUncached(
   userId: string,
-  client?: SupabaseServerClient
+  supabase: SupabaseServerClient
 ): Promise<UserPermissions | null> {
   // Use Service Role to bypass RLS for reading user's own permissions.
   // This is safe because:
@@ -187,10 +219,9 @@ export async function getUserPermissions(
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
   // Use normal client for JWT session access (not RLS-protected)
-  const supabase = client ?? (await getServerClient());
   const currentUser = await getCurrentUser(supabase);
   const permissions = resolvePermissionRecord(
-    permissionsData as { role: string; clinic_id: string | null } | null,
+    permissionsData,
     currentUser && currentUser.id === userId ? currentUser : null
   );
 
@@ -223,6 +254,7 @@ export async function getUserPermissions(
 
   const expandedClinicScopeIds = await resolveHierarchicalClinicScopeIds(
     adminClient,
+    userId,
     {
       ...permissions,
       clinic_scope_ids,
@@ -233,6 +265,34 @@ export async function getUserPermissions(
     ...permissions,
     clinic_scope_ids: expandedClinicScopeIds,
   };
+}
+
+export async function getUserPermissions(
+  userId: string,
+  client?: SupabaseServerClient
+): Promise<UserPermissions | null> {
+  const supabase = client ?? (await getServerClient());
+  let cachedPermissionsByUser = userPermissionsRequestCache.get(supabase);
+
+  if (!cachedPermissionsByUser) {
+    cachedPermissionsByUser = new Map();
+    userPermissionsRequestCache.set(supabase, cachedPermissionsByUser);
+  }
+
+  const cachedPermissions = cachedPermissionsByUser.get(userId);
+  if (cachedPermissions) {
+    return cachedPermissions;
+  }
+
+  const permissionsPromise = getUserPermissionsUncached(userId, supabase).catch(
+    error => {
+      cachedPermissionsByUser.delete(userId);
+      throw error;
+    }
+  );
+  cachedPermissionsByUser.set(userId, permissionsPromise);
+
+  return permissionsPromise;
 }
 
 /**

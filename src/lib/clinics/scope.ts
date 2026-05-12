@@ -4,8 +4,23 @@ export type ClinicScopeRow = {
 };
 
 export const CLINIC_SCOPE_FILTER_COLUMNS = ['id', 'parent_id'] as const;
+const SAFE_CLINIC_SCOPE_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+function assertSafeClinicScopeIds(scopedClinicIds: readonly string[]) {
+  if (scopedClinicIds.length === 0) {
+    throw new Error('Clinic scope ids must not be empty');
+  }
+
+  for (const scopedClinicId of scopedClinicIds) {
+    if (!SAFE_CLINIC_SCOPE_ID_PATTERN.test(scopedClinicId)) {
+      throw new Error('Invalid clinic scope id');
+    }
+  }
+}
 
 export function buildClinicScopeOrFilter(scopedClinicIds: readonly string[]) {
+  assertSafeClinicScopeIds(scopedClinicIds);
+
   const scopeValues = scopedClinicIds.join(',');
   return CLINIC_SCOPE_FILTER_COLUMNS.map(
     column => `${column}.in.(${scopeValues})`
@@ -16,6 +31,7 @@ export function mergeScopedClinicHierarchyIds(
   scopedClinicIds: readonly string[],
   rows: readonly ClinicScopeRow[]
 ) {
+  // Current tenant hierarchy is intentionally two layers: parent tenant -> child tenant.
   const expandedScopeIds = new Set(scopedClinicIds);
 
   for (const row of rows) {
@@ -33,6 +49,5 @@ export function mergeScopedClinicHierarchyIds(
 export function selectReservableAdminClinicRows<T extends ClinicScopeRow>(
   rows: readonly T[]
 ) {
-  const childRows = rows.filter(row => row.parent_id !== null);
-  return childRows.length > 0 ? childRows : rows;
+  return rows.filter(row => row.parent_id !== null);
 }

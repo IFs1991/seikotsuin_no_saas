@@ -11,6 +11,18 @@ describe('clinic scope helpers', () => {
     );
   });
 
+  it('rejects unsafe PostgREST filter values before building scope filters', () => {
+    expect(() =>
+      buildClinicScopeOrFilter(['clinic-1),parent_id.not.is.null'])
+    ).toThrow('Invalid clinic scope id');
+  });
+
+  it('rejects empty scope filters', () => {
+    expect(() => buildClinicScopeOrFilter([])).toThrow(
+      'Clinic scope ids must not be empty'
+    );
+  });
+
   it('expands effective scope with direct child clinic ids', () => {
     expect(
       mergeScopedClinicHierarchyIds(['parent-1'], [
@@ -28,5 +40,11 @@ describe('clinic scope helpers', () => {
     ];
 
     expect(selectReservableAdminClinicRows(rows)).toEqual([rows[1]]);
+  });
+
+  it('returns no reservation options when only parent tenant rows are available', () => {
+    const rows = [{ id: 'parent-1', name: '本部', parent_id: null }];
+
+    expect(selectReservableAdminClinicRows(rows)).toEqual([]);
   });
 });

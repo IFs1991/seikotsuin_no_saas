@@ -587,7 +587,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { permissions, auth } = processResult;
@@ -688,7 +688,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { auth, permissions, body } = processResult;
