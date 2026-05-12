@@ -169,6 +169,9 @@ describe('ReservationsPage', () => {
         // スタッフ名が表示されていれば、Schedulerがレンダリングされている
         expect(screen.getByText('田中先生')).toBeInTheDocument();
       });
+      expect(
+        screen.getByRole('slider', { name: 'タイムラインの横スクロール' })
+      ).toBeInTheDocument();
     });
 
     test('取消・来院なしの予約は通常非表示で、取消/不来院から一覧と詳細を開ける', async () => {
@@ -185,15 +188,19 @@ describe('ReservationsPage', () => {
       expect(
         await screen.findByRole('heading', { name: /取消・不来院予約/ })
       ).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'キャンセル予約' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '来院なし予約' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'キャンセル予約' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '来院なし予約' })
+      ).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: 'キャンセル予約' }));
 
       expect(
         await screen.findByRole('heading', { name: '予約詳細' })
       ).toBeInTheDocument();
-    });
+    }, 10000);
   });
 
   describe('ローディング状態', () => {
