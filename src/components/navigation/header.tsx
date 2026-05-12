@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
@@ -9,6 +10,14 @@ import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { ADMIN_MENU_ITEMS } from '@/lib/navigation/items';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
+
+const ClinicReservationsPreviewModal = dynamic(
+  () =>
+    import('@/components/admin/clinic-reservations-preview-modal').then(
+      module => module.ClinicReservationsPreviewModal
+    ),
+  { ssr: false }
+);
 
 interface ClinicOption {
   id: string;
@@ -205,6 +214,7 @@ export const Header = React.memo(function Header({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [previewClinicId, setPreviewClinicId] = useState<string | null>(null);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
   const adminNotifications = useAdminNotifications({
     clinicId: selectedClinicId,
@@ -288,9 +298,16 @@ export const Header = React.memo(function Header({
     (clinicId: string | null) => {
       setIsNotificationsOpen(false);
       setSelectedClinicId(clinicId);
+      if (clinicId) {
+        setPreviewClinicId(clinicId);
+      }
     },
     [setSelectedClinicId]
   );
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewClinicId(null);
+  }, []);
 
   const effectiveNotificationCount = notificationCount ?? unreadCount;
   const showBadge = effectiveNotificationCount > 0;
@@ -510,6 +527,16 @@ export const Header = React.memo(function Header({
             />
           </div>
         </>
+      )}
+
+      {previewClinicId && (
+        <ClinicReservationsPreviewModal
+          clinicId={previewClinicId}
+          clinicName={
+            displayClinics.find(clinic => clinic.id === previewClinicId)?.name
+          }
+          onClose={handleClosePreview}
+        />
       )}
     </div>
   );
