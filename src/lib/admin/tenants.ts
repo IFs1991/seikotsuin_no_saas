@@ -255,6 +255,12 @@ export function buildFormValidationMessage(
     return null;
   }
 
+  return buildTenantAdminAccessValidationMessage(formState);
+}
+
+export function buildTenantAdminAccessValidationMessage(
+  formState: TenantFormState
+) {
   if (
     formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW &&
     !formState.login_email.trim()

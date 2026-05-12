@@ -247,4 +247,234 @@ describe('AdminTenantsPage', () => {
       })
     );
   });
+
+  it('編集画面で新規管理者を作成してテナントへ割り当てる', async () => {
+    const hqClinic = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: '本部',
+      address: '東京都千代田区',
+      phone_number: '03-1111-2222',
+      is_active: true,
+      created_at: '2026-04-01T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 1,
+    };
+    const childClinic = {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: '新宿西口院',
+      address: '東京都新宿区',
+      phone_number: '03-9999-0000',
+      is_active: true,
+      created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: hqClinic.id,
+      parent_name: hqClinic.name,
+      clinic_type: 'child',
+      child_count: 0,
+    };
+
+    mockFetch
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: {
+            id: 'permission-1',
+            user_id: 'user-1',
+            role: 'clinic_admin',
+            clinic_id: childClinic.id,
+            username: 'new-admin@example.com',
+          },
+        })
+      );
+
+    render(<AdminTenantsPage />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('cell', { name: childClinic.name })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
+    fireEvent.change(
+      screen.getByPlaceholderText('例: clinic-admin@example.com'),
+      {
+        target: { value: 'new-admin@example.com' },
+      }
+    );
+    fireEvent.change(screen.getByPlaceholderText('初期パスワードを設定'), {
+      target: { value: 'StorePass1!' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: '店舗管理者を設定する' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('新規管理者を作成し、このテナントへ割り当てました')
+      ).toBeInTheDocument();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/admin/users',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+
+    const requestInit = mockFetch.mock.calls[2][1] as RequestInit;
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      create_account: true,
+      full_name: `${childClinic.name} 管理者`,
+      email: 'new-admin@example.com',
+      password: 'StorePass1!',
+      role: 'clinic_admin',
+      clinic_id: childClinic.id,
+    });
+  });
+
+  it('編集画面で既存ユーザーをテナント管理者として割り当てる', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const hqClinic = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: '本部',
+      address: '東京都千代田区',
+      phone_number: '03-1111-2222',
+      is_active: true,
+      created_at: '2026-04-01T00:00:00.000Z',
+      parent_id: null,
+      parent_name: null,
+      clinic_type: 'hq',
+      child_count: 1,
+    };
+    const childClinic = {
+      id: '22222222-2222-4222-8222-222222222222',
+      name: '新宿西口院',
+      address: '東京都新宿区',
+      phone_number: '03-9999-0000',
+      is_active: true,
+      created_at: '2026-04-20T00:00:00.000Z',
+      parent_id: hqClinic.id,
+      parent_name: hqClinic.name,
+      clinic_type: 'child',
+      child_count: 0,
+    };
+    const candidate = {
+      user_id: '33333333-3333-4333-8333-333333333333',
+      email: 'existing-admin@example.com',
+      full_name: '既存 管理者',
+      clinic_id: null,
+      clinic_name: null,
+      staff_role: null,
+      current_role: null,
+      permission_id: null,
+      permission_clinic_id: null,
+      permission_clinic_name: null,
+    };
+
+    mockFetch
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [hqClinic, childClinic] },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: { items: [candidate], total: 1 },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          success: true,
+          data: {
+            id: 'permission-1',
+            user_id: candidate.user_id,
+            role: 'clinic_admin',
+            clinic_id: childClinic.id,
+            username: candidate.email,
+          },
+        })
+      );
+
+    render(<AdminTenantsPage />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('cell', { name: childClinic.name })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '編集' })[1]);
+    await user.click(screen.getByRole('radio', { name: /既存ユーザーを割り当て/ }));
+    fireEvent.change(screen.getByPlaceholderText('氏名・メールアドレスで検索'), {
+      target: { value: candidate.email },
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+
+    await user.click(await screen.findByRole('option', { name: /既存 管理者/ }));
+    fireEvent.click(
+      screen.getByRole('button', { name: '店舗管理者を設定する' })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('既存ユーザーをこのテナントの管理者として割り当てました')
+      ).toBeInTheDocument();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      `/api/admin/users/candidates?search=${encodeURIComponent(candidate.email)}`,
+      expect.objectContaining({})
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      4,
+      '/api/admin/users',
+      expect.objectContaining({
+        method: 'POST',
+      })
+    );
+
+    const requestInit = mockFetch.mock.calls[3][1] as RequestInit;
+    expect(JSON.parse(String(requestInit.body))).toEqual({
+      user_id: candidate.user_id,
+      role: 'clinic_admin',
+      clinic_id: childClinic.id,
+    });
+  });
 });

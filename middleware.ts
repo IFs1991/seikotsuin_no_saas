@@ -74,19 +74,23 @@ async function hasVerifiedSupabaseSession(
 
   try {
     const requestCookies = request.cookies.getAll();
-    const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
-      cookies: {
-        getAll() {
-          return requestCookies;
+    const supabase = createServerClient<Database>(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return requestCookies;
+          },
+          setAll(cookiesToSet) {
+            for (const { name, value, options } of cookiesToSet) {
+              request.cookies.set(name, value);
+              response.cookies.set(name, value, options);
+            }
+          },
         },
-        setAll(cookiesToSet) {
-          for (const { name, value, options } of cookiesToSet) {
-            request.cookies.set(name, value);
-            response.cookies.set(name, value, options);
-          }
-        },
-      },
-    });
+      }
+    );
 
     const {
       data: { user },

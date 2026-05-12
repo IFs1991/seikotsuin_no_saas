@@ -52,6 +52,7 @@ import {
   buildClinicOperationNotice,
   buildEditFormState,
   buildFormValidationMessage,
+  buildTenantAdminAccessValidationMessage,
   buildParentLabel,
   buildParentOptionLabel,
   buildUpdateClinicPayload,
@@ -208,7 +209,6 @@ export default function AdminTenantsPage() {
     const selectedLabel = selectedUserLabel.trim();
 
     if (
-      !isCreateMode ||
       !isExistingInitialAdminMode ||
       !isUserPickerOpen ||
       trimmedSearch.length < USER_CANDIDATE_MIN_SEARCH_LENGTH ||
@@ -231,7 +231,6 @@ export default function AdminTenantsPage() {
     clearCandidates,
     deferredUserSearch,
     fetchUserCandidates,
-    isCreateMode,
     isExistingInitialAdminMode,
     isUserPickerOpen,
     selectedUserLabel,
@@ -300,6 +299,15 @@ export default function AdminTenantsPage() {
         ? ADMIN_TENANT_TYPE_OPTIONS.filter(option => option.value === 'child')
         : ADMIN_TENANT_TYPE_OPTIONS,
     [shouldRestrictTenantTypeToChild]
+  );
+  const initialAccessOptions = useMemo(
+    () =>
+      isCreateMode
+        ? TENANT_INITIAL_ACCESS_OPTIONS
+        : TENANT_INITIAL_ACCESS_OPTIONS.filter(
+            option => option.value !== TENANT_INITIAL_ACCESS_LATER
+          ),
+    [isCreateMode]
   );
 
   const parentTenantOptions = useMemo(
@@ -524,11 +532,72 @@ export default function AdminTenantsPage() {
     ]
   );
 
-  const handleEdit = useCallback((clinic: ClinicSummary) => {
-    setEditingId(clinic.id);
-    setFormState(buildEditFormState(clinic));
+  const handleTenantAdminAccessSubmit = useCallback(async () => {
+    if (!editingId) {
+      return;
+    }
+
     setNotice(null);
-  }, []);
+    const validationMessage =
+      buildTenantAdminAccessValidationMessage(formState);
+    if (validationMessage) {
+      setNotice(validationMessage);
+      return;
+    }
+
+    const permission =
+      formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
+        ? await assignPermission({
+            create_account: true,
+            full_name: `${formState.name.trim()} 管理者`,
+            email: formState.login_email,
+            password: formState.login_password,
+            role: 'clinic_admin',
+            clinic_id: editingId,
+          })
+        : await assignPermission({
+            user_id: formState.existing_admin_user_id,
+            role: 'clinic_admin',
+            clinic_id: editingId,
+          });
+
+    if (!permission) {
+      setNotice('店舗管理者の設定に失敗しました');
+      return;
+    }
+
+    setNotice(
+      formState.initial_access_mode === TENANT_INITIAL_ACCESS_NEW
+        ? '新規管理者を作成し、このテナントへ割り当てました'
+        : '既存ユーザーをこのテナントの管理者として割り当てました'
+    );
+    setFormState(prev => ({
+      ...prev,
+      login_email: '',
+      login_password: '',
+      existing_admin_user_id: '',
+    }));
+    setUserSearch('');
+    setSelectedUserLabel('');
+    setIsUserPickerOpen(false);
+    clearCandidates();
+  }, [assignPermission, clearCandidates, editingId, formState]);
+
+  const handleEdit = useCallback(
+    (clinic: ClinicSummary) => {
+      setEditingId(clinic.id);
+      setFormState({
+        ...buildEditFormState(clinic),
+        initial_access_mode: TENANT_INITIAL_ACCESS_NEW,
+      });
+      setUserSearch('');
+      setSelectedUserLabel('');
+      setIsUserPickerOpen(false);
+      clearCandidates();
+      setNotice(null);
+    },
+    [clearCandidates]
+  );
 
   const handleToggleActive = useCallback(
     async (clinic: ClinicSummary) => {
@@ -679,114 +748,125 @@ export default function AdminTenantsPage() {
               )}
             </div>
           </div>
-          {isCreateMode && (
-            <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40'>
-              <div>
-                <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
-                  初期アクセス設定
-                </h3>
-                <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300'>
-                  店舗/テナント作成時点で、誰が最初に管理画面へアクセスするかを選択します。既存の院長・施術者・管理者が担う場合は、既存ユーザーを割り当ててください。
-                </p>
-              </div>
-              <div
-                className='grid gap-3 md:grid-cols-3'
-                role='radiogroup'
-                aria-label='初期アクセス設定'
-              >
-                {TENANT_INITIAL_ACCESS_OPTIONS.map(option => {
-                  const isSelected =
-                    formState.initial_access_mode === option.value;
+          <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40'>
+            <div>
+              <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
+                {isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'}
+              </h3>
+              <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300'>
+                {isCreateMode
+                  ? '店舗/テナント作成時点で、誰が最初に管理画面へアクセスするかを選択します。既存の院長・施術者・管理者が担う場合は、既存ユーザーを割り当ててください。'
+                  : 'このテナントにログインできる店舗管理者を追加します。新規管理者を作成するか、既存ユーザーを割り当ててください。'}
+              </p>
+            </div>
+            <div
+              className={`grid gap-3 ${
+                isCreateMode ? 'md:grid-cols-3' : 'md:grid-cols-2'
+              }`}
+              role='radiogroup'
+              aria-label={
+                isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'
+              }
+            >
+              {initialAccessOptions.map(option => {
+                const isSelected =
+                  formState.initial_access_mode === option.value;
 
-                  return (
-                    <button
-                      key={option.value}
-                      type='button'
-                      role='radio'
-                      aria-checked={isSelected}
-                      className={`rounded-lg border p-3 text-left transition-colors ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900'
-                      }`}
-                      onClick={() =>
-                        handleInitialAccessModeChange(option.value)
-                      }
-                    >
-                      <span className='block text-sm font-semibold'>
-                        {option.label}
-                      </span>
-                      <span className='mt-1 block text-xs leading-5 opacity-80'>
-                        {option.description}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {formState.initial_access_mode ===
-                TENANT_INITIAL_ACCESS_LATER && (
-                <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300'>
-                  テナント作成後、アカウント・権限管理から店舗管理者、マネージャー、施術者、スタッフを追加してください。
-                </p>
-              )}
-              {isNewInitialAdminMode && (
-                <div className='grid gap-4 md:grid-cols-2'>
-                  <div className='space-y-2'>
-                    <label
-                      htmlFor='clinic-login-email'
-                      className='text-sm font-medium'
-                    >
-                      初期管理者メールアドレス
-                    </label>
-                    <Input
-                      id='clinic-login-email'
-                      type='email'
-                      value={formState.login_email}
-                      onChange={handleLoginEmailChange}
-                      placeholder='例: clinic-admin@example.com'
-                      autoComplete='email'
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <label
-                      htmlFor='clinic-login-password'
-                      className='text-sm font-medium'
-                    >
-                      初期パスワード
-                    </label>
-                    <Input
-                      id='clinic-login-password'
-                      type='password'
-                      value={formState.login_password}
-                      onChange={handleLoginPasswordChange}
-                      placeholder='初期パスワードを設定'
-                      autoComplete='new-password'
-                    />
-                    <p className='text-xs text-gray-500 dark:text-gray-400'>
-                      ログインはメールアドレスとパスワードで行います
-                    </p>
-                  </div>
+                return (
+                  <button
+                    key={option.value}
+                    type='button'
+                    role='radio'
+                    aria-checked={isSelected}
+                    className={`rounded-lg border p-3 text-left transition-colors ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900'
+                    }`}
+                    onClick={() => handleInitialAccessModeChange(option.value)}
+                  >
+                    <span className='block text-sm font-semibold'>
+                      {option.label}
+                    </span>
+                    <span className='mt-1 block text-xs leading-5 opacity-80'>
+                      {option.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {formState.initial_access_mode === TENANT_INITIAL_ACCESS_LATER && (
+              <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300'>
+                テナント作成後、アカウント・権限管理から店舗管理者、マネージャー、施術者、スタッフを追加してください。
+              </p>
+            )}
+            {isNewInitialAdminMode && (
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-login-email'
+                    className='text-sm font-medium'
+                  >
+                    管理者メールアドレス
+                  </label>
+                  <Input
+                    id='clinic-login-email'
+                    type='email'
+                    value={formState.login_email}
+                    onChange={handleLoginEmailChange}
+                    placeholder='例: clinic-admin@example.com'
+                    autoComplete='email'
+                  />
                 </div>
-              )}
-              {isExistingInitialAdminMode && (
-                <UserCandidateCombobox
-                  candidates={userCandidates}
-                  disabled={false}
-                  error={userCandidatesError}
-                  hasSelectedUser={hasSelectedInitialAdmin}
-                  inputId='tenant-initial-admin-search'
-                  isOpen={isUserPickerOpen}
-                  listboxId='tenant-initial-admin-candidates'
-                  loading={userCandidatesLoading}
-                  selectedUserId={formState.existing_admin_user_id}
-                  value={userSearch}
-                  onOpenChange={setIsUserPickerOpen}
-                  onSearchChange={handleInitialAdminSearchChange}
-                  onSelect={handleInitialAdminSelect}
-                />
-              )}
-            </section>
-          )}
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='clinic-login-password'
+                    className='text-sm font-medium'
+                  >
+                    初期パスワード
+                  </label>
+                  <Input
+                    id='clinic-login-password'
+                    type='password'
+                    value={formState.login_password}
+                    onChange={handleLoginPasswordChange}
+                    placeholder='初期パスワードを設定'
+                    autoComplete='new-password'
+                  />
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    ログインはメールアドレスとパスワードで行います
+                  </p>
+                </div>
+              </div>
+            )}
+            {isExistingInitialAdminMode && (
+              <UserCandidateCombobox
+                candidates={userCandidates}
+                disabled={false}
+                error={userCandidatesError}
+                hasSelectedUser={hasSelectedInitialAdmin}
+                inputId='tenant-initial-admin-search'
+                isOpen={isUserPickerOpen}
+                listboxId='tenant-initial-admin-candidates'
+                loading={userCandidatesLoading}
+                selectedUserId={formState.existing_admin_user_id}
+                value={userSearch}
+                onOpenChange={setIsUserPickerOpen}
+                onSearchChange={handleInitialAdminSearchChange}
+                onSelect={handleInitialAdminSelect}
+              />
+            )}
+            {!isCreateMode && (
+              <Button
+                type='button'
+                variant='outline'
+                disabled={loading || permissionLoading}
+                onClick={handleTenantAdminAccessSubmit}
+              >
+                店舗管理者を設定する
+              </Button>
+            )}
+          </section>
           <div className='flex flex-wrap items-center gap-2'>
             <Button type='submit' disabled={loading || permissionLoading}>
               {editingId ? '更新する' : '作成する'}
