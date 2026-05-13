@@ -19,6 +19,7 @@ import {
 const PATH = '/api/staff/shifts';
 type StaffShiftRow = Database['public']['Tables']['staff_shifts']['Row'];
 type StaffShiftInsert = Database['public']['Tables']['staff_shifts']['Insert'];
+type StaffShiftUpdate = Database['public']['Tables']['staff_shifts']['Update'];
 type ResourceSummary = Pick<
   Database['public']['Tables']['resources']['Row'],
   'id' | 'name' | 'type'
@@ -41,7 +42,63 @@ const shiftsQuerySchema = z.object({
   clinic_id: z.string().uuid('clinic_id は有効なUUIDである必要があります'),
   start: z.string().optional(),
   end: z.string().optional(),
+  status: z.enum(['draft', 'proposed', 'confirmed', 'cancelled']).optional(),
 });
+
+const toJstDayStartIso = (date: string) =>
+  new Date(`${date}T00:00:00.000+09:00`).toISOString();
+
+const toJstDayEndIso = (date: string) =>
+  new Date(`${date}T23:59:59.999+09:00`).toISOString();
+
+const shiftInsertSchema = z
+  .object({
+    clinic_id: z.string().uuid(),
+    staff_id: z.string().uuid(),
+    start_time: z.string().datetime(),
+    end_time: z.string().datetime(),
+    status: z
+      .enum(['draft', 'proposed', 'confirmed', 'cancelled'])
+      .default('draft'),
+    notes: z.string().optional(),
+  })
+  .refine(
+    data =>
+      new Date(data.end_time).getTime() > new Date(data.start_time).getTime(),
+    {
+      message: '終了時刻は開始時刻より後にしてください',
+      path: ['end_time'],
+    }
+  );
+
+const shiftCancelSchema = z.object({
+  clinic_id: z.string().uuid(),
+  id: z.string().uuid(),
+  status: z.literal('cancelled'),
+});
+
+type ShiftInsertDTO = z.infer<typeof shiftInsertSchema>;
+
+async function hasOverlappingShift(
+  supabase: Awaited<ReturnType<typeof ensureClinicAccess>>['supabase'],
+  dto: ShiftInsertDTO
+) {
+  const { data, error } = await supabase
+    .from('staff_shifts')
+    .select('id')
+    .eq('clinic_id', dto.clinic_id)
+    .eq('staff_id', dto.staff_id)
+    .neq('status', 'cancelled')
+    .lt('start_time', dto.end_time)
+    .gt('end_time', dto.start_time)
+    .limit(1);
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  return (data ?? []).length > 0;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,6 +108,7 @@ export async function GET(request: NextRequest) {
       clinic_id: searchParams.get('clinic_id'),
       start: searchParams.get('start'),
       end: searchParams.get('end'),
+      status: searchParams.get('status') ?? undefined,
     });
 
     if (!parsedQuery.success) {
@@ -61,7 +119,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { clinic_id: queryClinicId, start, end } = parsedQuery.data;
+    const { clinic_id: queryClinicId, start, end, status } = parsedQuery.data;
 
     // Q3決定: 一般スタッフも閲覧可能（自院限定）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
@@ -109,10 +167,13 @@ export async function GET(request: NextRequest) {
 
     // 日付範囲でフィルタリング
     if (start) {
-      query = query.gte('start_time', `${start}T00:00:00Z`);
+      query = query.gte('start_time', toJstDayStartIso(start));
     }
     if (end) {
-      query = query.lte('start_time', `${end}T23:59:59Z`);
+      query = query.lte('start_time', toJstDayEndIso(end));
+    }
+    if (status) {
+      query = query.eq('status', status);
     }
 
     const { data: shifts, error: shiftsError } = await query;
@@ -189,17 +250,6 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('無効なJSONデータです', 400);
     }
 
-    const shiftInsertSchema = z.object({
-      clinic_id: z.string().uuid(),
-      staff_id: z.string().uuid(),
-      start_time: z.string().datetime(),
-      end_time: z.string().datetime(),
-      status: z
-        .enum(['draft', 'proposed', 'confirmed', 'cancelled'])
-        .default('draft'),
-      notes: z.string().optional(),
-    });
-
     const parsedBody = shiftInsertSchema.safeParse(rawBody);
     if (!parsedBody.success) {
       return createErrorResponse(
@@ -221,6 +271,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    if (await hasOverlappingShift(supabase, dto)) {
+      return createErrorResponse(
+        '同じスタッフのシフト時間が重複しています',
+        400
+      );
+    }
+
     const payload: StaffShiftInsert = {
       clinic_id: dto.clinic_id,
       staff_id: dto.staff_id,
@@ -234,7 +291,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('staff_shifts')
       .insert(payload)
-      .select()
+      .select('id, clinic_id, staff_id, start_time, end_time, status, notes')
       .single();
 
     if (error) {
@@ -255,6 +312,79 @@ export async function POST(request: NextRequest) {
       apiError = createApiError(
         ERROR_CODES.INTERNAL_SERVER_ERROR,
         'シフトの作成に失敗しました',
+        undefined,
+        PATH
+      );
+    }
+
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path: PATH,
+    });
+
+    return createErrorResponse(apiError.message, statusCode, apiError);
+  }
+}
+
+// PATCH: シフトの取消
+export async function PATCH(request: NextRequest) {
+  try {
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return createErrorResponse('無効なJSONデータです', 400);
+    }
+
+    const parsedBody = shiftCancelSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsedBody.error.flatten()
+      );
+    }
+
+    const dto = parsedBody.data;
+    const { supabase } = await ensureClinicAccess(
+      request,
+      PATH,
+      dto.clinic_id,
+      {
+        allowedRoles: Array.from(ADMIN_UI_ROLES),
+        requireClinicMatch: true,
+      }
+    );
+
+    const payload: StaffShiftUpdate = {
+      status: 'cancelled',
+    };
+
+    const { data, error } = await supabase
+      .from('staff_shifts')
+      .update(payload)
+      .eq('id', dto.id)
+      .eq('clinic_id', dto.clinic_id)
+      .select('id, clinic_id, staff_id, start_time, end_time, status, notes')
+      .single();
+
+    if (error) {
+      throw normalizeSupabaseError(error, PATH);
+    }
+
+    return createSuccessResponse(data);
+  } catch (error) {
+    let apiError;
+    let statusCode = 500;
+
+    if (error instanceof AppError) {
+      apiError = error.toApiError(PATH);
+      statusCode = error.statusCode;
+    } else if (error && typeof error === 'object' && 'code' in error) {
+      apiError = normalizeSupabaseError(error, PATH);
+    } else {
+      apiError = createApiError(
+        ERROR_CODES.INTERNAL_SERVER_ERROR,
+        'シフトの取消に失敗しました',
         undefined,
         PATH
       );

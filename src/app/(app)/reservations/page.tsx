@@ -33,10 +33,31 @@ import {
   isCrossClinicReservationView,
 } from './permissions';
 import { isCancelledOrNoShowAppointment } from './utils/view';
-import { buildSchedulerResources } from './utils/scheduler-resources';
+import {
+  buildAppointmentResourceIds,
+  buildSchedulerResources,
+} from './utils/scheduler-resources';
 import { buildMenuOptions } from './utils/menu-options';
 
 const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
+
+interface StaffShiftApiItem {
+  staff_id: string;
+  status: string;
+}
+
+interface StaffShiftApiResponse {
+  success?: unknown;
+  data?: {
+    shifts?: StaffShiftApiItem[];
+  };
+}
+
+function isStaffShiftApiResponse(
+  value: unknown
+): value is StaffShiftApiResponse {
+  return typeof value === 'object' && value !== null;
+}
 
 const AppointmentDetail = dynamic(
   () =>
@@ -117,17 +138,15 @@ function ReservationsPageContent() {
     [rawMenus]
   );
 
-  const resources = useMemo<SchedulerResource[]>(
-    () => buildSchedulerResources(rawResources),
-    [rawResources]
-  );
-
   const options = useMemo(() => buildMenuOptions(menus), [menus]);
 
   const [currentView, setCurrentView] = useState<ViewMode>('timeline');
   const [appointmentDensity, setAppointmentDensity] =
     useState<AppointmentDensity>('comfortable');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [shiftStaffIds, setShiftStaffIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -150,6 +169,13 @@ function ReservationsPageContent() {
   } = useAppointments(clinicId);
 
   const timeSlots = useMemo(() => buildTimeSlots(), []);
+  const currentDateString = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, [currentDate]);
+
   const { cancelledAppointments, visibleTimelineAppointments } = useMemo(() => {
     const cancelled: Appointment[] = [];
     const visible: Appointment[] = [];
@@ -167,6 +193,15 @@ function ReservationsPageContent() {
       visibleTimelineAppointments: visible,
     };
   }, [appointments]);
+
+  const resources = useMemo<SchedulerResource[]>(() => {
+    return buildSchedulerResources(rawResources, {
+      scheduledStaffIds: shiftStaffIds,
+      appointmentResourceIds: buildAppointmentResourceIds(
+        visibleTimelineAppointments
+      ),
+    });
+  }, [rawResources, shiftStaffIds, visibleTimelineAppointments]);
 
   const [formInitialValues, setFormInitialValues] = useState<
     | {
@@ -215,12 +250,48 @@ function ReservationsPageContent() {
     }
   }, [clinicId, currentDate, loadAppointments]);
 
-  const currentDateString = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const day = String(currentDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, [currentDate]);
+  useEffect(() => {
+    if (!clinicId) {
+      setShiftStaffIds(new Set());
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadShifts = async () => {
+      try {
+        const response = await fetch(
+          `/api/staff/shifts?clinic_id=${clinicId}&start=${currentDateString}&end=${currentDateString}&status=confirmed`,
+          { signal: controller.signal }
+        );
+        const json: unknown = await response.json();
+
+        if (!response.ok || !isStaffShiftApiResponse(json)) {
+          throw new Error('シフトデータの取得に失敗しました');
+        }
+
+        const confirmedStaffIds = new Set(
+          (json.data?.shifts ?? []).map(shift => shift.staff_id)
+        );
+        setShiftStaffIds(confirmedStaffIds);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+
+        setShiftStaffIds(new Set());
+        setUpdateError(
+          error instanceof Error
+            ? error.message
+            : 'シフトデータの取得に失敗しました'
+        );
+      }
+    };
+
+    void loadShifts();
+
+    return () => controller.abort();
+  }, [clinicId, currentDateString]);
 
   const handleTimeSlotClick = useCallback(
     (resourceId: string, hour: number, minute: number) => {

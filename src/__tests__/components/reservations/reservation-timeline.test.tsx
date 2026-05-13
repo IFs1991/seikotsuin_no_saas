@@ -10,6 +10,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import type { Appointment } from '@/app/(app)/reservations/types';
 
+const fetchMock = jest.fn();
+global.fetch = fetchMock;
+
 // next/navigationをモック
 const mockRouter = {
   push: jest.fn(),
@@ -66,7 +69,23 @@ jest.mock('@/hooks/useReservationFormData', () => ({
         id: 'staff2',
         name: '佐藤先生',
         isActive: true,
-        isBookable: false,
+        isBookable: true,
+        type: 'staff',
+        maxConcurrent: 1,
+      },
+      {
+        id: 'staff3',
+        name: '鈴木先生',
+        isActive: true,
+        isBookable: true,
+        type: 'staff',
+        maxConcurrent: 1,
+      },
+      {
+        id: 'staff4',
+        name: '高橋先生',
+        isActive: true,
+        isBookable: true,
         type: 'staff',
         maxConcurrent: 1,
       },
@@ -138,6 +157,18 @@ import ReservationTimelinePage from '@/app/(app)/reservations/page';
 describe('ReservationsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          shifts: [
+            { staff_id: 'staff1', status: 'confirmed' },
+            { staff_id: 'staff3', status: 'confirmed' },
+          ],
+        },
+      }),
+    });
   });
 
   describe('基本表示機能', () => {
@@ -150,12 +181,14 @@ describe('ReservationsPage', () => {
       });
     });
 
-    test('予約担当にできるスタッフだけが表示される', async () => {
+    test('確定シフトのあるスタッフと既存予約があるスタッフだけが表示される', async () => {
       render(<ReservationTimelinePage />);
 
       await waitFor(() => {
         expect(screen.getByText('田中先生')).toBeInTheDocument();
+        expect(screen.getByText('鈴木先生')).toBeInTheDocument();
         expect(screen.queryByText('佐藤先生')).not.toBeInTheDocument();
+        expect(screen.queryByText('高橋先生')).not.toBeInTheDocument();
       });
     });
   });

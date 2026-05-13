@@ -18,9 +18,14 @@ jest.mock('next/server', () => ({
   },
   NextRequest: class {
     nextUrl: { searchParams: URLSearchParams };
-    constructor(url: string) {
+    private body: unknown;
+    constructor(url: string, init?: { body?: unknown }) {
       const parsed = new URL(url);
       this.nextUrl = { searchParams: parsed.searchParams };
+      this.body = init?.body;
+    }
+    json() {
+      return Promise.resolve(this.body);
     }
   },
 }));
@@ -28,6 +33,8 @@ jest.mock('next/server', () => ({
 const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
 
 let shiftsGetHandler: (request: NextRequest) => Promise<Response>;
+let shiftsPostHandler: (request: NextRequest) => Promise<Response>;
+let shiftsPatchHandler: (request: NextRequest) => Promise<Response>;
 let preferencesGetHandler: (request: NextRequest) => Promise<Response>;
 let demandForecastGetHandler: (request: NextRequest) => Promise<Response>;
 
@@ -40,6 +47,11 @@ const createGetRequest = (path: string, params: Record<string, string>) => {
     `http://localhost${path}?${searchParams.toString()}`
   );
 };
+
+const createJsonRequest = (path: string, body: object) =>
+  new (NextRequest as typeof NextRequest)(`http://localhost${path}`, {
+    body,
+  });
 
 const createQueryBuilder = (result: { data: unknown; error: unknown }) => ({
   select: jest.fn().mockReturnThis(),
@@ -54,6 +66,8 @@ const createQueryBuilder = (result: { data: unknown; error: unknown }) => ({
 beforeAll(async () => {
   const shiftsModule = await import('@/app/api/staff/shifts/route');
   shiftsGetHandler = shiftsModule.GET;
+  shiftsPostHandler = shiftsModule.POST;
+  shiftsPatchHandler = shiftsModule.PATCH;
   const preferencesModule = await import('@/app/api/staff/preferences/route');
   preferencesGetHandler = preferencesModule.GET;
   const demandForecastModule =
@@ -140,6 +154,159 @@ describe('Staff Shifts API', () => {
       const response = await shiftsGetHandler(request);
 
       expect(response.status).toBe(401);
+    });
+  });
+
+  describe('POST /api/staff/shifts', () => {
+    it('clinic_admin がシフトを作成できる', async () => {
+      const overlapQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        neq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      };
+      const insertQuery = {
+        insert: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: '123e4567-e89b-12d3-a456-426614174010' },
+          error: null,
+        }),
+      };
+      const from = jest
+        .fn()
+        .mockReturnValueOnce(overlapQuery)
+        .mockReturnValueOnce(insertQuery);
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from },
+        user: { id: 'user-1' },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        staff_id: '123e4567-e89b-12d3-a456-426614174001',
+        start_time: '2026-05-14T00:00:00.000Z',
+        end_time: '2026-05-14T09:00:00.000Z',
+        status: 'confirmed',
+      });
+
+      const response = await shiftsPostHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(payload.success).toBe(true);
+      expect(insertQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: TEST_CLINIC_ID,
+          status: 'confirmed',
+          created_by: 'user-1',
+        })
+      );
+    });
+
+    it('同一スタッフの重複シフトは 400 を返す', async () => {
+      const overlapQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        neq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue({
+          data: [{ id: '123e4567-e89b-12d3-a456-426614174010' }],
+          error: null,
+        }),
+      };
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: jest.fn().mockReturnValue(overlapQuery) },
+        user: { id: 'user-1' },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        staff_id: '123e4567-e89b-12d3-a456-426614174001',
+        start_time: '2026-05-14T00:00:00.000Z',
+        end_time: '2026-05-14T09:00:00.000Z',
+        status: 'confirmed',
+      });
+
+      const response = await shiftsPostHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(payload.success).toBe(false);
+    });
+
+    it('他院 clinic_id は拒否される', async () => {
+      ensureClinicAccessMock.mockRejectedValue(
+        new AppError(ERROR_CODES.FORBIDDEN, 'Forbidden', 403)
+      );
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        staff_id: '123e4567-e89b-12d3-a456-426614174001',
+        start_time: '2026-05-14T00:00:00.000Z',
+        end_time: '2026-05-14T09:00:00.000Z',
+        status: 'confirmed',
+      });
+
+      const response = await shiftsPostHandler(request);
+
+      expect(response.status).toBe(403);
+    });
+  });
+
+  describe('PATCH /api/staff/shifts', () => {
+    it('clinic_admin が自院シフトを cancelled にできる', async () => {
+      const updateQuery = {
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: '123e4567-e89b-12d3-a456-426614174010',
+            status: 'cancelled',
+          },
+          error: null,
+        }),
+      };
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: jest.fn().mockReturnValue(updateQuery) },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        id: '123e4567-e89b-12d3-a456-426614174010',
+        status: 'cancelled',
+      });
+
+      const response = await shiftsPatchHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.success).toBe(true);
+      expect(updateQuery.update).toHaveBeenCalledWith({
+        status: 'cancelled',
+      });
+    });
+
+    it('cancelled 以外への更新は拒否される', async () => {
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        id: '123e4567-e89b-12d3-a456-426614174010',
+        status: 'confirmed',
+      });
+
+      const response = await shiftsPatchHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(payload.success).toBe(false);
+      expect(ensureClinicAccessMock).not.toHaveBeenCalled();
     });
   });
 

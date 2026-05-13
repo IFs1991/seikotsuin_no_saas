@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -17,6 +17,14 @@ interface Staff {
   id: string;
   name: string;
   type?: string;
+}
+
+interface StaffResource {
+  id: string;
+  name: string;
+  type: string;
+  isActive?: boolean;
+  isBookable?: boolean;
 }
 
 interface Shift {
@@ -59,18 +67,67 @@ interface ShiftOptimizerProps {
   clinicId: string;
 }
 
+interface ShiftFormState {
+  staffId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  notes: string;
+}
+
+interface ApiDataResponse<T> {
+  data?: T;
+}
+
+interface ShiftListData {
+  shifts?: Shift[];
+}
+
+interface PreferenceListData {
+  preferences?: Preference[];
+}
+
+interface DemandForecastData {
+  forecasts?: DemandForecast[];
+  hourlyDistribution?: HourlyDistribution[];
+}
+
+const DATE_FORMATTER_JST = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const TIME_FORMATTER_JST = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: 'Asia/Tokyo',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 const formatDateJst = (value: Date | string): string => {
   const date = typeof value === 'string' ? new Date(value) : value;
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
+  return DATE_FORMATTER_JST.format(date);
 };
+
+const formatTimeJst = (value: string): string =>
+  TIME_FORMATTER_JST.format(new Date(value));
+
+const getMonthRange = (year: number, zeroBasedMonth: number) => {
+  const start = formatDateJst(new Date(year, zeroBasedMonth, 1));
+  const end = formatDateJst(new Date(year, zeroBasedMonth + 1, 0));
+
+  return { start, end };
+};
+
+async function parseApiData<T>(response: Response): Promise<T> {
+  const json = (await response.json()) as ApiDataResponse<T>;
+  return json.data ?? ({} as T);
+}
 
 const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [staffResources, setStaffResources] = useState<StaffResource[]>([]);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [demandForecasts, setDemandForecasts] = useState<DemandForecast[]>([]);
   const [hourlyDistribution, setHourlyDistribution] = useState<
@@ -81,21 +138,56 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return formatDateJst(new Date());
   });
+  const [shiftForm, setShiftForm] = useState<ShiftFormState>(() => ({
+    staffId: '',
+    date: formatDateJst(new Date()),
+    startTime: '09:00',
+    endTime: '18:00',
+    notes: '',
+  }));
+  const [isSavingShift, setIsSavingShift] = useState(false);
 
-  // 今月のデータを取得するための日付計算
-  const currentDate = new Date();
-  const currentDateKey = formatDateJst(currentDate);
-  const [currentYear, currentMonthNumber] = currentDateKey
-    .split('-')
-    .map(Number);
+  const currentDateKey = useMemo(() => formatDateJst(new Date()), []);
+  const [currentYear, currentMonthNumber] = useMemo(
+    () => currentDateKey.split('-').map(Number),
+    [currentDateKey]
+  );
   const currentMonth = currentMonthNumber - 1;
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+  const monthRange = useMemo(
+    () => getMonthRange(currentYear, currentMonth),
+    [currentMonth, currentYear]
+  );
+  const daysInMonth = useMemo(
+    () => new Date(currentYear, currentMonth + 1, 0).getDate(),
+    [currentMonth, currentYear]
+  );
+  const firstDayOfMonth = useMemo(
+    () => new Date(currentYear, currentMonth, 1).getDay(),
+    [currentMonth, currentYear]
+  );
+  const days = useMemo(
+    () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
+    [daysInMonth]
+  );
 
-  // 日付の配列を生成
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const fetchShifts = useCallback(async () => {
+    if (!clinicId) {
+      setShifts([]);
+      return;
+    }
 
-  // データ取得
+    const response = await fetch(
+      `/api/staff/shifts?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
+    );
+
+    if (!response.ok) {
+      throw new Error('シフトデータの取得に失敗しました');
+    }
+
+    const data = await parseApiData<ShiftListData>(response);
+    setShifts(data.shifts ?? []);
+  }, [clinicId, monthRange.end, monthRange.start]);
+
   const fetchData = useCallback(async () => {
     if (!clinicId) {
       setIsLoading(false);
@@ -106,49 +198,179 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     setError(null);
 
     try {
-      // 今月の範囲を設定
-      const startOfMonth = new Date(currentYear, currentMonth, 1);
-      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-      const start = formatDateJst(startOfMonth);
-      const end = formatDateJst(endOfMonth);
-
-      // 並列でAPIを呼び出し
-      const [shiftsRes, preferencesRes, demandRes] = await Promise.all([
-        fetch(
-          `/api/staff/shifts?clinic_id=${clinicId}&start=${start}&end=${end}`
-        ),
-        fetch(`/api/staff/preferences?clinic_id=${clinicId}&active_only=true`),
-        fetch(
-          `/api/staff/demand-forecast?clinic_id=${clinicId}&start=${start}&end=${end}`
-        ),
-      ]);
+      const [shiftsRes, preferencesRes, demandRes, resourcesRes] =
+        await Promise.all([
+          fetch(
+            `/api/staff/shifts?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
+          ),
+          fetch(
+            `/api/staff/preferences?clinic_id=${clinicId}&active_only=true`
+          ),
+          fetch(
+            `/api/staff/demand-forecast?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
+          ),
+          fetch(`/api/resources?clinic_id=${clinicId}&type=staff`),
+        ]);
 
       // エラーチェック
-      if (!shiftsRes.ok || !preferencesRes.ok || !demandRes.ok) {
+      if (
+        !shiftsRes.ok ||
+        !preferencesRes.ok ||
+        !demandRes.ok ||
+        !resourcesRes.ok
+      ) {
         throw new Error('データ取得に失敗しました');
       }
 
-      const [shiftsData, preferencesData, demandData] = await Promise.all([
-        shiftsRes.json(),
-        preferencesRes.json(),
-        demandRes.json(),
-      ]);
+      const [shiftsData, preferencesData, demandData, resourcesData] =
+        await Promise.all([
+          parseApiData<ShiftListData>(shiftsRes),
+          parseApiData<PreferenceListData>(preferencesRes),
+          parseApiData<DemandForecastData>(demandRes),
+          parseApiData<StaffResource[]>(resourcesRes),
+        ]);
 
-      setShifts(shiftsData.data?.shifts || []);
-      setPreferences(preferencesData.data?.preferences || []);
-      setDemandForecasts(demandData.data?.forecasts || []);
-      setHourlyDistribution(demandData.data?.hourlyDistribution || []);
+      setShifts(shiftsData.shifts ?? []);
+      setPreferences(preferencesData.preferences ?? []);
+      setDemandForecasts(demandData.forecasts ?? []);
+      setHourlyDistribution(demandData.hourlyDistribution ?? []);
+      setStaffResources(
+        (Array.isArray(resourcesData) ? resourcesData : []).filter(
+          resource =>
+            resource.type === 'staff' &&
+            resource.isActive !== false &&
+            resource.isBookable !== false
+        )
+      );
     } catch (err) {
       console.error('Shift optimizer data fetch error:', err);
       setError(err instanceof Error ? err.message : 'データ取得に失敗しました');
     } finally {
       setIsLoading(false);
     }
-  }, [clinicId, currentYear, currentMonth]);
+  }, [clinicId, monthRange.end, monthRange.start]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    setShiftForm(prev => ({
+      ...prev,
+      date: selectedDate,
+    }));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    setShiftForm(prev => {
+      if (prev.staffId || staffResources.length === 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        staffId: staffResources[0].id,
+      };
+    });
+  }, [staffResources]);
+
+  const shiftsByDate = useMemo(() => {
+    const grouped = new Map<string, Shift[]>();
+
+    for (const shift of shifts) {
+      const dateKey = formatDateJst(shift.start_time);
+      const dateShifts = grouped.get(dateKey);
+
+      if (dateShifts) {
+        dateShifts.push(shift);
+      } else {
+        grouped.set(dateKey, [shift]);
+      }
+    }
+
+    return grouped;
+  }, [shifts]);
+
+  const selectedDayShifts = useMemo(
+    () => shiftsByDate.get(selectedDate) ?? [],
+    [selectedDate, shiftsByDate]
+  );
+
+  const selectedDayForecasts = useMemo(
+    () => demandForecasts.filter(forecast => forecast.date === selectedDate),
+    [demandForecasts, selectedDate]
+  );
+
+  const buildShiftDateTime = (date: string, time: string): string =>
+    new Date(`${date}T${time}:00+09:00`).toISOString();
+
+  const updateShiftForm = (updates: Partial<ShiftFormState>) => {
+    setShiftForm(prev => ({ ...prev, ...updates }));
+  };
+
+  const createShift = async () => {
+    const staffId = shiftForm.staffId || staffResources[0]?.id;
+    if (!clinicId || !staffId) {
+      setError('スタッフを選択してください');
+      return;
+    }
+
+    setIsSavingShift(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/staff/shifts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinic_id: clinicId,
+          staff_id: staffId,
+          start_time: buildShiftDateTime(shiftForm.date, shiftForm.startTime),
+          end_time: buildShiftDateTime(shiftForm.date, shiftForm.endTime),
+          status: 'confirmed',
+          notes: shiftForm.notes || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('シフト作成に失敗しました');
+      }
+
+      updateShiftForm({ notes: '' });
+      await fetchShifts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'シフト作成に失敗しました');
+    } finally {
+      setIsSavingShift(false);
+    }
+  };
+
+  const cancelShift = async (shift: Shift) => {
+    setIsSavingShift(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/staff/shifts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinic_id: shift.clinic_id,
+          id: shift.id,
+          status: 'cancelled',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('シフト取消に失敗しました');
+      }
+
+      await fetchShifts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'シフト取消に失敗しました');
+    } finally {
+      setIsSavingShift(false);
+    }
+  };
 
   // ステータスのラベル変換
   const getStatusLabel = (status: string): string => {
@@ -221,16 +443,6 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     );
   }
 
-  // 選択された日付のシフトをフィルタリング
-  const selectedDayShifts = shifts.filter(shift => {
-    return formatDateJst(shift.start_time) === selectedDate;
-  });
-
-  // 選択された日付の需要予測をフィルタリング
-  const selectedDayForecasts = demandForecasts.filter(
-    forecast => forecast.date === selectedDate
-  );
-
   // 月の名前を取得
   const monthNames = [
     '1月',
@@ -259,6 +471,88 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
           </CardDescription>
         </CardHeader>
         <CardContent className='bg-card p-6 space-y-8'>
+          <div>
+            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+              確定シフト作成
+            </h3>
+            <div className='grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700'>
+              <label className='text-sm font-medium'>
+                スタッフ
+                <select
+                  value={shiftForm.staffId}
+                  onChange={event =>
+                    updateShiftForm({ staffId: event.target.value })
+                  }
+                  className='mt-1 w-full rounded border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900'
+                >
+                  {staffResources.map(resource => (
+                    <option key={resource.id} value={resource.id}>
+                      {resource.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='text-sm font-medium'>
+                日付
+                <input
+                  type='date'
+                  value={shiftForm.date}
+                  onChange={event => {
+                    updateShiftForm({ date: event.target.value });
+                    setSelectedDate(event.target.value);
+                  }}
+                  className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                />
+              </label>
+              <label className='text-sm font-medium'>
+                開始
+                <input
+                  type='time'
+                  value={shiftForm.startTime}
+                  onChange={event =>
+                    updateShiftForm({ startTime: event.target.value })
+                  }
+                  className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                />
+              </label>
+              <label className='text-sm font-medium'>
+                終了
+                <input
+                  type='time'
+                  value={shiftForm.endTime}
+                  onChange={event =>
+                    updateShiftForm({ endTime: event.target.value })
+                  }
+                  className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                />
+              </label>
+              <div className='flex items-end'>
+                <Button
+                  type='button'
+                  onClick={createShift}
+                  disabled={isSavingShift || staffResources.length === 0}
+                  className='w-full bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90'
+                >
+                  {isSavingShift ? '保存中...' : '作成'}
+                </Button>
+              </div>
+              <label className='md:col-span-5 text-sm font-medium'>
+                メモ
+                <input
+                  type='text'
+                  value={shiftForm.notes}
+                  onChange={event =>
+                    updateShiftForm({ notes: event.target.value })
+                  }
+                  className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  placeholder='任意'
+                />
+              </label>
+            </div>
+          </div>
+
+          <Separator className='bg-gray-200 dark:bg-gray-700' />
+
           {/* AIによるシフト提案表示 */}
           <div>
             <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
@@ -287,17 +581,8 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                       {new Date(shift.start_time).toLocaleDateString('ja-JP', {
                         timeZone: 'Asia/Tokyo',
                       })}{' '}
-                      {new Date(shift.start_time).toLocaleTimeString('ja-JP', {
-                        timeZone: 'Asia/Tokyo',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                      -
-                      {new Date(shift.end_time).toLocaleTimeString('ja-JP', {
-                        timeZone: 'Asia/Tokyo',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatTimeJst(shift.start_time)}-
+                      {formatTimeJst(shift.end_time)}
                     </p>
                     <p
                       className={`text-sm font-semibold ${
@@ -308,6 +593,17 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     >
                       ステータス: {getStatusLabel(shift.status)}
                     </p>
+                    {shift.status !== 'cancelled' && (
+                      <Button
+                        type='button'
+                        variant='outline'
+                        onClick={() => cancelShift(shift)}
+                        disabled={isSavingShift}
+                        className='mt-3'
+                      >
+                        取消
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -355,9 +651,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
               ))}
               {days.map(day => {
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayShifts = shifts.filter(
-                  s => formatDateJst(s.start_time) === dateStr
-                );
+                const dayShifts = shiftsByDate.get(dateStr) ?? [];
 
                 return (
                   <button
@@ -395,17 +689,46 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
 
           <Separator className='bg-gray-200 dark:bg-gray-700' />
 
-          {/* ドラッグ&ドロップ編集 (概念的な表示) */}
           <div>
             <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
-              シフト編集
+              選択日のシフト
             </h3>
-            <div className='p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-md text-center text-gray-500 dark:text-gray-400'>
-              <p>シフトをドラッグ&ドロップで直感的に編集できます。</p>
-              <p className='text-sm mt-2'>
-                （このエリアでシフトアイテムを移動・調整）
-              </p>
-            </div>
+            {selectedDayShifts.length === 0 ? (
+              <div className='p-4 border border-gray-200 dark:border-gray-700 rounded-md text-center text-gray-500 dark:text-gray-400'>
+                選択日のシフトはありません
+              </div>
+            ) : (
+              <div className='space-y-3'>
+                {selectedDayShifts.map(shift => (
+                  <div
+                    key={shift.id}
+                    className='flex flex-col gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-700 sm:flex-row sm:items-center sm:justify-between'
+                  >
+                    <div>
+                      <p className='font-medium'>
+                        {shift.staff?.name || '未割り当て'}
+                      </p>
+                      <p className='text-sm text-gray-600 dark:text-gray-400'>
+                        {formatTimeJst(shift.start_time)}-
+                        {formatTimeJst(shift.end_time)}
+                        {' / '}
+                        {getStatusLabel(shift.status)}
+                      </p>
+                    </div>
+                    {shift.status !== 'cancelled' && (
+                      <Button
+                        type='button'
+                        variant='outline'
+                        onClick={() => cancelShift(shift)}
+                        disabled={isSavingShift}
+                      >
+                        取消
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <Separator className='bg-gray-200 dark:bg-gray-700' />

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ShiftOptimizer from '@/components/staff/shift-optimizer';
 
@@ -319,6 +319,134 @@ describe('ShiftOptimizer コンポーネント', () => {
 
       // 需要予測セクションが表示されることを確認
       expect(screen.getByText('需要予測')).toBeInTheDocument();
+    });
+  });
+
+  describe('シフト作成と取消', () => {
+    test('フォームから確定シフトを作成できる', async () => {
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes('/api/staff/shifts') && init?.method === 'POST') {
+          return Promise.resolve(createMockResponse({ id: 'shift-created' }));
+        }
+        if (url.includes('/api/staff/shifts')) {
+          return Promise.resolve(createMockResponse({ shifts: [], total: 0 }));
+        }
+        if (url.includes('/api/resources')) {
+          return Promise.resolve(
+            createMockResponse([
+              {
+                id: 'staff-1',
+                name: '実スタッフ1',
+                type: 'staff',
+                isActive: true,
+                isBookable: true,
+              },
+            ])
+          );
+        }
+        if (url.includes('/api/staff/preferences')) {
+          return Promise.resolve(
+            createMockResponse({ preferences: [], total: 0 })
+          );
+        }
+        if (url.includes('/api/staff/demand-forecast')) {
+          return Promise.resolve(
+            createMockResponse({ forecasts: [], hourlyDistribution: [] })
+          );
+        }
+        return Promise.resolve(createEmptyMockResponse());
+      });
+
+      render(<ShiftOptimizer clinicId={TEST_CLINIC_ID} />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('スタッフ')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: '作成' }));
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/staff/shifts',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"status":"confirmed"'),
+          })
+        );
+      });
+    });
+
+    test('選択日のシフトを取消できる', async () => {
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+      const mockShifts = [
+        {
+          id: 'shift-1',
+          clinic_id: TEST_CLINIC_ID,
+          staff_id: 'staff-1',
+          start_time: `${today}T00:00:00.000Z`,
+          end_time: `${today}T09:00:00.000Z`,
+          status: 'confirmed',
+          staff: { id: 'staff-1', name: '実スタッフ1' },
+        },
+      ];
+
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes('/api/staff/shifts') && init?.method === 'PATCH') {
+          return Promise.resolve(createMockResponse({ id: 'shift-1' }));
+        }
+        if (url.includes('/api/staff/shifts')) {
+          return Promise.resolve(
+            createMockResponse({ shifts: mockShifts, total: 1 })
+          );
+        }
+        if (url.includes('/api/resources')) {
+          return Promise.resolve(
+            createMockResponse([
+              {
+                id: 'staff-1',
+                name: '実スタッフ1',
+                type: 'staff',
+                isActive: true,
+                isBookable: true,
+              },
+            ])
+          );
+        }
+        if (url.includes('/api/staff/preferences')) {
+          return Promise.resolve(
+            createMockResponse({ preferences: [], total: 0 })
+          );
+        }
+        if (url.includes('/api/staff/demand-forecast')) {
+          return Promise.resolve(
+            createMockResponse({ forecasts: [], hourlyDistribution: [] })
+          );
+        }
+        return Promise.resolve(createEmptyMockResponse());
+      });
+
+      render(<ShiftOptimizer clinicId={TEST_CLINIC_ID} />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('実スタッフ1').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByRole('button', { name: '取消' })[0]);
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/staff/shifts',
+          expect.objectContaining({
+            method: 'PATCH',
+            body: expect.stringContaining('"status":"cancelled"'),
+          })
+        );
+      });
     });
   });
 
