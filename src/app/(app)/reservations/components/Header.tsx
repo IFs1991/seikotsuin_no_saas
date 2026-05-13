@@ -15,7 +15,7 @@ const HeaderComponent: React.FC<Props> = ({
   onOpenNotifications,
 }) => {
   return (
-    <header className='bg-white border-b border-gray-200 px-3 py-2 flex items-center justify-between shadow-sm sticky top-0 z-50'>
+    <header className='bg-white border-b border-gray-200 px-3 py-2 flex items-center justify-between shadow-sm sticky top-16 z-30'>
       <div aria-hidden='true' className='h-8 min-w-0 flex-1' />
 
       <div className='flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar'>
