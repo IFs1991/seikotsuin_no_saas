@@ -945,6 +945,296 @@ export type Database = {
           },
         ];
       };
+      daily_report_item_tag_definitions: {
+        Row: {
+          category: string;
+          code: string;
+          created_at: string;
+          description: string | null;
+          is_active: boolean;
+          name: string;
+          severity: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          category: string;
+          code: string;
+          created_at?: string;
+          description?: string | null;
+          is_active?: boolean;
+          name: string;
+          severity?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string;
+          code?: string;
+          created_at?: string;
+          description?: string | null;
+          is_active?: boolean;
+          name?: string;
+          severity?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      daily_report_item_tags: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          daily_report_item_id: string;
+          id: string;
+          note: string | null;
+          tag_code: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          daily_report_item_id: string;
+          id?: string;
+          note?: string | null;
+          tag_code: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          daily_report_item_id?: string;
+          id?: string;
+          note?: string | null;
+          tag_code?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_report_item_tags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_item_tags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_item_tags_item_id_fkey';
+            columns: ['daily_report_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'daily_report_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_item_tags_tag_code_fkey';
+            columns: ['tag_code'];
+            isOneToOne: false;
+            referencedRelation: 'daily_report_item_tag_definitions';
+            referencedColumns: ['code'];
+          },
+        ];
+      };
+      daily_report_items: {
+        Row: {
+          amount_source: string;
+          billing_type: string;
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string | null;
+          daily_report_id: string;
+          duration_minutes: number;
+          estimate_status: string;
+          fee: number;
+          id: string;
+          menu_id: string | null;
+          next_reservation_end_time: string | null;
+          next_reservation_id: string | null;
+          next_reservation_start_time: string | null;
+          notes: string | null;
+          patient_name: string;
+          payment_method_id: string | null;
+          report_date: string;
+          reservation_id: string | null;
+          revenue_context_code: string;
+          revenue_context_source: string;
+          source: string;
+          staff_resource_id: string | null;
+          treatment_name: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          amount_source?: string;
+          billing_type?: string;
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          daily_report_id: string;
+          duration_minutes?: number;
+          estimate_status?: string;
+          fee?: number;
+          id?: string;
+          menu_id?: string | null;
+          next_reservation_end_time?: string | null;
+          next_reservation_id?: string | null;
+          next_reservation_start_time?: string | null;
+          notes?: string | null;
+          patient_name: string;
+          payment_method_id?: string | null;
+          report_date: string;
+          reservation_id?: string | null;
+          revenue_context_code?: string;
+          revenue_context_source?: string;
+          source?: string;
+          staff_resource_id?: string | null;
+          treatment_name: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          amount_source?: string;
+          billing_type?: string;
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string | null;
+          daily_report_id?: string;
+          duration_minutes?: number;
+          estimate_status?: string;
+          fee?: number;
+          id?: string;
+          menu_id?: string | null;
+          next_reservation_end_time?: string | null;
+          next_reservation_id?: string | null;
+          next_reservation_start_time?: string | null;
+          notes?: string | null;
+          patient_name?: string;
+          payment_method_id?: string | null;
+          report_date?: string;
+          reservation_id?: string | null;
+          revenue_context_code?: string;
+          revenue_context_source?: string;
+          source?: string;
+          staff_resource_id?: string | null;
+          treatment_name?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_daily_report_id_fkey';
+            columns: ['daily_report_id'];
+            isOneToOne: false;
+            referencedRelation: 'daily_reports';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_menu_id_fkey';
+            columns: ['menu_id'];
+            isOneToOne: false;
+            referencedRelation: 'menus';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_next_reservation_id_fkey';
+            columns: ['next_reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_next_reservation_id_fkey';
+            columns: ['next_reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_payment_method_id_fkey';
+            columns: ['payment_method_id'];
+            isOneToOne: false;
+            referencedRelation: 'master_payment_methods';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_revenue_context_code_fkey';
+            columns: ['revenue_context_code'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_contexts';
+            referencedColumns: ['code'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_staff_resource_id_fkey';
+            columns: ['staff_resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_staff_resource_id_fkey';
+            columns: ['staff_resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_performance_summary';
+            referencedColumns: ['staff_id'];
+          },
+        ];
+      };
       daily_reports: {
         Row: {
           clinic_id: string | null;
@@ -1008,162 +1298,6 @@ export type Database = {
             columns: ['staff_id'];
             isOneToOne: false;
             referencedRelation: 'staff';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      daily_report_items: {
-        Row: {
-          billing_type: string;
-          clinic_id: string;
-          created_at: string;
-          created_by: string | null;
-          customer_id: string | null;
-          daily_report_id: string;
-          duration_minutes: number;
-          fee: number;
-          id: string;
-          menu_id: string | null;
-          next_reservation_end_time: string | null;
-          next_reservation_id: string | null;
-          next_reservation_start_time: string | null;
-          notes: string | null;
-          patient_name: string;
-          payment_method_id: string | null;
-          report_date: string;
-          reservation_id: string | null;
-          source: string;
-          staff_resource_id: string | null;
-          treatment_name: string;
-          updated_at: string;
-          updated_by: string | null;
-        };
-        Insert: {
-          billing_type?: string;
-          clinic_id: string;
-          created_at?: string;
-          created_by?: string | null;
-          customer_id?: string | null;
-          daily_report_id: string;
-          duration_minutes?: number;
-          fee?: number;
-          id?: string;
-          menu_id?: string | null;
-          next_reservation_end_time?: string | null;
-          next_reservation_id?: string | null;
-          next_reservation_start_time?: string | null;
-          notes?: string | null;
-          patient_name: string;
-          payment_method_id?: string | null;
-          report_date: string;
-          reservation_id?: string | null;
-          source?: string;
-          staff_resource_id?: string | null;
-          treatment_name: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Update: {
-          billing_type?: string;
-          clinic_id?: string;
-          created_at?: string;
-          created_by?: string | null;
-          customer_id?: string | null;
-          daily_report_id?: string;
-          duration_minutes?: number;
-          fee?: number;
-          id?: string;
-          menu_id?: string | null;
-          next_reservation_end_time?: string | null;
-          next_reservation_id?: string | null;
-          next_reservation_start_time?: string | null;
-          notes?: string | null;
-          patient_name?: string;
-          payment_method_id?: string | null;
-          report_date?: string;
-          reservation_id?: string | null;
-          source?: string;
-          staff_resource_id?: string | null;
-          treatment_name?: string;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'daily_report_items_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinic_hierarchy';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinics';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_customer_id_fkey';
-            columns: ['customer_id'];
-            isOneToOne: false;
-            referencedRelation: 'customers';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_daily_report_id_fkey';
-            columns: ['daily_report_id'];
-            isOneToOne: false;
-            referencedRelation: 'daily_reports';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_menu_id_fkey';
-            columns: ['menu_id'];
-            isOneToOne: false;
-            referencedRelation: 'menus';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_next_reservation_id_fkey';
-            columns: ['next_reservation_id'];
-            isOneToOne: false;
-            referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_next_reservation_id_fkey';
-            columns: ['next_reservation_id'];
-            isOneToOne: false;
-            referencedRelation: 'reservations';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_payment_method_id_fkey';
-            columns: ['payment_method_id'];
-            isOneToOne: false;
-            referencedRelation: 'master_payment_methods';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_reservation_id_fkey';
-            columns: ['reservation_id'];
-            isOneToOne: false;
-            referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_reservation_id_fkey';
-            columns: ['reservation_id'];
-            isOneToOne: false;
-            referencedRelation: 'reservations';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'daily_report_items_staff_resource_id_fkey';
-            columns: ['staff_resource_id'];
-            isOneToOne: false;
-            referencedRelation: 'resources';
             referencedColumns: ['id'];
           },
         ];
@@ -2166,8 +2300,8 @@ export type Database = {
           end_time: string;
           id: string;
           is_deleted: boolean | null;
-          is_staff_requested: boolean;
           is_recurring: boolean | null;
+          is_staff_requested: boolean;
           menu_id: string;
           no_show_reason: string | null;
           notes: string | null;
@@ -2178,8 +2312,8 @@ export type Database = {
           reminder_sent_at: string | null;
           reservation_group_id: string | null;
           selected_options: Json | null;
-          staff_nomination_fee: number;
           staff_id: string;
+          staff_nomination_fee: number;
           start_time: string;
           status: string;
           updated_at: string;
@@ -2201,8 +2335,8 @@ export type Database = {
           end_time: string;
           id?: string;
           is_deleted?: boolean | null;
-          is_staff_requested?: boolean;
           is_recurring?: boolean | null;
+          is_staff_requested?: boolean;
           menu_id: string;
           no_show_reason?: string | null;
           notes?: string | null;
@@ -2213,8 +2347,8 @@ export type Database = {
           reminder_sent_at?: string | null;
           reservation_group_id?: string | null;
           selected_options?: Json | null;
-          staff_nomination_fee?: number;
           staff_id: string;
+          staff_nomination_fee?: number;
           start_time: string;
           status?: string;
           updated_at?: string;
@@ -2236,8 +2370,8 @@ export type Database = {
           end_time?: string;
           id?: string;
           is_deleted?: boolean | null;
-          is_staff_requested?: boolean;
           is_recurring?: boolean | null;
+          is_staff_requested?: boolean;
           menu_id?: string;
           no_show_reason?: string | null;
           notes?: string | null;
@@ -2248,8 +2382,8 @@ export type Database = {
           reminder_sent_at?: string | null;
           reservation_group_id?: string | null;
           selected_options?: Json | null;
-          staff_nomination_fee?: number;
           staff_id?: string;
+          staff_nomination_fee?: number;
           start_time?: string;
           status?: string;
           updated_at?: string;
@@ -2398,6 +2532,45 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      revenue_contexts: {
+        Row: {
+          code: string;
+          created_at: string;
+          description: string | null;
+          is_analysis_target: boolean;
+          is_insurance_related: boolean;
+          is_selectable: boolean;
+          name: string;
+          rollup_category: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          description?: string | null;
+          is_analysis_target?: boolean;
+          is_insurance_related?: boolean;
+          is_selectable?: boolean;
+          name: string;
+          rollup_category: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          description?: string | null;
+          is_analysis_target?: boolean;
+          is_insurance_related?: boolean;
+          is_selectable?: boolean;
+          name?: string;
+          rollup_category?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       revenues: {
         Row: {
@@ -3526,6 +3699,42 @@ export type Database = {
           },
         ];
       };
+      daily_report_revenue_context_summary: {
+        Row: {
+          blocked_count: number | null;
+          clinic_id: string | null;
+          item_count: number | null;
+          needs_review_count: number | null;
+          report_date: string | null;
+          revenue_context_code: string | null;
+          revenue_context_name: string | null;
+          rollup_category: string | null;
+          total_revenue: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_revenue_context_code_fkey';
+            columns: ['revenue_context_code'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_contexts';
+            referencedColumns: ['code'];
+          },
+        ];
+      };
       daily_reservation_stats: {
         Row: {
           avg_duration_minutes: number | null;
@@ -3637,9 +3846,9 @@ export type Database = {
           reservation_group_id: string | null;
           resource_type: string | null;
           selected_options: Json | null;
-          staff_nomination_fee: number | null;
           staff_id: string | null;
           staff_name: string | null;
+          staff_nomination_fee: number | null;
           start_time: string | null;
           status: string | null;
           updated_at: string | null;
@@ -3864,6 +4073,10 @@ export type Database = {
           forecast_date: string;
           predicted_revenue: number;
         }[];
+      };
+      recalculate_daily_report_totals: {
+        Args: { p_daily_report_id: string };
+        Returns: undefined;
       };
       refresh_daily_stats: { Args: never; Returns: undefined };
       upsert_clinic_settings: {

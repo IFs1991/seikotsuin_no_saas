@@ -59,6 +59,10 @@ function buildItemRow() {
     duration_minutes: 30,
     fee: 5000,
     billing_type: 'private',
+    revenue_context_code: 'private',
+    revenue_context_source: 'derived',
+    amount_source: 'reservation',
+    estimate_status: 'not_calculated',
     payment_method_id: null,
     next_reservation_start_time: null,
     next_reservation_end_time: null,
@@ -146,6 +150,10 @@ describe('/api/daily-reports/items', () => {
       id: itemId,
       patientName: '山田 太郎',
       fee: 5000,
+      revenueContextCode: 'private',
+      revenueContextSource: 'derived',
+      amountSource: 'reservation',
+      estimateStatus: 'not_calculated',
     });
     expect(json.data.paymentMethods[0]).toMatchObject({ name: '現金' });
   });
@@ -240,6 +248,134 @@ describe('/api/daily-reports/items', () => {
     expect(response.status).toBe(400);
     expect(json.error).toBe('選択した決済方法が見つかりません');
     expect(client.from).not.toHaveBeenCalledWith('daily_reports');
+  });
+
+  test('POST stores traffic accident context as private legacy billing with manual classification', async () => {
+    const dailyReportQuery = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: reportId },
+        error: null,
+      }),
+    };
+    const insertSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: {
+          ...buildItemRow(),
+          reservation_id: null,
+          source: 'manual',
+          billing_type: 'private',
+          revenue_context_code: 'traffic_accident',
+          revenue_context_source: 'manual',
+          amount_source: 'manual',
+          estimate_status: 'not_calculated',
+        },
+        error: null,
+      }),
+    };
+    const dailyReportItemsTable = {
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(insertSelect),
+      }),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_reports') {
+          return { select: jest.fn().mockReturnValue(dailyReportQuery) };
+        }
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        report_date: '2026-05-07',
+        patientName: '山田 太郎',
+        treatmentName: '整体',
+        durationMinutes: 30,
+        fee: 5000,
+        billingType: 'private',
+        revenueContextCode: 'traffic_accident',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { POST } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'POST',
+      }
+    );
+    const response = await POST(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(dailyReportItemsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        billing_type: 'private',
+        revenue_context_code: 'traffic_accident',
+        revenue_context_source: 'manual',
+        amount_source: 'manual',
+        estimate_status: 'not_calculated',
+      })
+    );
+    expect(json.data).toMatchObject({
+      billingType: 'private',
+      revenueContextCode: 'traffic_accident',
+      revenueContextSource: 'manual',
+    });
+  });
+
+  test('POST rejects incompatible billing type and revenue context', async () => {
+    const client = { from: jest.fn() };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        report_date: '2026-05-07',
+        patientName: '山田 太郎',
+        treatmentName: '整体',
+        durationMinutes: 30,
+        fee: 5000,
+        billingType: 'insurance',
+        revenueContextCode: 'traffic_accident',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { POST } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'POST',
+      }
+    );
+    const response = await POST(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.error).toBe(
+      'billingType and revenueContextCode are incompatible'
+    );
+    expect(client.from).not.toHaveBeenCalledWith('daily_reports');
+    expect(client.from).not.toHaveBeenCalledWith('daily_report_items');
   });
 
   test('PATCH rejects next reservations that conflict with the same staff time', async () => {
@@ -355,5 +491,80 @@ describe('/api/daily-reports/items', () => {
       patientName: '山田 太郎',
     });
     expect(dailyReportItemsTable.update).not.toHaveBeenCalled();
+  });
+
+  test('PATCH changes revenue context and marks the classification manual', async () => {
+    const updatedRow = {
+      ...buildItemRow(),
+      billing_type: 'private',
+      revenue_context_code: 'workers_comp',
+      revenue_context_source: 'manual',
+    };
+    const itemQuery = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildItemRow(),
+        error: null,
+      }),
+    };
+    const updateSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: updatedRow,
+        error: null,
+      }),
+    };
+    const dailyReportItemsTable = {
+      select: jest.fn().mockReturnValue(itemQuery),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnValue(updateSelect),
+      }),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: itemId,
+        revenueContextCode: 'workers_comp',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'PATCH',
+      }
+    );
+    const response = await PATCH(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(dailyReportItemsTable.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        billing_type: 'private',
+        revenue_context_code: 'workers_comp',
+        revenue_context_source: 'manual',
+      })
+    );
+    expect(json.data).toMatchObject({
+      billingType: 'private',
+      revenueContextCode: 'workers_comp',
+      revenueContextSource: 'manual',
+    });
   });
 });

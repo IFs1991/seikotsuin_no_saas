@@ -13,10 +13,20 @@ import {
 } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES, STAFF_ROLES } from '@/lib/constants/roles';
 import type { Database } from '@/types/supabase';
+import {
+  assertBillingTypeCompatible,
+  deriveLegacyBillingType,
+  deriveRevenueContextCodeFromBillingType,
+  type AmountSource,
+  type BillingType,
+  type EstimateStatus,
+  type RevenueContextSource,
+  type SelectableRevenueContextCode,
+} from '@/lib/revenue-context';
 
 const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
-  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, created_at, updated_at, created_by, updated_by';
+  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, created_at, updated_at, created_by, updated_by';
 const PAYMENT_METHOD_SELECT = 'id, name, is_active';
 
 type DailyReportItemRow =
@@ -33,7 +43,6 @@ type PaymentMethodRow = Pick<
 >;
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type ReservationUpdate = Database['public']['Tables']['reservations']['Update'];
-type BillingType = 'insurance' | 'private';
 type DailyReportItemApi = {
   id: string;
   clinicId: string;
@@ -48,6 +57,10 @@ type DailyReportItemApi = {
   durationMinutes: number;
   fee: number;
   billingType: BillingType;
+  revenueContextCode: SelectableRevenueContextCode;
+  revenueContextSource: RevenueContextSource;
+  amountSource: AmountSource;
+  estimateStatus: EstimateStatus;
   paymentMethodId: string | null;
   nextReservationStartTime: string | null;
   nextReservationEndTime: string | null;
@@ -59,6 +72,15 @@ type DailyReportItemApi = {
 };
 
 const billingTypeSchema = z.enum(['insurance', 'private']);
+const revenueContextSchema = z.enum([
+  'insurance',
+  'private',
+  'traffic_accident',
+  'workers_comp',
+  'product',
+  'ticket',
+  'other',
+]);
 const isoDateSchema = z
   .string()
   .regex(
@@ -91,6 +113,8 @@ const itemCreateSchema = z
     durationMinutes: z.number().int().min(0).default(0),
     fee: z.number().min(0).default(0),
     billingType: billingTypeSchema.default('private'),
+    revenueContextCode: revenueContextSchema.optional(),
+    tagCodes: z.array(z.string()).max(20).optional(),
     paymentMethodId: nullableUuidSchema,
     nextReservationStartTime: nextReservationStartSchema,
     notes: z.string().max(2000).nullable().optional(),
@@ -106,6 +130,8 @@ const itemUpdateSchema = z
     durationMinutes: z.number().int().min(0).optional(),
     fee: z.number().min(0).optional(),
     billingType: billingTypeSchema.optional(),
+    revenueContextCode: revenueContextSchema.optional(),
+    tagCodes: z.array(z.string()).max(20).optional(),
     paymentMethodId: nullableUuidSchema,
     nextReservationStartTime: nextReservationStartSchema,
     notes: z.string().max(2000).nullable().optional(),
@@ -130,7 +156,65 @@ function normalizeBillingType(value: string): BillingType {
   return value === 'insurance' ? 'insurance' : 'private';
 }
 
+function normalizeRevenueContextCode(
+  value: string | null | undefined,
+  billingType: BillingType
+): SelectableRevenueContextCode {
+  switch (value) {
+    case 'insurance':
+    case 'private':
+    case 'traffic_accident':
+    case 'workers_comp':
+    case 'product':
+    case 'ticket':
+    case 'other':
+      return value;
+    default:
+      return deriveRevenueContextCodeFromBillingType(billingType);
+  }
+}
+
+function normalizeRevenueContextSource(
+  value: string | null | undefined
+): RevenueContextSource {
+  switch (value) {
+    case 'manual':
+    case 'override':
+    case 'system':
+      return value;
+    default:
+      return 'derived';
+  }
+}
+
+function normalizeAmountSource(value: string | null | undefined): AmountSource {
+  switch (value) {
+    case 'menu_price':
+    case 'estimate':
+    case 'override':
+    case 'reservation':
+      return value;
+    default:
+      return 'manual';
+  }
+}
+
+function normalizeEstimateStatus(
+  value: string | null | undefined
+): EstimateStatus {
+  switch (value) {
+    case 'calculated':
+    case 'needs_review':
+    case 'blocked':
+    case 'overridden':
+      return value;
+    default:
+      return 'not_calculated';
+  }
+}
+
 function mapDailyReportItem(row: DailyReportItemRow): DailyReportItemApi {
+  const billingType = normalizeBillingType(row.billing_type);
   return {
     id: row.id,
     clinicId: row.clinic_id,
@@ -144,7 +228,16 @@ function mapDailyReportItem(row: DailyReportItemRow): DailyReportItemApi {
     treatmentName: row.treatment_name,
     durationMinutes: row.duration_minutes,
     fee: Number(row.fee),
-    billingType: normalizeBillingType(row.billing_type),
+    billingType,
+    revenueContextCode: normalizeRevenueContextCode(
+      row.revenue_context_code,
+      billingType
+    ),
+    revenueContextSource: normalizeRevenueContextSource(
+      row.revenue_context_source
+    ),
+    amountSource: normalizeAmountSource(row.amount_source),
+    estimateStatus: normalizeEstimateStatus(row.estimate_status),
     paymentMethodId: row.payment_method_id,
     nextReservationStartTime: row.next_reservation_start_time,
     nextReservationEndTime: row.next_reservation_end_time,
@@ -660,6 +753,21 @@ export async function POST(request: NextRequest) {
       dto.clinic_id
     );
 
+    const revenueContextCode =
+      dto.revenueContextCode ??
+      deriveRevenueContextCodeFromBillingType(dto.billingType);
+    try {
+      assertBillingTypeCompatible(dto.billingType, revenueContextCode);
+    } catch (error) {
+      return createErrorResponse(
+        error instanceof Error
+          ? error.message
+          : 'billingType and revenueContextCode are incompatible',
+        400
+      );
+    }
+    const billingType = deriveLegacyBillingType(revenueContextCode);
+
     const paymentError = await validatePaymentMethod(
       supabase,
       dto.paymentMethodId
@@ -685,7 +793,11 @@ export async function POST(request: NextRequest) {
       treatment_name: dto.treatmentName,
       duration_minutes: dto.durationMinutes,
       fee: dto.fee,
-      billing_type: dto.billingType,
+      billing_type: billingType,
+      revenue_context_code: revenueContextCode,
+      revenue_context_source: 'manual',
+      amount_source: dto.reservationId ? 'reservation' : 'manual',
+      estimate_status: 'not_calculated',
       payment_method_id: dto.paymentMethodId ?? null,
       source: dto.reservationId ? 'reservation' : 'manual',
       notes: dto.notes ?? null,
@@ -783,6 +895,17 @@ export async function PATCH(request: NextRequest) {
       return createErrorResponse('日報明細が見つかりません', 404);
     }
 
+    try {
+      assertBillingTypeCompatible(dto.billingType, dto.revenueContextCode);
+    } catch (error) {
+      return createErrorResponse(
+        error instanceof Error
+          ? error.message
+          : 'billingType and revenueContextCode are incompatible',
+        400
+      );
+    }
+
     const paymentError = await validatePaymentMethod(
       supabase,
       dto.paymentMethodId
@@ -834,11 +957,31 @@ export async function PATCH(request: NextRequest) {
       updatePayload.fee = dto.fee;
       hasItemChanges = true;
     }
-    if (
+    if (dto.revenueContextCode !== undefined) {
+      const existingContextCode = normalizeRevenueContextCode(
+        existing.revenue_context_code,
+        normalizeBillingType(existing.billing_type)
+      );
+      if (
+        dto.revenueContextCode !== existingContextCode ||
+        normalizeRevenueContextSource(existing.revenue_context_source) !==
+          'manual'
+      ) {
+        updatePayload.revenue_context_code = dto.revenueContextCode;
+        updatePayload.billing_type = deriveLegacyBillingType(
+          dto.revenueContextCode
+        );
+        updatePayload.revenue_context_source = 'manual';
+        hasItemChanges = true;
+      }
+    } else if (
       dto.billingType !== undefined &&
       dto.billingType !== normalizeBillingType(existing.billing_type)
     ) {
       updatePayload.billing_type = dto.billingType;
+      updatePayload.revenue_context_code =
+        deriveRevenueContextCodeFromBillingType(dto.billingType);
+      updatePayload.revenue_context_source = 'manual';
       hasItemChanges = true;
     }
     if (

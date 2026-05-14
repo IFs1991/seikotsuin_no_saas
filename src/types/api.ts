@@ -2,6 +2,8 @@
 // API Response Types - 統一されたAPIレスポンス型定義
 // =================================================================
 
+import type { RevenueContextCode } from '@/lib/revenue-context';
+
 /**
  * 統一されたAPIレスポンス形式
  */
@@ -310,6 +312,10 @@ export interface RevenueAnalysisData {
   monthlyRevenue: number;
   insuranceRevenue: number;
   selfPayRevenue: number;
+  trafficAccidentRevenue: number;
+  workersCompRevenue: number;
+  productRevenue: number;
+  ticketRevenue: number;
   menuRanking: MenuRanking[];
   hourlyRevenue: HourlyRevenue[];
   revenueForecast: number;
@@ -317,6 +323,7 @@ export interface RevenueAnalysisData {
   revenueTrends: RevenueTrend[];
   costAnalysis: string;
   staffRevenueContribution: StaffRevenue[];
+  revenueContextSummary: RevenueContextSummary[];
 }
 
 export interface MenuRanking {
@@ -339,6 +346,16 @@ export interface RevenueTrend {
   insurance_revenue: number;
   private_revenue: number;
   transaction_count: number;
+}
+
+export interface RevenueContextSummary {
+  code: RevenueContextCode;
+  name: string;
+  rollupCategory: string;
+  totalRevenue: number;
+  itemCount: number;
+  needsReviewCount: number;
+  blockedCount: number;
 }
 
 export interface StaffRevenue {

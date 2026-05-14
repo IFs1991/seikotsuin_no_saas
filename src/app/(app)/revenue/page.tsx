@@ -25,6 +25,13 @@ const RevenuePage: React.FC = () => {
     monthlyRevenue,
     insuranceRevenue,
     selfPayRevenue,
+    trafficAccidentRevenue,
+    workersCompRevenue,
+    productRevenue,
+    ticketRevenue,
+    needsReviewCount,
+    blockedCount,
+    revenueContextSummary,
     menuRanking,
     hourlyRevenue,
     dailyRevenueByDayOfWeek,
@@ -123,6 +130,116 @@ const RevenuePage: React.FC = () => {
                 </span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className='w-full bg-card mb-4'>
+          <CardHeader className='bg-card'>
+            <CardTitle className='text-center bg-card'>売上文脈</CardTitle>
+            <CardDescription className='bg-card'>
+              分類別の売上と確認状況
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='bg-card'>
+            <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  交通事故
+                </p>
+                <p className='font-semibold text-amber-700 dark:text-amber-300'>
+                  {trafficAccidentRevenue.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>労災</p>
+                <p className='font-semibold text-sky-700 dark:text-sky-300'>
+                  {workersCompRevenue.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>物販</p>
+                <p className='font-semibold text-emerald-700 dark:text-emerald-300'>
+                  {productRevenue.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  回数券
+                </p>
+                <p className='font-semibold text-fuchsia-700 dark:text-fuchsia-300'>
+                  {ticketRevenue.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  要確認
+                </p>
+                <p className='font-semibold text-red-700 dark:text-red-300'>
+                  {needsReviewCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  ブロック
+                </p>
+                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                  {blockedCount.toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='w-full bg-card mb-4'>
+          <CardHeader className='bg-card'>
+            <CardTitle className='text-center bg-card'>
+              売上文脈別サマリ
+            </CardTitle>
+            <CardDescription className='bg-card'>
+              分類別の件数と売上
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='bg-card'>
+            {revenueContextSummary.length === 0 ? (
+              <p className='text-gray-500 text-center'>データがありません</p>
+            ) : (
+              <div className='overflow-x-auto'>
+                <table className='w-full text-sm'>
+                  <thead>
+                    <tr className='border-b text-left'>
+                      <th className='py-2 pr-3 font-medium'>分類</th>
+                      <th className='py-2 pr-3 font-medium'>ロールアップ</th>
+                      <th className='py-2 pr-3 font-medium text-right'>件数</th>
+                      <th className='py-2 pr-3 font-medium text-right'>売上</th>
+                      <th className='py-2 pr-3 font-medium text-right'>
+                        要確認
+                      </th>
+                      <th className='py-2 font-medium text-right'>ブロック</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {revenueContextSummary.map(item => (
+                      <tr key={item.code} className='border-b last:border-b-0'>
+                        <td className='py-2 pr-3'>{item.name}</td>
+                        <td className='py-2 pr-3'>{item.rollupCategory}</td>
+                        <td className='py-2 pr-3 text-right'>
+                          {item.itemCount.toLocaleString()}
+                        </td>
+                        <td className='py-2 pr-3 text-right'>
+                          {item.totalRevenue.toLocaleString()}
+                        </td>
+                        <td className='py-2 pr-3 text-right'>
+                          {item.needsReviewCount.toLocaleString()}
+                        </td>
+                        <td className='py-2 text-right'>
+                          {item.blockedCount.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
