@@ -21,6 +21,7 @@ interface RevenueData {
   needsReviewCount: number;
   blockedCount: number;
   revenueContextSummary: RevenueAnalysisData['revenueContextSummary'];
+  careEpisodeMetrics: RevenueAnalysisData['careEpisodeMetrics'];
   menuRanking: MenuRanking[];
   hourlyRevenue: string;
   dailyRevenueByDayOfWeek: string;
@@ -49,6 +50,16 @@ const INITIAL_DATA: RevenueData = {
   needsReviewCount: 0,
   blockedCount: 0,
   revenueContextSummary: [],
+  careEpisodeMetrics: {
+    totalEpisodes: 0,
+    secondVisitReachedCount: 0,
+    fifthVisitReachedCount: 0,
+    secondVisitReachRate: 0,
+    fifthVisitReachRate: 0,
+    episodeContinuationRate: 0,
+    averageRevenuePerEpisode: 0,
+    averageVisitsPerEpisode: 0,
+  },
   menuRanking: [],
   hourlyRevenue: '',
   dailyRevenueByDayOfWeek: '',
@@ -143,6 +154,8 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
           needsReviewCount: sumNeedsReviewCount(revenueContextSummary),
           blockedCount: sumBlockedCount(revenueContextSummary),
           revenueContextSummary,
+          careEpisodeMetrics:
+            revenueData.careEpisodeMetrics ?? INITIAL_DATA.careEpisodeMetrics,
           menuRanking: mapMenuRanking(revenueData.menuRanking),
           hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
           dailyRevenueByDayOfWeek: '',

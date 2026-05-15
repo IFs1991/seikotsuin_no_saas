@@ -26,7 +26,7 @@ import {
 
 const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
-  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, created_at, updated_at, created_by, updated_by';
+  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, care_episode_id, visit_ordinal_in_episode, visit_stage_code, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, created_at, updated_at, created_by, updated_by';
 const PAYMENT_METHOD_SELECT = 'id, name, is_active';
 
 type DailyReportItemRow =
@@ -61,6 +61,9 @@ type DailyReportItemApi = {
   revenueContextSource: RevenueContextSource;
   amountSource: AmountSource;
   estimateStatus: EstimateStatus;
+  careEpisodeId: string | null;
+  visitOrdinalInEpisode: number | null;
+  visitStageCode: string | null;
   paymentMethodId: string | null;
   nextReservationStartTime: string | null;
   nextReservationEndTime: string | null;
@@ -238,6 +241,9 @@ function mapDailyReportItem(row: DailyReportItemRow): DailyReportItemApi {
     ),
     amountSource: normalizeAmountSource(row.amount_source),
     estimateStatus: normalizeEstimateStatus(row.estimate_status),
+    careEpisodeId: row.care_episode_id ?? null,
+    visitOrdinalInEpisode: row.visit_ordinal_in_episode ?? null,
+    visitStageCode: row.visit_stage_code ?? null,
     paymentMethodId: row.payment_method_id,
     nextReservationStartTime: row.next_reservation_start_time,
     nextReservationEndTime: row.next_reservation_end_time,

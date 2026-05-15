@@ -55,16 +55,25 @@ describe('GET /api/revenue', () => {
         menu_id: 'menu-1',
         treatment_name: '整体',
         fee: 5000,
+        care_episode_id: 'episode-1',
+        visit_ordinal_in_episode: 1,
+        visit_stage_code: 'first_visit',
       },
       {
         menu_id: 'menu-1',
         treatment_name: '整体',
         fee: 5000,
+        care_episode_id: 'episode-1',
+        visit_ordinal_in_episode: 2,
+        visit_stage_code: 'second_visit',
       },
       {
         menu_id: 'menu-2',
         treatment_name: '鍼灸',
         fee: 12000,
+        care_episode_id: 'episode-2',
+        visit_ordinal_in_episode: 1,
+        visit_stage_code: 'first_visit',
       },
     ]);
     const lastYearReportsQuery = createResolvedRangeQuery([
@@ -250,6 +259,16 @@ describe('GET /api/revenue', () => {
         workersCompRevenue: 4000,
         productRevenue: 3000,
         ticketRevenue: 12000,
+        careEpisodeMetrics: {
+          totalEpisodes: 2,
+          secondVisitReachedCount: 1,
+          fifthVisitReachedCount: 0,
+          secondVisitReachRate: 50,
+          fifthVisitReachRate: 0,
+          episodeContinuationRate: 50,
+          averageRevenuePerEpisode: 11000,
+          averageVisitsPerEpisode: 1.5,
+        },
       },
     });
   });

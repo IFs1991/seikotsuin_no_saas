@@ -3,6 +3,7 @@ import { AppError } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import type { Database } from '@/types/supabase';
 import type {
+  CareEpisodeMetrics,
   HourlyRevenue,
   MenuRanking,
   RevenueAnalysisData,
@@ -10,6 +11,7 @@ import type {
   RevenueTrend,
 } from '@/types/api';
 import type { SelectableRevenueContextCode } from '@/lib/revenue-context';
+import { calculateCareEpisodeMetrics } from '@/lib/care-episode';
 
 const PATH = '/api/revenue';
 
@@ -24,7 +26,12 @@ type DailyReportRow = Pick<
 
 type DailyReportItemRow = Pick<
   Database['public']['Tables']['daily_report_items']['Row'],
-  'menu_id' | 'treatment_name' | 'fee'
+  | 'menu_id'
+  | 'treatment_name'
+  | 'fee'
+  | 'care_episode_id'
+  | 'visit_ordinal_in_episode'
+  | 'visit_stage_code'
 >;
 
 type RevenueContextSummaryRow = Pick<
@@ -62,7 +69,8 @@ const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAILY_REPORT_SELECT =
   'report_date, total_patients, total_revenue, insurance_revenue, private_revenue';
-const DAILY_REPORT_ITEM_SELECT = 'menu_id, treatment_name, fee';
+const DAILY_REPORT_ITEM_SELECT =
+  'menu_id, treatment_name, fee, care_episode_id, visit_ordinal_in_episode, visit_stage_code';
 const REVENUE_CONTEXT_SUMMARY_SELECT =
   'revenue_context_code, revenue_context_name, rollup_category, total_revenue, item_count, needs_review_count, blocked_count';
 
@@ -385,6 +393,9 @@ export async function GET(request: NextRequest) {
     );
 
     const lastYearTotal = sumLastYearRevenue(lastYearReportsResult.data ?? []);
+    const careEpisodeMetrics: CareEpisodeMetrics = calculateCareEpisodeMetrics(
+      dailyReportItemsResult.data ?? []
+    );
     const growthRate =
       lastYearTotal > 0
         ? (
@@ -418,6 +429,7 @@ export async function GET(request: NextRequest) {
       ),
       productRevenue: sumContextRevenueByCode(revenueContextSummary, 'product'),
       ticketRevenue: sumContextRevenueByCode(revenueContextSummary, 'ticket'),
+      careEpisodeMetrics,
     };
 
     return NextResponse.json({

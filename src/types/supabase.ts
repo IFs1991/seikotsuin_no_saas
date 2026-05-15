@@ -502,6 +502,80 @@ export type Database = {
           },
         ];
       };
+      care_episodes: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string;
+          ended_on: string | null;
+          episode_name: string | null;
+          id: string;
+          primary_problem_text: string | null;
+          started_on: string;
+          status: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id: string;
+          ended_on?: string | null;
+          episode_name?: string | null;
+          id?: string;
+          primary_problem_text?: string | null;
+          started_on: string;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string;
+          ended_on?: string | null;
+          episode_name?: string | null;
+          id?: string;
+          primary_problem_text?: string | null;
+          started_on?: string;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'care_episodes_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'care_episodes_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'care_episodes_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'care_episodes_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id'];
+          },
+        ];
+      };
       chat_messages: {
         Row: {
           created_at: string | null;
@@ -1050,6 +1124,7 @@ export type Database = {
         Row: {
           amount_source: string;
           billing_type: string;
+          care_episode_id: string | null;
           clinic_id: string;
           created_at: string;
           created_by: string | null;
@@ -1075,10 +1150,13 @@ export type Database = {
           treatment_name: string;
           updated_at: string;
           updated_by: string | null;
+          visit_ordinal_in_episode: number | null;
+          visit_stage_code: string | null;
         };
         Insert: {
           amount_source?: string;
           billing_type?: string;
+          care_episode_id?: string | null;
           clinic_id: string;
           created_at?: string;
           created_by?: string | null;
@@ -1104,10 +1182,13 @@ export type Database = {
           treatment_name: string;
           updated_at?: string;
           updated_by?: string | null;
+          visit_ordinal_in_episode?: number | null;
+          visit_stage_code?: string | null;
         };
         Update: {
           amount_source?: string;
           billing_type?: string;
+          care_episode_id?: string | null;
           clinic_id?: string;
           created_at?: string;
           created_by?: string | null;
@@ -1133,8 +1214,17 @@ export type Database = {
           treatment_name?: string;
           updated_at?: string;
           updated_by?: string | null;
+          visit_ordinal_in_episode?: number | null;
+          visit_stage_code?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'daily_report_items_care_episode_id_fkey';
+            columns: ['care_episode_id'];
+            isOneToOne: false;
+            referencedRelation: 'care_episodes';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'daily_report_items_clinic_id_fkey';
             columns: ['clinic_id'];
@@ -1232,6 +1322,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
             referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_visit_stage_code_fkey';
+            columns: ['visit_stage_code'];
+            isOneToOne: false;
+            referencedRelation: 'visit_stage_definitions';
+            referencedColumns: ['code'];
           },
         ];
       };
@@ -3608,6 +3705,39 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      visit_stage_definitions: {
+        Row: {
+          code: string;
+          created_at: string;
+          description: string | null;
+          is_active: boolean;
+          name: string;
+          ordinal: number;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          description?: string | null;
+          is_active?: boolean;
+          name: string;
+          ordinal: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          description?: string | null;
+          is_active?: boolean;
+          name?: string;
+          ordinal?: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       visits: {
         Row: {

@@ -31,6 +31,16 @@ const mockRevenueData = {
   ticketRevenue: 300000,
   needsReviewCount: 2,
   blockedCount: 1,
+  careEpisodeMetrics: {
+    totalEpisodes: 8,
+    secondVisitReachedCount: 6,
+    fifthVisitReachedCount: 3,
+    secondVisitReachRate: 75,
+    fifthVisitReachRate: 37.5,
+    episodeContinuationRate: 75,
+    averageRevenuePerEpisode: 52000,
+    averageVisitsPerEpisode: 3.2,
+  },
   revenueContextSummary: [
     {
       code: 'traffic_accident',
@@ -104,6 +114,7 @@ describe('RevenuePage', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('売上文脈')).toBeInTheDocument();
       expect(screen.getByText('売上文脈別サマリ')).toBeInTheDocument();
+      expect(screen.getByText('来院ステージ')).toBeInTheDocument();
       expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
       expect(
         screen.getByText('収益予測とシミュレーション')
@@ -143,6 +154,17 @@ describe('RevenuePage', () => {
       expect(screen.getByText('120,000')).toBeInTheDocument();
       expect(screen.getByText('回数券')).toBeInTheDocument();
       expect(screen.getByText('300,000')).toBeInTheDocument();
+    });
+
+    test('should display care episode metrics', () => {
+      render(<RevenuePage />);
+
+      expect(screen.getByText('episode数')).toBeInTheDocument();
+      expect(screen.getByText('初診2回目到達率')).toBeInTheDocument();
+      expect(screen.getByText('初診5回目到達率')).toBeInTheDocument();
+      expect(screen.getByText('episode平均売上')).toBeInTheDocument();
+      expect(screen.getByText('52,000')).toBeInTheDocument();
+      expect(screen.getAllByText('75%').length).toBeGreaterThan(0);
     });
 
     test('should display hourly and daily patterns', () => {
