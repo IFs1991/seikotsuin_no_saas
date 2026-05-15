@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { GET } from '@/app/api/revenue/route';
+import { GET, POST } from '@/app/api/revenue/route';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 
 jest.mock('@/lib/supabase/guards', () => ({
@@ -70,12 +70,53 @@ describe('GET /api/revenue', () => {
     const lastYearReportsQuery = createResolvedRangeQuery([
       { total_revenue: 30000 },
     ]);
+    const revenueContextSummaryQuery = createResolvedRangeQuery([
+      {
+        revenue_context_code: 'traffic_accident',
+        revenue_context_name: '交通事故',
+        rollup_category: 'traffic_accident',
+        total_revenue: 9000,
+        item_count: 2,
+        needs_review_count: 1,
+        blocked_count: 0,
+      },
+      {
+        revenue_context_code: 'workers_comp',
+        revenue_context_name: '労災',
+        rollup_category: 'workers_comp',
+        total_revenue: 4000,
+        item_count: 1,
+        needs_review_count: 1,
+        blocked_count: 1,
+      },
+      {
+        revenue_context_code: 'product',
+        revenue_context_name: '物販',
+        rollup_category: 'product',
+        total_revenue: 3000,
+        item_count: 1,
+        needs_review_count: 0,
+        blocked_count: 0,
+      },
+      {
+        revenue_context_code: 'ticket',
+        revenue_context_name: '回数券',
+        rollup_category: 'ticket',
+        total_revenue: 12000,
+        item_count: 1,
+        needs_review_count: 0,
+        blocked_count: 0,
+      },
+    ]);
     const dailyReportQueries = [currentReportsQuery, lastYearReportsQuery];
     const dailyReportsTable = {
       select: jest.fn(() => dailyReportQueries.shift() ?? lastYearReportsQuery),
     };
     const dailyReportItemsTable = {
       select: jest.fn(() => reportItemsQuery),
+    };
+    const revenueContextSummaryView = {
+      select: jest.fn(() => revenueContextSummaryQuery),
     };
     const client = {
       from: jest.fn((table: string) => {
@@ -84,6 +125,9 @@ describe('GET /api/revenue', () => {
         }
         if (table === 'daily_report_items') {
           return dailyReportItemsTable;
+        }
+        if (table === 'daily_report_revenue_context_summary') {
+          return revenueContextSummaryView;
         }
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -106,6 +150,9 @@ describe('GET /api/revenue', () => {
     );
     expect(client.from).toHaveBeenCalledWith('daily_reports');
     expect(client.from).toHaveBeenCalledWith('daily_report_items');
+    expect(client.from).toHaveBeenCalledWith(
+      'daily_report_revenue_context_summary'
+    );
     expect(client.from).not.toHaveBeenCalledWith('revenues');
     expect(currentReportsQuery.gte).toHaveBeenCalledWith(
       'report_date',
@@ -161,6 +208,48 @@ describe('GET /api/revenue', () => {
             transaction_count: 3,
           },
         ],
+        revenueContextSummary: [
+          {
+            code: 'traffic_accident',
+            name: '交通事故',
+            rollupCategory: 'traffic_accident',
+            totalRevenue: 9000,
+            itemCount: 2,
+            needsReviewCount: 1,
+            blockedCount: 0,
+          },
+          {
+            code: 'workers_comp',
+            name: '労災',
+            rollupCategory: 'workers_comp',
+            totalRevenue: 4000,
+            itemCount: 1,
+            needsReviewCount: 1,
+            blockedCount: 1,
+          },
+          {
+            code: 'product',
+            name: '物販',
+            rollupCategory: 'product',
+            totalRevenue: 3000,
+            itemCount: 1,
+            needsReviewCount: 0,
+            blockedCount: 0,
+          },
+          {
+            code: 'ticket',
+            name: '回数券',
+            rollupCategory: 'ticket',
+            totalRevenue: 12000,
+            itemCount: 1,
+            needsReviewCount: 0,
+            blockedCount: 0,
+          },
+        ],
+        trafficAccidentRevenue: 9000,
+        workersCompRevenue: 4000,
+        productRevenue: 3000,
+        ticketRevenue: 12000,
       },
     });
   });
@@ -171,6 +260,26 @@ describe('GET /api/revenue', () => {
 
     expect(response.status).toBe(400);
     expect(json).toEqual({ error: 'clinic_id is required' });
+    expect(ensureClinicAccessMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 410 for deprecated revenue POST without touching the revenues table', async () => {
+    const request = new NextRequest('http://localhost/api/revenue', {
+      method: 'POST',
+      body: JSON.stringify({
+        clinic_id: clinicId,
+        amount: 1000,
+      }),
+    });
+
+    const response = await POST(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(410);
+    expect(json).toEqual({
+      error:
+        'POST /api/revenue is deprecated. Use /api/daily-reports/items instead.',
+    });
     expect(ensureClinicAccessMock).not.toHaveBeenCalled();
   });
 });

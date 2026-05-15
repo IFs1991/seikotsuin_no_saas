@@ -22,8 +22,17 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { toJSTDateString } from '@/lib/jst';
-
-type BillingType = 'insurance' | 'private';
+import {
+  deriveLegacyBillingType,
+  deriveRevenueContextCodeFromBillingType,
+  REVENUE_CONTEXT_LABELS,
+  SELECTABLE_REVENUE_CONTEXT_CODES,
+  type AmountSource,
+  type BillingType,
+  type EstimateStatus,
+  type RevenueContextSource,
+  type SelectableRevenueContextCode,
+} from '@/lib/revenue-context';
 
 interface DailyReportItem {
   id: string;
@@ -39,6 +48,10 @@ interface DailyReportItem {
   durationMinutes: number;
   fee: number;
   billingType: BillingType;
+  revenueContextCode: SelectableRevenueContextCode;
+  revenueContextSource: RevenueContextSource;
+  amountSource: AmountSource;
+  estimateStatus: EstimateStatus;
   paymentMethodId: string | null;
   nextReservationStartTime: string | null;
   nextReservationEndTime: string | null;
@@ -61,6 +74,7 @@ interface NewItemForm {
   durationMinutes: number;
   fee: number;
   billingType: BillingType;
+  revenueContextCode: SelectableRevenueContextCode;
   paymentMethodId: string;
 }
 
@@ -70,6 +84,7 @@ type ItemPatchPayload = {
   durationMinutes?: number;
   fee?: number;
   billingType?: BillingType;
+  revenueContextCode?: SelectableRevenueContextCode;
   paymentMethodId?: string | null;
   nextReservationStartTime?: string | null;
   notes?: string | null;
@@ -92,6 +107,7 @@ const emptyNewItem: NewItemForm = {
   durationMinutes: 0,
   fee: 0,
   billingType: 'insurance',
+  revenueContextCode: 'insurance',
   paymentMethodId: '',
 };
 
@@ -109,6 +125,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isBillingType(value: unknown): value is BillingType {
   return value === 'insurance' || value === 'private';
+}
+
+function isRevenueContextCode(
+  value: unknown
+): value is SelectableRevenueContextCode {
+  return SELECTABLE_REVENUE_CONTEXT_CODES.some(code => code === value);
 }
 
 function isPaymentMethod(value: unknown): value is PaymentMethod {
@@ -131,8 +153,21 @@ function isDailyReportItem(value: unknown): value is DailyReportItem {
     typeof value.treatmentName === 'string' &&
     typeof value.durationMinutes === 'number' &&
     typeof value.fee === 'number' &&
-    isBillingType(value.billingType)
+    isBillingType(value.billingType) &&
+    isRevenueContextCode(value.revenueContextCode)
   );
+}
+
+function getReviewTagCode(
+  revenueContextCode: SelectableRevenueContextCode
+): 'TRAFFIC_ACCIDENT_REVIEW' | 'WORKERS_COMP_REVIEW' | null {
+  if (revenueContextCode === 'traffic_accident') {
+    return 'TRAFFIC_ACCIDENT_REVIEW';
+  }
+  if (revenueContextCode === 'workers_comp') {
+    return 'WORKERS_COMP_REVIEW';
+  }
+  return null;
 }
 
 function getApiErrorMessage(payload: unknown, fallback: string) {
@@ -267,6 +302,12 @@ function getChangedItemPatch(
     changed.billingType = patch.billingType;
   }
   if (
+    patch.revenueContextCode !== undefined &&
+    patch.revenueContextCode !== savedItem.revenueContextCode
+  ) {
+    changed.revenueContextCode = patch.revenueContextCode;
+  }
+  if (
     patch.paymentMethodId !== undefined &&
     patch.paymentMethodId !== savedItem.paymentMethodId
   ) {
@@ -313,6 +354,7 @@ export default function DailyReportInputPage() {
   const [isSavingReport, setIsSavingReport] = useState(false);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [taggingItemId, setTaggingItemId] = useState<string | null>(null);
   const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
   const loadRequestIdRef = useRef(0);
 
@@ -502,6 +544,7 @@ export default function DailyReportInputPage() {
           durationMinutes: newItem.durationMinutes,
           fee: newItem.fee,
           billingType: newItem.billingType,
+          revenueContextCode: newItem.revenueContextCode,
           paymentMethodId: newItem.paymentMethodId || null,
         }),
       });
@@ -572,6 +615,43 @@ export default function DailyReportInputPage() {
       );
     } finally {
       setDeletingItemId(null);
+    }
+  };
+
+  const addReviewTag = async (item: DailyReportItem) => {
+    if (!clinicId) {
+      setFormError('アクセス可能なクリニックが確認できません');
+      return;
+    }
+
+    const tagCode = getReviewTagCode(item.revenueContextCode);
+    if (!tagCode) {
+      return;
+    }
+
+    setTaggingItemId(item.id);
+    setFormError(null);
+
+    try {
+      const response = await fetch(`/api/daily-reports/items/${item.id}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clinic_id: clinicId,
+          tagCode,
+        }),
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        setFormError(getApiErrorMessage(payload, 'タグの追加に失敗しました'));
+      }
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : 'タグの追加に失敗しました'
+      );
+    } finally {
+      setTaggingItemId(null);
     }
   };
 
@@ -880,12 +960,17 @@ export default function DailyReportInputPage() {
                   className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
                   value={newItem.billingType}
                   onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      billingType: isBillingType(event.target.value)
+                    setNewItem(prev => {
+                      const billingType = isBillingType(event.target.value)
                         ? event.target.value
-                        : 'private',
-                    }))
+                        : 'private';
+                      return {
+                        ...prev,
+                        billingType,
+                        revenueContextCode:
+                          deriveRevenueContextCodeFromBillingType(billingType),
+                      };
+                    })
                   }
                   disabled={isAddingItem}
                 >
@@ -893,7 +978,34 @@ export default function DailyReportInputPage() {
                   <option value='private'>自費診療</option>
                 </select>
               </div>
-              <div className='md:col-span-2 flex items-end'>
+              <div className='space-y-2'>
+                <Label htmlFor='newRevenueContext'>売上文脈</Label>
+                <select
+                  id='newRevenueContext'
+                  className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                  value={newItem.revenueContextCode}
+                  onChange={event => {
+                    const revenueContextCode = isRevenueContextCode(
+                      event.target.value
+                    )
+                      ? event.target.value
+                      : 'private';
+                    setNewItem(prev => ({
+                      ...prev,
+                      revenueContextCode,
+                      billingType: deriveLegacyBillingType(revenueContextCode),
+                    }));
+                  }}
+                  disabled={isAddingItem}
+                >
+                  {SELECTABLE_REVENUE_CONTEXT_CODES.map(code => (
+                    <option key={code} value={code}>
+                      {REVENUE_CONTEXT_LABELS[code]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='md:col-span-1 flex items-end'>
                 <Button
                   onClick={addItem}
                   className='w-full'
@@ -1022,13 +1134,51 @@ export default function DailyReportInputPage() {
                               )
                                 ? event.target.value
                                 : 'private';
-                              updateItemLocal(item.id, { billingType });
+                              const revenueContextCode =
+                                deriveRevenueContextCodeFromBillingType(
+                                  billingType
+                                );
+                              updateItemLocal(item.id, {
+                                billingType,
+                                revenueContextCode,
+                              });
                               void persistItemPatch(item.id, { billingType });
                             }}
                             disabled={itemSaving}
                           >
                             <option value='insurance'>保険</option>
                             <option value='private'>自費</option>
+                          </select>
+                        </div>
+                        <div className='space-y-1'>
+                          <Label htmlFor={`context-${item.id}`}>売上文脈</Label>
+                          <select
+                            id={`context-${item.id}`}
+                            className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                            value={item.revenueContextCode}
+                            onChange={event => {
+                              const revenueContextCode = isRevenueContextCode(
+                                event.target.value
+                              )
+                                ? event.target.value
+                                : 'private';
+                              const billingType =
+                                deriveLegacyBillingType(revenueContextCode);
+                              updateItemLocal(item.id, {
+                                revenueContextCode,
+                                billingType,
+                              });
+                              void persistItemPatch(item.id, {
+                                revenueContextCode,
+                              });
+                            }}
+                            disabled={itemSaving}
+                          >
+                            {SELECTABLE_REVENUE_CONTEXT_CODES.map(code => (
+                              <option key={code} value={code}>
+                                {REVENUE_CONTEXT_LABELS[code]}
+                              </option>
+                            ))}
                           </select>
                         </div>
                         <div className='lg:col-span-2 space-y-1'>
@@ -1108,6 +1258,19 @@ export default function DailyReportInputPage() {
                             ? '予約から自動反映'
                             : '手動追加'}
                         </span>
+                        <span>
+                          {REVENUE_CONTEXT_LABELS[item.revenueContextCode]}
+                        </span>
+                        {item.revenueContextSource === 'manual' && (
+                          <span className='rounded border px-2 py-0.5 text-gray-700 dark:text-gray-200'>
+                            手動分類
+                          </span>
+                        )}
+                        {getReviewTagCode(item.revenueContextCode) && (
+                          <span className='rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-800'>
+                            要確認
+                          </span>
+                        )}
                         {item.nextReservationId && (
                           <span>次回予約作成済み</span>
                         )}
@@ -1115,6 +1278,18 @@ export default function DailyReportInputPage() {
                           <span>
                             手動追加行は予約に紐づかないため次回予約を作成できません
                           </span>
+                        )}
+                        {getReviewTagCode(item.revenueContextCode) && (
+                          <button
+                            type='button'
+                            className='underline disabled:no-underline disabled:text-gray-400'
+                            onClick={() => void addReviewTag(item)}
+                            disabled={taggingItemId === item.id}
+                          >
+                            {taggingItemId === item.id
+                              ? 'タグ追加中'
+                              : '確認タグを追加'}
+                          </button>
                         )}
                       </div>
                     </div>

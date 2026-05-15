@@ -25,6 +25,32 @@ const mockRevenueData = {
   monthlyRevenue: 4200000,
   insuranceRevenue: 2520000,
   selfPayRevenue: 1680000,
+  trafficAccidentRevenue: 90000,
+  workersCompRevenue: 50000,
+  productRevenue: 120000,
+  ticketRevenue: 300000,
+  needsReviewCount: 2,
+  blockedCount: 1,
+  revenueContextSummary: [
+    {
+      code: 'traffic_accident',
+      name: '交通事故',
+      rollupCategory: 'traffic_accident',
+      totalRevenue: 90000,
+      itemCount: 3,
+      needsReviewCount: 1,
+      blockedCount: 0,
+    },
+    {
+      code: 'workers_comp',
+      name: '労災',
+      rollupCategory: 'workers_comp',
+      totalRevenue: 50000,
+      itemCount: 2,
+      needsReviewCount: 1,
+      blockedCount: 1,
+    },
+  ],
   menuRanking: [
     { menu: '整体', revenue: 1200000, count: 120 },
     { menu: 'マッサージ', revenue: 800000, count: 160 },
@@ -76,6 +102,8 @@ describe('RevenuePage', () => {
       expect(
         screen.getByText('時間帯別・曜日別収益パターン')
       ).toBeInTheDocument();
+      expect(screen.getByText('売上文脈')).toBeInTheDocument();
+      expect(screen.getByText('売上文脈別サマリ')).toBeInTheDocument();
       expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
       expect(
         screen.getByText('収益予測とシミュレーション')
@@ -102,6 +130,19 @@ describe('RevenuePage', () => {
       expect(screen.getByText('800,000')).toBeInTheDocument();
       expect(screen.getByText('鍼灸')).toBeInTheDocument();
       expect(screen.getByText('600,000')).toBeInTheDocument();
+    });
+
+    test('should display revenue context summary', () => {
+      render(<RevenuePage />);
+
+      expect(screen.getAllByText('交通事故').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('90,000').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('労災').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('50,000').length).toBeGreaterThan(0);
+      expect(screen.getByText('物販')).toBeInTheDocument();
+      expect(screen.getByText('120,000')).toBeInTheDocument();
+      expect(screen.getByText('回数券')).toBeInTheDocument();
+      expect(screen.getByText('300,000')).toBeInTheDocument();
     });
 
     test('should display hourly and daily patterns', () => {

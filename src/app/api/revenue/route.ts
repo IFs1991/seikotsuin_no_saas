@@ -6,8 +6,10 @@ import type {
   HourlyRevenue,
   MenuRanking,
   RevenueAnalysisData,
+  RevenueContextSummary,
   RevenueTrend,
 } from '@/types/api';
+import type { SelectableRevenueContextCode } from '@/lib/revenue-context';
 
 const PATH = '/api/revenue';
 
@@ -23,6 +25,17 @@ type DailyReportRow = Pick<
 type DailyReportItemRow = Pick<
   Database['public']['Tables']['daily_report_items']['Row'],
   'menu_id' | 'treatment_name' | 'fee'
+>;
+
+type RevenueContextSummaryRow = Pick<
+  Database['public']['Views']['daily_report_revenue_context_summary']['Row'],
+  | 'revenue_context_code'
+  | 'revenue_context_name'
+  | 'rollup_category'
+  | 'total_revenue'
+  | 'item_count'
+  | 'needs_review_count'
+  | 'blocked_count'
 >;
 
 type LastYearReportRow = Pick<
@@ -50,6 +63,8 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAILY_REPORT_SELECT =
   'report_date, total_patients, total_revenue, insurance_revenue, private_revenue';
 const DAILY_REPORT_ITEM_SELECT = 'menu_id, treatment_name, fee';
+const REVENUE_CONTEXT_SUMMARY_SELECT =
+  'revenue_context_code, revenue_context_name, rollup_category, total_revenue, item_count, needs_review_count, blocked_count';
 
 function toJSTDateString(date: Date = new Date()): string {
   const jst = new Date(date.getTime() + JST_OFFSET_MS);
@@ -236,6 +251,57 @@ function buildMenuRanking(items: DailyReportItemRow[]): MenuRanking[] {
     .slice(0, 10);
 }
 
+function normalizeRevenueContextCode(
+  value: string | null
+): SelectableRevenueContextCode | null {
+  switch (value) {
+    case 'insurance':
+    case 'private':
+    case 'traffic_accident':
+    case 'workers_comp':
+    case 'product':
+    case 'ticket':
+    case 'other':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function buildRevenueContextSummary(
+  rows: RevenueContextSummaryRow[]
+): RevenueContextSummary[] {
+  const summary: RevenueContextSummary[] = [];
+
+  for (const row of rows) {
+    const code = normalizeRevenueContextCode(row.revenue_context_code);
+    if (!code) {
+      continue;
+    }
+
+    summary.push({
+      code,
+      name: row.revenue_context_name ?? code,
+      rollupCategory: row.rollup_category ?? 'other',
+      totalRevenue: Number(row.total_revenue ?? 0),
+      itemCount: Number(row.item_count ?? 0),
+      needsReviewCount: Number(row.needs_review_count ?? 0),
+      blockedCount: Number(row.blocked_count ?? 0),
+    });
+  }
+
+  return summary;
+}
+
+function sumContextRevenueByCode(
+  summary: RevenueContextSummary[],
+  code: SelectableRevenueContextCode
+): number {
+  return summary
+    .filter(item => item.code === code)
+    .reduce((sum, item) => sum + item.totalRevenue, 0);
+}
+
 function sumLastYearRevenue(reports: LastYearReportRow[]): number {
   return reports.reduce(
     (sum, report) => sum + Number(report.total_revenue ?? 0),
@@ -265,27 +331,37 @@ export async function GET(request: NextRequest) {
     const lastYearStart = addYearsToDateString(dateFilter.gte, -1);
     const lastYearEnd = addYearsToDateString(dateFilter.lte, -1);
 
-    const [dailyReportsResult, dailyReportItemsResult, lastYearReportsResult] =
-      await Promise.all([
-        supabase
-          .from('daily_reports')
-          .select(DAILY_REPORT_SELECT)
-          .eq('clinic_id', clinicId)
-          .gte('report_date', dateFilter.gte)
-          .lte('report_date', dateFilter.lte),
-        supabase
-          .from('daily_report_items')
-          .select(DAILY_REPORT_ITEM_SELECT)
-          .eq('clinic_id', clinicId)
-          .gte('report_date', dateFilter.gte)
-          .lte('report_date', dateFilter.lte),
-        supabase
-          .from('daily_reports')
-          .select('total_revenue')
-          .eq('clinic_id', clinicId)
-          .gte('report_date', lastYearStart)
-          .lte('report_date', lastYearEnd),
-      ]);
+    const [
+      dailyReportsResult,
+      dailyReportItemsResult,
+      lastYearReportsResult,
+      revenueContextSummaryResult,
+    ] = await Promise.all([
+      supabase
+        .from('daily_reports')
+        .select(DAILY_REPORT_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('report_date', dateFilter.gte)
+        .lte('report_date', dateFilter.lte),
+      supabase
+        .from('daily_report_items')
+        .select(DAILY_REPORT_ITEM_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('report_date', dateFilter.gte)
+        .lte('report_date', dateFilter.lte),
+      supabase
+        .from('daily_reports')
+        .select('total_revenue')
+        .eq('clinic_id', clinicId)
+        .gte('report_date', lastYearStart)
+        .lte('report_date', lastYearEnd),
+      supabase
+        .from('daily_report_revenue_context_summary')
+        .select(REVENUE_CONTEXT_SUMMARY_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('report_date', dateFilter.gte)
+        .lte('report_date', dateFilter.lte),
+    ]);
 
     if (dailyReportsResult.error) {
       throw dailyReportsResult.error;
@@ -296,10 +372,16 @@ export async function GET(request: NextRequest) {
     if (lastYearReportsResult.error) {
       throw lastYearReportsResult.error;
     }
+    if (revenueContextSummaryResult.error) {
+      throw revenueContextSummaryResult.error;
+    }
 
     const summary = summarizeDailyReports(
       dailyReportsResult.data ?? [],
       dateFilter
+    );
+    const revenueContextSummary = buildRevenueContextSummary(
+      revenueContextSummaryResult.data ?? []
     );
 
     const lastYearTotal = sumLastYearRevenue(lastYearReportsResult.data ?? []);
@@ -325,6 +407,17 @@ export async function GET(request: NextRequest) {
       revenueTrends: summary.revenueTrends,
       costAnalysis: '32.5%',
       staffRevenueContribution: [],
+      revenueContextSummary,
+      trafficAccidentRevenue: sumContextRevenueByCode(
+        revenueContextSummary,
+        'traffic_accident'
+      ),
+      workersCompRevenue: sumContextRevenueByCode(
+        revenueContextSummary,
+        'workers_comp'
+      ),
+      productRevenue: sumContextRevenueByCode(revenueContextSummary, 'product'),
+      ticketRevenue: sumContextRevenueByCode(revenueContextSummary, 'ticket'),
     };
 
     return NextResponse.json({
@@ -346,66 +439,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      clinic_id,
-      patient_id,
-      visit_id,
-      amount,
-      insurance_revenue,
-      private_revenue,
-      menu_id,
-      payment_method_id,
-    } = body;
-
-    if (!clinic_id || !amount) {
-      return NextResponse.json(
-        { error: 'Required fields missing' },
-        { status: 400 }
-      );
-    }
-
-    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
-      allowedRoles: ['manager'],
-    });
-
-    const { data, error } = await supabase
-      .from('revenues')
-      .insert({
-        clinic_id,
-        patient_id,
-        visit_id,
-        revenue_date: new Date().toISOString().split('T')[0],
-        amount,
-        insurance_revenue: insurance_revenue || 0,
-        private_revenue: private_revenue || 0,
-        menu_id,
-        payment_method_id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    if (error instanceof AppError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    console.error('Revenue POST error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        'POST /api/revenue is deprecated. Use /api/daily-reports/items instead.',
+    },
+    { status: 410 }
+  );
 }

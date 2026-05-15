@@ -14,6 +14,13 @@ interface RevenueData {
   monthlyRevenue: number;
   insuranceRevenue: number;
   selfPayRevenue: number;
+  trafficAccidentRevenue: number;
+  workersCompRevenue: number;
+  productRevenue: number;
+  ticketRevenue: number;
+  needsReviewCount: number;
+  blockedCount: number;
+  revenueContextSummary: RevenueAnalysisData['revenueContextSummary'];
   menuRanking: MenuRanking[];
   hourlyRevenue: string;
   dailyRevenueByDayOfWeek: string;
@@ -35,6 +42,13 @@ const INITIAL_DATA: RevenueData = {
   monthlyRevenue: 0,
   insuranceRevenue: 0,
   selfPayRevenue: 0,
+  trafficAccidentRevenue: 0,
+  workersCompRevenue: 0,
+  productRevenue: 0,
+  ticketRevenue: 0,
+  needsReviewCount: 0,
+  blockedCount: 0,
+  revenueContextSummary: [],
   menuRanking: [],
   hourlyRevenue: '',
   dailyRevenueByDayOfWeek: '',
@@ -76,6 +90,18 @@ function estimateLastYearRevenue(data: RevenueAnalysisData): number {
   return Math.round(data.monthlyRevenue / (1 + growthRate));
 }
 
+function sumNeedsReviewCount(
+  summary: RevenueAnalysisData['revenueContextSummary']
+): number {
+  return summary.reduce((sum, item) => sum + item.needsReviewCount, 0);
+}
+
+function sumBlockedCount(
+  summary: RevenueAnalysisData['revenueContextSummary']
+): number {
+  return summary.reduce((sum, item) => sum + item.blockedCount, 0);
+}
+
 export const useRevenue = (clinicId: string): UseRevenueReturn => {
   const [data, setData] = useState<RevenueData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
@@ -100,6 +126,7 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
 
       if (res && isSuccessResponse(res)) {
         const revenueData = res.data;
+        const revenueContextSummary = revenueData.revenueContextSummary ?? [];
 
         setData({
           dailyRevenue: Number(revenueData.dailyRevenue || 0),
@@ -107,6 +134,15 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
           monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
           insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
           selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
+          trafficAccidentRevenue: Number(
+            revenueData.trafficAccidentRevenue || 0
+          ),
+          workersCompRevenue: Number(revenueData.workersCompRevenue || 0),
+          productRevenue: Number(revenueData.productRevenue || 0),
+          ticketRevenue: Number(revenueData.ticketRevenue || 0),
+          needsReviewCount: sumNeedsReviewCount(revenueContextSummary),
+          blockedCount: sumBlockedCount(revenueContextSummary),
+          revenueContextSummary,
           menuRanking: mapMenuRanking(revenueData.menuRanking),
           hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
           dailyRevenueByDayOfWeek: '',
