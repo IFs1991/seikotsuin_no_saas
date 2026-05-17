@@ -15,7 +15,7 @@ try {
 
   const raw = execSync('supabase gen types typescript --local --schema public', {
     encoding: 'utf-8',
-    timeout: 30_000,
+    timeout: 120_000,
   });
 
   // Filter: keep only lines that are part of the TypeScript type definition

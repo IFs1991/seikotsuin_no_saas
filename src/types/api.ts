@@ -2,6 +2,7 @@
 // API Response Types - 統一されたAPIレスポンス型定義
 // =================================================================
 
+import type { CareEpisodeMetrics as CareEpisodeMetricsBase } from '@/lib/care-episode';
 import type { RevenueContextCode } from '@/lib/revenue-context';
 
 /**
@@ -324,6 +325,7 @@ export interface RevenueAnalysisData {
   costAnalysis: string;
   staffRevenueContribution: StaffRevenue[];
   revenueContextSummary: RevenueContextSummary[];
+  careEpisodeMetrics: CareEpisodeMetrics;
 }
 
 export interface MenuRanking {
@@ -357,6 +359,8 @@ export interface RevenueContextSummary {
   needsReviewCount: number;
   blockedCount: number;
 }
+
+export type CareEpisodeMetrics = CareEpisodeMetricsBase;
 
 export interface StaffRevenue {
   staff_id: string;
