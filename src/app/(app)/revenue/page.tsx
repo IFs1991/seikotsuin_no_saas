@@ -33,6 +33,7 @@ const RevenuePage: React.FC = () => {
     blockedCount,
     revenueContextSummary,
     careEpisodeMetrics,
+    revenueEstimateSummary,
     menuRanking,
     hourlyRevenue,
     dailyRevenueByDayOfWeek,
@@ -248,6 +249,75 @@ const RevenuePage: React.FC = () => {
                 </p>
                 <p className='font-semibold text-teal-700 dark:text-teal-300'>
                   {careEpisodeMetrics.episodeContinuationRate.toLocaleString()}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className='w-full bg-card mb-4'>
+          <CardHeader className='bg-card'>
+            <CardTitle className='text-center bg-card'>
+              療養費・売上見込み
+            </CardTitle>
+            <CardDescription className='bg-card'>
+              {revenueEstimateSummary.disclaimer}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='bg-card'>
+            <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+              <div className='rounded border p-3 md:col-span-2'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  見込み合計
+                </p>
+                <p className='font-semibold text-indigo-700 dark:text-indigo-300'>
+                  {revenueEstimateSummary.estimatedTotal.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  計算済み
+                </p>
+                <p className='font-semibold text-emerald-700 dark:text-emerald-300'>
+                  {revenueEstimateSummary.calculatedCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  要確認
+                </p>
+                <p className='font-semibold text-red-700 dark:text-red-300'>
+                  {revenueEstimateSummary.needsReviewCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  見込み件数
+                </p>
+                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                  {revenueEstimateSummary.estimateCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>警告</p>
+                <p className='font-semibold text-amber-700 dark:text-amber-300'>
+                  {revenueEstimateSummary.warningCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  ブロック
+                </p>
+                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                  {revenueEstimateSummary.blockedCount.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  上書き
+                </p>
+                <p className='font-semibold text-violet-700 dark:text-violet-300'>
+                  {revenueEstimateSummary.overriddenCount.toLocaleString()}
                 </p>
               </div>
             </div>

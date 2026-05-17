@@ -22,6 +22,7 @@ interface RevenueData {
   blockedCount: number;
   revenueContextSummary: RevenueAnalysisData['revenueContextSummary'];
   careEpisodeMetrics: RevenueAnalysisData['careEpisodeMetrics'];
+  revenueEstimateSummary: RevenueAnalysisData['revenueEstimateSummary'];
   menuRanking: MenuRanking[];
   hourlyRevenue: string;
   dailyRevenueByDayOfWeek: string;
@@ -67,6 +68,16 @@ const INITIAL_DATA: RevenueData = {
     episodeContinuationRate: 0,
     averageRevenuePerEpisode: 0,
     averageVisitsPerEpisode: 0,
+  },
+  revenueEstimateSummary: {
+    estimatedTotal: 0,
+    estimateCount: 0,
+    calculatedCount: 0,
+    needsReviewCount: 0,
+    blockedCount: 0,
+    overriddenCount: 0,
+    warningCount: 0,
+    disclaimer: '経営分析用の概算です。請求確定額ではありません。',
   },
   menuRanking: [],
   hourlyRevenue: '',
@@ -201,6 +212,9 @@ export const useRevenue = (
               careEpisodeMetrics:
                 revenueData.careEpisodeMetrics ??
                 INITIAL_DATA.careEpisodeMetrics,
+              revenueEstimateSummary:
+                revenueData.revenueEstimateSummary ??
+                INITIAL_DATA.revenueEstimateSummary,
               menuRanking: mapMenuRanking(revenueData.menuRanking),
               hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
               dailyRevenueByDayOfWeek: '',

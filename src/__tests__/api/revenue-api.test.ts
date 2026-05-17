@@ -117,6 +117,18 @@ describe('GET /api/revenue', () => {
         blocked_count: 0,
       },
     ]);
+    const revenueEstimateSummaryQuery = createResolvedRangeQuery([
+      {
+        estimated_total: 26000,
+        estimate_count: 3,
+        calculated_count: 1,
+        needs_review_count: 2,
+        blocked_count: 0,
+        overridden_count: 0,
+        warning_count: 2,
+        disclaimer: '経営分析用の概算です。請求確定額ではありません。',
+      },
+    ]);
     const dailyReportQueries = [currentReportsQuery, lastYearReportsQuery];
     const dailyReportsTable = {
       select: jest.fn(() => dailyReportQueries.shift() ?? lastYearReportsQuery),
@@ -126,6 +138,9 @@ describe('GET /api/revenue', () => {
     };
     const revenueContextSummaryView = {
       select: jest.fn(() => revenueContextSummaryQuery),
+    };
+    const revenueEstimateSummaryView = {
+      select: jest.fn(() => revenueEstimateSummaryQuery),
     };
     const client = {
       from: jest.fn((table: string) => {
@@ -137,6 +152,9 @@ describe('GET /api/revenue', () => {
         }
         if (table === 'daily_report_revenue_context_summary') {
           return revenueContextSummaryView;
+        }
+        if (table === 'daily_report_revenue_estimate_summary') {
+          return revenueEstimateSummaryView;
         }
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -161,6 +179,9 @@ describe('GET /api/revenue', () => {
     expect(client.from).toHaveBeenCalledWith('daily_report_items');
     expect(client.from).toHaveBeenCalledWith(
       'daily_report_revenue_context_summary'
+    );
+    expect(client.from).toHaveBeenCalledWith(
+      'daily_report_revenue_estimate_summary'
     );
     expect(client.from).not.toHaveBeenCalledWith('revenues');
     expect(currentReportsQuery.gte).toHaveBeenCalledWith(
@@ -268,6 +289,16 @@ describe('GET /api/revenue', () => {
           episodeContinuationRate: 50,
           averageRevenuePerEpisode: 11000,
           averageVisitsPerEpisode: 1.5,
+        },
+        revenueEstimateSummary: {
+          estimatedTotal: 26000,
+          estimateCount: 3,
+          calculatedCount: 1,
+          needsReviewCount: 2,
+          blockedCount: 0,
+          overriddenCount: 0,
+          warningCount: 2,
+          disclaimer: '経営分析用の概算です。請求確定額ではありません。',
         },
       },
     });
