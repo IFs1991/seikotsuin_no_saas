@@ -326,6 +326,7 @@ export interface RevenueAnalysisData {
   staffRevenueContribution: StaffRevenue[];
   revenueContextSummary: RevenueContextSummary[];
   careEpisodeMetrics: CareEpisodeMetrics;
+  revenueEstimateSummary: RevenueEstimateSummary;
 }
 
 export interface MenuRanking {
@@ -361,6 +362,17 @@ export interface RevenueContextSummary {
 }
 
 export type CareEpisodeMetrics = CareEpisodeMetricsBase;
+
+export interface RevenueEstimateSummary {
+  estimatedTotal: number;
+  estimateCount: number;
+  calculatedCount: number;
+  needsReviewCount: number;
+  blockedCount: number;
+  overriddenCount: number;
+  warningCount: number;
+  disclaimer: string;
+}
 
 export interface StaffRevenue {
   staff_id: string;

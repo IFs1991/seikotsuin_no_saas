@@ -41,6 +41,16 @@ const mockRevenueData = {
     averageRevenuePerEpisode: 52000,
     averageVisitsPerEpisode: 3.2,
   },
+  revenueEstimateSummary: {
+    estimatedTotal: 240000,
+    estimateCount: 6,
+    calculatedCount: 4,
+    needsReviewCount: 2,
+    blockedCount: 0,
+    overriddenCount: 1,
+    warningCount: 2,
+    disclaimer: '経営分析用の概算です。請求確定額ではありません。',
+  },
   revenueContextSummary: [
     {
       code: 'traffic_accident',
@@ -115,6 +125,7 @@ describe('RevenuePage', () => {
       expect(screen.getByText('売上文脈')).toBeInTheDocument();
       expect(screen.getByText('売上文脈別サマリ')).toBeInTheDocument();
       expect(screen.getByText('来院ステージ')).toBeInTheDocument();
+      expect(screen.getByText('療養費・売上見込み')).toBeInTheDocument();
       expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
       expect(
         screen.getByText('収益予測とシミュレーション')
@@ -165,6 +176,21 @@ describe('RevenuePage', () => {
       expect(screen.getByText('episode平均売上')).toBeInTheDocument();
       expect(screen.getByText('52,000')).toBeInTheDocument();
       expect(screen.getAllByText('75%').length).toBeGreaterThan(0);
+    });
+
+    test('should display revenue estimate summary with disclaimer', () => {
+      render(<RevenuePage />);
+
+      expect(screen.getByText('療養費・売上見込み')).toBeInTheDocument();
+      expect(
+        screen.getByText('経営分析用の概算です。請求確定額ではありません。')
+      ).toBeInTheDocument();
+      expect(screen.getByText('見込み合計')).toBeInTheDocument();
+      expect(screen.getByText('240,000')).toBeInTheDocument();
+      expect(screen.getByText('計算済み')).toBeInTheDocument();
+      expect(screen.getByText('見込み件数')).toBeInTheDocument();
+      expect(screen.getByText('警告')).toBeInTheDocument();
+      expect(screen.getByText('上書き')).toBeInTheDocument();
     });
 
     test('should display hourly and daily patterns', () => {

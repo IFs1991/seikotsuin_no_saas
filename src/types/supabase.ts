@@ -2669,6 +2669,251 @@ export type Database = {
         };
         Relationships: [];
       };
+      revenue_estimate_lines: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          label: string;
+          line_type: string;
+          quantity: number;
+          revenue_estimate_id: string;
+          sort_order: number;
+          total_amount: number;
+          unit_amount: number;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          label: string;
+          line_type: string;
+          quantity?: number;
+          revenue_estimate_id: string;
+          sort_order?: number;
+          total_amount?: number;
+          unit_amount?: number;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          label?: string;
+          line_type?: string;
+          quantity?: number;
+          revenue_estimate_id?: string;
+          sort_order?: number;
+          total_amount?: number;
+          unit_amount?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'revenue_estimate_lines_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_lines_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_lines_estimate_id_fkey';
+            columns: ['revenue_estimate_id'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_estimates';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      revenue_estimate_overrides: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          override_amount: number;
+          previous_amount: number | null;
+          reason: string;
+          revenue_estimate_id: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          override_amount: number;
+          previous_amount?: number | null;
+          reason: string;
+          revenue_estimate_id: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          override_amount?: number;
+          previous_amount?: number | null;
+          reason?: string;
+          revenue_estimate_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'revenue_estimate_overrides_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_overrides_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_overrides_estimate_id_fkey';
+            columns: ['revenue_estimate_id'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_estimates';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      revenue_estimate_warnings: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          message: string;
+          revenue_estimate_id: string;
+          severity: string;
+          warning_code: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          message: string;
+          revenue_estimate_id: string;
+          severity?: string;
+          warning_code: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          message?: string;
+          revenue_estimate_id?: string;
+          severity?: string;
+          warning_code?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'revenue_estimate_warnings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_warnings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimate_warnings_estimate_id_fkey';
+            columns: ['revenue_estimate_id'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_estimates';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      revenue_estimates: {
+        Row: {
+          calculated_at: string | null;
+          calculation_version: string;
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          daily_report_item_id: string;
+          disclaimer: string;
+          estimate_status: string;
+          estimated_total: number;
+          id: string;
+          revenue_context_code: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          calculated_at?: string | null;
+          calculation_version?: string;
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          daily_report_item_id: string;
+          disclaimer?: string;
+          estimate_status?: string;
+          estimated_total?: number;
+          id?: string;
+          revenue_context_code: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          calculated_at?: string | null;
+          calculation_version?: string;
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          daily_report_item_id?: string;
+          disclaimer?: string;
+          estimate_status?: string;
+          estimated_total?: number;
+          id?: string;
+          revenue_context_code?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'revenue_estimates_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimates_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_estimates_context_fkey';
+            columns: ['revenue_context_code'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_contexts';
+            referencedColumns: ['code'];
+          },
+          {
+            foreignKeyName: 'revenue_estimates_item_id_fkey';
+            columns: ['daily_report_item_id'];
+            isOneToOne: true;
+            referencedRelation: 'daily_report_items';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       revenues: {
         Row: {
           amount: number;
@@ -3862,6 +4107,36 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'revenue_contexts';
             referencedColumns: ['code'];
+          },
+        ];
+      };
+      daily_report_revenue_estimate_summary: {
+        Row: {
+          blocked_count: number | null;
+          calculated_count: number | null;
+          clinic_id: string | null;
+          disclaimer: string | null;
+          estimate_count: number | null;
+          estimated_total: number | null;
+          needs_review_count: number | null;
+          overridden_count: number | null;
+          report_date: string | null;
+          warning_count: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
           },
         ];
       };

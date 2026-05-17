@@ -12,6 +12,7 @@ import type {
 } from '@/types/api';
 import type { SelectableRevenueContextCode } from '@/lib/revenue-context';
 import { calculateCareEpisodeMetrics } from '@/lib/care-episode';
+import { REVENUE_ESTIMATE_DISCLAIMER } from '@/lib/revenue-estimate';
 
 const PATH = '/api/revenue';
 
@@ -45,6 +46,18 @@ type RevenueContextSummaryRow = Pick<
   | 'blocked_count'
 >;
 
+type RevenueEstimateSummaryRow = Pick<
+  Database['public']['Views']['daily_report_revenue_estimate_summary']['Row'],
+  | 'estimated_total'
+  | 'estimate_count'
+  | 'calculated_count'
+  | 'needs_review_count'
+  | 'blocked_count'
+  | 'overridden_count'
+  | 'warning_count'
+  | 'disclaimer'
+>;
+
 type LastYearReportRow = Pick<
   Database['public']['Tables']['daily_reports']['Row'],
   'total_revenue'
@@ -73,6 +86,8 @@ const DAILY_REPORT_ITEM_SELECT =
   'menu_id, treatment_name, fee, care_episode_id, visit_ordinal_in_episode, visit_stage_code';
 const REVENUE_CONTEXT_SUMMARY_SELECT =
   'revenue_context_code, revenue_context_name, rollup_category, total_revenue, item_count, needs_review_count, blocked_count';
+const REVENUE_ESTIMATE_SUMMARY_SELECT =
+  'estimated_total, estimate_count, calculated_count, needs_review_count, blocked_count, overridden_count, warning_count, disclaimer';
 
 function toJSTDateString(date: Date = new Date()): string {
   const jst = new Date(date.getTime() + JST_OFFSET_MS);
@@ -317,6 +332,34 @@ function sumLastYearRevenue(reports: LastYearReportRow[]): number {
   );
 }
 
+function buildRevenueEstimateSummary(rows: RevenueEstimateSummaryRow[]) {
+  return rows.reduce(
+    (summary, row) => ({
+      estimatedTotal: summary.estimatedTotal + Number(row.estimated_total ?? 0),
+      estimateCount: summary.estimateCount + Number(row.estimate_count ?? 0),
+      calculatedCount:
+        summary.calculatedCount + Number(row.calculated_count ?? 0),
+      needsReviewCount:
+        summary.needsReviewCount + Number(row.needs_review_count ?? 0),
+      blockedCount: summary.blockedCount + Number(row.blocked_count ?? 0),
+      overriddenCount:
+        summary.overriddenCount + Number(row.overridden_count ?? 0),
+      warningCount: summary.warningCount + Number(row.warning_count ?? 0),
+      disclaimer: row.disclaimer ?? summary.disclaimer,
+    }),
+    {
+      estimatedTotal: 0,
+      estimateCount: 0,
+      calculatedCount: 0,
+      needsReviewCount: 0,
+      blockedCount: 0,
+      overriddenCount: 0,
+      warningCount: 0,
+      disclaimer: REVENUE_ESTIMATE_DISCLAIMER,
+    }
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -344,6 +387,7 @@ export async function GET(request: NextRequest) {
       dailyReportItemsResult,
       lastYearReportsResult,
       revenueContextSummaryResult,
+      revenueEstimateSummaryResult,
     ] = await Promise.all([
       supabase
         .from('daily_reports')
@@ -369,6 +413,12 @@ export async function GET(request: NextRequest) {
         .eq('clinic_id', clinicId)
         .gte('report_date', dateFilter.gte)
         .lte('report_date', dateFilter.lte),
+      supabase
+        .from('daily_report_revenue_estimate_summary')
+        .select(REVENUE_ESTIMATE_SUMMARY_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('report_date', dateFilter.gte)
+        .lte('report_date', dateFilter.lte),
     ]);
 
     if (dailyReportsResult.error) {
@@ -383,6 +433,9 @@ export async function GET(request: NextRequest) {
     if (revenueContextSummaryResult.error) {
       throw revenueContextSummaryResult.error;
     }
+    if (revenueEstimateSummaryResult.error) {
+      throw revenueEstimateSummaryResult.error;
+    }
 
     const summary = summarizeDailyReports(
       dailyReportsResult.data ?? [],
@@ -395,6 +448,9 @@ export async function GET(request: NextRequest) {
     const lastYearTotal = sumLastYearRevenue(lastYearReportsResult.data ?? []);
     const careEpisodeMetrics: CareEpisodeMetrics = calculateCareEpisodeMetrics(
       dailyReportItemsResult.data ?? []
+    );
+    const revenueEstimateSummary = buildRevenueEstimateSummary(
+      revenueEstimateSummaryResult.data ?? []
     );
     const growthRate =
       lastYearTotal > 0
@@ -430,6 +486,7 @@ export async function GET(request: NextRequest) {
       productRevenue: sumContextRevenueByCode(revenueContextSummary, 'product'),
       ticketRevenue: sumContextRevenueByCode(revenueContextSummary, 'ticket'),
       careEpisodeMetrics,
+      revenueEstimateSummary,
     };
 
     return NextResponse.json({
