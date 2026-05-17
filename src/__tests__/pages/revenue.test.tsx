@@ -209,7 +209,9 @@ describe('RevenuePage', () => {
     test('should call useRevenue with clinicId from profile', () => {
       render(<RevenuePage />);
 
-      expect(mockUseRevenue).toHaveBeenCalledWith(mockClinicId);
+      expect(mockUseRevenue).toHaveBeenCalledWith(mockClinicId, {
+        enabled: true,
+      });
     });
   });
 

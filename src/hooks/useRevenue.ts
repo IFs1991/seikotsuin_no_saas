@@ -37,6 +37,14 @@ interface UseRevenueReturn extends RevenueData {
   error: string | null;
 }
 
+type FetchOptions = {
+  background?: boolean;
+};
+
+type UseRevenueOptions = {
+  enabled?: boolean;
+};
+
 const INITIAL_DATA: RevenueData = {
   dailyRevenue: 0,
   weeklyRevenue: 0,
@@ -113,76 +121,129 @@ function sumBlockedCount(
   return summary.reduce((sum, item) => sum + item.blockedCount, 0);
 }
 
-export const useRevenue = (clinicId: string): UseRevenueReturn => {
+export const useRevenue = (
+  clinicId: string,
+  options: UseRevenueOptions = {}
+): UseRevenueReturn => {
   const [data, setData] = useState<RevenueData>(INITIAL_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+  const hasLoadedDataRef = useRef(false);
+  const inFlightFetchRef = useRef<Promise<void> | null>(null);
+  const lastClinicIdRef = useRef<string | null>(null);
+  const enabled = options.enabled ?? true;
 
-  const fetchData = useCallback(async () => {
-    if (!clinicId) {
-      setLoading(false);
-      setError('clinic_idは必須です');
-      setData(INITIAL_DATA);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await api.revenue.getAnalysis(clinicId);
-
-      if (!isMountedRef.current) return;
-
-      if (res && isSuccessResponse(res)) {
-        const revenueData = res.data;
-        const revenueContextSummary = revenueData.revenueContextSummary ?? [];
-
-        setData({
-          dailyRevenue: Number(revenueData.dailyRevenue || 0),
-          weeklyRevenue: Number(revenueData.weeklyRevenue || 0),
-          monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
-          insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
-          selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
-          trafficAccidentRevenue: Number(
-            revenueData.trafficAccidentRevenue || 0
-          ),
-          workersCompRevenue: Number(revenueData.workersCompRevenue || 0),
-          productRevenue: Number(revenueData.productRevenue || 0),
-          ticketRevenue: Number(revenueData.ticketRevenue || 0),
-          needsReviewCount: sumNeedsReviewCount(revenueContextSummary),
-          blockedCount: sumBlockedCount(revenueContextSummary),
-          revenueContextSummary,
-          careEpisodeMetrics:
-            revenueData.careEpisodeMetrics ?? INITIAL_DATA.careEpisodeMetrics,
-          menuRanking: mapMenuRanking(revenueData.menuRanking),
-          hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
-          dailyRevenueByDayOfWeek: '',
-          lastYearRevenue: estimateLastYearRevenue(revenueData),
-          growthRate: revenueData.growthRate || '0%',
-          revenueForecast: Number(revenueData.revenueForecast || 0),
-          costAnalysis: revenueData.costAnalysis || '',
-          staffRevenueContribution: '',
-        });
-      } else {
-        // APIエラー時はサンプル値にフォールバックせずエラー状態にする
-        const errorMessage =
-          res?.error?.message || '収益データの取得に失敗しました';
-        setError(errorMessage);
-        setData(INITIAL_DATA);
-      }
-    } catch {
-      if (isMountedRef.current) {
-        setError('収益データの取得に失敗しました');
-        setData(INITIAL_DATA);
-      }
-    } finally {
-      if (isMountedRef.current) {
+  const fetchData = useCallback(
+    (options: FetchOptions = {}) => {
+      if (!enabled) {
         setLoading(false);
+        setError(null);
+        setData(INITIAL_DATA);
+        hasLoadedDataRef.current = false;
+        inFlightFetchRef.current = null;
+        lastClinicIdRef.current = null;
+        return Promise.resolve();
       }
-    }
-  }, [clinicId]);
+
+      if (!clinicId) {
+        setLoading(false);
+        setError('clinic_idは必須です');
+        setData(INITIAL_DATA);
+        hasLoadedDataRef.current = false;
+        lastClinicIdRef.current = null;
+        return Promise.resolve();
+      }
+
+      if (lastClinicIdRef.current !== clinicId) {
+        lastClinicIdRef.current = clinicId;
+        hasLoadedDataRef.current = false;
+        inFlightFetchRef.current = null;
+        setData(INITIAL_DATA);
+      }
+
+      if (inFlightFetchRef.current) {
+        return inFlightFetchRef.current;
+      }
+
+      const shouldBlockPage = !options.background || !hasLoadedDataRef.current;
+      const request = (async () => {
+        try {
+          if (shouldBlockPage) {
+            setLoading(true);
+          }
+          setError(null);
+
+          const res = await api.revenue.getAnalysis(clinicId);
+
+          if (!isMountedRef.current) return;
+
+          if (res && isSuccessResponse(res)) {
+            const revenueData = res.data;
+            const revenueContextSummary =
+              revenueData.revenueContextSummary ?? [];
+
+            setData({
+              dailyRevenue: Number(revenueData.dailyRevenue || 0),
+              weeklyRevenue: Number(revenueData.weeklyRevenue || 0),
+              monthlyRevenue: Number(revenueData.monthlyRevenue || 0),
+              insuranceRevenue: Number(revenueData.insuranceRevenue || 0),
+              selfPayRevenue: Number(revenueData.selfPayRevenue || 0),
+              trafficAccidentRevenue: Number(
+                revenueData.trafficAccidentRevenue || 0
+              ),
+              workersCompRevenue: Number(revenueData.workersCompRevenue || 0),
+              productRevenue: Number(revenueData.productRevenue || 0),
+              ticketRevenue: Number(revenueData.ticketRevenue || 0),
+              needsReviewCount: sumNeedsReviewCount(revenueContextSummary),
+              blockedCount: sumBlockedCount(revenueContextSummary),
+              revenueContextSummary,
+              careEpisodeMetrics:
+                revenueData.careEpisodeMetrics ??
+                INITIAL_DATA.careEpisodeMetrics,
+              menuRanking: mapMenuRanking(revenueData.menuRanking),
+              hourlyRevenue: summarizeHourlyRevenue(revenueData.hourlyRevenue),
+              dailyRevenueByDayOfWeek: '',
+              lastYearRevenue: estimateLastYearRevenue(revenueData),
+              growthRate: revenueData.growthRate || '0%',
+              revenueForecast: Number(revenueData.revenueForecast || 0),
+              costAnalysis: revenueData.costAnalysis || '',
+              staffRevenueContribution: '',
+            });
+            hasLoadedDataRef.current = true;
+          } else {
+            // APIエラー時はサンプル値にフォールバックしない。
+            const errorMessage =
+              res?.error?.message || '収益データの取得に失敗しました';
+            if (shouldBlockPage || !hasLoadedDataRef.current) {
+              setError(errorMessage);
+            }
+            if (!hasLoadedDataRef.current) {
+              setData(INITIAL_DATA);
+            }
+          }
+        } catch {
+          if (isMountedRef.current) {
+            if (shouldBlockPage || !hasLoadedDataRef.current) {
+              setError('収益データの取得に失敗しました');
+            }
+            if (!hasLoadedDataRef.current) {
+              setData(INITIAL_DATA);
+            }
+          }
+        } finally {
+          if (isMountedRef.current && shouldBlockPage) {
+            setLoading(false);
+          }
+          inFlightFetchRef.current = null;
+        }
+      })();
+
+      inFlightFetchRef.current = request;
+      return request;
+    },
+    [clinicId, enabled]
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -194,16 +255,16 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
 
   // 日報入力後に revenue ページへ戻ってきた / タブ復帰時に最新値を取得する
   useEffect(() => {
-    if (!clinicId) return;
+    if (!enabled || !clinicId) return;
     if (typeof window === 'undefined') return;
 
     const handleVisible = () => {
       if (document.visibilityState === 'visible') {
-        void fetchData();
+        void fetchData({ background: true });
       }
     };
     const handleFocus = () => {
-      void fetchData();
+      void fetchData({ background: true });
     };
 
     document.addEventListener('visibilitychange', handleVisible);
@@ -212,7 +273,7 @@ export const useRevenue = (clinicId: string): UseRevenueReturn => {
       document.removeEventListener('visibilitychange', handleVisible);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [clinicId, fetchData]);
+  }, [clinicId, enabled, fetchData]);
 
   return {
     ...data,

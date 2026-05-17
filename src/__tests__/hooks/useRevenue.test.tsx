@@ -4,7 +4,7 @@
 // useRevenue Hook Tests - 収益分析フックのテスト
 // =================================================================
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useRevenue } from '../../hooks/useRevenue';
 import * as apiClient from '../../lib/api-client';
 
@@ -54,6 +54,18 @@ describe('useRevenue', () => {
   });
 
   describe('clinicId必須バリデーション', () => {
+    it('enabled=falseの場合はAPIを呼ばず待機状態になる', async () => {
+      const { result } = renderHook(() => useRevenue('', { enabled: false }));
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toBeNull();
+      expect(result.current.dailyRevenue).toBe(0);
+      expect(mockApi.api.revenue.getAnalysis).not.toHaveBeenCalled();
+    });
+
     it('clinicIdが空文字の場合はAPIを呼ばずエラー状態になる', async () => {
       const { result } = renderHook(() => useRevenue(''));
 
@@ -134,6 +146,130 @@ describe('useRevenue', () => {
         { menu: 'マッサージ', revenue: 800000, count: 160 },
         { menu: '鍼灸', revenue: 600000, count: 60 },
       ]);
+    });
+
+    it('フォーカス復帰時は既存データを表示したままバックグラウンド更新する', async () => {
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        data: mockRevenueData,
+      });
+
+      const { result } = renderHook(() => useRevenue(mockClinicId));
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+      expect(result.current.dailyRevenue).toBe(150000);
+
+      let resolveRefresh:
+        | ((value: { success: true; data: typeof mockRevenueData }) => void)
+        | null = null;
+      const refreshPromise = new Promise<{
+        success: true;
+        data: typeof mockRevenueData;
+      }>(resolve => {
+        resolveRefresh = resolve;
+      });
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockReturnValueOnce(
+        refreshPromise
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      await waitFor(() => {
+        expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledTimes(2);
+      });
+      expect(result.current.loading).toBe(false);
+      expect(result.current.dailyRevenue).toBe(150000);
+
+      act(() => {
+        resolveRefresh?.({
+          success: true,
+          data: {
+            ...mockRevenueData,
+            dailyRevenue: 175000,
+          },
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.dailyRevenue).toBe(175000);
+      });
+    });
+
+    it('バックグラウンド更新が失敗しても既存データの表示を維持する', async () => {
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        data: mockRevenueData,
+      });
+
+      const { result } = renderHook(() => useRevenue(mockClinicId));
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+      expect(result.current.dailyRevenue).toBe(150000);
+
+      let resolveRefresh:
+        | ((value: { success: false; error: { message: string } }) => void)
+        | null = null;
+      const refreshPromise = new Promise<{
+        success: false;
+        error: { message: string };
+      }>(resolve => {
+        resolveRefresh = resolve;
+      });
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockReturnValueOnce(
+        refreshPromise
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+
+      await waitFor(() => {
+        expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledTimes(2);
+      });
+
+      await act(async () => {
+        resolveRefresh?.({
+          success: false,
+          error: { message: 'temporary revenue error' },
+        });
+        await refreshPromise;
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.error).toBeNull();
+      expect(result.current.dailyRevenue).toBe(150000);
+    });
+
+    it('フォーカス復帰と表示復帰が連続しても同じ再取得を重複実行しない', async () => {
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockResolvedValueOnce({
+        success: true,
+        data: mockRevenueData,
+      });
+
+      const { result } = renderHook(() => useRevenue(mockClinicId));
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      (mockApi.api.revenue.getAnalysis as jest.Mock).mockReturnValueOnce(
+        new Promise(() => undefined)
+      );
+
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+
+      await waitFor(() => {
+        expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
