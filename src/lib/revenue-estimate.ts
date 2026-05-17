@@ -120,7 +120,7 @@ export function calculateRevenueEstimate(
                 warningCode: 'INSURANCE_VISIT_STAGE_REQUIRED',
                 severity: 'needs_review',
                 message:
-                  '保険見込みは来院ステージを確認してから経営分析に利用してください。',
+                  '保険見込みは来院状況を確認してから経営分析に利用してください。',
               },
             ],
       };

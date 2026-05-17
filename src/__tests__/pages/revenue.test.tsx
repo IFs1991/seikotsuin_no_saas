@@ -123,8 +123,8 @@ describe('RevenuePage', () => {
         screen.getByText('時間帯別・曜日別収益パターン')
       ).toBeInTheDocument();
       expect(screen.getByText('売上文脈')).toBeInTheDocument();
-      expect(screen.getByText('売上文脈別サマリ')).toBeInTheDocument();
-      expect(screen.getByText('来院ステージ')).toBeInTheDocument();
+      expect(screen.getByText('売上区分別サマリ')).toBeInTheDocument();
+      expect(screen.getByText('来院状況')).toBeInTheDocument();
       expect(screen.getByText('療養費・売上見込み')).toBeInTheDocument();
       expect(screen.getByText('前年同期比較と成長率')).toBeInTheDocument();
       expect(
@@ -170,10 +170,10 @@ describe('RevenuePage', () => {
     test('should display care episode metrics', () => {
       render(<RevenuePage />);
 
-      expect(screen.getByText('episode数')).toBeInTheDocument();
+      expect(screen.getByText('通院回数')).toBeInTheDocument();
       expect(screen.getByText('初診2回目到達率')).toBeInTheDocument();
       expect(screen.getByText('初診5回目到達率')).toBeInTheDocument();
-      expect(screen.getByText('episode平均売上')).toBeInTheDocument();
+      expect(screen.getByText('通院あたり平均売上')).toBeInTheDocument();
       expect(screen.getByText('52,000')).toBeInTheDocument();
       expect(screen.getAllByText('75%').length).toBeGreaterThan(0);
     });

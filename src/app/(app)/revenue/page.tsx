@@ -196,16 +196,16 @@ const RevenuePage: React.FC = () => {
 
         <Card className='w-full bg-card mb-4'>
           <CardHeader className='bg-card'>
-            <CardTitle className='text-center bg-card'>来院ステージ</CardTitle>
+            <CardTitle className='text-center bg-card'>来院状況</CardTitle>
             <CardDescription className='bg-card'>
-              care episode別の継続到達状況
+              通院回数別の継続到達状況
             </CardDescription>
           </CardHeader>
           <CardContent className='bg-card'>
             <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               <div className='rounded border p-3'>
                 <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  episode数
+                  通院回数
                 </p>
                 <p className='font-semibold text-gray-800 dark:text-gray-100'>
                   {careEpisodeMetrics.totalEpisodes.toLocaleString()}
@@ -237,7 +237,7 @@ const RevenuePage: React.FC = () => {
               </div>
               <div className='rounded border p-3 md:col-span-2'>
                 <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  episode平均売上
+                  通院あたり平均売上
                 </p>
                 <p className='font-semibold text-amber-700 dark:text-amber-300'>
                   {careEpisodeMetrics.averageRevenuePerEpisode.toLocaleString()}
@@ -245,7 +245,7 @@ const RevenuePage: React.FC = () => {
               </div>
               <div className='rounded border p-3 md:col-span-2'>
                 <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  episode継続率
+                  継続率
                 </p>
                 <p className='font-semibold text-teal-700 dark:text-teal-300'>
                   {careEpisodeMetrics.episodeContinuationRate.toLocaleString()}%
@@ -327,7 +327,7 @@ const RevenuePage: React.FC = () => {
         <Card className='w-full bg-card mb-4'>
           <CardHeader className='bg-card'>
             <CardTitle className='text-center bg-card'>
-              売上文脈別サマリ
+              売上区分別サマリ
             </CardTitle>
             <CardDescription className='bg-card'>
               分類別の件数と売上
@@ -342,7 +342,6 @@ const RevenuePage: React.FC = () => {
                   <thead>
                     <tr className='border-b text-left'>
                       <th className='py-2 pr-3 font-medium'>分類</th>
-                      <th className='py-2 pr-3 font-medium'>ロールアップ</th>
                       <th className='py-2 pr-3 font-medium text-right'>件数</th>
                       <th className='py-2 pr-3 font-medium text-right'>売上</th>
                       <th className='py-2 pr-3 font-medium text-right'>
@@ -355,7 +354,6 @@ const RevenuePage: React.FC = () => {
                     {revenueContextSummary.map(item => (
                       <tr key={item.code} className='border-b last:border-b-0'>
                         <td className='py-2 pr-3'>{item.name}</td>
-                        <td className='py-2 pr-3'>{item.rollupCategory}</td>
                         <td className='py-2 pr-3 text-right'>
                           {item.itemCount.toLocaleString()}
                         </td>
