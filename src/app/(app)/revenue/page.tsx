@@ -43,7 +43,9 @@ const RevenuePage: React.FC = () => {
     staffRevenueContribution,
     loading: revenueLoading,
     error: revenueError,
-  } = useRevenue(clinicId);
+  } = useRevenue(clinicId, {
+    enabled: Boolean(clinicId) && !profileLoading && !profileError,
+  });
 
   // プロファイル読み込み中
   if (profileLoading) {
