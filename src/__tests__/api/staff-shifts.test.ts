@@ -207,6 +207,70 @@ describe('Staff Shifts API', () => {
       );
     });
 
+    it('clinic_admin が複数シフトを一括作成できる', async () => {
+      const overlapQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        neq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        returns: jest.fn().mockResolvedValue({ data: [], error: null }),
+      };
+      const insertQuery = {
+        insert: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue({
+          data: [
+            { id: '123e4567-e89b-12d3-a456-426614174011' },
+            { id: '123e4567-e89b-12d3-a456-426614174012' },
+          ],
+          error: null,
+        }),
+      };
+      const from = jest
+        .fn()
+        .mockReturnValueOnce(overlapQuery)
+        .mockReturnValueOnce(insertQuery);
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from },
+        user: { id: 'user-1' },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        shifts: [
+          {
+            staff_id: '123e4567-e89b-12d3-a456-426614174001',
+            start_time: '2026-05-14T00:00:00.000Z',
+            end_time: '2026-05-14T09:00:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            staff_id: '123e4567-e89b-12d3-a456-426614174001',
+            start_time: '2026-05-15T00:00:00.000Z',
+            end_time: '2026-05-15T09:00:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      });
+
+      const response = await shiftsPostHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(payload.success).toBe(true);
+      expect(payload.data.total).toBe(2);
+      expect(insertQuery.insert).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            clinic_id: TEST_CLINIC_ID,
+            created_by: 'user-1',
+          }),
+        ])
+      );
+    });
+
     it('同一スタッフの重複シフトは 400 を返す', async () => {
       const overlapQuery = {
         select: jest.fn().mockReturnThis(),

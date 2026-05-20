@@ -75,6 +75,16 @@ interface ShiftFormState {
   notes: string;
 }
 
+interface BulkShiftFormState {
+  staffId: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  weekdays: number[];
+  notes: string;
+}
+
 interface ApiDataResponse<T> {
   data?: T;
 }
@@ -90,6 +100,11 @@ interface PreferenceListData {
 interface DemandForecastData {
   forecasts?: DemandForecast[];
   hourlyDistribution?: HourlyDistribution[];
+}
+
+interface ApiErrorResponse {
+  error?: string | { message?: string };
+  message?: string;
 }
 
 const DATE_FORMATTER_JST = new Intl.DateTimeFormat('en-CA', {
@@ -120,9 +135,92 @@ const getMonthRange = (year: number, zeroBasedMonth: number) => {
   return { start, end };
 };
 
+const WEEKDAY_OPTIONS = [
+  { value: 0, label: '日' },
+  { value: 1, label: '月' },
+  { value: 2, label: '火' },
+  { value: 3, label: '水' },
+  { value: 4, label: '木' },
+  { value: 5, label: '金' },
+  { value: 6, label: '土' },
+] as const;
+
+const DEFAULT_BULK_WEEKDAYS = [1, 2, 3, 4, 5];
+
+const parseDateInput = (value: string): Date | null => {
+  const [yearText, monthText, dayText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const formatDateInput = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+function buildBulkShiftDates({
+  startDate,
+  endDate,
+  weekdays,
+}: Pick<BulkShiftFormState, 'startDate' | 'endDate' | 'weekdays'>): string[] {
+  const start = parseDateInput(startDate);
+  const end = parseDateInput(endDate);
+
+  if (start === null || end === null || start.getTime() > end.getTime()) {
+    return [];
+  }
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+
+  while (cursor.getTime() <= end.getTime()) {
+    if (weekdays.includes(cursor.getDay())) {
+      dates.push(formatDateInput(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
 async function parseApiData<T>(response: Response): Promise<T> {
   const json = (await response.json()) as ApiDataResponse<T>;
   return json.data ?? ({} as T);
+}
+
+async function parseApiErrorMessage(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const json = (await response.json()) as ApiErrorResponse;
+    if (typeof json.error === 'string') {
+      return json.error;
+    }
+    if (typeof json.error?.message === 'string') {
+      return json.error.message;
+    }
+    if (typeof json.message === 'string') {
+      return json.message;
+    }
+  } catch {
+    return fallback;
+  }
+
+  return fallback;
 }
 
 const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
@@ -145,7 +243,20 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     endTime: '18:00',
     notes: '',
   }));
+  const [bulkShiftForm, setBulkShiftForm] = useState<BulkShiftFormState>(() => {
+    const today = formatDateJst(new Date());
+    return {
+      staffId: '',
+      startDate: today,
+      endDate: today,
+      startTime: '09:00',
+      endTime: '18:00',
+      weekdays: DEFAULT_BULK_WEEKDAYS,
+      notes: '',
+    };
+  });
   const [isSavingShift, setIsSavingShift] = useState(false);
+  const [shiftNotice, setShiftNotice] = useState<string | null>(null);
 
   const currentDateKey = useMemo(() => formatDateJst(new Date()), []);
   const [currentYear, currentMonthNumber] = useMemo(
@@ -169,6 +280,15 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     () => Array.from({ length: daysInMonth }, (_, i) => i + 1),
     [daysInMonth]
   );
+  const bulkTargetDates = useMemo(
+    () =>
+      buildBulkShiftDates({
+        startDate: bulkShiftForm.startDate,
+        endDate: bulkShiftForm.endDate,
+        weekdays: bulkShiftForm.weekdays,
+      }),
+    [bulkShiftForm.endDate, bulkShiftForm.startDate, bulkShiftForm.weekdays]
+  );
 
   const fetchShifts = useCallback(async () => {
     if (!clinicId) {
@@ -188,8 +308,10 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     setShifts(data.shifts ?? []);
   }, [clinicId, monthRange.end, monthRange.start]);
 
-  const fetchData = useCallback(async () => {
+  const fetchCoreData = useCallback(async () => {
     if (!clinicId) {
+      setShifts([]);
+      setStaffResources([]);
       setIsLoading(false);
       return;
     }
@@ -198,42 +320,24 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     setError(null);
 
     try {
-      const [shiftsRes, preferencesRes, demandRes, resourcesRes] =
-        await Promise.all([
-          fetch(
-            `/api/staff/shifts?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
-          ),
-          fetch(
-            `/api/staff/preferences?clinic_id=${clinicId}&active_only=true`
-          ),
-          fetch(
-            `/api/staff/demand-forecast?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
-          ),
-          fetch(`/api/resources?clinic_id=${clinicId}&type=staff`),
-        ]);
+      const [shiftsRes, resourcesRes] = await Promise.all([
+        fetch(
+          `/api/staff/shifts?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
+        ),
+        fetch(`/api/resources?clinic_id=${clinicId}&type=staff`),
+      ]);
 
       // エラーチェック
-      if (
-        !shiftsRes.ok ||
-        !preferencesRes.ok ||
-        !demandRes.ok ||
-        !resourcesRes.ok
-      ) {
+      if (!shiftsRes.ok || !resourcesRes.ok) {
         throw new Error('データ取得に失敗しました');
       }
 
-      const [shiftsData, preferencesData, demandData, resourcesData] =
-        await Promise.all([
-          parseApiData<ShiftListData>(shiftsRes),
-          parseApiData<PreferenceListData>(preferencesRes),
-          parseApiData<DemandForecastData>(demandRes),
-          parseApiData<StaffResource[]>(resourcesRes),
-        ]);
+      const [shiftsData, resourcesData] = await Promise.all([
+        parseApiData<ShiftListData>(shiftsRes),
+        parseApiData<StaffResource[]>(resourcesRes),
+      ]);
 
       setShifts(shiftsData.shifts ?? []);
-      setPreferences(preferencesData.preferences ?? []);
-      setDemandForecasts(demandData.forecasts ?? []);
-      setHourlyDistribution(demandData.hourlyDistribution ?? []);
       setStaffResources(
         (Array.isArray(resourcesData) ? resourcesData : []).filter(
           resource =>
@@ -250,6 +354,47 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     }
   }, [clinicId, monthRange.end, monthRange.start]);
 
+  const fetchInsightData = useCallback(async () => {
+    if (!clinicId) {
+      setPreferences([]);
+      setDemandForecasts([]);
+      setHourlyDistribution([]);
+      return;
+    }
+
+    try {
+      const [preferencesRes, demandRes] = await Promise.all([
+        fetch(`/api/staff/preferences?clinic_id=${clinicId}&active_only=true`),
+        fetch(
+          `/api/staff/demand-forecast?clinic_id=${clinicId}&start=${monthRange.start}&end=${monthRange.end}`
+        ),
+      ]);
+
+      if (!preferencesRes.ok || !demandRes.ok) {
+        throw new Error('補助データの取得に失敗しました');
+      }
+
+      const [preferencesData, demandData] = await Promise.all([
+        parseApiData<PreferenceListData>(preferencesRes),
+        parseApiData<DemandForecastData>(demandRes),
+      ]);
+
+      setPreferences(preferencesData.preferences ?? []);
+      setDemandForecasts(demandData.forecasts ?? []);
+      setHourlyDistribution(demandData.hourlyDistribution ?? []);
+    } catch (err) {
+      console.error('Shift optimizer insight fetch error:', err);
+      setPreferences([]);
+      setDemandForecasts([]);
+      setHourlyDistribution([]);
+    }
+  }, [clinicId, monthRange.end, monthRange.start]);
+
+  const fetchData = useCallback(async () => {
+    await fetchCoreData();
+    void fetchInsightData();
+  }, [fetchCoreData, fetchInsightData]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -259,10 +404,25 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
       ...prev,
       date: selectedDate,
     }));
+    setBulkShiftForm(prev => ({
+      ...prev,
+      startDate: selectedDate,
+      endDate: selectedDate,
+    }));
   }, [selectedDate]);
 
   useEffect(() => {
     setShiftForm(prev => {
+      if (prev.staffId || staffResources.length === 0) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        staffId: staffResources[0].id,
+      };
+    });
+    setBulkShiftForm(prev => {
       if (prev.staffId || staffResources.length === 0) {
         return prev;
       }
@@ -308,6 +468,56 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     setShiftForm(prev => ({ ...prev, ...updates }));
   };
 
+  const updateBulkShiftForm = (updates: Partial<BulkShiftFormState>) => {
+    setBulkShiftForm(prev => ({ ...prev, ...updates }));
+  };
+
+  const toggleBulkWeekday = (weekday: number) => {
+    setBulkShiftForm(prev => {
+      const nextWeekdays = prev.weekdays.includes(weekday)
+        ? prev.weekdays.filter(value => value !== weekday)
+        : [...prev.weekdays, weekday].sort();
+
+      return {
+        ...prev,
+        weekdays: nextWeekdays,
+      };
+    });
+  };
+
+  const createConfirmedShift = async ({
+    staffId,
+    date,
+    startTime,
+    endTime,
+    notes,
+  }: {
+    staffId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    notes: string;
+  }) => {
+    const response = await fetch('/api/staff/shifts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clinic_id: clinicId,
+        staff_id: staffId,
+        start_time: buildShiftDateTime(date, startTime),
+        end_time: buildShiftDateTime(date, endTime),
+        status: 'confirmed',
+        notes: notes || undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        await parseApiErrorMessage(response, 'シフト作成に失敗しました')
+      );
+    }
+  };
+
   const createShift = async () => {
     const staffId = shiftForm.staffId || staffResources[0]?.id;
     if (!clinicId || !staffId) {
@@ -317,6 +527,42 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
 
     setIsSavingShift(true);
     setError(null);
+    setShiftNotice(null);
+
+    try {
+      await createConfirmedShift({
+        staffId,
+        date: shiftForm.date,
+        startTime: shiftForm.startTime,
+        endTime: shiftForm.endTime,
+        notes: shiftForm.notes,
+      });
+
+      updateShiftForm({ notes: '' });
+      setShiftNotice('シフトを作成しました');
+      await fetchShifts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'シフト作成に失敗しました');
+    } finally {
+      setIsSavingShift(false);
+    }
+  };
+
+  const createBulkShifts = async () => {
+    const staffId = bulkShiftForm.staffId || staffResources[0]?.id;
+    if (!clinicId || !staffId) {
+      setError('スタッフを選択してください');
+      return;
+    }
+
+    if (bulkTargetDates.length === 0) {
+      setError('一括作成する日付を選択してください');
+      return;
+    }
+
+    setIsSavingShift(true);
+    setError(null);
+    setShiftNotice(null);
 
     try {
       const response = await fetch('/api/staff/shifts', {
@@ -324,22 +570,29 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clinic_id: clinicId,
-          staff_id: staffId,
-          start_time: buildShiftDateTime(shiftForm.date, shiftForm.startTime),
-          end_time: buildShiftDateTime(shiftForm.date, shiftForm.endTime),
-          status: 'confirmed',
-          notes: shiftForm.notes || undefined,
+          shifts: bulkTargetDates.map(date => ({
+            staff_id: staffId,
+            start_time: buildShiftDateTime(date, bulkShiftForm.startTime),
+            end_time: buildShiftDateTime(date, bulkShiftForm.endTime),
+            status: 'confirmed',
+            notes: bulkShiftForm.notes || undefined,
+          })),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('シフト作成に失敗しました');
+        throw new Error(
+          await parseApiErrorMessage(response, 'シフト一括作成に失敗しました')
+        );
       }
 
-      updateShiftForm({ notes: '' });
+      updateBulkShiftForm({ notes: '' });
+      setShiftNotice(`${bulkTargetDates.length}件のシフトを一括作成しました`);
       await fetchShifts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'シフト作成に失敗しました');
+      const message =
+        err instanceof Error ? err.message : 'シフト一括作成に失敗しました';
+      setError(message);
     } finally {
       setIsSavingShift(false);
     }
@@ -458,6 +711,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
     '11月',
     '12月',
   ];
+  const bulkTargetCount = bulkTargetDates.length;
 
   return (
     <div className='flex justify-center py-8 bg-white dark:bg-gray-800 text-[#111827] dark:text-[#f9fafb]'>
@@ -473,8 +727,13 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
         <CardContent className='bg-card p-6 space-y-8'>
           <div>
             <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
-              確定シフト作成
+              単日シフト作成
             </h3>
+            {shiftNotice && (
+              <div className='mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700'>
+                {shiftNotice}
+              </div>
+            )}
             <div className='grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700'>
               <label className='text-sm font-medium'>
                 スタッフ
@@ -548,6 +807,128 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                   placeholder='任意'
                 />
               </label>
+            </div>
+          </div>
+
+          <div>
+            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+              ユーザー別一括作成
+            </h3>
+            <div className='space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700'>
+              <div className='grid grid-cols-1 gap-3 md:grid-cols-5'>
+                <label className='text-sm font-medium'>
+                  対象スタッフ
+                  <select
+                    value={bulkShiftForm.staffId}
+                    onChange={event =>
+                      updateBulkShiftForm({ staffId: event.target.value })
+                    }
+                    className='mt-1 w-full rounded border border-gray-300 bg-white px-2 py-2 text-sm text-gray-900'
+                  >
+                    {staffResources.map(resource => (
+                      <option key={resource.id} value={resource.id}>
+                        {resource.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className='text-sm font-medium'>
+                  開始日
+                  <input
+                    type='date'
+                    value={bulkShiftForm.startDate}
+                    onChange={event =>
+                      updateBulkShiftForm({ startDate: event.target.value })
+                    }
+                    className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  />
+                </label>
+                <label className='text-sm font-medium'>
+                  終了日
+                  <input
+                    type='date'
+                    value={bulkShiftForm.endDate}
+                    onChange={event =>
+                      updateBulkShiftForm({ endDate: event.target.value })
+                    }
+                    className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  />
+                </label>
+                <label className='text-sm font-medium'>
+                  開始
+                  <input
+                    type='time'
+                    value={bulkShiftForm.startTime}
+                    onChange={event =>
+                      updateBulkShiftForm({ startTime: event.target.value })
+                    }
+                    className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  />
+                </label>
+                <label className='text-sm font-medium'>
+                  終了
+                  <input
+                    type='time'
+                    value={bulkShiftForm.endTime}
+                    onChange={event =>
+                      updateBulkShiftForm({ endTime: event.target.value })
+                    }
+                    className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  />
+                </label>
+              </div>
+              <div className='space-y-2'>
+                <span className='text-sm font-medium'>作成する曜日</span>
+                <div className='flex flex-wrap gap-2'>
+                  {WEEKDAY_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className={`inline-flex min-w-12 items-center justify-center rounded border px-3 py-2 text-sm font-medium ${
+                        bulkShiftForm.weekdays.includes(option.value)
+                          ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
+                          : 'border-gray-300 bg-white text-gray-700'
+                      }`}
+                    >
+                      <input
+                        type='checkbox'
+                        checked={bulkShiftForm.weekdays.includes(option.value)}
+                        onChange={() => toggleBulkWeekday(option.value)}
+                        className='sr-only'
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className='block text-sm font-medium'>
+                メモ
+                <input
+                  type='text'
+                  value={bulkShiftForm.notes}
+                  onChange={event =>
+                    updateBulkShiftForm({ notes: event.target.value })
+                  }
+                  className='mt-1 w-full rounded border border-gray-300 px-2 py-2 text-sm text-gray-900'
+                  placeholder='任意'
+                />
+              </label>
+              <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  作成対象: {bulkTargetCount}件
+                </p>
+                <Button
+                  type='button'
+                  onClick={createBulkShifts}
+                  disabled={
+                    isSavingShift ||
+                    staffResources.length === 0 ||
+                    bulkTargetCount === 0
+                  }
+                  className='bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90'
+                >
+                  {isSavingShift ? '保存中...' : '一括作成'}
+                </Button>
+              </div>
             </div>
           </div>
 

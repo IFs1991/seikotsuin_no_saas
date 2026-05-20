@@ -27,6 +27,78 @@ type ResourceSummary = Pick<
 type StaffShiftWithResource = StaffShiftRow & {
   resources: ResourceSummary | ResourceSummary[] | null;
 };
+type OverlapCandidate = Pick<
+  StaffShiftRow,
+  'staff_id' | 'start_time' | 'end_time'
+>;
+type ShiftStatus = 'draft' | 'proposed' | 'confirmed' | 'cancelled';
+
+interface ShiftItemDTO {
+  staff_id: string;
+  start_time: string;
+  end_time: string;
+  status: ShiftStatus;
+  notes?: string;
+}
+
+interface ShiftInsertDTO extends ShiftItemDTO {
+  clinic_id: string;
+}
+
+interface BulkShiftInsertDTO {
+  clinic_id: string;
+  shifts: ShiftItemDTO[];
+}
+
+interface ParsedShiftItemDTO {
+  staff_id?: string;
+  start_time?: string;
+  end_time?: string;
+  status?: ShiftStatus;
+  notes?: string;
+}
+
+interface ParsedShiftInsertDTO extends ParsedShiftItemDTO {
+  clinic_id?: string;
+}
+
+interface ParsedBulkShiftInsertDTO {
+  clinic_id?: string;
+  shifts?: ParsedShiftItemDTO[];
+}
+
+function requireParsedString(value: string | undefined, fieldName: string) {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} is missing after validation`);
+  }
+  return value;
+}
+
+function toShiftItemDTO(data: ParsedShiftItemDTO): ShiftItemDTO {
+  return {
+    staff_id: requireParsedString(data.staff_id, 'staff_id'),
+    start_time: requireParsedString(data.start_time, 'start_time'),
+    end_time: requireParsedString(data.end_time, 'end_time'),
+    status: data.status ?? 'draft',
+    notes: data.notes,
+  };
+}
+
+function toShiftInsertDTO(data: ParsedShiftInsertDTO): ShiftInsertDTO {
+  return {
+    ...toShiftItemDTO(data),
+    clinic_id: requireParsedString(data.clinic_id, 'clinic_id'),
+  };
+}
+
+function toBulkShiftInsertDTO(
+  data: ParsedBulkShiftInsertDTO
+): BulkShiftInsertDTO {
+  return {
+    clinic_id: requireParsedString(data.clinic_id, 'clinic_id'),
+    shifts: (data.shifts ?? []).map(toShiftItemDTO),
+  };
+}
 
 function normalizeResource(
   resource: StaffShiftWithResource['resources']
@@ -51,25 +123,46 @@ const toJstDayStartIso = (date: string) =>
 const toJstDayEndIso = (date: string) =>
   new Date(`${date}T23:59:59.999+09:00`).toISOString();
 
-const shiftInsertSchema = z
-  .object({
+const shiftStatusSchema = z
+  .enum(['draft', 'proposed', 'confirmed', 'cancelled'])
+  .default('draft');
+
+const shiftTimeRangeRefinement = {
+  message: '終了時刻は開始時刻より後にしてください',
+  path: ['end_time'],
+};
+
+const shiftItemBaseSchema = z.object({
+  staff_id: z.string().uuid(),
+  start_time: z.string().datetime(),
+  end_time: z.string().datetime(),
+  status: shiftStatusSchema,
+  notes: z.string().optional(),
+});
+
+const hasValidShiftTimeRange = (data: {
+  start_time: string;
+  end_time: string;
+}) => new Date(data.end_time).getTime() > new Date(data.start_time).getTime();
+
+const shiftItemSchema = shiftItemBaseSchema.refine(
+  hasValidShiftTimeRange,
+  shiftTimeRangeRefinement
+);
+
+const shiftInsertSchema = shiftItemBaseSchema
+  .extend({
     clinic_id: z.string().uuid(),
-    staff_id: z.string().uuid(),
-    start_time: z.string().datetime(),
-    end_time: z.string().datetime(),
-    status: z
-      .enum(['draft', 'proposed', 'confirmed', 'cancelled'])
-      .default('draft'),
-    notes: z.string().optional(),
   })
-  .refine(
-    data =>
-      new Date(data.end_time).getTime() > new Date(data.start_time).getTime(),
-    {
-      message: '終了時刻は開始時刻より後にしてください',
-      path: ['end_time'],
-    }
-  );
+  .refine(hasValidShiftTimeRange, shiftTimeRangeRefinement);
+
+const bulkShiftInsertSchema = z.object({
+  clinic_id: z.string().uuid(),
+  shifts: z
+    .array(shiftItemSchema)
+    .min(1, '一括作成するシフトを指定してください')
+    .max(370, '一括作成は370件までです'),
+});
 
 const shiftCancelSchema = z.object({
   clinic_id: z.string().uuid(),
@@ -77,7 +170,30 @@ const shiftCancelSchema = z.object({
   status: z.literal('cancelled'),
 });
 
-type ShiftInsertDTO = z.infer<typeof shiftInsertSchema>;
+function hasTimeOverlap(
+  left: Pick<OverlapCandidate, 'start_time' | 'end_time'>,
+  right: Pick<OverlapCandidate, 'start_time' | 'end_time'>
+) {
+  return (
+    new Date(left.start_time).getTime() < new Date(right.end_time).getTime() &&
+    new Date(left.end_time).getTime() > new Date(right.start_time).getTime()
+  );
+}
+
+function hasInternalOverlappingShift(shifts: readonly ShiftInsertDTO[]) {
+  for (let i = 0; i < shifts.length; i += 1) {
+    for (let j = i + 1; j < shifts.length; j += 1) {
+      if (
+        shifts[i].staff_id === shifts[j].staff_id &&
+        hasTimeOverlap(shifts[i], shifts[j])
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
 
 async function hasOverlappingShift(
   supabase: Awaited<ReturnType<typeof ensureClinicAccess>>['supabase'],
@@ -98,6 +214,77 @@ async function hasOverlappingShift(
   }
 
   return (data ?? []).length > 0;
+}
+
+async function hasOverlappingBulkShift(
+  supabase: Awaited<ReturnType<typeof ensureClinicAccess>>['supabase'],
+  clinicId: string,
+  shifts: readonly ShiftInsertDTO[]
+) {
+  const staffIds = Array.from(new Set(shifts.map(shift => shift.staff_id)));
+  const earliestStartTime = shifts.reduce((earliest, shift) =>
+    new Date(shift.start_time).getTime() <
+    new Date(earliest.start_time).getTime()
+      ? shift
+      : earliest
+  ).start_time;
+  const latestEndTime = shifts.reduce((latest, shift) =>
+    new Date(shift.end_time).getTime() > new Date(latest.end_time).getTime()
+      ? shift
+      : latest
+  ).end_time;
+
+  const { data, error } = await supabase
+    .from('staff_shifts')
+    .select('staff_id, start_time, end_time')
+    .eq('clinic_id', clinicId)
+    .in('staff_id', staffIds)
+    .neq('status', 'cancelled')
+    .lt('start_time', latestEndTime)
+    .gt('end_time', earliestStartTime)
+    .returns<OverlapCandidate[]>();
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  return (data ?? []).some(existing =>
+    shifts.some(
+      shift =>
+        shift.staff_id === existing.staff_id && hasTimeOverlap(existing, shift)
+    )
+  );
+}
+
+function buildShiftInsertPayload(
+  dto: ShiftInsertDTO,
+  userId: string
+): StaffShiftInsert {
+  return {
+    clinic_id: dto.clinic_id,
+    staff_id: dto.staff_id,
+    start_time: dto.start_time,
+    end_time: dto.end_time,
+    status: dto.status,
+    notes: dto.notes,
+    created_by: userId,
+  };
+}
+
+function buildBulkShiftInsertPayload(
+  clinicId: string,
+  dto: BulkShiftInsertDTO['shifts'][number],
+  userId: string
+): StaffShiftInsert {
+  return {
+    clinic_id: clinicId,
+    staff_id: dto.staff_id,
+    start_time: dto.start_time,
+    end_time: dto.end_time,
+    status: dto.status,
+    notes: dto.notes,
+    created_by: userId,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -250,6 +437,60 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('無効なJSONデータです', 400);
     }
 
+    const parsedBulkBody = bulkShiftInsertSchema.safeParse(rawBody);
+    if (parsedBulkBody.success) {
+      const dto = toBulkShiftInsertDTO(parsedBulkBody.data);
+      const shifts = dto.shifts.map(shift => ({
+        ...shift,
+        clinic_id: dto.clinic_id,
+      }));
+
+      const { supabase, user } = await ensureClinicAccess(
+        request,
+        PATH,
+        dto.clinic_id,
+        {
+          allowedRoles: Array.from(ADMIN_UI_ROLES),
+          requireClinicMatch: true,
+        }
+      );
+
+      if (hasInternalOverlappingShift(shifts)) {
+        return createErrorResponse(
+          '同じスタッフの一括シフト内で時間が重複しています',
+          400
+        );
+      }
+
+      if (await hasOverlappingBulkShift(supabase, dto.clinic_id, shifts)) {
+        return createErrorResponse(
+          '同じスタッフのシフト時間が重複しています',
+          400
+        );
+      }
+
+      const payload: StaffShiftInsert[] = dto.shifts.map(shift =>
+        buildBulkShiftInsertPayload(dto.clinic_id, shift, user.id)
+      );
+
+      const { data, error } = await supabase
+        .from('staff_shifts')
+        .insert(payload)
+        .select('id, clinic_id, staff_id, start_time, end_time, status, notes');
+
+      if (error) {
+        throw normalizeSupabaseError(error, PATH);
+      }
+
+      return createSuccessResponse(
+        {
+          shifts: data ?? [],
+          total: data?.length ?? 0,
+        },
+        201
+      );
+    }
+
     const parsedBody = shiftInsertSchema.safeParse(rawBody);
     if (!parsedBody.success) {
       return createErrorResponse(
@@ -259,7 +500,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dto = parsedBody.data;
+    const dto = toShiftInsertDTO(parsedBody.data);
 
     const { supabase, user } = await ensureClinicAccess(
       request,
@@ -278,15 +519,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload: StaffShiftInsert = {
-      clinic_id: dto.clinic_id,
-      staff_id: dto.staff_id,
-      start_time: dto.start_time,
-      end_time: dto.end_time,
-      status: dto.status,
-      notes: dto.notes,
-      created_by: user.id,
-    };
+    const payload = buildShiftInsertPayload(dto, user.id);
 
     const { data, error } = await supabase
       .from('staff_shifts')

@@ -376,6 +376,81 @@ describe('ShiftOptimizer コンポーネント', () => {
       });
     });
 
+    test('ユーザー別一括作成は複数シフトを1回のPOSTで送信する', async () => {
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes('/api/staff/shifts') && init?.method === 'POST') {
+          return Promise.resolve(
+            createMockResponse({
+              shifts: [
+                { id: 'shift-bulk-1' },
+                { id: 'shift-bulk-2' },
+                { id: 'shift-bulk-3' },
+              ],
+              total: 3,
+            })
+          );
+        }
+        if (url.includes('/api/staff/shifts')) {
+          return Promise.resolve(createMockResponse({ shifts: [], total: 0 }));
+        }
+        if (url.includes('/api/resources')) {
+          return Promise.resolve(
+            createMockResponse([
+              {
+                id: 'staff-1',
+                name: '実スタッフ1',
+                type: 'staff',
+                isActive: true,
+                isBookable: true,
+              },
+            ])
+          );
+        }
+        if (url.includes('/api/staff/preferences')) {
+          return Promise.resolve(
+            createMockResponse({ preferences: [], total: 0 })
+          );
+        }
+        if (url.includes('/api/staff/demand-forecast')) {
+          return Promise.resolve(
+            createMockResponse({ forecasts: [], hourlyDistribution: [] })
+          );
+        }
+        return Promise.resolve(createEmptyMockResponse());
+      });
+
+      render(<ShiftOptimizer clinicId={TEST_CLINIC_ID} />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('対象スタッフ')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText('開始日'), {
+        target: { value: '2026-05-18' },
+      });
+      fireEvent.change(screen.getByLabelText('終了日'), {
+        target: { value: '2026-05-20' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: '一括作成' }));
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          '/api/staff/shifts',
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"shifts"'),
+          })
+        );
+      });
+
+      const postCalls = mockFetch.mock.calls.filter(
+        ([url, init]) =>
+          String(url).includes('/api/staff/shifts') &&
+          init?.method === 'POST'
+      );
+      expect(postCalls).toHaveLength(1);
+    });
+
     test('選択日のシフトを取消できる', async () => {
       const today = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Tokyo',
