@@ -2,8 +2,6 @@
 
 import React, { useState } from 'react';
 import { useStaffAnalysis } from '@/hooks/useStaffAnalysis';
-import { useUserProfileContext } from '@/providers/user-profile-context';
-import ShiftOptimizer from '@/components/staff/shift-optimizer';
 import {
   Card,
   CardHeader,
@@ -25,12 +23,9 @@ const StaffManagementPage: React.FC = () => {
     error,
   } = useStaffAnalysis();
 
-  const { profile } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? '';
-
-  const [activeTab, setActiveTab] = useState<
-    'performance' | 'shifts' | 'optimizer'
-  >('performance');
+  const [activeTab, setActiveTab] = useState<'performance' | 'shifts'>(
+    'performance'
+  );
 
   if (isLoading) {
     return (
@@ -70,7 +65,7 @@ const StaffManagementPage: React.FC = () => {
         {/* ヘッダー */}
         <div className='flex items-center justify-between'>
           <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-            スタッフ分析とシフト最適化
+            スタッフ実績分析
           </h1>
           <div className='flex items-center gap-2'>
             <Badge variant='secondary'>総スタッフ: {totalStaff}名</Badge>
@@ -141,17 +136,7 @@ const StaffManagementPage: React.FC = () => {
                   }`}
                   onClick={() => setActiveTab('shifts')}
                 >
-                  シフト分析
-                </button>
-                <button
-                  className={`px-4 py-2 rounded text-sm font-medium ${
-                    activeTab === 'optimizer'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('optimizer')}
-                >
-                  シフト最適化
+                  稼働分析
                 </button>
               </div>
             </div>
@@ -335,12 +320,6 @@ const StaffManagementPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'optimizer' && (
-              <div className='space-y-6'>
-                <ShiftOptimizer clinicId={clinicId} />
               </div>
             )}
           </CardContent>

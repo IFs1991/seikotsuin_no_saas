@@ -14,6 +14,7 @@ import { AdminScopeNotice } from '@/components/admin/admin-scope-notice';
 import { AdminState } from '@/components/admin/admin-state';
 import { AdminAccountCreateFields } from '@/components/admin/admin-account-create-fields';
 import { UserCandidateCombobox } from '@/components/admin/user-candidate-combobox';
+import ShiftOptimizer from '@/components/staff/shift-optimizer';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -213,6 +214,7 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] =
     useState<AdminUsersRoleFilter>(ROLE_FILTER_ALL);
   const [clinicFilter, setClinicFilter] = useState<string>(CLINIC_FILTER_ALL);
+  const [shiftClinicId, setShiftClinicId] = useState('');
 
   const [notice, setNotice] = useState<string | null>(null);
   const [editingPermissionId, setEditingPermissionId] = useState<string | null>(
@@ -242,6 +244,17 @@ export default function AdminUsersPage() {
       fetchClinics({ isActive: null });
     }
   }, [fetchClinics, isHqAdmin]);
+
+  useEffect(() => {
+    if (shiftClinicId || clinicOptionsLoading) {
+      return;
+    }
+
+    const defaultClinicId = profile?.clinicId || clinicOptions[0]?.id || '';
+    if (defaultClinicId) {
+      setShiftClinicId(defaultClinicId);
+    }
+  }, [clinicOptions, clinicOptionsLoading, profile?.clinicId, shiftClinicId]);
 
   useEffect(() => {
     if (roleOptions.length === 0) {
@@ -777,6 +790,54 @@ export default function AdminUsersPage() {
           </Table>
         )}
       </AdminListCard>
+
+      <section className='space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm'>
+        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
+          <div>
+            <h2 className='text-xl font-semibold text-slate-950'>シフト管理</h2>
+            <p className='mt-1 text-sm leading-6 text-slate-600'>
+              所属店舗のスタッフシフト、希望条件、需要予測を確認・調整します。
+            </p>
+          </div>
+          <div className='w-full space-y-2 md:w-72'>
+            <label
+              htmlFor='admin-user-shift-clinic'
+              className='text-sm font-medium'
+            >
+              対象店舗
+            </label>
+            <Select
+              value={shiftClinicId || NO_CLINIC_VALUE}
+              onValueChange={value =>
+                setShiftClinicId(value === NO_CLINIC_VALUE ? '' : value)
+              }
+              disabled={clinicOptionsLoading || clinicOptions.length === 0}
+            >
+              <SelectTrigger id='admin-user-shift-clinic'>
+                <SelectValue placeholder='クリニックを選択' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
+                {clinicOptions.map(clinic => (
+                  <SelectItem key={clinic.id} value={clinic.id}>
+                    {clinic.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {shiftClinicId ? (
+          <ShiftOptimizer clinicId={shiftClinicId} />
+        ) : (
+          <AdminState
+            variant='empty'
+            title='シフト管理の対象店舗がありません'
+            description='所属店舗を選択するとシフト管理を表示します。'
+          />
+        )}
+      </section>
     </AdminPageShell>
   );
 }
