@@ -100,6 +100,12 @@ describe('/api/revenue-estimates/recalculate', () => {
       delete: jest.fn().mockReturnValue(createResolvedMutation()),
       insert: jest.fn().mockResolvedValue({ error: null }),
     };
+    const insuranceFeeSchedulesTable = {
+      select: jest.fn().mockReturnValue(createResolvedQuery([])),
+    };
+    const insuranceFeeItemsTable = {
+      select: jest.fn().mockReturnValue(createResolvedQuery([])),
+    };
     const dailyReportItemsTable = {
       select: jest.fn().mockReturnValue(itemsQuery),
       update: jest.fn().mockReturnValue(createResolvedMutation()),
@@ -114,6 +120,10 @@ describe('/api/revenue-estimates/recalculate', () => {
         if (table === 'revenue_estimate_warnings') {
           return revenueEstimateWarningsTable;
         }
+        if (table === 'insurance_fee_schedules') {
+          return insuranceFeeSchedulesTable;
+        }
+        if (table === 'insurance_fee_items') return insuranceFeeItemsTable;
         return {};
       }),
     };
@@ -188,6 +198,153 @@ describe('/api/revenue-estimates/recalculate', () => {
       skippedOverriddenCount: 0,
       disclaimer: '経営分析用の概算です。請求確定額ではありません。',
     });
+  });
+
+  test('POST stores insurance fee master provenance when a safe item matches the fee', async () => {
+    const itemsQuery = createResolvedQuery([
+      {
+        id: 'item-insurance',
+        clinic_id: clinicId,
+        report_date: '2026-06-01',
+        fee: 1600,
+        revenue_context_code: 'insurance',
+        visit_stage_code: 'first_visit',
+        estimate_status: 'not_calculated',
+      },
+    ]);
+    const existingEstimatesQuery = createResolvedQuery([]);
+    const scheduleQuery = createResolvedQuery([
+      {
+        schedule_code: 'JUDO_HI_202606',
+        schedule_name: 'Judo health insurance 2026',
+        profession_type: 'judo',
+        payer_context_code: 'insurance',
+        effective_from: '2026-06-01',
+        effective_to: null,
+        schedule_status: 'active',
+        source_id: 'judo-hi-source',
+        source_snapshot_hash: 'snapshot-judo-hi-202606',
+      },
+    ]);
+    const itemQuery = createResolvedQuery([
+      {
+        id: 'fee-item-initial',
+        schedule_code: 'JUDO_HI_202606',
+        item_code: 'INITIAL_VISIT',
+        item_name: 'Initial visit',
+        official_label: 'Initial visit',
+        category: 'visit',
+        amount_yen: 1600,
+        unit: 'visit',
+        billing_scope: 'treatment_day',
+        calculation_basis: null,
+        warning_codes_json: [],
+        manual_amount_required: false,
+        auto_calculation_allowed: true,
+        source_id: 'judo-hi-source',
+        source_snapshot_hash: 'snapshot-judo-hi-202606',
+        confidence: 'high',
+        sort_order: 10,
+      },
+    ]);
+    const upsertResult = Promise.resolve({
+      data: [
+        { id: 'estimate-insurance', daily_report_item_id: 'item-insurance' },
+      ],
+      error: null,
+    });
+    const revenueEstimatesTable = {
+      select: jest.fn().mockReturnValue(existingEstimatesQuery),
+      upsert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          then: upsertResult.then.bind(upsertResult),
+        }),
+      }),
+    };
+    const revenueEstimateLinesTable = {
+      delete: jest.fn().mockReturnValue(createResolvedMutation()),
+      insert: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const revenueEstimateWarningsTable = {
+      delete: jest.fn().mockReturnValue(createResolvedMutation()),
+      insert: jest.fn(),
+    };
+    const dailyReportItemsTable = {
+      select: jest.fn().mockReturnValue(itemsQuery),
+      update: jest.fn().mockReturnValue(createResolvedMutation()),
+    };
+    const insuranceFeeSchedulesTable = {
+      select: jest.fn().mockReturnValue(scheduleQuery),
+    };
+    const insuranceFeeItemsTable = {
+      select: jest.fn().mockReturnValue(itemQuery),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        if (table === 'revenue_estimates') return revenueEstimatesTable;
+        if (table === 'revenue_estimate_lines') {
+          return revenueEstimateLinesTable;
+        }
+        if (table === 'revenue_estimate_warnings') {
+          return revenueEstimateWarningsTable;
+        }
+        if (table === 'insurance_fee_schedules') {
+          return insuranceFeeSchedulesTable;
+        }
+        if (table === 'insurance_fee_items') return insuranceFeeItemsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { POST } =
+      await import('@/app/api/revenue-estimates/recalculate/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/revenue-estimates/recalculate', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(revenueEstimatesTable.upsert).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          daily_report_item_id: 'item-insurance',
+          estimate_status: 'calculated',
+          estimated_total: 1600,
+          used_schedule_code: 'JUDO_HI_202606',
+          source_snapshot_hash: 'snapshot-judo-hi-202606',
+        }),
+      ],
+      { onConflict: 'daily_report_item_id' }
+    );
+    expect(revenueEstimateLinesTable.insert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        revenue_estimate_id: 'estimate-insurance',
+        total_amount: 1600,
+        insurance_fee_item_id: 'fee-item-initial',
+        schedule_code: 'JUDO_HI_202606',
+        fee_item_code: 'INITIAL_VISIT',
+        source_snapshot_hash: 'snapshot-judo-hi-202606',
+      }),
+    ]);
+    expect(revenueEstimateWarningsTable.insert).not.toHaveBeenCalled();
   });
 
   test('POST preserves overridden estimates without write churn', async () => {

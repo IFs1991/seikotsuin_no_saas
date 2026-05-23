@@ -2,7 +2,12 @@
 // API Client Utilities - APIクライアントユーティリティ
 // =================================================================
 
-import { ApiResponse, ApiError, RevenueAnalysisData } from '../types/api';
+import {
+  ApiResponse,
+  ApiError,
+  RevenueAnalysisData,
+  type RevenueEstimateDetailsResponse,
+} from '../types/api';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -381,6 +386,17 @@ export const api = {
       }),
     create: (data: RevenueCreateRequest) =>
       apiClient.post('/api/revenue', data),
+  },
+
+  revenueEstimates: {
+    getDetails: (clinicId: string, period?: string) =>
+      apiClient.get<RevenueEstimateDetailsResponse>(
+        '/api/revenue-estimates/details',
+        {
+          clinic_id: clinicId,
+          ...(period && { period }),
+        }
+      ),
   },
 
   // スタッフ分析

@@ -59,6 +59,40 @@ export type InsuranceFeeJsonObject = {
   readonly [key: string]: Json;
 };
 
+export type InsuranceFeeScheduleRecordInput = Pick<
+  InsuranceFeeScheduleTableRow,
+  | 'schedule_code'
+  | 'schedule_name'
+  | 'profession_type'
+  | 'payer_context_code'
+  | 'effective_from'
+  | 'effective_to'
+  | 'schedule_status'
+  | 'source_id'
+  | 'source_snapshot_hash'
+>;
+
+export type InsuranceFeeItemRecordInput = Pick<
+  InsuranceFeeItemTableRow,
+  | 'id'
+  | 'schedule_code'
+  | 'item_code'
+  | 'item_name'
+  | 'official_label'
+  | 'category'
+  | 'amount_yen'
+  | 'unit'
+  | 'billing_scope'
+  | 'calculation_basis'
+  | 'warning_codes_json'
+  | 'manual_amount_required'
+  | 'auto_calculation_allowed'
+  | 'source_id'
+  | 'source_snapshot_hash'
+  | 'confidence'
+  | 'sort_order'
+>;
+
 export type InsuranceFeeScheduleRecord = {
   schedule_code: string;
   schedule_name: string;
@@ -199,7 +233,7 @@ export function parseInsuranceFeeWarningCodes(value: unknown): string[] | null {
 }
 
 export function toInsuranceFeeScheduleRecord(
-  row: InsuranceFeeScheduleTableRow
+  row: InsuranceFeeScheduleRecordInput
 ): InsuranceFeeScheduleRecord {
   return {
     schedule_code: row.schedule_code,
@@ -217,7 +251,7 @@ export function toInsuranceFeeScheduleRecord(
 }
 
 export function toInsuranceFeeItemRecord(
-  row: InsuranceFeeItemTableRow
+  row: InsuranceFeeItemRecordInput
 ): InsuranceFeeItemRecord {
   return {
     id: row.id,
