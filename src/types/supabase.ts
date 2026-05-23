@@ -1596,6 +1596,404 @@ export type Database = {
         };
         Relationships: [];
       };
+      insurance_fee_items: {
+        Row: {
+          amount_yen: number | null;
+          applicable_conditions_json: Json;
+          auto_calculation_allowed: boolean;
+          billing_scope: string;
+          calculation_basis: string | null;
+          category: string;
+          confidence: string;
+          created_at: string;
+          exclusion_conditions_json: Json;
+          id: string;
+          item_code: string;
+          item_name: string;
+          manual_amount_required: boolean;
+          official_label: string | null;
+          required_inputs_json: Json;
+          schedule_code: string;
+          sort_order: number;
+          source_id: string;
+          source_snapshot_hash: string | null;
+          unit: string;
+          updated_at: string;
+          warning_codes_json: Json;
+        };
+        Insert: {
+          amount_yen?: number | null;
+          applicable_conditions_json?: Json;
+          auto_calculation_allowed?: boolean;
+          billing_scope: string;
+          calculation_basis?: string | null;
+          category: string;
+          confidence?: string;
+          created_at?: string;
+          exclusion_conditions_json?: Json;
+          id?: string;
+          item_code: string;
+          item_name: string;
+          manual_amount_required?: boolean;
+          official_label?: string | null;
+          required_inputs_json?: Json;
+          schedule_code: string;
+          sort_order?: number;
+          source_id: string;
+          source_snapshot_hash?: string | null;
+          unit: string;
+          updated_at?: string;
+          warning_codes_json?: Json;
+        };
+        Update: {
+          amount_yen?: number | null;
+          applicable_conditions_json?: Json;
+          auto_calculation_allowed?: boolean;
+          billing_scope?: string;
+          calculation_basis?: string | null;
+          category?: string;
+          confidence?: string;
+          created_at?: string;
+          exclusion_conditions_json?: Json;
+          id?: string;
+          item_code?: string;
+          item_name?: string;
+          manual_amount_required?: boolean;
+          official_label?: string | null;
+          required_inputs_json?: Json;
+          schedule_code?: string;
+          sort_order?: number;
+          source_id?: string;
+          source_snapshot_hash?: string | null;
+          unit?: string;
+          updated_at?: string;
+          warning_codes_json?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'insurance_fee_items_schedule_code_fkey';
+            columns: ['schedule_code'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_schedules';
+            referencedColumns: ['schedule_code'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_items_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_sources';
+            referencedColumns: ['source_id'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_items_source_snapshot_fkey';
+            columns: ['source_id', 'source_snapshot_hash'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_source_snapshots';
+            referencedColumns: ['source_id', 'content_hash'];
+          },
+        ];
+      };
+      insurance_fee_revision_diffs: {
+        Row: {
+          created_at: string;
+          diff_type: string;
+          id: string;
+          item_code: string;
+          new_amount_yen: number | null;
+          new_conditions_json: Json | null;
+          new_label: string | null;
+          new_schedule_code: string;
+          notes: string | null;
+          old_amount_yen: number | null;
+          old_conditions_json: Json | null;
+          old_label: string | null;
+          old_schedule_code: string | null;
+          review_status: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          diff_type: string;
+          id?: string;
+          item_code: string;
+          new_amount_yen?: number | null;
+          new_conditions_json?: Json | null;
+          new_label?: string | null;
+          new_schedule_code: string;
+          notes?: string | null;
+          old_amount_yen?: number | null;
+          old_conditions_json?: Json | null;
+          old_label?: string | null;
+          old_schedule_code?: string | null;
+          review_status?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          diff_type?: string;
+          id?: string;
+          item_code?: string;
+          new_amount_yen?: number | null;
+          new_conditions_json?: Json | null;
+          new_label?: string | null;
+          new_schedule_code?: string;
+          notes?: string | null;
+          old_amount_yen?: number | null;
+          old_conditions_json?: Json | null;
+          old_label?: string | null;
+          old_schedule_code?: string | null;
+          review_status?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'insurance_fee_revision_diffs_new_schedule_fkey';
+            columns: ['new_schedule_code'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_schedules';
+            referencedColumns: ['schedule_code'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_revision_diffs_old_schedule_fkey';
+            columns: ['old_schedule_code'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_schedules';
+            referencedColumns: ['schedule_code'];
+          },
+        ];
+      };
+      insurance_fee_schedules: {
+        Row: {
+          created_at: string;
+          effective_from: string;
+          effective_to: string | null;
+          id: string;
+          is_locked: boolean;
+          notes: string | null;
+          payer_context_code: string;
+          profession_type: string;
+          replacement_schedule_code: string | null;
+          revision_reason: string | null;
+          schedule_code: string;
+          schedule_name: string;
+          schedule_status: string;
+          source_id: string;
+          source_snapshot_hash: string | null;
+          supersedes_schedule_code: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          effective_from: string;
+          effective_to?: string | null;
+          id?: string;
+          is_locked?: boolean;
+          notes?: string | null;
+          payer_context_code: string;
+          profession_type: string;
+          replacement_schedule_code?: string | null;
+          revision_reason?: string | null;
+          schedule_code: string;
+          schedule_name: string;
+          schedule_status?: string;
+          source_id: string;
+          source_snapshot_hash?: string | null;
+          supersedes_schedule_code?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          effective_from?: string;
+          effective_to?: string | null;
+          id?: string;
+          is_locked?: boolean;
+          notes?: string | null;
+          payer_context_code?: string;
+          profession_type?: string;
+          replacement_schedule_code?: string | null;
+          revision_reason?: string | null;
+          schedule_code?: string;
+          schedule_name?: string;
+          schedule_status?: string;
+          source_id?: string;
+          source_snapshot_hash?: string | null;
+          supersedes_schedule_code?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'insurance_fee_schedules_replacement_fkey';
+            columns: ['replacement_schedule_code'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_schedules';
+            referencedColumns: ['schedule_code'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_schedules_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_sources';
+            referencedColumns: ['source_id'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_schedules_source_snapshot_fkey';
+            columns: ['source_id', 'source_snapshot_hash'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_source_snapshots';
+            referencedColumns: ['source_id', 'content_hash'];
+          },
+          {
+            foreignKeyName: 'insurance_fee_schedules_supersedes_fkey';
+            columns: ['supersedes_schedule_code'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_schedules';
+            referencedColumns: ['schedule_code'];
+          },
+        ];
+      };
+      insurance_fee_source_snapshots: {
+        Row: {
+          byte_size: number | null;
+          content_hash: string;
+          created_at: string;
+          document_date: string | null;
+          document_title: string;
+          fetched_or_recorded_at: string;
+          file_path_or_storage_key: string | null;
+          id: string;
+          mime_type: string | null;
+          notes: string | null;
+          source_id: string;
+          source_url: string | null;
+        };
+        Insert: {
+          byte_size?: number | null;
+          content_hash: string;
+          created_at?: string;
+          document_date?: string | null;
+          document_title: string;
+          fetched_or_recorded_at?: string;
+          file_path_or_storage_key?: string | null;
+          id?: string;
+          mime_type?: string | null;
+          notes?: string | null;
+          source_id: string;
+          source_url?: string | null;
+        };
+        Update: {
+          byte_size?: number | null;
+          content_hash?: string;
+          created_at?: string;
+          document_date?: string | null;
+          document_title?: string;
+          fetched_or_recorded_at?: string;
+          file_path_or_storage_key?: string | null;
+          id?: string;
+          mime_type?: string | null;
+          notes?: string | null;
+          source_id?: string;
+          source_url?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'insurance_fee_source_snapshots_source_id_fkey';
+            columns: ['source_id'];
+            isOneToOne: false;
+            referencedRelation: 'insurance_fee_sources';
+            referencedColumns: ['source_id'];
+          },
+        ];
+      };
+      insurance_fee_sources: {
+        Row: {
+          created_at: string;
+          document_date: string | null;
+          effective_from: string | null;
+          effective_to: string | null;
+          notes: string | null;
+          publisher: string;
+          reliability: string;
+          source_id: string;
+          source_url: string | null;
+          target_domain: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          document_date?: string | null;
+          effective_from?: string | null;
+          effective_to?: string | null;
+          notes?: string | null;
+          publisher: string;
+          reliability: string;
+          source_id: string;
+          source_url?: string | null;
+          target_domain: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          document_date?: string | null;
+          effective_from?: string | null;
+          effective_to?: string | null;
+          notes?: string | null;
+          publisher?: string;
+          reliability?: string;
+          source_id?: string;
+          source_url?: string | null;
+          target_domain?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      insurance_fee_warning_definitions: {
+        Row: {
+          applies_to_payer_context_code: string | null;
+          applies_to_profession_type: string | null;
+          auto_block_calculation: boolean;
+          created_at: string;
+          is_active: boolean;
+          manual_review_required: boolean;
+          message: string;
+          severity: string;
+          sort_order: number;
+          updated_at: string;
+          warning_code: string;
+        };
+        Insert: {
+          applies_to_payer_context_code?: string | null;
+          applies_to_profession_type?: string | null;
+          auto_block_calculation?: boolean;
+          created_at?: string;
+          is_active?: boolean;
+          manual_review_required?: boolean;
+          message: string;
+          severity: string;
+          sort_order?: number;
+          updated_at?: string;
+          warning_code: string;
+        };
+        Update: {
+          applies_to_payer_context_code?: string | null;
+          applies_to_profession_type?: string | null;
+          auto_block_calculation?: boolean;
+          created_at?: string;
+          is_active?: boolean;
+          manual_review_required?: boolean;
+          message?: string;
+          severity?: string;
+          sort_order?: number;
+          updated_at?: string;
+          warning_code?: string;
+        };
+        Relationships: [];
+      };
       master_categories: {
         Row: {
           created_at: string | null;
