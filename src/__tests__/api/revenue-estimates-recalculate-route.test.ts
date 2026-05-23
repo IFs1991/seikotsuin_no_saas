@@ -206,7 +206,7 @@ describe('/api/revenue-estimates/recalculate', () => {
         id: 'item-insurance',
         clinic_id: clinicId,
         report_date: '2026-06-01',
-        fee: 1600,
+        fee: 1550,
         revenue_context_code: 'insurance',
         visit_stage_code: 'first_visit',
         estimate_status: 'not_calculated',
@@ -215,34 +215,36 @@ describe('/api/revenue-estimates/recalculate', () => {
     const existingEstimatesQuery = createResolvedQuery([]);
     const scheduleQuery = createResolvedQuery([
       {
-        schedule_code: 'JUDO_HI_202606',
-        schedule_name: 'Judo health insurance 2026',
+        schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+        schedule_name: '柔道整復 健康保険 令和6年改定 現行料金',
         profession_type: 'judo',
         payer_context_code: 'insurance',
-        effective_from: '2026-06-01',
+        effective_from: '2024-10-01',
         effective_to: null,
         schedule_status: 'active',
-        source_id: 'judo-hi-source',
-        source_snapshot_hash: 'snapshot-judo-hi-202606',
+        source_id: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+        source_snapshot_hash:
+          'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
       },
     ]);
     const itemQuery = createResolvedQuery([
       {
         id: 'fee-item-initial',
-        schedule_code: 'JUDO_HI_202606',
-        item_code: 'INITIAL_VISIT',
-        item_name: 'Initial visit',
-        official_label: 'Initial visit',
-        category: 'visit',
-        amount_yen: 1600,
+        schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+        item_code: 'JUDO_HI_INITIAL_EXAM',
+        item_name: '初検料',
+        official_label: '初検料',
+        category: 'visit_base',
+        amount_yen: 1550,
         unit: 'visit',
         billing_scope: 'treatment_day',
         calculation_basis: null,
         warning_codes_json: [],
         manual_amount_required: false,
         auto_calculation_allowed: true,
-        source_id: 'judo-hi-source',
-        source_snapshot_hash: 'snapshot-judo-hi-202606',
+        source_id: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+        source_snapshot_hash:
+          'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
         confidence: 'high',
         sort_order: 10,
       },
@@ -327,9 +329,10 @@ describe('/api/revenue-estimates/recalculate', () => {
         expect.objectContaining({
           daily_report_item_id: 'item-insurance',
           estimate_status: 'calculated',
-          estimated_total: 1600,
-          used_schedule_code: 'JUDO_HI_202606',
-          source_snapshot_hash: 'snapshot-judo-hi-202606',
+          estimated_total: 1550,
+          used_schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+          source_snapshot_hash:
+            'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
         }),
       ],
       { onConflict: 'daily_report_item_id' }
@@ -337,11 +340,12 @@ describe('/api/revenue-estimates/recalculate', () => {
     expect(revenueEstimateLinesTable.insert).toHaveBeenCalledWith([
       expect.objectContaining({
         revenue_estimate_id: 'estimate-insurance',
-        total_amount: 1600,
+        total_amount: 1550,
         insurance_fee_item_id: 'fee-item-initial',
-        schedule_code: 'JUDO_HI_202606',
-        fee_item_code: 'INITIAL_VISIT',
-        source_snapshot_hash: 'snapshot-judo-hi-202606',
+        schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+        fee_item_code: 'JUDO_HI_INITIAL_EXAM',
+        source_snapshot_hash:
+          'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
       }),
     ]);
     expect(revenueEstimateWarningsTable.insert).not.toHaveBeenCalled();

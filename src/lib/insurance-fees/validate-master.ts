@@ -23,7 +23,6 @@ export type InsuranceFeeMasterValidationIssueCode =
   | 'ACTIVE_SCHEDULE_OVERLAP'
   | 'ACTIVE_SCHEDULE_SNAPSHOT_REQUIRED'
   | 'ACTIVE_SCHEDULE_SNAPSHOT_NOT_FOUND'
-  | 'AUTO_CALCULATION_DISABLED_AMOUNT_FORBIDDEN'
   | 'GOLDEN_CASE_NON_ACTIVE_SCHEDULE'
   | 'GOLDEN_CASE_SCHEDULE_NOT_FOUND'
   | 'ITEM_DUPLICATE'
@@ -202,16 +201,6 @@ function validateItems(
         code: 'MANUAL_AMOUNT_SHAPE_INVALID',
         message:
           'Manual insurance fee item must not expose an amount or auto-calculation path.',
-        scheduleCode: item.schedule_code,
-        itemCode: item.item_code,
-      });
-    }
-
-    if (!item.auto_calculation_allowed && item.amount_yen !== null) {
-      pushIssue(issues, {
-        code: 'AUTO_CALCULATION_DISABLED_AMOUNT_FORBIDDEN',
-        message:
-          'Auto-calculation disabled item must not expose a master amount.',
         scheduleCode: item.schedule_code,
         itemCode: item.item_code,
       });

@@ -275,6 +275,11 @@ function attachMasterProvenanceToJobs(
   masterRows: InsuranceFeeMasterRows,
   professionType: InsuranceFeeProfessionType
 ): RevenueEstimateJob[] {
+  const resolvedItemsByScheduleCode = new Map<
+    string,
+    ResolvedInsuranceFeeItem[]
+  >();
+
   return jobs.map(job => {
     const payerContextCode = toInsuranceFeePayerContextCode(
       job.revenueContextCode
@@ -290,13 +295,21 @@ function attachMasterProvenanceToJobs(
         payerContextCode,
         treatmentDate: job.item.report_date,
       });
-      const items =
-        payerContextCode === 'traffic_accident'
-          ? []
-          : resolveMasterItemsForSchedule(
-              schedule,
-              masterRows.itemsByScheduleCode
-            );
+      let items: ResolvedInsuranceFeeItem[] = [];
+      if (payerContextCode !== 'traffic_accident') {
+        const cachedItems = resolvedItemsByScheduleCode.get(
+          schedule.scheduleCode
+        );
+        if (cachedItems) {
+          items = cachedItems;
+        } else {
+          items = resolveMasterItemsForSchedule(
+            schedule,
+            masterRows.itemsByScheduleCode
+          );
+          resolvedItemsByScheduleCode.set(schedule.scheduleCode, items);
+        }
+      }
       const linked = attachInsuranceFeeMasterProvenance({
         calculation: job.calculation,
         revenueContextCode: job.revenueContextCode,

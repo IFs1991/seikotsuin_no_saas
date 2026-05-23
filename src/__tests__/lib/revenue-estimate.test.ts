@@ -37,7 +37,7 @@ describe('calculateRevenueEstimate', () => {
   test('requires review for insurance estimate without visit stage', () => {
     const result = calculateRevenueEstimate({
       revenueContextCode: 'insurance',
-      fee: 1600,
+      fee: 1550,
       visitStageCode: null,
     });
 
@@ -50,13 +50,13 @@ describe('calculateRevenueEstimate', () => {
   test('calculates insurance estimate when visit stage is present', () => {
     const result = calculateRevenueEstimate({
       revenueContextCode: 'insurance',
-      fee: 1600,
+      fee: 1550,
       visitStageCode: 'first_visit',
     });
 
     expect(result).toMatchObject({
       estimateStatus: 'calculated',
-      estimatedTotal: 1600,
+      estimatedTotal: 1550,
       warnings: [],
     });
   });
