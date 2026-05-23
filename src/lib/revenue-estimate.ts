@@ -22,6 +22,10 @@ export type RevenueEstimateLine = {
   unitAmount: number;
   totalAmount: number;
   sortOrder: number;
+  insuranceFeeItemId?: string | null;
+  scheduleCode?: string | null;
+  feeItemCode?: string | null;
+  sourceSnapshotHash?: string | null;
 };
 
 export type RevenueEstimateWarning = {
