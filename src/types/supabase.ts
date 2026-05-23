@@ -3071,48 +3071,36 @@ export type Database = {
         Row: {
           clinic_id: string;
           created_at: string;
-          fee_item_code: string | null;
           id: string;
-          insurance_fee_item_id: string | null;
           label: string;
           line_type: string;
           quantity: number;
           revenue_estimate_id: string;
           sort_order: number;
-          schedule_code: string | null;
-          source_snapshot_hash: string | null;
           total_amount: number;
           unit_amount: number;
         };
         Insert: {
           clinic_id: string;
           created_at?: string;
-          fee_item_code?: string | null;
           id?: string;
-          insurance_fee_item_id?: string | null;
           label: string;
           line_type: string;
           quantity?: number;
           revenue_estimate_id: string;
           sort_order?: number;
-          schedule_code?: string | null;
-          source_snapshot_hash?: string | null;
           total_amount?: number;
           unit_amount?: number;
         };
         Update: {
           clinic_id?: string;
           created_at?: string;
-          fee_item_code?: string | null;
           id?: string;
-          insurance_fee_item_id?: string | null;
           label?: string;
           line_type?: string;
           quantity?: number;
           revenue_estimate_id?: string;
           sort_order?: number;
-          schedule_code?: string | null;
-          source_snapshot_hash?: string | null;
           total_amount?: number;
           unit_amount?: number;
         };
@@ -3138,34 +3126,6 @@ export type Database = {
             referencedRelation: 'revenue_estimates';
             referencedColumns: ['id'];
           },
-          {
-            foreignKeyName: 'revenue_estimate_lines_fee_item_id_fkey';
-            columns: ['insurance_fee_item_id'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_items';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'revenue_estimate_lines_schedule_code_fkey';
-            columns: ['schedule_code'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_schedules';
-            referencedColumns: ['schedule_code'];
-          },
-          {
-            foreignKeyName: 'revenue_estimate_lines_schedule_item_fkey';
-            columns: ['schedule_code', 'fee_item_code'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_items';
-            referencedColumns: ['schedule_code', 'item_code'];
-          },
-          {
-            foreignKeyName: 'revenue_estimate_lines_source_snapshot_hash_fkey';
-            columns: ['source_snapshot_hash'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_source_snapshots';
-            referencedColumns: ['content_hash'];
-          },
         ];
       };
       revenue_estimate_overrides: {
@@ -3175,7 +3135,6 @@ export type Database = {
           created_by: string | null;
           id: string;
           override_amount: number;
-          override_reason_code: string | null;
           previous_amount: number | null;
           reason: string;
           revenue_estimate_id: string;
@@ -3186,7 +3145,6 @@ export type Database = {
           created_by?: string | null;
           id?: string;
           override_amount: number;
-          override_reason_code?: string | null;
           previous_amount?: number | null;
           reason: string;
           revenue_estimate_id: string;
@@ -3197,7 +3155,6 @@ export type Database = {
           created_by?: string | null;
           id?: string;
           override_amount?: number;
-          override_reason_code?: string | null;
           previous_amount?: number | null;
           reason?: string;
           revenue_estimate_id?: string;
@@ -3291,10 +3248,8 @@ export type Database = {
           estimated_total: number;
           id: string;
           revenue_context_code: string;
-          source_snapshot_hash: string | null;
           updated_at: string;
           updated_by: string | null;
-          used_schedule_code: string | null;
         };
         Insert: {
           calculated_at?: string | null;
@@ -3308,10 +3263,8 @@ export type Database = {
           estimated_total?: number;
           id?: string;
           revenue_context_code: string;
-          source_snapshot_hash?: string | null;
           updated_at?: string;
           updated_by?: string | null;
-          used_schedule_code?: string | null;
         };
         Update: {
           calculated_at?: string | null;
@@ -3325,10 +3278,8 @@ export type Database = {
           estimated_total?: number;
           id?: string;
           revenue_context_code?: string;
-          source_snapshot_hash?: string | null;
           updated_at?: string;
           updated_by?: string | null;
-          used_schedule_code?: string | null;
         };
         Relationships: [
           {
@@ -3358,20 +3309,6 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: 'daily_report_items';
             referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'revenue_estimates_source_snapshot_hash_fkey';
-            columns: ['source_snapshot_hash'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_source_snapshots';
-            referencedColumns: ['content_hash'];
-          },
-          {
-            foreignKeyName: 'revenue_estimates_used_schedule_code_fkey';
-            columns: ['used_schedule_code'];
-            isOneToOne: false;
-            referencedRelation: 'insurance_fee_schedules';
-            referencedColumns: ['schedule_code'];
           },
         ];
       };
