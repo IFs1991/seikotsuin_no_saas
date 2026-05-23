@@ -30,6 +30,7 @@
     "e2e:seed": "node scripts/e2e/seed-e2e-data.mjs",
     "e2e:cleanup": "node scripts/e2e/cleanup-e2e-data.mjs",
     "e2e:validate-fixtures": "node scripts/e2e/validate-e2e-fixtures.mjs",
+    "insurance:validate-master": "node scripts/insurance-fees/validate-master.mjs",
     "test:integration": "jest --testPathPattern=integration",
     "coverage:summary": "node scripts/generate-coverage-summary.mjs",
     "swc:verify": "node scripts/check-swc-binary.mjs",

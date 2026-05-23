@@ -1,0 +1,48 @@
+{
+  "caseName": "Traffic accident remains manual",
+  "professionType": "judo",
+  "payerContextCode": "traffic_accident",
+  "treatmentDate": "2026-06-01",
+  "schedules": [
+    {
+      "schedule_code": "TRAFFIC_ACCIDENT_JUDO_202606",
+      "profession_type": "judo",
+      "payer_context_code": "traffic_accident",
+      "schedule_name": "Traffic accident judo context",
+      "effective_from": "2026-06-01",
+      "effective_to": null,
+      "schedule_status": "active",
+      "source_id": "traffic-accident-source",
+      "source_snapshot_hash": "snapshot-traffic-202606"
+    }
+  ],
+  "items": [
+    {
+      "id": "traffic-accident-manual",
+      "schedule_code": "TRAFFIC_ACCIDENT_JUDO_202606",
+      "item_code": "TRAFFIC_ACCIDENT_MANUAL",
+      "item_name": "Manual amount required",
+      "official_label": "Manual amount required",
+      "category": "manual",
+      "amount_yen": null,
+      "unit": "case",
+      "billing_scope": "treatment_day",
+      "manual_amount_required": true,
+      "auto_calculation_allowed": false,
+      "source_id": "traffic-accident-source",
+      "source_snapshot_hash": "snapshot-traffic-202606",
+      "sort_order": 10,
+      "warning_codes_json": ["TRAFFIC_ACCIDENT_REVIEW"]
+    }
+  ],
+  "expected": {
+    "scheduleCode": "TRAFFIC_ACCIDENT_JUDO_202606",
+    "items": [
+      {
+        "itemCode": "TRAFFIC_ACCIDENT_MANUAL",
+        "amountYen": null
+      }
+    ],
+    "warningCodes": ["TRAFFIC_ACCIDENT_REVIEW"]
+  }
+}
