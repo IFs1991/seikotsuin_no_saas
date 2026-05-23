@@ -2,7 +2,10 @@
 
 import React from 'react';
 import { useRevenue } from '@/hooks/useRevenue';
+import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import type { RevenueContextCode } from '@/lib/revenue-context';
 import {
   Card,
   CardHeader,
@@ -10,6 +13,36 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
+
+function formatRevenueContextLabel(code: RevenueContextCode): string {
+  switch (code) {
+    case 'insurance':
+      return '保険';
+    case 'workers_comp':
+      return '労災';
+    case 'traffic_accident':
+      return '交通事故: 手入力概算・要確認';
+    case 'private':
+      return '自費';
+    case 'product':
+      return '物販';
+    case 'ticket':
+      return '回数券';
+    case 'other':
+      return 'その他';
+  }
+}
+
+function formatWarningCodes(
+  warnings: Array<{ warningCode: string; message: string }>
+): string {
+  if (warnings.length === 0) {
+    return '-';
+  }
+  return warnings
+    .map(warning => `${warning.warningCode}: ${warning.message}`)
+    .join(' / ');
+}
 
 const RevenuePage: React.FC = () => {
   const {
@@ -46,6 +79,18 @@ const RevenuePage: React.FC = () => {
     error: revenueError,
   } = useRevenue(clinicId, {
     enabled: Boolean(clinicId) && !profileLoading && !profileError,
+  });
+  const canViewEstimateDetails = canAccessAdminUIWithCompat(profile?.role);
+  const {
+    details: revenueEstimateDetails,
+    loading: revenueEstimateDetailsLoading,
+    error: revenueEstimateDetailsError,
+  } = useRevenueEstimateDetails(clinicId, profile?.role, {
+    enabled:
+      Boolean(clinicId) &&
+      !profileLoading &&
+      !profileError &&
+      canViewEstimateDetails,
   });
 
   // プロファイル読み込み中
@@ -323,6 +368,107 @@ const RevenuePage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {canViewEstimateDetails && (
+          <Card className='w-full bg-card mb-4'>
+            <CardHeader className='bg-card'>
+              <CardTitle className='text-center bg-card'>
+                療養費・売上見込み詳細
+              </CardTitle>
+              <CardDescription className='bg-card'>
+                経営分析用の概算内訳と保険マスタ根拠
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='bg-card'>
+              {revenueEstimateDetailsLoading ? (
+                <p className='text-gray-500 text-center'>
+                  療養費見込み詳細を読み込み中...
+                </p>
+              ) : revenueEstimateDetailsError ? (
+                <p className='text-red-500 text-center'>
+                  {revenueEstimateDetailsError}
+                </p>
+              ) : revenueEstimateDetails.length === 0 ? (
+                <p className='text-gray-500 text-center'>
+                  詳細データがありません
+                </p>
+              ) : (
+                <div className='overflow-x-auto'>
+                  <table
+                    className='w-full text-sm'
+                    aria-label='療養費・売上見込み詳細'
+                  >
+                    <thead>
+                      <tr className='border-b text-left'>
+                        <th className='py-2 pr-3 font-medium'>日付</th>
+                        <th className='py-2 pr-3 font-medium'>患者</th>
+                        <th className='py-2 pr-3 font-medium'>施術</th>
+                        <th className='py-2 pr-3 font-medium'>区分</th>
+                        <th className='py-2 pr-3 font-medium text-right'>
+                          入力額
+                        </th>
+                        <th className='py-2 pr-3 font-medium text-right'>
+                          見込み額
+                        </th>
+                        <th className='py-2 pr-3 font-medium'>状態</th>
+                        <th className='py-2 pr-3 font-medium'>警告</th>
+                        <th className='py-2 font-medium'>根拠</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revenueEstimateDetails.map(detail => (
+                        <tr
+                          key={detail.estimateId}
+                          className='border-b last:border-b-0 align-top'
+                        >
+                          <td className='py-2 pr-3 whitespace-nowrap'>
+                            {detail.reportDate}
+                          </td>
+                          <td className='py-2 pr-3 whitespace-nowrap'>
+                            {detail.patientName}
+                          </td>
+                          <td className='py-2 pr-3'>{detail.treatmentName}</td>
+                          <td className='py-2 pr-3'>
+                            {formatRevenueContextLabel(
+                              detail.revenueContextCode
+                            )}
+                          </td>
+                          <td className='py-2 pr-3 text-right whitespace-nowrap'>
+                            {detail.manualFee.toLocaleString()}
+                          </td>
+                          <td className='py-2 pr-3 text-right whitespace-nowrap'>
+                            {detail.estimatedTotal.toLocaleString()}
+                          </td>
+                          <td className='py-2 pr-3 whitespace-nowrap'>
+                            {detail.estimateStatus}
+                          </td>
+                          <td className='py-2 pr-3 min-w-48'>
+                            {formatWarningCodes(detail.warnings)}
+                          </td>
+                          <td className='py-2 min-w-48'>
+                            <div className='space-y-1'>
+                              <p>
+                                {detail.usedScheduleCode ?? 'マスタ根拠なし'}
+                              </p>
+                              {detail.lines.map(line => (
+                                <p
+                                  key={line.id}
+                                  className='text-xs text-gray-600 dark:text-gray-300'
+                                >
+                                  {line.feeItemCode ?? '手入力概算ライン'}
+                                </p>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className='w-full bg-card mb-4'>
           <CardHeader className='bg-card'>

@@ -5,13 +5,19 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RevenuePage from '@/app/(app)/revenue/page';
 import { useRevenue } from '@/hooks/useRevenue';
+import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 // Mock the custom hooks
 jest.mock('@/hooks/useRevenue');
+jest.mock('@/hooks/useRevenueEstimateDetails');
 jest.mock('@/hooks/useUserProfile');
 
 const mockUseRevenue = useRevenue as jest.MockedFunction<typeof useRevenue>;
+const mockUseRevenueEstimateDetails =
+  useRevenueEstimateDetails as jest.MockedFunction<
+    typeof useRevenueEstimateDetails
+  >;
 const mockUseUserProfile = useUserProfile as jest.MockedFunction<
   typeof useUserProfile
 >;
@@ -100,10 +106,59 @@ const mockUserProfile = {
   error: null,
 };
 
+const mockRevenueEstimateDetails = {
+  details: [
+    {
+      dailyReportItemId: 'item-traffic',
+      reportDate: '2026-06-02',
+      patientName: '佐藤 花子',
+      treatmentName: '交通事故施術',
+      manualFee: 9000,
+      revenueContextCode: 'traffic_accident',
+      visitStageCode: null,
+      estimateId: 'estimate-traffic',
+      estimateStatus: 'needs_review',
+      estimatedTotal: 9000,
+      disclaimer: '経営分析用の概算です。請求確定額ではありません。',
+      calculatedAt: '2026-06-02T00:00:00.000Z',
+      calculationVersion: 'v1',
+      usedScheduleCode: 'JUDO_TRAFFIC_202606',
+      sourceSnapshotHash: 'snapshot-traffic-202606',
+      lines: [
+        {
+          id: 'line-traffic',
+          lineType: 'manual_fee',
+          label: '交通事故 手入力概算',
+          quantity: 1,
+          unitAmount: 9000,
+          totalAmount: 9000,
+          sortOrder: 1,
+          insuranceFeeItemId: null,
+          scheduleCode: null,
+          feeItemCode: null,
+          sourceSnapshotHash: null,
+        },
+      ],
+      warnings: [
+        {
+          id: 'warning-traffic',
+          warningCode: 'TRAFFIC_ACCIDENT_REVIEW',
+          severity: 'needs_review',
+          message:
+            '交通事故・自賠責関連の概算です。請求確定前に確認してください。',
+        },
+      ],
+    },
+  ],
+  loading: false,
+  error: null,
+};
+
 describe('RevenuePage', () => {
   beforeEach(() => {
     mockUseUserProfile.mockReturnValue(mockUserProfile);
     mockUseRevenue.mockReturnValue(mockRevenueData);
+    mockUseRevenueEstimateDetails.mockReturnValue(mockRevenueEstimateDetails);
   });
 
   afterEach(() => {
@@ -191,6 +246,64 @@ describe('RevenuePage', () => {
       expect(screen.getByText('見込み件数')).toBeInTheDocument();
       expect(screen.getByText('警告')).toBeInTheDocument();
       expect(screen.getByText('上書き')).toBeInTheDocument();
+    });
+
+    test('admin should display revenue estimate amount details', () => {
+      mockUseUserProfile.mockReturnValue({
+        profile: {
+          ...mockUserProfile.profile,
+          role: 'admin',
+          isAdmin: true,
+        },
+        loading: false,
+        error: null,
+      });
+
+      render(<RevenuePage />);
+
+      expect(screen.getByText('療養費・売上見込み詳細')).toBeInTheDocument();
+      expect(screen.getByText('佐藤 花子')).toBeInTheDocument();
+      expect(screen.getByText('交通事故施術')).toBeInTheDocument();
+      expect(
+        screen.getByText('交通事故: 手入力概算・要確認')
+      ).toBeInTheDocument();
+      expect(screen.getByText('JUDO_TRAFFIC_202606')).toBeInTheDocument();
+      expect(screen.queryByText('請求確定額')).not.toBeInTheDocument();
+    });
+
+    test('clinic_admin should display revenue estimate amount details', () => {
+      mockUseUserProfile.mockReturnValue({
+        profile: {
+          ...mockUserProfile.profile,
+          role: 'clinic_admin',
+          isAdmin: true,
+        },
+        loading: false,
+        error: null,
+      });
+
+      render(<RevenuePage />);
+
+      expect(screen.getByText('療養費・売上見込み詳細')).toBeInTheDocument();
+    });
+
+    test('manager should not display revenue estimate amount details even when isAdmin is true', () => {
+      mockUseUserProfile.mockReturnValue({
+        profile: {
+          ...mockUserProfile.profile,
+          role: 'manager',
+          isAdmin: true,
+        },
+        loading: false,
+        error: null,
+      });
+
+      render(<RevenuePage />);
+
+      expect(
+        screen.queryByText('療養費・売上見込み詳細')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('佐藤 花子')).not.toBeInTheDocument();
     });
 
     test('should display hourly and daily patterns', () => {

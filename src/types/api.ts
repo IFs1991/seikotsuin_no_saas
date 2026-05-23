@@ -329,6 +329,51 @@ export interface RevenueAnalysisData {
   revenueEstimateSummary: RevenueEstimateSummary;
 }
 
+export interface RevenueEstimateDetailsResponse {
+  details: RevenueEstimateAmountDetail[];
+}
+
+export interface RevenueEstimateAmountDetail {
+  dailyReportItemId: string;
+  reportDate: string;
+  patientName: string;
+  treatmentName: string;
+  manualFee: number;
+  revenueContextCode: RevenueContextCode;
+  visitStageCode: string | null;
+  estimateId: string;
+  estimateStatus: string;
+  estimatedTotal: number;
+  disclaimer: string;
+  calculatedAt: string | null;
+  calculationVersion: string;
+  usedScheduleCode: string | null;
+  sourceSnapshotHash: string | null;
+  lines: RevenueEstimateAmountDetailLine[];
+  warnings: RevenueEstimateAmountDetailWarning[];
+}
+
+export interface RevenueEstimateAmountDetailLine {
+  id: string;
+  lineType: string;
+  label: string;
+  quantity: number;
+  unitAmount: number;
+  totalAmount: number;
+  sortOrder: number;
+  insuranceFeeItemId: string | null;
+  scheduleCode: string | null;
+  feeItemCode: string | null;
+  sourceSnapshotHash: string | null;
+}
+
+export interface RevenueEstimateAmountDetailWarning {
+  id: string;
+  warningCode: string;
+  severity: string;
+  message: string;
+}
+
 export interface MenuRanking {
   menu_id: string | null;
   menu_name: string;
