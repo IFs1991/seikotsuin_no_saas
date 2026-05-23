@@ -1,0 +1,48 @@
+{
+  "caseName": "Judo health insurance long term review warning",
+  "professionType": "judo",
+  "payerContextCode": "insurance",
+  "treatmentDate": "2025-03-01",
+  "schedules": [
+    {
+      "schedule_code": "JUDO_HI_202410",
+      "profession_type": "judo",
+      "payer_context_code": "insurance",
+      "schedule_name": "Judo health insurance 2024-10",
+      "effective_from": "2024-10-01",
+      "effective_to": "2026-05-31",
+      "schedule_status": "active",
+      "source_id": "judo-hi-source",
+      "source_snapshot_hash": "snapshot-judo-202410"
+    }
+  ],
+  "items": [
+    {
+      "id": "judo-202410-long-term",
+      "schedule_code": "JUDO_HI_202410",
+      "item_code": "JUDO_HI_LONG_TERM_REDUCTION",
+      "item_name": "Long term review",
+      "official_label": "Long term review",
+      "category": "review",
+      "amount_yen": null,
+      "unit": "case",
+      "billing_scope": "care_episode",
+      "manual_amount_required": false,
+      "auto_calculation_allowed": false,
+      "source_id": "judo-hi-source",
+      "source_snapshot_hash": "snapshot-judo-202410",
+      "sort_order": 20,
+      "warning_codes_json": ["LONG_TERM_REVIEW"]
+    }
+  ],
+  "expected": {
+    "scheduleCode": "JUDO_HI_202410",
+    "items": [
+      {
+        "itemCode": "JUDO_HI_LONG_TERM_REDUCTION",
+        "amountYen": null
+      }
+    ],
+    "warningCodes": ["LONG_TERM_REVIEW"]
+  }
+}
