@@ -23,9 +23,19 @@ export type AttachInsuranceFeeMasterProvenanceResult = {
   masterLink: InsuranceFeeRevenueEstimateMasterLink;
 };
 
+type SafeAutomaticItem = ResolvedInsuranceFeeItem & { amountYen: number };
+type ItemAmountBucket =
+  | {
+      kind: 'single';
+      item: SafeAutomaticItem;
+    }
+  | {
+      kind: 'ambiguous';
+    };
+
 function isSafeAutomaticItem(
   item: ResolvedInsuranceFeeItem
-): item is ResolvedInsuranceFeeItem & { amountYen: number } {
+): item is SafeAutomaticItem {
   return (
     item.amountYen !== null &&
     item.autoCalculationAllowed &&
@@ -33,38 +43,44 @@ function isSafeAutomaticItem(
   );
 }
 
-function findSingleLineItemMatch(
-  line: RevenueEstimateLine,
+function buildSingleAutomaticItemByAmount(
   items: readonly ResolvedInsuranceFeeItem[]
-): ResolvedInsuranceFeeItem | null {
-  let match: ResolvedInsuranceFeeItem | null = null;
-  let matchCount = 0;
+): Map<number, ItemAmountBucket> {
+  const itemByAmount = new Map<number, ItemAmountBucket>();
 
   for (const item of items) {
     if (!isSafeAutomaticItem(item)) {
       continue;
     }
 
-    if (item.amountYen !== line.unitAmount) {
-      continue;
-    }
-
-    match = item;
-    matchCount += 1;
-
-    if (matchCount > 1) {
-      return null;
+    const existing = itemByAmount.get(item.amountYen);
+    if (existing) {
+      itemByAmount.set(item.amountYen, { kind: 'ambiguous' });
+    } else {
+      itemByAmount.set(item.amountYen, { kind: 'single', item });
     }
   }
 
-  return match;
+  return itemByAmount;
+}
+
+function findSingleLineItemMatch(
+  line: RevenueEstimateLine,
+  itemByAmount: ReadonlyMap<number, ItemAmountBucket>
+): SafeAutomaticItem | null {
+  const bucket = itemByAmount.get(line.unitAmount);
+  if (!bucket || bucket.kind === 'ambiguous') {
+    return null;
+  }
+
+  return bucket.item;
 }
 
 function attachLineItemProvenance(
   line: RevenueEstimateLine,
-  items: readonly ResolvedInsuranceFeeItem[]
+  itemByAmount: ReadonlyMap<number, ItemAmountBucket>
 ): RevenueEstimateLine {
-  const matchedItem = findSingleLineItemMatch(line, items);
+  const matchedItem = findSingleLineItemMatch(line, itemByAmount);
 
   if (!matchedItem) {
     return line;
@@ -97,12 +113,14 @@ export function attachInsuranceFeeMasterProvenance({
     };
   }
 
+  const itemByAmount = buildSingleAutomaticItemByAmount(items);
+
   return {
     masterLink,
     calculation: {
       ...calculation,
       lines: calculation.lines.map(line =>
-        attachLineItemProvenance(line, items)
+        attachLineItemProvenance(line, itemByAmount)
       ),
     },
   };

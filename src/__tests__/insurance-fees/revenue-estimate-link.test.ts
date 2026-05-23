@@ -7,36 +7,40 @@ import type { ResolvedInsuranceFeeSchedule } from '@/lib/insurance-fees/resolve-
 import type { RevenueEstimateCalculation } from '@/lib/revenue-estimate';
 
 const insuranceSchedule: ResolvedInsuranceFeeSchedule = {
-  scheduleCode: 'JUDO_HI_202606',
+  scheduleCode: 'JUDO_HI_R6_202410_ACTIVE',
   professionType: 'judo',
   payerContextCode: 'insurance',
-  effectiveFrom: '2026-06-01',
+  effectiveFrom: '2024-10-01',
   effectiveTo: null,
   scheduleStatus: 'active',
-  sourceId: 'judo-hi-source',
-  sourceSnapshotHash: 'snapshot-judo-hi-202606',
+  sourceId: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+  sourceSnapshotHash:
+    'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
 };
 
 const trafficSchedule: ResolvedInsuranceFeeSchedule = {
   ...insuranceSchedule,
   scheduleCode: 'TRAFFIC_JUDO_202606',
   payerContextCode: 'traffic_accident',
+  sourceId: 'traffic-accident-source',
+  sourceSnapshotHash: 'snapshot-traffic-202606',
 };
 
 const matchingItem: ResolvedInsuranceFeeItem = {
   id: 'fee-item-initial',
-  scheduleCode: 'JUDO_HI_202606',
-  itemCode: 'INITIAL_VISIT',
-  itemName: 'Initial visit',
-  officialLabel: 'Initial visit',
-  category: 'visit',
-  amountYen: 1600,
+  scheduleCode: 'JUDO_HI_R6_202410_ACTIVE',
+  itemCode: 'JUDO_HI_INITIAL_EXAM',
+  itemName: '初検料',
+  officialLabel: '初検料',
+  category: 'visit_base',
+  amountYen: 1550,
   unit: 'visit',
   billingScope: 'treatment_day',
   manualAmountRequired: false,
   autoCalculationAllowed: true,
-  sourceId: 'judo-hi-source',
-  sourceSnapshotHash: 'snapshot-judo-hi-202606',
+  sourceId: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+  sourceSnapshotHash:
+    'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
   sortOrder: 10,
   warningCodes: [],
 };
@@ -49,6 +53,8 @@ const manualTrafficItem: ResolvedInsuranceFeeItem = {
   amountYen: null,
   manualAmountRequired: true,
   autoCalculationAllowed: false,
+  sourceId: 'traffic-accident-source',
+  sourceSnapshotHash: 'snapshot-traffic-202606',
 };
 
 function createCalculation(totalAmount: number): RevenueEstimateCalculation {
@@ -72,23 +78,25 @@ function createCalculation(totalAmount: number): RevenueEstimateCalculation {
 describe('attachInsuranceFeeMasterProvenance', () => {
   test('stores schedule and a single safe item link without changing amounts', () => {
     const result = attachInsuranceFeeMasterProvenance({
-      calculation: createCalculation(1600),
+      calculation: createCalculation(1550),
       revenueContextCode: 'insurance',
       schedule: insuranceSchedule,
       items: [matchingItem],
     });
 
     expect(result.masterLink).toEqual<InsuranceFeeRevenueEstimateMasterLink>({
-      usedScheduleCode: 'JUDO_HI_202606',
-      sourceSnapshotHash: 'snapshot-judo-hi-202606',
+      usedScheduleCode: 'JUDO_HI_R6_202410_ACTIVE',
+      sourceSnapshotHash:
+        'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
     });
-    expect(result.calculation.estimatedTotal).toBe(1600);
+    expect(result.calculation.estimatedTotal).toBe(1550);
     expect(result.calculation.lines[0]).toMatchObject({
-      totalAmount: 1600,
+      totalAmount: 1550,
       insuranceFeeItemId: 'fee-item-initial',
-      scheduleCode: 'JUDO_HI_202606',
-      feeItemCode: 'INITIAL_VISIT',
-      sourceSnapshotHash: 'snapshot-judo-hi-202606',
+      scheduleCode: 'JUDO_HI_R6_202410_ACTIVE',
+      feeItemCode: 'JUDO_HI_INITIAL_EXAM',
+      sourceSnapshotHash:
+        'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
     });
   });
 
@@ -115,7 +123,7 @@ describe('attachInsuranceFeeMasterProvenance', () => {
 
     expect(result.masterLink).toEqual<InsuranceFeeRevenueEstimateMasterLink>({
       usedScheduleCode: 'TRAFFIC_JUDO_202606',
-      sourceSnapshotHash: 'snapshot-judo-hi-202606',
+      sourceSnapshotHash: 'snapshot-traffic-202606',
     });
     expect(result.calculation.estimateStatus).toBe('needs_review');
     expect(result.calculation.estimatedTotal).toBe(9000);
@@ -129,17 +137,19 @@ describe('attachInsuranceFeeMasterProvenance', () => {
     const secondMatchingItem: ResolvedInsuranceFeeItem = {
       ...matchingItem,
       id: 'fee-item-duplicate',
-      itemCode: 'INITIAL_VISIT_DUPLICATE',
+      itemCode: 'JUDO_HI_INITIAL_EXAM_DUPLICATE',
     };
 
     const result = attachInsuranceFeeMasterProvenance({
-      calculation: createCalculation(1600),
+      calculation: createCalculation(1550),
       revenueContextCode: 'insurance',
       schedule: insuranceSchedule,
       items: [matchingItem, secondMatchingItem],
     });
 
-    expect(result.masterLink.usedScheduleCode).toBe('JUDO_HI_202606');
+    expect(result.masterLink.usedScheduleCode).toBe(
+      'JUDO_HI_R6_202410_ACTIVE'
+    );
     expect(result.calculation.lines[0]).not.toHaveProperty(
       'insuranceFeeItemId'
     );

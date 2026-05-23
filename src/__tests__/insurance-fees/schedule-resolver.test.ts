@@ -11,10 +11,11 @@ import type {
 const scheduleBase = {
   profession_type: 'judo',
   payer_context_code: 'insurance',
-  schedule_name: 'Judo health insurance schedule',
+  schedule_name: 'Judo health insurance R6 active schedule',
   schedule_status: 'active',
-  source_id: 'judo-hi-source',
-  source_snapshot_hash: 'snapshot-judo-hi',
+  source_id: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+  source_snapshot_hash:
+    'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
 } satisfies Omit<
   InsuranceFeeScheduleRecord,
   'schedule_code' | 'effective_from' | 'effective_to'
@@ -22,17 +23,18 @@ const scheduleBase = {
 
 const itemBase = {
   id: 'item-id',
-  schedule_code: 'JUDO_HI_202606',
-  item_name: 'Initial visit',
-  official_label: 'Initial visit',
-  category: 'visit',
-  amount_yen: 1600,
+  schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+  item_name: '初検料',
+  official_label: '初検料',
+  category: 'visit_base',
+  amount_yen: 1550,
   unit: 'visit',
   billing_scope: 'treatment_day',
   manual_amount_required: false,
   auto_calculation_allowed: true,
-  source_id: 'judo-hi-source',
-  source_snapshot_hash: 'snapshot-judo-hi',
+  source_id: 'MHLW_JUDO_HI_R6_FINAL_20240529',
+  source_snapshot_hash:
+    'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
   sort_order: 10,
   warning_codes_json: [],
 } satisfies Omit<InsuranceFeeItemRecord, 'item_code'>;
@@ -42,14 +44,14 @@ describe('resolveInsuranceFeeSchedule', () => {
     const schedules: InsuranceFeeScheduleRecord[] = [
       {
         ...scheduleBase,
-        schedule_code: 'JUDO_HI_202410',
-        effective_from: '2024-10-01',
-        effective_to: '2026-05-31',
+        schedule_code: 'JUDO_HI_R5_202304_ACTIVE',
+        effective_from: '2023-04-01',
+        effective_to: '2024-09-30',
       },
       {
         ...scheduleBase,
-        schedule_code: 'JUDO_HI_202606',
-        effective_from: '2026-06-01',
+        schedule_code: 'JUDO_HI_R6_202410_ACTIVE',
+        effective_from: '2024-10-01',
         effective_to: null,
       },
     ];
@@ -59,17 +61,17 @@ describe('resolveInsuranceFeeSchedule', () => {
         schedules,
         professionType: 'judo',
         payerContextCode: 'insurance',
-        treatmentDate: '2026-05-31',
+        treatmentDate: '2024-09-30',
       }).scheduleCode
-    ).toBe('JUDO_HI_202410');
+    ).toBe('JUDO_HI_R5_202304_ACTIVE');
     expect(
       resolveInsuranceFeeSchedule({
         schedules,
         professionType: 'judo',
         payerContextCode: 'insurance',
-        treatmentDate: '2026-06-01',
+        treatmentDate: '2024-10-01',
       }).scheduleCode
-    ).toBe('JUDO_HI_202606');
+    ).toBe('JUDO_HI_R6_202410_ACTIVE');
   });
 
   test('ignores non-active schedules for production resolution', () => {
@@ -78,15 +80,15 @@ describe('resolveInsuranceFeeSchedule', () => {
         schedules: [
           {
             ...scheduleBase,
-            schedule_code: 'JUDO_HI_DRAFT',
+            schedule_code: 'JUDO_HI_R8_202607_DRAFT',
             schedule_status: 'draft',
-            effective_from: '2026-06-01',
+            effective_from: '2026-07-01',
             effective_to: null,
           },
         ],
         professionType: 'judo',
         payerContextCode: 'insurance',
-        treatmentDate: '2026-06-01',
+        treatmentDate: '2026-07-01',
       })
     ).toThrow(
       expect.objectContaining({
@@ -112,14 +114,14 @@ describe('resolveInsuranceFeeSchedule', () => {
         schedules: [
           {
             ...scheduleBase,
-            schedule_code: 'JUDO_HI_202606_A',
-            effective_from: '2026-06-01',
+            schedule_code: 'JUDO_HI_R6_202410_ACTIVE_A',
+            effective_from: '2024-10-01',
             effective_to: null,
           },
           {
             ...scheduleBase,
-            schedule_code: 'JUDO_HI_202606_B',
-            effective_from: '2026-06-01',
+            schedule_code: 'JUDO_HI_R6_202410_ACTIVE_B',
+            effective_from: '2024-10-01',
             effective_to: null,
           },
         ],
