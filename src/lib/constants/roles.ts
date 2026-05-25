@@ -64,6 +64,31 @@ export const CLINIC_ADMIN_ROLES: ReadonlySet<Role> = new Set([
 ]);
 
 /**
+ * Pricing template roles - can manage headquarters/standard billing profiles
+ */
+export const PRICING_TEMPLATE_ADMIN_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+]);
+
+/**
+ * Clinic pricing admin roles - can manage clinic-owned billing profiles and
+ * patient coverage defaults.
+ */
+export const CLINIC_PRICING_ADMIN_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+  'clinic_admin',
+]);
+
+/**
+ * Revenue review roles - can review and recalculate confirmed snapshots.
+ */
+export const REVENUE_REVIEW_ROLES: ReadonlySet<Role> = new Set([
+  'admin',
+  'clinic_admin',
+  'manager',
+]);
+
+/**
  * Staff roles - can view/edit patient and reservation data
  */
 export const STAFF_ROLES: ReadonlySet<Role> = new Set([

@@ -26,7 +26,7 @@ import {
 
 const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
-  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, care_episode_id, visit_ordinal_in_episode, visit_stage_code, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, created_at, updated_at, created_by, updated_by';
+  'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, care_episode_id, visit_ordinal_in_episode, visit_stage_code, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, menu_billing_profile_id, customer_insurance_coverage_id, patient_burden_rate, coverage_resolution_source, pricing_snapshot_status, pricing_confirmed_at, created_at, updated_at, created_by, updated_by';
 const PAYMENT_METHOD_SELECT = 'id, name, is_active';
 
 type DailyReportItemRow =

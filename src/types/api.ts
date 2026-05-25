@@ -317,6 +317,11 @@ export interface RevenueAnalysisData {
   workersCompRevenue: number;
   productRevenue: number;
   ticketRevenue: number;
+  patientCopayEstimated: number;
+  insurerReceivableEstimated: number;
+  privateRevenueEstimated: number;
+  trafficAccidentEstimated: number;
+  workersCompEstimated: number;
   menuRanking: MenuRanking[];
   hourlyRevenue: HourlyRevenue[];
   revenueForecast: number;
@@ -325,6 +330,7 @@ export interface RevenueAnalysisData {
   costAnalysis: string;
   staffRevenueContribution: StaffRevenue[];
   revenueContextSummary: RevenueContextSummary[];
+  revenueBreakdownSummary: RevenueBreakdownSummary[];
   careEpisodeMetrics: CareEpisodeMetrics;
   revenueEstimateSummary: RevenueEstimateSummary;
 }
@@ -341,6 +347,12 @@ export interface RevenueEstimateAmountDetail {
   manualFee: number;
   revenueContextCode: RevenueContextCode;
   visitStageCode: string | null;
+  menuBillingProfileId: string | null;
+  customerInsuranceCoverageId: string | null;
+  patientBurdenRate: number | null;
+  coverageResolutionSource: string | null;
+  pricingSnapshotStatus: string;
+  pricingConfirmedAt: string | null;
   estimateId: string;
   estimateStatus: string;
   estimatedTotal: number;
@@ -361,6 +373,7 @@ export interface RevenueEstimateAmountDetailLine {
   unitAmount: number;
   totalAmount: number;
   sortOrder: number;
+  amountRole: string | null;
   insuranceFeeItemId: string | null;
   scheduleCode: string | null;
   feeItemCode: string | null;
@@ -404,6 +417,12 @@ export interface RevenueContextSummary {
   itemCount: number;
   needsReviewCount: number;
   blockedCount: number;
+}
+
+export interface RevenueBreakdownSummary {
+  amountRole: string;
+  lineCount: number;
+  estimatedAmount: number;
 }
 
 export type CareEpisodeMetrics = CareEpisodeMetricsBase;

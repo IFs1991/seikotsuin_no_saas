@@ -129,6 +129,33 @@ describe('GET /api/revenue', () => {
         disclaimer: '経営分析用の概算です。請求確定額ではありません。',
       },
     ]);
+    const revenueBreakdownSummaryQuery = createResolvedRangeQuery([
+      {
+        amount_role: 'patient_copay_estimated',
+        line_count: 2,
+        estimated_amount: 1800,
+      },
+      {
+        amount_role: 'insurer_receivable_estimated',
+        line_count: 2,
+        estimated_amount: 4200,
+      },
+      {
+        amount_role: 'private_revenue_estimated',
+        line_count: 1,
+        estimated_amount: 5000,
+      },
+      {
+        amount_role: 'traffic_accident_receivable_estimated',
+        line_count: 1,
+        estimated_amount: 9000,
+      },
+      {
+        amount_role: 'workers_comp_receivable_estimated',
+        line_count: 1,
+        estimated_amount: 4000,
+      },
+    ]);
     const dailyReportQueries = [currentReportsQuery, lastYearReportsQuery];
     const dailyReportsTable = {
       select: jest.fn(() => dailyReportQueries.shift() ?? lastYearReportsQuery),
@@ -141,6 +168,9 @@ describe('GET /api/revenue', () => {
     };
     const revenueEstimateSummaryView = {
       select: jest.fn(() => revenueEstimateSummaryQuery),
+    };
+    const revenueBreakdownSummaryView = {
+      select: jest.fn(() => revenueBreakdownSummaryQuery),
     };
     const client = {
       from: jest.fn((table: string) => {
@@ -155,6 +185,9 @@ describe('GET /api/revenue', () => {
         }
         if (table === 'daily_report_revenue_estimate_summary') {
           return revenueEstimateSummaryView;
+        }
+        if (table === 'daily_report_revenue_breakdown_summary') {
+          return revenueBreakdownSummaryView;
         }
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -182,6 +215,9 @@ describe('GET /api/revenue', () => {
     );
     expect(client.from).toHaveBeenCalledWith(
       'daily_report_revenue_estimate_summary'
+    );
+    expect(client.from).toHaveBeenCalledWith(
+      'daily_report_revenue_breakdown_summary'
     );
     expect(client.from).not.toHaveBeenCalledWith('revenues');
     expect(currentReportsQuery.gte).toHaveBeenCalledWith(
@@ -278,6 +314,11 @@ describe('GET /api/revenue', () => {
         ],
         trafficAccidentRevenue: 9000,
         workersCompRevenue: 4000,
+        patientCopayEstimated: 1800,
+        insurerReceivableEstimated: 4200,
+        privateRevenueEstimated: 5000,
+        trafficAccidentEstimated: 9000,
+        workersCompEstimated: 4000,
         productRevenue: 3000,
         ticketRevenue: 12000,
         careEpisodeMetrics: {
@@ -300,6 +341,33 @@ describe('GET /api/revenue', () => {
           warningCount: 2,
           disclaimer: '経営分析用の概算です。請求確定額ではありません。',
         },
+        revenueBreakdownSummary: [
+          {
+            amountRole: 'patient_copay_estimated',
+            lineCount: 2,
+            estimatedAmount: 1800,
+          },
+          {
+            amountRole: 'insurer_receivable_estimated',
+            lineCount: 2,
+            estimatedAmount: 4200,
+          },
+          {
+            amountRole: 'private_revenue_estimated',
+            lineCount: 1,
+            estimatedAmount: 5000,
+          },
+          {
+            amountRole: 'traffic_accident_receivable_estimated',
+            lineCount: 1,
+            estimatedAmount: 9000,
+          },
+          {
+            amountRole: 'workers_comp_receivable_estimated',
+            lineCount: 1,
+            estimatedAmount: 4000,
+          },
+        ],
       },
     });
   });

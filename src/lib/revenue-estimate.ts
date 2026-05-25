@@ -22,6 +22,7 @@ export type RevenueEstimateLine = {
   unitAmount: number;
   totalAmount: number;
   sortOrder: number;
+  amountRole?: string | null;
   insuranceFeeItemId?: string | null;
   scheduleCode?: string | null;
   feeItemCode?: string | null;
@@ -41,7 +42,11 @@ export type RevenueEstimateCalculation = {
   warnings: RevenueEstimateWarning[];
 };
 
-function createFeeLine(label: string, fee: number): RevenueEstimateLine {
+function createFeeLine(
+  label: string,
+  fee: number,
+  amountRole: string | null = null
+): RevenueEstimateLine {
   return {
     lineType: 'fee',
     label,
@@ -49,6 +54,7 @@ function createFeeLine(label: string, fee: number): RevenueEstimateLine {
     unitAmount: fee,
     totalAmount: fee,
     sortOrder: 10,
+    amountRole,
   };
 }
 
@@ -62,7 +68,9 @@ export function calculateRevenueEstimate(
       return {
         estimateStatus: 'calculated',
         estimatedTotal: fee,
-        lines: [createFeeLine('自費 売上見込み', fee)],
+        lines: [
+          createFeeLine('自費 売上見込み', fee, 'private_revenue_estimated'),
+        ],
         warnings: [],
       };
     case 'product':
@@ -83,7 +91,13 @@ export function calculateRevenueEstimate(
       return {
         estimateStatus: 'needs_review',
         estimatedTotal: fee,
-        lines: [createFeeLine('交通事故 概算見込み', fee)],
+        lines: [
+          createFeeLine(
+            '交通事故 概算見込み',
+            fee,
+            'traffic_accident_receivable_estimated'
+          ),
+        ],
         warnings: [
           {
             warningCode: 'TRAFFIC_ACCIDENT_REVIEW',
@@ -97,7 +111,13 @@ export function calculateRevenueEstimate(
       return {
         estimateStatus: 'needs_review',
         estimatedTotal: fee,
-        lines: [createFeeLine('労災 概算見込み', fee)],
+        lines: [
+          createFeeLine(
+            '労災 概算見込み',
+            fee,
+            'workers_comp_receivable_estimated'
+          ),
+        ],
         warnings: [
           {
             warningCode: 'WORKERS_COMP_REVIEW',
@@ -114,7 +134,8 @@ export function calculateRevenueEstimate(
         lines: [
           createFeeLine(
             hasVisitStage ? '保険 療養費見込み' : '保険 療養費見込み 要確認',
-            fee
+            fee,
+            'gross_estimated_total'
           ),
         ],
         warnings: hasVisitStage

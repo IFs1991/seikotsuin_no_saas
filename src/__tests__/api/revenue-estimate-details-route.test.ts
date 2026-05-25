@@ -49,6 +49,12 @@ describe('GET /api/revenue-estimates/details', () => {
         revenue_context_code: 'insurance',
         estimate_status: 'calculated',
         visit_stage_code: 'first_visit',
+        menu_billing_profile_id: 'profile-insurance',
+        customer_insurance_coverage_id: 'coverage-30',
+        patient_burden_rate: 30,
+        coverage_resolution_source: 'customer_default',
+        pricing_snapshot_status: 'confirmed',
+        pricing_confirmed_at: '2026-06-01T01:00:00.000Z',
       },
       {
         id: 'item-traffic',
@@ -59,6 +65,12 @@ describe('GET /api/revenue-estimates/details', () => {
         revenue_context_code: 'traffic_accident',
         estimate_status: 'needs_review',
         visit_stage_code: null,
+        menu_billing_profile_id: 'profile-traffic',
+        customer_insurance_coverage_id: null,
+        patient_burden_rate: null,
+        coverage_resolution_source: null,
+        pricing_snapshot_status: 'needs_review',
+        pricing_confirmed_at: '2026-06-02T01:00:00.000Z',
       },
     ]);
     const estimatesQuery = createResolvedQuery([
@@ -103,6 +115,7 @@ describe('GET /api/revenue-estimates/details', () => {
         fee_item_code: 'JUDO_HI_INITIAL_EXAM',
         source_snapshot_hash:
           'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
+        amount_role: 'gross_estimated_total',
       },
       {
         id: 'line-traffic',
@@ -117,6 +130,7 @@ describe('GET /api/revenue-estimates/details', () => {
         schedule_code: null,
         fee_item_code: null,
         source_snapshot_hash: null,
+        amount_role: 'traffic_accident_receivable_estimated',
       },
     ]);
     const warningsQuery = createResolvedQuery([
@@ -198,6 +212,12 @@ describe('GET /api/revenue-estimates/details', () => {
         manualFee: 1550,
         revenueContextCode: 'insurance',
         visitStageCode: 'first_visit',
+        menuBillingProfileId: 'profile-insurance',
+        customerInsuranceCoverageId: 'coverage-30',
+        patientBurdenRate: 30,
+        coverageResolutionSource: 'customer_default',
+        pricingSnapshotStatus: 'confirmed',
+        pricingConfirmedAt: '2026-06-01T01:00:00.000Z',
         estimateId: 'estimate-insurance',
         estimateStatus: 'calculated',
         estimatedTotal: 1550,
@@ -221,6 +241,7 @@ describe('GET /api/revenue-estimates/details', () => {
             feeItemCode: 'JUDO_HI_INITIAL_EXAM',
             sourceSnapshotHash:
               'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
+            amountRole: 'gross_estimated_total',
           },
         ],
         warnings: [],
@@ -233,6 +254,12 @@ describe('GET /api/revenue-estimates/details', () => {
         manualFee: 9000,
         revenueContextCode: 'traffic_accident',
         visitStageCode: null,
+        menuBillingProfileId: 'profile-traffic',
+        customerInsuranceCoverageId: null,
+        patientBurdenRate: null,
+        coverageResolutionSource: null,
+        pricingSnapshotStatus: 'needs_review',
+        pricingConfirmedAt: '2026-06-02T01:00:00.000Z',
         estimateId: 'estimate-traffic',
         estimateStatus: 'needs_review',
         estimatedTotal: 9000,
@@ -254,6 +281,7 @@ describe('GET /api/revenue-estimates/details', () => {
             scheduleCode: null,
             feeItemCode: null,
             sourceSnapshotHash: null,
+            amountRole: 'traffic_accident_receivable_estimated',
           },
         ],
         warnings: [
