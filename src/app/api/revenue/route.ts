@@ -7,6 +7,7 @@ import type {
   HourlyRevenue,
   MenuRanking,
   RevenueAnalysisData,
+  RevenueBreakdownSummary,
   RevenueContextSummary,
   RevenueTrend,
 } from '@/types/api';
@@ -58,6 +59,11 @@ type RevenueEstimateSummaryRow = Pick<
   | 'disclaimer'
 >;
 
+type RevenueBreakdownSummaryRow = Pick<
+  Database['public']['Views']['daily_report_revenue_breakdown_summary']['Row'],
+  'amount_role' | 'line_count' | 'estimated_amount'
+>;
+
 type LastYearReportRow = Pick<
   Database['public']['Tables']['daily_reports']['Row'],
   'total_revenue'
@@ -88,6 +94,8 @@ const REVENUE_CONTEXT_SUMMARY_SELECT =
   'revenue_context_code, revenue_context_name, rollup_category, total_revenue, item_count, needs_review_count, blocked_count';
 const REVENUE_ESTIMATE_SUMMARY_SELECT =
   'estimated_total, estimate_count, calculated_count, needs_review_count, blocked_count, overridden_count, warning_count, disclaimer';
+const REVENUE_BREAKDOWN_SUMMARY_SELECT =
+  'amount_role, line_count, estimated_amount';
 
 function toJSTDateString(date: Date = new Date()): string {
   const jst = new Date(date.getTime() + JST_OFFSET_MS);
@@ -360,6 +368,27 @@ function buildRevenueEstimateSummary(rows: RevenueEstimateSummaryRow[]) {
   );
 }
 
+function buildRevenueBreakdownSummary(
+  rows: RevenueBreakdownSummaryRow[]
+): RevenueBreakdownSummary[] {
+  return rows
+    .filter(row => row.amount_role !== null)
+    .map(row => ({
+      amountRole: row.amount_role ?? '',
+      lineCount: Number(row.line_count ?? 0),
+      estimatedAmount: Number(row.estimated_amount ?? 0),
+    }));
+}
+
+function sumBreakdownByRole(
+  summary: RevenueBreakdownSummary[],
+  amountRole: string
+): number {
+  return summary
+    .filter(item => item.amountRole === amountRole)
+    .reduce((sum, item) => sum + item.estimatedAmount, 0);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -388,6 +417,7 @@ export async function GET(request: NextRequest) {
       lastYearReportsResult,
       revenueContextSummaryResult,
       revenueEstimateSummaryResult,
+      revenueBreakdownSummaryResult,
     ] = await Promise.all([
       supabase
         .from('daily_reports')
@@ -419,6 +449,12 @@ export async function GET(request: NextRequest) {
         .eq('clinic_id', clinicId)
         .gte('report_date', dateFilter.gte)
         .lte('report_date', dateFilter.lte),
+      supabase
+        .from('daily_report_revenue_breakdown_summary')
+        .select(REVENUE_BREAKDOWN_SUMMARY_SELECT)
+        .eq('clinic_id', clinicId)
+        .gte('report_date', dateFilter.gte)
+        .lte('report_date', dateFilter.lte),
     ]);
 
     if (dailyReportsResult.error) {
@@ -436,6 +472,9 @@ export async function GET(request: NextRequest) {
     if (revenueEstimateSummaryResult.error) {
       throw revenueEstimateSummaryResult.error;
     }
+    if (revenueBreakdownSummaryResult.error) {
+      throw revenueBreakdownSummaryResult.error;
+    }
 
     const summary = summarizeDailyReports(
       dailyReportsResult.data ?? [],
@@ -451,6 +490,9 @@ export async function GET(request: NextRequest) {
     );
     const revenueEstimateSummary = buildRevenueEstimateSummary(
       revenueEstimateSummaryResult.data ?? []
+    );
+    const revenueBreakdownSummary = buildRevenueBreakdownSummary(
+      revenueBreakdownSummaryResult.data ?? []
     );
     const growthRate =
       lastYearTotal > 0
@@ -483,10 +525,31 @@ export async function GET(request: NextRequest) {
         revenueContextSummary,
         'workers_comp'
       ),
+      patientCopayEstimated: sumBreakdownByRole(
+        revenueBreakdownSummary,
+        'patient_copay_estimated'
+      ),
+      insurerReceivableEstimated: sumBreakdownByRole(
+        revenueBreakdownSummary,
+        'insurer_receivable_estimated'
+      ),
+      privateRevenueEstimated: sumBreakdownByRole(
+        revenueBreakdownSummary,
+        'private_revenue_estimated'
+      ),
+      trafficAccidentEstimated: sumBreakdownByRole(
+        revenueBreakdownSummary,
+        'traffic_accident_receivable_estimated'
+      ),
+      workersCompEstimated: sumBreakdownByRole(
+        revenueBreakdownSummary,
+        'workers_comp_receivable_estimated'
+      ),
       productRevenue: sumContextRevenueByCode(revenueContextSummary, 'product'),
       ticketRevenue: sumContextRevenueByCode(revenueContextSummary, 'ticket'),
       careEpisodeMetrics,
       revenueEstimateSummary,
+      revenueBreakdownSummary,
     };
 
     return NextResponse.json({

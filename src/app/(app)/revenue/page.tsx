@@ -28,6 +28,8 @@ function formatRevenueContextLabel(code: RevenueContextCode): string {
       return '物販';
     case 'ticket':
       return '回数券';
+    case 'mixed':
+      return '混在';
     case 'other':
       return 'その他';
   }
@@ -60,6 +62,11 @@ const RevenuePage: React.FC = () => {
     selfPayRevenue,
     trafficAccidentRevenue,
     workersCompRevenue,
+    patientCopayEstimated,
+    insurerReceivableEstimated,
+    privateRevenueEstimated,
+    trafficAccidentEstimated,
+    workersCompEstimated,
     productRevenue,
     ticketRevenue,
     needsReviewCount,
@@ -365,6 +372,46 @@ const RevenuePage: React.FC = () => {
                   {revenueEstimateSummary.overriddenCount.toLocaleString()}
                 </p>
               </div>
+              <div className='rounded border p-3 md:col-span-2'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  患者負担見込み
+                </p>
+                <p className='font-semibold text-blue-700 dark:text-blue-300'>
+                  {patientCopayEstimated.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3 md:col-span-2'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  保険者請求見込み
+                </p>
+                <p className='font-semibold text-cyan-700 dark:text-cyan-300'>
+                  {insurerReceivableEstimated.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  自費見込み
+                </p>
+                <p className='font-semibold text-green-700 dark:text-green-300'>
+                  {privateRevenueEstimated.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  交通事故概算
+                </p>
+                <p className='font-semibold text-amber-700 dark:text-amber-300'>
+                  {trafficAccidentEstimated.toLocaleString()}
+                </p>
+              </div>
+              <div className='rounded border p-3'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  労災概算
+                </p>
+                <p className='font-semibold text-sky-700 dark:text-sky-300'>
+                  {workersCompEstimated.toLocaleString()}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -450,12 +497,21 @@ const RevenuePage: React.FC = () => {
                               <p>
                                 {detail.usedScheduleCode ?? 'マスタ根拠なし'}
                               </p>
+                              <p className='text-xs text-gray-600 dark:text-gray-300'>
+                                {detail.patientBurdenRate === null
+                                  ? '負担割合未確定'
+                                  : `${detail.patientBurdenRate / 10}割`}
+                                {' / '}
+                                {detail.pricingSnapshotStatus}
+                              </p>
                               {detail.lines.map(line => (
                                 <p
                                   key={line.id}
                                   className='text-xs text-gray-600 dark:text-gray-300'
                                 >
                                   {line.feeItemCode ?? '手入力概算ライン'}
+                                  {' / '}
+                                  {line.amountRole ?? '内訳未分類'}
                                 </p>
                               ))}
                             </div>

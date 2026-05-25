@@ -18,9 +18,15 @@ interface RevenueData {
   workersCompRevenue: number;
   productRevenue: number;
   ticketRevenue: number;
+  patientCopayEstimated: number;
+  insurerReceivableEstimated: number;
+  privateRevenueEstimated: number;
+  trafficAccidentEstimated: number;
+  workersCompEstimated: number;
   needsReviewCount: number;
   blockedCount: number;
   revenueContextSummary: RevenueAnalysisData['revenueContextSummary'];
+  revenueBreakdownSummary: RevenueAnalysisData['revenueBreakdownSummary'];
   careEpisodeMetrics: RevenueAnalysisData['careEpisodeMetrics'];
   revenueEstimateSummary: RevenueAnalysisData['revenueEstimateSummary'];
   menuRanking: MenuRanking[];
@@ -56,9 +62,15 @@ const INITIAL_DATA: RevenueData = {
   workersCompRevenue: 0,
   productRevenue: 0,
   ticketRevenue: 0,
+  patientCopayEstimated: 0,
+  insurerReceivableEstimated: 0,
+  privateRevenueEstimated: 0,
+  trafficAccidentEstimated: 0,
+  workersCompEstimated: 0,
   needsReviewCount: 0,
   blockedCount: 0,
   revenueContextSummary: [],
+  revenueBreakdownSummary: [],
   careEpisodeMetrics: {
     totalEpisodes: 0,
     secondVisitReachedCount: 0,
@@ -206,9 +218,26 @@ export const useRevenue = (
               workersCompRevenue: Number(revenueData.workersCompRevenue || 0),
               productRevenue: Number(revenueData.productRevenue || 0),
               ticketRevenue: Number(revenueData.ticketRevenue || 0),
+              patientCopayEstimated: Number(
+                revenueData.patientCopayEstimated || 0
+              ),
+              insurerReceivableEstimated: Number(
+                revenueData.insurerReceivableEstimated || 0
+              ),
+              privateRevenueEstimated: Number(
+                revenueData.privateRevenueEstimated || 0
+              ),
+              trafficAccidentEstimated: Number(
+                revenueData.trafficAccidentEstimated || 0
+              ),
+              workersCompEstimated: Number(
+                revenueData.workersCompEstimated || 0
+              ),
               needsReviewCount: sumNeedsReviewCount(revenueContextSummary),
               blockedCount: sumBlockedCount(revenueContextSummary),
               revenueContextSummary,
+              revenueBreakdownSummary:
+                revenueData.revenueBreakdownSummary ?? [],
               careEpisodeMetrics:
                 revenueData.careEpisodeMetrics ??
                 INITIAL_DATA.careEpisodeMetrics,

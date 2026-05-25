@@ -519,6 +519,7 @@ export async function POST(request: NextRequest) {
           unit_amount: line.unitAmount,
           total_amount: line.totalAmount,
           sort_order: line.sortOrder,
+          amount_role: line.amountRole ?? null,
           insurance_fee_item_id: line.insuranceFeeItemId ?? null,
           schedule_code: line.scheduleCode ?? null,
           fee_item_code: line.feeItemCode ?? null,

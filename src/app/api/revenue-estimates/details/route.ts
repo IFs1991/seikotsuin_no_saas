@@ -21,11 +21,11 @@ const DETAIL_CONTEXTS = [
   'traffic_accident',
 ] as const;
 const DAILY_REPORT_ITEM_SELECT =
-  'id, report_date, patient_name, treatment_name, fee, revenue_context_code, estimate_status, visit_stage_code';
+  'id, report_date, patient_name, treatment_name, fee, revenue_context_code, estimate_status, visit_stage_code, menu_billing_profile_id, customer_insurance_coverage_id, patient_burden_rate, coverage_resolution_source, pricing_snapshot_status, pricing_confirmed_at';
 const REVENUE_ESTIMATE_SELECT =
   'id, daily_report_item_id, revenue_context_code, estimate_status, estimated_total, disclaimer, calculated_at, calculation_version, used_schedule_code, source_snapshot_hash';
 const REVENUE_ESTIMATE_LINE_SELECT =
-  'id, revenue_estimate_id, line_type, label, quantity, unit_amount, total_amount, sort_order, insurance_fee_item_id, schedule_code, fee_item_code, source_snapshot_hash';
+  'id, revenue_estimate_id, line_type, label, quantity, unit_amount, total_amount, sort_order, amount_role, insurance_fee_item_id, schedule_code, fee_item_code, source_snapshot_hash';
 const REVENUE_ESTIMATE_WARNING_SELECT =
   'id, revenue_estimate_id, warning_code, severity, message';
 
@@ -39,6 +39,12 @@ type DailyReportItemRow = Pick<
   | 'revenue_context_code'
   | 'estimate_status'
   | 'visit_stage_code'
+  | 'menu_billing_profile_id'
+  | 'customer_insurance_coverage_id'
+  | 'patient_burden_rate'
+  | 'coverage_resolution_source'
+  | 'pricing_snapshot_status'
+  | 'pricing_confirmed_at'
 >;
 
 type RevenueEstimateRow = Pick<
@@ -65,6 +71,7 @@ type RevenueEstimateLineRow = Pick<
   | 'unit_amount'
   | 'total_amount'
   | 'sort_order'
+  | 'amount_role'
   | 'insurance_fee_item_id'
   | 'schedule_code'
   | 'fee_item_code'
@@ -177,6 +184,12 @@ function buildDetails(
       manualFee: Number(item.fee ?? 0),
       revenueContextCode: item.revenue_context_code,
       visitStageCode: item.visit_stage_code,
+      menuBillingProfileId: item.menu_billing_profile_id,
+      customerInsuranceCoverageId: item.customer_insurance_coverage_id,
+      patientBurdenRate: item.patient_burden_rate,
+      coverageResolutionSource: item.coverage_resolution_source,
+      pricingSnapshotStatus: item.pricing_snapshot_status,
+      pricingConfirmedAt: item.pricing_confirmed_at,
       estimateId: estimate.id,
       estimateStatus: estimate.estimate_status,
       estimatedTotal: Number(estimate.estimated_total ?? 0),
@@ -193,6 +206,7 @@ function buildDetails(
         unitAmount: Number(line.unit_amount ?? 0),
         totalAmount: Number(line.total_amount ?? 0),
         sortOrder: Number(line.sort_order ?? 0),
+        amountRole: line.amount_role,
         insuranceFeeItemId: line.insurance_fee_item_id,
         scheduleCode: line.schedule_code,
         feeItemCode: line.fee_item_code,

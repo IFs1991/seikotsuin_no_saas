@@ -177,6 +177,16 @@ describe('/api/revenue-estimates/recalculate', () => {
         severity: 'needs_review',
       }),
     ]);
+    expect(revenueEstimateLinesTable.insert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        revenue_estimate_id: 'estimate-private',
+        amount_role: 'private_revenue_estimated',
+      }),
+      expect.objectContaining({
+        revenue_estimate_id: 'estimate-traffic',
+        amount_role: 'traffic_accident_receivable_estimated',
+      }),
+    ]);
     expect(dailyReportItemsTable.update).toHaveBeenCalledWith(
       expect.objectContaining({
         estimate_status: 'calculated',
@@ -346,6 +356,7 @@ describe('/api/revenue-estimates/recalculate', () => {
         fee_item_code: 'JUDO_HI_INITIAL_EXAM',
         source_snapshot_hash:
           'c2797b42b9ec4558ddc4969a795fbd6e4622e45d1182ad2c02378f788a67ddd3',
+        amount_role: 'gross_estimated_total',
       }),
     ]);
     expect(revenueEstimateWarningsTable.insert).not.toHaveBeenCalled();

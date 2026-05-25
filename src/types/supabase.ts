@@ -1019,6 +1019,89 @@ export type Database = {
           },
         ];
       };
+      customer_insurance_coverages: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          customer_id: string;
+          effective_from: string;
+          effective_to: string | null;
+          id: string;
+          notes: string | null;
+          patient_burden_rate: number;
+          payer_context_code: string;
+          updated_at: string;
+          updated_by: string | null;
+          verification_status: string;
+          verified_at: string | null;
+          verified_by: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id: string;
+          effective_from: string;
+          effective_to?: string | null;
+          id?: string;
+          notes?: string | null;
+          patient_burden_rate: number;
+          payer_context_code?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          verification_status?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          customer_id?: string;
+          effective_from?: string;
+          effective_to?: string | null;
+          id?: string;
+          notes?: string | null;
+          patient_burden_rate?: number;
+          payer_context_code?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          verification_status?: string;
+          verified_at?: string | null;
+          verified_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'customer_insurance_coverages_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'customer_insurance_coverages_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'customer_insurance_coverages_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'customer_insurance_coverages_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id'];
+          },
+        ];
+      };
       daily_report_item_tag_definitions: {
         Row: {
           category: string;
@@ -1128,19 +1211,25 @@ export type Database = {
           clinic_id: string;
           created_at: string;
           created_by: string | null;
+          coverage_resolution_source: string | null;
           customer_id: string | null;
+          customer_insurance_coverage_id: string | null;
           daily_report_id: string;
           duration_minutes: number;
           estimate_status: string;
           fee: number;
           id: string;
+          menu_billing_profile_id: string | null;
           menu_id: string | null;
           next_reservation_end_time: string | null;
           next_reservation_id: string | null;
           next_reservation_start_time: string | null;
           notes: string | null;
+          patient_burden_rate: number | null;
           patient_name: string;
           payment_method_id: string | null;
+          pricing_confirmed_at: string | null;
+          pricing_snapshot_status: string;
           report_date: string;
           reservation_id: string | null;
           revenue_context_code: string;
@@ -1160,19 +1249,25 @@ export type Database = {
           clinic_id: string;
           created_at?: string;
           created_by?: string | null;
+          coverage_resolution_source?: string | null;
           customer_id?: string | null;
+          customer_insurance_coverage_id?: string | null;
           daily_report_id: string;
           duration_minutes?: number;
           estimate_status?: string;
           fee?: number;
           id?: string;
+          menu_billing_profile_id?: string | null;
           menu_id?: string | null;
           next_reservation_end_time?: string | null;
           next_reservation_id?: string | null;
           next_reservation_start_time?: string | null;
           notes?: string | null;
+          patient_burden_rate?: number | null;
           patient_name: string;
           payment_method_id?: string | null;
+          pricing_confirmed_at?: string | null;
+          pricing_snapshot_status?: string;
           report_date: string;
           reservation_id?: string | null;
           revenue_context_code?: string;
@@ -1192,19 +1287,25 @@ export type Database = {
           clinic_id?: string;
           created_at?: string;
           created_by?: string | null;
+          coverage_resolution_source?: string | null;
           customer_id?: string | null;
+          customer_insurance_coverage_id?: string | null;
           daily_report_id?: string;
           duration_minutes?: number;
           estimate_status?: string;
           fee?: number;
           id?: string;
+          menu_billing_profile_id?: string | null;
           menu_id?: string | null;
           next_reservation_end_time?: string | null;
           next_reservation_id?: string | null;
           next_reservation_start_time?: string | null;
           notes?: string | null;
+          patient_burden_rate?: number | null;
           patient_name?: string;
           payment_method_id?: string | null;
+          pricing_confirmed_at?: string | null;
+          pricing_snapshot_status?: string;
           report_date?: string;
           reservation_id?: string | null;
           revenue_context_code?: string;
@@ -1254,6 +1355,13 @@ export type Database = {
             referencedColumns: ['patient_id'];
           },
           {
+            foreignKeyName: 'daily_report_items_customer_insurance_coverage_id_fkey';
+            columns: ['customer_insurance_coverage_id'];
+            isOneToOne: false;
+            referencedRelation: 'customer_insurance_coverages';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'daily_report_items_daily_report_id_fkey';
             columns: ['daily_report_id'];
             isOneToOne: false;
@@ -1265,6 +1373,13 @@ export type Database = {
             columns: ['menu_id'];
             isOneToOne: false;
             referencedRelation: 'menus';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_menu_billing_profile_id_fkey';
+            columns: ['menu_billing_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_billing_profiles';
             referencedColumns: ['id'];
           },
           {
@@ -2171,6 +2286,194 @@ export type Database = {
           },
         ];
       };
+      menu_template_billing_profiles: {
+        Row: {
+          calculation_method: string;
+          created_at: string;
+          created_by: string | null;
+          default_patient_burden_rate: number | null;
+          effective_from: string;
+          effective_to: string | null;
+          fixed_amount_yen: number | null;
+          id: string;
+          is_active: boolean;
+          is_deleted: boolean;
+          menu_template_id: string;
+          owner_clinic_id: string;
+          profession_type: string | null;
+          requires_review: boolean;
+          revenue_context_code: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          calculation_method: string;
+          created_at?: string;
+          created_by?: string | null;
+          default_patient_burden_rate?: number | null;
+          effective_from: string;
+          effective_to?: string | null;
+          fixed_amount_yen?: number | null;
+          id?: string;
+          is_active?: boolean;
+          is_deleted?: boolean;
+          menu_template_id: string;
+          owner_clinic_id: string;
+          profession_type?: string | null;
+          requires_review?: boolean;
+          revenue_context_code: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          calculation_method?: string;
+          created_at?: string;
+          created_by?: string | null;
+          default_patient_burden_rate?: number | null;
+          effective_from?: string;
+          effective_to?: string | null;
+          fixed_amount_yen?: number | null;
+          id?: string;
+          is_active?: boolean;
+          is_deleted?: boolean;
+          menu_template_id?: string;
+          owner_clinic_id?: string;
+          profession_type?: string | null;
+          requires_review?: boolean;
+          revenue_context_code?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_template_billing_profiles_menu_template_id_fkey';
+            columns: ['menu_template_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_templates';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_template_billing_profiles_owner_clinic_id_fkey';
+            columns: ['owner_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_template_billing_profiles_owner_clinic_id_fkey';
+            columns: ['owner_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_template_billing_profiles_revenue_context_code_fkey';
+            columns: ['revenue_context_code'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_contexts';
+            referencedColumns: ['code'];
+          },
+        ];
+      };
+      menu_billing_profiles: {
+        Row: {
+          calculation_method: string;
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          default_patient_burden_rate: number | null;
+          effective_from: string;
+          effective_to: string | null;
+          fixed_amount_yen: number | null;
+          id: string;
+          is_active: boolean;
+          is_deleted: boolean;
+          menu_id: string;
+          profession_type: string | null;
+          requires_review: boolean;
+          revenue_context_code: string;
+          source_template_profile_id: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          calculation_method: string;
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          default_patient_burden_rate?: number | null;
+          effective_from: string;
+          effective_to?: string | null;
+          fixed_amount_yen?: number | null;
+          id?: string;
+          is_active?: boolean;
+          is_deleted?: boolean;
+          menu_id: string;
+          profession_type?: string | null;
+          requires_review?: boolean;
+          revenue_context_code: string;
+          source_template_profile_id?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          calculation_method?: string;
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          default_patient_burden_rate?: number | null;
+          effective_from?: string;
+          effective_to?: string | null;
+          fixed_amount_yen?: number | null;
+          id?: string;
+          is_active?: boolean;
+          is_deleted?: boolean;
+          menu_id?: string;
+          profession_type?: string | null;
+          requires_review?: boolean;
+          revenue_context_code?: string;
+          source_template_profile_id?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'menu_billing_profiles_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_billing_profiles_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_billing_profiles_menu_id_fkey';
+            columns: ['menu_id'];
+            isOneToOne: false;
+            referencedRelation: 'menus';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'menu_billing_profiles_revenue_context_code_fkey';
+            columns: ['revenue_context_code'];
+            isOneToOne: false;
+            referencedRelation: 'revenue_contexts';
+            referencedColumns: ['code'];
+          },
+          {
+            foreignKeyName: 'menu_billing_profiles_source_template_profile_id_fkey';
+            columns: ['source_template_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'menu_template_billing_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       menus: {
         Row: {
           body_parts: string[] | null;
@@ -3069,6 +3372,7 @@ export type Database = {
       };
       revenue_estimate_lines: {
         Row: {
+          amount_role: string | null;
           clinic_id: string;
           created_at: string;
           fee_item_code: string | null;
@@ -3085,6 +3389,7 @@ export type Database = {
           unit_amount: number;
         };
         Insert: {
+          amount_role?: string | null;
           clinic_id: string;
           created_at?: string;
           fee_item_code?: string | null;
@@ -3101,6 +3406,7 @@ export type Database = {
           unit_amount?: number;
         };
         Update: {
+          amount_role?: string | null;
           clinic_id?: string;
           created_at?: string;
           fee_item_code?: string | null;
@@ -4571,6 +4877,31 @@ export type Database = {
           },
         ];
       };
+      daily_report_revenue_breakdown_summary: {
+        Row: {
+          amount_role: string | null;
+          clinic_id: string | null;
+          estimated_amount: number | null;
+          line_count: number | null;
+          report_date: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'daily_report_items_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       daily_report_revenue_estimate_summary: {
         Row: {
           blocked_count: number | null;
@@ -4856,6 +5187,25 @@ export type Database = {
           conflict_type: string;
           conflicting_reservation_id: string;
           has_conflict: boolean;
+        }[];
+      };
+      confirm_daily_report_item_pricing: {
+        Args: {
+          p_actor_user_id?: string;
+          p_clinic_id: string;
+          p_confirmation_note?: string;
+          p_daily_report_item_id: string;
+          p_manual_estimated_amount?: number;
+          p_patient_burden_rate_override?: number;
+          p_update_customer_coverage?: boolean;
+        };
+        Returns: {
+          daily_report_item_id: string;
+          estimate_status: string;
+          estimated_total: number;
+          patient_burden_rate: number | null;
+          pricing_snapshot_status: string;
+          revenue_estimate_id: string;
         }[];
       };
       create_clinic_with_admin: {
