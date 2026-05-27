@@ -19,6 +19,27 @@ describe('useRevenue', () => {
     monthlyRevenue: 4200000,
     insuranceRevenue: 2520000,
     selfPayRevenue: 1680000,
+    trafficAccidentRevenue: 90000,
+    workersCompRevenue: 50000,
+    productRevenue: 120000,
+    ticketRevenue: 300000,
+    patientCopayEstimated: 72000,
+    insurerReceivableEstimated: 168000,
+    privateRevenueEstimated: 45000,
+    trafficAccidentEstimated: 90000,
+    workersCompEstimated: 50000,
+    revenueBreakdownSummary: [
+      {
+        amountRole: 'patient_copay_estimated',
+        lineCount: 12,
+        estimatedAmount: 72000,
+      },
+      {
+        amountRole: 'insurer_receivable_estimated',
+        lineCount: 12,
+        estimatedAmount: 168000,
+      },
+    ],
     menuRanking: [
       { menu_name: '整体', total_revenue: 1200000, transaction_count: 120 },
       {
@@ -124,6 +145,20 @@ describe('useRevenue', () => {
       expect(result.current.monthlyRevenue).toBe(4200000);
       expect(result.current.insuranceRevenue).toBe(2520000);
       expect(result.current.selfPayRevenue).toBe(1680000);
+      expect(result.current.patientCopayEstimated).toBe(72000);
+      expect(result.current.insurerReceivableEstimated).toBe(168000);
+      expect(result.current.revenueBreakdownSummary).toEqual([
+        {
+          amountRole: 'patient_copay_estimated',
+          lineCount: 12,
+          estimatedAmount: 72000,
+        },
+        {
+          amountRole: 'insurer_receivable_estimated',
+          lineCount: 12,
+          estimatedAmount: 168000,
+        },
+      ]);
       expect(mockApi.api.revenue.getAnalysis).toHaveBeenCalledWith(
         mockClinicId
       );
