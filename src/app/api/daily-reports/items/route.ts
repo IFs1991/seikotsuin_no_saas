@@ -14,6 +14,13 @@ import {
 import { CLINIC_ADMIN_ROLES, STAFF_ROLES } from '@/lib/constants/roles';
 import type { Database } from '@/types/supabase';
 import {
+  isCoverageVerificationStatus,
+  isPatientBurdenRate,
+  resolveCurrentCustomerInsuranceCoverage,
+  type CustomerInsuranceCoverageRecord,
+  type PatientBurdenRate,
+} from '@/lib/customer-insurance-coverage';
+import {
   assertBillingTypeCompatible,
   deriveLegacyBillingType,
   deriveRevenueContextCodeFromBillingType,
@@ -28,6 +35,10 @@ const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
   'id, clinic_id, daily_report_id, report_date, reservation_id, customer_id, menu_id, staff_resource_id, patient_name, treatment_name, duration_minutes, fee, billing_type, revenue_context_code, revenue_context_source, amount_source, estimate_status, care_episode_id, visit_ordinal_in_episode, visit_stage_code, payment_method_id, next_reservation_start_time, next_reservation_end_time, next_reservation_id, source, notes, menu_billing_profile_id, customer_insurance_coverage_id, patient_burden_rate, coverage_resolution_source, pricing_snapshot_status, pricing_confirmed_at, created_at, updated_at, created_by, updated_by';
 const PAYMENT_METHOD_SELECT = 'id, name, is_active';
+const CUSTOMER_COVERAGE_SELECT =
+  'id, clinic_id, customer_id, patient_burden_rate, effective_from, effective_to, verification_status, verified_at';
+const MENU_BILLING_PROFILE_SELECT =
+  'id, clinic_id, menu_id, revenue_context_code, calculation_method, fixed_amount_yen, default_patient_burden_rate, requires_review, effective_from, effective_to, is_active, is_deleted, created_at';
 
 type DailyReportItemRow =
   Database['public']['Tables']['daily_report_items']['Row'];
@@ -41,8 +52,53 @@ type PaymentMethodRow = Pick<
   Database['public']['Tables']['master_payment_methods']['Row'],
   'id' | 'name' | 'is_active'
 >;
+type CustomerInsuranceCoverageRow = Pick<
+  Database['public']['Tables']['customer_insurance_coverages']['Row'],
+  | 'id'
+  | 'clinic_id'
+  | 'customer_id'
+  | 'patient_burden_rate'
+  | 'effective_from'
+  | 'effective_to'
+  | 'verification_status'
+  | 'verified_at'
+>;
+type MenuBillingProfileRow = Pick<
+  Database['public']['Tables']['menu_billing_profiles']['Row'],
+  | 'id'
+  | 'clinic_id'
+  | 'menu_id'
+  | 'revenue_context_code'
+  | 'calculation_method'
+  | 'fixed_amount_yen'
+  | 'default_patient_burden_rate'
+  | 'requires_review'
+  | 'effective_from'
+  | 'effective_to'
+  | 'is_active'
+  | 'is_deleted'
+  | 'created_at'
+>;
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type ReservationUpdate = Database['public']['Tables']['reservations']['Update'];
+type MenuBillingCalculationMethod =
+  | 'fixed_amount'
+  | 'insurance_master'
+  | 'manual_estimate';
+type MenuBillingProfileApi = {
+  id: string;
+  revenueContextCode: SelectableRevenueContextCode;
+  calculationMethod: MenuBillingCalculationMethod;
+  fixedAmountYen: number | null;
+  defaultPatientBurdenRate: PatientBurdenRate | null;
+  requiresReview: boolean;
+};
+type DailyReportPricingContextApi = {
+  currentPatientBurdenRate: PatientBurdenRate | null;
+  coverageResolutionSource: 'customer_default' | 'missing' | 'ambiguous' | null;
+  coverageReviewMessage: string | null;
+  activeMenuBillingProfile: MenuBillingProfileApi | null;
+};
 type DailyReportItemApi = {
   id: string;
   clinicId: string;
@@ -64,6 +120,13 @@ type DailyReportItemApi = {
   careEpisodeId: string | null;
   visitOrdinalInEpisode: number | null;
   visitStageCode: string | null;
+  menuBillingProfileId: string | null;
+  customerInsuranceCoverageId: string | null;
+  patientBurdenRate: PatientBurdenRate | null;
+  coverageResolutionSource: string | null;
+  pricingSnapshotStatus: string;
+  pricingConfirmedAt: string | null;
+  pricingContext: DailyReportPricingContextApi | null;
   paymentMethodId: string | null;
   nextReservationStartTime: string | null;
   nextReservationEndTime: string | null;
@@ -101,6 +164,7 @@ const itemsQuerySchema = z.object({
   clinic_id: z.string().uuid('clinic_id はUUID形式で指定してください'),
   report_date: isoDateSchema,
   include_payment_methods: z.enum(['true', 'false']).optional(),
+  include_pricing_context: z.enum(['true', 'false']).optional(),
 });
 
 const itemCreateSchema = z
@@ -216,7 +280,276 @@ function normalizeEstimateStatus(
   }
 }
 
-function mapDailyReportItem(row: DailyReportItemRow): DailyReportItemApi {
+function normalizePatientBurdenRate(
+  value: number | null | undefined
+): PatientBurdenRate | null {
+  return typeof value === 'number' && isPatientBurdenRate(value) ? value : null;
+}
+
+function normalizeCalculationMethod(
+  value: string | null | undefined
+): MenuBillingCalculationMethod {
+  switch (value) {
+    case 'fixed_amount':
+    case 'insurance_master':
+    case 'manual_estimate':
+      return value;
+    default:
+      return 'fixed_amount';
+  }
+}
+
+function toCoverageRecord(
+  row: CustomerInsuranceCoverageRow
+): CustomerInsuranceCoverageRecord | null {
+  const patientBurdenRate = normalizePatientBurdenRate(row.patient_burden_rate);
+  if (
+    patientBurdenRate === null ||
+    !isCoverageVerificationStatus(row.verification_status)
+  ) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    clinicId: row.clinic_id,
+    customerId: row.customer_id,
+    patientBurdenRate,
+    effectiveFrom: row.effective_from,
+    effectiveTo: row.effective_to,
+    verificationStatus: row.verification_status,
+    verifiedAt: row.verified_at,
+  };
+}
+
+function mapMenuBillingProfile(
+  row: MenuBillingProfileRow
+): MenuBillingProfileApi {
+  const billingType = normalizeBillingType(
+    row.revenue_context_code === 'insurance' ? 'insurance' : 'private'
+  );
+  return {
+    id: row.id,
+    revenueContextCode: normalizeRevenueContextCode(
+      row.revenue_context_code,
+      billingType
+    ),
+    calculationMethod: normalizeCalculationMethod(row.calculation_method),
+    fixedAmountYen:
+      row.fixed_amount_yen === null ? null : Number(row.fixed_amount_yen),
+    defaultPatientBurdenRate: normalizePatientBurdenRate(
+      row.default_patient_burden_rate
+    ),
+    requiresReview: row.requires_review,
+  };
+}
+
+function createProfileKey(menuId: string, revenueContextCode: string) {
+  return `${menuId}:${revenueContextCode}`;
+}
+
+function buildMenuProfileMap(rows: MenuBillingProfileRow[]) {
+  const sortedRows = [...rows].sort((left, right) => {
+    const dateOrder = right.effective_from.localeCompare(left.effective_from);
+    if (dateOrder !== 0) return dateOrder;
+    return right.created_at.localeCompare(left.created_at);
+  });
+  const profileByKey = new Map<string, MenuBillingProfileRow>();
+
+  for (const row of sortedRows) {
+    const key = createProfileKey(row.menu_id, row.revenue_context_code);
+    if (!profileByKey.has(key)) {
+      profileByKey.set(key, row);
+    }
+  }
+
+  return profileByKey;
+}
+
+function createDefaultPricingContext(
+  activeMenuBillingProfile: MenuBillingProfileApi | null
+): DailyReportPricingContextApi {
+  return {
+    currentPatientBurdenRate: null,
+    coverageResolutionSource: null,
+    coverageReviewMessage: null,
+    activeMenuBillingProfile,
+  };
+}
+
+function getPricingLookupKeys(itemRows: DailyReportItemRow[]) {
+  const insuranceCustomerIds = new Set<string>();
+  const menuIds = new Set<string>();
+  const revenueContextCodes = new Set<SelectableRevenueContextCode>();
+
+  for (const item of itemRows) {
+    const billingType = normalizeBillingType(item.billing_type);
+    const revenueContextCode = normalizeRevenueContextCode(
+      item.revenue_context_code,
+      billingType
+    );
+
+    if (item.menu_id) {
+      menuIds.add(item.menu_id);
+      revenueContextCodes.add(revenueContextCode);
+    }
+
+    if (revenueContextCode === 'insurance' && item.customer_id) {
+      insuranceCustomerIds.add(item.customer_id);
+    }
+  }
+
+  return {
+    insuranceCustomerIds: Array.from(insuranceCustomerIds),
+    menuIds: Array.from(menuIds),
+    revenueContextCodes: Array.from(revenueContextCodes),
+  };
+}
+
+async function fetchCoveragesByCustomerId(
+  supabase: SupabaseServerClient,
+  clinicId: string,
+  reportDate: string,
+  customerIds: string[]
+) {
+  const coveragesByCustomerId = new Map<
+    string,
+    CustomerInsuranceCoverageRecord[]
+  >();
+
+  if (customerIds.length === 0) {
+    return coveragesByCustomerId;
+  }
+
+  const { data, error } = await supabase
+    .from('customer_insurance_coverages')
+    .select(CUSTOMER_COVERAGE_SELECT)
+    .eq('clinic_id', clinicId)
+    .eq('payer_context_code', 'insurance')
+    .in('customer_id', customerIds)
+    .lte('effective_from', reportDate)
+    .or(`effective_to.is.null,effective_to.gte.${reportDate}`);
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  for (const row of data ?? []) {
+    const coverage = toCoverageRecord(row);
+    if (!coverage) continue;
+    const current = coveragesByCustomerId.get(coverage.customerId) ?? [];
+    current.push(coverage);
+    coveragesByCustomerId.set(coverage.customerId, current);
+  }
+
+  return coveragesByCustomerId;
+}
+
+async function fetchMenuProfileByKey(
+  supabase: SupabaseServerClient,
+  clinicId: string,
+  reportDate: string,
+  menuIds: string[],
+  revenueContextCodes: SelectableRevenueContextCode[]
+) {
+  if (menuIds.length === 0 || revenueContextCodes.length === 0) {
+    return new Map<string, MenuBillingProfileRow>();
+  }
+
+  const { data, error } = await supabase
+    .from('menu_billing_profiles')
+    .select(MENU_BILLING_PROFILE_SELECT)
+    .eq('clinic_id', clinicId)
+    .eq('is_active', true)
+    .eq('is_deleted', false)
+    .in('menu_id', menuIds)
+    .in('revenue_context_code', revenueContextCodes)
+    .lte('effective_from', reportDate)
+    .or(`effective_to.is.null,effective_to.gte.${reportDate}`);
+
+  if (error) {
+    throw normalizeSupabaseError(error, PATH);
+  }
+
+  return buildMenuProfileMap(data ?? []);
+}
+
+async function buildPricingContextByItemId(
+  supabase: SupabaseServerClient,
+  clinicId: string,
+  reportDate: string,
+  itemRows: DailyReportItemRow[]
+): Promise<Map<string, DailyReportPricingContextApi>> {
+  const { insuranceCustomerIds, menuIds, revenueContextCodes } =
+    getPricingLookupKeys(itemRows);
+  const [coveragesByCustomerId, profileByKey] = await Promise.all([
+    fetchCoveragesByCustomerId(
+      supabase,
+      clinicId,
+      reportDate,
+      insuranceCustomerIds
+    ),
+    fetchMenuProfileByKey(
+      supabase,
+      clinicId,
+      reportDate,
+      menuIds,
+      revenueContextCodes
+    ),
+  ]);
+
+  const contextByItemId = new Map<string, DailyReportPricingContextApi>();
+
+  for (const item of itemRows) {
+    const billingType = normalizeBillingType(item.billing_type);
+    const revenueContextCode = normalizeRevenueContextCode(
+      item.revenue_context_code,
+      billingType
+    );
+    const profileRow = item.menu_id
+      ? profileByKey.get(createProfileKey(item.menu_id, revenueContextCode))
+      : undefined;
+    const activeMenuBillingProfile = profileRow
+      ? mapMenuBillingProfile(profileRow)
+      : null;
+    const defaultContext = createDefaultPricingContext(
+      activeMenuBillingProfile
+    );
+
+    if (revenueContextCode !== 'insurance' || !item.customer_id) {
+      contextByItemId.set(item.id, defaultContext);
+      continue;
+    }
+
+    const coverageRows = coveragesByCustomerId.get(item.customer_id) ?? [];
+    const resolution = resolveCurrentCustomerInsuranceCoverage(
+      coverageRows,
+      item.report_date
+    );
+
+    if (resolution.status === 'resolved') {
+      contextByItemId.set(item.id, {
+        ...defaultContext,
+        currentPatientBurdenRate: resolution.patientBurdenRate,
+        coverageResolutionSource: resolution.source,
+      });
+      continue;
+    }
+
+    contextByItemId.set(item.id, {
+      ...defaultContext,
+      coverageResolutionSource: resolution.source,
+      coverageReviewMessage: resolution.message,
+    });
+  }
+
+  return contextByItemId;
+}
+
+function mapDailyReportItem(
+  row: DailyReportItemRow,
+  pricingContext: DailyReportPricingContextApi | null = null
+): DailyReportItemApi {
   const billingType = normalizeBillingType(row.billing_type);
   return {
     id: row.id,
@@ -244,6 +577,13 @@ function mapDailyReportItem(row: DailyReportItemRow): DailyReportItemApi {
     careEpisodeId: row.care_episode_id ?? null,
     visitOrdinalInEpisode: row.visit_ordinal_in_episode ?? null,
     visitStageCode: row.visit_stage_code ?? null,
+    menuBillingProfileId: row.menu_billing_profile_id,
+    customerInsuranceCoverageId: row.customer_insurance_coverage_id,
+    patientBurdenRate: normalizePatientBurdenRate(row.patient_burden_rate),
+    coverageResolutionSource: row.coverage_resolution_source,
+    pricingSnapshotStatus: row.pricing_snapshot_status,
+    pricingConfirmedAt: row.pricing_confirmed_at,
+    pricingContext,
     paymentMethodId: row.payment_method_id,
     nextReservationStartTime: row.next_reservation_start_time,
     nextReservationEndTime: row.next_reservation_end_time,
@@ -680,6 +1020,9 @@ export async function GET(request: NextRequest) {
       include_payment_methods:
         request.nextUrl.searchParams.get('include_payment_methods') ??
         undefined,
+      include_pricing_context:
+        request.nextUrl.searchParams.get('include_pricing_context') ??
+        undefined,
     });
 
     if (!parsedQuery.success) {
@@ -693,6 +1036,8 @@ export async function GET(request: NextRequest) {
     const { clinic_id, report_date } = parsedQuery.data;
     const includePaymentMethods =
       parsedQuery.data.include_payment_methods !== 'false';
+    const includePricingContext =
+      parsedQuery.data.include_pricing_context === 'true';
     const auth = await processApiRequest(request, {
       clinicId: clinic_id,
       requireClinicMatch: true,
@@ -716,8 +1061,20 @@ export async function GET(request: NextRequest) {
         throw normalizeSupabaseError(itemsResult.error, PATH);
       }
 
+      const itemRows = itemsResult.data ?? [];
+      const pricingContextByItemId = includePricingContext
+        ? await buildPricingContextByItemId(
+            supabase,
+            clinic_id,
+            report_date,
+            itemRows
+          )
+        : new Map<string, DailyReportPricingContextApi>();
+
       return createSuccessResponse({
-        items: (itemsResult.data ?? []).map(mapDailyReportItem),
+        items: itemRows.map(row =>
+          mapDailyReportItem(row, pricingContextByItemId.get(row.id) ?? null)
+        ),
       });
     }
 
@@ -737,8 +1094,20 @@ export async function GET(request: NextRequest) {
       throw normalizeSupabaseError(paymentMethodsResult.error, PATH);
     }
 
+    const itemRows = itemsResult.data ?? [];
+    const pricingContextByItemId = includePricingContext
+      ? await buildPricingContextByItemId(
+          supabase,
+          clinic_id,
+          report_date,
+          itemRows
+        )
+      : new Map<string, DailyReportPricingContextApi>();
+
     return createSuccessResponse({
-      items: (itemsResult.data ?? []).map(mapDailyReportItem),
+      items: itemRows.map(row =>
+        mapDailyReportItem(row, pricingContextByItemId.get(row.id) ?? null)
+      ),
       paymentMethods: (paymentMethodsResult.data ?? []).map(mapPaymentMethod),
     });
   } catch (error) {
