@@ -51,6 +51,19 @@ import type { Menu } from '@/types/reservation';
 import { AdminMessage } from './AdminMessage';
 
 type MenuCategory = 'treatment' | 'massage' | 'rehabilitation' | 'other';
+type RevenueContextCode =
+  | 'insurance'
+  | 'private'
+  | 'traffic_accident'
+  | 'workers_comp'
+  | 'product'
+  | 'ticket'
+  | 'other';
+type BillingCalculationMethod =
+  | 'fixed_amount'
+  | 'insurance_master'
+  | 'manual_estimate';
+type PatientBurdenRate = 0 | 10 | 20 | 30;
 
 interface MenuFormState {
   name: string;
@@ -100,6 +113,59 @@ interface MenuTemplate {
   displayOrder: number;
 }
 
+interface BillingProfile {
+  id: string;
+  clinicId?: string;
+  ownerClinicId?: string;
+  menuId?: string;
+  menuTemplateId?: string;
+  sourceTemplateProfileId?: string | null;
+  revenueContextCode: RevenueContextCode;
+  calculationMethod: BillingCalculationMethod;
+  fixedAmountYen: number | null;
+  defaultPatientBurdenRate: PatientBurdenRate | null;
+  professionType: string | null;
+  requiresReview: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BillingProfileFormState {
+  revenueContextCode: RevenueContextCode;
+  calculationMethod: BillingCalculationMethod;
+  fixedAmountYen: string;
+  defaultPatientBurdenRate: '' | '0' | '10' | '20' | '30';
+  professionType: string;
+  requiresReview: boolean;
+  effectiveFrom: string;
+  effectiveTo: string;
+  isActive: boolean;
+}
+
+interface BillingProfilePayload {
+  revenueContextCode: RevenueContextCode;
+  calculationMethod: BillingCalculationMethod;
+  fixedAmountYen: number | null;
+  defaultPatientBurdenRate: PatientBurdenRate | null;
+  professionType: string | null;
+  requiresReview: boolean;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+}
+
+interface MenuBillingProfilePayload extends BillingProfilePayload {
+  clinic_id: string;
+}
+
+interface TemplateBillingProfilePayload extends BillingProfilePayload {
+  owner_clinic_id: string;
+}
+
 interface TemplateScope {
   templates: MenuTemplate[];
   ownerClinicId: string;
@@ -115,6 +181,8 @@ interface ApiResponse<T> {
 }
 
 type CollectionUpdater<T> = (items: T[]) => T[];
+type BillingProfileMap = Record<string, BillingProfile[]>;
+type BillingProfileFormMap = Record<string, BillingProfileFormState>;
 
 const EMPTY_FORM: MenuFormState = {
   name: '',
@@ -127,6 +195,40 @@ const EMPTY_FORM: MenuFormState = {
 };
 
 const EMPTY_TEMPLATES: MenuTemplate[] = [];
+const EMPTY_BILLING_PROFILES: BillingProfile[] = [];
+
+const REVENUE_CONTEXT_OPTIONS: Array<{
+  value: RevenueContextCode;
+  label: string;
+}> = [
+  { value: 'insurance', label: '健康保険' },
+  { value: 'private', label: '自費' },
+  { value: 'traffic_accident', label: '交通事故' },
+  { value: 'workers_comp', label: '労災' },
+  { value: 'product', label: '物販' },
+  { value: 'ticket', label: '回数券' },
+  { value: 'other', label: 'その他' },
+];
+
+const CALCULATION_METHOD_OPTIONS: Array<{
+  value: BillingCalculationMethod;
+  label: string;
+}> = [
+  { value: 'insurance_master', label: '公式マスタ' },
+  { value: 'fixed_amount', label: '固定金額' },
+  { value: 'manual_estimate', label: '手入力概算' },
+];
+
+const PATIENT_BURDEN_RATE_OPTIONS: Array<{
+  value: '' | '0' | '10' | '20' | '30';
+  label: string;
+}> = [
+  { value: '', label: '未設定' },
+  { value: '0', label: '0割' },
+  { value: '10', label: '1割' },
+  { value: '20', label: '2割' },
+  { value: '30', label: '3割' },
+];
 
 const PublicBookingFormPreview = dynamic(
   () =>
@@ -162,6 +264,163 @@ const MENU_CATEGORIES: Array<{ value: MenuCategory; label: string }> = [
 
 const getCategoryLabel = (value?: string) =>
   MENU_CATEGORIES.find(category => category.value === value)?.label ?? 'その他';
+
+const getRevenueContextLabel = (value: RevenueContextCode) =>
+  REVENUE_CONTEXT_OPTIONS.find(option => option.value === value)?.label ??
+  'その他';
+
+const getCalculationMethodLabel = (value: BillingCalculationMethod) =>
+  CALCULATION_METHOD_OPTIONS.find(option => option.value === value)?.label ??
+  '未設定';
+
+const isPricingAdminRole = (role: string | null | undefined) =>
+  role === 'admin' || role === 'clinic_admin';
+
+const isTemplatePricingAdminRole = (role: string | null | undefined) =>
+  role === 'admin';
+
+function isRevenueContextCode(value: string): value is RevenueContextCode {
+  return REVENUE_CONTEXT_OPTIONS.some(option => option.value === value);
+}
+
+function isBillingCalculationMethod(
+  value: string
+): value is BillingCalculationMethod {
+  return CALCULATION_METHOD_OPTIONS.some(option => option.value === value);
+}
+
+function isPatientBurdenRateOptionValue(
+  value: string
+): value is BillingProfileFormState['defaultPatientBurdenRate'] {
+  return PATIENT_BURDEN_RATE_OPTIONS.some(option => option.value === value);
+}
+
+function getCurrentMonthStartDateInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
+function createEmptyBillingProfileForm(): BillingProfileFormState {
+  return {
+    revenueContextCode: 'insurance',
+    calculationMethod: 'insurance_master',
+    fixedAmountYen: '',
+    defaultPatientBurdenRate: '30',
+    professionType: 'judo_therapist',
+    requiresReview: false,
+    effectiveFrom: getCurrentMonthStartDateInputValue(),
+    effectiveTo: '',
+    isActive: true,
+  };
+}
+
+function normalizeBillingProfileFormForMethod(
+  form: BillingProfileFormState,
+  calculationMethod: BillingCalculationMethod
+): BillingProfileFormState {
+  if (calculationMethod === 'fixed_amount') {
+    return {
+      ...form,
+      calculationMethod,
+      revenueContextCode: 'private',
+      defaultPatientBurdenRate: '',
+      professionType: '',
+      requiresReview: false,
+    };
+  }
+
+  if (calculationMethod === 'manual_estimate') {
+    return {
+      ...form,
+      calculationMethod,
+      revenueContextCode:
+        form.revenueContextCode === 'workers_comp'
+          ? 'workers_comp'
+          : 'traffic_accident',
+      fixedAmountYen: '',
+      defaultPatientBurdenRate: '',
+      professionType: '',
+      requiresReview: true,
+    };
+  }
+
+  return {
+    ...form,
+    calculationMethod,
+    revenueContextCode: 'insurance',
+    fixedAmountYen: '',
+    defaultPatientBurdenRate: form.defaultPatientBurdenRate || '30',
+    professionType: form.professionType || 'judo_therapist',
+    requiresReview: false,
+  };
+}
+
+function parsePatientBurdenRate(
+  value: BillingProfileFormState['defaultPatientBurdenRate']
+): PatientBurdenRate | null {
+  switch (value) {
+    case '0':
+      return 0;
+    case '10':
+      return 10;
+    case '20':
+      return 20;
+    case '30':
+      return 30;
+    default:
+      return null;
+  }
+}
+
+function buildBillingProfilePayload(
+  form: BillingProfileFormState
+): BillingProfilePayload {
+  const fixedAmount =
+    form.calculationMethod === 'fixed_amount'
+      ? Number(form.fixedAmountYen)
+      : null;
+
+  if (
+    form.calculationMethod === 'fixed_amount' &&
+    (form.fixedAmountYen.trim() === '' ||
+      !Number.isFinite(fixedAmount) ||
+      fixedAmount < 0)
+  ) {
+    throw new Error('固定金額は0円以上で入力してください');
+  }
+
+  return {
+    revenueContextCode: form.revenueContextCode,
+    calculationMethod: form.calculationMethod,
+    fixedAmountYen: fixedAmount,
+    defaultPatientBurdenRate:
+      form.calculationMethod === 'insurance_master'
+        ? parsePatientBurdenRate(form.defaultPatientBurdenRate)
+        : null,
+    professionType:
+      form.calculationMethod === 'insurance_master' && form.professionType
+        ? form.professionType.trim()
+        : null,
+    requiresReview:
+      form.calculationMethod === 'manual_estimate' || form.requiresReview,
+    effectiveFrom: form.effectiveFrom,
+    effectiveTo: form.effectiveTo || null,
+    isActive: form.isActive,
+  };
+}
+
+function getBillingProfileSummary(profile: BillingProfile) {
+  return `${getRevenueContextLabel(
+    profile.revenueContextCode
+  )}: ${getCalculationMethodLabel(profile.calculationMethod)}`;
+}
+
+function getProfileStatusLabel(profile: BillingProfile) {
+  if (profile.isDeleted) return '削除済み';
+  return profile.isActive ? '有効' : '無効';
+}
 
 const buildMenuPayload = (
   clinicId: string,
@@ -282,24 +541,385 @@ const fetchTemplateScope = async (
   );
 };
 
+const fetchMenuBillingProfiles = async (
+  clinicId: string,
+  menuId: string,
+  signal?: AbortSignal
+): Promise<BillingProfile[]> => {
+  const response = await fetch(
+    `/api/menus/${encodeURIComponent(
+      menuId
+    )}/billing-profiles?clinic_id=${encodeURIComponent(clinicId)}`,
+    { signal }
+  );
+  return readApiResponse<BillingProfile[]>(
+    response,
+    '院別課金プロファイルの取得に失敗しました'
+  );
+};
+
+const fetchTemplateBillingProfiles = async (
+  ownerClinicId: string,
+  templateId: string,
+  signal?: AbortSignal
+): Promise<BillingProfile[]> => {
+  const response = await fetch(
+    `/api/menu-templates/${encodeURIComponent(
+      templateId
+    )}/billing-profiles?owner_clinic_id=${encodeURIComponent(ownerClinicId)}`,
+    { signal }
+  );
+  return readApiResponse<BillingProfile[]>(
+    response,
+    '標準課金プロファイルの取得に失敗しました'
+  );
+};
+
+async function fetchMenuBillingProfileMap(
+  clinicId: string,
+  menus: Menu[],
+  signal?: AbortSignal
+): Promise<BillingProfileMap> {
+  const entries = await Promise.all(
+    menus.map(async menu => ({
+      id: menu.id,
+      profiles: await fetchMenuBillingProfiles(clinicId, menu.id, signal),
+    }))
+  );
+  const profileMap: BillingProfileMap = {};
+  for (const entry of entries) {
+    profileMap[entry.id] = entry.profiles;
+  }
+  return profileMap;
+}
+
+async function fetchTemplateBillingProfileMap(
+  ownerClinicId: string,
+  templates: MenuTemplate[],
+  signal?: AbortSignal
+): Promise<BillingProfileMap> {
+  const entries = await Promise.all(
+    templates.map(async template => ({
+      id: template.id,
+      profiles: await fetchTemplateBillingProfiles(
+        ownerClinicId,
+        template.id,
+        signal
+      ),
+    }))
+  );
+  const profileMap: BillingProfileMap = {};
+  for (const entry of entries) {
+    profileMap[entry.id] = entry.profiles;
+  }
+  return profileMap;
+}
+
+interface BillingProfilePanelProps {
+  title: string;
+  entityName: string;
+  profiles: BillingProfile[];
+  form: BillingProfileFormState;
+  disabled: boolean;
+  saving: boolean;
+  onFormChange: (form: BillingProfileFormState) => void;
+  onSubmit: () => void;
+  onArchive: (profile: BillingProfile) => void;
+}
+
+const BillingProfilePanel = memo(function BillingProfilePanel({
+  title,
+  entityName,
+  profiles,
+  form,
+  disabled,
+  saving,
+  onFormChange,
+  onSubmit,
+  onArchive,
+}: BillingProfilePanelProps) {
+  const updateForm = useCallback(
+    (patch: Partial<BillingProfileFormState>) => {
+      onFormChange({ ...form, ...patch });
+    },
+    [form, onFormChange]
+  );
+
+  const handleCalculationMethodChange = useCallback(
+    (value: string) => {
+      if (!isBillingCalculationMethod(value)) return;
+      onFormChange(normalizeBillingProfileFormForMethod(form, value));
+    },
+    [form, onFormChange]
+  );
+
+  const handleRevenueContextChange = useCallback(
+    (value: string) => {
+      if (!isRevenueContextCode(value)) return;
+      updateForm({
+        revenueContextCode: value,
+        requiresReview:
+          value === 'traffic_accident' || value === 'workers_comp'
+            ? true
+            : form.requiresReview,
+      });
+    },
+    [form.requiresReview, updateForm]
+  );
+
+  const fixedAmountDisabled =
+    disabled || form.calculationMethod !== 'fixed_amount';
+  const burdenRateDisabled =
+    disabled || form.calculationMethod !== 'insurance_master';
+
+  return (
+    <div className='mt-4 space-y-3 border-t border-gray-200 pt-4'>
+      <div className='flex flex-wrap items-center justify-between gap-2'>
+        <div className='text-sm font-semibold text-gray-900'>{title}</div>
+        <Badge variant='outline'>{profiles.length}件</Badge>
+      </div>
+
+      {profiles.length === 0 ? (
+        <div className='rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500'>
+          登録済みの課金プロファイルはありません
+        </div>
+      ) : (
+        <div className='space-y-2'>
+          {profiles.map(profile => (
+            <div
+              key={profile.id}
+              className='flex flex-col gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between'
+            >
+              <div className='min-w-0 space-y-1'>
+                <div className='flex flex-wrap items-center gap-2'>
+                  <span className='font-medium text-gray-900'>
+                    {getBillingProfileSummary(profile)}
+                  </span>
+                  <Badge variant={profile.isActive ? 'default' : 'secondary'}>
+                    {getProfileStatusLabel(profile)}
+                  </Badge>
+                  {profile.requiresReview && (
+                    <Badge variant='outline'>要確認</Badge>
+                  )}
+                </div>
+                <div className='flex flex-wrap gap-x-3 gap-y-1 text-gray-600'>
+                  {profile.fixedAmountYen !== null && (
+                    <span>{profile.fixedAmountYen.toLocaleString()}円</span>
+                  )}
+                  {profile.defaultPatientBurdenRate !== null && (
+                    <span>{profile.defaultPatientBurdenRate / 10}割</span>
+                  )}
+                  <span>{profile.effectiveFrom} から</span>
+                  {profile.effectiveTo && (
+                    <span>{profile.effectiveTo} まで</span>
+                  )}
+                </div>
+                {profile.revenueContextCode === 'traffic_accident' && (
+                  <div className='text-amber-700'>
+                    交通事故: 手入力概算・要確認。請求確定額ではありません。
+                  </div>
+                )}
+                {profile.revenueContextCode === 'workers_comp' && (
+                  <div className='text-amber-700'>
+                    労災: 手入力概算・要確認。自動算定ではありません。
+                  </div>
+                )}
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                className='text-red-600'
+                disabled={disabled || saving}
+                onClick={() => onArchive(profile)}
+              >
+                <Trash2 className='mr-2 h-4 w-4' />
+                削除
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className='grid gap-3 md:grid-cols-6'>
+        <div className='space-y-1 md:col-span-2'>
+          <Label htmlFor={`${entityName}-revenue-context`}>売上区分</Label>
+          <select
+            id={`${entityName}-revenue-context`}
+            aria-label={`${entityName} 売上区分`}
+            className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+            value={form.revenueContextCode}
+            disabled={disabled}
+            onChange={event => handleRevenueContextChange(event.target.value)}
+          >
+            {REVENUE_CONTEXT_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className='space-y-1 md:col-span-2'>
+          <Label htmlFor={`${entityName}-calculation-method`}>課金方式</Label>
+          <select
+            id={`${entityName}-calculation-method`}
+            aria-label={`${entityName} 課金方式`}
+            className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+            value={form.calculationMethod}
+            disabled={disabled}
+            onChange={event =>
+              handleCalculationMethodChange(event.target.value)
+            }
+          >
+            {CALCULATION_METHOD_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className='space-y-1'>
+          <Label htmlFor={`${entityName}-fixed-amount`}>固定金額</Label>
+          <Input
+            id={`${entityName}-fixed-amount`}
+            aria-label={`${entityName} 固定金額`}
+            type='number'
+            min={0}
+            value={form.fixedAmountYen}
+            disabled={fixedAmountDisabled}
+            onChange={event =>
+              updateForm({ fixedAmountYen: event.target.value })
+            }
+          />
+        </div>
+        <div className='space-y-1'>
+          <Label htmlFor={`${entityName}-burden-rate`}>負担割合</Label>
+          <select
+            id={`${entityName}-burden-rate`}
+            aria-label={`${entityName} 負担割合`}
+            className='flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm'
+            value={form.defaultPatientBurdenRate}
+            disabled={burdenRateDisabled}
+            onChange={event => {
+              if (!isPatientBurdenRateOptionValue(event.target.value)) return;
+              updateForm({ defaultPatientBurdenRate: event.target.value });
+            }}
+          >
+            {PATIENT_BURDEN_RATE_OPTIONS.map(option => (
+              <option key={option.value || 'none'} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className='space-y-1 md:col-span-2'>
+          <Label htmlFor={`${entityName}-profession`}>職種/制度種別</Label>
+          <Input
+            id={`${entityName}-profession`}
+            aria-label={`${entityName} 職種/制度種別`}
+            value={form.professionType}
+            disabled={disabled || form.calculationMethod !== 'insurance_master'}
+            onChange={event =>
+              updateForm({ professionType: event.target.value })
+            }
+          />
+        </div>
+        <div className='space-y-1'>
+          <Label htmlFor={`${entityName}-effective-from`}>開始日</Label>
+          <Input
+            id={`${entityName}-effective-from`}
+            aria-label={`${entityName} 開始日`}
+            type='date'
+            value={form.effectiveFrom}
+            disabled={disabled}
+            onChange={event =>
+              updateForm({ effectiveFrom: event.target.value })
+            }
+          />
+        </div>
+        <div className='space-y-1'>
+          <Label htmlFor={`${entityName}-effective-to`}>終了日</Label>
+          <Input
+            id={`${entityName}-effective-to`}
+            aria-label={`${entityName} 終了日`}
+            type='date'
+            value={form.effectiveTo}
+            disabled={disabled}
+            onChange={event => updateForm({ effectiveTo: event.target.value })}
+          />
+        </div>
+        <div className='flex items-center gap-2 pt-6 text-sm text-gray-700'>
+          <Switch
+            aria-label={`${entityName} 要確認`}
+            checked={form.requiresReview}
+            disabled={disabled || form.calculationMethod === 'manual_estimate'}
+            onCheckedChange={checked => updateForm({ requiresReview: checked })}
+          />
+          <span>要確認</span>
+        </div>
+        <div className='flex items-center gap-2 pt-6 text-sm text-gray-700'>
+          <Switch
+            aria-label={`${entityName} プロファイル有効`}
+            checked={form.isActive}
+            disabled={disabled}
+            onCheckedChange={checked => updateForm({ isActive: checked })}
+          />
+          <span>有効</span>
+        </div>
+        <div className='flex items-end md:col-span-2'>
+          <Button
+            type='button'
+            className='w-full'
+            aria-label={`${entityName} プロファイル追加`}
+            disabled={disabled || saving}
+            onClick={onSubmit}
+          >
+            {saving ? (
+              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+            ) : (
+              <Plus className='mr-2 h-4 w-4' />
+            )}
+            プロファイル追加
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 interface MenuTemplateCardProps {
   template: MenuTemplate;
   clinicSelected: boolean;
   isOwnerClinic: boolean;
+  canManageTemplateBillingProfiles: boolean;
   saving: boolean;
+  billingProfiles: BillingProfile[];
+  billingForm: BillingProfileFormState;
   onApply: (template: MenuTemplate) => void;
   onEdit: (template: MenuTemplate) => void;
   onDelete: (template: MenuTemplate) => void;
+  onBillingFormChange: (
+    templateId: string,
+    form: BillingProfileFormState
+  ) => void;
+  onBillingSubmit: (template: MenuTemplate) => void;
+  onBillingArchive: (template: MenuTemplate, profile: BillingProfile) => void;
 }
 
 const MenuTemplateCard = memo(function MenuTemplateCard({
   template,
   clinicSelected,
   isOwnerClinic,
+  canManageTemplateBillingProfiles,
   saving,
+  billingProfiles,
+  billingForm,
   onApply,
   onEdit,
   onDelete,
+  onBillingFormChange,
+  onBillingSubmit,
+  onBillingArchive,
 }: MenuTemplateCardProps) {
   return (
     <div className='rounded-md border border-gray-200 bg-white p-4'>
@@ -363,6 +983,19 @@ const MenuTemplateCard = memo(function MenuTemplateCard({
           </>
         )}
       </div>
+      {canManageTemplateBillingProfiles && (
+        <BillingProfilePanel
+          title='標準課金プロファイル'
+          entityName={template.name}
+          profiles={billingProfiles}
+          form={billingForm}
+          disabled={saving || !clinicSelected}
+          saving={saving}
+          onFormChange={nextForm => onBillingFormChange(template.id, nextForm)}
+          onSubmit={() => onBillingSubmit(template)}
+          onArchive={profile => onBillingArchive(template, profile)}
+        />
+      )}
     </div>
   );
 });
@@ -370,72 +1003,101 @@ const MenuTemplateCard = memo(function MenuTemplateCard({
 interface MenuListItemProps {
   menu: Menu;
   saving: boolean;
+  canManageBillingProfiles: boolean;
+  billingProfiles: BillingProfile[];
+  billingForm: BillingProfileFormState;
   onEdit: (menu: Menu) => void;
   onToggleActive: (menu: Menu) => void;
   onDelete: (menu: Menu) => void;
+  onBillingFormChange: (menuId: string, form: BillingProfileFormState) => void;
+  onBillingSubmit: (menu: Menu) => void;
+  onBillingArchive: (menu: Menu, profile: BillingProfile) => void;
 }
 
 const MenuListItem = memo(function MenuListItem({
   menu,
   saving,
+  canManageBillingProfiles,
+  billingProfiles,
+  billingForm,
   onEdit,
   onToggleActive,
   onDelete,
+  onBillingFormChange,
+  onBillingSubmit,
+  onBillingArchive,
 }: MenuListItemProps) {
   return (
-    <div className='flex flex-col gap-3 rounded-md border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between'>
-      <div className='min-w-0'>
-        <div className='mb-2 flex flex-wrap items-center gap-2'>
-          <div className='font-medium text-gray-900'>{menu.name}</div>
-          <Badge variant={menu.isActive ? 'default' : 'secondary'}>
-            {menu.isActive ? '有効' : '無効'}
-          </Badge>
-          <Badge variant={menu.isInsuranceApplicable ? 'outline' : 'secondary'}>
-            {menu.isInsuranceApplicable ? '保険' : '自費'}
-          </Badge>
+    <div className='rounded-md border border-gray-200 p-4'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='min-w-0'>
+          <div className='mb-2 flex flex-wrap items-center gap-2'>
+            <div className='font-medium text-gray-900'>{menu.name}</div>
+            <Badge variant={menu.isActive ? 'default' : 'secondary'}>
+              {menu.isActive ? '有効' : '無効'}
+            </Badge>
+            <Badge
+              variant={menu.isInsuranceApplicable ? 'outline' : 'secondary'}
+            >
+              {menu.isInsuranceApplicable ? '保険' : '自費'}
+            </Badge>
+          </div>
+          <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600'>
+            <span>{getCategoryLabel(menu.category)}</span>
+            <span>{menu.durationMinutes}分</span>
+            <span>{menu.price.toLocaleString()}円</span>
+          </div>
+          {menu.description && (
+            <div className='mt-1 text-sm text-gray-500'>{menu.description}</div>
+          )}
         </div>
-        <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600'>
-          <span>{getCategoryLabel(menu.category)}</span>
-          <span>{menu.durationMinutes}分</span>
-          <span>{menu.price.toLocaleString()}円</span>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={() => onEdit(menu)}
+            disabled={saving}
+          >
+            <Edit className='mr-2 h-4 w-4' />
+            編集
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={() => onToggleActive(menu)}
+            disabled={saving}
+          >
+            <CheckCircle2 className='mr-2 h-4 w-4' />
+            {menu.isActive ? '無効化' : '有効化'}
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            className='text-red-600'
+            onClick={() => onDelete(menu)}
+            disabled={saving}
+          >
+            <Trash2 className='mr-2 h-4 w-4' />
+            削除
+          </Button>
         </div>
-        {menu.description && (
-          <div className='mt-1 text-sm text-gray-500'>{menu.description}</div>
-        )}
       </div>
-      <div className='flex flex-wrap items-center gap-2'>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => onEdit(menu)}
+      {canManageBillingProfiles && (
+        <BillingProfilePanel
+          title='院別課金プロファイル'
+          entityName={menu.name}
+          profiles={billingProfiles}
+          form={billingForm}
           disabled={saving}
-        >
-          <Edit className='mr-2 h-4 w-4' />
-          編集
-        </Button>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => onToggleActive(menu)}
-          disabled={saving}
-        >
-          <CheckCircle2 className='mr-2 h-4 w-4' />
-          {menu.isActive ? '無効化' : '有効化'}
-        </Button>
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          className='text-red-600'
-          onClick={() => onDelete(menu)}
-          disabled={saving}
-        >
-          <Trash2 className='mr-2 h-4 w-4' />
-          削除
-        </Button>
-      </div>
+          saving={saving}
+          onFormChange={nextForm => onBillingFormChange(menu.id, nextForm)}
+          onSubmit={() => onBillingSubmit(menu)}
+          onArchive={profile => onBillingArchive(menu, profile)}
+        />
+      )}
     </div>
   );
 });
@@ -815,6 +1477,8 @@ export function ServicesPricingSettings() {
   const { profile, loading: profileLoading } = useUserProfile();
   const { selectedClinicId } = useSelectedClinic();
   const clinicId = selectedClinicId ?? profile?.clinicId ?? null;
+  const profileRole = profile?.role ?? null;
+  const canManageBillingProfiles = isPricingAdminRole(profileRole);
 
   const [menus, setMenus] = useState<Menu[]>([]);
   const [templateScope, setTemplateScope] = useState<TemplateScope | null>(
@@ -826,14 +1490,25 @@ export function ServicesPricingSettings() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(
     null
   );
+  const [menuBillingProfiles, setMenuBillingProfiles] =
+    useState<BillingProfileMap>({});
+  const [templateBillingProfiles, setTemplateBillingProfiles] =
+    useState<BillingProfileMap>({});
+  const [menuBillingForms, setMenuBillingForms] =
+    useState<BillingProfileFormMap>({});
+  const [templateBillingForms, setTemplateBillingForms] =
+    useState<BillingProfileFormMap>({});
   const [loading, setLoading] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
+  const [billingProfilesLoading, setBillingProfilesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const templates = templateScope?.templates ?? EMPTY_TEMPLATES;
   const isOwnerClinic = templateScope?.isOwnerClinic ?? false;
+  const canManageTemplateBillingProfiles =
+    isTemplatePricingAdminRole(profileRole) && isOwnerClinic;
 
   const sortedMenus = useMemo(
     () =>
@@ -859,14 +1534,18 @@ export function ServicesPricingSettings() {
       if (!clinicId) {
         setMenus([]);
         setTemplateScope(null);
+        setMenuBillingProfiles({});
+        setTemplateBillingProfiles({});
         setError(null);
         setLoading(false);
         setTemplateLoading(false);
+        setBillingProfilesLoading(false);
         return;
       }
 
       setLoading(true);
       setTemplateLoading(true);
+      setBillingProfilesLoading(canManageBillingProfiles);
       setError(null);
 
       const [menusResult, templateScopeResult] = await Promise.allSettled([
@@ -881,6 +1560,7 @@ export function ServicesPricingSettings() {
         setMenus(menusResult.value);
       } else {
         setMenus([]);
+        setMenuBillingProfiles({});
         errors.push(
           getErrorMessage(
             menusResult.reason,
@@ -891,8 +1571,15 @@ export function ServicesPricingSettings() {
 
       if (templateScopeResult.status === 'fulfilled') {
         setTemplateScope(templateScopeResult.value);
+        if (
+          isTemplatePricingAdminRole(profileRole) &&
+          templateScopeResult.value.isOwnerClinic
+        ) {
+          setTemplatesOpen(true);
+        }
       } else {
         setTemplateScope(null);
+        setTemplateBillingProfiles({});
         errors.push(
           getErrorMessage(
             templateScopeResult.reason,
@@ -901,11 +1588,53 @@ export function ServicesPricingSettings() {
         );
       }
 
+      if (canManageBillingProfiles && menusResult.status === 'fulfilled') {
+        const billingResults: Array<Promise<void>> = [
+          fetchMenuBillingProfileMap(clinicId, menusResult.value, signal).then(
+            setMenuBillingProfiles
+          ),
+        ];
+
+        if (
+          templateScopeResult.status === 'fulfilled' &&
+          isTemplatePricingAdminRole(profileRole) &&
+          templateScopeResult.value.isOwnerClinic
+        ) {
+          billingResults.push(
+            fetchTemplateBillingProfileMap(
+              templateScopeResult.value.ownerClinicId,
+              templateScopeResult.value.templates,
+              signal
+            ).then(setTemplateBillingProfiles)
+          );
+        } else {
+          setTemplateBillingProfiles({});
+        }
+
+        const profileResults = await Promise.allSettled(billingResults);
+        if (signal?.aborted) return;
+
+        for (const result of profileResults) {
+          if (result.status === 'rejected') {
+            errors.push(
+              getErrorMessage(
+                result.reason,
+                '課金プロファイルの取得に失敗しました'
+              )
+            );
+          }
+        }
+      } else {
+        setMenuBillingProfiles({});
+        setTemplateBillingProfiles({});
+      }
+
       setError(errors[0] ?? null);
       setLoading(false);
       setTemplateLoading(false);
+      setBillingProfilesLoading(false);
     },
-    [clinicId]
+    [canManageBillingProfiles, clinicId, profileRole]
   );
 
   const handleRefresh = useCallback(() => {
@@ -932,6 +1661,34 @@ export function ServicesPricingSettings() {
   const resetTemplateForm = useCallback(() => {
     setTemplateForm(EMPTY_FORM);
     setEditingTemplateId(null);
+  }, []);
+
+  const updateMenuBillingForm = useCallback(
+    (menuId: string, nextForm: BillingProfileFormState) => {
+      setMenuBillingForms(prev => ({ ...prev, [menuId]: nextForm }));
+    },
+    []
+  );
+
+  const updateTemplateBillingForm = useCallback(
+    (templateId: string, nextForm: BillingProfileFormState) => {
+      setTemplateBillingForms(prev => ({ ...prev, [templateId]: nextForm }));
+    },
+    []
+  );
+
+  const resetMenuBillingForm = useCallback((menuId: string) => {
+    setMenuBillingForms(prev => ({
+      ...prev,
+      [menuId]: createEmptyBillingProfileForm(),
+    }));
+  }, []);
+
+  const resetTemplateBillingForm = useCallback((templateId: string) => {
+    setTemplateBillingForms(prev => ({
+      ...prev,
+      [templateId]: createEmptyBillingProfileForm(),
+    }));
   }, []);
 
   const updateTemplateList = useCallback(
@@ -978,6 +1735,198 @@ export function ServicesPricingSettings() {
       );
     },
     []
+  );
+
+  const saveMenuBillingProfile = useCallback(
+    async (menu: Menu) => {
+      if (!clinicId || !canManageBillingProfiles) return;
+
+      const formState =
+        menuBillingForms[menu.id] ?? createEmptyBillingProfileForm();
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const payload: MenuBillingProfilePayload = {
+          clinic_id: clinicId,
+          ...buildBillingProfilePayload(formState),
+        };
+        const response = await fetch(
+          `/api/menus/${encodeURIComponent(menu.id)}/billing-profiles`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }
+        );
+        const savedProfile = await readApiResponse<BillingProfile>(
+          response,
+          '院別課金プロファイルの保存に失敗しました'
+        );
+        setMenuBillingProfiles(prev => ({
+          ...prev,
+          [menu.id]: upsertById(prev[menu.id] ?? [], savedProfile),
+        }));
+        resetMenuBillingForm(menu.id);
+        setSavedMessage('院別課金プロファイルを追加しました');
+      } catch (err) {
+        setError(
+          getErrorMessage(err, '院別課金プロファイルの保存に失敗しました')
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [canManageBillingProfiles, clinicId, menuBillingForms, resetMenuBillingForm]
+  );
+
+  const saveTemplateBillingProfile = useCallback(
+    async (template: MenuTemplate) => {
+      if (!canManageTemplateBillingProfiles) return;
+
+      const ownerClinicId = templateScope?.ownerClinicId;
+      if (!ownerClinicId) {
+        setError('標準課金プロファイルの owner_clinic_id が取得できません');
+        return;
+      }
+
+      const formState =
+        templateBillingForms[template.id] ?? createEmptyBillingProfileForm();
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const payload: TemplateBillingProfilePayload = {
+          owner_clinic_id: ownerClinicId,
+          ...buildBillingProfilePayload(formState),
+        };
+        const response = await fetch(
+          `/api/menu-templates/${encodeURIComponent(
+            template.id
+          )}/billing-profiles`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }
+        );
+        const savedProfile = await readApiResponse<BillingProfile>(
+          response,
+          '標準課金プロファイルの保存に失敗しました'
+        );
+        setTemplateBillingProfiles(prev => ({
+          ...prev,
+          [template.id]: upsertById(prev[template.id] ?? [], savedProfile),
+        }));
+        resetTemplateBillingForm(template.id);
+        setSavedMessage('標準課金プロファイルを追加しました');
+      } catch (err) {
+        setError(
+          getErrorMessage(err, '標準課金プロファイルの保存に失敗しました')
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [
+      canManageTemplateBillingProfiles,
+      resetTemplateBillingForm,
+      templateBillingForms,
+      templateScope?.ownerClinicId,
+    ]
+  );
+
+  const archiveMenuBillingProfile = useCallback(
+    async (menu: Menu, profileToArchive: BillingProfile) => {
+      if (!clinicId || !canManageBillingProfiles) return;
+      if (!window.confirm('この院別課金プロファイルを削除しますか？')) return;
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const response = await fetch(
+          `/api/menus/${encodeURIComponent(
+            menu.id
+          )}/billing-profiles/${encodeURIComponent(profileToArchive.id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clinic_id: clinicId,
+              isActive: false,
+              isDeleted: true,
+            }),
+          }
+        );
+        await readApiResponse<BillingProfile>(
+          response,
+          '院別課金プロファイルの削除に失敗しました'
+        );
+        setMenuBillingProfiles(prev => ({
+          ...prev,
+          [menu.id]: (prev[menu.id] ?? []).filter(
+            profile => profile.id !== profileToArchive.id
+          ),
+        }));
+        setSavedMessage('院別課金プロファイルを削除しました');
+      } catch (err) {
+        setError(
+          getErrorMessage(err, '院別課金プロファイルの削除に失敗しました')
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [canManageBillingProfiles, clinicId]
+  );
+
+  const archiveTemplateBillingProfile = useCallback(
+    async (template: MenuTemplate, profileToArchive: BillingProfile) => {
+      const ownerClinicId = templateScope?.ownerClinicId;
+      if (!ownerClinicId || !canManageTemplateBillingProfiles) return;
+      if (!window.confirm('この標準課金プロファイルを削除しますか？')) return;
+
+      setSaving(true);
+      setError(null);
+      setSavedMessage('');
+      try {
+        const response = await fetch(
+          `/api/menu-templates/${encodeURIComponent(
+            template.id
+          )}/billing-profiles/${encodeURIComponent(profileToArchive.id)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              owner_clinic_id: ownerClinicId,
+              isActive: false,
+              isDeleted: true,
+            }),
+          }
+        );
+        await readApiResponse<BillingProfile>(
+          response,
+          '標準課金プロファイルの削除に失敗しました'
+        );
+        setTemplateBillingProfiles(prev => ({
+          ...prev,
+          [template.id]: (prev[template.id] ?? []).filter(
+            profile => profile.id !== profileToArchive.id
+          ),
+        }));
+        setSavedMessage('標準課金プロファイルを削除しました');
+      } catch (err) {
+        setError(
+          getErrorMessage(err, '標準課金プロファイルの削除に失敗しました')
+        );
+      } finally {
+        setSaving(false);
+      }
+    },
+    [canManageTemplateBillingProfiles, templateScope?.ownerClinicId]
   );
 
   const handleSubmit = useCallback(
@@ -1103,6 +2052,16 @@ export function ServicesPricingSettings() {
         );
 
         setMenus(prev => upsertById(prev, savedMenu));
+        if (canManageBillingProfiles) {
+          const profiles = await fetchMenuBillingProfiles(
+            clinicId,
+            savedMenu.id
+          );
+          setMenuBillingProfiles(prev => ({
+            ...prev,
+            [savedMenu.id]: profiles,
+          }));
+        }
         setSavedMessage(`${template.name} を追加しました`);
       } catch (err) {
         setError(getErrorMessage(err, 'テンプレートの追加に失敗しました'));
@@ -1110,7 +2069,7 @@ export function ServicesPricingSettings() {
         setSaving(false);
       }
     },
-    [clinicId]
+    [canManageBillingProfiles, clinicId]
   );
 
   const handleEdit = useCallback((menu: Menu) => {
@@ -1152,6 +2111,11 @@ export function ServicesPricingSettings() {
         updateTemplateList(prev =>
           prev.filter(current => current.id !== template.id)
         );
+        setTemplateBillingProfiles(prev => {
+          const next = { ...prev };
+          delete next[template.id];
+          return next;
+        });
         setSavedMessage('共通テンプレートを削除しました');
       } catch (err) {
         setError(getErrorMessage(err, '共通テンプレートの削除に失敗しました'));
@@ -1227,6 +2191,11 @@ export function ServicesPricingSettings() {
 
         if (editingMenu?.id === menu.id) closeEditDialog();
         setMenus(prev => prev.filter(current => current.id !== menu.id));
+        setMenuBillingProfiles(prev => {
+          const next = { ...prev };
+          delete next[menu.id];
+          return next;
+        });
         setSavedMessage('メニューを削除しました');
       } catch (err) {
         setError(getErrorMessage(err, '施術メニューの削除に失敗しました'));
@@ -1272,7 +2241,12 @@ export function ServicesPricingSettings() {
               type='button'
               variant='outline'
               onClick={handleRefresh}
-              disabled={loading || templateLoading || !clinicId}
+              disabled={
+                loading ||
+                templateLoading ||
+                billingProfilesLoading ||
+                !clinicId
+              }
             >
               <RefreshCw className='mr-2 h-4 w-4' />
               再読み込み
@@ -1369,10 +2343,24 @@ export function ServicesPricingSettings() {
                   template={template}
                   clinicSelected={Boolean(clinicId)}
                   isOwnerClinic={isOwnerClinic}
+                  canManageTemplateBillingProfiles={
+                    canManageTemplateBillingProfiles
+                  }
                   saving={saving}
+                  billingProfiles={
+                    templateBillingProfiles[template.id] ??
+                    EMPTY_BILLING_PROFILES
+                  }
+                  billingForm={
+                    templateBillingForms[template.id] ??
+                    createEmptyBillingProfileForm()
+                  }
                   onApply={applyTemplate}
                   onEdit={handleTemplateEdit}
                   onDelete={handleTemplateDelete}
+                  onBillingFormChange={updateTemplateBillingForm}
+                  onBillingSubmit={saveTemplateBillingProfile}
+                  onBillingArchive={archiveTemplateBillingProfile}
                 />
               ))}
             </div>
@@ -1401,9 +2389,19 @@ export function ServicesPricingSettings() {
               key={menu.id}
               menu={menu}
               saving={saving}
+              canManageBillingProfiles={canManageBillingProfiles}
+              billingProfiles={
+                menuBillingProfiles[menu.id] ?? EMPTY_BILLING_PROFILES
+              }
+              billingForm={
+                menuBillingForms[menu.id] ?? createEmptyBillingProfileForm()
+              }
               onEdit={handleEdit}
               onToggleActive={handleToggleActive}
               onDelete={handleDelete}
+              onBillingFormChange={updateMenuBillingForm}
+              onBillingSubmit={saveMenuBillingProfile}
+              onBillingArchive={archiveMenuBillingProfile}
             />
           ))}
         </CardContent>
