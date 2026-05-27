@@ -33,6 +33,32 @@ import {
   type RevenueContextSource,
   type SelectableRevenueContextCode,
 } from '@/lib/revenue-context';
+import {
+  isPatientBurdenRate,
+  PATIENT_BURDEN_RATES,
+  type PatientBurdenRate,
+} from '@/lib/customer-insurance-coverage';
+
+type MenuBillingCalculationMethod =
+  | 'fixed_amount'
+  | 'insurance_master'
+  | 'manual_estimate';
+
+interface ActiveMenuBillingProfile {
+  id: string;
+  revenueContextCode: SelectableRevenueContextCode;
+  calculationMethod: MenuBillingCalculationMethod;
+  fixedAmountYen: number | null;
+  defaultPatientBurdenRate: PatientBurdenRate | null;
+  requiresReview: boolean;
+}
+
+interface DailyReportPricingContext {
+  currentPatientBurdenRate: PatientBurdenRate | null;
+  coverageResolutionSource: 'customer_default' | 'missing' | 'ambiguous' | null;
+  coverageReviewMessage: string | null;
+  activeMenuBillingProfile: ActiveMenuBillingProfile | null;
+}
 
 interface DailyReportItem {
   id: string;
@@ -52,6 +78,13 @@ interface DailyReportItem {
   revenueContextSource: RevenueContextSource;
   amountSource: AmountSource;
   estimateStatus: EstimateStatus;
+  menuBillingProfileId: string | null;
+  customerInsuranceCoverageId: string | null;
+  patientBurdenRate: PatientBurdenRate | null;
+  coverageResolutionSource: string | null;
+  pricingSnapshotStatus: string;
+  pricingConfirmedAt: string | null;
+  pricingContext: DailyReportPricingContext | null;
   paymentMethodId: string | null;
   nextReservationStartTime: string | null;
   nextReservationEndTime: string | null;
@@ -88,6 +121,22 @@ type ItemPatchPayload = {
   paymentMethodId?: string | null;
   nextReservationStartTime?: string | null;
   notes?: string | null;
+};
+
+type PricingConfirmResponse = {
+  dailyReportItemId: string;
+  revenueEstimateId: string;
+  estimateStatus: EstimateStatus;
+  estimatedTotal: number;
+  pricingSnapshotStatus: string;
+  patientBurdenRate: PatientBurdenRate | null;
+};
+
+type PricingPreview = {
+  contextLabel: string;
+  statusLabel: string;
+  lines: string[];
+  warning: string | null;
 };
 
 type LoadItemsOptions = {
@@ -133,6 +182,69 @@ function isRevenueContextCode(
   return SELECTABLE_REVENUE_CONTEXT_CODES.some(code => code === value);
 }
 
+function isEstimateStatus(value: unknown): value is EstimateStatus {
+  return (
+    value === 'not_calculated' ||
+    value === 'calculated' ||
+    value === 'needs_review' ||
+    value === 'blocked' ||
+    value === 'overridden'
+  );
+}
+
+function isMenuBillingCalculationMethod(
+  value: unknown
+): value is MenuBillingCalculationMethod {
+  return (
+    value === 'fixed_amount' ||
+    value === 'insurance_master' ||
+    value === 'manual_estimate'
+  );
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string';
+}
+
+function isNullablePatientBurdenRate(
+  value: unknown
+): value is PatientBurdenRate | null {
+  return (
+    value === null || (typeof value === 'number' && isPatientBurdenRate(value))
+  );
+}
+
+function isActiveMenuBillingProfile(
+  value: unknown
+): value is ActiveMenuBillingProfile {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    isRevenueContextCode(value.revenueContextCode) &&
+    isMenuBillingCalculationMethod(value.calculationMethod) &&
+    (value.fixedAmountYen === null ||
+      typeof value.fixedAmountYen === 'number') &&
+    isNullablePatientBurdenRate(value.defaultPatientBurdenRate) &&
+    typeof value.requiresReview === 'boolean'
+  );
+}
+
+function isDailyReportPricingContext(
+  value: unknown
+): value is DailyReportPricingContext {
+  return (
+    isRecord(value) &&
+    isNullablePatientBurdenRate(value.currentPatientBurdenRate) &&
+    (value.coverageResolutionSource === null ||
+      value.coverageResolutionSource === 'customer_default' ||
+      value.coverageResolutionSource === 'missing' ||
+      value.coverageResolutionSource === 'ambiguous') &&
+    isNullableString(value.coverageReviewMessage) &&
+    (value.activeMenuBillingProfile === null ||
+      isActiveMenuBillingProfile(value.activeMenuBillingProfile))
+  );
+}
+
 function isPaymentMethod(value: unknown): value is PaymentMethod {
   return (
     isRecord(value) &&
@@ -154,7 +266,15 @@ function isDailyReportItem(value: unknown): value is DailyReportItem {
     typeof value.durationMinutes === 'number' &&
     typeof value.fee === 'number' &&
     isBillingType(value.billingType) &&
-    isRevenueContextCode(value.revenueContextCode)
+    isRevenueContextCode(value.revenueContextCode) &&
+    isNullableString(value.menuBillingProfileId) &&
+    isNullableString(value.customerInsuranceCoverageId) &&
+    isNullablePatientBurdenRate(value.patientBurdenRate) &&
+    isNullableString(value.coverageResolutionSource) &&
+    typeof value.pricingSnapshotStatus === 'string' &&
+    isNullableString(value.pricingConfirmedAt) &&
+    (value.pricingContext === null ||
+      isDailyReportPricingContext(value.pricingContext))
   );
 }
 
@@ -168,6 +288,130 @@ function getReviewTagCode(
     return 'WORKERS_COMP_REVIEW';
   }
   return null;
+}
+
+function formatYen(amount: number) {
+  return `¥${Math.round(amount).toLocaleString()}`;
+}
+
+function formatPatientBurdenRate(rate: PatientBurdenRate) {
+  return rate === 0 ? '0割' : `${rate / 10}割`;
+}
+
+function parsePatientBurdenRateOverride(
+  value: string
+): PatientBurdenRate | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return isPatientBurdenRate(parsed) ? parsed : null;
+}
+
+function getPricingSnapshotStatusLabel(status: string) {
+  switch (status) {
+    case 'confirmed':
+      return '確定済み';
+    case 'needs_review':
+      return '要確認';
+    case 'recalculated':
+      return '再計算済み';
+    default:
+      return '未確定';
+  }
+}
+
+function resolvePreviewBurdenRate(
+  item: DailyReportItem,
+  override: PatientBurdenRate | null
+): { rate: PatientBurdenRate | null; sourceLabel: string } {
+  if (override !== null) {
+    return { rate: override, sourceLabel: '今回上書き' };
+  }
+
+  if (item.patientBurdenRate !== null) {
+    return { rate: item.patientBurdenRate, sourceLabel: '確定済み' };
+  }
+
+  const currentRate = item.pricingContext?.currentPatientBurdenRate ?? null;
+  if (currentRate !== null) {
+    return { rate: currentRate, sourceLabel: '患者設定' };
+  }
+
+  const profileRate =
+    item.pricingContext?.activeMenuBillingProfile?.defaultPatientBurdenRate ??
+    null;
+  if (profileRate !== null) {
+    return { rate: profileRate, sourceLabel: 'メニュー標準' };
+  }
+
+  return { rate: null, sourceLabel: '未設定' };
+}
+
+function buildPricingPreview(
+  item: DailyReportItem,
+  override: PatientBurdenRate | null
+): PricingPreview {
+  const statusLabel = getPricingSnapshotStatusLabel(item.pricingSnapshotStatus);
+
+  if (item.revenueContextCode === 'insurance') {
+    const burden = resolvePreviewBurdenRate(item, override);
+    if (burden.rate === null) {
+      return {
+        contextLabel: '健康保険: 負担割合の確認が必要',
+        statusLabel,
+        lines: [`療養費見込み: ${formatYen(item.fee)}`],
+        warning:
+          item.pricingContext?.coverageReviewMessage ??
+          '患者負担割合を選んで金額を確定してください。',
+      };
+    }
+
+    const patientCopay = Math.round((item.fee * burden.rate) / 100);
+    const insurerReceivable = Math.max(0, item.fee - patientCopay);
+    return {
+      contextLabel: `${burden.sourceLabel}: ${formatPatientBurdenRate(
+        burden.rate
+      )}`,
+      statusLabel,
+      lines: [
+        `療養費見込み: ${formatYen(item.fee)}`,
+        `窓口負担見込み: ${formatYen(patientCopay)}`,
+        `保険者請求見込み: ${formatYen(insurerReceivable)}`,
+      ],
+      warning: null,
+    };
+  }
+
+  if (item.revenueContextCode === 'traffic_accident') {
+    return {
+      contextLabel: '交通事故: 手入力概算・要確認',
+      statusLabel,
+      lines: [`経営概算: ${formatYen(item.fee)}`],
+      warning:
+        '請求確定前の経営分析用です。公式マスタ自動単価として扱いません。',
+    };
+  }
+
+  if (item.revenueContextCode === 'workers_comp') {
+    return {
+      contextLabel: '労災: 手入力概算・要確認',
+      statusLabel,
+      lines: [`経営概算: ${formatYen(item.fee)}`],
+      warning: 'Phase 4Aでは労災の自動算定は行わず、手入力概算を保存します。',
+    };
+  }
+
+  return {
+    contextLabel:
+      item.revenueContextCode === 'private'
+        ? '自費: 入力金額で売上計上'
+        : `${REVENUE_CONTEXT_LABELS[item.revenueContextCode]}: 入力金額`,
+    statusLabel,
+    lines: [`売上見込み: ${formatYen(item.fee)}`],
+    warning: null,
+  };
 }
 
 function getApiErrorMessage(payload: unknown, fallback: string) {
@@ -251,6 +495,39 @@ function parseItemsResponse(payload: unknown): ParsedItemsResponse | null {
     : undefined;
 
   return paymentMethods ? { items, paymentMethods } : { items };
+}
+
+function isPricingConfirmResponse(
+  value: unknown
+): value is PricingConfirmResponse {
+  return (
+    isRecord(value) &&
+    typeof value.dailyReportItemId === 'string' &&
+    typeof value.revenueEstimateId === 'string' &&
+    isEstimateStatus(value.estimateStatus) &&
+    typeof value.estimatedTotal === 'number' &&
+    typeof value.pricingSnapshotStatus === 'string' &&
+    isNullablePatientBurdenRate(value.patientBurdenRate)
+  );
+}
+
+function getCoverageResolutionSourceAfterConfirm(
+  item: DailyReportItem,
+  patientBurdenRateOverride: PatientBurdenRate | null,
+  patientBurdenRate: PatientBurdenRate | null
+) {
+  if (patientBurdenRate === null) {
+    return item.coverageResolutionSource;
+  }
+
+  if (patientBurdenRateOverride !== null) {
+    return 'manual';
+  }
+
+  return (
+    item.pricingContext?.coverageResolutionSource ??
+    item.coverageResolutionSource
+  );
 }
 
 function normalizeComparableDateTime(value: string | null) {
@@ -347,6 +624,12 @@ export default function DailyReportInputPage() {
   const [nextReservationDrafts, setNextReservationDrafts] = useState<
     Record<string, string>
   >({});
+  const [patientBurdenOverrides, setPatientBurdenOverrides] = useState<
+    Record<string, string>
+  >({});
+  const [coverageUpdateIntent, setCoverageUpdateIntent] = useState<
+    Record<string, boolean>
+  >({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
@@ -355,6 +638,9 @@ export default function DailyReportInputPage() {
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [taggingItemId, setTaggingItemId] = useState<string | null>(null);
+  const [confirmingPricingItemId, setConfirmingPricingItemId] = useState<
+    string | null
+  >(null);
   const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
   const loadRequestIdRef = useRef(0);
 
@@ -396,6 +682,7 @@ export default function DailyReportInputPage() {
         const params = new URLSearchParams({
           clinic_id: clinicId,
           report_date: date,
+          include_pricing_context: 'true',
         });
         if (!includePaymentMethods) {
           params.set('include_payment_methods', 'false');
@@ -609,6 +896,16 @@ export default function DailyReportInputPage() {
         delete next[id];
         return next;
       });
+      setPatientBurdenOverrides(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setCoverageUpdateIntent(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : '明細の削除に失敗しました'
@@ -667,6 +964,99 @@ export default function DailyReportInputPage() {
     await persistItemPatch(item.id, {
       nextReservationStartTime: isoValue,
     });
+  };
+
+  const confirmItemPricing = async (item: DailyReportItem) => {
+    if (!clinicId) {
+      setFormError('アクセス可能なクリニックが確認できません');
+      return;
+    }
+
+    const overrideValue = patientBurdenOverrides[item.id] ?? '';
+    const patientBurdenRateOverride =
+      parsePatientBurdenRateOverride(overrideValue);
+    if (overrideValue && patientBurdenRateOverride === null) {
+      setFormError('負担割合は0割、1割、2割、3割から選択してください');
+      return;
+    }
+
+    const isManualEstimate =
+      item.revenueContextCode === 'traffic_accident' ||
+      item.revenueContextCode === 'workers_comp';
+
+    setConfirmingPricingItemId(item.id);
+    setFormError(null);
+
+    try {
+      const response = await fetch(
+        `/api/daily-reports/items/${item.id}/pricing/confirm`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clinic_id: clinicId,
+            patientBurdenRateOverride,
+            manualEstimatedAmount: isManualEstimate ? item.fee : null,
+            updateCustomerCoverage:
+              item.revenueContextCode === 'insurance' &&
+              Boolean(coverageUpdateIntent[item.id]) &&
+              patientBurdenRateOverride !== null,
+            confirmationNote:
+              item.revenueContextCode === 'insurance' &&
+              Boolean(coverageUpdateIntent[item.id])
+                ? '日報入力画面で負担割合を確認'
+                : null,
+          }),
+        }
+      );
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        setFormError(getApiErrorMessage(payload, '金額確定に失敗しました'));
+        return;
+      }
+
+      if (
+        !isRecord(payload) ||
+        payload.success !== true ||
+        !isPricingConfirmResponse(payload.data)
+      ) {
+        setFormError('金額確定結果の形式が正しくありません');
+        return;
+      }
+
+      setPatientBurdenOverrides(prev => ({
+        ...prev,
+        [item.id]: '',
+      }));
+      setCoverageUpdateIntent(prev => ({
+        ...prev,
+        [item.id]: false,
+      }));
+
+      const itemPatch: Partial<DailyReportItem> = {
+        estimateStatus: payload.data.estimateStatus,
+        amountSource: 'estimate',
+        pricingSnapshotStatus: payload.data.pricingSnapshotStatus,
+        patientBurdenRate: payload.data.patientBurdenRate,
+        coverageResolutionSource: getCoverageResolutionSourceAfterConfirm(
+          item,
+          patientBurdenRateOverride,
+          payload.data.patientBurdenRate
+        ),
+      };
+      const savedItem = savedItemsRef.current.get(item.id);
+      if (savedItem) {
+        savedItemsRef.current.set(item.id, { ...savedItem, ...itemPatch });
+      }
+      updateItemLocal(item.id, itemPatch);
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : '金額確定に失敗しました'
+      );
+    } finally {
+      setConfirmingPricingItemId(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -729,6 +1119,7 @@ export default function DailyReportInputPage() {
     return (
       items.length === 0 ||
       savingItemId !== null ||
+      confirmingPricingItemId !== null ||
       isAddingItem ||
       isSavingReport
     );
@@ -738,6 +1129,7 @@ export default function DailyReportInputPage() {
     errorMessage,
     items.length,
     savingItemId,
+    confirmingPricingItemId,
     isAddingItem,
     isSavingReport,
   ]);
@@ -1040,7 +1432,21 @@ export default function DailyReportInputPage() {
               <div className='space-y-3'>
                 {items.map(item => {
                   const itemSaving = savingItemId === item.id;
+                  const itemPricingConfirming =
+                    confirmingPricingItemId === item.id;
                   const nextReservationEnabled = canUseNextReservation(item);
+                  const burdenOverrideValue =
+                    patientBurdenOverrides[item.id] ?? '';
+                  const selectedBurdenOverride =
+                    parsePatientBurdenRateOverride(burdenOverrideValue);
+                  const pricingPreview = buildPricingPreview(
+                    item,
+                    selectedBurdenOverride
+                  );
+                  const canUpdateCustomerCoverage =
+                    item.revenueContextCode === 'insurance' &&
+                    item.customerId !== null &&
+                    selectedBurdenOverride !== null;
                   return (
                     <div key={item.id} className='p-4 border rounded-lg'>
                       <div className='grid grid-cols-1 lg:grid-cols-12 gap-3 items-end'>
@@ -1250,6 +1656,95 @@ export default function DailyReportInputPage() {
                           >
                             <Trash2 className='h-4 w-4' />
                           </Button>
+                        </div>
+                      </div>
+                      <div className='mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40'>
+                        <div className='flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
+                          <div className='space-y-2'>
+                            <div className='flex flex-wrap items-center gap-2'>
+                              <span className='text-sm font-semibold text-slate-900 dark:text-slate-100'>
+                                会計内訳
+                              </span>
+                              <span className='rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200'>
+                                状態: {pricingPreview.statusLabel}
+                              </span>
+                              <span className='rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200'>
+                                {pricingPreview.contextLabel}
+                              </span>
+                            </div>
+                            <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700 dark:text-slate-200'>
+                              {pricingPreview.lines.map(line => (
+                                <span key={line}>{line}</span>
+                              ))}
+                            </div>
+                            {pricingPreview.warning && (
+                              <p className='text-xs text-amber-800 dark:text-amber-300'>
+                                {pricingPreview.warning}
+                              </p>
+                            )}
+                          </div>
+                          <div className='grid grid-cols-1 gap-2 sm:grid-cols-[minmax(10rem,12rem)_auto_auto] sm:items-end'>
+                            {item.revenueContextCode === 'insurance' && (
+                              <>
+                                <div className='space-y-1'>
+                                  <Label htmlFor={`burden-override-${item.id}`}>
+                                    今回の負担割合
+                                  </Label>
+                                  <select
+                                    id={`burden-override-${item.id}`}
+                                    aria-label={`${item.patientName} 負担割合の上書き`}
+                                    className='h-9 w-full rounded border bg-white px-3 text-sm dark:bg-gray-900'
+                                    value={burdenOverrideValue}
+                                    onChange={event =>
+                                      setPatientBurdenOverrides(prev => ({
+                                        ...prev,
+                                        [item.id]: event.target.value,
+                                      }))
+                                    }
+                                    disabled={
+                                      itemSaving || itemPricingConfirming
+                                    }
+                                  >
+                                    <option value=''>患者設定を使う</option>
+                                    {PATIENT_BURDEN_RATES.map(rate => (
+                                      <option key={rate} value={rate}>
+                                        {formatPatientBurdenRate(rate)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <label className='flex items-center gap-2 pb-2 text-xs text-slate-700 dark:text-slate-200'>
+                                  <input
+                                    type='checkbox'
+                                    checked={Boolean(
+                                      coverageUpdateIntent[item.id]
+                                    )}
+                                    onChange={event =>
+                                      setCoverageUpdateIntent(prev => ({
+                                        ...prev,
+                                        [item.id]: event.target.checked,
+                                      }))
+                                    }
+                                    disabled={
+                                      itemSaving ||
+                                      itemPricingConfirming ||
+                                      !canUpdateCustomerCoverage
+                                    }
+                                  />
+                                  患者設定にも反映
+                                </label>
+                              </>
+                            )}
+                            <Button
+                              variant='outline'
+                              size='sm'
+                              aria-label={`${item.patientName}の金額を確定`}
+                              onClick={() => void confirmItemPricing(item)}
+                              disabled={itemSaving || itemPricingConfirming}
+                            >
+                              {itemPricingConfirming ? '確定中...' : '金額確定'}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <div className='mt-2 flex flex-wrap gap-2 text-xs text-gray-500'>

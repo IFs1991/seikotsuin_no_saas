@@ -63,12 +63,21 @@ function buildItemRow() {
     revenue_context_source: 'derived',
     amount_source: 'reservation',
     estimate_status: 'not_calculated',
+    care_episode_id: null,
+    visit_ordinal_in_episode: null,
+    visit_stage_code: null,
     payment_method_id: null,
     next_reservation_start_time: null,
     next_reservation_end_time: null,
     next_reservation_id: null,
     source: 'reservation',
     notes: null,
+    menu_billing_profile_id: null,
+    customer_insurance_coverage_id: null,
+    patient_burden_rate: null,
+    coverage_resolution_source: null,
+    pricing_snapshot_status: 'pending',
+    pricing_confirmed_at: null,
     created_at: '2026-05-07T01:00:00.000Z',
     updated_at: '2026-05-07T01:00:00.000Z',
     created_by: 'user-1',
@@ -156,6 +165,165 @@ describe('/api/daily-reports/items', () => {
       estimateStatus: 'not_calculated',
     });
     expect(json.data.paymentMethods[0]).toMatchObject({ name: '現金' });
+  });
+
+  test('GET can include batch pricing context without per-item coverage calls', async () => {
+    const insuranceItem = {
+      ...buildItemRow(),
+      id: itemId,
+      customer_id: customerId,
+      menu_id: menuId,
+      billing_type: 'insurance',
+      revenue_context_code: 'insurance',
+      fee: 2000,
+    };
+    const privateItem = {
+      ...buildItemRow(),
+      id: '123e4567-e89b-12d3-a456-426614174030',
+      customer_id: null,
+      menu_id: '123e4567-e89b-12d3-a456-426614174031',
+      billing_type: 'private',
+      revenue_context_code: 'private',
+      fee: 4500,
+    };
+    const itemQuery = {
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({
+        data: [insuranceItem, privateItem],
+        error: null,
+      }),
+    };
+    const coverageQuery = {
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      or: jest.fn().mockResolvedValue({
+        data: [
+          {
+            id: '123e4567-e89b-12d3-a456-426614174040',
+            clinic_id: clinicId,
+            customer_id: customerId,
+            patient_burden_rate: 30,
+            effective_from: '2026-04-01',
+            effective_to: null,
+            verification_status: 'confirmed',
+            verified_at: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+        error: null,
+      }),
+    };
+    const profileQuery = {
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      or: jest.fn().mockResolvedValue({
+        data: [
+          {
+            id: '123e4567-e89b-12d3-a456-426614174050',
+            clinic_id: clinicId,
+            menu_id: menuId,
+            revenue_context_code: 'insurance',
+            calculation_method: 'insurance_master',
+            fixed_amount_yen: null,
+            default_patient_burden_rate: 30,
+            requires_review: false,
+            effective_from: '2026-04-01',
+            effective_to: null,
+            is_active: true,
+            is_deleted: false,
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+          {
+            id: '123e4567-e89b-12d3-a456-426614174051',
+            clinic_id: clinicId,
+            menu_id: privateItem.menu_id,
+            revenue_context_code: 'private',
+            calculation_method: 'fixed_amount',
+            fixed_amount_yen: 4500,
+            default_patient_burden_rate: null,
+            requires_review: false,
+            effective_from: '2026-04-01',
+            effective_to: null,
+            is_active: true,
+            is_deleted: false,
+            created_at: '2026-04-01T00:00:00.000Z',
+          },
+        ],
+        error: null,
+      }),
+    };
+    const paymentMethodQuery = {
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') {
+          return { select: jest.fn().mockReturnValue(itemQuery) };
+        }
+        if (table === 'customer_insurance_coverages') {
+          return { select: jest.fn().mockReturnValue(coverageQuery) };
+        }
+        if (table === 'menu_billing_profiles') {
+          return { select: jest.fn().mockReturnValue(profileQuery) };
+        }
+        if (table === 'master_payment_methods') {
+          return { select: jest.fn().mockReturnValue(paymentMethodQuery) };
+        }
+        return {};
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { GET } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      `http://localhost/api/daily-reports/items?clinic_id=${clinicId}&report_date=2026-05-07&include_pricing_context=true`
+    );
+
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(client.from).toHaveBeenCalledWith('customer_insurance_coverages');
+    expect(client.from).toHaveBeenCalledWith('menu_billing_profiles');
+    expect(coverageQuery.in).toHaveBeenCalledWith('customer_id', [customerId]);
+    expect(coverageQuery.or).toHaveBeenCalledWith(
+      'effective_to.is.null,effective_to.gte.2026-05-07'
+    );
+    expect(profileQuery.in).toHaveBeenCalledWith('menu_id', [
+      menuId,
+      privateItem.menu_id,
+    ]);
+    expect(profileQuery.in).toHaveBeenCalledWith('revenue_context_code', [
+      'insurance',
+      'private',
+    ]);
+    expect(json.data.items[0].pricingContext).toMatchObject({
+      currentPatientBurdenRate: 30,
+      coverageResolutionSource: 'customer_default',
+      activeMenuBillingProfile: {
+        id: '123e4567-e89b-12d3-a456-426614174050',
+        calculationMethod: 'insurance_master',
+      },
+    });
+    expect(json.data.items[1].pricingContext).toMatchObject({
+      currentPatientBurdenRate: null,
+      coverageResolutionSource: null,
+      activeMenuBillingProfile: {
+        calculationMethod: 'fixed_amount',
+        fixedAmountYen: 4500,
+      },
+    });
   });
 
   test('GET can skip payment methods for lightweight item refreshes', async () => {
