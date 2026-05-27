@@ -206,9 +206,13 @@ describe('ServicesPricingSettings Phase 4A-5 billing profile UI', () => {
 
     render(<ServicesPricingSettings />);
 
-    expect(await screen.findByText('院別課金プロファイル')).toBeInTheDocument();
-    expect(screen.getByText('標準課金プロファイル')).toBeInTheDocument();
-    expect(screen.getAllByText('健康保険: 公式マスタ')).toHaveLength(2);
+    expect(
+      await screen.findByText('院別メニューの会計設定')
+    ).toBeInTheDocument();
+    expect(screen.getByText('標準テンプレの会計設定')).toBeInTheDocument();
+    expect(screen.getAllByText('健康保険: 公式マスタで保険計算')).toHaveLength(
+      2
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -240,7 +244,9 @@ describe('ServicesPricingSettings Phase 4A-5 billing profile UI', () => {
     expect(requestedUrls.some(url => url.includes('billing-profiles'))).toBe(
       false
     );
-    expect(screen.queryByText('院別課金プロファイル')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('院別メニューの会計設定')
+    ).not.toBeInTheDocument();
   });
 
   it('creates a clinic billing profile from the menu card', async () => {
@@ -250,14 +256,14 @@ describe('ServicesPricingSettings Phase 4A-5 billing profile UI', () => {
 
     render(<ServicesPricingSettings />);
 
-    await screen.findByText('院別課金プロファイル');
+    await screen.findByText('院別メニューの会計設定');
     await user.selectOptions(screen.getByLabelText('保険施術 課金方式'), [
       'fixed_amount',
     ]);
     await user.clear(screen.getByLabelText('保険施術 固定金額'));
     await user.type(screen.getByLabelText('保険施術 固定金額'), '4500');
     await user.click(
-      screen.getByRole('button', { name: '保険施術 プロファイル追加' })
+      screen.getByRole('button', { name: '保険施術 会計設定追加' })
     );
 
     await waitFor(() => {

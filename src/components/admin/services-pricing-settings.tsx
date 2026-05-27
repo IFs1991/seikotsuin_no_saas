@@ -35,10 +35,14 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   Copy,
   Clock,
   CopyPlus,
   Edit,
+  HardHat,
+  ShieldCheck,
+  TriangleAlert,
   Loader2,
   Plus,
   RefreshCw,
@@ -214,9 +218,9 @@ const CALCULATION_METHOD_OPTIONS: Array<{
   value: BillingCalculationMethod;
   label: string;
 }> = [
-  { value: 'insurance_master', label: '公式マスタ' },
-  { value: 'fixed_amount', label: '固定金額' },
-  { value: 'manual_estimate', label: '手入力概算' },
+  { value: 'insurance_master', label: '公式マスタで保険計算' },
+  { value: 'fixed_amount', label: '固定金額で自費計上' },
+  { value: 'manual_estimate', label: '手入力の概算として扱う' },
 ];
 
 const PATIENT_BURDEN_RATE_OPTIONS: Array<{
@@ -228,6 +232,17 @@ const PATIENT_BURDEN_RATE_OPTIONS: Array<{
   { value: '10', label: '1割' },
   { value: '20', label: '2割' },
   { value: '30', label: '3割' },
+];
+
+const BILLING_PROFILE_PRESETS: Array<{
+  key: RevenueContextCode;
+  label: string;
+  icon: typeof ShieldCheck;
+}> = [
+  { key: 'insurance', label: '保険計算', icon: ShieldCheck },
+  { key: 'private', label: '自費金額', icon: CircleDollarSign },
+  { key: 'traffic_accident', label: '事故概算', icon: TriangleAlert },
+  { key: 'workers_comp', label: '労災概算', icon: HardHat },
 ];
 
 const PublicBookingFormPreview = dynamic(
@@ -357,6 +372,34 @@ function normalizeBillingProfileFormForMethod(
   };
 }
 
+function normalizeBillingProfileFormForPreset(
+  form: BillingProfileFormState,
+  revenueContextCode: RevenueContextCode
+): BillingProfileFormState {
+  if (revenueContextCode === 'insurance') {
+    return normalizeBillingProfileFormForMethod(form, 'insurance_master');
+  }
+
+  if (revenueContextCode === 'private') {
+    return normalizeBillingProfileFormForMethod(form, 'fixed_amount');
+  }
+
+  if (
+    revenueContextCode === 'traffic_accident' ||
+    revenueContextCode === 'workers_comp'
+  ) {
+    return {
+      ...normalizeBillingProfileFormForMethod(form, 'manual_estimate'),
+      revenueContextCode,
+    };
+  }
+
+  return {
+    ...form,
+    revenueContextCode,
+  };
+}
+
 function parsePatientBurdenRate(
   value: BillingProfileFormState['defaultPatientBurdenRate']
 ): PatientBurdenRate | null {
@@ -420,6 +463,32 @@ function getBillingProfileSummary(profile: BillingProfile) {
 function getProfileStatusLabel(profile: BillingProfile) {
   if (profile.isDeleted) return '削除済み';
   return profile.isActive ? '有効' : '無効';
+}
+
+function getBillingPreviewText(form: BillingProfileFormState) {
+  if (form.calculationMethod === 'insurance_master') {
+    return `保存内容: ${getRevenueContextLabel(
+      form.revenueContextCode
+    )} / 公式マスタ計算 / ${
+      form.defaultPatientBurdenRate
+        ? `${Number(form.defaultPatientBurdenRate) / 10}割`
+        : '負担割合未設定'
+    }`;
+  }
+
+  if (form.calculationMethod === 'fixed_amount') {
+    return `保存内容: ${getRevenueContextLabel(
+      form.revenueContextCode
+    )} / 固定金額 ${
+      form.fixedAmountYen
+        ? `${Number(form.fixedAmountYen).toLocaleString()}円`
+        : '未入力'
+    }`;
+  }
+
+  return `保存内容: ${getRevenueContextLabel(
+    form.revenueContextCode
+  )} / 手入力概算 / 要確認`;
 }
 
 const buildMenuPayload = (
@@ -656,15 +725,9 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
   const handleRevenueContextChange = useCallback(
     (value: string) => {
       if (!isRevenueContextCode(value)) return;
-      updateForm({
-        revenueContextCode: value,
-        requiresReview:
-          value === 'traffic_accident' || value === 'workers_comp'
-            ? true
-            : form.requiresReview,
-      });
+      onFormChange(normalizeBillingProfileFormForPreset(form, value));
     },
-    [form.requiresReview, updateForm]
+    [form, onFormChange]
   );
 
   const fixedAmountDisabled =
@@ -679,9 +742,35 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
         <Badge variant='outline'>{profiles.length}件</Badge>
       </div>
 
+      <div className='grid gap-2 sm:grid-cols-4'>
+        {BILLING_PROFILE_PRESETS.map(preset => {
+          const Icon = preset.icon;
+          const isSelected = form.revenueContextCode === preset.key;
+
+          return (
+            <Button
+              key={preset.key}
+              type='button'
+              variant={isSelected ? 'default' : 'outline'}
+              size='sm'
+              className='justify-start'
+              disabled={disabled}
+              onClick={() =>
+                onFormChange(
+                  normalizeBillingProfileFormForPreset(form, preset.key)
+                )
+              }
+            >
+              <Icon className='mr-2 h-4 w-4' />
+              {preset.label}
+            </Button>
+          );
+        })}
+      </div>
+
       {profiles.length === 0 ? (
         <div className='rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500'>
-          登録済みの課金プロファイルはありません
+          まだ会計設定はありません
         </div>
       ) : (
         <div className='space-y-2'>
@@ -743,7 +832,9 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
 
       <div className='grid gap-3 md:grid-cols-6'>
         <div className='space-y-1 md:col-span-2'>
-          <Label htmlFor={`${entityName}-revenue-context`}>売上区分</Label>
+          <Label htmlFor={`${entityName}-revenue-context`}>
+            日報の売上区分
+          </Label>
           <select
             id={`${entityName}-revenue-context`}
             aria-label={`${entityName} 売上区分`}
@@ -760,7 +851,9 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           </select>
         </div>
         <div className='space-y-1 md:col-span-2'>
-          <Label htmlFor={`${entityName}-calculation-method`}>課金方式</Label>
+          <Label htmlFor={`${entityName}-calculation-method`}>
+            金額の決め方
+          </Label>
           <select
             id={`${entityName}-calculation-method`}
             aria-label={`${entityName} 課金方式`}
@@ -779,7 +872,7 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           </select>
         </div>
         <div className='space-y-1'>
-          <Label htmlFor={`${entityName}-fixed-amount`}>固定金額</Label>
+          <Label htmlFor={`${entityName}-fixed-amount`}>自費・物販の金額</Label>
           <Input
             id={`${entityName}-fixed-amount`}
             aria-label={`${entityName} 固定金額`}
@@ -793,7 +886,7 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           />
         </div>
         <div className='space-y-1'>
-          <Label htmlFor={`${entityName}-burden-rate`}>負担割合</Label>
+          <Label htmlFor={`${entityName}-burden-rate`}>保険の標準負担</Label>
           <select
             id={`${entityName}-burden-rate`}
             aria-label={`${entityName} 負担割合`}
@@ -813,7 +906,7 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           </select>
         </div>
         <div className='space-y-1 md:col-span-2'>
-          <Label htmlFor={`${entityName}-profession`}>職種/制度種別</Label>
+          <Label htmlFor={`${entityName}-profession`}>制度マスタ種別</Label>
           <Input
             id={`${entityName}-profession`}
             aria-label={`${entityName} 職種/制度種別`}
@@ -825,7 +918,7 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           />
         </div>
         <div className='space-y-1'>
-          <Label htmlFor={`${entityName}-effective-from`}>開始日</Label>
+          <Label htmlFor={`${entityName}-effective-from`}>使い始める日</Label>
           <Input
             id={`${entityName}-effective-from`}
             aria-label={`${entityName} 開始日`}
@@ -866,11 +959,14 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
           />
           <span>有効</span>
         </div>
+        <div className='rounded-md bg-blue-50 px-3 py-2 text-xs font-medium text-blue-800 md:col-span-4'>
+          {getBillingPreviewText(form)}
+        </div>
         <div className='flex items-end md:col-span-2'>
           <Button
             type='button'
             className='w-full'
-            aria-label={`${entityName} プロファイル追加`}
+            aria-label={`${entityName} 会計設定追加`}
             disabled={disabled || saving}
             onClick={onSubmit}
           >
@@ -879,7 +975,7 @@ const BillingProfilePanel = memo(function BillingProfilePanel({
             ) : (
               <Plus className='mr-2 h-4 w-4' />
             )}
-            プロファイル追加
+            この会計設定を追加
           </Button>
         </div>
       </div>
@@ -985,7 +1081,7 @@ const MenuTemplateCard = memo(function MenuTemplateCard({
       </div>
       {canManageTemplateBillingProfiles && (
         <BillingProfilePanel
-          title='標準課金プロファイル'
+          title='標準テンプレの会計設定'
           entityName={template.name}
           profiles={billingProfiles}
           form={billingForm}
@@ -1087,7 +1183,7 @@ const MenuListItem = memo(function MenuListItem({
       </div>
       {canManageBillingProfiles && (
         <BillingProfilePanel
-          title='院別課金プロファイル'
+          title='院別メニューの会計設定'
           entityName={menu.name}
           profiles={billingProfiles}
           form={billingForm}
