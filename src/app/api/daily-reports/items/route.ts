@@ -426,6 +426,7 @@ async function fetchCoveragesByCustomerId(
     .select(CUSTOMER_COVERAGE_SELECT)
     .eq('clinic_id', clinicId)
     .eq('payer_context_code', 'insurance')
+    .eq('verification_status', 'confirmed')
     .in('customer_id', customerIds)
     .lte('effective_from', reportDate)
     .or(`effective_to.is.null,effective_to.gte.${reportDate}`);
