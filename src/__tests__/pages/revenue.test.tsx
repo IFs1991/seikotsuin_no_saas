@@ -35,6 +35,11 @@ const mockRevenueData = {
   workersCompRevenue: 50000,
   productRevenue: 120000,
   ticketRevenue: 300000,
+  patientCopayEstimated: 72000,
+  insurerReceivableEstimated: 168000,
+  privateRevenueEstimated: 45000,
+  trafficAccidentEstimated: 90000,
+  workersCompEstimated: 50000,
   needsReviewCount: 2,
   blockedCount: 1,
   careEpisodeMetrics: {
@@ -75,6 +80,33 @@ const mockRevenueData = {
       itemCount: 2,
       needsReviewCount: 1,
       blockedCount: 1,
+    },
+  ],
+  revenueBreakdownSummary: [
+    {
+      amountRole: 'patient_copay_estimated',
+      lineCount: 12,
+      estimatedAmount: 72000,
+    },
+    {
+      amountRole: 'insurer_receivable_estimated',
+      lineCount: 12,
+      estimatedAmount: 168000,
+    },
+    {
+      amountRole: 'private_revenue_estimated',
+      lineCount: 3,
+      estimatedAmount: 45000,
+    },
+    {
+      amountRole: 'traffic_accident_receivable_estimated',
+      lineCount: 2,
+      estimatedAmount: 90000,
+    },
+    {
+      amountRole: 'workers_comp_receivable_estimated',
+      lineCount: 1,
+      estimatedAmount: 50000,
     },
   ],
   menuRanking: [
@@ -133,6 +165,7 @@ const mockRevenueEstimateDetails = {
           unitAmount: 9000,
           totalAmount: 9000,
           sortOrder: 1,
+          amountRole: 'traffic_accident_receivable_estimated',
           insuranceFeeItemId: null,
           scheduleCode: null,
           feeItemCode: null,
@@ -248,6 +281,19 @@ describe('RevenuePage', () => {
       expect(screen.getByText('上書き')).toBeInTheDocument();
     });
 
+    test('should display revenue breakdown summary by amount role', () => {
+      render(<RevenuePage />);
+
+      expect(screen.getByText('売上見込み内訳')).toBeInTheDocument();
+      expect(screen.getAllByText('患者負担見込み').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('72,000').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('保険者請求見込み').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('168,000').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('交通事故概算').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('90,000').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('12件').length).toBeGreaterThan(0);
+    });
+
     test('admin should display revenue estimate amount details', () => {
       mockUseUserProfile.mockReturnValue({
         profile: {
@@ -267,7 +313,11 @@ describe('RevenuePage', () => {
       expect(
         screen.getByText('交通事故: 手入力概算・要確認')
       ).toBeInTheDocument();
-      expect(screen.getByText('JUDO_TRAFFIC_202606')).toBeInTheDocument();
+      expect(
+        screen.getByText('手入力概算 / 公式マスタ自動単価ではありません')
+      ).toBeInTheDocument();
+      expect(screen.getByText('交通事故概算: 9,000')).toBeInTheDocument();
+      expect(screen.queryByText('JUDO_TRAFFIC_202606')).not.toBeInTheDocument();
       expect(screen.queryByText('請求確定額')).not.toBeInTheDocument();
     });
 

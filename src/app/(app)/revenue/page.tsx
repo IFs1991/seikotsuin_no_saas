@@ -6,6 +6,11 @@ import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 import type { RevenueContextCode } from '@/lib/revenue-context';
+import type {
+  RevenueBreakdownSummary,
+  RevenueEstimateAmountDetail,
+  RevenueEstimateAmountDetailLine,
+} from '@/types/api';
 import {
   Card,
   CardHeader,
@@ -46,6 +51,74 @@ function formatWarningCodes(
     .join(' / ');
 }
 
+function isManualEstimateContext(code: RevenueContextCode): boolean {
+  return code === 'traffic_accident' || code === 'workers_comp';
+}
+
+function formatEstimateSource(detail: RevenueEstimateAmountDetail): string {
+  if (isManualEstimateContext(detail.revenueContextCode)) {
+    return '手入力概算 / 公式マスタ自動単価ではありません';
+  }
+
+  return detail.usedScheduleCode ?? 'マスタ根拠なし';
+}
+
+function formatAmountRoleLabel(amountRole: string | null): string {
+  switch (amountRole) {
+    case 'gross_estimated_total':
+      return '療養費見込み';
+    case 'patient_copay_estimated':
+      return '患者負担見込み';
+    case 'insurer_receivable_estimated':
+      return '保険者請求見込み';
+    case 'private_revenue_estimated':
+      return '自費売上見込み';
+    case 'traffic_accident_receivable_estimated':
+      return '交通事故概算';
+    case 'workers_comp_receivable_estimated':
+      return '労災概算';
+    case 'adjustment':
+      return '調整';
+    default:
+      return '内訳未分類';
+  }
+}
+
+function formatLineSummary(line: RevenueEstimateAmountDetailLine): string {
+  return `${formatAmountRoleLabel(line.amountRole)}: ${line.totalAmount.toLocaleString()}`;
+}
+
+type RevenueBreakdownDisplayRow = {
+  amountRole: string;
+  label: string;
+  lineCount: number;
+  estimatedAmount: number;
+};
+
+const BREAKDOWN_DISPLAY_ROLES = [
+  'patient_copay_estimated',
+  'insurer_receivable_estimated',
+  'private_revenue_estimated',
+  'traffic_accident_receivable_estimated',
+  'workers_comp_receivable_estimated',
+] as const;
+
+function buildBreakdownDisplayRows(
+  summary: RevenueBreakdownSummary[]
+): RevenueBreakdownDisplayRow[] {
+  const byRole = new Map(summary.map(row => [row.amountRole, row]));
+
+  return BREAKDOWN_DISPLAY_ROLES.map(amountRole => {
+    const row = byRole.get(amountRole);
+    return {
+      amountRole,
+      label: formatAmountRoleLabel(amountRole),
+      lineCount: row?.lineCount ?? 0,
+      estimatedAmount: row?.estimatedAmount ?? 0,
+    };
+  });
+}
+
 const RevenuePage: React.FC = () => {
   const {
     profile,
@@ -72,6 +145,7 @@ const RevenuePage: React.FC = () => {
     needsReviewCount,
     blockedCount,
     revenueContextSummary,
+    revenueBreakdownSummary,
     careEpisodeMetrics,
     revenueEstimateSummary,
     menuRanking,
@@ -87,6 +161,10 @@ const RevenuePage: React.FC = () => {
   } = useRevenue(clinicId, {
     enabled: Boolean(clinicId) && !profileLoading && !profileError,
   });
+  const revenueBreakdownRows = React.useMemo(
+    () => buildBreakdownDisplayRows(revenueBreakdownSummary),
+    [revenueBreakdownSummary]
+  );
   const canViewEstimateDetails = canAccessAdminUIWithCompat(profile?.role);
   const {
     details: revenueEstimateDetails,
@@ -416,6 +494,49 @@ const RevenuePage: React.FC = () => {
           </CardContent>
         </Card>
 
+        <Card className='w-full bg-card mb-4'>
+          <CardHeader className='bg-card'>
+            <CardTitle className='text-center bg-card'>
+              売上見込み内訳
+            </CardTitle>
+            <CardDescription className='bg-card'>
+              金額確定 snapshot lines に基づく期間集計
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='bg-card'>
+            <div className='overflow-x-auto'>
+              <table className='w-full text-sm' aria-label='売上見込み内訳'>
+                <thead>
+                  <tr className='border-b text-left'>
+                    <th className='py-2 pr-3 font-medium'>区分</th>
+                    <th className='py-2 pr-3 font-medium text-right'>件数</th>
+                    <th className='py-2 font-medium text-right'>見込み額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {revenueBreakdownRows.map(row => (
+                    <tr
+                      key={row.amountRole}
+                      className='border-b last:border-b-0'
+                    >
+                      <td className='py-2 pr-3'>{row.label}</td>
+                      <td className='py-2 pr-3 text-right'>
+                        {row.lineCount.toLocaleString()}件
+                      </td>
+                      <td className='py-2 text-right font-medium'>
+                        {row.estimatedAmount.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className='mt-3 text-xs text-gray-600 dark:text-gray-300'>
+              交通事故・労災は手入力概算です。請求確定額ではありません。
+            </p>
+          </CardContent>
+        </Card>
+
         {canViewEstimateDetails && (
           <Card className='w-full bg-card mb-4'>
             <CardHeader className='bg-card'>
@@ -494,9 +615,7 @@ const RevenuePage: React.FC = () => {
                           </td>
                           <td className='py-2 min-w-48'>
                             <div className='space-y-1'>
-                              <p>
-                                {detail.usedScheduleCode ?? 'マスタ根拠なし'}
-                              </p>
+                              <p>{formatEstimateSource(detail)}</p>
                               <p className='text-xs text-gray-600 dark:text-gray-300'>
                                 {detail.patientBurdenRate === null
                                   ? '負担割合未確定'
@@ -509,9 +628,9 @@ const RevenuePage: React.FC = () => {
                                   key={line.id}
                                   className='text-xs text-gray-600 dark:text-gray-300'
                                 >
-                                  {line.feeItemCode ?? '手入力概算ライン'}
-                                  {' / '}
-                                  {line.amountRole ?? '内訳未分類'}
+                                  {line.feeItemCode
+                                    ? `${line.feeItemCode} / ${formatLineSummary(line)}`
+                                    : formatLineSummary(line)}
                                 </p>
                               ))}
                             </div>
