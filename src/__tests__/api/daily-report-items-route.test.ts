@@ -296,6 +296,10 @@ describe('/api/daily-reports/items', () => {
     expect(response.status).toBe(200);
     expect(client.from).toHaveBeenCalledWith('customer_insurance_coverages');
     expect(client.from).toHaveBeenCalledWith('menu_billing_profiles');
+    expect(coverageQuery.eq).toHaveBeenCalledWith(
+      'verification_status',
+      'confirmed'
+    );
     expect(coverageQuery.in).toHaveBeenCalledWith('customer_id', [customerId]);
     expect(coverageQuery.or).toHaveBeenCalledWith(
       'effective_to.is.null,effective_to.gte.2026-05-07'
