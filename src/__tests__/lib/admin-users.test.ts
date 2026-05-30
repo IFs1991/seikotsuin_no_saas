@@ -1,10 +1,13 @@
 import {
   CLINIC_FILTER_ALL,
   CLINIC_ADMIN_ASSIGNABLE_ROLES,
+  CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
   ROLE_FILTER_ALL,
   buildPermissionFilters,
   canClinicAdminManagePermissionRole,
+  createAccountOnlyPayload,
   createAssignPermissionPayload,
+  createEmptyPermissionFormState,
   createPermissionFormState,
   createUpdatePermissionPayload,
   getCandidateInputLabel,
@@ -43,6 +46,7 @@ describe('admin users helpers', () => {
 
   test('admin role does not require clinic id and sends null clinic id', () => {
     const formState = {
+      ...createEmptyPermissionFormState('admin'),
       user_id: '  00000000-0000-0000-0000-000000000001  ',
       role: 'admin' as const,
       clinic_id: 'clinic-1',
@@ -59,6 +63,7 @@ describe('admin users helpers', () => {
   test('user selection is required for permission assignment', () => {
     expect(
       validatePermissionForm({
+        ...createEmptyPermissionFormState(),
         user_id: '   ',
         role: 'clinic_admin',
         clinic_id: 'clinic-1',
@@ -69,6 +74,7 @@ describe('admin users helpers', () => {
   test('clinic scoped roles require clinic id', () => {
     expect(
       validatePermissionForm({
+        ...createEmptyPermissionFormState(),
         user_id: '00000000-0000-0000-0000-000000000001',
         role: 'clinic_admin',
         clinic_id: '',
@@ -79,6 +85,7 @@ describe('admin users helpers', () => {
   test('update payload converts blank clinic id to null', () => {
     expect(
       createUpdatePermissionPayload({
+        ...createEmptyPermissionFormState('staff'),
         user_id: '00000000-0000-0000-0000-000000000001',
         role: 'staff',
         clinic_id: '   ',
@@ -100,6 +107,28 @@ describe('admin users helpers', () => {
       user_id: 'user-1',
       role: 'clinic_admin',
       clinic_id: 'clinic-1',
+      create_mode: 'existing',
+      full_name: '',
+      email: '',
+      password: '',
+    });
+  });
+
+  test('account-only mode validates and builds payload without role or clinic', () => {
+    const formState = {
+      ...createEmptyPermissionFormState(),
+      create_mode: CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
+      full_name: '  未付与 太郎  ',
+      email: '  PROFILE-ONLY@example.com  ',
+      password: 'SafePass123!',
+      clinic_id: '',
+    };
+
+    expect(validatePermissionForm(formState)).toBeNull();
+    expect(createAccountOnlyPayload(formState)).toEqual({
+      full_name: '未付与 太郎',
+      email: 'profile-only@example.com',
+      password: 'SafePass123!',
     });
   });
 

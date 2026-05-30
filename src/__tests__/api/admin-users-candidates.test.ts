@@ -112,9 +112,7 @@ describe('GET /api/admin/users/candidates', () => {
       }),
     };
 
-    createAdminClientMock.mockReturnValue(
-      adminClient as unknown as ReturnType<typeof createAdminClient>
-    );
+    createAdminClientMock.mockReturnValue(adminClient);
 
     const { GET } = await import('@/app/api/admin/users/candidates/route');
     const response = await GET(
@@ -140,6 +138,246 @@ describe('GET /api/admin/users/candidates', () => {
         clinic_name: '新宿院',
         current_role: 'manager',
         permission_clinic_name: '新宿院',
+        candidate_source: 'staff',
+      }),
+    ]);
+  });
+
+  it('returns profile-only candidates for admin when include_unassigned is true', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+    });
+
+    const staffSearchQuery = createListQuery([]);
+    const profileSearchQuery = createListQuery([{ user_id: 'profile-only-1' }]);
+    const staffByProfileQuery = createListQuery([]);
+    const unassignedProfilesQuery = createListQuery([
+      {
+        user_id: 'profile-only-1',
+        email: 'profile-only@example.com',
+        full_name: '未付与 太郎',
+        is_active: true,
+      },
+    ]);
+    const unassignedPermissionsQuery = createListQuery([]);
+    const unassignedStaffQuery = createListQuery([]);
+
+    const tableQueries = {
+      staff: [staffSearchQuery, staffByProfileQuery, unassignedStaffQuery],
+      profiles: [profileSearchQuery, unassignedProfilesQuery],
+      user_permissions: [unassignedPermissionsQuery],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/admin/users/candidates/route');
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/admin/users/candidates?search=profile&include_unassigned=true'
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(unassignedProfilesQuery.eq).toHaveBeenCalledWith(
+      'is_active',
+      true
+    );
+    expect(unassignedProfilesQuery.or).toHaveBeenCalledWith(
+      'full_name.ilike.%profile%,email.ilike.%profile%'
+    );
+    expect(unassignedPermissionsQuery.in).toHaveBeenCalledWith('staff_id', [
+      'profile-only-1',
+    ]);
+    expect(unassignedStaffQuery.in).toHaveBeenCalledWith('id', [
+      'profile-only-1',
+    ]);
+    expect(body.data.items).toEqual([
+      {
+        user_id: 'profile-only-1',
+        email: 'profile-only@example.com',
+        full_name: '未付与 太郎',
+        clinic_id: null,
+        clinic_name: null,
+        staff_role: null,
+        current_role: null,
+        permission_id: null,
+        permission_clinic_id: null,
+        permission_clinic_name: null,
+        candidate_source: 'profile',
+      },
+    ]);
+  });
+
+  it('does not return profile-only candidates without include_unassigned', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+    });
+
+    const staffSearchQuery = createListQuery([]);
+    const profileSearchQuery = createListQuery([{ user_id: 'profile-only-1' }]);
+    const staffByProfileQuery = createListQuery([]);
+    const tableQueries = {
+      staff: [staffSearchQuery, staffByProfileQuery],
+      profiles: [profileSearchQuery],
+      user_permissions: [],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/admin/users/candidates/route');
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/admin/users/candidates?search=profile'
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.items).toEqual([]);
+  });
+
+  it('does not return profile-only candidates to clinic_admin even when requested', async () => {
+    const scopedClinicIds = ['clinic-a'];
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'clinic-admin-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-a',
+        clinic_scope_ids: scopedClinicIds,
+      },
+      supabase: {},
+    });
+
+    const staffSearchQuery = createListQuery([]);
+    const profileSearchQuery = createListQuery([{ user_id: 'profile-only-1' }]);
+    const staffByProfileQuery = createListQuery([]);
+    const tableQueries = {
+      staff: [staffSearchQuery, staffByProfileQuery],
+      profiles: [profileSearchQuery],
+      user_permissions: [],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/admin/users/candidates/route');
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/admin/users/candidates?search=profile&include_unassigned=true'
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(staffSearchQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(body.data.items).toEqual([]);
+  });
+
+  it('excludes inactive and already-permitted profiles from unassigned candidates', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+    });
+
+    const staffSearchQuery = createListQuery([]);
+    const unassignedProfilesQuery = createListQuery([
+      {
+        user_id: 'active-1',
+        email: 'active@example.com',
+        full_name: '有効 太郎',
+        is_active: true,
+      },
+      {
+        user_id: 'inactive-1',
+        email: 'inactive@example.com',
+        full_name: '無効 花子',
+        is_active: false,
+      },
+      {
+        user_id: 'permitted-1',
+        email: 'permitted@example.com',
+        full_name: '権限 済',
+        is_active: true,
+      },
+    ]);
+    const unassignedPermissionsQuery = createListQuery([
+      { staff_id: 'permitted-1' },
+    ]);
+    const unassignedStaffQuery = createListQuery([]);
+
+    const tableQueries = {
+      staff: [staffSearchQuery, unassignedStaffQuery],
+      profiles: [unassignedProfilesQuery],
+      user_permissions: [unassignedPermissionsQuery],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/admin/users/candidates/route');
+    const response = await GET(
+      new NextRequest(
+        'http://localhost/api/admin/users/candidates?include_unassigned=true'
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.items).toEqual([
+      expect.objectContaining({
+        user_id: 'active-1',
+        candidate_source: 'profile',
       }),
     ]);
   });
@@ -198,9 +436,7 @@ describe('GET /api/admin/users/candidates', () => {
       }),
     };
 
-    createAdminClientMock.mockReturnValue(
-      adminClient as unknown as ReturnType<typeof createAdminClient>
-    );
+    createAdminClientMock.mockReturnValue(adminClient);
 
     const { GET } = await import('@/app/api/admin/users/candidates/route');
     const response = await GET(
@@ -223,6 +459,7 @@ describe('GET /api/admin/users/candidates', () => {
         user_id: 'user-1',
         clinic_id: 'clinic-b',
         clinic_name: '渋谷院',
+        candidate_source: 'staff',
       }),
     ]);
   });

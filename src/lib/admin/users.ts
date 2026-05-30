@@ -18,6 +18,7 @@ export const USER_CANDIDATE_MIN_SEARCH_LENGTH = 1;
 export const USER_CANDIDATE_LIMIT = 20;
 export const CREATE_ACCOUNT_MODE_EXISTING = 'existing';
 export const CREATE_ACCOUNT_MODE_NEW = 'new';
+export const CREATE_ACCOUNT_MODE_ACCOUNT_ONLY = 'account_only';
 export const CREATABLE_ADMIN_ACCOUNT_ROLES = [
   'clinic_admin',
   'manager',
@@ -28,7 +29,8 @@ export const CREATABLE_ADMIN_ACCOUNT_ROLES = [
 export type AdminUsersRoleFilter = AdminUserRole | typeof ROLE_FILTER_ALL;
 export type AccountCreateMode =
   | typeof CREATE_ACCOUNT_MODE_EXISTING
-  | typeof CREATE_ACCOUNT_MODE_NEW;
+  | typeof CREATE_ACCOUNT_MODE_NEW
+  | typeof CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
 
 export type PermissionEntry = {
   id: string;
@@ -41,6 +43,8 @@ export type PermissionEntry = {
   profile_name?: string | null;
   created_at?: string | null;
 };
+
+export type CandidateSource = 'staff' | 'profile';
 
 type PermissionClinicRelation =
   | { name: string | null }[]
@@ -74,6 +78,7 @@ export type UserPermissionCandidate = {
   permission_id: string | null;
   permission_clinic_id: string | null;
   permission_clinic_name: string | null;
+  candidate_source: CandidateSource;
 };
 
 export type PermissionFilters = {
@@ -96,6 +101,13 @@ export type AssignPermissionPayload = {
   user_id: string;
   role: AdminUserRole;
   clinic_id: string | null;
+  candidate_source?: CandidateSource;
+};
+
+export type AccountOnlyCreatePayload = {
+  full_name: string;
+  email: string;
+  password: string;
 };
 
 export type CreateAccountPayload = {
@@ -281,6 +293,9 @@ export function getPermissionClinicId(
 export function validatePermissionForm(
   formState: PermissionFormState
 ): string | null {
+  const isAccountOnlyMode =
+    formState.create_mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
+
   if (
     formState.create_mode === CREATE_ACCOUNT_MODE_EXISTING &&
     !formState.user_id.trim()
@@ -288,7 +303,7 @@ export function validatePermissionForm(
     return 'ユーザーを選択してください';
   }
 
-  if (formState.create_mode === CREATE_ACCOUNT_MODE_NEW) {
+  if (formState.create_mode === CREATE_ACCOUNT_MODE_NEW || isAccountOnlyMode) {
     if (!formState.full_name.trim()) {
       return '氏名を入力してください';
     }
@@ -298,6 +313,13 @@ export function validatePermissionForm(
     if (!formState.password.trim()) {
       return '初期パスワードを入力してください';
     }
+  }
+
+  if (isAccountOnlyMode) {
+    return null;
+  }
+
+  if (formState.create_mode === CREATE_ACCOUNT_MODE_NEW) {
     if (!CREATABLE_ADMIN_ACCOUNT_ROLE_SET.has(formState.role)) {
       return '新規作成できるロールを選択してください';
     }
@@ -311,6 +333,16 @@ export function validatePermissionForm(
   }
 
   return null;
+}
+
+export function createAccountOnlyPayload(
+  formState: PermissionFormState
+): AccountOnlyCreatePayload {
+  return {
+    full_name: formState.full_name.trim(),
+    email: formState.email.trim().toLowerCase(),
+    password: formState.password,
+  };
 }
 
 export function createAssignPermissionPayload(

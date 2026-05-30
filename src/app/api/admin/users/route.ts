@@ -32,6 +32,7 @@ const AssignPermissionSchema = z.object({
   user_id: z.string().uuid(),
   clinic_id: z.string().uuid().nullable().optional(),
   role: z.enum(ADMIN_USER_ROLE_VALUES),
+  candidate_source: z.enum(['staff', 'profile']).optional(),
   create_account: z.literal(false).optional(),
 });
 
@@ -50,6 +51,10 @@ type ExistingPermissionRow = {
   role: string;
   clinic_id: string | null;
   username: string | null;
+};
+type StaffScopeRow = {
+  id: string;
+  clinic_id: string | null;
 };
 type AdminClient = ReturnType<typeof createAdminClient>;
 type CreatedAccountPersistenceInput = {
@@ -285,6 +290,76 @@ async function syncAssignedStaffResource({
       { onConflict: 'id' }
     )
   );
+}
+
+async function rollbackPromotedProfileRecords(
+  adminClient: AdminClient,
+  userId: string
+) {
+  await Promise.allSettled([
+    adminClient.from('resources').delete().eq('id', userId),
+    adminClient.from('staff').delete().eq('id', userId),
+  ]);
+}
+
+async function syncProfileOnlyClinicRecords({
+  adminClient,
+  actorUserId,
+  targetUserId,
+  clinicId,
+  name,
+  email,
+  role,
+}: {
+  adminClient: AdminClient;
+  actorUserId: string;
+  targetUserId: string;
+  clinicId: string | null;
+  name: string | null;
+  email: string;
+  role: AdminUserRole;
+}): Promise<AccountWriteFailure | null> {
+  if (role === 'admin' || !clinicId) {
+    return null;
+  }
+
+  const timestamp = new Date().toISOString();
+  const fullName = name?.trim() || email;
+  const persistenceInput: CreatedAccountPersistenceInput = {
+    adminClient,
+    actorUserId,
+    createdUserId: targetUserId,
+    fullName,
+    email,
+    role,
+    clinicId,
+    timestamp,
+  };
+
+  const [staffFailure, resourceFailure] = await Promise.all([
+    resolveAccountWriteFailure(
+      'upsert_staff',
+      'スタッフ情報の同期に失敗しました',
+      adminClient
+        .from('staff')
+        .upsert(buildCreatedStaffRow(persistenceInput), { onConflict: 'id' })
+    ),
+    resolveAccountWriteFailure(
+      'upsert_resources',
+      'スタッフリソースの同期に失敗しました',
+      adminClient
+        .from('resources')
+        .upsert(buildCreatedResourceRow(persistenceInput), { onConflict: 'id' })
+    ),
+  ]);
+
+  const writeFailure = staffFailure ?? resourceFailure;
+  if (writeFailure) {
+    await rollbackPromotedProfileRecords(adminClient, targetUserId);
+    return writeFailure;
+  }
+
+  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -599,14 +674,19 @@ export async function POST(request: NextRequest) {
       .select('id, hashed_password, username, role, clinic_id')
       .eq('staff_id', user_id)
       .maybeSingle();
-    const staffPromise = isClinicAdminActor(permissions)
-      ? adminSupabase
-          .from('staff')
-          .select('id, clinic_id')
-          .eq('id', user_id)
-          .eq('clinic_id', clinic_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null });
+    const staffPromise =
+      role === 'admin'
+        ? Promise.resolve({ data: null, error: null })
+        : (() => {
+            const staffQuery = adminSupabase
+              .from('staff')
+              .select('id, clinic_id')
+              .eq('id', user_id);
+
+            return isClinicAdminActor(permissions)
+              ? staffQuery.eq('clinic_id', clinic_id).maybeSingle()
+              : staffQuery.maybeSingle();
+          })();
 
     const [
       { data: profile, error: profileError },
@@ -662,6 +742,9 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('権限情報の取得に失敗しました', 500);
     }
 
+    const staffRow: StaffScopeRow | null = staff
+      ? { id: staff.id, clinic_id: staff.clinic_id }
+      : null;
     const username = profile.email;
     const targetClinicId = role === 'admin' ? null : (clinic_id ?? null);
 
@@ -679,6 +762,36 @@ export async function POST(request: NextRequest) {
           ADMIN_USERS_ACCESS_MESSAGES.permissionForbiddenForClinicAdmin,
           403
         );
+      }
+    }
+
+    const shouldPromoteProfileOnly =
+      !staffRow && role !== 'admin' && targetClinicId !== null;
+
+    if (shouldPromoteProfileOnly) {
+      const promotionFailure = await syncProfileOnlyClinicRecords({
+        adminClient: adminSupabase,
+        actorUserId: auth.id,
+        targetUserId: user_id,
+        clinicId: targetClinicId,
+        name: profile.full_name,
+        email: profile.email,
+        role,
+      });
+
+      if (promotionFailure) {
+        logError(promotionFailure.error, {
+          endpoint: '/api/admin/users',
+          method: 'POST',
+          userId: auth.id,
+          params: {
+            user_id,
+            role,
+            clinic_id: targetClinicId,
+            stage: promotionFailure.stage,
+          },
+        });
+        return createErrorResponse(promotionFailure.message, 500);
       }
     }
 
@@ -714,6 +827,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.error) {
+      if (shouldPromoteProfileOnly) {
+        await rollbackPromotedProfileRecords(adminSupabase, user_id);
+      }
+
       logError(result.error, {
         endpoint: '/api/admin/users',
         method: 'POST',
@@ -723,28 +840,30 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('権限の付与に失敗しました', 500);
     }
 
-    const resourceSyncFailure = await syncAssignedStaffResource({
-      adminClient: adminSupabase,
-      actorUserId: auth.id,
-      targetUserId: user_id,
-      clinicId: targetClinicId,
-      name: profile.full_name,
-      email: profile.email,
-      role,
-    });
-    if (resourceSyncFailure) {
-      logError(resourceSyncFailure.error, {
-        endpoint: '/api/admin/users',
-        method: 'POST',
-        userId: auth.id,
-        params: {
-          user_id,
-          role,
-          clinic_id: targetClinicId,
-          stage: resourceSyncFailure.stage,
-        },
+    if (!shouldPromoteProfileOnly) {
+      const resourceSyncFailure = await syncAssignedStaffResource({
+        adminClient: adminSupabase,
+        actorUserId: auth.id,
+        targetUserId: user_id,
+        clinicId: targetClinicId,
+        name: profile.full_name,
+        email: profile.email,
+        role,
       });
-      return createErrorResponse(resourceSyncFailure.message, 500);
+      if (resourceSyncFailure) {
+        logError(resourceSyncFailure.error, {
+          endpoint: '/api/admin/users',
+          method: 'POST',
+          userId: auth.id,
+          params: {
+            user_id,
+            role,
+            clinic_id: targetClinicId,
+            stage: resourceSyncFailure.stage,
+          },
+        });
+        return createErrorResponse(resourceSyncFailure.message, 500);
+      }
     }
 
     void AuditLogger.logAdminAction(

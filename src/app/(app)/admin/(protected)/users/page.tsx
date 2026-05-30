@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/table';
 import {
   CLINIC_FILTER_ALL,
+  CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
   CREATE_ACCOUNT_MODE_EXISTING,
   CREATE_ACCOUNT_MODE_NEW,
   DEFAULT_ADMIN_USER_ROLE,
@@ -42,6 +43,7 @@ import {
   getCreatableAdminAccountRoleOptions,
   buildPermissionFilters,
   canClinicAdminManagePermissionRole,
+  createAccountOnlyPayload,
   createAssignPermissionPayload,
   createEmptyPermissionFormState,
   createPermissionFormState,
@@ -160,6 +162,7 @@ export default function AdminUsersPage() {
     error,
     fetchPermissions,
     assignPermission,
+    createAccountOnlyUser,
     updatePermission,
     applyPermissionToList,
     removePermissionFromList,
@@ -223,10 +226,14 @@ export default function AdminUsersPage() {
   const [formState, setFormState] = useState<PermissionFormState>(() =>
     createEmptyPermissionFormState(defaultFormRole)
   );
-  const isCreateAccountMode = formState.create_mode === CREATE_ACCOUNT_MODE_NEW;
+  const isStoreAccountCreateMode =
+    formState.create_mode === CREATE_ACCOUNT_MODE_NEW;
+  const isAccountOnlyCreateMode =
+    formState.create_mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
+  const usesAccountFields = isStoreAccountCreateMode || isAccountOnlyCreateMode;
   const formRoleOptions = useMemo(
-    () => (isCreateAccountMode ? creatableRoleOptions : roleOptions),
-    [creatableRoleOptions, isCreateAccountMode, roleOptions]
+    () => (isStoreAccountCreateMode ? creatableRoleOptions : roleOptions),
+    [creatableRoleOptions, isStoreAccountCreateMode, roleOptions]
   );
 
   const currentFilters = useMemo(
@@ -269,7 +276,7 @@ export default function AdminUsersPage() {
   }, [defaultFormRole, roleOptions]);
 
   useEffect(() => {
-    if (!isCreateAccountMode || creatableRoleOptions.length === 0) {
+    if (!isStoreAccountCreateMode || creatableRoleOptions.length === 0) {
       return;
     }
 
@@ -278,7 +285,7 @@ export default function AdminUsersPage() {
         ? current
         : { ...current, role: creatableRoleOptions[0].value }
     );
-  }, [creatableRoleOptions, isCreateAccountMode]);
+  }, [creatableRoleOptions, isStoreAccountCreateMode]);
 
   useEffect(() => {
     const trimmedSearch = deferredUserSearch.trim();
@@ -286,7 +293,7 @@ export default function AdminUsersPage() {
 
     if (
       editingPermissionId ||
-      isCreateAccountMode ||
+      usesAccountFields ||
       !isUserPickerOpen ||
       trimmedSearch.length < USER_CANDIDATE_MIN_SEARCH_LENGTH ||
       (selectedLabel && trimmedSearch === selectedLabel)
@@ -297,7 +304,10 @@ export default function AdminUsersPage() {
 
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      fetchUserCandidates(trimmedSearch, { signal: controller.signal });
+      fetchUserCandidates(trimmedSearch, {
+        signal: controller.signal,
+        includeUnassigned: isHqAdmin,
+      });
     }, 200);
 
     return () => {
@@ -309,9 +319,10 @@ export default function AdminUsersPage() {
     deferredUserSearch,
     editingPermissionId,
     fetchUserCandidates,
-    isCreateAccountMode,
+    isHqAdmin,
     isUserPickerOpen,
     selectedUserLabel,
+    usesAccountFields,
   ]);
 
   useEffect(() => {
@@ -369,12 +380,25 @@ export default function AdminUsersPage() {
         return;
       }
 
+      if (isAccountOnlyCreateMode) {
+        const created = await createAccountOnlyUser(
+          createAccountOnlyPayload(formState)
+        );
+        if (created) {
+          setNotice(
+            'ユーザーアカウントのみ作成しました。権限はまだ付与されていません。'
+          );
+          resetForm();
+        }
+        return;
+      }
+
       const created = await assignPermission(
         createAssignPermissionPayload(formState)
       );
       if (created) {
         setNotice(
-          isCreateAccountMode
+          isStoreAccountCreateMode
             ? 'アカウントを作成しました'
             : '権限を付与しました'
         );
@@ -384,9 +408,11 @@ export default function AdminUsersPage() {
     },
     [
       assignPermission,
+      createAccountOnlyUser,
       editingPermissionId,
       formState,
-      isCreateAccountMode,
+      isAccountOnlyCreateMode,
+      isStoreAccountCreateMode,
       resetForm,
       syncPermissionList,
       updatePermission,
@@ -493,17 +519,19 @@ export default function AdminUsersPage() {
 
   const handleCreateModeChange = useCallback(
     (mode: AccountCreateMode) => {
-      const shouldCreateAccount = mode === CREATE_ACCOUNT_MODE_NEW;
+      const shouldCreateStoreAccount = mode === CREATE_ACCOUNT_MODE_NEW;
+      const shouldUseAccountFields =
+        shouldCreateStoreAccount || mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
 
       setFormState(prev => ({
         ...prev,
         create_mode: mode,
-        user_id: shouldCreateAccount ? '' : prev.user_id,
-        full_name: shouldCreateAccount ? prev.full_name : '',
-        email: shouldCreateAccount ? prev.email : '',
+        user_id: shouldUseAccountFields ? '' : prev.user_id,
+        full_name: shouldUseAccountFields ? prev.full_name : '',
+        email: shouldUseAccountFields ? prev.email : '',
         password: '',
         role:
-          shouldCreateAccount &&
+          shouldCreateStoreAccount &&
           !creatableRoleOptions.some(option => option.value === prev.role)
             ? (creatableRoleOptions[0]?.value ?? defaultFormRole)
             : prev.role,
@@ -577,9 +605,11 @@ export default function AdminUsersPage() {
         title={
           editingPermissionId
             ? '権限編集'
-            : isCreateAccountMode
+            : isStoreAccountCreateMode
               ? '店舗ユーザー作成'
-              : '既存アカウントへの権限付与'
+              : isAccountOnlyCreateMode
+                ? 'ユーザーアカウントのみ作成'
+                : '既存アカウントへの権限付与'
         }
         description='店舗を作る画面ではありません。選択済みの所属店舗へログインできる人を追加・管理します。'
       >
@@ -611,15 +641,35 @@ export default function AdminUsersPage() {
               >
                 新規店舗ユーザーを作成
               </Button>
+              {isHqAdmin && (
+                <Button
+                  type='button'
+                  variant={
+                    formState.create_mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY
+                      ? 'default'
+                      : 'ghost'
+                  }
+                  onClick={() =>
+                    handleCreateModeChange(CREATE_ACCOUNT_MODE_ACCOUNT_ONLY)
+                  }
+                >
+                  ユーザーアカウントのみ作成
+                </Button>
+              )}
             </div>
           )}
-          {isCreateAccountMode && (
+          {isStoreAccountCreateMode && (
             <div className='rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900'>
               作成するのは子テナントではなく、所属店舗に紐づくログインアカウントです。作成後すぐにログインできます。
               初期パスワードは安全な方法で本人へ共有してください。
             </div>
           )}
-          {!isCreateAccountMode ? (
+          {isAccountOnlyCreateMode && (
+            <div className='rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900'>
+              ログインアカウントだけを作成します。権限と所属店舗は後から付与してください。
+            </div>
+          )}
+          {!usesAccountFields ? (
             <div className='grid gap-4 md:grid-cols-2'>
               <UserCandidateCombobox
                 candidates={userCandidates}
@@ -651,46 +701,55 @@ export default function AdminUsersPage() {
                 onEmailChange={handleEmailChange}
                 onPasswordChange={handlePasswordChange}
               />
-              <div className='grid gap-4 md:grid-cols-2'>{roleField}</div>
+              {isStoreAccountCreateMode && (
+                <div className='grid gap-4 md:grid-cols-2'>{roleField}</div>
+              )}
             </>
           )}
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <label
-                htmlFor='admin-user-clinic'
-                className='text-sm font-medium'
-              >
-                所属先店舗（作成済みテナント）
-              </label>
-              <Select
-                value={formState.clinic_id || NO_CLINIC_VALUE}
-                onValueChange={handleClinicChange}
-                disabled={formState.role === 'admin'}
-              >
-                <SelectTrigger id='admin-user-clinic'>
-                  <SelectValue placeholder='クリニックを選択' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
-                  {clinicOptions.map(clinic => (
-                    <SelectItem key={clinic.id} value={clinic.id}>
-                      {clinic.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {!isAccountOnlyCreateMode && (
+            <div className='grid gap-4 md:grid-cols-2'>
+              <div className='space-y-2'>
+                <label
+                  htmlFor='admin-user-clinic'
+                  className='text-sm font-medium'
+                >
+                  所属先店舗（作成済みテナント）
+                </label>
+                <Select
+                  value={formState.clinic_id || NO_CLINIC_VALUE}
+                  onValueChange={handleClinicChange}
+                  disabled={formState.role === 'admin'}
+                >
+                  <SelectTrigger id='admin-user-clinic'>
+                    <SelectValue placeholder='クリニックを選択' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
+                    {clinicOptions.map(clinic => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
           <div className='flex flex-wrap items-center gap-2'>
             <Button
               type='submit'
-              disabled={loading || formRoleOptions.length === 0}
+              disabled={
+                loading ||
+                (!isAccountOnlyCreateMode && formRoleOptions.length === 0)
+              }
             >
               {editingPermissionId
                 ? '権限を更新する'
-                : isCreateAccountMode
-                  ? 'アカウントを作成する'
-                  : '権限を付与する'}
+                : isAccountOnlyCreateMode
+                  ? 'ユーザーアカウントを作成する'
+                  : isStoreAccountCreateMode
+                    ? 'アカウントを作成する'
+                    : '権限を付与する'}
             </Button>
             {editingPermissionId && (
               <Button type='button' variant='outline' onClick={resetForm}>

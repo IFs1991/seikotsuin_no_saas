@@ -8,6 +8,7 @@ import {
 } from '@/lib/api-helpers';
 import {
   USER_CANDIDATE_LIMIT,
+  type CandidateSource,
   type UserPermissionCandidate,
 } from '@/lib/admin/users';
 import { createAdminClient, type SupabaseServerClient } from '@/lib/supabase';
@@ -17,6 +18,7 @@ import {
   getClinicAdminScopedClinicIds,
   isAdminUsersActor,
   isClinicAdminActor,
+  isHqAdminActor,
 } from '../access';
 
 const StaffCandidateSearchSchema = z.object({
@@ -28,11 +30,17 @@ const StaffCandidateSearchSchema = z.object({
     .max(50)
     .optional()
     .default(USER_CANDIDATE_LIMIT),
+  include_unassigned: z
+    .string()
+    .optional()
+    .transform(value => value === 'true'),
 });
 
 const STAFF_SELECT = 'id, email, name, clinic_id, role, clinics(name)';
 const PROFILE_SELECT = 'user_id, email, full_name, is_active';
 const PERMISSION_SELECT = 'id, staff_id, role, clinic_id, clinics(name)';
+const STAFF_CANDIDATE_SOURCE: CandidateSource = 'staff';
+const PROFILE_CANDIDATE_SOURCE: CandidateSource = 'profile';
 
 type ClinicRelation =
   | { name: string | null }[]
@@ -51,7 +59,7 @@ type StaffCandidateRow = {
 type ProfileCandidateRow = {
   user_id: string;
   email: string;
-  full_name: string;
+  full_name: string | null;
   is_active: boolean;
 };
 
@@ -63,6 +71,14 @@ type PermissionCandidateRow = {
   role: string;
   clinic_id: string | null;
   clinics?: ClinicRelation;
+};
+
+type PermissionStaffIdRow = {
+  staff_id: string | null;
+};
+
+type StaffIdRow = {
+  id: string;
 };
 
 type QueryResult<T> = {
@@ -91,6 +107,9 @@ const pickMissingIds = (ids: string[], rows: StaffCandidateRow[]): string[] => {
   const existingIds = new Set(rows.map(row => row.id));
   return ids.filter(id => !existingIds.has(id));
 };
+
+const isNonEmptyString = (value: string | null | undefined): value is string =>
+  typeof value === 'string' && value.length > 0;
 
 const fetchStaffCandidates = async (
   adminSupabase: SupabaseServerClient,
@@ -161,7 +180,7 @@ const fetchStaffCandidatesByIds = async (
   limit: number,
   scopedClinicIds: string[] | null
 ): Promise<QueryResult<StaffCandidateRow[]>> => {
-  if (staffIds.length === 0) {
+  if (staffIds.length === 0 || limit <= 0) {
     return { data: [], error: null };
   }
 
@@ -182,11 +201,95 @@ const fetchStaffCandidatesByIds = async (
   };
 };
 
+const fetchUnassignedProfileCandidates = async (
+  adminSupabase: SupabaseServerClient,
+  search: string,
+  limit: number
+): Promise<QueryResult<UserPermissionCandidate[]>> => {
+  if (limit <= 0) {
+    return { data: [], error: null };
+  }
+
+  let query = adminSupabase
+    .from('profiles')
+    .select(PROFILE_SELECT)
+    .eq('is_active', true);
+
+  if (search) {
+    query = query.or(buildIlikeOrFilter(['full_name', 'email'], search));
+  }
+
+  const { data, error } = await query
+    .order('full_name', { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    return { data: [], error };
+  }
+
+  const profiles = ((data ?? []) as ProfileCandidateRow[]).filter(
+    profile => profile.is_active !== false && isNonEmptyString(profile.email)
+  );
+  const profileIds = profiles.map(profile => profile.user_id);
+
+  if (profileIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  const [
+    { data: permissionsData, error: permissionError },
+    { data: staffData, error: staffError },
+  ] = await Promise.all([
+    adminSupabase
+      .from('user_permissions')
+      .select('staff_id')
+      .in('staff_id', profileIds),
+    adminSupabase.from('staff').select('id').in('id', profileIds),
+  ]);
+
+  if (permissionError || staffError) {
+    return { data: [], error: permissionError ?? staffError };
+  }
+
+  const assignedIds = new Set<string>();
+  ((permissionsData ?? []) as PermissionStaffIdRow[]).forEach(permission => {
+    if (permission.staff_id) {
+      assignedIds.add(permission.staff_id);
+    }
+  });
+  ((staffData ?? []) as StaffIdRow[]).forEach(staff => {
+    assignedIds.add(staff.id);
+  });
+
+  const items: UserPermissionCandidate[] = profiles
+    .filter(profile => !assignedIds.has(profile.user_id))
+    .map(profile => ({
+      user_id: profile.user_id,
+      email: profile.email,
+      full_name: profile.full_name || profile.email,
+      clinic_id: null,
+      clinic_name: null,
+      staff_role: null,
+      current_role: null,
+      permission_id: null,
+      permission_clinic_id: null,
+      permission_clinic_name: null,
+      candidate_source: PROFILE_CANDIDATE_SOURCE,
+    }))
+    .slice(0, limit);
+
+  return {
+    data: items,
+    error: null,
+  };
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const parsed = StaffCandidateSearchSchema.safeParse({
     search: searchParams.get('search') ?? undefined,
     limit: searchParams.get('limit') ?? undefined,
+    include_unassigned: searchParams.get('include_unassigned') ?? undefined,
   });
 
   if (!parsed.success) {
@@ -197,7 +300,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { search, limit } = parsed.data;
+  const { search, limit, include_unassigned } = parsed.data;
 
   try {
     const processResult = await processApiRequest(request, {
@@ -222,6 +325,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const canIncludeUnassigned =
+      include_unassigned && isHqAdminActor(permissions);
     const adminSupabase = createAdminClient();
     const [staffResult, profileMatchedIdsResult] = await Promise.all([
       fetchStaffCandidates(adminSupabase, search, limit, scopedClinicIds),
@@ -234,7 +339,7 @@ export async function GET(request: NextRequest) {
         endpoint: '/api/admin/users/candidates',
         method: 'GET',
         userId: auth.id,
-        params: { search },
+        params: { search, include_unassigned },
       });
       return createErrorResponse('ユーザー候補の取得に失敗しました', 500);
     }
@@ -255,7 +360,7 @@ export async function GET(request: NextRequest) {
         endpoint: '/api/admin/users/candidates',
         method: 'GET',
         userId: auth.id,
-        params: { search },
+        params: { search, include_unassigned },
       });
       return createErrorResponse('ユーザー候補の取得に失敗しました', 500);
     }
@@ -267,7 +372,30 @@ export async function GET(request: NextRequest) {
     const staffIds = staffRows.map(row => row.id);
 
     if (staffIds.length === 0) {
-      return createSuccessResponse({ items: [], total: 0 });
+      if (!canIncludeUnassigned) {
+        return createSuccessResponse({ items: [], total: 0 });
+      }
+
+      const unassignedResult = await fetchUnassignedProfileCandidates(
+        adminSupabase,
+        search,
+        limit
+      );
+
+      if (unassignedResult.error) {
+        logError(unassignedResult.error, {
+          endpoint: '/api/admin/users/candidates',
+          method: 'GET',
+          userId: auth.id,
+          params: { search, include_unassigned },
+        });
+        return createErrorResponse('ユーザー候補の取得に失敗しました', 500);
+      }
+
+      return createSuccessResponse({
+        items: unassignedResult.data,
+        total: unassignedResult.data.length,
+      });
     }
 
     const [
@@ -299,7 +427,7 @@ export async function GET(request: NextRequest) {
         endpoint: '/api/admin/users/candidates',
         method: 'GET',
         userId: auth.id,
-        params: { search },
+        params: { search, include_unassigned },
       });
       return createErrorResponse('ユーザー候補の取得に失敗しました', 500);
     }
@@ -318,7 +446,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const items: UserPermissionCandidate[] = staffRows
+    const staffItems: UserPermissionCandidate[] = staffRows
       .map(row => {
         const profile = profileMap.get(row.id);
         if (!profile?.email || profile.is_active === false) {
@@ -337,6 +465,7 @@ export async function GET(request: NextRequest) {
           permission_id: permission?.id ?? null,
           permission_clinic_id: permission?.clinic_id ?? null,
           permission_clinic_name: readClinicName(permission?.clinics),
+          candidate_source: STAFF_CANDIDATE_SOURCE,
         };
       })
       .filter((item): item is UserPermissionCandidate => item !== null)
@@ -346,6 +475,31 @@ export async function GET(request: NextRequest) {
           a.email.localeCompare(b.email)
       )
       .slice(0, limit);
+
+    let unassignedResult: QueryResult<UserPermissionCandidate[]> = {
+      data: [],
+      error: null,
+    };
+    const remainingUnassignedLimit = limit - staffItems.length;
+    if (canIncludeUnassigned && remainingUnassignedLimit > 0) {
+      unassignedResult = await fetchUnassignedProfileCandidates(
+        adminSupabase,
+        search,
+        remainingUnassignedLimit
+      );
+    }
+
+    if (unassignedResult.error) {
+      logError(unassignedResult.error, {
+        endpoint: '/api/admin/users/candidates',
+        method: 'GET',
+        userId: auth.id,
+        params: { search, include_unassigned },
+      });
+      return createErrorResponse('ユーザー候補の取得に失敗しました', 500);
+    }
+
+    const items = [...staffItems, ...unassignedResult.data].slice(0, limit);
 
     return createSuccessResponse({
       items,
