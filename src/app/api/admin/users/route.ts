@@ -41,7 +41,7 @@ const CreateAccountSchema = z.object({
   full_name: z.string().trim().min(1).max(255),
   email: emailSchema,
   password: passwordSchema,
-  clinic_id: z.string().uuid(),
+  clinic_id: z.string().uuid().nullable().optional(),
   role: z.enum(CREATABLE_ADMIN_ACCOUNT_ROLES),
 });
 
@@ -64,7 +64,7 @@ type CreatedAccountPersistenceInput = {
   fullName: string;
   email: string;
   role: AdminUserRole;
-  clinicId: string;
+  clinicId: string | null;
   timestamp: string;
 };
 type StaffResourcePersistenceInput = {
@@ -143,15 +143,17 @@ const buildStaffResourceRow = ({
 });
 
 const buildCreatedResourceRow = (input: CreatedAccountPersistenceInput) =>
-  buildStaffResourceRow({
-    actorUserId: input.actorUserId,
-    staffId: input.createdUserId,
-    clinicId: input.clinicId,
-    name: input.fullName,
-    email: input.email,
-    role: input.role,
-    timestamp: input.timestamp,
-  });
+  input.clinicId
+    ? buildStaffResourceRow({
+        actorUserId: input.actorUserId,
+        staffId: input.createdUserId,
+        clinicId: input.clinicId,
+        name: input.fullName,
+        email: input.email,
+        role: input.role,
+        timestamp: input.timestamp,
+      })
+    : null;
 
 const buildCreatedProfileRow = ({
   createdUserId,
@@ -216,14 +218,21 @@ async function upsertCreatedAccountBaseRecords(
   input: CreatedAccountPersistenceInput
 ): Promise<AccountWriteFailure | null> {
   const { adminClient } = input;
+  const profileWrite = resolveAccountWriteFailure(
+    'upsert_profiles',
+    'プロフィールの作成に失敗しました',
+    adminClient
+      .from('profiles')
+      .upsert(buildCreatedProfileRow(input), { onConflict: 'user_id' })
+  );
+
+  if (input.role === 'admin' || !input.clinicId) {
+    return profileWrite;
+  }
+
+  const resourceRow = buildCreatedResourceRow(input);
   const [profileFailure, staffFailure, resourceFailure] = await Promise.all([
-    resolveAccountWriteFailure(
-      'upsert_profiles',
-      'プロフィールの作成に失敗しました',
-      adminClient
-        .from('profiles')
-        .upsert(buildCreatedProfileRow(input), { onConflict: 'user_id' })
-    ),
+    profileWrite,
     resolveAccountWriteFailure(
       'upsert_staff',
       'スタッフ情報の作成に失敗しました',
@@ -231,13 +240,15 @@ async function upsertCreatedAccountBaseRecords(
         .from('staff')
         .upsert(buildCreatedStaffRow(input), { onConflict: 'id' })
     ),
-    resolveAccountWriteFailure(
-      'upsert_resources',
-      'スタッフリソースの作成に失敗しました',
-      adminClient
-        .from('resources')
-        .upsert(buildCreatedResourceRow(input), { onConflict: 'id' })
-    ),
+    resourceRow
+      ? resolveAccountWriteFailure(
+          'upsert_resources',
+          'スタッフリソースの作成に失敗しました',
+          adminClient.from('resources').upsert(resourceRow, {
+            onConflict: 'id',
+          })
+        )
+      : Promise.resolve(null),
   ]);
 
   return profileFailure ?? staffFailure ?? resourceFailure;
@@ -530,7 +541,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { full_name, email, password, clinic_id, role } = parsed.data;
+      const { full_name, email, password, role } = parsed.data;
+      const clinic_id = parsed.data.clinic_id ?? null;
 
       if (isClinicAdminActor(permissions)) {
         if (!canClinicAdminManagePermissionRole(role)) {
@@ -540,7 +552,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        if (!canClinicAdminAccessClinic(permissions, clinic_id)) {
+        if (!clinic_id || !canClinicAdminAccessClinic(permissions, clinic_id)) {
           return createErrorResponse(
             ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
             403
@@ -642,10 +654,6 @@ export async function POST(request: NextRequest) {
     const assignData = parsed.data;
     const { user_id, clinic_id, role } = assignData;
 
-    if (role !== 'admin' && !clinic_id) {
-      return createErrorResponse('clinic_id が必須です', 400);
-    }
-
     if (isClinicAdminActor(permissions)) {
       if (!canClinicAdminManagePermissionRole(role)) {
         return createErrorResponse(
@@ -654,7 +662,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!canClinicAdminAccessClinic(permissions, clinic_id)) {
+      if (!clinic_id || !canClinicAdminAccessClinic(permissions, clinic_id)) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403
@@ -675,7 +683,7 @@ export async function POST(request: NextRequest) {
       .eq('staff_id', user_id)
       .maybeSingle();
     const staffPromise =
-      role === 'admin'
+      role === 'admin' || !clinic_id
         ? Promise.resolve({ data: null, error: null })
         : (() => {
             const staffQuery = adminSupabase

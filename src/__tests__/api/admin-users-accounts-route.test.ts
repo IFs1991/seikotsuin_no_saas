@@ -28,8 +28,12 @@ const logErrorMock = jest.mocked(logError);
 const logAdminActionMock = jest.mocked(AuditLogger.logAdminAction);
 
 type TableName = 'profiles' | 'user_permissions' | 'staff' | 'resources';
-type UpsertQuery = {
+type TableQuery = {
   upsert: jest.Mock;
+  select: jest.Mock;
+  single: jest.Mock;
+  delete: jest.Mock;
+  eq: jest.Mock;
 };
 type DeleteUserMock = jest.Mock;
 type CreateUserMock = jest.Mock;
@@ -40,7 +44,7 @@ type AdminClientMock = {
       deleteUser: DeleteUserMock;
     };
   };
-  from: jest.Mock<UpsertQuery, [TableName]>;
+  from: jest.Mock<TableQuery, [TableName]>;
 };
 
 const createRequest = (body: unknown = {}) =>
@@ -84,29 +88,45 @@ const createAdminClientMockValue = ({
   createdUserId = '22222222-2222-4222-8222-222222222222',
   createUserError = null,
   profileError = null,
+  permissionId = '11111111-1111-4111-8111-111111111111',
 }: {
   createdUserId?: string;
   createUserError?: { message: string } | null;
   profileError?: { message: string } | null;
+  permissionId?: string;
 } = {}): {
   adminClient: AdminClientMock;
-  profileQuery: UpsertQuery;
-  sideEffectQueries: Map<TableName, UpsertQuery>;
+  profileQuery: TableQuery;
+  sideEffectQueries: Map<TableName, TableQuery>;
 } => {
-  const profileQuery: UpsertQuery = {
-    upsert: jest.fn().mockResolvedValue({ error: profileError }),
+  const createTableQuery = (
+    upsertError: { message: string } | null = null,
+    singleData: { id: string } | null = null
+  ): TableQuery => {
+    const query: TableQuery = {
+      upsert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: singleData,
+        error: upsertError,
+      }),
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    query.upsert.mockResolvedValue({ error: upsertError });
+    return query;
   };
-  const userPermissionsQuery: UpsertQuery = {
-    upsert: jest.fn().mockResolvedValue({ error: null }),
-  };
-  const staffQuery: UpsertQuery = {
-    upsert: jest.fn().mockResolvedValue({ error: null }),
-  };
-  const resourcesQuery: UpsertQuery = {
-    upsert: jest.fn().mockResolvedValue({ error: null }),
-  };
+  const profileQuery = createTableQuery(profileError);
+  const userPermissionsQuery = createTableQuery(null, { id: permissionId });
+  const staffQuery = createTableQuery();
+  const resourcesQuery = createTableQuery();
 
-  const queries = new Map<TableName, UpsertQuery>([
+  profileQuery.upsert = jest.fn().mockResolvedValue({ error: profileError });
+  userPermissionsQuery.upsert = jest.fn().mockReturnValue(userPermissionsQuery);
+  staffQuery.upsert = jest.fn().mockResolvedValue({ error: null });
+  resourcesQuery.upsert = jest.fn().mockResolvedValue({ error: null });
+
+  const queries = new Map<TableName, TableQuery>([
     ['profiles', profileQuery],
     ['user_permissions', userPermissionsQuery],
     ['staff', staffQuery],
@@ -206,6 +226,7 @@ describe('POST /api/admin/users/accounts', () => {
       email: 'yamada@example.com',
       full_name: '山田 太郎',
       permission_status: 'unassigned',
+      permission_id: null,
       role: null,
       clinic_id: null,
     });
@@ -312,7 +333,58 @@ describe('POST /api/admin/users/accounts', () => {
         user_id: '22222222-2222-4222-8222-222222222222',
         email: 'escape@example.com',
         permission_status: 'unassigned',
+        role: null,
+        clinic_id: null,
       }
+    );
+  });
+
+  it('optionally grants a role during account-only creation without requiring clinic', async () => {
+    const payload = {
+      full_name: '未所属 管理者',
+      email: 'role-only@example.com',
+      password: 'SafePass123!',
+      role: 'manager',
+      clinic_id: null,
+    };
+    const createdUserId = '22222222-2222-4222-8222-222222222222';
+    processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
+    const { adminClient, profileQuery, sideEffectQueries } =
+      createAdminClientMockValue({ createdUserId });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/users/accounts/route');
+    const response = await POST(createRequest(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(profileQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: createdUserId,
+        clinic_id: null,
+        role: 'manager',
+      }),
+      { onConflict: 'user_id' }
+    );
+    expect(sideEffectQueries.get('staff')?.upsert).not.toHaveBeenCalled();
+    expect(sideEffectQueries.get('resources')?.upsert).not.toHaveBeenCalled();
+    expect(sideEffectQueries.get('user_permissions')?.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staff_id: createdUserId,
+        role: 'manager',
+        clinic_id: null,
+        username: 'role-only@example.com',
+      }),
+      { onConflict: 'staff_id' }
+    );
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        id: createdUserId,
+        permission_status: 'assigned',
+        permission_id: '11111111-1111-4111-8111-111111111111',
+        role: 'manager',
+        clinic_id: null,
+      })
     );
   });
 });

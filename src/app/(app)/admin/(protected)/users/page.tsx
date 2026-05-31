@@ -386,7 +386,9 @@ export default function AdminUsersPage() {
         );
         if (created) {
           setNotice(
-            'ユーザーアカウントのみ作成しました。権限はまだ付与されていません。'
+            formState.assign_role
+              ? 'ユーザーアカウントを作成し、権限を付与しました。'
+              : 'ユーザーアカウントのみ作成しました。権限はまだ付与されていません。'
           );
           resetForm();
         }
@@ -501,6 +503,16 @@ export default function AdminUsersPage() {
     []
   );
 
+  const handleAssignRoleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setFormState(prev => ({
+        ...prev,
+        assign_role: event.target.checked,
+      }));
+    },
+    []
+  );
+
   const handleUserSelect = useCallback(
     (candidate: UserPermissionCandidate) => {
       const label = getCandidateInputLabel(candidate);
@@ -535,6 +547,8 @@ export default function AdminUsersPage() {
           !creatableRoleOptions.some(option => option.value === prev.role)
             ? (creatableRoleOptions[0]?.value ?? defaultFormRole)
             : prev.role,
+        assign_role:
+          mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY ? prev.assign_role : true,
       }));
       setUserSearch('');
       setSelectedUserLabel('');
@@ -666,7 +680,7 @@ export default function AdminUsersPage() {
           )}
           {isAccountOnlyCreateMode && (
             <div className='rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900'>
-              ログインアカウントだけを作成します。権限と所属店舗は後から付与してください。
+              ログインアカウントだけを作成できます。必要な場合だけロールを同時に付与してください。
             </div>
           )}
           {!usesAccountFields ? (
@@ -701,12 +715,24 @@ export default function AdminUsersPage() {
                 onEmailChange={handleEmailChange}
                 onPasswordChange={handlePasswordChange}
               />
-              {isStoreAccountCreateMode && (
+              {isAccountOnlyCreateMode && (
+                <label className='flex items-center gap-2 text-sm font-medium'>
+                  <input
+                    type='checkbox'
+                    checked={formState.assign_role}
+                    onChange={handleAssignRoleChange}
+                    className='h-4 w-4 rounded border-slate-300'
+                  />
+                  作成時にロールを付与する
+                </label>
+              )}
+              {(isStoreAccountCreateMode ||
+                (isAccountOnlyCreateMode && formState.assign_role)) && (
                 <div className='grid gap-4 md:grid-cols-2'>{roleField}</div>
               )}
             </>
           )}
-          {!isAccountOnlyCreateMode && (
+          {(!isAccountOnlyCreateMode || formState.assign_role) && (
             <div className='grid gap-4 md:grid-cols-2'>
               <div className='space-y-2'>
                 <label
@@ -718,7 +744,10 @@ export default function AdminUsersPage() {
                 <Select
                   value={formState.clinic_id || NO_CLINIC_VALUE}
                   onValueChange={handleClinicChange}
-                  disabled={formState.role === 'admin'}
+                  disabled={
+                    formState.role === 'admin' ||
+                    (isAccountOnlyCreateMode && !formState.assign_role)
+                  }
                 >
                   <SelectTrigger id='admin-user-clinic'>
                     <SelectValue placeholder='クリニックを選択' />
@@ -740,7 +769,8 @@ export default function AdminUsersPage() {
               type='submit'
               disabled={
                 loading ||
-                (!isAccountOnlyCreateMode && formRoleOptions.length === 0)
+                ((!isAccountOnlyCreateMode || formState.assign_role) &&
+                  formRoleOptions.length === 0)
               }
             >
               {editingPermissionId

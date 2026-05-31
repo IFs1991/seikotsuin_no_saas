@@ -34,9 +34,10 @@ type AccountOnlyCreateResult = {
   id: string;
   email: string;
   full_name: string;
-  permission_status: 'unassigned';
-  role: null;
-  clinic_id: null;
+  permission_status: 'assigned' | 'unassigned';
+  permission_id: string | null;
+  role: string | null;
+  clinic_id: string | null;
 };
 
 type FetchPermissionsOptions = {

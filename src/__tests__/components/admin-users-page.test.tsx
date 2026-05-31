@@ -70,6 +70,7 @@ const setupHooks = (role: 'admin' | 'clinic_admin') => {
     email: 'profile-only@example.com',
     full_name: '未付与 太郎',
     permission_status: 'unassigned',
+    permission_id: null,
     role: null,
     clinic_id: null,
   });
@@ -173,6 +174,44 @@ describe('AdminUsersPage', () => {
       screen.getByText(
         'ユーザーアカウントのみ作成しました。権限はまだ付与されていません。'
       )
+    ).toBeInTheDocument();
+  });
+
+  it('lets admin optionally grant role during account-only creation without clinic', async () => {
+    const { container } = render(<AdminUsersPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'ユーザーアカウントのみ作成' })
+    );
+    fireEvent.click(screen.getByLabelText('作成時にロールを付与する'));
+
+    expect(container.querySelector('#admin-user-role')).toBeInTheDocument();
+    expect(container.querySelector('#admin-user-clinic')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('氏名'), {
+      target: { value: '未所属 管理者' },
+    });
+    fireEvent.change(screen.getByLabelText('ログインメールアドレス'), {
+      target: { value: 'ROLE-ONLY@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('初期パスワード'), {
+      target: { value: 'SafePass123!' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'ユーザーアカウントを作成する' })
+    );
+
+    await waitFor(() => {
+      expect(createAccountOnlyUserMock).toHaveBeenCalledWith({
+        full_name: '未所属 管理者',
+        email: 'role-only@example.com',
+        password: 'SafePass123!',
+        role: 'clinic_admin',
+        clinic_id: null,
+      });
+    });
+    expect(
+      screen.getByText('ユーザーアカウントを作成し、権限を付与しました。')
     ).toBeInTheDocument();
   });
 

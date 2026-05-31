@@ -91,6 +91,7 @@ export type PermissionFormState = {
   user_id: string;
   role: AdminUserRole;
   clinic_id: string;
+  assign_role: boolean;
   create_mode: AccountCreateMode;
   full_name: string;
   email: string;
@@ -108,6 +109,8 @@ export type AccountOnlyCreatePayload = {
   full_name: string;
   email: string;
   password: string;
+  role?: AdminUserRole;
+  clinic_id?: string | null;
 };
 
 export type CreateAccountPayload = {
@@ -116,7 +119,7 @@ export type CreateAccountPayload = {
   email: string;
   password: string;
   role: AdminUserRole;
-  clinic_id: string;
+  clinic_id: string | null;
 };
 
 export type UpdatePermissionPayload = {
@@ -216,6 +219,7 @@ export function createEmptyPermissionFormState(
     user_id: '',
     role,
     clinic_id: '',
+    assign_role: false,
     create_mode: CREATE_ACCOUNT_MODE_EXISTING,
     full_name: '',
     email: '',
@@ -315,7 +319,7 @@ export function validatePermissionForm(
     }
   }
 
-  if (isAccountOnlyMode) {
+  if (isAccountOnlyMode && !formState.assign_role) {
     return null;
   }
 
@@ -325,24 +329,27 @@ export function validatePermissionForm(
     }
   }
 
-  if (
-    formState.role !== 'admin' &&
-    !getPermissionClinicId(formState.role, formState.clinic_id)
-  ) {
-    return '所属店舗を選択してください';
-  }
-
   return null;
 }
 
 export function createAccountOnlyPayload(
   formState: PermissionFormState
 ): AccountOnlyCreatePayload {
-  return {
+  const payload: AccountOnlyCreatePayload = {
     full_name: formState.full_name.trim(),
     email: formState.email.trim().toLowerCase(),
     password: formState.password,
   };
+
+  if (formState.assign_role) {
+    payload.role = formState.role;
+    payload.clinic_id = getPermissionClinicId(
+      formState.role,
+      formState.clinic_id
+    );
+  }
+
+  return payload;
 }
 
 export function createAssignPermissionPayload(
@@ -357,7 +364,7 @@ export function createAssignPermissionPayload(
       email: formState.email.trim().toLowerCase(),
       password: formState.password,
       role: formState.role,
-      clinic_id: clinicId ?? '',
+      clinic_id: clinicId,
     };
   }
 
@@ -384,6 +391,7 @@ export function createPermissionFormState(
     user_id: permission.user_id ?? '',
     role: toAdminUserRole(permission.role),
     clinic_id: permission.clinic_id ?? '',
+    assign_role: true,
     create_mode: CREATE_ACCOUNT_MODE_EXISTING,
     full_name: '',
     email: '',

@@ -7,7 +7,11 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import {
+  ADMIN_UI_ROLES,
+  ADMIN_USER_ROLE_VALUES,
+  type AdminUserRole,
+} from '@/lib/constants/roles';
 import { emailSchema, passwordSchema } from '@/lib/schemas/auth';
 import { createAdminClient } from '@/lib/supabase';
 import { isHqAdminActor } from '../access';
@@ -16,11 +20,21 @@ const AccountOnlyCreateSchema = z.object({
   full_name: z.string().trim().min(1).max(255),
   email: emailSchema,
   password: passwordSchema,
+  role: z.enum(ADMIN_USER_ROLE_VALUES).nullable().optional(),
+  clinic_id: z.string().uuid().nullable().optional(),
 });
 
 type CreateAccountError = {
   message?: string | null;
 };
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
+  'clinic_admin',
+  'manager',
+  'therapist',
+]);
 
 const mapCreateAccountErrorMessage = (error?: CreateAccountError | null) => {
   const normalizedMessage = error?.message?.toLowerCase();
@@ -33,6 +47,76 @@ const mapCreateAccountErrorMessage = (error?: CreateAccountError | null) => {
 
   return 'アカウントの作成に失敗しました';
 };
+
+const buildStaffRow = ({
+  userId,
+  clinicId,
+  fullName,
+  email,
+  role,
+  timestamp,
+}: {
+  userId: string;
+  clinicId: string;
+  fullName: string;
+  email: string;
+  role: AdminUserRole;
+  timestamp: string;
+}) => ({
+  id: userId,
+  clinic_id: clinicId,
+  name: fullName,
+  role,
+  email,
+  password_hash: MANAGED_PASSWORD_PLACEHOLDER,
+  is_therapist: role === 'therapist',
+  updated_at: timestamp,
+});
+
+const buildResourceRow = ({
+  actorUserId,
+  userId,
+  clinicId,
+  fullName,
+  email,
+  role,
+  timestamp,
+}: {
+  actorUserId: string;
+  userId: string;
+  clinicId: string;
+  fullName: string;
+  email: string;
+  role: AdminUserRole;
+  timestamp: string;
+}) => ({
+  id: userId,
+  clinic_id: clinicId,
+  name: fullName,
+  type: 'staff',
+  staff_code: `${role}-${userId}`,
+  email,
+  max_concurrent: 1,
+  is_active: true,
+  is_bookable: BOOKABLE_STAFF_RESOURCE_ROLES.has(role),
+  is_deleted: false,
+  updated_at: timestamp,
+  created_by: actorUserId,
+});
+
+async function rollbackCreatedAccount(
+  adminClient: AdminClient,
+  userId: string
+) {
+  await Promise.allSettled([
+    adminClient.from('user_permissions').delete().eq('staff_id', userId),
+    adminClient.from('resources').delete().eq('id', userId),
+    adminClient.from('staff').delete().eq('id', userId),
+    adminClient.from('profiles').delete().eq('user_id', userId),
+  ]);
+
+  await adminClient.auth.admin.deleteUser(userId);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,6 +148,8 @@ export async function POST(request: NextRequest) {
     const fullName = parsed.data.full_name.trim();
     const email = parsed.data.email.trim().toLowerCase();
     const password = parsed.data.password;
+    const role = parsed.data.role ?? null;
+    const clinicId = role === 'admin' ? null : (parsed.data.clinic_id ?? null);
     const adminClient = createAdminClient();
 
     const { data: authData, error: createUserError } =
@@ -91,28 +177,119 @@ export async function POST(request: NextRequest) {
 
     const createdUserId = authData.user.id;
     const timestamp = new Date().toISOString();
-    const { error: profileError } = await adminClient.from('profiles').upsert(
+    const profileWrite = adminClient.from('profiles').upsert(
       {
         user_id: createdUserId,
         email,
         full_name: fullName,
-        clinic_id: null,
-        role: 'staff',
+        clinic_id: clinicId,
+        role: role ?? 'staff',
         is_active: true,
         updated_at: timestamp,
       },
       { onConflict: 'user_id' }
     );
+    if (role && role !== 'admin' && clinicId) {
+      const [profileResult, staffResult, resourceResult] = await Promise.all([
+        profileWrite,
+        adminClient.from('staff').upsert(
+          buildStaffRow({
+            userId: createdUserId,
+            clinicId,
+            fullName,
+            email,
+            role,
+            timestamp,
+          }),
+          { onConflict: 'id' }
+        ),
+        adminClient.from('resources').upsert(
+          buildResourceRow({
+            actorUserId: auth.id,
+            userId: createdUserId,
+            clinicId,
+            fullName,
+            email,
+            role,
+            timestamp,
+          }),
+          { onConflict: 'id' }
+        ),
+      ]);
 
-    if (profileError) {
-      await adminClient.auth.admin.deleteUser(createdUserId);
-      logError(profileError, {
-        endpoint: '/api/admin/users/accounts',
-        method: 'POST',
-        userId: auth.id,
-        params: { email, stage: 'upsert_profiles' },
-      });
-      return createErrorResponse('プロフィールの作成に失敗しました', 500);
+      const baseRecordError =
+        profileResult.error ?? staffResult.error ?? resourceResult.error;
+      if (baseRecordError) {
+        await rollbackCreatedAccount(adminClient, createdUserId);
+        logError(baseRecordError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'POST',
+          userId: auth.id,
+          params: {
+            email,
+            role,
+            clinic_id: clinicId,
+            stage: profileResult.error
+              ? 'upsert_profiles'
+              : 'sync_clinic_records',
+          },
+        });
+        return createErrorResponse(
+          profileResult.error
+            ? 'プロフィールの作成に失敗しました'
+            : '店舗関連情報の作成に失敗しました',
+          500
+        );
+      }
+    } else {
+      const { error: profileError } = await profileWrite;
+      if (profileError) {
+        await rollbackCreatedAccount(adminClient, createdUserId);
+        logError(profileError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'POST',
+          userId: auth.id,
+          params: { email, stage: 'upsert_profiles' },
+        });
+        return createErrorResponse('プロフィールの作成に失敗しました', 500);
+      }
+    }
+
+    let permissionId: string | null = null;
+    if (role) {
+      const { data: permission, error: permissionError } = await adminClient
+        .from('user_permissions')
+        .upsert(
+          {
+            staff_id: createdUserId,
+            clinic_id: clinicId,
+            role,
+            username: email,
+            hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
+            updated_at: timestamp,
+          },
+          { onConflict: 'staff_id' }
+        )
+        .select('id')
+        .single();
+
+      if (permissionError || !permission) {
+        await rollbackCreatedAccount(adminClient, createdUserId);
+        logError(permissionError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'POST',
+          userId: auth.id,
+          params: {
+            email,
+            role,
+            clinic_id: clinicId,
+            stage: 'upsert_user_permissions',
+          },
+        });
+        return createErrorResponse('権限の付与に失敗しました', 500);
+      }
+
+      permissionId = permission.id;
     }
 
     void AuditLogger.logAdminAction(
@@ -123,7 +300,9 @@ export async function POST(request: NextRequest) {
       {
         user_id: createdUserId,
         email,
-        permission_status: 'unassigned',
+        permission_status: role ? 'assigned' : 'unassigned',
+        role,
+        clinic_id: clinicId,
       }
     );
 
@@ -132,9 +311,10 @@ export async function POST(request: NextRequest) {
         id: createdUserId,
         email,
         full_name: fullName,
-        permission_status: 'unassigned',
-        role: null,
-        clinic_id: null,
+        permission_status: role ? 'assigned' : 'unassigned',
+        permission_id: permissionId,
+        role,
+        clinic_id: clinicId,
       },
       201
     );

@@ -605,6 +605,125 @@ describe('GET /api/admin/users', () => {
     );
   });
 
+  it('allows hq admin to assign a non-admin role without clinic', async () => {
+    const userId = '22222222-2222-4222-8222-222222222222';
+    const permissionId = '11111111-1111-4111-8111-111111111111';
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+      },
+      supabase: {},
+      body: {
+        user_id: userId,
+        role: 'manager',
+        clinic_id: null,
+        candidate_source: 'profile',
+      },
+    });
+
+    const profileQuery = createMaybeSingleQuery({
+      email: 'profile-only@example.com',
+      full_name: '未所属 太郎',
+    });
+    const existingPermissionQuery = createMaybeSingleQuery(null);
+    const staffLookupQuery = createMaybeSingleQuery(null);
+    const permissionWriteQuery = createPermissionWriteQuery({
+      permissionId,
+      userId,
+      role: 'manager',
+      clinicId: null,
+    });
+
+    const tableQueries = {
+      profiles: [profileQuery],
+      user_permissions: [existingPermissionQuery, permissionWriteQuery],
+      staff: [staffLookupQuery],
+      resources: [],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/users/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: userId,
+          role: 'manager',
+          clinic_id: null,
+          candidate_source: 'profile',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(permissionWriteQuery.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staff_id: userId,
+        role: 'manager',
+        clinic_id: null,
+      })
+    );
+  });
+
+  it('rejects clinic_admin assignment without clinic scope target', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'clinic-admin-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: {},
+      body: {
+        user_id: '22222222-2222-4222-8222-222222222222',
+        clinic_id: null,
+        role: 'staff',
+      },
+    });
+
+    const { POST } = await import('@/app/api/admin/users/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: '22222222-2222-4222-8222-222222222222',
+          clinic_id: null,
+          role: 'staff',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
   it('does not leave user_permissions when profile-only resource sync fails', async () => {
     const clinicId = '33333333-3333-4333-8333-333333333333';
     const userId = '22222222-2222-4222-8222-222222222222';

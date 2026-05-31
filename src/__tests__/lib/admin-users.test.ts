@@ -71,7 +71,7 @@ describe('admin users helpers', () => {
     ).toBe('ユーザーを選択してください');
   });
 
-  test('clinic scoped roles require clinic id', () => {
+  test('clinic scoped roles can be assigned without clinic id', () => {
     expect(
       validatePermissionForm({
         ...createEmptyPermissionFormState(),
@@ -79,7 +79,7 @@ describe('admin users helpers', () => {
         role: 'clinic_admin',
         clinic_id: '',
       })
-    ).toBe('所属店舗を選択してください');
+    ).toBeNull();
   });
 
   test('update payload converts blank clinic id to null', () => {
@@ -107,6 +107,7 @@ describe('admin users helpers', () => {
       user_id: 'user-1',
       role: 'clinic_admin',
       clinic_id: 'clinic-1',
+      assign_role: true,
       create_mode: 'existing',
       full_name: '',
       email: '',
@@ -129,6 +130,27 @@ describe('admin users helpers', () => {
       full_name: '未付与 太郎',
       email: 'profile-only@example.com',
       password: 'SafePass123!',
+    });
+  });
+
+  test('account-only mode can optionally include role and blank clinic', () => {
+    const formState = {
+      ...createEmptyPermissionFormState('manager'),
+      create_mode: CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
+      assign_role: true,
+      full_name: '  未付与 太郎  ',
+      email: '  PROFILE-ONLY@example.com  ',
+      password: 'SafePass123!',
+      clinic_id: '',
+    };
+
+    expect(validatePermissionForm(formState)).toBeNull();
+    expect(createAccountOnlyPayload(formState)).toEqual({
+      full_name: '未付与 太郎',
+      email: 'profile-only@example.com',
+      password: 'SafePass123!',
+      role: 'manager',
+      clinic_id: null,
     });
   });
 
