@@ -22,6 +22,23 @@ describe('admin-dashboard utils', () => {
     ]);
   });
 
+  it('builds area manager summary labels without all-store wording', () => {
+    const metrics = buildSummaryMetrics(
+      {
+        totalGroupRevenue: 1250000,
+        totalGroupPatientCount: 200,
+        averageGroupPerformance: 4.35,
+      },
+      'area-manager'
+    );
+
+    expect(metrics).toEqual([
+      { label: '担当エリア売上', value: formatCurrency(1250000) },
+      { label: '担当エリア患者数', value: '200人' },
+      { label: '担当エリア平均スコア', value: '4.3 / 5.0' },
+    ]);
+  });
+
   it('builds management signals for the admin home', () => {
     const signals = buildManagementSignals([
       {

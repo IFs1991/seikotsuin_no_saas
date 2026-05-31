@@ -90,7 +90,9 @@ export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 ];
 
 export const AREA_MANAGER_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
 ];
 
 const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
@@ -216,9 +218,9 @@ export function getAdminMenuItemsForRole(
 }
 
 export function getAdminNavigationHrefForRole(
-  role: string | null | undefined
+  _role: string | null | undefined
 ): string {
-  return isAreaManagerRole(role) ? '/admin/users' : '/admin';
+  return '/admin';
 }
 
 export function getNavigationMode({

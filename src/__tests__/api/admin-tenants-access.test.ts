@@ -46,6 +46,7 @@ function createListQueryMock(result: unknown[]) {
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     or: jest.fn().mockReturnThis(),
+    returns: jest.fn().mockReturnThis(),
     then(
       resolve: (value: { data: unknown[]; error: null }) => unknown,
       reject?: (reason: unknown) => unknown

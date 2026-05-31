@@ -127,7 +127,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('クイックアクセス')).not.toBeInTheDocument();
   });
 
-  it('Sidebar は manager に店舗運用導線とスタッフ管理だけを表示する', () => {
+  it('Sidebar は manager に店舗運用導線と担当エリア管理導線だけを表示する', () => {
     render(
       <Sidebar
         isOpen
@@ -141,17 +141,17 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('日報管理')).toBeInTheDocument();
     expect(screen.getByText('予約管理')).toBeInTheDocument();
     expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
+    expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
     expect(screen.queryByText('患者管理')).not.toBeInTheDocument();
     expect(screen.queryByText('施術メニュー')).not.toBeInTheDocument();
-    expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
     expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
-    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
     expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
   });
 
-  it('Header は manager の管理メニューをスタッフ管理だけに限定する', async () => {
+  it('Header は manager の管理メニューを担当エリア管理導線だけに限定する', async () => {
     renderHeader({
       isAdmin: false,
       canAccessAdminNavigation: true,
@@ -160,11 +160,11 @@ describe('Admin navigation alignment', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /管理メニュー/ }));
 
+    expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
-    expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
+    expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
     expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
-    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
     expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
   });
 
@@ -179,10 +179,10 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('収益')).not.toBeInTheDocument();
   });
 
-  it('MobileBottomNav は manager の管理導線を /admin/users に向ける', () => {
+  it('MobileBottomNav は manager の管理導線を /admin に向ける', () => {
     render(<MobileBottomNav isAdmin profileLoading={false} role='manager' />);
 
     const adminLink = screen.getByRole('tab', { name: /管理/ });
-    expect(adminLink).toHaveAttribute('href', '/admin/users');
+    expect(adminLink).toHaveAttribute('href', '/admin');
   });
 });

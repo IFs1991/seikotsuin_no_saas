@@ -12,7 +12,7 @@ import {
   type DailyReportAggregateRow,
   type StaffPerformanceAggregateRow,
 } from '@/lib/admin/dashboard';
-import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import { isAreaManagerRole, type AdminUserRole } from '@/lib/constants/roles';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import {
   createScopedAdminContext,
@@ -26,6 +26,11 @@ type ClinicRow = ClinicDashboardRow & {
 };
 
 const DASHBOARD_CLINIC_SELECT = 'id, name, parent_id, is_active';
+const ADMIN_DASHBOARD_API_ROLES = [
+  'admin',
+  'clinic_admin',
+  'manager',
+] as const satisfies readonly AdminUserRole[];
 
 const STAFF_PERFORMANCE_SELECTORS = [
   'clinic_id, performance_score:satisfaction_score.avg()',
@@ -122,7 +127,7 @@ export async function GET(request: NextRequest) {
   try {
     const normalizedClinicId = clinicParam ?? undefined;
     const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_DASHBOARD_API_ROLES,
       clinicId: normalizedClinicId ?? null,
       requireClinicMatch: Boolean(normalizedClinicId),
     });
@@ -146,7 +151,7 @@ export async function GET(request: NextRequest) {
         return rows;
       }
       clinicRows = rows;
-    } else if (auth.role === 'admin') {
+    } else if (auth.role === 'admin' || isAreaManagerRole(auth.role)) {
       try {
         const adminCtx = createScopedAdminContext(permissions);
         analyticsClient = adminCtx.client;

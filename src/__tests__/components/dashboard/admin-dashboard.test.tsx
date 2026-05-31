@@ -3,7 +3,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import AdminDashboard from '@/components/dashboard/admin-dashboard';
 import useAdminDashboard from '@/hooks/useAdminDashboard';
-import { ADMIN_DASHBOARD_COPY } from '@/components/dashboard/admin-dashboard.utils';
+import {
+  ADMIN_DASHBOARD_COPY,
+  AREA_MANAGER_ADMIN_DASHBOARD_COPY,
+} from '@/components/dashboard/admin-dashboard.utils';
+import { UserProfileProvider } from '@/providers/user-profile-context';
+import type { UserProfile } from '@/types/user-profile';
 
 jest.mock('@/hooks/useAdminDashboard', () => ({
   __esModule: true,
@@ -11,6 +16,25 @@ jest.mock('@/hooks/useAdminDashboard', () => ({
 }));
 
 const mockedUseAdminDashboard = jest.mocked(useAdminDashboard);
+const managerProfile: UserProfile = {
+  id: 'manager-1',
+  email: 'manager@example.com',
+  role: 'manager',
+  clinicId: 'clinic-1',
+  clinicName: '本町エリア',
+  isActive: true,
+  isAdmin: false,
+};
+
+function renderWithManagerProfile() {
+  return render(
+    <UserProfileProvider
+      value={{ profile: managerProfile, loading: false, error: null }}
+    >
+      <AdminDashboard />
+    </UserProfileProvider>
+  );
+}
 
 describe('AdminDashboard', () => {
   const refreshData = jest.fn().mockResolvedValue(undefined);
@@ -88,6 +112,42 @@ describe('AdminDashboard', () => {
       screen.getByText(ADMIN_DASHBOARD_COPY.alertTitle)
     ).toBeInTheDocument();
     expect(screen.getAllByText('店舗比較分析')).not.toHaveLength(0);
+  });
+
+  it('renders area manager dashboard copy and hides HQ-only actions', () => {
+    mockedUseAdminDashboard.mockReturnValue({
+      clinicsData: [
+        {
+          id: 'clinic-1',
+          name: '本町院',
+          totalRevenue: 1250000,
+          totalPatientCount: 200,
+          averagePerformanceScore: 4.2,
+        },
+      ],
+      overallKpis: {
+        totalGroupRevenue: 1250000,
+        totalGroupPatientCount: 200,
+        averageGroupPerformance: 4.2,
+      },
+      loading: false,
+      error: null,
+      setSort: jest.fn(),
+      setClinicFilter: jest.fn(),
+      refreshData,
+      isRefreshing: false,
+    });
+
+    renderWithManagerProfile();
+
+    expect(
+      screen.getByText(AREA_MANAGER_ADMIN_DASHBOARD_COPY.title)
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('担当エリア売上')).not.toHaveLength(0);
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.getByText('担当Clinic比較')).toBeInTheDocument();
+    expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('設定テンプレート')).not.toBeInTheDocument();
   });
 
   it('shows an error state and retries loading on demand', () => {

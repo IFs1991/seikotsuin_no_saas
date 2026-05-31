@@ -25,6 +25,18 @@ jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(),
   getCurrentUser: jest.fn(),
   getUserAccessContext: jest.fn(),
+  resolveScopedClinicIds: jest.fn(
+    (permissions: {
+      clinic_scope_ids?: string[];
+      clinic_id: string | null;
+    }) => {
+      if (permissions.clinic_scope_ids?.length) {
+        return permissions.clinic_scope_ids;
+      }
+
+      return permissions.clinic_id ? [permissions.clinic_id] : null;
+    }
+  ),
 }));
 
 const mockRedirect = redirect as jest.MockedFunction<typeof redirect>;
@@ -91,7 +103,7 @@ describe('App route guards', () => {
       expect(mockRedirect).toHaveBeenCalledWith('/login');
     });
 
-    test('HQ 権限がなければ /unauthorized にリダイレクト', async () => {
+    test('clinic_admin は /unauthorized にリダイレクト', async () => {
       mockGetCurrentUser.mockResolvedValue(user);
       mockGetUserAccessContext.mockResolvedValue({
         permissions: { role: 'clinic_admin', clinic_id: 'clinic-1' },
@@ -100,6 +112,46 @@ describe('App route guards', () => {
         clinicId: 'clinic-1',
         isActive: true,
         isAdmin: true,
+      });
+
+      await expect(
+        MultiStoreLayout({ children: <div>multi-store</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('manager は担当Clinicスコープがあれば描画する', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: {
+          role: 'manager',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1', 'clinic-2'],
+        },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+
+      const rendered = await MultiStoreLayout({
+        children: <div>multi-store</div>,
+      });
+
+      expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    test('manager は担当Clinicスコープがなければ /unauthorized にリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'manager', clinic_id: null },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
       });
 
       await expect(
@@ -162,7 +214,7 @@ describe('App route guards', () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    test('manager は /admin から /admin/users にリダイレクトする', async () => {
+    test('manager は /admin の担当エリア管理ホームを描画できる', async () => {
       mockCreateClient.mockResolvedValue(adminSupabaseClient);
       mockHeaders.mockResolvedValue(new Headers({ 'x-current-path': '/admin' }));
       mockGetUserAccessContext.mockResolvedValue({
@@ -174,10 +226,10 @@ describe('App route guards', () => {
         isAdmin: false,
       });
 
-      await expect(
-        AdminLayout({ children: <div>admin home</div> })
-      ).rejects.toThrow('NEXT_REDIRECT:/admin/users');
-      expect(mockRedirect).toHaveBeenCalledWith('/admin/users');
+      const rendered = await AdminLayout({ children: <div>admin home</div> });
+
+      expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
     });
 
     test('manager は HQ-only の /admin/settings を開けない', async () => {

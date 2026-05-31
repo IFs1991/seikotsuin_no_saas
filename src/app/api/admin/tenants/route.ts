@@ -13,7 +13,7 @@ import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
-import { HQ_ROLES } from '@/lib/constants/roles';
+import { isAreaManagerRole, type Role } from '@/lib/constants/roles';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 import {
   emailSchema,
@@ -30,7 +30,10 @@ import {
   type ClinicListRow,
   type ScopedClinicLookupRow,
 } from '@/lib/admin/tenants';
-import { buildClinicScopeOrFilter } from '@/lib/clinics/scope';
+import {
+  buildClinicScopeOrFilter,
+  selectReservableAdminClinicRows,
+} from '@/lib/clinics/scope';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -75,6 +78,10 @@ const requireAdmin = (role: string) => role === 'admin';
 const CLINIC_ADMIN_ROLE = 'clinic_admin';
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 const TENANTS_ENDPOINT = '/api/admin/tenants';
+const TENANT_GET_ROLES = [
+  'admin',
+  'manager',
+] as const satisfies readonly Role[];
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 type ClinicCreateInput = z.infer<typeof ClinicCreateSchema>;
@@ -145,6 +152,46 @@ type ClinicAdminWriteFailure = {
   message: string;
   error: unknown;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return typeof value === 'string' || value === null;
+}
+
+function isScopedClinicLookupRow(
+  value: unknown
+): value is ScopedClinicLookupRow {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    isNullableString(value.parent_id)
+  );
+}
+
+function isClinicListRow(value: unknown): value is ClinicListRow {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    isNullableString(value.parent_id) &&
+    isNullableString(value.address) &&
+    isNullableString(value.phone_number) &&
+    typeof value.is_active === 'boolean' &&
+    typeof value.created_at === 'string'
+  );
+}
+
+function toClinicListRows(value: unknown): ClinicListRow[] {
+  return Array.isArray(value) ? value.filter(isClinicListRow) : [];
+}
+
+function toScopedClinicLookupRows(value: unknown): ScopedClinicLookupRow[] {
+  return Array.isArray(value) ? value.filter(isScopedClinicLookupRow) : [];
+}
 
 function buildClinicAdminName(clinicName: string) {
   return `${clinicName} 管理者`;
@@ -589,7 +636,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(HQ_ROLES),
+      allowedRoles: TENANT_GET_ROLES,
       requireClinicMatch: false,
     });
 
@@ -598,7 +645,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { permissions, auth } = processResult;
-    if (!requireAdmin(permissions.role)) {
+    const isManagerAreaKpiRequest =
+      isAreaManagerRole(permissions.role) && includeKpi;
+    if (!requireAdmin(permissions.role) && !isManagerAreaKpiRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
@@ -627,8 +676,12 @@ export async function GET(request: NextRequest) {
       query = query.ilike('name', `%${search}%`);
     }
 
-    if (isActiveFilter !== undefined) {
-      query = query.eq('is_active', isActiveFilter);
+    const effectiveIsActiveFilter = isManagerAreaKpiRequest
+      ? true
+      : isActiveFilter;
+
+    if (effectiveIsActiveFilter !== undefined) {
+      query = query.eq('is_active', effectiveIsActiveFilter);
     }
 
     const [{ data, error }, { data: hierarchySource, error: hierarchyError }] =
@@ -650,10 +703,18 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('クリニック情報の取得に失敗しました', 500);
     }
 
-    let items = buildClinicHierarchyRows(
-      data ?? [],
-      hierarchySource ?? []
-    ) as ClinicWithKPI[];
+    const clinicListRows = toClinicListRows(data);
+    const hierarchyRows = toScopedClinicLookupRows(hierarchySource);
+    const clinicRows = isManagerAreaKpiRequest
+      ? selectReservableAdminClinicRows(clinicListRows).filter(
+          clinic => clinic.is_active
+        )
+      : clinicListRows;
+
+    let items: ClinicWithKPI[] = buildClinicHierarchyRows(
+      clinicRows,
+      hierarchyRows
+    );
 
     // KPIデータが要求された場合
     if (includeKpi && items.length > 0) {
@@ -689,7 +750,7 @@ export async function POST(request: NextRequest) {
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(HQ_ROLES),
+      allowedRoles: ['admin'],
       requireClinicMatch: false,
       sanitizeInputValues: false,
     });

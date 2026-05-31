@@ -48,13 +48,17 @@ describe('navigation items', () => {
     ]);
   });
 
-  it('manager の管理セクションはスタッフ管理だけに限定する', () => {
+  it('manager の管理セクションは担当エリア管理に必要な導線だけに限定する', () => {
     expect(canUseAdminNavigation('manager')).toBe(true);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
+      '管理ホーム',
       'スタッフ管理',
+      '店舗比較分析',
     ]);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
+      '/admin',
       '/admin/users',
+      '/multi-store',
     ]);
     expect(getAdminMenuItemsForRole('manager')).toBe(
       AREA_MANAGER_ADMIN_MENU_ITEMS
@@ -72,7 +76,9 @@ describe('navigation items', () => {
     expect(mode.canAccessAdminNavigation).toBe(true);
     expect(mode.showAdminMenus).toBe(true);
     expect(mode.showOperationMenus).toBe(true);
+    expect(visibleItems.map(item => item.href)).toContain('/admin');
     expect(visibleItems.map(item => item.href)).toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).toContain('/multi-store');
     expect(visibleItems.map(item => item.href)).not.toContain(
       '/admin/tenants'
     );

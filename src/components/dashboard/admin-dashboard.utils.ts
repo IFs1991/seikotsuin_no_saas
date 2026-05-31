@@ -35,6 +35,8 @@ export interface AdminHomeViewModel {
   problematicClinics: DashboardClinic[];
 }
 
+export type AdminDashboardVariant = 'hq' | 'area-manager';
+
 interface DashboardClinicInsights {
   dashboardClinics: DashboardClinic[];
   problematicClinics: DashboardClinic[];
@@ -106,6 +108,64 @@ export const ADMIN_MANAGEMENT_ACTIONS = [
   },
 ] as const satisfies readonly ManagementAction[];
 
+export const AREA_MANAGER_ADMIN_DASHBOARD_COPY = {
+  ...ADMIN_DASHBOARD_COPY,
+  title: '担当エリア管理ホーム',
+  description:
+    '担当エリア内のClinic状態、要対応事項、主要な管理導線をまとめます。詳細な比較は担当Clinic比較で確認します。',
+  summaryLabels: [
+    '担当エリア売上',
+    '担当エリア患者数',
+    '担当エリア平均スコア',
+  ] as const,
+  actionDescription:
+    '担当Clinicのスタッフ権限管理とKPI比較へすぐ移動できます。',
+  clinicPerformanceTitle: '担当Clinic別パフォーマンス',
+  clinicPerformanceDescription:
+    '担当エリア内のClinicごとの売上、患者数、平均スコアです。',
+  noClinicPerformanceTitle: '表示できる担当Clinicはありません',
+  noClinicPerformanceDescription:
+    '担当Clinicスコープが設定されると、ここにClinic別パフォーマンスが表示されます。',
+  detailButton: '担当Clinic比較で見る',
+  comparisonButton: '担当Clinic比較を開く',
+} as const;
+
+export const AREA_MANAGER_MANAGEMENT_ACTIONS = [
+  {
+    label: 'スタッフ管理',
+    description:
+      '担当Clinic内の clinic_admin / therapist / staff の割り当てを管理します。',
+    href: '/admin/users',
+    cta: '権限管理へ',
+  },
+  {
+    label: '担当Clinic比較',
+    description: '担当Clinic別KPI、ランキング、差分を確認します。',
+    href: '/multi-store',
+    cta: '比較へ',
+  },
+] as const satisfies readonly ManagementAction[];
+
+const ADMIN_DASHBOARD_COPY_BY_VARIANT = {
+  hq: ADMIN_DASHBOARD_COPY,
+  'area-manager': AREA_MANAGER_ADMIN_DASHBOARD_COPY,
+} as const;
+
+const ADMIN_MANAGEMENT_ACTIONS_BY_VARIANT = {
+  hq: ADMIN_MANAGEMENT_ACTIONS,
+  'area-manager': AREA_MANAGER_MANAGEMENT_ACTIONS,
+} as const;
+
+export function getAdminDashboardCopy(variant: AdminDashboardVariant) {
+  return ADMIN_DASHBOARD_COPY_BY_VARIANT[variant];
+}
+
+export function getAdminManagementActions(
+  variant: AdminDashboardVariant
+): readonly ManagementAction[] {
+  return ADMIN_MANAGEMENT_ACTIONS_BY_VARIANT[variant];
+}
+
 export const ADMIN_DASHBOARD_STYLES = {
   page: 'min-h-screen bg-slate-50 p-4 text-slate-950 md:p-8',
   container: 'mx-auto max-w-6xl',
@@ -175,19 +235,22 @@ export function formatCurrency(value: number): string {
 }
 
 export function buildSummaryMetrics(
-  overallKpis: AdminDashboardPayload['overallKpis'] | null
+  overallKpis: AdminDashboardPayload['overallKpis'] | null,
+  variant: AdminDashboardVariant = 'hq'
 ): SummaryMetric[] {
+  const copy = getAdminDashboardCopy(variant);
+
   return [
     {
-      label: ADMIN_DASHBOARD_COPY.summaryLabels[0],
+      label: copy.summaryLabels[0],
       value: formatCurrency(overallKpis?.totalGroupRevenue ?? 0),
     },
     {
-      label: ADMIN_DASHBOARD_COPY.summaryLabels[1],
+      label: copy.summaryLabels[1],
       value: `${(overallKpis?.totalGroupPatientCount ?? 0).toLocaleString()}人`,
     },
     {
-      label: ADMIN_DASHBOARD_COPY.summaryLabels[2],
+      label: copy.summaryLabels[2],
       value: `${(overallKpis?.averageGroupPerformance ?? 0).toFixed(1)} / 5.0`,
     },
   ];
@@ -287,12 +350,13 @@ export function decorateDashboardClinics(
 
 export function buildAdminHomeViewModel(
   clinics: readonly AggregatedClinicData[],
-  overallKpis: AdminDashboardPayload['overallKpis'] | null
+  overallKpis: AdminDashboardPayload['overallKpis'] | null,
+  variant: AdminDashboardVariant = 'hq'
 ): AdminHomeViewModel {
   const insights = collectDashboardClinicInsights(clinics);
 
   return {
-    summaryMetrics: buildSummaryMetrics(overallKpis),
+    summaryMetrics: buildSummaryMetrics(overallKpis, variant),
     managementSignals: buildManagementSignalsFromCounts({
       totalClinics: clinics.length,
       problematicClinicCount: insights.problematicClinics.length,

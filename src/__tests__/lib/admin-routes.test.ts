@@ -19,7 +19,13 @@ describe('admin route access helpers', () => {
     ).toBe(true);
   });
 
-  it('allows manager only for the admin users page subtree', () => {
+  it('allows manager only for the area dashboard and admin users page subtree', () => {
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
+        pathname: '/admin',
+      })
+    ).toBe(true);
     expect(
       canAccessAdminRouteWithCompat({
         role: 'manager',
@@ -41,6 +47,12 @@ describe('admin route access helpers', () => {
     expect(
       canAccessAdminRouteWithCompat({
         role: 'manager',
+        pathname: '/admin/chat',
+      })
+    ).toBe(false);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
         pathname: '/admin/tenants',
       })
     ).toBe(false);
@@ -55,13 +67,13 @@ describe('admin route access helpers', () => {
     ).toBe(false);
   });
 
-  it('redirects manager admin home to the scoped users page', () => {
+  it('does not redirect manager admin home once the area dashboard is enabled', () => {
     expect(
       shouldRedirectAreaManagerAdminHome({
         role: 'manager',
         pathname: '/admin',
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       shouldRedirectAreaManagerAdminHome({
         role: 'manager',

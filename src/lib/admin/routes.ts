@@ -6,10 +6,11 @@ import {
 
 export const ADMIN_ROUTE_PATH_HEADER = 'x-current-path';
 export const AREA_MANAGER_ADMIN_HOME_PATH = '/admin';
-export const AREA_MANAGER_ADMIN_DEFAULT_PATH = '/admin/users';
+export const AREA_MANAGER_ADMIN_DEFAULT_PATH = AREA_MANAGER_ADMIN_HOME_PATH;
+export const AREA_MANAGER_ADMIN_USERS_PATH = '/admin/users';
 
 const AREA_MANAGER_ADMIN_ROUTE_PREFIXES = [
-  AREA_MANAGER_ADMIN_DEFAULT_PATH,
+  AREA_MANAGER_ADMIN_USERS_PATH,
 ] as const;
 
 interface AdminRouteAccessInput {
@@ -31,8 +32,11 @@ export function canAccessAreaManagerAdminRoute(
     return false;
   }
 
-  return AREA_MANAGER_ADMIN_ROUTE_PREFIXES.some(prefix =>
-    matchesAdminRoutePrefix(pathname, prefix)
+  return (
+    pathname === AREA_MANAGER_ADMIN_HOME_PATH ||
+    AREA_MANAGER_ADMIN_ROUTE_PREFIXES.some(prefix =>
+      matchesAdminRoutePrefix(pathname, prefix)
+    )
   );
 }
 
@@ -52,8 +56,8 @@ export function canAccessAdminRouteWithCompat({
 }
 
 export function shouldRedirectAreaManagerAdminHome({
-  role,
-  pathname,
+  role: _role,
+  pathname: _pathname,
 }: AdminRouteAccessInput): boolean {
-  return isAreaManagerRole(role) && pathname === AREA_MANAGER_ADMIN_HOME_PATH;
+  return false;
 }
