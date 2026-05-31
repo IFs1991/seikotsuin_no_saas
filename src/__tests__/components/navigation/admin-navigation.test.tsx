@@ -18,7 +18,19 @@ jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }));
 
-function renderHeader() {
+const managerProfile = {
+  id: 'manager-1',
+  email: 'manager@example.com',
+  role: 'manager',
+  clinicId: 'clinic-1',
+  clinicName: 'テスト院',
+  isActive: true,
+  isAdmin: false,
+};
+
+function renderHeader(
+  props: Partial<React.ComponentProps<typeof Header>> = {}
+) {
   return render(
     <SelectedClinicProvider initialClinicId={null}>
       <Header
@@ -28,6 +40,7 @@ function renderHeader() {
         isAdmin
         clinics={[]}
         clinicsLoading={false}
+        {...props}
       />
     </SelectedClinicProvider>
   );
@@ -114,6 +127,47 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('クイックアクセス')).not.toBeInTheDocument();
   });
 
+  it('Sidebar は manager に店舗運用導線とスタッフ管理だけを表示する', () => {
+    render(
+      <Sidebar
+        isOpen
+        onClose={jest.fn()}
+        isAdmin
+        profileLoading={false}
+        role='manager'
+      />
+    );
+
+    expect(screen.getByText('日報管理')).toBeInTheDocument();
+    expect(screen.getByText('予約管理')).toBeInTheDocument();
+    expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.queryByText('患者管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('施術メニュー')).not.toBeInTheDocument();
+    expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
+    expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
+    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
+    expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
+  });
+
+  it('Header は manager の管理メニューをスタッフ管理だけに限定する', async () => {
+    renderHeader({
+      isAdmin: false,
+      canAccessAdminNavigation: true,
+      profile: managerProfile,
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /管理メニュー/ }));
+
+    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
+    expect(screen.queryByText('管理ホーム')).not.toBeInTheDocument();
+    expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
+    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
+    expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
+  });
+
   it('MobileBottomNav は HQ admin に店舗運用導線を表示しない', () => {
     render(<MobileBottomNav isAdmin profileLoading={false} role='admin' />);
 
@@ -123,5 +177,12 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('予約')).not.toBeInTheDocument();
     expect(screen.queryByText('患者')).not.toBeInTheDocument();
     expect(screen.queryByText('収益')).not.toBeInTheDocument();
+  });
+
+  it('MobileBottomNav は manager の管理導線を /admin/users に向ける', () => {
+    render(<MobileBottomNav isAdmin profileLoading={false} role='manager' />);
+
+    const adminLink = screen.getByRole('tab', { name: /管理/ });
+    expect(adminLink).toHaveAttribute('href', '/admin/users');
   });
 });

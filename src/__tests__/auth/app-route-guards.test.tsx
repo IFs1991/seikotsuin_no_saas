@@ -1,10 +1,12 @@
 import React from 'react';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   createClient,
   getCurrentUser,
   getUserAccessContext,
 } from '@/lib/supabase';
+import AdminLayout from '@/app/(app)/admin/(protected)/layout';
 import AppLayout from '@/app/(app)/layout';
 import MultiStoreLayout from '@/app/(app)/multi-store/layout';
 import ReservationsLayout from '@/app/(app)/reservations/layout';
@@ -13,6 +15,10 @@ jest.mock('next/navigation', () => ({
   redirect: jest.fn((path: string) => {
     throw new Error(`NEXT_REDIRECT:${path}`);
   }),
+}));
+
+jest.mock('next/headers', () => ({
+  headers: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -29,9 +35,16 @@ const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<
 const mockGetUserAccessContext = getUserAccessContext as jest.MockedFunction<
   typeof getUserAccessContext
 >;
+const mockHeaders = headers as jest.MockedFunction<typeof headers>;
+const mockAdminGetUser = jest.fn();
 
 describe('App route guards', () => {
   const supabaseClient = {} as Awaited<ReturnType<typeof createClient>>;
+  const adminSupabaseClient = {
+    auth: {
+      getUser: mockAdminGetUser,
+    },
+  } as Awaited<ReturnType<typeof createClient>>;
   const user = { id: 'user-1', email: 'staff@example.com' } as Awaited<
     ReturnType<typeof getCurrentUser>
   >;
@@ -39,6 +52,13 @@ describe('App route guards', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreateClient.mockResolvedValue(supabaseClient);
+    mockAdminGetUser.mockResolvedValue({
+      data: { user },
+      error: null,
+    });
+    mockHeaders.mockResolvedValue(
+      new Headers({ 'x-current-path': '/admin/users' })
+    );
   });
 
   describe('AppLayout', () => {
@@ -101,6 +121,101 @@ describe('App route guards', () => {
 
       const rendered = await MultiStoreLayout({
         children: <div>multi-store</div>,
+      });
+
+      expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AdminLayout', () => {
+    test('未認証なら /admin/login にリダイレクト', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockAdminGetUser.mockResolvedValue({
+        data: { user: null },
+        error: null,
+      });
+
+      await expect(
+        AdminLayout({ children: <div>admin</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/admin/login');
+      expect(mockRedirect).toHaveBeenCalledWith('/admin/login');
+    });
+
+    test('manager は /admin/users を描画できる', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-current-path': '/admin/users' })
+      );
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'manager', clinic_id: 'clinic-1' },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+
+      const rendered = await AdminLayout({ children: <div>admin users</div> });
+
+      expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    test('manager は /admin から /admin/users にリダイレクトする', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockHeaders.mockResolvedValue(new Headers({ 'x-current-path': '/admin' }));
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'manager', clinic_id: 'clinic-1' },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+
+      await expect(
+        AdminLayout({ children: <div>admin home</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/admin/users');
+      expect(mockRedirect).toHaveBeenCalledWith('/admin/users');
+    });
+
+    test('manager は HQ-only の /admin/settings を開けない', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-current-path': '/admin/settings' })
+      );
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'manager', clinic_id: 'clinic-1' },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
+
+      await expect(
+        AdminLayout({ children: <div>admin settings</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('clinic_admin の既存 admin UI アクセスは維持する', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-current-path': '/admin/settings' })
+      );
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'clinic_admin', clinic_id: 'clinic-1' },
+        role: 'clinic_admin',
+        normalizedRole: 'clinic_admin',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: true,
+      });
+
+      const rendered = await AdminLayout({
+        children: <div>admin settings</div>,
       });
 
       expect(rendered).toBeDefined();

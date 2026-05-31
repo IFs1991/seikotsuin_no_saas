@@ -1,7 +1,13 @@
 import React from 'react';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient, getUserAccessContext } from '@/lib/supabase';
-import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  ADMIN_ROUTE_PATH_HEADER,
+  AREA_MANAGER_ADMIN_DEFAULT_PATH,
+  canAccessAdminRouteWithCompat,
+  shouldRedirectAreaManagerAdminHome,
+} from '@/lib/admin/routes';
 
 export default async function AdminLayout({
   children,
@@ -20,10 +26,18 @@ export default async function AdminLayout({
   const accessContext = await getUserAccessContext(user.id, supabase);
   const isActive = accessContext.isActive;
   const role = accessContext.normalizedRole;
+  const headerList = await headers();
+  const pathname = headerList.get(ADMIN_ROUTE_PATH_HEADER);
 
-  // 互換マッピング適用: clinic_manager → clinic_admin
-  // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (Option B-1)
-  if (!role || !canAccessAdminUIWithCompat(role) || !isActive) {
+  if (!role || !isActive) {
+    redirect('/unauthorized');
+  }
+
+  if (shouldRedirectAreaManagerAdminHome({ role, pathname })) {
+    redirect(AREA_MANAGER_ADMIN_DEFAULT_PATH);
+  }
+
+  if (!canAccessAdminRouteWithCompat({ role, pathname })) {
     redirect('/unauthorized');
   }
 

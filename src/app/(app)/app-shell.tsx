@@ -12,6 +12,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { canUseAdminNavigation } from '@/lib/navigation/items';
+import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
 
 const DARK_CLASS = 'dark';
@@ -51,6 +52,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const canAccessAdminNavigation = React.useMemo(
     () => canUseAdminNavigation(profileRole),
+    [profileRole]
+  );
+  const canAccessAdminUI = React.useMemo(
+    () => canAccessAdminUIWithCompat(profileRole),
     [profileRole]
   );
 
@@ -147,7 +152,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               isDarkMode={isDarkMode}
               profile={profile}
               profileLoading={profileLoading}
-              isAdmin={canAccessAdminNavigation}
+              isAdmin={canAccessAdminUI}
+              canAccessAdminNavigation={canAccessAdminNavigation}
               clinics={clinics}
               clinicsLoading={clinicsLoading}
               clinicsError={clinicsError}

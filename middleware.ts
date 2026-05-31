@@ -4,6 +4,7 @@ import {
   applyRateLimits,
   getPathRateLimit,
 } from '@/lib/rate-limiting/middleware';
+import { ADMIN_ROUTE_PATH_HEADER } from '@/lib/admin/routes';
 import { CSPConfig } from '@/lib/security/csp-config';
 import type { Database } from '@/types/supabase';
 
@@ -50,6 +51,20 @@ const PILOT_BLOCKED_ROUTE_PREFIXES = [
 
 function matchesAnyPrefix(pathname: string, prefixes: readonly string[]) {
   return prefixes.some(prefix => pathname.startsWith(prefix));
+}
+
+function createNextResponse(request: NextRequest, pathname: string) {
+  if (!matchesAnyPrefix(pathname, ADMIN_ONLY_PREFIXES)) {
+    return NextResponse.next({ request });
+  }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(ADMIN_ROUTE_PATH_HEADER, pathname);
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
@@ -118,7 +133,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next({ request });
+  const response = createNextResponse(request, pathname);
 
   const nonce = CSPConfig.generateNonce();
   response.headers.set('x-nonce', nonce);
