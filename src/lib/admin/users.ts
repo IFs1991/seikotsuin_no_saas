@@ -7,7 +7,11 @@ import {
 
 export const DEFAULT_ADMIN_USER_ROLE: AdminUserRole = 'clinic_admin';
 export const CLINIC_ADMIN_ASSIGNABLE_ROLES = [
-  'manager',
+  'therapist',
+  'staff',
+] as const satisfies readonly AdminUserRole[];
+export const AREA_MANAGER_ASSIGNABLE_ROLES = [
+  'clinic_admin',
   'therapist',
   'staff',
 ] as const satisfies readonly AdminUserRole[];
@@ -132,6 +136,9 @@ type PermissionFilterInput = {
   clinicFilter: string;
   search: string;
 };
+type PermissionFormValidationOptions = {
+  requireClinicId?: boolean;
+};
 
 type EditablePermission = Pick<
   PermissionEntry,
@@ -140,6 +147,9 @@ type EditablePermission = Pick<
 
 const CLINIC_ADMIN_ASSIGNABLE_ROLE_SET = new Set<string>(
   CLINIC_ADMIN_ASSIGNABLE_ROLES
+);
+const AREA_MANAGER_ASSIGNABLE_ROLE_SET = new Set<string>(
+  AREA_MANAGER_ASSIGNABLE_ROLES
 );
 const CREATABLE_ADMIN_ACCOUNT_ROLE_SET = new Set<string>(
   CREATABLE_ADMIN_ACCOUNT_ROLES
@@ -155,6 +165,16 @@ export function canClinicAdminManagePermissionRole(
   );
 }
 
+export function canAreaManagerManagePermissionRole(
+  role: string | null | undefined
+): boolean {
+  const normalizedRole = normalizeRole(role);
+  return (
+    normalizedRole !== null &&
+    AREA_MANAGER_ASSIGNABLE_ROLE_SET.has(normalizedRole)
+  );
+}
+
 export function getAssignableAdminUserRoleOptions(
   actorRole: string | null | undefined
 ) {
@@ -167,6 +187,12 @@ export function getAssignableAdminUserRoleOptions(
   if (normalizedRole === 'clinic_admin') {
     return ADMIN_USER_ROLE_OPTIONS.filter(option =>
       canClinicAdminManagePermissionRole(option.value)
+    );
+  }
+
+  if (normalizedRole === 'manager') {
+    return ADMIN_USER_ROLE_OPTIONS.filter(option =>
+      canAreaManagerManagePermissionRole(option.value)
     );
   }
 
@@ -295,7 +321,8 @@ export function getPermissionClinicId(
 }
 
 export function validatePermissionForm(
-  formState: PermissionFormState
+  formState: PermissionFormState,
+  options: PermissionFormValidationOptions = {}
 ): string | null {
   const isAccountOnlyMode =
     formState.create_mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
@@ -327,6 +354,14 @@ export function validatePermissionForm(
     if (!CREATABLE_ADMIN_ACCOUNT_ROLE_SET.has(formState.role)) {
       return '新規作成できるロールを選択してください';
     }
+  }
+
+  if (
+    options.requireClinicId === true &&
+    formState.role !== 'admin' &&
+    !formState.clinic_id.trim()
+  ) {
+    return '所属先店舗を選択してください';
   }
 
   return null;

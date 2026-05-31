@@ -84,6 +84,22 @@ const createClinicAdminProcessResult = (body: unknown) => ({
   body,
 });
 
+const createManagerProcessResult = (body: unknown) => ({
+  success: true as const,
+  auth: {
+    id: 'manager-1',
+    email: 'manager@example.com',
+    role: 'manager',
+  },
+  permissions: {
+    role: 'manager',
+    clinic_id: '33333333-3333-4333-8333-333333333333',
+    clinic_scope_ids: ['33333333-3333-4333-8333-333333333333'],
+  },
+  supabase: {},
+  body,
+});
+
 const createAdminClientMockValue = ({
   createdUserId = '22222222-2222-4222-8222-222222222222',
   createUserError = null,
@@ -249,6 +265,29 @@ describe('POST /api/admin/users/accounts', () => {
 
     expect(response.status).toBe(403);
     expect(body.error).toBe('管理者権限が必要です');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects manager with 403 while allowing the route-level guard to decide', async () => {
+    const payload = {
+      full_name: '山田 太郎',
+      email: 'yamada@example.com',
+      password: 'SafePass123!',
+    };
+    processApiRequestMock.mockResolvedValue(createManagerProcessResult(payload));
+
+    const { POST } = await import('@/app/api/admin/users/accounts/route');
+    const response = await POST(createRequest(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('管理者権限が必要です');
+    expect(processApiRequestMock).toHaveBeenCalledWith(
+      expect.any(NextRequest),
+      expect.objectContaining({
+        allowedRoles: ['admin', 'clinic_admin', 'manager'],
+      })
+    );
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 

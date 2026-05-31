@@ -64,7 +64,7 @@ const createAccountOnlyUserMock = jest.fn();
 const assignPermissionMock = jest.fn();
 const applyPermissionToListMock = jest.fn();
 
-const setupHooks = (role: 'admin' | 'clinic_admin') => {
+const setupHooks = (role: 'admin' | 'clinic_admin' | 'manager') => {
   createAccountOnlyUserMock.mockResolvedValue({
     id: '22222222-2222-4222-8222-222222222222',
     email: 'profile-only@example.com',
@@ -223,5 +223,44 @@ describe('AdminUsersPage', () => {
     expect(
       screen.queryByRole('button', { name: 'ユーザーアカウントのみ作成' })
     ).not.toBeInTheDocument();
+  });
+
+  it('shows manager only area-manageable role options', () => {
+    setupHooks('manager');
+
+    render(<AdminUsersPage />);
+
+    expect(
+      screen.queryByRole('button', { name: 'ユーザーアカウントのみ作成' })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText('店舗管理者').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('施術者').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('スタッフ').length).toBeGreaterThan(0);
+    expect(screen.queryByText('本部管理者')).not.toBeInTheDocument();
+    expect(screen.queryByText('マネージャー')).not.toBeInTheDocument();
+  });
+
+  it('prevents manager submission without a clinic_id', async () => {
+    setupHooks('manager');
+
+    render(<AdminUsersPage />);
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '新規店舗ユーザーを作成' })
+    );
+    fireEvent.change(screen.getByLabelText('氏名'), {
+      target: { value: '店舗 管理者' },
+    });
+    fireEvent.change(screen.getByLabelText('ログインメールアドレス'), {
+      target: { value: 'AREA-ADMIN@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('初期パスワード'), {
+      target: { value: 'SafePass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'アカウントを作成する' }));
+
+    expect(await screen.findByText('所属先店舗を選択してください'))
+      .toBeInTheDocument();
+    expect(assignPermissionMock).not.toHaveBeenCalled();
   });
 });

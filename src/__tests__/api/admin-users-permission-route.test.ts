@@ -412,4 +412,334 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
     expect(logAdminActionMock).not.toHaveBeenCalled();
   });
+
+  it('rejects manager permission updates without clinic scope before reading permissions', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: null,
+        clinic_scope_ids: [],
+      },
+      supabase: {},
+      body: {
+        role: 'staff',
+        clinic_id: clinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'staff',
+          clinic_id: clinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('クリニックスコープが設定されていません');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(logAdminActionMock).not.toHaveBeenCalled();
+  });
+
+  it('allows manager to update scoped clinic_admin to staff', async () => {
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'clinic_admin',
+          clinic_id: clinicId,
+          username: 'clinic-admin@example.com',
+        },
+        error: null,
+      }),
+    };
+    const updateQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'staff',
+          clinic_id: clinicId,
+          clinics: { name: '新宿院' },
+          username: 'clinic-admin@example.com',
+          created_at: '2026-04-24T00:00:00.000Z',
+        },
+        error: null,
+      }),
+    };
+    const resourcesQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const userPermissionQueries = [existingQuery, updateQuery];
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') {
+          const query = userPermissionQueries.shift();
+          if (!query) {
+            throw new Error('Unexpected user_permissions query');
+          }
+          return query;
+        }
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: {},
+      body: {
+        role: 'staff',
+        clinic_id: clinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'staff',
+          clinic_id: clinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(existingQuery.maybeSingle).toHaveBeenCalled();
+    expect(updateQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: 'staff',
+        clinic_id: clinicId,
+      })
+    );
+    expect(resourcesQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_bookable: false,
+      })
+    );
+  });
+
+  it.each(['admin', 'manager'] as const)(
+    'prevents manager from updating %s permission rows',
+    async existingRole => {
+      const existingQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: permissionId,
+            staff_id: userId,
+            role: existingRole,
+            clinic_id: clinicId,
+            username: `${existingRole}@example.com`,
+          },
+          error: null,
+        }),
+      };
+      createAdminClientMock.mockReturnValue({
+        from: jest.fn((table: string) => {
+          if (table !== 'user_permissions') {
+            throw new Error(`Unexpected table: ${table}`);
+          }
+          return existingQuery;
+        }),
+      });
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: {
+          id: 'manager-1',
+          email: 'manager@example.com',
+          role: 'manager',
+        },
+        permissions: {
+          role: 'manager',
+          clinic_id: clinicId,
+          clinic_scope_ids: [clinicId],
+        },
+        supabase: {},
+        body: {
+          role: 'staff',
+          clinic_id: clinicId,
+        },
+      });
+
+      const { PATCH } =
+        await import('@/app/api/admin/users/[permission_id]/route');
+      const response = await PATCH(
+        new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            role: 'staff',
+            clinic_id: clinicId,
+          }),
+        }),
+        { params: { permission_id: permissionId } }
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(body.error).toBe(
+        'この権限はエリアマネージャーでは変更できません'
+      );
+      expect(existingQuery.maybeSingle).toHaveBeenCalled();
+      expect(logAdminActionMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('prevents manager from moving a permission outside scope', async () => {
+    const outsideClinicId = '44444444-4444-4444-8444-444444444444';
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'clinic_admin',
+          clinic_id: clinicId,
+          username: 'clinic-admin@example.com',
+        },
+        error: null,
+      }),
+    };
+    createAdminClientMock.mockReturnValue({
+      from: jest.fn((table: string) => {
+        if (table !== 'user_permissions') {
+          throw new Error(`Unexpected table: ${table}`);
+        }
+        return existingQuery;
+      }),
+    });
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: {},
+      body: {
+        role: 'staff',
+        clinic_id: outsideClinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          role: 'staff',
+          clinic_id: outsideClinicId,
+        }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(logAdminActionMock).not.toHaveBeenCalled();
+  });
+
+  it('allows manager to revoke scoped clinic_admin permissions', async () => {
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'clinic_admin',
+          clinic_id: clinicId,
+          username: 'clinic-admin@example.com',
+        },
+        error: null,
+      }),
+    };
+    const deleteQuery = {
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const resourcesQuery = {
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    };
+    const userPermissionQueries = [existingQuery, deleteQuery];
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') {
+          const query = userPermissionQueries.shift();
+          if (!query) {
+            throw new Error('Unexpected user_permissions query');
+          }
+          return query;
+        }
+        if (table === 'resources') return resourcesQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: {},
+      body: {
+        revoke: true,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ revoke: true }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(deleteQuery.delete).toHaveBeenCalled();
+    expect(resourcesQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_bookable: false,
+      })
+    );
+  });
 });

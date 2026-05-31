@@ -8,20 +8,21 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import {
-  ADMIN_UI_ROLES,
   ADMIN_USER_ROLE_VALUES,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { createAdminClient } from '@/lib/supabase';
+import { toPermissionEntry } from '@/lib/admin/users';
 import {
-  canClinicAdminManagePermissionRole,
-  toPermissionEntry,
-} from '@/lib/admin/users';
-import {
+  ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
-  canClinicAdminAccessClinic,
+  canAdminUsersActorManagePermissionRole,
+  canScopedAdminUsersAccessClinic,
+  getAdminUsersPermissionForbiddenMessage,
+  getAdminUsersRoleForbiddenMessage,
+  getScopedAdminUsersClinicIds,
   isAdminUsersActor,
-  isClinicAdminActor,
+  isScopedAdminUsersActor,
 } from '../access';
 import { isPermissionStaffResourceRole } from '@/lib/reservations/staff-resource-candidates';
 
@@ -193,7 +194,7 @@ export async function PATCH(
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_USERS_API_ROLES,
       requireClinicMatch: false,
     });
 
@@ -204,6 +205,16 @@ export async function PATCH(
     const { auth, permissions, body } = processResult;
     if (!isAdminUsersActor(permissions)) {
       return createErrorResponse('管理者権限が必要です', 403);
+    }
+
+    if (
+      isScopedAdminUsersActor(permissions) &&
+      !getScopedAdminUsersClinicIds(permissions)?.length
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403
+      );
     }
 
     const parsed = PermissionUpdateSchema.safeParse(body);
@@ -218,7 +229,7 @@ export async function PATCH(
     const adminSupabase = createAdminClient();
     let existingPermission: ExistingPermissionRow | null = null;
 
-    if (isClinicAdminActor(permissions)) {
+    if (isScopedAdminUsersActor(permissions)) {
       const { data, error } = await loadExistingPermission(
         adminSupabase,
         permission_id
@@ -241,7 +252,10 @@ export async function PATCH(
       existingPermission = data as ExistingPermissionRow;
 
       if (
-        !canClinicAdminAccessClinic(permissions, existingPermission.clinic_id)
+        !canScopedAdminUsersAccessClinic(
+          permissions,
+          existingPermission.clinic_id
+        )
       ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -249,9 +263,14 @@ export async function PATCH(
         );
       }
 
-      if (!canClinicAdminManagePermissionRole(existingPermission.role)) {
+      if (
+        !canAdminUsersActorManagePermissionRole(
+          permissions,
+          existingPermission.role
+        )
+      ) {
         return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.permissionForbiddenForClinicAdmin,
+          getAdminUsersPermissionForbiddenMessage(permissions),
           403
         );
       }
@@ -313,13 +332,13 @@ export async function PATCH(
     if (parsed.data.clinic_id !== undefined)
       updatePayload.clinic_id = parsed.data.clinic_id;
 
-    if (isClinicAdminActor(permissions)) {
+    if (isScopedAdminUsersActor(permissions)) {
       if (
         parsed.data.role !== undefined &&
-        !canClinicAdminManagePermissionRole(parsed.data.role)
+        !canAdminUsersActorManagePermissionRole(permissions, parsed.data.role)
       ) {
         return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.roleForbiddenForClinicAdmin,
+          getAdminUsersRoleForbiddenMessage(permissions),
           403
         );
       }
@@ -333,7 +352,7 @@ export async function PATCH(
         return createErrorResponse('clinic_id が必須です', 400);
       }
 
-      if (!canClinicAdminAccessClinic(permissions, targetClinicId)) {
+      if (!canScopedAdminUsersAccessClinic(permissions, targetClinicId)) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403

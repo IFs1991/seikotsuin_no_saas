@@ -107,6 +107,13 @@ export function isHQRole(role: string | null | undefined): boolean {
 }
 
 /**
+ * Check if role is the scoped area manager role.
+ */
+export function isAreaManagerRole(role: string | null | undefined): boolean {
+  return normalizeRole(role) === 'manager';
+}
+
+/**
  * Check if role can access admin UI
  */
 export function canAccessAdminUI(role: string | null | undefined): boolean {

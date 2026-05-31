@@ -19,6 +19,7 @@ import {
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
   canManageClinicSettingsWithCompat,
+  isAreaManagerRole,
 } from '@/lib/constants/roles';
 
 describe('Role Constants', () => {
@@ -110,6 +111,22 @@ describe('Role Helper Functions', () => {
 
     it('should return false for empty string', () => {
       expect(isHQRole('')).toBe(false);
+    });
+  });
+
+  describe('isAreaManagerRole', () => {
+    it('should return true for manager', () => {
+      expect(isAreaManagerRole('manager')).toBe(true);
+    });
+
+    it('should return false for admin and clinic_admin', () => {
+      expect(isAreaManagerRole('admin')).toBe(false);
+      expect(isAreaManagerRole('clinic_admin')).toBe(false);
+    });
+
+    it('should return false for nullish values', () => {
+      expect(isAreaManagerRole(null)).toBe(false);
+      expect(isAreaManagerRole(undefined)).toBe(false);
     });
   });
 

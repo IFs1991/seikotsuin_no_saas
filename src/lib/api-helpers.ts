@@ -227,7 +227,7 @@ export function createSuccessResponse<T>(
  */
 export interface ProcessApiOptions {
   requireBody?: boolean;
-  allowedRoles?: string[];
+  allowedRoles?: readonly string[];
   clinicId?: string | null;
   requireClinicMatch?: boolean;
   sanitizeInputValues?: boolean;

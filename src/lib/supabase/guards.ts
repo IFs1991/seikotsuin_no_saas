@@ -24,7 +24,7 @@ export interface ClinicAccessOptions {
   /**
    * Roles that are explicitly permitted for the requested operation in addition to admins.
    */
-  allowedRoles?: string[];
+  allowedRoles?: readonly string[];
 }
 
 export interface ClinicAccessContext {

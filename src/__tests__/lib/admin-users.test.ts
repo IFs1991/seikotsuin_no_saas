@@ -1,9 +1,11 @@
 import {
+  AREA_MANAGER_ASSIGNABLE_ROLES,
   CLINIC_FILTER_ALL,
   CLINIC_ADMIN_ASSIGNABLE_ROLES,
   CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
   ROLE_FILTER_ALL,
   buildPermissionFilters,
+  canAreaManagerManagePermissionRole,
   canClinicAdminManagePermissionRole,
   createAccountOnlyPayload,
   createAssignPermissionPayload,
@@ -234,23 +236,51 @@ describe('admin users helpers', () => {
   });
 
   test('clinic_admin role options are limited to staff-manageable roles', () => {
-    expect(CLINIC_ADMIN_ASSIGNABLE_ROLES).toEqual([
-      'manager',
-      'therapist',
-      'staff',
-    ]);
+    expect(CLINIC_ADMIN_ASSIGNABLE_ROLES).toEqual(['therapist', 'staff']);
     expect(getAssignableAdminUserRoleOptions('clinic_admin').map(o => o.value))
-      .toEqual(['manager', 'therapist', 'staff']);
+      .toEqual(['therapist', 'staff']);
     expect(getAssignableAdminUserRoleOptions('admin').map(o => o.value)).toEqual(
       ['admin', 'clinic_admin', 'manager', 'therapist', 'staff']
     );
   });
 
-  test('clinic_admin cannot manage admin or clinic_admin permission rows', () => {
-    expect(canClinicAdminManagePermissionRole('manager')).toBe(true);
+  test('clinic_admin cannot manage admin, manager, or clinic_admin permission rows', () => {
+    expect(canClinicAdminManagePermissionRole('manager')).toBe(false);
     expect(canClinicAdminManagePermissionRole('therapist')).toBe(true);
     expect(canClinicAdminManagePermissionRole('staff')).toBe(true);
     expect(canClinicAdminManagePermissionRole('clinic_admin')).toBe(false);
     expect(canClinicAdminManagePermissionRole('admin')).toBe(false);
+  });
+
+  test('manager role options are limited to area-scoped manageable roles', () => {
+    expect(AREA_MANAGER_ASSIGNABLE_ROLES).toEqual([
+      'clinic_admin',
+      'therapist',
+      'staff',
+    ]);
+    expect(getAssignableAdminUserRoleOptions('manager').map(o => o.value))
+      .toEqual(['clinic_admin', 'therapist', 'staff']);
+  });
+
+  test('manager cannot manage admin or manager permission rows', () => {
+    expect(canAreaManagerManagePermissionRole('clinic_admin')).toBe(true);
+    expect(canAreaManagerManagePermissionRole('therapist')).toBe(true);
+    expect(canAreaManagerManagePermissionRole('staff')).toBe(true);
+    expect(canAreaManagerManagePermissionRole('manager')).toBe(false);
+    expect(canAreaManagerManagePermissionRole('admin')).toBe(false);
+  });
+
+  test('scoped actors must select a clinic before submitting permissions', () => {
+    expect(
+      validatePermissionForm(
+        {
+          ...createEmptyPermissionFormState('clinic_admin'),
+          user_id: '00000000-0000-0000-0000-000000000001',
+          role: 'clinic_admin',
+          clinic_id: '',
+        },
+        { requireClinicId: true }
+      )
+    ).toBe('所属先店舗を選択してください');
   });
 });
