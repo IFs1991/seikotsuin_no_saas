@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 import { getApiErrorMessage } from '@/lib/api-error-message';
 import type {
+  AccountOnlyCreatePayload,
   AssignPermissionPayload,
   CreateAccountPayload,
   PermissionEntry,
@@ -29,8 +30,22 @@ type UserCandidateListPayload = {
   total: number;
 };
 
+type AccountOnlyCreateResult = {
+  id: string;
+  email: string;
+  full_name: string;
+  permission_status: 'assigned' | 'unassigned';
+  permission_id: string | null;
+  role: string | null;
+  clinic_id: string | null;
+};
+
 type FetchPermissionsOptions = {
   signal?: AbortSignal;
+};
+
+type FetchUserCandidatesOptions = FetchPermissionsOptions & {
+  includeUnassigned?: boolean;
 };
 
 const buildPermissionListUrl = (filters: PermissionFilters): string => {
@@ -45,10 +60,14 @@ const buildPermissionListUrl = (filters: PermissionFilters): string => {
     : API_ENDPOINTS.ADMIN.USERS;
 };
 
-const buildUserCandidateListUrl = (search: string): string => {
+const buildUserCandidateListUrl = (
+  search: string,
+  includeUnassigned: boolean
+): string => {
   const params = new URLSearchParams();
   const trimmedSearch = search.trim();
   if (trimmedSearch) params.set('search', trimmedSearch);
+  if (includeUnassigned) params.set('include_unassigned', 'true');
 
   const query = params.toString();
   return query
@@ -128,6 +147,31 @@ export function useAdminUsers() {
 
         return await readApiResponse<PermissionEntry>(
           await fetch(API_ENDPOINTS.ADMIN.USERS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
+        setError(message);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const createAccountOnlyUser = useCallback(
+    async (payload: AccountOnlyCreatePayload) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        return await readApiResponse<AccountOnlyCreateResult>(
+          await fetch(API_ENDPOINTS.ADMIN.USER_ACCOUNTS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -243,6 +287,7 @@ export function useAdminUsers() {
     error,
     fetchPermissions,
     assignPermission,
+    createAccountOnlyUser,
     updatePermission,
     applyPermissionToList,
     removePermissionFromList,
@@ -264,7 +309,7 @@ export function useAdminUserCandidates() {
   }, []);
 
   const fetchUserCandidates = useCallback(
-    async (search: string, options: FetchPermissionsOptions = {}) => {
+    async (search: string, options: FetchUserCandidatesOptions = {}) => {
       const trimmedSearch = search.trim();
       if (!trimmedSearch) {
         clearCandidates();
@@ -279,9 +324,15 @@ export function useAdminUserCandidates() {
         setError(null);
 
         const data = await readApiResponse<UserCandidateListPayload>(
-          await fetch(buildUserCandidateListUrl(trimmedSearch), {
-            signal: options.signal,
-          })
+          await fetch(
+            buildUserCandidateListUrl(
+              trimmedSearch,
+              options.includeUnassigned === true
+            ),
+            {
+              signal: options.signal,
+            }
+          )
         );
 
         if (requestIdRef.current === requestId) {
