@@ -1,8 +1,11 @@
 import {
   ADMIN_MENU_ITEMS,
+  AREA_MANAGER_ADMIN_MENU_ITEMS,
   CLINIC_ADMIN_MENU_ITEMS,
   OPERATION_MENU_ITEMS,
+  canUseAdminNavigation,
   getCurrentNavigationItemId,
+  getAdminMenuItemsForRole,
   getNavigationMode,
   getVisibleNavigationItems,
 } from '@/lib/navigation/items';
@@ -43,6 +46,45 @@ describe('navigation items', () => {
       '/patients/list',
       '/reservations/settings/menus',
     ]);
+  });
+
+  it('manager の管理セクションは担当エリア管理に必要な導線だけに限定する', () => {
+    expect(canUseAdminNavigation('manager')).toBe(true);
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
+      '管理ホーム',
+      'スタッフ管理',
+      'Clinic設定',
+      '店舗比較分析',
+    ]);
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
+      '/admin',
+      '/admin/users',
+      '/admin/settings',
+      '/multi-store',
+    ]);
+    expect(getAdminMenuItemsForRole('manager')).toBe(
+      AREA_MANAGER_ADMIN_MENU_ITEMS
+    );
+  });
+
+  it('manager は店舗運用メニューと限定管理メニューを表示対象にする', () => {
+    const mode = getNavigationMode({
+      role: 'manager',
+      profileLoading: false,
+    });
+    const visibleItems = getVisibleNavigationItems(mode);
+
+    expect(mode.isHqAdmin).toBe(false);
+    expect(mode.canAccessAdminNavigation).toBe(true);
+    expect(mode.showAdminMenus).toBe(true);
+    expect(mode.showOperationMenus).toBe(true);
+    expect(visibleItems.map(item => item.href)).toContain('/admin');
+    expect(visibleItems.map(item => item.href)).toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).toContain('/admin/settings');
+    expect(visibleItems.map(item => item.href)).toContain('/multi-store');
+    expect(visibleItems.map(item => item.href)).not.toContain(
+      '/admin/tenants'
+    );
   });
 
   it('staff は店舗運用メニューのみ表示対象にする', () => {

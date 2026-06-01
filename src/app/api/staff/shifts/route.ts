@@ -11,12 +11,18 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import {
-  ADMIN_UI_ROLES,
   STAFF_ROLES,
   canAccessCrossClinicWithCompat,
+  isAreaManagerRole,
+  type Role,
 } from '@/lib/constants/roles';
 
 const PATH = '/api/staff/shifts';
+const SHIFT_OPERATION_MANAGER_ROLES = [
+  'admin',
+  'clinic_admin',
+  'manager',
+] as const satisfies readonly Role[];
 type StaffShiftRow = Database['public']['Tables']['staff_shifts']['Row'];
 type StaffShiftInsert = Database['public']['Tables']['staff_shifts']['Insert'];
 type StaffShiftUpdate = Database['public']['Tables']['staff_shifts']['Update'];
@@ -107,6 +113,20 @@ function normalizeResource(
     return resource[0] ?? null;
   }
   return resource ?? null;
+}
+
+function resolveShiftDataClinicId(
+  permissions: { role: string; clinic_id: string | null },
+  requestedClinicId: string
+) {
+  if (
+    canAccessCrossClinicWithCompat(permissions.role) ||
+    isAreaManagerRole(permissions.role)
+  ) {
+    return requestedClinicId;
+  }
+
+  return permissions.clinic_id;
 }
 
 // クエリパラメータのスキーマ
@@ -320,17 +340,13 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // DOD-09: テナント境界の明示 - permissions.clinic_idでスコープし、欠落時は拒否
+    // DOD-09: テナント境界の明示 - Manager は検証済み requested clinic、その他は permissions.clinic_id に限定
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const isHQ = canAccessCrossClinicWithCompat(permissions.role);
+    const clinic_id = resolveShiftDataClinicId(permissions, queryClinicId);
 
-    // HQロール以外はpermissions.clinic_idが必須
-    if (!isHQ && !permissions.clinic_id) {
+    if (!clinic_id) {
       return createErrorResponse('クリニックが割り当てられていません', 403);
     }
-
-    // 使用するclinic_id: HQロールはクエリパラメータ、それ以外はpermissions.clinic_id
-    const clinic_id = isHQ ? queryClinicId : permissions.clinic_id!;
 
     // シフトデータを取得（resources テーブルと結合してスタッフ名を取得）
     let query = supabase
@@ -450,7 +466,7 @@ export async function POST(request: NextRequest) {
         PATH,
         dto.clinic_id,
         {
-          allowedRoles: Array.from(ADMIN_UI_ROLES),
+          allowedRoles: Array.from(SHIFT_OPERATION_MANAGER_ROLES),
           requireClinicMatch: true,
         }
       );
@@ -507,7 +523,7 @@ export async function POST(request: NextRequest) {
       PATH,
       dto.clinic_id,
       {
-        allowedRoles: Array.from(ADMIN_UI_ROLES),
+        allowedRoles: Array.from(SHIFT_OPERATION_MANAGER_ROLES),
         requireClinicMatch: true,
       }
     );
@@ -583,7 +599,7 @@ export async function PATCH(request: NextRequest) {
       PATH,
       dto.clinic_id,
       {
-        allowedRoles: Array.from(ADMIN_UI_ROLES),
+        allowedRoles: Array.from(SHIFT_OPERATION_MANAGER_ROLES),
         requireClinicMatch: true,
       }
     );

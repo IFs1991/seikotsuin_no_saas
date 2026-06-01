@@ -8,24 +8,28 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import {
-  ADMIN_UI_ROLES,
   ADMIN_USER_ROLE_VALUES,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { emailSchema, passwordSchema } from '@/lib/schemas/auth';
 import { createAdminClient } from '@/lib/supabase';
 import {
+  AREA_MANAGER_ASSIGNABLE_ROLES,
   CREATABLE_ADMIN_ACCOUNT_ROLES,
-  canClinicAdminManagePermissionRole,
   toPermissionEntry,
   type PermissionMutationRow,
 } from '@/lib/admin/users';
 import {
+  ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
-  canClinicAdminAccessClinic,
-  getClinicAdminScopedClinicIds,
+  canAdminUsersActorManagePermissionRole,
+  canScopedAdminUsersAccessClinic,
+  getAdminUsersPermissionForbiddenMessage,
+  getAdminUsersRoleForbiddenMessage,
+  getScopedAdminUsersClinicIds,
+  isAreaManagerActor,
   isAdminUsersActor,
-  isClinicAdminActor,
+  isScopedAdminUsersActor,
 } from './access';
 
 const AssignPermissionSchema = z.object({
@@ -381,7 +385,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_USERS_API_ROLES,
       requireClinicMatch: false,
     });
 
@@ -394,8 +398,8 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    const scopedClinicIds = getClinicAdminScopedClinicIds(permissions);
-    if (isClinicAdminActor(permissions) && !scopedClinicIds?.length) {
+    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
         403
@@ -404,8 +408,8 @@ export async function GET(request: NextRequest) {
 
     if (
       clinicId &&
-      isClinicAdminActor(permissions) &&
-      !canClinicAdminAccessClinic(permissions, clinicId)
+      isScopedAdminUsersActor(permissions) &&
+      !canScopedAdminUsersAccessClinic(permissions, clinicId)
     ) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -433,6 +437,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('clinic_id', clinicId);
     } else if (scopedClinicIds?.length) {
       query = query.in('clinic_id', scopedClinicIds);
+    }
+
+    if (isAreaManagerActor(permissions)) {
+      query = query.in('role', AREA_MANAGER_ASSIGNABLE_ROLES);
     }
 
     const { data, error } = await query;
@@ -512,7 +520,7 @@ export async function POST(request: NextRequest) {
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_USERS_API_ROLES,
       requireClinicMatch: false,
     });
 
@@ -544,15 +552,26 @@ export async function POST(request: NextRequest) {
       const { full_name, email, password, role } = parsed.data;
       const clinic_id = parsed.data.clinic_id ?? null;
 
-      if (isClinicAdminActor(permissions)) {
-        if (!canClinicAdminManagePermissionRole(role)) {
+      if (isScopedAdminUsersActor(permissions)) {
+        const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+        if (!scopedClinicIds?.length) {
           return createErrorResponse(
-            ADMIN_USERS_ACCESS_MESSAGES.roleForbiddenForClinicAdmin,
+            ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
             403
           );
         }
 
-        if (!clinic_id || !canClinicAdminAccessClinic(permissions, clinic_id)) {
+        if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
+          return createErrorResponse(
+            getAdminUsersRoleForbiddenMessage(permissions),
+            403
+          );
+        }
+
+        if (
+          !clinic_id ||
+          !canScopedAdminUsersAccessClinic(permissions, clinic_id)
+        ) {
           return createErrorResponse(
             ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
             403
@@ -654,15 +673,26 @@ export async function POST(request: NextRequest) {
     const assignData = parsed.data;
     const { user_id, clinic_id, role } = assignData;
 
-    if (isClinicAdminActor(permissions)) {
-      if (!canClinicAdminManagePermissionRole(role)) {
+    if (isScopedAdminUsersActor(permissions)) {
+      const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+      if (!scopedClinicIds?.length) {
         return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.roleForbiddenForClinicAdmin,
+          ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
           403
         );
       }
 
-      if (!clinic_id || !canClinicAdminAccessClinic(permissions, clinic_id)) {
+      if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
+        return createErrorResponse(
+          getAdminUsersRoleForbiddenMessage(permissions),
+          403
+        );
+      }
+
+      if (
+        !clinic_id ||
+        !canScopedAdminUsersAccessClinic(permissions, clinic_id)
+      ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403
@@ -691,7 +721,7 @@ export async function POST(request: NextRequest) {
               .select('id, clinic_id')
               .eq('id', user_id);
 
-            return isClinicAdminActor(permissions)
+            return isScopedAdminUsersActor(permissions)
               ? staffQuery.eq('clinic_id', clinic_id).maybeSingle()
               : staffQuery.maybeSingle();
           })();
@@ -722,7 +752,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (isClinicAdminActor(permissions)) {
+    if (isScopedAdminUsersActor(permissions)) {
       if (staffError) {
         logError(staffError, {
           endpoint: '/api/admin/users',
@@ -756,18 +786,18 @@ export async function POST(request: NextRequest) {
     const username = profile.email;
     const targetClinicId = role === 'admin' ? null : (clinic_id ?? null);
 
-    if (isClinicAdminActor(permissions) && existingPermission) {
+    if (isScopedAdminUsersActor(permissions) && existingPermission) {
       const existing = existingPermission as ExistingPermissionRow;
-      if (!canClinicAdminAccessClinic(permissions, existing.clinic_id)) {
+      if (!canScopedAdminUsersAccessClinic(permissions, existing.clinic_id)) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403
         );
       }
 
-      if (!canClinicAdminManagePermissionRole(existing.role)) {
+      if (!canAdminUsersActorManagePermissionRole(permissions, existing.role)) {
         return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.permissionForbiddenForClinicAdmin,
+          getAdminUsersPermissionForbiddenMessage(permissions),
           403
         );
       }

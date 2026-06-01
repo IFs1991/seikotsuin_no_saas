@@ -449,6 +449,10 @@ describe('GET /api/admin/users/candidates', () => {
       'clinic_id',
       scopedClinicIds
     );
+    expect(profileSearchQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
     expect(profileDetailsQuery.in).toHaveBeenCalledWith('user_id', ['user-1']);
     expect(permissionsQuery.in).toHaveBeenCalledWith(
       'clinic_id',
@@ -464,7 +468,8 @@ describe('GET /api/admin/users/candidates', () => {
     ]);
   });
 
-  it('rejects non-admin-ui permission even when authenticated', async () => {
+  it('limits manager candidates to scoped clinics', async () => {
+    const scopedClinicIds = ['clinic-a', 'clinic-b'];
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: {
@@ -472,9 +477,80 @@ describe('GET /api/admin/users/candidates', () => {
         email: 'manager@example.com',
         role: 'manager',
       },
-      permissions: { role: 'manager', clinic_id: 'clinic-1' },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'clinic-a',
+        clinic_scope_ids: scopedClinicIds,
+      },
       supabase: {},
     });
+
+    const staffSearchQuery = createListQuery([
+      {
+        id: 'user-1',
+        email: 'clinic-admin@example.com',
+        name: '店舗 管理者',
+        clinic_id: 'clinic-b',
+        role: 'clinic_admin',
+        clinics: { name: '渋谷院' },
+      },
+      {
+        id: 'user-2',
+        email: 'area-manager@example.com',
+        name: '別エリア 管理者',
+        clinic_id: 'clinic-b',
+        role: 'manager',
+        clinics: { name: '渋谷院' },
+      },
+    ]);
+    const profileSearchQuery = createListQuery([]);
+    const profileDetailsQuery = createListQuery([
+      {
+        user_id: 'user-1',
+        email: 'clinic-admin@example.com',
+        full_name: '店舗 管理者',
+        is_active: true,
+      },
+      {
+        user_id: 'user-2',
+        email: 'area-manager@example.com',
+        full_name: '別エリア 管理者',
+        is_active: true,
+      },
+    ]);
+    const permissionsQuery = createListQuery([
+      {
+        id: 'permission-1',
+        staff_id: 'user-1',
+        role: 'clinic_admin',
+        clinic_id: 'clinic-b',
+        clinics: { name: '渋谷院' },
+      },
+      {
+        id: 'permission-2',
+        staff_id: 'user-2',
+        role: 'manager',
+        clinic_id: 'clinic-b',
+        clinics: { name: '渋谷院' },
+      },
+    ]);
+
+    const tableQueries = {
+      staff: [staffSearchQuery],
+      profiles: [profileSearchQuery, profileDetailsQuery],
+      user_permissions: [permissionsQuery],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
 
     const { GET } = await import('@/app/api/admin/users/candidates/route');
     const response = await GET(
@@ -482,8 +558,32 @@ describe('GET /api/admin/users/candidates', () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(body.success).toBe(false);
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(staffSearchQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(profileSearchQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(profileDetailsQuery.in).toHaveBeenCalledWith('user_id', [
+      'user-1',
+      'user-2',
+    ]);
+    expect(permissionsQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      scopedClinicIds
+    );
+    expect(body.data.items).toEqual([
+      expect.objectContaining({
+        user_id: 'user-1',
+        clinic_id: 'clinic-b',
+        current_role: 'clinic_admin',
+        candidate_source: 'staff',
+      }),
+    ]);
+    expect(JSON.stringify(body.data.items)).not.toContain('permission-2');
+    expect(JSON.stringify(body.data.items)).not.toContain('area-manager');
   });
 });

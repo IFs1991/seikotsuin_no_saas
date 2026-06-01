@@ -677,6 +677,132 @@ describe('admin settings API', () => {
 
       expect(response.status).toBe(403);
     });
+
+    it('manager はHQ/global寄りの設定カテゴリを更新できない', async () => {
+      const upsertMock = jest.fn().mockResolvedValue({ error: null });
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'manager@example.com', role: 'manager' },
+        permissions: {
+          role: 'manager',
+          clinic_id: TEST_CLINIC_ID,
+          clinic_scope_ids: [TEST_CLINIC_ID],
+        },
+        supabase: {
+          from: jest.fn().mockReturnValue({
+            upsert: upsertMock,
+          }),
+        },
+        body: {
+          clinic_id: TEST_CLINIC_ID,
+          category: 'system_security',
+          settings: {
+            passwordPolicy: {
+              minLength: 12,
+              requireUppercase: true,
+              requireNumbers: true,
+              requireSymbols: true,
+            },
+            twoFactorEnabled: true,
+            sessionTimeout: 30,
+            loginAttempts: 5,
+            lockoutDuration: 15,
+          },
+        },
+      });
+
+      const { PUT } = await import('@/app/api/admin/settings/route');
+
+      const response = await PUT(
+        buildRequest({
+          clinic_id: TEST_CLINIC_ID,
+          category: 'system_security',
+          settings: {
+            passwordPolicy: {
+              minLength: 12,
+              requireUppercase: true,
+              requireNumbers: true,
+              requireSymbols: true,
+            },
+            twoFactorEnabled: true,
+            sessionTimeout: 30,
+            loginAttempts: 5,
+            lockoutDuration: 15,
+          },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(upsertMock).not.toHaveBeenCalled();
+    });
+
+    it('manager は担当Clinicの運用設定を更新できる', async () => {
+      const upsertMock = jest.fn().mockResolvedValue({ error: null });
+      const settings = {
+        name: '担当Clinic',
+        zipCode: '150-0001',
+        address: '東京都渋谷区',
+        phone: '03-9999-9999',
+        fax: '',
+        email: 'manager-clinic@example.com',
+        website: '',
+        description: '',
+        logoUrl: null,
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'manager@example.com', role: 'manager' },
+        permissions: {
+          role: 'manager',
+          clinic_id: TEST_CLINIC_ID,
+          clinic_scope_ids: [TEST_CLINIC_ID],
+        },
+        supabase: {
+          from: jest.fn().mockReturnValue({
+            upsert: upsertMock,
+          }),
+        },
+        body: {
+          clinic_id: TEST_CLINIC_ID,
+          category: 'clinic_basic',
+          settings,
+        },
+      });
+
+      const { PUT } = await import('@/app/api/admin/settings/route');
+
+      const response = await PUT(
+        buildRequest({
+          clinic_id: TEST_CLINIC_ID,
+          category: 'clinic_basic',
+          settings,
+        })
+      );
+
+      expect(response.status).toBe(200);
+      expect(upsertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: TEST_CLINIC_ID,
+          category: 'clinic_basic',
+          settings,
+          updated_by: TEST_USER_ID,
+        }),
+        { onConflict: 'clinic_id,category' }
+      );
+      expect(logAdminActionMock).toHaveBeenCalledWith(
+        TEST_USER_ID,
+        'manager@example.com',
+        'manager_settings_update',
+        undefined,
+        expect.objectContaining({
+          actor_role: 'manager',
+          category: 'clinic_basic',
+          clinic_id: TEST_CLINIC_ID,
+        })
+      );
+    });
   });
 
   describe('バリデーション', () => {

@@ -12,13 +12,14 @@ import {
   type UserPermissionCandidate,
 } from '@/lib/admin/users';
 import { createAdminClient, type SupabaseServerClient } from '@/lib/supabase';
-import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 import {
+  ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
-  getClinicAdminScopedClinicIds,
+  canAdminUsersActorManagePermissionRole,
+  getScopedAdminUsersClinicIds,
   isAdminUsersActor,
-  isClinicAdminActor,
   isHqAdminActor,
+  isScopedAdminUsersActor,
 } from '../access';
 
 const StaffCandidateSearchSchema = z.object({
@@ -148,18 +149,24 @@ const fetchStaffCandidates = async (
 const fetchProfileMatchedIds = async (
   adminSupabase: SupabaseServerClient,
   search: string,
-  limit: number
+  limit: number,
+  scopedClinicIds: string[] | null
 ): Promise<QueryResult<string[]>> => {
   if (!search) {
     return { data: [], error: null };
   }
 
-  const { data, error } = await adminSupabase
+  let query = adminSupabase
     .from('profiles')
     .select('user_id')
     .eq('is_active', true)
-    .or(buildIlikeOrFilter(['full_name', 'email'], search))
-    .limit(limit);
+    .or(buildIlikeOrFilter(['full_name', 'email'], search));
+
+  if (scopedClinicIds?.length) {
+    query = query.in('clinic_id', scopedClinicIds);
+  }
+
+  const { data, error } = await query.limit(limit);
 
   if (error) {
     return { data: [], error };
@@ -304,7 +311,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const processResult = await processApiRequest(request, {
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_USERS_API_ROLES,
       requireClinicMatch: false,
     });
 
@@ -317,8 +324,8 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    const scopedClinicIds = getClinicAdminScopedClinicIds(permissions);
-    if (isClinicAdminActor(permissions) && !scopedClinicIds?.length) {
+    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
         403
@@ -330,7 +337,7 @@ export async function GET(request: NextRequest) {
     const adminSupabase = createAdminClient();
     const [staffResult, profileMatchedIdsResult] = await Promise.all([
       fetchStaffCandidates(adminSupabase, search, limit, scopedClinicIds),
-      fetchProfileMatchedIds(adminSupabase, search, limit),
+      fetchProfileMatchedIds(adminSupabase, search, limit, scopedClinicIds),
     ]);
 
     if (staffResult.error || profileMatchedIdsResult.error) {
@@ -454,6 +461,14 @@ export async function GET(request: NextRequest) {
         }
 
         const permission = permissionMap.get(row.id);
+        if (
+          permission &&
+          isScopedAdminUsersActor(permissions) &&
+          !canAdminUsersActorManagePermissionRole(permissions, permission.role)
+        ) {
+          return null;
+        }
+
         return {
           user_id: row.id,
           email: profile.email || row.email,

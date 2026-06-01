@@ -104,9 +104,13 @@ const initialData: InsuranceBillingData = {
   },
 };
 
-export function InsuranceBillingSettings() {
+export function InsuranceBillingSettings({
+  clinicId: selectedClinicId,
+}: {
+  clinicId?: string | null;
+}) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const clinicId = selectedClinicId ?? profile?.clinicId;
 
   const {
     data: formData,
@@ -159,10 +163,10 @@ export function InsuranceBillingSettings() {
     });
   };
 
-  const updateInsuranceType = (
+  const updateInsuranceType = <K extends keyof InsuranceType>(
     id: string,
-    field: keyof InsuranceType,
-    value: any
+    field: K,
+    value: InsuranceType[K]
   ) => {
     updateData({
       insuranceTypes: insuranceTypes.map(insurance =>

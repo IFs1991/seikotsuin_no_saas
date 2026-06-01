@@ -15,18 +15,64 @@ import {
   staffQuerySchema,
 } from './schema';
 import {
-  ADMIN_UI_ROLES,
   STAFF_ROLES,
   canAccessCrossClinicWithCompat,
+  isAreaManagerRole,
+  type Role,
 } from '@/lib/constants/roles';
 
 const PATH = '/api/staff';
+const STAFF_OPERATION_MANAGER_ROLES = [
+  'admin',
+  'clinic_admin',
+  'manager',
+] as const satisfies readonly Role[];
 type PerformanceTrendPoint = {
   date: string;
   revenue: number;
   patients: number;
   satisfaction: number;
 };
+type StaffWorkingHour = {
+  start: string;
+  end: string;
+};
+type StaffWorkingHours = Record<string, StaffWorkingHour | null>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStaffWorkingHour(value: unknown): value is StaffWorkingHour {
+  return (
+    isRecord(value) &&
+    typeof value.start === 'string' &&
+    typeof value.end === 'string'
+  );
+}
+
+function isStaffWorkingHours(value: unknown): value is StaffWorkingHours {
+  return (
+    isRecord(value) &&
+    Object.values(value).every(
+      item => item === null || isStaffWorkingHour(item)
+    )
+  );
+}
+
+function resolveStaffDataClinicId(
+  permissions: { role: string; clinic_id: string | null },
+  requestedClinicId: string
+) {
+  if (
+    canAccessCrossClinicWithCompat(permissions.role) ||
+    isAreaManagerRole(permissions.role)
+  ) {
+    return requestedClinicId;
+  }
+
+  return permissions.clinic_id;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,42 +102,76 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // DOD-09: テナント境界の明示 - permissions.clinic_idでスコープし、欠落時は拒否
+    // DOD-09: テナント境界の明示 - Manager は検証済み requested clinic、その他は permissions.clinic_id に限定
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const isHQ = canAccessCrossClinicWithCompat(permissions.role);
+    const clinic_id = resolveStaffDataClinicId(permissions, queryClinicId);
 
-    // HQロール以外はpermissions.clinic_idが必須
-    if (!isHQ && !permissions.clinic_id) {
+    // HQ/Manager 以外は permissions.clinic_id が必須
+    if (!clinic_id) {
       return createErrorResponse('クリニックが割り当てられていません', 403);
     }
 
-    // 使用するclinic_id: HQロールはクエリパラメータ、それ以外はpermissions.clinic_id
-    const clinic_id = isHQ ? queryClinicId : permissions.clinic_id!;
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const currentMonth = nowIso.slice(0, 7);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: staffPerformance, error: staffError } = await supabase
-      .from('staff_performance_summary')
-      .select('*')
-      .eq('clinic_id', clinic_id);
+    const [
+      staffPerformanceResult,
+      monthlyPerformanceResult,
+      reservationsResult,
+      resourcesResult,
+    ] = await Promise.all([
+      supabase
+        .from('staff_performance_summary')
+        .select('*')
+        .eq('clinic_id', clinic_id),
+      supabase
+        .from('staff_performance')
+        .select(
+          `
+        *,
+        staff(name, role)
+      `
+        )
+        .eq('clinic_id', clinic_id)
+        .gte('performance_date', `${currentMonth}-01`)
+        .order('performance_date', { ascending: false }),
+      supabase
+        .from('reservations')
+        .select('id, staff_id, start_time, end_time, status')
+        .eq('clinic_id', clinic_id)
+        .gte('start_time', thirtyDaysAgo.toISOString())
+        .lte('start_time', nowIso),
+      supabase
+        .from('resources')
+        .select('id, name, type, working_hours')
+        .eq('clinic_id', clinic_id)
+        .eq('type', 'staff'),
+    ]);
+
+    const { data: staffPerformance, error: staffError } =
+      staffPerformanceResult;
+    const { data: monthlyPerformance, error: monthlyError } =
+      monthlyPerformanceResult;
+    const { data: reservations, error: reservationsError } = reservationsResult;
+    const { data: resources, error: resourcesError } = resourcesResult;
 
     if (staffError) {
       throw normalizeSupabaseError(staffError, PATH);
     }
 
-    const currentMonth = new Date().toISOString().slice(0, 7);
-    const { data: monthlyPerformance, error: monthlyError } = await supabase
-      .from('staff_performance')
-      .select(
-        `
-        *,
-        staff(name, role)
-      `
-      )
-      .eq('clinic_id', clinic_id)
-      .gte('performance_date', `${currentMonth}-01`)
-      .order('performance_date', { ascending: false });
-
     if (monthlyError) {
       throw normalizeSupabaseError(monthlyError, PATH);
+    }
+
+    if (reservationsError) {
+      throw normalizeSupabaseError(reservationsError, PATH);
+    }
+
+    if (resourcesError) {
+      throw normalizeSupabaseError(resourcesError, PATH);
     }
 
     const staffMetrics = {
@@ -153,21 +233,6 @@ export async function GET(request: NextRequest) {
         {} as Record<string, PerformanceTrendPoint[]>
       ) || {};
 
-    // シフト分析：時間帯別予約数を取得
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: reservations, error: reservationsError } = await supabase
-      .from('reservations')
-      .select('id, staff_id, start_time, end_time, status')
-      .eq('clinic_id', clinic_id)
-      .gte('start_time', thirtyDaysAgo.toISOString())
-      .lte('start_time', new Date().toISOString());
-
-    if (reservationsError) {
-      throw normalizeSupabaseError(reservationsError, PATH);
-    }
-
     // 時間帯別予約数を集計
     const hourlyReservations: { hour: number; count: number }[] = [];
     const hourCounts: Record<number, number> = {};
@@ -181,27 +246,15 @@ export async function GET(request: NextRequest) {
       hourlyReservations.push({ hour: h, count: hourCounts[h] || 0 });
     }
 
-    // スタッフリソースの稼働時間を取得
-    const { data: resources, error: resourcesError } = await supabase
-      .from('resources')
-      .select('id, name, type, working_hours')
-      .eq('clinic_id', clinic_id)
-      .eq('type', 'staff');
-
-    if (resourcesError) {
-      throw normalizeSupabaseError(resourcesError, PATH);
-    }
-
     // 稼働率を計算
     let totalAvailableMinutes = 0;
     let totalBookedMinutes = 0;
 
     resources?.forEach(resource => {
       // 営業時間から利用可能時間を計算（簡易計算：平日5日 x 8時間 x 30日/7 = 約171時間）
-      const workingHours = resource.working_hours as Record<
-        string,
-        { start: string; end: string } | null
-      > | null;
+      const workingHours = isStaffWorkingHours(resource.working_hours)
+        ? resource.working_hours
+        : null;
       if (workingHours) {
         const weekdays = [
           'monday',
@@ -357,7 +410,7 @@ export async function POST(request: NextRequest) {
       PATH,
       dto.clinic_id,
       {
-        allowedRoles: Array.from(ADMIN_UI_ROLES),
+        allowedRoles: Array.from(STAFF_OPERATION_MANAGER_ROLES),
         requireClinicMatch: true,
       }
     );

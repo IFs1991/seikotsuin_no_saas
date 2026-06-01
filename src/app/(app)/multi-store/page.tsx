@@ -19,6 +19,8 @@ import {
   type AdminAiInsights,
   type AdminAiInsightsStatus,
 } from '@/hooks/useAdminAiInsights';
+import { useOptionalUserProfileContext } from '@/providers/user-profile-context';
+import { isAreaManagerRole } from '@/lib/constants/roles';
 
 interface SummaryCardProps {
   label: string;
@@ -43,6 +45,7 @@ interface ClinicsTableProps {
   sortField: SortField | null;
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
+  copy: MultiStoreCopy;
 }
 
 const MULTI_STORE_COPY = {
@@ -72,6 +75,34 @@ const MULTI_STORE_COPY = {
     anomalies: '異常検知',
   },
 } as const;
+
+const AREA_MANAGER_MULTI_STORE_COPY = {
+  ...MULTI_STORE_COPY,
+  title: '担当Clinic比較',
+  description:
+    '担当エリア内のClinicだけを対象に、売上・患者数・パフォーマンスの差分を確認します。',
+  summary: {
+    revenue: '担当Clinicの合計収益',
+    patients: '担当Clinicの合計患者数',
+    performance: '担当Clinicの平均スコア',
+  },
+  tableTitle: '担当Clinic別KPI比較',
+  tableDescription:
+    '担当Clinicの主要指標を一覧で比較します。ヘッダーをクリックすると並び替えできます。',
+} as const;
+
+const MULTI_STORE_COPY_BY_MODE = {
+  hq: MULTI_STORE_COPY,
+  'area-manager': AREA_MANAGER_MULTI_STORE_COPY,
+} as const;
+
+function getMultiStoreCopy(isAreaManager: boolean) {
+  return isAreaManager
+    ? MULTI_STORE_COPY_BY_MODE['area-manager']
+    : MULTI_STORE_COPY_BY_MODE.hq;
+}
+
+type MultiStoreCopy = ReturnType<typeof getMultiStoreCopy>;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
 const TABLE_HEADER_CLASS =
@@ -109,17 +140,21 @@ const SummaryCard = memo(function SummaryCard({
   );
 });
 
-const MultiStoreHeader = memo(function MultiStoreHeader() {
+const MultiStoreHeader = memo(function MultiStoreHeader({
+  copy,
+}: {
+  copy: MultiStoreCopy;
+}) {
   return (
     <header className='mb-8 text-center'>
       <p className='mb-2 text-sm font-semibold text-blue-700 dark:text-blue-300'>
         分析専用
       </p>
       <h1 className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'>
-        {MULTI_STORE_COPY.title}
+        {copy.title}
       </h1>
       <p className='mx-auto mt-3 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300'>
-        {MULTI_STORE_COPY.description}
+        {copy.description}
       </p>
     </header>
   );
@@ -197,11 +232,12 @@ const ClinicsTable = memo(function ClinicsTable({
   sortField,
   sortDirection,
   onSort,
+  copy,
 }: ClinicsTableProps) {
   if (clinics.length === 0) {
     return (
       <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
-        {MULTI_STORE_COPY.emptyState}
+        {copy.emptyState}
       </p>
     );
   }
@@ -260,13 +296,17 @@ const ClinicsTable = memo(function ClinicsTable({
   );
 });
 
-const LoadingState = memo(function LoadingState() {
+const LoadingState = memo(function LoadingState({
+  copy,
+}: {
+  copy: MultiStoreCopy;
+}) {
   return (
     <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-gray-900 dark:text-gray-100'>
       <div
         data-testid='loading-spinner'
         role='status'
-        aria-label={MULTI_STORE_COPY.loading}
+        aria-label={copy.loading}
         className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'
       ></div>
     </div>
@@ -406,6 +446,12 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
 });
 
 const MultiStorePage = () => {
+  const profileContext = useOptionalUserProfileContext();
+  const isAreaManager = Boolean(
+    profileContext &&
+    (profileContext.loading || isAreaManagerRole(profileContext.profile?.role))
+  );
+  const copy = getMultiStoreCopy(isAreaManager);
   const {
     clinics,
     loading,
@@ -432,19 +478,19 @@ const MultiStorePage = () => {
     () => [
       {
         key: 'revenue',
-        label: MULTI_STORE_COPY.summary.revenue,
+        label: copy.summary.revenue,
         value: `${formatCurrency(totalRevenue)}円`,
         testId: 'total-revenue',
       },
       {
         key: 'patients',
-        label: MULTI_STORE_COPY.summary.patients,
+        label: copy.summary.patients,
         value: `${totalPatients}人`,
         testId: 'total-patients',
       },
       {
         key: 'performance',
-        label: MULTI_STORE_COPY.summary.performance,
+        label: copy.summary.performance,
         value:
           averagePerformanceScore !== null
             ? averagePerformanceScore.toFixed(2)
@@ -452,7 +498,7 @@ const MultiStorePage = () => {
         testId: 'average-performance',
       },
     ],
-    [averagePerformanceScore, totalPatients, totalRevenue]
+    [averagePerformanceScore, copy, totalPatients, totalRevenue]
   );
 
   useEffect(() => {
@@ -485,7 +531,7 @@ const MultiStorePage = () => {
   );
 
   if (!hasLoaded || loading) {
-    return <LoadingState />;
+    return <LoadingState copy={copy} />;
   }
 
   if (error) {
@@ -495,23 +541,25 @@ const MultiStorePage = () => {
   return (
     <div className='bg-white dark:bg-gray-800 min-h-screen text-gray-900 dark:text-gray-100 p-4'>
       <div className='max-w-6xl mx-auto py-8'>
-        <MultiStoreHeader />
+        <MultiStoreHeader copy={copy} />
         <SummaryCardsGrid items={summaryItems} />
-        <AdminAiInsightsSection
-          status={aiInsightsStatus}
-          data={aiInsights}
-          error={aiInsightsError}
-          onFetch={fetchInsights}
-        />
+        {!isAreaManager && (
+          <AdminAiInsightsSection
+            status={aiInsightsStatus}
+            data={aiInsights}
+            error={aiInsightsError}
+            onFetch={fetchInsights}
+          />
+        )}
 
         {/* 店舗別KPI比較テーブル */}
         <Card className='bg-card shadow-lg'>
           <CardHeader>
             <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
-              {MULTI_STORE_COPY.tableTitle}
+              {copy.tableTitle}
             </CardTitle>
             <CardDescription className='text-gray-600 dark:text-gray-300'>
-              {MULTI_STORE_COPY.tableDescription}
+              {copy.tableDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -520,6 +568,7 @@ const MultiStorePage = () => {
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={handleSort}
+              copy={copy}
             />
           </CardContent>
         </Card>

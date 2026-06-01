@@ -19,6 +19,9 @@ import {
   canAccessAdminUIWithCompat,
   canAccessCrossClinicWithCompat,
   canManageClinicSettingsWithCompat,
+  isAreaManagerRole,
+  canAccessAreaAnalytics,
+  canAccessAreaAnalyticsWithCompat,
 } from '@/lib/constants/roles';
 
 describe('Role Constants', () => {
@@ -113,6 +116,22 @@ describe('Role Helper Functions', () => {
     });
   });
 
+  describe('isAreaManagerRole', () => {
+    it('should return true for manager', () => {
+      expect(isAreaManagerRole('manager')).toBe(true);
+    });
+
+    it('should return false for admin and clinic_admin', () => {
+      expect(isAreaManagerRole('admin')).toBe(false);
+      expect(isAreaManagerRole('clinic_admin')).toBe(false);
+    });
+
+    it('should return false for nullish values', () => {
+      expect(isAreaManagerRole(null)).toBe(false);
+      expect(isAreaManagerRole(undefined)).toBe(false);
+    });
+  });
+
   describe('canAccessAdminUI', () => {
     it('should return true for admin', () => {
       expect(canAccessAdminUI('admin')).toBe(true);
@@ -154,6 +173,21 @@ describe('Role Helper Functions', () => {
 
     it('should return false for null', () => {
       expect(canAccessCrossClinic(null)).toBe(false);
+    });
+  });
+
+  describe('canAccessAreaAnalytics', () => {
+    it('should allow admin and manager without widening cross-clinic roles', () => {
+      expect(canAccessAreaAnalytics('admin')).toBe(true);
+      expect(canAccessAreaAnalytics('manager')).toBe(true);
+      expect(CROSS_CLINIC_ROLES.has('manager')).toBe(false);
+    });
+
+    it('should not allow clinic_admin or staff roles', () => {
+      expect(canAccessAreaAnalytics('clinic_admin')).toBe(false);
+      expect(canAccessAreaAnalytics('therapist')).toBe(false);
+      expect(canAccessAreaAnalytics('staff')).toBe(false);
+      expect(canAccessAreaAnalytics(null)).toBe(false);
     });
   });
 
@@ -312,6 +346,20 @@ describe('Compatibility Mapping Functions (Option B-1)', () => {
 
     it('should return false for null', () => {
       expect(canAccessCrossClinicWithCompat(null)).toBe(false);
+    });
+  });
+
+  describe('canAccessAreaAnalyticsWithCompat', () => {
+    it('should allow manager for area-scoped analytics only', () => {
+      expect(canAccessAreaAnalyticsWithCompat('manager')).toBe(true);
+      expect(canAccessCrossClinicWithCompat('manager')).toBe(false);
+    });
+
+    it('should preserve HQ admin access and reject clinic_admin', () => {
+      expect(canAccessAreaAnalyticsWithCompat('admin')).toBe(true);
+      expect(canAccessAreaAnalyticsWithCompat('clinic_admin')).toBe(false);
+      expect(canAccessAreaAnalyticsWithCompat('clinic_manager')).toBe(false);
+      expect(canAccessAreaAnalyticsWithCompat(null)).toBe(false);
     });
   });
 

@@ -3,13 +3,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ServicesPricingSettings } from '@/components/admin/services-pricing-settings';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useSelectedClinic } from '@/providers/selected-clinic-context';
+import {
+  useOptionalSelectedClinic,
+  useSelectedClinic,
+} from '@/providers/selected-clinic-context';
 
 jest.mock('@/hooks/useUserProfile', () => ({
   useUserProfile: jest.fn(),
 }));
 
 jest.mock('@/providers/selected-clinic-context', () => ({
+  useOptionalSelectedClinic: jest.fn(),
   useSelectedClinic: jest.fn(),
 }));
 
@@ -18,6 +22,7 @@ const menuId = '123e4567-e89b-12d3-a456-426614174010';
 const templateId = '123e4567-e89b-12d3-a456-426614174020';
 
 const useUserProfileMock = jest.mocked(useUserProfile);
+const useOptionalSelectedClinicMock = jest.mocked(useOptionalSelectedClinic);
 const useSelectedClinicMock = jest.mocked(useSelectedClinic);
 
 function jsonResponse(payload: unknown, init?: ResponseInit) {
@@ -31,6 +36,13 @@ function jsonResponse(payload: unknown, init?: ResponseInit) {
 
 function urlFromFetchInput(input: Parameters<typeof fetch>[0]) {
   return typeof input === 'string' ? input : input.url;
+}
+
+function getCurrentMonthStartDateInputValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
 }
 
 function setupProfile(role: string, isAdmin = true) {
@@ -48,6 +60,14 @@ function setupProfile(role: string, isAdmin = true) {
     error: null,
   });
   useSelectedClinicMock.mockReturnValue({
+    selectedClinicId: clinicId,
+    setSelectedClinicId: jest.fn(),
+    clinics: [],
+    currentClinicId: clinicId,
+    clinicsLoading: false,
+    clinicsError: null,
+  });
+  useOptionalSelectedClinicMock.mockReturnValue({
     selectedClinicId: clinicId,
     setSelectedClinicId: jest.fn(),
     clinics: [],
@@ -280,7 +300,7 @@ describe('ServicesPricingSettings Phase 4A-5 billing profile UI', () => {
             defaultPatientBurdenRate: null,
             professionType: null,
             requiresReview: false,
-            effectiveFrom: '2026-05-01',
+            effectiveFrom: getCurrentMonthStartDateInputValue(),
             effectiveTo: null,
             isActive: true,
           }),

@@ -13,17 +13,20 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  ADMIN_MANAGEMENT_ACTIONS,
-  ADMIN_DASHBOARD_COPY,
   ADMIN_DASHBOARD_STYLES,
   buildAdminHomeViewModel,
   formatCurrency,
+  getAdminDashboardCopy,
+  getAdminManagementActions,
+  type AdminDashboardVariant,
   type DashboardClinic,
   type ManagementAction,
   type ManagementSignal,
   type SummaryMetric,
 } from '@/components/dashboard/admin-dashboard.utils';
 import { cn } from '@/lib/utils';
+import { useOptionalUserProfileContext } from '@/providers/user-profile-context';
+import { isAreaManagerRole } from '@/lib/constants/roles';
 
 const SIGNAL_TONE_CLASS = {
   neutral: ADMIN_DASHBOARD_STYLES.signalNeutral,
@@ -32,6 +35,7 @@ const SIGNAL_TONE_CLASS = {
 } as const;
 
 const ADMIN_COMPARISON_HREF = '/multi-store';
+type AdminDashboardCopy = ReturnType<typeof getAdminDashboardCopy>;
 
 const SummaryMetricCard = memo(function SummaryMetricCard({
   label,
@@ -92,14 +96,16 @@ const ManagementSignalCard = memo(function ManagementSignalCard({
 
 const ManagementSignalsGrid = memo(function ManagementSignalsGrid({
   signals,
+  copy,
 }: {
   signals: readonly ManagementSignal[];
+  copy: AdminDashboardCopy;
 }) {
   return (
     <section>
       <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
         <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-          {ADMIN_DASHBOARD_COPY.signalTitle}
+          {copy.signalTitle}
         </h3>
       </div>
       <div className={ADMIN_DASHBOARD_STYLES.signalGrid}>
@@ -134,19 +140,25 @@ const ManagementActionCard = memo(function ManagementActionCard({
   );
 });
 
-const ManagementActionsSection = memo(function ManagementActionsSection() {
+const ManagementActionsSection = memo(function ManagementActionsSection({
+  actions,
+  copy,
+}: {
+  actions: readonly ManagementAction[];
+  copy: AdminDashboardCopy;
+}) {
   return (
     <section>
       <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
         <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-          {ADMIN_DASHBOARD_COPY.actionTitle}
+          {copy.actionTitle}
         </h3>
         <p className={ADMIN_DASHBOARD_STYLES.sectionDescription}>
-          {ADMIN_DASHBOARD_COPY.actionDescription}
+          {copy.actionDescription}
         </p>
       </div>
       <div className={ADMIN_DASHBOARD_STYLES.actionGrid}>
-        {ADMIN_MANAGEMENT_ACTIONS.map(action => (
+        {actions.map(action => (
           <ManagementActionCard key={action.href} action={action} />
         ))}
       </div>
@@ -156,8 +168,10 @@ const ManagementActionsSection = memo(function ManagementActionsSection() {
 
 const AttentionClinicCard = memo(function AttentionClinicCard({
   clinic,
+  copy,
 }: {
   clinic: DashboardClinic;
+  copy: AdminDashboardCopy;
 }) {
   return (
     <Card
@@ -181,7 +195,7 @@ const AttentionClinicCard = memo(function AttentionClinicCard({
           <span className='font-medium'>{clinic.totalPatientCount}人</span>
         </p>
         <p>
-          {ADMIN_DASHBOARD_COPY.performanceLabel}:{' '}
+          {copy.performanceLabel}:{' '}
           <span className={ADMIN_DASHBOARD_STYLES.clinicKpiValue}>
             {clinic.averagePerformanceScore.toFixed(2)} / 5.0
           </span>
@@ -190,7 +204,7 @@ const AttentionClinicCard = memo(function AttentionClinicCard({
           href={ADMIN_COMPARISON_HREF}
           className={ADMIN_DASHBOARD_STYLES.clinicDetailLink}
         >
-          {ADMIN_DASHBOARD_COPY.detailButton}
+          {copy.detailButton}
         </Link>
       </CardContent>
     </Card>
@@ -199,8 +213,10 @@ const AttentionClinicCard = memo(function AttentionClinicCard({
 
 const ClinicPerformanceCard = memo(function ClinicPerformanceCard({
   clinic,
+  copy,
 }: {
   clinic: DashboardClinic;
+  copy: AdminDashboardCopy;
 }) {
   return (
     <Card className={ADMIN_DASHBOARD_STYLES.clinicPerformanceCard}>
@@ -216,9 +232,7 @@ const ClinicPerformanceCard = memo(function ClinicPerformanceCard({
               : ADMIN_DASHBOARD_STYLES.clinicPerformanceBadgeStable
           )}
         >
-          {clinic.isProblematic
-            ? ADMIN_DASHBOARD_COPY.attentionBadge
-            : ADMIN_DASHBOARD_COPY.stableBadge}
+          {clinic.isProblematic ? copy.attentionBadge : copy.stableBadge}
         </span>
       </div>
       <CardContent className='p-0'>
@@ -227,13 +241,13 @@ const ClinicPerformanceCard = memo(function ClinicPerformanceCard({
         </p>
         <dl className={ADMIN_DASHBOARD_STYLES.clinicPerformanceMeta}>
           <div>
-            <dt>{ADMIN_DASHBOARD_COPY.summaryLabels[0]}</dt>
+            <dt>{copy.summaryLabels[0]}</dt>
             <dd className='font-semibold text-slate-950'>
               {formatCurrency(clinic.totalRevenue)}
             </dd>
           </div>
           <div>
-            <dt>{ADMIN_DASHBOARD_COPY.summaryLabels[1]}</dt>
+            <dt>{copy.summaryLabels[1]}</dt>
             <dd className='font-semibold text-slate-950'>
               {clinic.totalPatientCount.toLocaleString()}人
             </dd>
@@ -246,18 +260,20 @@ const ClinicPerformanceCard = memo(function ClinicPerformanceCard({
 
 const ClinicPerformancePanel = memo(function ClinicPerformancePanel({
   clinics,
+  copy,
 }: {
   clinics: readonly DashboardClinic[];
+  copy: AdminDashboardCopy;
 }) {
   if (clinics.length === 0) {
     return (
       <Card className={ADMIN_DASHBOARD_STYLES.signalNeutral}>
         <CardHeader>
           <CardTitle className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-            {ADMIN_DASHBOARD_COPY.noClinicPerformanceTitle}
+            {copy.noClinicPerformanceTitle}
           </CardTitle>
           <CardDescription>
-            {ADMIN_DASHBOARD_COPY.noClinicPerformanceDescription}
+            {copy.noClinicPerformanceDescription}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -268,15 +284,15 @@ const ClinicPerformancePanel = memo(function ClinicPerformancePanel({
     <section>
       <div className={ADMIN_DASHBOARD_STYLES.sectionHeader}>
         <h3 className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-          {ADMIN_DASHBOARD_COPY.clinicPerformanceTitle}
+          {copy.clinicPerformanceTitle}
         </h3>
         <p className={ADMIN_DASHBOARD_STYLES.sectionDescription}>
-          {ADMIN_DASHBOARD_COPY.clinicPerformanceDescription}
+          {copy.clinicPerformanceDescription}
         </p>
       </div>
       <div className={ADMIN_DASHBOARD_STYLES.clinicPerformanceGrid}>
         {clinics.map(clinic => (
-          <ClinicPerformanceCard key={clinic.id} clinic={clinic} />
+          <ClinicPerformanceCard key={clinic.id} clinic={clinic} copy={copy} />
         ))}
       </div>
     </section>
@@ -285,19 +301,19 @@ const ClinicPerformancePanel = memo(function ClinicPerformancePanel({
 
 const AttentionClinicsPanel = memo(function AttentionClinicsPanel({
   clinics,
+  copy,
 }: {
   clinics: readonly DashboardClinic[];
+  copy: AdminDashboardCopy;
 }) {
   if (clinics.length === 0) {
     return (
       <Card className={ADMIN_DASHBOARD_STYLES.signalSuccess}>
         <CardHeader>
           <CardTitle className={ADMIN_DASHBOARD_STYLES.sectionTitle}>
-            {ADMIN_DASHBOARD_COPY.noAlertsTitle}
+            {copy.noAlertsTitle}
           </CardTitle>
-          <CardDescription>
-            {ADMIN_DASHBOARD_COPY.noAlertsDescription}
-          </CardDescription>
+          <CardDescription>{copy.noAlertsDescription}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -307,14 +323,14 @@ const AttentionClinicsPanel = memo(function AttentionClinicsPanel({
     <Card className={ADMIN_DASHBOARD_STYLES.alertCard}>
       <CardTitle className={ADMIN_DASHBOARD_STYLES.alertTitle}>
         <AlertTriangle className='mr-2 h-5 w-5 text-amber-600' />
-        {ADMIN_DASHBOARD_COPY.alertTitle}
+        {copy.alertTitle}
       </CardTitle>
       <CardContent className={ADMIN_DASHBOARD_STYLES.alertBody}>
-        {ADMIN_DASHBOARD_COPY.alertDescription}
+        {copy.alertDescription}
         <ul className='mt-3 grid grid-cols-1 gap-3 md:grid-cols-2'>
           {clinics.map(clinic => (
             <li key={clinic.id}>
-              <AttentionClinicCard clinic={clinic} />
+              <AttentionClinicCard clinic={clinic} copy={copy} />
             </li>
           ))}
         </ul>
@@ -324,6 +340,14 @@ const AttentionClinicsPanel = memo(function AttentionClinicsPanel({
 });
 
 export default function AdminDashboard() {
+  const profileContext = useOptionalUserProfileContext();
+  const variant: AdminDashboardVariant =
+    profileContext &&
+    (profileContext.loading || isAreaManagerRole(profileContext.profile?.role))
+      ? 'area-manager'
+      : 'hq';
+  const copy = getAdminDashboardCopy(variant);
+  const managementActions = getAdminManagementActions(variant);
   const {
     clinicsData,
     overallKpis,
@@ -339,8 +363,8 @@ export default function AdminDashboard() {
     dashboardClinics,
     problematicClinics,
   } = useMemo(
-    () => buildAdminHomeViewModel(clinicsData, overallKpis),
-    [clinicsData, overallKpis]
+    () => buildAdminHomeViewModel(clinicsData, overallKpis, variant),
+    [clinicsData, overallKpis, variant]
   );
 
   return (
@@ -351,17 +375,17 @@ export default function AdminDashboard() {
             <div className={ADMIN_DASHBOARD_STYLES.headerRow}>
               <div>
                 <CardTitle className={ADMIN_DASHBOARD_STYLES.title}>
-                  {ADMIN_DASHBOARD_COPY.title}
+                  {copy.title}
                 </CardTitle>
                 <CardDescription className={ADMIN_DASHBOARD_STYLES.description}>
-                  {ADMIN_DASHBOARD_COPY.description}
+                  {copy.description}
                 </CardDescription>
               </div>
               <Link
                 href={ADMIN_COMPARISON_HREF}
                 className={ADMIN_DASHBOARD_STYLES.linkButton}
               >
-                {ADMIN_DASHBOARD_COPY.comparisonButton}
+                {copy.comparisonButton}
                 <ArrowRight className='ml-2 h-4 w-4' />
               </Link>
             </div>
@@ -369,11 +393,11 @@ export default function AdminDashboard() {
           <CardContent className={ADMIN_DASHBOARD_STYLES.body}>
             {loading ? (
               <div className={ADMIN_DASHBOARD_STYLES.loading}>
-                {ADMIN_DASHBOARD_COPY.loading}
+                {copy.loading}
               </div>
             ) : error ? (
               <div className={ADMIN_DASHBOARD_STYLES.errorState}>
-                <p>{ADMIN_DASHBOARD_COPY.errorTitle}</p>
+                <p>{copy.errorTitle}</p>
                 <p className='mt-2 text-sm'>{error}</p>
                 <Button
                   className={cn(
@@ -382,22 +406,34 @@ export default function AdminDashboard() {
                   )}
                   onClick={() => void refreshData()}
                 >
-                  {ADMIN_DASHBOARD_COPY.retryButton}
+                  {copy.retryButton}
                 </Button>
               </div>
             ) : (
               <>
                 {isRefreshing && (
                   <p className={ADMIN_DASHBOARD_STYLES.statusText}>
-                    {ADMIN_DASHBOARD_COPY.refreshing}
+                    {copy.refreshing}
                   </p>
                 )}
 
                 <SummaryMetricsGrid metrics={summaryMetrics} />
-                <ManagementSignalsGrid signals={managementSignals} />
-                <ClinicPerformancePanel clinics={dashboardClinics} />
-                <AttentionClinicsPanel clinics={problematicClinics} />
-                <ManagementActionsSection />
+                <ManagementSignalsGrid
+                  signals={managementSignals}
+                  copy={copy}
+                />
+                <ClinicPerformancePanel
+                  clinics={dashboardClinics}
+                  copy={copy}
+                />
+                <AttentionClinicsPanel
+                  clinics={problematicClinics}
+                  copy={copy}
+                />
+                <ManagementActionsSection
+                  actions={managementActions}
+                  copy={copy}
+                />
               </>
             )}
           </CardContent>

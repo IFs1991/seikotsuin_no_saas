@@ -65,7 +65,7 @@ const StaffManagementPage: React.FC = () => {
         {/* ヘッダー */}
         <div className='flex items-center justify-between'>
           <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-            スタッフ実績分析
+            スタッフ分析とシフト最適化
           </h1>
           <div className='flex items-center gap-2'>
             <Badge variant='secondary'>総スタッフ: {totalStaff}名</Badge>
@@ -136,7 +136,7 @@ const StaffManagementPage: React.FC = () => {
                   }`}
                   onClick={() => setActiveTab('shifts')}
                 >
-                  稼働分析
+                  シフト分析
                 </button>
               </div>
             </div>

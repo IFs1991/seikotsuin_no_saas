@@ -8,8 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   ADMIN_MENU_ITEMS,
-  CLINIC_ADMIN_MENU_ITEMS,
   getCurrentNavigationItemId,
+  getAdminMenuItemsForRole,
   getNavigationMode,
   getOperationMenuItems,
   getVisibleNavigationItems,
@@ -85,9 +85,8 @@ export const Sidebar = React.memo(function Sidebar({
     [navigationMode.isHqAdmin, operationMenuItems]
   );
   const adminSectionMenuItems = useMemo(
-    () =>
-      navigationMode.isHqAdmin ? ADMIN_MENU_ITEMS : CLINIC_ADMIN_MENU_ITEMS,
-    [navigationMode.isHqAdmin]
+    () => getAdminMenuItemsForRole(navigationMode.role),
+    [navigationMode.role]
   );
   const openSubMenuIds = useMemo(() => new Set(openSubMenus), [openSubMenus]);
 

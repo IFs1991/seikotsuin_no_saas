@@ -8,13 +8,12 @@ import {
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import {
-  ADMIN_UI_ROLES,
   ADMIN_USER_ROLE_VALUES,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { emailSchema, passwordSchema } from '@/lib/schemas/auth';
 import { createAdminClient } from '@/lib/supabase';
-import { isHqAdminActor } from '../access';
+import { ADMIN_USERS_API_ROLES, isHqAdminActor } from '../access';
 
 const AccountOnlyCreateSchema = z.object({
   full_name: z.string().trim().min(1).max(255),
@@ -122,7 +121,7 @@ export async function POST(request: NextRequest) {
   try {
     const processResult = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      allowedRoles: ADMIN_USERS_API_ROLES,
       requireClinicMatch: false,
       sanitizeInputValues: false,
     });

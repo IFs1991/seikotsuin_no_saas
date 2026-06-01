@@ -48,10 +48,31 @@ jest.mock('@/hooks/useMultiStore', () => ({
 
 import MultiStorePage from '@/app/(app)/multi-store/page';
 import { useMultiStore } from '@/hooks/useMultiStore';
+import { UserProfileProvider } from '@/providers/user-profile-context';
+import type { UserProfile } from '@/types/user-profile';
 
 const mockUseMultiStore = useMultiStore as jest.MockedFunction<
   typeof useMultiStore
 >;
+const managerProfile: UserProfile = {
+  id: 'manager-1',
+  email: 'manager@example.com',
+  role: 'manager',
+  clinicId: 'clinic-1',
+  clinicName: '担当エリア',
+  isActive: true,
+  isAdmin: false,
+};
+
+function renderWithManagerProfile() {
+  return render(
+    <UserProfileProvider
+      value={{ profile: managerProfile, loading: false, error: null }}
+    >
+      <MultiStorePage />
+    </UserProfileProvider>
+  );
+}
 
 describe('MultiStorePage Component', () => {
   const mockClinicData = [
@@ -104,6 +125,16 @@ describe('MultiStorePage Component', () => {
       render(<MultiStorePage />);
 
       expect(mockFetchClinicsWithKPI).toHaveBeenCalledTimes(1);
+    });
+
+    it('manager には担当Clinic比較コピーを表示し、HQ向けAI分析を隠す', () => {
+      renderWithManagerProfile();
+
+      expect(
+        screen.getByRole('heading', { name: /担当Clinic比較/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('横断AI分析')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'AI分析を取得' })).toBeNull();
     });
 
     it('ローディング中はスピナーが表示される', () => {

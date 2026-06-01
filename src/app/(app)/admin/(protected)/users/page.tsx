@@ -42,6 +42,7 @@ import {
   USER_CANDIDATE_MIN_SEARCH_LENGTH,
   getCreatableAdminAccountRoleOptions,
   buildPermissionFilters,
+  canAreaManagerManagePermissionRole,
   canClinicAdminManagePermissionRole,
   createAccountOnlyPayload,
   createAssignPermissionPayload,
@@ -189,6 +190,8 @@ export default function AdminUsersPage() {
   const { profile } = useUserProfileContext();
   const actorRole = normalizeRole(profile?.role);
   const isHqAdmin = actorRole === 'admin';
+  const isAreaManager = actorRole === 'manager';
+  const requiresClinicForPermission = !isHqAdmin;
   const clinicOptions = useMemo(
     () => (isHqAdmin ? adminClinics : accessibleClinics),
     [accessibleClinics, adminClinics, isHqAdmin]
@@ -361,7 +364,11 @@ export default function AdminUsersPage() {
       event.preventDefault();
       setNotice(null);
 
-      const validationMessage = validatePermissionForm(formState);
+      const validationMessage = validatePermissionForm(formState, {
+        requireClinicId:
+          requiresClinicForPermission &&
+          (!isAccountOnlyCreateMode || formState.assign_role),
+      });
       if (validationMessage) {
         setNotice(validationMessage);
         return;
@@ -418,13 +425,17 @@ export default function AdminUsersPage() {
       resetForm,
       syncPermissionList,
       updatePermission,
+      requiresClinicForPermission,
     ]
   );
 
   const canManagePermission = useCallback(
     (permission: PermissionEntry) =>
-      isHqAdmin || canClinicAdminManagePermissionRole(permission.role),
-    [isHqAdmin]
+      isHqAdmin ||
+      (isAreaManager
+        ? canAreaManagerManagePermissionRole(permission.role)
+        : canClinicAdminManagePermissionRole(permission.role)),
+    [isAreaManager, isHqAdmin]
   );
 
   const handleEdit = useCallback(
@@ -612,7 +623,11 @@ export default function AdminUsersPage() {
         title='この画面の役割'
         description='人・ログイン権限を管理する画面です。店舗そのものの作成とは分けて扱います。'
         items={ACCOUNT_SCOPE_NOTICE_ITEMS}
-        action={{ href: '/admin/tenants', label: '子テナントを作成する' }}
+        action={
+          isHqAdmin
+            ? { href: '/admin/tenants', label: '子テナントを作成する' }
+            : undefined
+        }
       />
 
       <AdminFormCard
@@ -753,7 +768,9 @@ export default function AdminUsersPage() {
                     <SelectValue placeholder='クリニックを選択' />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
+                    {!requiresClinicForPermission && (
+                      <SelectItem value={NO_CLINIC_VALUE}>未指定</SelectItem>
+                    )}
                     {clinicOptions.map(clinic => (
                       <SelectItem key={clinic.id} value={clinic.id}>
                         {clinic.name}

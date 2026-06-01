@@ -98,3 +98,9 @@ export function useSelectedClinic(): SelectedClinicContextValue {
     );
   return ctx;
 }
+
+export function useOptionalSelectedClinic():
+  | SelectedClinicContextValue
+  | undefined {
+  return useContext(SelectedClinicContext);
+}

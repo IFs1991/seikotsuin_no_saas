@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useState,
   type ChangeEvent,
@@ -17,6 +18,9 @@ import { AdminState } from '@/components/admin/admin-state';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { normalizeRole } from '@/lib/constants/roles';
+import { useOptionalUserProfileContext } from '@/providers/user-profile-context';
+import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 import {
   Settings,
   Building,
@@ -89,7 +93,11 @@ type SelectedSettingsItem = SearchableSettingsItem & {
   categoryId: SettingsCategoryId;
 };
 
-type SettingsComponent = ComponentType<Record<string, never>>;
+interface SettingsComponentProps {
+  readonly clinicId?: string | null;
+}
+
+type SettingsComponent = ComponentType<SettingsComponentProps>;
 
 interface SettingsSidebarProps {
   categories: readonly SearchableSettingsCategory[];
@@ -106,6 +114,9 @@ interface SettingsContentProps {
   currentItem: SelectedSettingsItem | undefined;
   isTemplateItem: boolean;
   SelectedComponent: SettingsComponent | null;
+  clinicId: string | null;
+  isClinicSelectionLoading: boolean;
+  requiresClinicSelection: boolean;
 }
 
 const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
@@ -119,6 +130,34 @@ const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'system-security',
   'system-backup',
 ]);
+
+const AREA_MANAGER_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
+  'clinic-basic',
+  'clinic-hours',
+  'services-menu',
+  'insurance-types',
+  'booking-slots',
+  'comm-email',
+]);
+
+const AREA_MANAGER_CATEGORY_TITLES: Partial<
+  Record<SettingsCategoryId, string>
+> = {
+  clinic: 'Clinic設定',
+};
+
+const AREA_MANAGER_ITEM_COPY: Partial<
+  Record<SettingsItemId, Pick<SettingsItemDefinition, 'title' | 'description'>>
+> = {
+  'clinic-basic': {
+    title: '基本情報',
+    description: '担当Clinicの院名・住所・連絡先などの基本情報',
+  },
+  'clinic-hours': {
+    title: '診療時間・休診日',
+    description: '担当Clinicの診療時間・休診日・受付時間',
+  },
+};
 
 const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
   {
@@ -281,56 +320,88 @@ const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
 const buildSearchText = (...values: readonly string[]) =>
   values.join(' ').toLowerCase();
 
-const VISIBLE_SETTINGS_CATEGORIES: readonly SearchableSettingsCategory[] =
-  SETTINGS_CATEGORIES.map(category => {
+function getVisibleSettingsCategories({
+  isAreaManager,
+}: {
+  isAreaManager: boolean;
+}): readonly SearchableSettingsCategory[] {
+  const visibleItemIds = isAreaManager
+    ? AREA_MANAGER_SETTINGS_ITEM_IDS
+    : IMPLEMENTED_SETTINGS_ITEM_IDS;
+
+  return SETTINGS_CATEGORIES.map(category => {
     const items = category.items
-      .filter(item => IMPLEMENTED_SETTINGS_ITEM_IDS.has(item.id))
-      .map(item => ({
-        ...item,
-        searchText: buildSearchText(item.title, item.description),
-      }));
+      .filter(item => visibleItemIds.has(item.id))
+      .map(item => {
+        const itemCopy = isAreaManager
+          ? AREA_MANAGER_ITEM_COPY[item.id]
+          : undefined;
+        const title = itemCopy?.title ?? item.title;
+        const description = itemCopy?.description ?? item.description;
+
+        return {
+          ...item,
+          ...itemCopy,
+          searchText: buildSearchText(title, description),
+        };
+      });
+
+    const title =
+      isAreaManager && AREA_MANAGER_CATEGORY_TITLES[category.id]
+        ? AREA_MANAGER_CATEGORY_TITLES[category.id]
+        : category.title;
 
     return {
       ...category,
+      title,
       items,
       searchText: buildSearchText(
-        category.title,
+        title,
         ...items.flatMap(item => [item.title, item.description])
       ),
     };
   }).filter(category => category.items.length > 0);
+}
 
-const SETTINGS_ITEMS_BY_ID = new Map<SettingsItemId, SelectedSettingsItem>(
-  VISIBLE_SETTINGS_CATEGORIES.flatMap(category =>
-    category.items.map(item => [
-      item.id,
-      {
-        ...item,
-        category: category.title,
-        categoryId: category.id,
-      },
-    ])
-  )
-);
+function getSettingsItemsById(
+  categories: readonly SearchableSettingsCategory[]
+) {
+  return new Map<SettingsItemId, SelectedSettingsItem>(
+    categories.flatMap(category =>
+      category.items.map(item => [
+        item.id,
+        {
+          ...item,
+          category: category.title,
+          categoryId: category.id,
+        },
+      ])
+    )
+  );
+}
 
 function getSearchableCategories(
+  categories: readonly SearchableSettingsCategory[],
   searchQuery: string
 ): readonly SearchableSettingsCategory[] {
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
   if (!normalizedQuery) {
-    return VISIBLE_SETTINGS_CATEGORIES;
+    return categories;
   }
 
-  return VISIBLE_SETTINGS_CATEGORIES.map(category => ({
-    ...category,
-    items: category.items.filter(item =>
-      item.searchText.includes(normalizedQuery)
-    ),
-  })).filter(
-    category =>
-      category.searchText.includes(normalizedQuery) || category.items.length > 0
-  );
+  return categories
+    .map(category => ({
+      ...category,
+      items: category.items.filter(item =>
+        item.searchText.includes(normalizedQuery)
+      ),
+    }))
+    .filter(
+      category =>
+        category.searchText.includes(normalizedQuery) ||
+        category.items.length > 0
+    );
 }
 
 function SettingsLoadingCard() {
@@ -545,6 +616,9 @@ const SettingsContent = memo(function SettingsContent({
   currentItem,
   isTemplateItem,
   SelectedComponent,
+  clinicId,
+  isClinicSelectionLoading,
+  requiresClinicSelection,
 }: SettingsContentProps) {
   if (!currentItem) {
     return (
@@ -573,8 +647,21 @@ const SettingsContent = memo(function SettingsContent({
         {isTemplateItem && <TemplateItemNotice />}
       </div>
 
-      {SelectedComponent ? (
-        <SelectedComponent />
+      {isClinicSelectionLoading ? (
+        <AdminState
+          variant='loading'
+          title='担当Clinicを読み込み中...'
+          className='bg-white dark:bg-gray-900'
+        />
+      ) : requiresClinicSelection ? (
+        <AdminState
+          variant='empty'
+          title='対象Clinicを選択してください'
+          description='担当Clinicが選択されるまで設定の読み書きは行いません。'
+          className='bg-white dark:bg-gray-900'
+        />
+      ) : SelectedComponent ? (
+        <SelectedComponent clinicId={clinicId} />
       ) : (
         <UnavailableSettingsCard description={currentItem.description} />
       )}
@@ -590,6 +677,30 @@ export default function AdminSettings() {
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const router = useRouter();
+  const profileContext = useOptionalUserProfileContext();
+  const selectedClinicContext = useOptionalSelectedClinic();
+  const actorRole = normalizeRole(profileContext?.profile?.role);
+  const isProfileResolving = profileContext?.loading === true;
+  const isAreaManager = isProfileResolving || actorRole === 'manager';
+  const selectedClinicId = selectedClinicContext?.selectedClinicId ?? null;
+  const profileClinicId = profileContext?.profile?.clinicId ?? null;
+  const activeClinicId =
+    isAreaManager && selectedClinicContext
+      ? selectedClinicId
+      : (selectedClinicId ?? profileClinicId);
+  const isClinicSelectionLoading =
+    isAreaManager && selectedClinicContext?.clinicsLoading === true;
+  const requiresClinicSelection =
+    isAreaManager && !isClinicSelectionLoading && !activeClinicId;
+
+  const visibleSettingsCategories = useMemo(
+    () => getVisibleSettingsCategories({ isAreaManager }),
+    [isAreaManager]
+  );
+  const settingsItemsById = useMemo(
+    () => getSettingsItemsById(visibleSettingsCategories),
+    [visibleSettingsCategories]
+  );
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('adminAuth');
@@ -609,12 +720,23 @@ export default function AdminSettings() {
     setSelectedItem(itemId);
   }, []);
 
+  useEffect(() => {
+    if (!settingsItemsById.has(selectedItem)) {
+      const firstItem = visibleSettingsCategories[0]?.items[0]?.id;
+      if (firstItem) {
+        setSelectedCategory(visibleSettingsCategories[0].id);
+        setSelectedItem(firstItem);
+      }
+    }
+  }, [selectedItem, settingsItemsById, visibleSettingsCategories]);
+
   const searchableCategories = useMemo(
-    () => getSearchableCategories(deferredSearchQuery),
-    [deferredSearchQuery]
+    () =>
+      getSearchableCategories(visibleSettingsCategories, deferredSearchQuery),
+    [deferredSearchQuery, visibleSettingsCategories]
   );
-  const currentItem = SETTINGS_ITEMS_BY_ID.get(selectedItem);
-  const isTemplateItem = currentItem?.categoryId === 'clinic';
+  const currentItem = settingsItemsById.get(selectedItem);
+  const isTemplateItem = !isAreaManager && currentItem?.categoryId === 'clinic';
   const SelectedComponent = SETTINGS_COMPONENTS[selectedItem] ?? null;
 
   return (
@@ -636,6 +758,9 @@ export default function AdminSettings() {
             currentItem={currentItem}
             isTemplateItem={isTemplateItem}
             SelectedComponent={SelectedComponent}
+            clinicId={activeClinicId}
+            isClinicSelectionLoading={isClinicSelectionLoading}
+            requiresClinicSelection={requiresClinicSelection}
           />
         </div>
       </div>

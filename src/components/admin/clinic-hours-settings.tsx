@@ -115,9 +115,13 @@ function normalizeClinicHoursData(data: ClinicHoursData): ClinicHoursData {
   };
 }
 
-export function ClinicHoursSettings() {
+export function ClinicHoursSettings({
+  clinicId: selectedClinicId,
+}: {
+  clinicId?: string | null;
+}) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const clinicId = selectedClinicId ?? profile?.clinicId;
 
   const {
     data: formData,

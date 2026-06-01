@@ -12,6 +12,7 @@
 
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
+import { ScopeNotConfiguredError } from '@/lib/supabase/scoped-admin';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -43,6 +44,7 @@ function createQueryBuilder(finalData: unknown, finalError: unknown = null) {
     eq: jest.fn().mockReturnThis(),
     in: jest.fn().mockReturnThis(),
     or: jest.fn().mockReturnThis(),
+    returns: jest.fn().mockReturnThis(),
     then: jest.fn(
       (resolve: (value: { data: unknown; error: unknown }) => void) =>
         resolve({ data: finalData, error: finalError })
@@ -186,6 +188,144 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       expect(clinicsQuery.or).toHaveBeenCalledWith(
         'id.in.(clinic-1,clinic-2),parent_id.in.(clinic-1,clinic-2)'
       );
+    });
+
+    it('manager は include_kpi=true の担当Clinic比較だけアクセス可能', async () => {
+      const areaClinicRows = [
+        {
+          id: 'parent-1',
+          name: '本部',
+          address: null,
+          phone_number: null,
+          is_active: true,
+          created_at: '2026-04-20T00:00:00.000Z',
+          parent_id: null,
+        },
+        {
+          id: 'child-1',
+          name: '梅田院',
+          address: null,
+          phone_number: null,
+          is_active: true,
+          created_at: '2026-04-21T00:00:00.000Z',
+          parent_id: 'parent-1',
+        },
+        {
+          id: 'child-inactive',
+          name: '休止院',
+          address: null,
+          phone_number: null,
+          is_active: false,
+          created_at: '2026-04-22T00:00:00.000Z',
+          parent_id: 'parent-1',
+        },
+      ];
+      const clinicsQuery = createQueryBuilder(areaClinicRows);
+      const revenueQuery = createQueryBuilder([
+        { clinic_id: 'child-1', total_revenue: 120000 },
+        { clinic_id: 'outside-clinic', total_revenue: 999999 },
+      ]);
+      const patientQuery = createQueryBuilder([
+        { clinic_id: 'child-1', patient_id: 'patient-1' },
+        { clinic_id: 'child-1', patient_id: 'patient-2' },
+        { clinic_id: 'outside-clinic', patient_id: 'patient-outside' },
+      ]);
+      const staffQuery = createQueryBuilder([
+        {
+          clinic_id: 'child-1',
+          total_revenue_generated: 120000,
+          total_visits: 20,
+        },
+      ]);
+      const supabaseMock = {
+        from: jest.fn().mockImplementation((tableName: string) => {
+          if (tableName === 'clinics') return clinicsQuery;
+          if (tableName === 'daily_revenue_summary') return revenueQuery;
+          if (tableName === 'patient_visit_summary') return patientQuery;
+          if (tableName === 'staff_performance_summary') return staffQuery;
+          return createQueryBuilder([]);
+        }),
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'manager-1', email: 'manager@test.com', role: 'manager' },
+        permissions: {
+          role: 'manager',
+          clinic_id: 'child-1',
+          clinic_scope_ids: ['parent-1'],
+        },
+        supabase: {},
+      });
+      setupScopedAdmin(supabaseMock, ['parent-1']);
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
+      const request = new NextRequest(
+        'http://localhost/api/admin/tenants?include_kpi=true'
+      );
+      const response = await GET(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(clinicsQuery.or).toHaveBeenCalledWith(
+        'id.in.(parent-1),parent_id.in.(parent-1)'
+      );
+      expect(clinicsQuery.eq).toHaveBeenCalledWith('is_active', true);
+      expect(revenueQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
+      expect(patientQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
+      expect(staffQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
+      expect(payload.data.items.map((clinic: { id: string }) => clinic.id)).toEqual([
+        'child-1',
+      ]);
+      expect(payload.data.items[0].kpi.revenue).toBe(120000);
+      expect(payload.data.items[0].kpi.patients).toBe(2);
+    });
+
+    it('manager は通常のテナント一覧GETにはアクセスできない', async () => {
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'manager-1', email: 'manager@test.com', role: 'manager' },
+        permissions: {
+          role: 'manager',
+          clinic_id: 'child-1',
+          clinic_scope_ids: ['child-1'],
+        },
+        supabase: {},
+      });
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
+      const request = new NextRequest('http://localhost/api/admin/tenants');
+      const response = await GET(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(payload.success).toBe(false);
+      expect(mockCreateScopedAdminContext).not.toHaveBeenCalled();
+    });
+
+    it('manager は担当Clinicスコープがなければ403を返す', async () => {
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: 'manager-1', email: 'manager@test.com', role: 'manager' },
+        permissions: {
+          role: 'manager',
+          clinic_id: null,
+        },
+        supabase: {},
+      });
+      mockCreateScopedAdminContext.mockImplementation(() => {
+        throw new ScopeNotConfiguredError();
+      });
+
+      const { GET } = await import('@/app/api/admin/tenants/route');
+      const request = new NextRequest(
+        'http://localhost/api/admin/tenants?include_kpi=true'
+      );
+      const response = await GET(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(payload.success).toBe(false);
     });
   });
 

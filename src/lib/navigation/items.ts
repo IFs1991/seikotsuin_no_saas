@@ -1,5 +1,6 @@
 import {
   canAccessAdminUIWithCompat,
+  isAreaManagerRole,
   isHQRole,
   normalizeRole,
 } from '@/lib/constants/roles';
@@ -88,6 +89,13 @@ export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   },
 ];
 
+export const AREA_MANAGER_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
+  { id: 'admin', label: '管理ホーム', href: '/admin' },
+  { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  { id: 'admin-settings', label: 'Clinic設定', href: '/admin/settings' },
+  { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
+];
+
 const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
 const OPERATION_AND_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   ...OPERATION_MENU_ITEMS,
@@ -103,6 +111,12 @@ const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 ];
 const OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
   [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...CLINIC_ADMIN_MENU_ITEMS];
+const OPERATION_AND_AREA_MANAGER_MENU_ITEMS: readonly NavigationItem[] = [
+  ...OPERATION_MENU_ITEMS,
+  ...AREA_MANAGER_ADMIN_MENU_ITEMS,
+];
+const OPERATION_WITHOUT_AI_AND_AREA_MANAGER_MENU_ITEMS: readonly NavigationItem[] =
+  [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...AREA_MANAGER_ADMIN_MENU_ITEMS];
 
 const OPERATION_MENU_ITEMS_BY_AI_FLAG = {
   enabled: OPERATION_MENU_ITEMS,
@@ -117,6 +131,11 @@ const OPERATION_AND_HQ_ADMIN_MENU_ITEMS_BY_AI_FLAG = {
 const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS_BY_AI_FLAG = {
   enabled: OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS,
   disabled: OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS,
+} as const;
+
+const OPERATION_AND_AREA_MANAGER_MENU_ITEMS_BY_AI_FLAG = {
+  enabled: OPERATION_AND_AREA_MANAGER_MENU_ITEMS,
+  disabled: OPERATION_WITHOUT_AI_AND_AREA_MANAGER_MENU_ITEMS,
 } as const;
 
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
@@ -141,15 +160,18 @@ export function getOperationMenuItems() {
 }
 
 export function getVisibleNavigationItems({
+  role,
   isHqAdmin,
   showOperationMenus,
   showAdminMenus,
 }: Pick<
   NavigationMode,
-  'isHqAdmin' | 'showOperationMenus' | 'showAdminMenus'
+  'role' | 'isHqAdmin' | 'showOperationMenus' | 'showAdminMenus'
 >): readonly NavigationItem[] {
   if (!showOperationMenus) {
-    return showAdminMenus ? ADMIN_MENU_ITEMS : EMPTY_NAVIGATION_ITEMS;
+    return showAdminMenus
+      ? getAdminMenuItemsForRole(role)
+      : EMPTY_NAVIGATION_ITEMS;
   }
 
   const aiInsightsEnabled = isAiInsightsEnabled();
@@ -157,6 +179,10 @@ export function getVisibleNavigationItems({
 
   if (!showAdminMenus) {
     return OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
+  }
+
+  if (isAreaManagerRole(role)) {
+    return OPERATION_AND_AREA_MANAGER_MENU_ITEMS_BY_AI_FLAG[aiFlag];
   }
 
   if (!isHqAdmin) {
@@ -169,11 +195,33 @@ export function getVisibleNavigationItems({
 export function canUseAdminNavigation(
   role: string | null | undefined
 ): boolean {
-  return canAccessAdminUIWithCompat(role);
+  return canAccessAdminUIWithCompat(role) || isAreaManagerRole(role);
 }
 
 export function isHqAdminRole(role: string | null | undefined): boolean {
   return isHQRole(normalizeRole(role));
+}
+
+export function getAdminMenuItemsForRole(
+  role: string | null | undefined
+): readonly NavigationItem[] {
+  const normalizedRole = normalizeRole(role);
+  if (isHQRole(normalizedRole)) {
+    return ADMIN_MENU_ITEMS;
+  }
+  if (isAreaManagerRole(normalizedRole)) {
+    return AREA_MANAGER_ADMIN_MENU_ITEMS;
+  }
+  if (canAccessAdminUIWithCompat(normalizedRole)) {
+    return CLINIC_ADMIN_MENU_ITEMS;
+  }
+  return EMPTY_NAVIGATION_ITEMS;
+}
+
+export function getAdminNavigationHrefForRole(
+  _role: string | null | undefined
+): string {
+  return '/admin';
 }
 
 export function getNavigationMode({

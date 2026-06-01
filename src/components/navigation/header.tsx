@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
-import { ADMIN_MENU_ITEMS } from '@/lib/navigation/items';
+import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
 
@@ -31,6 +31,7 @@ interface HeaderProps {
   profile?: UserProfile | null;
   profileLoading?: boolean;
   isAdmin?: boolean;
+  canAccessAdminNavigation?: boolean;
   /** 動的通知件数（0 または未指定でバッジ非表示） */
   notificationCount?: number;
   /** クリニック一覧（DBから取得） */
@@ -78,6 +79,7 @@ interface NotificationBadgeProps {
 interface AdminMenuLinksProps {
   onClose: () => void;
   itemClassName: string;
+  role?: string | null;
 }
 
 function buildDisplayClinics(
@@ -180,10 +182,13 @@ const NotificationBadge = React.memo(function NotificationBadge({
 const AdminMenuLinks = React.memo(function AdminMenuLinks({
   onClose,
   itemClassName,
+  role = null,
 }: AdminMenuLinksProps) {
+  const menuItems = getAdminMenuItemsForRole(role);
+
   return (
     <>
-      {ADMIN_MENU_ITEMS.map(link => (
+      {menuItems.map(link => (
         <Link
           key={link.id}
           href={link.href}
@@ -204,6 +209,7 @@ export const Header = React.memo(function Header({
   profile,
   profileLoading = false,
   isAdmin = false,
+  canAccessAdminNavigation,
   notificationCount,
   clinics = EMPTY_CLINICS,
   clinicsLoading = false,
@@ -216,6 +222,9 @@ export const Header = React.memo(function Header({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [previewClinicId, setPreviewClinicId] = useState<string | null>(null);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
+  const profileRole = profile?.role ?? null;
+  const showAdminMenu = canAccessAdminNavigation ?? isAdmin;
+  const adminMenuRole = profileRole ?? (isAdmin ? 'admin' : null);
   const adminNotifications = useAdminNotifications({
     clinicId: selectedClinicId,
     enabled: isAdmin && Boolean(selectedClinicId),
@@ -249,13 +258,13 @@ export const Header = React.memo(function Header({
 
   const handleSettingsClick = useCallback(() => {
     setIsNotificationsOpen(false);
-    if (isAdmin) {
+    if (showAdminMenu) {
       setIsUserMenuOpen(false);
       setIsAdminMenuOpen(prev => !prev);
     } else {
       router.push('/settings');
     }
-  }, [isAdmin, router]);
+  }, [router, showAdminMenu]);
 
   const handleNavigateHome = useCallback(() => {
     closeMenus();
@@ -313,7 +322,7 @@ export const Header = React.memo(function Header({
   const showBadge = effectiveNotificationCount > 0;
   const badgeLabel =
     effectiveNotificationCount >= 100 ? '99+' : effectiveNotificationCount;
-  const logoutHref = isAdmin ? '/admin/logout' : '/logout';
+  const logoutHref = showAdminMenu ? '/admin/logout' : '/logout';
   const displayClinics = useMemo(
     () => buildDisplayClinics(clinics, fallbackClinic),
     [clinics, fallbackClinic]
@@ -407,15 +416,16 @@ export const Header = React.memo(function Header({
             onClick={handleSettingsClick}
             className='flex items-center'
           >
-            {isAdmin ? '管理メニュー' : '設定'}
-            <span className='ml-1'>{isAdmin ? '▾' : ''}</span>
+            {showAdminMenu ? '管理メニュー' : '設定'}
+            <span className='ml-1'>{showAdminMenu ? '▾' : ''}</span>
           </Button>
 
-          {isAdmin && isAdminMenuOpen && (
+          {showAdminMenu && isAdminMenuOpen && (
             <div className='absolute right-0 mt-2 w-56 rounded-md bg-white shadow-lg py-2 text-gray-700'>
               <AdminMenuLinks
                 onClose={closeMenus}
                 itemClassName='w-full text-left px-4 py-2 text-sm hover:bg-blue-50'
+                role={adminMenuRole}
               />
             </div>
           )}
@@ -511,12 +521,13 @@ export const Header = React.memo(function Header({
             <Button variant='ghost' onClick={onToggleDarkMode}>
               {isDarkMode ? '🌙 ダーク' : '☀️ ライト'}
             </Button>
-            {isAdmin && (
+            {showAdminMenu && (
               <div className='rounded bg-blue-900/50 p-2 space-y-1'>
                 <p className='text-xs text-blue-100'>管理メニュー</p>
                 <AdminMenuLinks
                   onClose={closeMenus}
                   itemClassName='justify-start text-left w-full text-sm rounded-medical px-4 py-2 hover:bg-white/10'
+                  role={adminMenuRole}
                 />
               </div>
             )}

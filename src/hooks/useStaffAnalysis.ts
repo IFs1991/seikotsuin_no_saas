@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 
 interface StaffMetrics {
   dailyPatients: number;
@@ -64,7 +65,11 @@ const defaultShiftAnalysis: ShiftAnalysis = {
 
 export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
   const { profile, loading: profileLoading } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  const selectedClinicContext = useOptionalSelectedClinic();
+  const selectedClinicLoading = selectedClinicContext?.clinicsLoading === true;
+  const clinicId = selectedClinicContext
+    ? selectedClinicContext.selectedClinicId
+    : (profile?.clinicId ?? null);
 
   const [data, setData] = useState<Omit<UseStaffAnalysisReturn, 'refetch'>>({
     staffMetrics: {
@@ -91,7 +96,8 @@ export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
     setData(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const response = await fetch(`/api/staff?clinic_id=${clinicId}`);
+      const params = new URLSearchParams({ clinic_id: clinicId });
+      const response = await fetch(`/api/staff?${params.toString()}`);
       const json = await response.json();
 
       if (!response.ok || !json?.success) {
@@ -131,14 +137,14 @@ export const useStaffAnalysis = (): UseStaffAnalysisReturn => {
   }, [clinicId]);
 
   useEffect(() => {
-    if (!profileLoading) {
+    if (!profileLoading && !selectedClinicLoading) {
       fetchData();
     }
-  }, [fetchData, profileLoading]);
+  }, [fetchData, profileLoading, selectedClinicLoading]);
 
   return {
     ...data,
-    isLoading: profileLoading || data.isLoading,
+    isLoading: profileLoading || selectedClinicLoading || data.isLoading,
     refetch: fetchData,
   };
 };

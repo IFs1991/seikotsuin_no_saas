@@ -73,7 +73,11 @@ const initialBackupData: BackupSettings = {
   storageProvider: 'aws',
 };
 
-export function SystemSettings() {
+export function SystemSettings({
+  clinicId: selectedClinicId,
+}: {
+  clinicId?: string | null;
+}) {
   const systemInfo: SystemInfo = {
     version: process.env.NEXT_PUBLIC_APP_VERSION?.trim() || '未設定',
     lastUpdate: process.env.NEXT_PUBLIC_BUILD_DATE?.trim() || '未設定',
@@ -82,7 +86,7 @@ export function SystemSettings() {
   };
 
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const clinicId = selectedClinicId ?? profile?.clinicId;
 
   const {
     data: security,

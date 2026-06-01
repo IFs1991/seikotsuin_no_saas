@@ -4,7 +4,11 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { getNavigationMode, isAiInsightsEnabled } from '@/lib/navigation/items';
+import {
+  getAdminNavigationHrefForRole,
+  getNavigationMode,
+  isAiInsightsEnabled,
+} from '@/lib/navigation/items';
 import {
   BarChart3,
   FileText,
@@ -66,22 +70,33 @@ const AI_INSIGHTS_HREF = '/ai-insights';
 const BASE_ITEMS_WITHOUT_AI: readonly MobileNavigationItem[] =
   BASE_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
 
-const ADMIN_ITEM: MobileNavigationItem = {
+const DEFAULT_ADMIN_ITEM: MobileNavigationItem = {
   id: 'admin',
   label: '管理',
   href: '/admin',
   icon: ShieldCheck,
 };
 
-const ADMIN_ONLY_ITEMS: readonly MobileNavigationItem[] = [ADMIN_ITEM];
+const AREA_MANAGER_ADMIN_ITEM: MobileNavigationItem = {
+  ...DEFAULT_ADMIN_ITEM,
+  href: '/admin/users',
+};
+
+const ADMIN_ONLY_ITEMS: readonly MobileNavigationItem[] = [DEFAULT_ADMIN_ITEM];
 const BASE_ITEMS_WITH_ADMIN: readonly MobileNavigationItem[] = [
   ...BASE_ITEMS,
-  ADMIN_ITEM,
+  DEFAULT_ADMIN_ITEM,
 ];
 const BASE_ITEMS_WITHOUT_AI_WITH_ADMIN: readonly MobileNavigationItem[] = [
   ...BASE_ITEMS_WITHOUT_AI,
-  ADMIN_ITEM,
+  DEFAULT_ADMIN_ITEM,
 ];
+const BASE_ITEMS_WITH_AREA_MANAGER_ADMIN: readonly MobileNavigationItem[] = [
+  ...BASE_ITEMS,
+  AREA_MANAGER_ADMIN_ITEM,
+];
+const BASE_ITEMS_WITHOUT_AI_WITH_AREA_MANAGER_ADMIN: readonly MobileNavigationItem[] =
+  [...BASE_ITEMS_WITHOUT_AI, AREA_MANAGER_ADMIN_ITEM];
 const EMPTY_MOBILE_NAVIGATION_ITEMS: readonly MobileNavigationItem[] = [];
 
 interface MobileBottomNavProps {
@@ -112,9 +127,16 @@ function getMobileNavigationItems({
   }
 
   if (navigationMode.showAdminMenus) {
+    const adminHref = getAdminNavigationHrefForRole(navigationMode.role);
+    if (adminHref === DEFAULT_ADMIN_ITEM.href) {
+      return aiInsightsEnabled
+        ? BASE_ITEMS_WITH_ADMIN
+        : BASE_ITEMS_WITHOUT_AI_WITH_ADMIN;
+    }
+
     return aiInsightsEnabled
-      ? BASE_ITEMS_WITH_ADMIN
-      : BASE_ITEMS_WITHOUT_AI_WITH_ADMIN;
+      ? BASE_ITEMS_WITH_AREA_MANAGER_ADMIN
+      : BASE_ITEMS_WITHOUT_AI_WITH_AREA_MANAGER_ADMIN;
   }
 
   return aiInsightsEnabled ? BASE_ITEMS : BASE_ITEMS_WITHOUT_AI;
