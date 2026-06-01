@@ -92,6 +92,7 @@ export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 export const AREA_MANAGER_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  { id: 'admin-settings', label: 'Clinic設定', href: '/admin/settings' },
   { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
 ];
 

@@ -20,19 +20,20 @@ import { AuditLogger } from '@/lib/audit-logger';
 import {
   CLINIC_ADMIN_ROLES,
   STAFF_ROLES,
-  type Role,
+  normalizeRole,
 } from '@/lib/constants/roles';
 import {
   VALID_CATEGORIES,
   DEFAULT_SETTINGS,
   type SettingsCategory,
 } from '@/lib/admin-settings/defaults';
+import {
+  canManageAdminSettingsCategory,
+  canReadAdminSettingsCategory,
+} from '@/lib/admin-settings/access';
 import { CATEGORY_SCHEMAS } from '@/lib/admin-settings/schemas';
 import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
 
-// 管理者権限チェック（クリニック設定管理が可能なロール）
-const canManageSettings = (role: string) =>
-  CLINIC_ADMIN_ROLES.has(role as Role);
 const STAFF_ROLE_LIST = Array.from(STAFF_ROLES);
 const CLINIC_ADMIN_ROLE_LIST = Array.from(CLINIC_ADMIN_ROLES);
 
@@ -53,10 +54,10 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
-    const { supabase, auth } = processResult;
+    const { supabase, auth, permissions } = processResult;
 
     // バリデーション
     if (!clinicId) {
@@ -71,6 +72,15 @@ export async function GET(request: NextRequest) {
       return createErrorResponse(
         `不正なcategoryです。有効な値: ${VALID_CATEGORIES.join(', ')}`,
         400
+      );
+    }
+
+    const categoryValue = category as SettingsCategory;
+
+    if (!canReadAdminSettingsCategory(permissions.role, categoryValue)) {
+      return createErrorResponse(
+        'この設定カテゴリへのアクセス権がありません',
+        403
       );
     }
 
@@ -99,7 +109,7 @@ export async function GET(request: NextRequest) {
         ? normalizeCommunicationSettings(
             data?.settings ?? DEFAULT_SETTINGS.communication
           )
-        : (data?.settings ?? DEFAULT_SETTINGS[category as SettingsCategory]);
+        : (data?.settings ?? DEFAULT_SETTINGS[categoryValue]);
 
     return createSuccessResponse({
       settings,
@@ -140,15 +150,10 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { supabase, auth, permissions, body } = processResult;
-
-    // 管理者権限チェック
-    if (!canManageSettings(permissions.role)) {
-      return createErrorResponse('管理者権限が必要です', 403);
-    }
 
     // ボディのパース
     const { clinic_id, category, settings } = body as {
@@ -176,12 +181,21 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const categoryValue = category as SettingsCategory;
+
+    if (!canManageAdminSettingsCategory(permissions.role, categoryValue)) {
+      return createErrorResponse(
+        'この設定カテゴリへのアクセス権がありません',
+        403
+      );
+    }
+
     if (!settings || typeof settings !== 'object') {
       return createErrorResponse('settingsは必須です', 400);
     }
 
     // カテゴリ固有のバリデーション
-    const schema = CATEGORY_SCHEMAS[category as SettingsCategory];
+    const schema = CATEGORY_SCHEMAS[categoryValue];
     const candidateSettings =
       category === 'communication'
         ? normalizeCommunicationSettings(settings)
@@ -222,9 +236,12 @@ export async function PUT(request: NextRequest) {
     void AuditLogger.logAdminAction(
       auth.id,
       auth.email,
-      'update_settings',
+      normalizeRole(permissions.role) === 'manager'
+        ? 'manager_settings_update'
+        : 'update_settings',
       undefined,
       {
+        actor_role: normalizeRole(permissions.role),
         category,
         clinic_id,
         settingsUpdated: true,

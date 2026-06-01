@@ -8,9 +8,11 @@ export const ADMIN_ROUTE_PATH_HEADER = 'x-current-path';
 export const AREA_MANAGER_ADMIN_HOME_PATH = '/admin';
 export const AREA_MANAGER_ADMIN_DEFAULT_PATH = AREA_MANAGER_ADMIN_HOME_PATH;
 export const AREA_MANAGER_ADMIN_USERS_PATH = '/admin/users';
+export const AREA_MANAGER_ADMIN_SETTINGS_PATH = '/admin/settings';
 
 const AREA_MANAGER_ADMIN_ROUTE_PREFIXES = [
   AREA_MANAGER_ADMIN_USERS_PATH,
+  AREA_MANAGER_ADMIN_SETTINGS_PATH,
 ] as const;
 
 interface AdminRouteAccessInput {

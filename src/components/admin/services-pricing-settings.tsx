@@ -49,7 +49,7 @@ import {
   Save,
   Trash2,
 } from 'lucide-react';
-import { useSelectedClinic } from '@/providers/selected-clinic-context';
+import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Menu } from '@/types/reservation';
 import { AdminMessage } from './AdminMessage';
@@ -1569,10 +1569,18 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
   );
 });
 
-export function ServicesPricingSettings() {
+export function ServicesPricingSettings({
+  clinicId: selectedClinicIdFromProps,
+}: {
+  clinicId?: string | null;
+}) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const { selectedClinicId } = useSelectedClinic();
-  const clinicId = selectedClinicId ?? profile?.clinicId ?? null;
+  const selectedClinicContext = useOptionalSelectedClinic();
+  const clinicId =
+    selectedClinicIdFromProps ??
+    selectedClinicContext?.selectedClinicId ??
+    profile?.clinicId ??
+    null;
   const profileRole = profile?.role ?? null;
   const canManageBillingProfiles = isPricingAdminRole(profileRole);
 

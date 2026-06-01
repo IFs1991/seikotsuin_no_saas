@@ -232,7 +232,7 @@ describe('App route guards', () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    test('manager は HQ-only の /admin/settings を開けない', async () => {
+    test('manager は /admin/settings の担当Clinic設定を開ける', async () => {
       mockCreateClient.mockResolvedValue(adminSupabaseClient);
       mockHeaders.mockResolvedValue(
         new Headers({ 'x-current-path': '/admin/settings' })
@@ -246,10 +246,12 @@ describe('App route guards', () => {
         isAdmin: false,
       });
 
-      await expect(
-        AdminLayout({ children: <div>admin settings</div> })
-      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
-      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+      const rendered = await AdminLayout({
+        children: <div>admin settings</div>,
+      });
+
+      expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
     });
 
     test('clinic_admin の既存 admin UI アクセスは維持する', async () => {

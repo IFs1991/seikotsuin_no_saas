@@ -46,9 +46,13 @@ const initialData: CommunicationData = {
   ],
 };
 
-export function CommunicationSettings() {
+export function CommunicationSettings({
+  clinicId: selectedClinicId,
+}: {
+  clinicId?: string | null;
+}) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const clinicId = selectedClinicId ?? profile?.clinicId;
 
   const {
     data: formData,

@@ -22,16 +22,25 @@ let getHandler: (request: {
   status: number;
   json: () => Promise<unknown>;
 }>;
+let postHandler: (request: { json: () => Promise<unknown> }) => Promise<{
+  status: number;
+  json: () => Promise<unknown>;
+}>;
 
 beforeAll(async () => {
   const staffModule = await import('@/app/api/staff/route');
   getHandler = staffModule.GET as typeof getHandler;
+  postHandler = staffModule.POST as typeof postHandler;
 });
 
 const createGetRequest = (clinicId: string) => ({
   nextUrl: {
     searchParams: new URLSearchParams({ clinic_id: clinicId }),
   },
+});
+
+const createPostRequest = (body: unknown) => ({
+  json: async () => body,
 });
 
 describe('GET /api/staff', () => {
@@ -46,6 +55,83 @@ describe('GET /api/staff', () => {
     expect(response.status).toBe(400);
     const payload = await response.json();
     expect((payload as { success: boolean }).success).toBe(false);
+  });
+
+  it('manager はリクエストされた担当Clinicのスタッフ分析を取得する', async () => {
+    const requestedClinicId = '11111111-1111-4111-8111-111111111111';
+    const parentClinicId = '11111111-1111-4111-8111-111111111199';
+    const staffPerformanceEq = jest.fn().mockResolvedValue({
+      data: [],
+      error: null,
+    });
+
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: {
+        from: jest.fn((table: string) => {
+          if (table === 'staff_performance_summary') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: staffPerformanceEq,
+              }),
+            };
+          }
+          if (table === 'staff_performance') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  gte: jest.fn().mockReturnValue({
+                    order: jest.fn().mockResolvedValue({
+                      data: [],
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'reservations') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  gte: jest.fn().mockReturnValue({
+                    lte: jest.fn().mockResolvedValue({
+                      data: [],
+                      error: null,
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'resources') {
+            return {
+              select: jest.fn().mockReturnValue({
+                eq: jest.fn().mockReturnValue({
+                  eq: jest.fn().mockResolvedValue({
+                    data: [],
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          }
+          throw new Error(`Unexpected table: ${table}`);
+        }),
+      },
+      permissions: {
+        role: 'manager',
+        clinic_id: parentClinicId,
+        clinic_scope_ids: [requestedClinicId],
+      },
+    });
+
+    const response = await getHandler(createGetRequest(requestedClinicId));
+
+    expect(response.status).toBe(200);
+    expect(staffPerformanceEq).toHaveBeenCalledWith(
+      'clinic_id',
+      requestedClinicId
+    );
   });
 
   describe('response schema validation', () => {
@@ -332,6 +418,74 @@ describe('GET /api/staff', () => {
         expect(hasHardcodedData).toBe(false);
       }
     });
+  });
+});
+
+describe('POST /api/staff', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('manager が担当Clinicのスタッフを作成できる運用ロールセットを使う', async () => {
+    const clinicId = '11111111-1111-4111-8111-111111111111';
+    const staffInsertSingle = jest.fn().mockResolvedValue({
+      data: { id: 'staff-1', clinic_id: clinicId },
+      error: null,
+    });
+    const staffInsertSelect = jest.fn().mockReturnValue({
+      single: staffInsertSingle,
+    });
+    const staffInsert = jest.fn().mockReturnValue({
+      select: staffInsertSelect,
+    });
+    const resourceUpsert = jest.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      from: jest.fn((table: string) => {
+        if (table === 'staff') {
+          return { insert: staffInsert };
+        }
+        if (table === 'resources') {
+          return { upsert: resourceUpsert };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase,
+      user: { id: 'manager-user' },
+      permissions: {
+        role: 'manager',
+        clinic_id: '11111111-1111-4111-8111-111111111199',
+        clinic_scope_ids: [clinicId],
+      },
+    });
+
+    const response = await postHandler(
+      createPostRequest({
+        clinic_id: clinicId,
+        name: '担当スタッフ',
+        role: 'practitioner',
+        email: 'staff@example.com',
+        hire_date: '2026-05-01',
+        is_therapist: true,
+      })
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(201);
+    expect((payload as { success: boolean }).success).toBe(true);
+    expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/staff',
+      clinicId,
+      expect.objectContaining({
+        allowedRoles: expect.arrayContaining(['manager']),
+        requireClinicMatch: true,
+      })
+    );
+    expect(staffInsert).toHaveBeenCalled();
+    expect(resourceUpsert).toHaveBeenCalled();
   });
 });
 

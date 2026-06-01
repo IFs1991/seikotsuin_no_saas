@@ -141,6 +141,35 @@ describe('Staff Shifts API', () => {
       expect(payload.data.shifts[0].staff.name).toBe('E2E Staff 1');
     });
 
+    it('manager はリクエストされた担当Clinicのシフトを取得する', async () => {
+      const queryBuilder = createQueryBuilder({
+        data: [],
+        error: null,
+      });
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: {
+          from: jest.fn().mockReturnValue(queryBuilder),
+        },
+        permissions: {
+          role: 'manager',
+          clinic_id: '123e4567-e89b-12d3-a456-426614174099',
+          clinic_scope_ids: [TEST_CLINIC_ID],
+        },
+      });
+
+      const request = createGetRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        start: '2025-01-01',
+        end: '2025-01-31',
+      });
+
+      const response = await shiftsGetHandler(request);
+
+      expect(response.status).toBe(200);
+      expect(queryBuilder.eq).toHaveBeenCalledWith('clinic_id', TEST_CLINIC_ID);
+    });
+
     it('認証エラー時は 401 を返す', async () => {
       ensureClinicAccessMock.mockRejectedValue(
         new AppError(ERROR_CODES.UNAUTHORIZED, 'Unauthorized', 401)
@@ -203,6 +232,63 @@ describe('Staff Shifts API', () => {
           clinic_id: TEST_CLINIC_ID,
           status: 'confirmed',
           created_by: 'user-1',
+        })
+      );
+    });
+
+    it('manager が担当Clinicのシフトを作成できる', async () => {
+      const overlapQuery = {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        neq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockResolvedValue({ data: [], error: null }),
+      };
+      const insertQuery = {
+        insert: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: { id: '123e4567-e89b-12d3-a456-426614174010' },
+          error: null,
+        }),
+      };
+      const from = jest
+        .fn()
+        .mockReturnValueOnce(overlapQuery)
+        .mockReturnValueOnce(insertQuery);
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from },
+        user: { id: 'manager-user' },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        staff_id: '123e4567-e89b-12d3-a456-426614174001',
+        start_time: '2026-05-14T00:00:00.000Z',
+        end_time: '2026-05-14T09:00:00.000Z',
+        status: 'confirmed',
+      });
+
+      const response = await shiftsPostHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(201);
+      expect(payload.success).toBe(true);
+      expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+        expect.anything(),
+        '/api/staff/shifts',
+        TEST_CLINIC_ID,
+        expect.objectContaining({
+          allowedRoles: expect.arrayContaining(['manager']),
+          requireClinicMatch: true,
+        })
+      );
+      expect(insertQuery.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: TEST_CLINIC_ID,
+          created_by: 'manager-user',
         })
       );
     });
@@ -356,6 +442,46 @@ describe('Staff Shifts API', () => {
       expect(updateQuery.update).toHaveBeenCalledWith({
         status: 'cancelled',
       });
+    });
+
+    it('manager が担当Clinicのシフトを cancelled にできる', async () => {
+      const updateQuery = {
+        update: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: '123e4567-e89b-12d3-a456-426614174010',
+            status: 'cancelled',
+          },
+          error: null,
+        }),
+      };
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: jest.fn().mockReturnValue(updateQuery) },
+      });
+
+      const request = createJsonRequest('/api/staff/shifts', {
+        clinic_id: TEST_CLINIC_ID,
+        id: '123e4567-e89b-12d3-a456-426614174010',
+        status: 'cancelled',
+      });
+
+      const response = await shiftsPatchHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.success).toBe(true);
+      expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+        expect.anything(),
+        '/api/staff/shifts',
+        TEST_CLINIC_ID,
+        expect.objectContaining({
+          allowedRoles: expect.arrayContaining(['manager']),
+          requireClinicMatch: true,
+        })
+      );
     });
 
     it('cancelled 以外への更新は拒否される', async () => {

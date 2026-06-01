@@ -19,7 +19,7 @@ describe('admin route access helpers', () => {
     ).toBe(true);
   });
 
-  it('allows manager only for the area dashboard and admin users page subtree', () => {
+  it('allows manager only for approved area management admin routes', () => {
     expect(
       canAccessAdminRouteWithCompat({
         role: 'manager',
@@ -43,7 +43,13 @@ describe('admin route access helpers', () => {
         role: 'manager',
         pathname: '/admin/settings',
       })
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
+        pathname: '/admin/settings/clinic-basic',
+      })
+    ).toBe(true);
     expect(
       canAccessAdminRouteWithCompat({
         role: 'manager',

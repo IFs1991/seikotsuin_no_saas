@@ -26,6 +26,7 @@ interface ClinicBasicData {
 
 interface ClinicBasicSettingsProps {
   onSave?: (data: ClinicBasicData) => void;
+  clinicId?: string | null;
 }
 
 const initialData: ClinicBasicData = {
@@ -41,9 +42,12 @@ const initialData: ClinicBasicData = {
   logo: null,
 };
 
-export function ClinicBasicSettings({ onSave }: ClinicBasicSettingsProps) {
+export function ClinicBasicSettings({
+  onSave,
+  clinicId: selectedClinicId,
+}: ClinicBasicSettingsProps) {
   const { profile, loading: profileLoading } = useUserProfile();
-  const clinicId = profile?.clinicId;
+  const clinicId = selectedClinicId ?? profile?.clinicId;
 
   const {
     data: formData,

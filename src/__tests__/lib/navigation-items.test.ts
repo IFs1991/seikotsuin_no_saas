@@ -53,11 +53,13 @@ describe('navigation items', () => {
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
       '管理ホーム',
       'スタッフ管理',
+      'Clinic設定',
       '店舗比較分析',
     ]);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
       '/admin',
       '/admin/users',
+      '/admin/settings',
       '/multi-store',
     ]);
     expect(getAdminMenuItemsForRole('manager')).toBe(
@@ -78,12 +80,10 @@ describe('navigation items', () => {
     expect(mode.showOperationMenus).toBe(true);
     expect(visibleItems.map(item => item.href)).toContain('/admin');
     expect(visibleItems.map(item => item.href)).toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).toContain('/admin/settings');
     expect(visibleItems.map(item => item.href)).toContain('/multi-store');
     expect(visibleItems.map(item => item.href)).not.toContain(
       '/admin/tenants'
-    );
-    expect(visibleItems.map(item => item.href)).not.toContain(
-      '/admin/settings'
     );
   });
 
