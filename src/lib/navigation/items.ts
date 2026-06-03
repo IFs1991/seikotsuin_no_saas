@@ -62,6 +62,7 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'patients', label: '患者分析', href: '/patients' },
   { id: 'revenue', label: '収益分析', href: '/revenue' },
   { id: 'staff', label: 'スタッフ分析', href: '/staff' },
+  { id: 'shift-requests', label: '希望シフト', href: '/staff/shift-requests' },
   { id: 'ai-insights', label: 'AI分析', href: '/ai-insights' },
 ];
 
@@ -74,6 +75,11 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  {
+    id: 'admin-shift-requests',
+    label: '希望シフト管理',
+    href: '/admin/shift-requests',
+  },
   { id: 'admin-settings', label: 'システム設定', href: '/admin/settings' },
   { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
   { id: 'admin-chat', label: 'AIチャット', href: '/admin/chat' },
@@ -81,6 +87,11 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 
 export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  {
+    id: 'clinic-shift-requests',
+    label: '希望シフト確認',
+    href: '/staff/shift-requests/admin',
+  },
   { id: 'clinic-patients', label: '患者管理', href: '/patients/list' },
   {
     id: 'clinic-menu-settings',
@@ -92,6 +103,11 @@ export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 export const AREA_MANAGER_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  {
+    id: 'admin-shift-requests',
+    label: '希望シフト管理',
+    href: '/admin/shift-requests',
+  },
   { id: 'admin-settings', label: 'Clinic設定', href: '/admin/settings' },
   { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
 ];
