@@ -38,11 +38,13 @@ describe('navigation items', () => {
   it('clinic_admin の管理セクションは店舗管理に必要な導線に限定する', () => {
     expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
       'スタッフ管理',
+      '希望シフト確認',
       '患者管理',
       '施術メニュー',
     ]);
     expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
       '/admin/users',
+      '/staff/shift-requests/admin',
       '/patients/list',
       '/reservations/settings/menus',
     ]);
@@ -53,12 +55,14 @@ describe('navigation items', () => {
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
       '管理ホーム',
       'スタッフ管理',
+      '希望シフト管理',
       'Clinic設定',
       '店舗比較分析',
     ]);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
       '/admin',
       '/admin/users',
+      '/admin/shift-requests',
       '/admin/settings',
       '/multi-store',
     ]);
@@ -80,11 +84,12 @@ describe('navigation items', () => {
     expect(mode.showOperationMenus).toBe(true);
     expect(visibleItems.map(item => item.href)).toContain('/admin');
     expect(visibleItems.map(item => item.href)).toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).toContain(
+      '/admin/shift-requests'
+    );
     expect(visibleItems.map(item => item.href)).toContain('/admin/settings');
     expect(visibleItems.map(item => item.href)).toContain('/multi-store');
-    expect(visibleItems.map(item => item.href)).not.toContain(
-      '/admin/tenants'
-    );
+    expect(visibleItems.map(item => item.href)).not.toContain('/admin/tenants');
   });
 
   it('staff は店舗運用メニューのみ表示対象にする', () => {

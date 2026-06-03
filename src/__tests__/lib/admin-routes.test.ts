@@ -53,6 +53,18 @@ describe('admin route access helpers', () => {
     expect(
       canAccessAdminRouteWithCompat({
         role: 'manager',
+        pathname: '/admin/shift-requests',
+      })
+    ).toBe(true);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
+        pathname: '/admin/shift-requests/clinic-1',
+      })
+    ).toBe(true);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
         pathname: '/admin/chat',
       })
     ).toBe(false);
@@ -60,6 +72,12 @@ describe('admin route access helpers', () => {
       canAccessAdminRouteWithCompat({
         role: 'manager',
         pathname: '/admin/tenants',
+      })
+    ).toBe(false);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'therapist',
+        pathname: '/admin/shift-requests',
       })
     ).toBe(false);
   });
