@@ -2,6 +2,7 @@ import {
   ScopeAccessError,
   assertClinicInEffectiveScope,
   resolveEffectiveClinicScope,
+  resolveManagerAssignedClinics,
   resolveManagerAssignedClinicIds,
   type EffectiveClinicScope,
 } from '@/lib/auth/manager-scope';
@@ -59,6 +60,75 @@ describe('resolveManagerAssignedClinicIds', () => {
 
     await expect(
       resolveManagerAssignedClinicIds(client, 'manager-1')
+    ).rejects.toBe(dbError);
+  });
+});
+
+describe('resolveManagerAssignedClinics', () => {
+  it('queries active assignments with active clinic rows in one DB request', async () => {
+    const result = {
+      data: [
+        {
+          id: 'assignment-1',
+          manager_user_id: 'manager-1',
+          clinic_id: 'clinic-1',
+          assigned_at: '2026-06-04T00:00:00.000Z',
+          revoked_at: null,
+          clinics: {
+            id: 'clinic-1',
+            name: '渋谷院',
+            is_active: true,
+          },
+        },
+      ],
+      error: null,
+    };
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      returns: jest.fn().mockResolvedValue(result),
+    };
+    const client = {
+      from: jest.fn(() => query),
+    } as Pick<SupabaseServerClient, 'from'>;
+
+    await expect(
+      resolveManagerAssignedClinics(client, 'manager-1')
+    ).resolves.toEqual([
+      {
+        id: 'assignment-1',
+        manager_user_id: 'manager-1',
+        clinic_id: 'clinic-1',
+        clinic_name: '渋谷院',
+        assigned_at: '2026-06-04T00:00:00.000Z',
+        revoked_at: null,
+      },
+    ]);
+
+    expect(client.from).toHaveBeenCalledWith('manager_clinic_assignments');
+    expect(query.select).toHaveBeenCalledWith(
+      'id, manager_user_id, clinic_id, assigned_at, revoked_at, clinics!inner(id, name, is_active)'
+    );
+    expect(query.eq).toHaveBeenCalledWith('manager_user_id', 'manager-1');
+    expect(query.is).toHaveBeenCalledWith('revoked_at', null);
+    expect(query.eq).toHaveBeenCalledWith('clinics.is_active', true);
+  });
+
+  it('throws DB errors from assignment clinic lookups', async () => {
+    const dbError = new Error('assignment clinic query failed');
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      returns: jest.fn().mockResolvedValue({ data: null, error: dbError }),
+    };
+    const client = {
+      from: jest.fn(() => query),
+    } as Pick<SupabaseServerClient, 'from'>;
+
+    await expect(
+      resolveManagerAssignedClinics(client, 'manager-1')
     ).rejects.toBe(dbError);
   });
 });

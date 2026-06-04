@@ -7,14 +7,20 @@ import {
 } from '@/lib/api-helpers';
 import {
   canManageClinicSettingsWithCompat,
+  normalizeRole,
   STAFF_ROLES,
 } from '@/lib/constants/roles';
 import {
+  createAdminClient,
   createScopedAdminContext,
   resolveScopedClinicIds,
   ScopeNotConfiguredError,
   type SupabaseServerClient,
 } from '@/lib/supabase';
+import {
+  resolveManagerAssignedClinics,
+  type ManagerClinicAssignment,
+} from '@/lib/auth/manager-scope';
 import {
   buildClinicScopeOrFilter,
   selectReservableAdminClinicRows,
@@ -53,6 +59,27 @@ function resolveCurrentAccessibleClinicId(
   return clinics.some(clinic => clinic.id === currentClinicId)
     ? currentClinicId
     : null;
+}
+
+function toSortedUniqueClinicOptions(
+  assignments: readonly ManagerClinicAssignment[]
+): AccessibleClinicOption[] {
+  const clinicsById = new Map<string, AccessibleClinicOption>();
+
+  for (const assignment of assignments) {
+    if (!assignment.clinic_name) {
+      continue;
+    }
+
+    clinicsById.set(assignment.clinic_id, {
+      id: assignment.clinic_id,
+      name: assignment.clinic_name,
+    });
+  }
+
+  return Array.from(clinicsById.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, 'ja')
+  );
 }
 
 async function fetchScopedAdminClinics(
@@ -107,6 +134,40 @@ export async function GET(request: NextRequest) {
     }
 
     const { supabase, auth, permissions } = processResult;
+    const normalizedRole = normalizeRole(permissions.role);
+
+    if (normalizedRole === 'manager') {
+      const adminClient = createAdminClient();
+      let managerAssignments: ManagerClinicAssignment[];
+
+      try {
+        managerAssignments = await resolveManagerAssignedClinics(
+          adminClient,
+          auth.id
+        );
+      } catch (error) {
+        logError(error, {
+          endpoint: ACCESSIBLE_CLINICS_ENDPOINT,
+          method: 'GET',
+          userId: auth.id,
+        });
+        return createErrorResponse(
+          '利用可能なクリニック一覧の取得に失敗しました',
+          500
+        );
+      }
+
+      const clinics = toSortedUniqueClinicOptions(managerAssignments);
+
+      return createSuccessResponse({
+        clinics,
+        currentClinicId: resolveCurrentAccessibleClinicId(
+          clinics,
+          permissions.clinic_id
+        ),
+      });
+    }
+
     const scopedClinicIds = resolveScopedClinicIds(permissions);
 
     if (!scopedClinicIds) {

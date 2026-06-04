@@ -10,6 +10,26 @@ export type ManagerClinicAssignment = {
   revoked_at: string | null;
 };
 
+type ManagerAssignedClinicRelation =
+  | {
+      id: string;
+      name: string;
+      is_active: boolean | null;
+    }
+  | {
+      id: string;
+      name: string;
+      is_active: boolean | null;
+    }[]
+  | null;
+
+type ManagerClinicAssignmentQueryRow = Omit<
+  ManagerClinicAssignment,
+  'clinic_name'
+> & {
+  clinics: ManagerAssignedClinicRelation;
+};
+
 export type EffectiveClinicScope = {
   source: 'admin' | 'manager_assignments' | 'clinic_scope_ids' | 'clinic_id';
   clinicIds: string[];
@@ -37,6 +57,63 @@ export async function resolveManagerAssignedClinicIds(
   }
 
   return Array.from(new Set((data ?? []).map(row => row.clinic_id)));
+}
+
+function readManagerAssignedClinic(
+  clinics: ManagerAssignedClinicRelation
+): { id: string; name: string } | null {
+  if (!clinics) {
+    return null;
+  }
+
+  const clinic = Array.isArray(clinics) ? (clinics[0] ?? null) : clinics;
+  if (!clinic || clinic.is_active !== true) {
+    return null;
+  }
+
+  return {
+    id: clinic.id,
+    name: clinic.name,
+  };
+}
+
+export async function resolveManagerAssignedClinics(
+  adminClient: Pick<SupabaseServerClient, 'from'>,
+  managerUserId: string
+): Promise<ManagerClinicAssignment[]> {
+  const { data, error } = await adminClient
+    .from('manager_clinic_assignments')
+    .select(
+      'id, manager_user_id, clinic_id, assigned_at, revoked_at, clinics!inner(id, name, is_active)'
+    )
+    .eq('manager_user_id', managerUserId)
+    .is('revoked_at', null)
+    .eq('clinics.is_active', true)
+    .returns<ManagerClinicAssignmentQueryRow[]>();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? [])
+    .map(row => {
+      const clinic = readManagerAssignedClinic(row.clinics);
+      if (!clinic) {
+        return null;
+      }
+
+      return {
+        id: row.id,
+        manager_user_id: row.manager_user_id,
+        clinic_id: clinic.id,
+        clinic_name: clinic.name,
+        assigned_at: row.assigned_at,
+        revoked_at: row.revoked_at,
+      };
+    })
+    .filter((assignment): assignment is ManagerClinicAssignment =>
+      Boolean(assignment)
+    );
 }
 
 export async function resolveEffectiveClinicScope({
