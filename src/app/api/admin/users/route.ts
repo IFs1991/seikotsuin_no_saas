@@ -23,12 +23,12 @@ import {
   ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
   canAdminUsersActorManagePermissionRole,
-  canScopedAdminUsersAccessClinic,
+  canAccessResolvedScopedAdminUsersClinic,
   getAdminUsersPermissionForbiddenMessage,
   getAdminUsersRoleForbiddenMessage,
-  getScopedAdminUsersClinicIds,
   isAreaManagerActor,
   isAdminUsersActor,
+  resolveScopedAdminUsersClinicIds,
   isScopedAdminUsersActor,
 } from './access';
 
@@ -398,7 +398,13 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    const adminSupabase = createAdminClient();
+    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      permissions,
+    });
+
     if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
@@ -409,15 +415,13 @@ export async function GET(request: NextRequest) {
     if (
       clinicId &&
       isScopedAdminUsersActor(permissions) &&
-      !canScopedAdminUsersAccessClinic(permissions, clinicId)
+      !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinicId)
     ) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
         403
       );
     }
-
-    const adminSupabase = createAdminClient();
 
     let query = adminSupabase
       .from('user_permissions')
@@ -552,15 +556,8 @@ export async function POST(request: NextRequest) {
       const { full_name, email, password, role } = parsed.data;
       const clinic_id = parsed.data.clinic_id ?? null;
 
+      let adminSupabase: AdminClient | null = null;
       if (isScopedAdminUsersActor(permissions)) {
-        const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
-        if (!scopedClinicIds?.length) {
-          return createErrorResponse(
-            ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
-            403
-          );
-        }
-
         if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
           return createErrorResponse(
             getAdminUsersRoleForbiddenMessage(permissions),
@@ -568,9 +565,28 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        if (!clinic_id) {
+          return createErrorResponse(
+            ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+            403
+          );
+        }
+
+        adminSupabase = createAdminClient();
+        const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+          adminClient: adminSupabase,
+          actorUserId: auth.id,
+          permissions,
+        });
+        if (!scopedClinicIds?.length) {
+          return createErrorResponse(
+            ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+            403
+          );
+        }
+
         if (
-          !clinic_id ||
-          !canScopedAdminUsersAccessClinic(permissions, clinic_id)
+          !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinic_id)
         ) {
           return createErrorResponse(
             ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -579,7 +595,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const adminSupabase = createAdminClient();
+      adminSupabase ??= createAdminClient();
       const { data: authData, error: createUserError } =
         await adminSupabase.auth.admin.createUser({
           email,
@@ -673,15 +689,9 @@ export async function POST(request: NextRequest) {
     const assignData = parsed.data;
     const { user_id, clinic_id, role } = assignData;
 
+    let scopedClinicIds: string[] | null = null;
+    let adminSupabase: AdminClient | null = null;
     if (isScopedAdminUsersActor(permissions)) {
-      const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
-      if (!scopedClinicIds?.length) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
-          403
-        );
-      }
-
       if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
         return createErrorResponse(
           getAdminUsersRoleForbiddenMessage(permissions),
@@ -689,9 +699,28 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (!clinic_id) {
+        return createErrorResponse(
+          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+          403
+        );
+      }
+
+      adminSupabase = createAdminClient();
+      scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+        adminClient: adminSupabase,
+        actorUserId: auth.id,
+        permissions,
+      });
+      if (!scopedClinicIds?.length) {
+        return createErrorResponse(
+          ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+          403
+        );
+      }
+
       if (
-        !clinic_id ||
-        !canScopedAdminUsersAccessClinic(permissions, clinic_id)
+        !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinic_id)
       ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -700,7 +729,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const adminSupabase = createAdminClient();
+    adminSupabase ??= createAdminClient();
 
     const profilePromise = adminSupabase
       .from('profiles')
@@ -788,7 +817,12 @@ export async function POST(request: NextRequest) {
 
     if (isScopedAdminUsersActor(permissions) && existingPermission) {
       const existing = existingPermission as ExistingPermissionRow;
-      if (!canScopedAdminUsersAccessClinic(permissions, existing.clinic_id)) {
+      if (
+        !canAccessResolvedScopedAdminUsersClinic(
+          scopedClinicIds,
+          existing.clinic_id
+        )
+      ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403

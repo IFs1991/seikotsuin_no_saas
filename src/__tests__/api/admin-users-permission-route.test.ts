@@ -3,6 +3,8 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { createAdminClient } from '@/lib/supabase';
 
+const mockResolveEffectiveClinicScope = jest.fn();
+
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
   return {
@@ -11,6 +13,11 @@ jest.mock('@/lib/api-helpers', () => {
     logError: jest.fn(),
   };
 });
+
+jest.mock('@/lib/auth/manager-scope', () => ({
+  resolveEffectiveClinicScope: (...args: unknown[]) =>
+    mockResolveEffectiveClinicScope(...args),
+}));
 
 jest.mock('@/lib/audit-logger', () => ({
   AuditLogger: {
@@ -41,6 +48,12 @@ const processApiRequestMock = processApiRequest as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
 const logAdminActionMock = AuditLogger.logAdminAction as jest.Mock;
 
+type ManagerScopeMockInput = {
+  permissions: {
+    clinic_scope_ids?: string[];
+  };
+};
+
 describe('PATCH /api/admin/users/[permission_id]', () => {
   const permissionId = '11111111-1111-4111-8111-111111111111';
   const userId = '22222222-2222-4222-8222-222222222222';
@@ -49,6 +62,12 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     logAdminActionMock.mockResolvedValue(undefined);
+    mockResolveEffectiveClinicScope.mockImplementation(
+      ({ permissions }: ManagerScopeMockInput) => ({
+        source: 'manager_assignments',
+        clinicIds: permissions.clinic_scope_ids ?? [],
+      })
+    );
   });
 
   it('updates permissions through the admin client and returns success', async () => {
@@ -445,7 +464,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
 
     expect(response.status).toBe(403);
     expect(body.error).toBe('クリニックスコープが設定されていません');
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
     expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 

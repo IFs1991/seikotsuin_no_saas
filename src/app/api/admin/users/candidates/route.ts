@@ -16,9 +16,9 @@ import {
   ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
   canAdminUsersActorManagePermissionRole,
-  getScopedAdminUsersClinicIds,
   isAdminUsersActor,
   isHqAdminActor,
+  resolveScopedAdminUsersClinicIds,
   isScopedAdminUsersActor,
 } from '../access';
 
@@ -324,7 +324,13 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    const adminSupabase = createAdminClient();
+    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      permissions,
+    });
+
     if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
@@ -334,7 +340,6 @@ export async function GET(request: NextRequest) {
 
     const canIncludeUnassigned =
       include_unassigned && isHqAdminActor(permissions);
-    const adminSupabase = createAdminClient();
     const [staffResult, profileMatchedIdsResult] = await Promise.all([
       fetchStaffCandidates(adminSupabase, search, limit, scopedClinicIds),
       fetchProfileMatchedIds(adminSupabase, search, limit, scopedClinicIds),

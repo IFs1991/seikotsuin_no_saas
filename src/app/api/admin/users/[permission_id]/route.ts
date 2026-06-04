@@ -17,11 +17,11 @@ import {
   ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
   canAdminUsersActorManagePermissionRole,
-  canScopedAdminUsersAccessClinic,
+  canAccessResolvedScopedAdminUsersClinic,
   getAdminUsersPermissionForbiddenMessage,
   getAdminUsersRoleForbiddenMessage,
-  getScopedAdminUsersClinicIds,
   isAdminUsersActor,
+  resolveScopedAdminUsersClinicIds,
   isScopedAdminUsersActor,
 } from '../access';
 import { isPermissionStaffResourceRole } from '@/lib/reservations/staff-resource-candidates';
@@ -207,16 +207,6 @@ export async function PATCH(
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
-    if (
-      isScopedAdminUsersActor(permissions) &&
-      !getScopedAdminUsersClinicIds(permissions)?.length
-    ) {
-      return createErrorResponse(
-        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
-        403
-      );
-    }
-
     const parsed = PermissionUpdateSchema.safeParse(body);
     if (!parsed.success) {
       return createErrorResponse(
@@ -228,6 +218,18 @@ export async function PATCH(
 
     const adminSupabase = createAdminClient();
     let existingPermission: ExistingPermissionRow | null = null;
+    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      permissions,
+    });
+
+    if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403
+      );
+    }
 
     if (isScopedAdminUsersActor(permissions)) {
       const { data, error } = await loadExistingPermission(
@@ -252,8 +254,8 @@ export async function PATCH(
       existingPermission = data as ExistingPermissionRow;
 
       if (
-        !canScopedAdminUsersAccessClinic(
-          permissions,
+        !canAccessResolvedScopedAdminUsersClinic(
+          scopedClinicIds,
           existingPermission.clinic_id
         )
       ) {
@@ -352,7 +354,12 @@ export async function PATCH(
         return createErrorResponse('clinic_id が必須です', 400);
       }
 
-      if (!canScopedAdminUsersAccessClinic(permissions, targetClinicId)) {
+      if (
+        !canAccessResolvedScopedAdminUsersClinic(
+          scopedClinicIds,
+          targetClinicId
+        )
+      ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403
