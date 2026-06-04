@@ -9,6 +9,7 @@ import {
 import { AuditLogger } from '@/lib/audit-logger';
 import {
   ADMIN_USER_ROLE_VALUES,
+  normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { createAdminClient } from '@/lib/supabase';
@@ -25,6 +26,10 @@ import {
   isScopedAdminUsersActor,
 } from '../access';
 import { isPermissionStaffResourceRole } from '@/lib/reservations/staff-resource-candidates';
+import {
+  hasActiveManagerClinicAssignments,
+  MANAGER_ASSIGNMENTS_ROLE_CHANGE_BLOCKED_MESSAGE,
+} from '@/lib/auth/manager-scope';
 
 const PermissionUpdateSchema = z
   .object({
@@ -163,6 +168,18 @@ async function loadExistingPermission(
     .maybeSingle();
 }
 
+function shouldGuardManagerPermissionChange(
+  permission: ExistingPermissionRow | null,
+  nextRole: AdminUserRole | undefined,
+  revoke: boolean
+): permission is ExistingPermissionRow & { staff_id: string } {
+  return (
+    typeof permission?.staff_id === 'string' &&
+    normalizeRole(permission.role) === 'manager' &&
+    (revoke || (nextRole !== undefined && nextRole !== 'manager'))
+  );
+}
+
 async function deletePermission(
   adminSupabase: ReturnType<typeof createAdminClient>,
   permissionId: string,
@@ -218,20 +235,27 @@ export async function PATCH(
 
     const adminSupabase = createAdminClient();
     let existingPermission: ExistingPermissionRow | null = null;
-    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
-      adminClient: adminSupabase,
-      actorUserId: auth.id,
-      permissions,
-    });
+    const isScopedActor = isScopedAdminUsersActor(permissions);
+    const shouldLoadExistingPermission =
+      isScopedActor ||
+      parsed.data.revoke === true ||
+      (parsed.data.role !== undefined && parsed.data.role !== 'manager');
+    const scopedClinicIds = isScopedActor
+      ? await resolveScopedAdminUsersClinicIds({
+          adminClient: adminSupabase,
+          actorUserId: auth.id,
+          permissions,
+        })
+      : null;
 
-    if (isScopedAdminUsersActor(permissions) && !scopedClinicIds?.length) {
+    if (isScopedActor && !scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
         403
       );
     }
 
-    if (isScopedAdminUsersActor(permissions)) {
+    if (shouldLoadExistingPermission) {
       const { data, error } = await loadExistingPermission(
         adminSupabase,
         permission_id
@@ -247,12 +271,14 @@ export async function PATCH(
         return createErrorResponse('権限情報の取得に失敗しました', 500);
       }
 
-      if (!data) {
+      if (!data && isScopedActor) {
         return createErrorResponse('権限情報が見つかりません', 404);
       }
 
-      existingPermission = data as ExistingPermissionRow;
+      existingPermission = data ?? null;
+    }
 
+    if (isScopedActor && existingPermission) {
       if (
         !canAccessResolvedScopedAdminUsersClinic(
           scopedClinicIds,
@@ -275,6 +301,36 @@ export async function PATCH(
           getAdminUsersPermissionForbiddenMessage(permissions),
           403
         );
+      }
+    }
+
+    if (
+      shouldGuardManagerPermissionChange(
+        existingPermission,
+        parsed.data.role,
+        parsed.data.revoke === true
+      )
+    ) {
+      try {
+        const hasActiveAssignments = await hasActiveManagerClinicAssignments(
+          adminSupabase,
+          existingPermission.staff_id
+        );
+
+        if (hasActiveAssignments) {
+          return createErrorResponse(
+            MANAGER_ASSIGNMENTS_ROLE_CHANGE_BLOCKED_MESSAGE,
+            409
+          );
+        }
+      } catch (error) {
+        logError(error, {
+          endpoint: '/api/admin/users/[permission_id]',
+          method: 'PATCH',
+          userId: auth.id,
+          params: { permission_id, stage: 'manager_assignment_guard' },
+        });
+        return createErrorResponse('担当店舗情報の確認に失敗しました', 500);
       }
     }
 
@@ -334,7 +390,7 @@ export async function PATCH(
     if (parsed.data.clinic_id !== undefined)
       updatePayload.clinic_id = parsed.data.clinic_id;
 
-    if (isScopedAdminUsersActor(permissions)) {
+    if (isScopedActor) {
       if (
         parsed.data.role !== undefined &&
         !canAdminUsersActorManagePermissionRole(permissions, parsed.data.role)

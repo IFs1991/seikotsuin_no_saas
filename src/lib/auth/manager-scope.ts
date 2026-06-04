@@ -42,6 +42,28 @@ export class ScopeAccessError extends Error {
   }
 }
 
+export const MANAGER_ASSIGNMENTS_ROLE_CHANGE_BLOCKED_MESSAGE =
+  '担当店舗が残っているためロールを変更できません';
+
+export async function hasActiveManagerClinicAssignments(
+  adminClient: Pick<SupabaseServerClient, 'from'>,
+  managerUserId: string
+): Promise<boolean> {
+  const { data, error } = await adminClient
+    .from('manager_clinic_assignments')
+    .select('id')
+    .eq('manager_user_id', managerUserId)
+    .is('revoked_at', null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return Boolean(data);
+}
+
 export async function resolveManagerAssignedClinicIds(
   adminClient: Pick<SupabaseServerClient, 'from'>,
   managerUserId: string

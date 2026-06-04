@@ -9,6 +9,7 @@ import {
 import { AuditLogger } from '@/lib/audit-logger';
 import {
   ADMIN_USER_ROLE_VALUES,
+  normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { emailSchema, passwordSchema } from '@/lib/schemas/auth';
@@ -19,6 +20,10 @@ import {
   toPermissionEntry,
   type PermissionMutationRow,
 } from '@/lib/admin/users';
+import {
+  hasActiveManagerClinicAssignments,
+  MANAGER_ASSIGNMENTS_ROLE_CHANGE_BLOCKED_MESSAGE,
+} from '@/lib/auth/manager-scope';
 import {
   ADMIN_USERS_API_ROLES,
   ADMIN_USERS_ACCESS_MESSAGES,
@@ -203,6 +208,16 @@ async function rollbackCreatedAccount(
   ]);
 
   await adminClient.auth.admin.deleteUser(userId);
+}
+
+function isManagerDowngrade(
+  existingPermission: ExistingPermissionRow | null,
+  nextRole: AdminUserRole
+): boolean {
+  return (
+    normalizeRole(existingPermission?.role) === 'manager' &&
+    nextRole !== 'manager'
+  );
 }
 
 async function resolveAccountWriteFailure(
@@ -834,6 +849,30 @@ export async function POST(request: NextRequest) {
           getAdminUsersPermissionForbiddenMessage(permissions),
           403
         );
+      }
+    }
+
+    if (isManagerDowngrade(existingPermission, role)) {
+      try {
+        const hasActiveAssignments = await hasActiveManagerClinicAssignments(
+          adminSupabase,
+          user_id
+        );
+
+        if (hasActiveAssignments) {
+          return createErrorResponse(
+            MANAGER_ASSIGNMENTS_ROLE_CHANGE_BLOCKED_MESSAGE,
+            409
+          );
+        }
+      } catch (error) {
+        logError(error, {
+          endpoint: '/api/admin/users',
+          method: 'POST',
+          userId: auth.id,
+          params: { user_id, role, stage: 'manager_assignment_guard' },
+        });
+        return createErrorResponse('担当店舗情報の確認に失敗しました', 500);
       }
     }
 
