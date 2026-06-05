@@ -6,8 +6,10 @@ import {
 import {
   canAccessClinicScope,
   resolveScopedClinicIds,
+  type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
+import { resolveEffectiveClinicScope } from '@/lib/auth/manager-scope';
 
 export const ADMIN_USERS_API_ROLES = [
   'admin',
@@ -49,13 +51,11 @@ export const isScopedAdminUsersActor = (permissions: UserPermissions) =>
 export const getClinicAdminScopedClinicIds = (permissions: UserPermissions) =>
   isClinicAdminActor(permissions) ? resolveScopedClinicIds(permissions) : null;
 
-export const getAreaManagerScopedClinicIds = (permissions: UserPermissions) =>
-  isAreaManagerActor(permissions) ? resolveScopedClinicIds(permissions) : null;
+export const getAreaManagerScopedClinicIds = (_permissions: UserPermissions) =>
+  null;
 
 export const getScopedAdminUsersClinicIds = (permissions: UserPermissions) =>
-  isScopedAdminUsersActor(permissions)
-    ? resolveScopedClinicIds(permissions)
-    : null;
+  isClinicAdminActor(permissions) ? resolveScopedClinicIds(permissions) : null;
 
 export const canClinicAdminAccessClinic = (
   permissions: UserPermissions,
@@ -63,14 +63,45 @@ export const canClinicAdminAccessClinic = (
 ) => Boolean(clinicId && canAccessClinicScope(permissions, clinicId));
 
 export const canAreaManagerAccessClinic = (
-  permissions: UserPermissions,
-  clinicId: string | null | undefined
-) => Boolean(clinicId && canAccessClinicScope(permissions, clinicId));
+  _permissions: UserPermissions,
+  _clinicId: string | null | undefined
+) => false;
 
 export const canScopedAdminUsersAccessClinic = (
   permissions: UserPermissions,
   clinicId: string | null | undefined
-) => Boolean(clinicId && canAccessClinicScope(permissions, clinicId));
+) =>
+  isClinicAdminActor(permissions) &&
+  Boolean(clinicId && canAccessClinicScope(permissions, clinicId));
+
+export async function resolveScopedAdminUsersClinicIds({
+  adminClient,
+  actorUserId,
+  permissions,
+}: {
+  adminClient: Pick<SupabaseServerClient, 'from'>;
+  actorUserId: string;
+  permissions: UserPermissions;
+}): Promise<string[] | null> {
+  if (isAreaManagerActor(permissions)) {
+    const scope = await resolveEffectiveClinicScope({
+      adminClient,
+      userId: actorUserId,
+      permissions,
+    });
+
+    return scope.clinicIds;
+  }
+
+  return isClinicAdminActor(permissions)
+    ? resolveScopedClinicIds(permissions)
+    : null;
+}
+
+export const canAccessResolvedScopedAdminUsersClinic = (
+  scopedClinicIds: readonly string[] | null,
+  clinicId: string | null | undefined
+) => Boolean(clinicId && scopedClinicIds?.includes(clinicId));
 
 export const canAdminUsersActorManagePermissionRole = (
   permissions: UserPermissions,

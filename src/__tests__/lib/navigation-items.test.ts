@@ -71,6 +71,18 @@ describe('navigation items', () => {
     );
   });
 
+  it('マネージャー管理はHQ管理メニューだけに表示する', () => {
+    expect(ADMIN_MENU_ITEMS.map(item => item.href)).toContain(
+      '/admin/managers'
+    );
+    expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.href)).not.toContain(
+      '/admin/managers'
+    );
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).not.toContain(
+      '/admin/managers'
+    );
+  });
+
   it('manager は店舗運用メニューと限定管理メニューを表示対象にする', () => {
     const mode = getNavigationMode({
       role: 'manager',

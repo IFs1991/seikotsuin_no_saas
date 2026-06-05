@@ -2181,6 +2181,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      manager_clinic_assignments: {
+        Row: {
+          assigned_at: string;
+          assigned_by: string | null;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          manager_user_id: string;
+          revoke_reason: string | null;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_at?: string;
+          assigned_by?: string | null;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          manager_user_id: string;
+          revoke_reason?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_at?: string;
+          assigned_by?: string | null;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          manager_user_id?: string;
+          revoke_reason?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       menu_billing_profiles: {
         Row: {
           calculation_method: string;
@@ -5537,6 +5591,15 @@ export type Database = {
         Returns: undefined;
       };
       refresh_daily_stats: { Args: never; Returns: undefined };
+      replace_manager_clinic_assignments: {
+        Args: {
+          p_actor_user_id: string;
+          p_clinic_ids: string[];
+          p_manager_user_id: string;
+          p_revoke_reason: string | null;
+        };
+        Returns: undefined;
+      };
       upsert_clinic_settings: {
         Args: {
           p_category: string;

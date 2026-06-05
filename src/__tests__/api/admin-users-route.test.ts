@@ -3,12 +3,23 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
 import { createAdminClient } from '@/lib/supabase';
 
+const mockResolveEffectiveClinicScope = jest.fn();
+
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
   return {
     ...actual,
     processApiRequest: jest.fn(),
     logError: jest.fn(),
+  };
+});
+
+jest.mock('@/lib/auth/manager-scope', () => {
+  const actual = jest.requireActual('@/lib/auth/manager-scope');
+  return {
+    ...actual,
+    resolveEffectiveClinicScope: (...args: unknown[]) =>
+      mockResolveEffectiveClinicScope(...args),
   };
 });
 
@@ -40,6 +51,12 @@ jest.mock('@/lib/supabase', () => ({
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
 const logAdminActionMock = AuditLogger.logAdminAction as jest.Mock;
+
+type ManagerScopeMockInput = {
+  permissions: {
+    clinic_scope_ids?: string[];
+  };
+};
 
 type QueryRow = Record<string, unknown>;
 
@@ -88,6 +105,21 @@ function createMaybeSingleQuery<T extends QueryRow>(
 
   query.select?.mockReturnValue(query);
   query.eq?.mockReturnValue(query);
+
+  return query;
+}
+
+function createActiveAssignmentQuery(data: { id: string } | null) {
+  const query = {
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    is: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockResolvedValue({
+      data,
+      error: null,
+    }),
+  };
 
   return query;
 }
@@ -147,6 +179,12 @@ describe('GET /api/admin/users', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     logAdminActionMock.mockResolvedValue(undefined);
+    mockResolveEffectiveClinicScope.mockImplementation(
+      ({ permissions }: ManagerScopeMockInput) => ({
+        source: 'manager_assignments',
+        clinicIds: permissions.clinic_scope_ids ?? [],
+      })
+    );
   });
 
   it('limits clinic_admin permission list to scoped clinics', async () => {
@@ -328,7 +366,7 @@ describe('GET /api/admin/users', () => {
 
     expect(response.status).toBe(403);
     expect(body.error).toBe('クリニックスコープが設定されていません');
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects manager permission list for outside-scope clinic', async () => {
@@ -360,7 +398,7 @@ describe('GET /api/admin/users', () => {
 
     expect(response.status).toBe(403);
     expect(body.error).toBe('対象クリニックへのアクセス権がありません');
-    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects clinic_admin role assignment to another clinic_admin', async () => {
@@ -1034,6 +1072,100 @@ describe('GET /api/admin/users', () => {
         clinic_id: null,
       })
     );
+  });
+
+  it('active assignmentが残る既存manager権限のdowngradeを409で拒否する', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
+    const userId = '22222222-2222-4222-8222-222222222222';
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+      },
+      supabase: {},
+      body: {
+        user_id: userId,
+        clinic_id: clinicId,
+        role: 'therapist',
+      },
+    });
+
+    const profileQuery = createMaybeSingleQuery({
+      email: 'manager@example.com',
+      full_name: '担当 太郎',
+    });
+    const existingPermissionQuery = createMaybeSingleQuery({
+      id: '11111111-1111-4111-8111-111111111111',
+      username: 'manager@example.com',
+      role: 'manager',
+      clinic_id: clinicId,
+    });
+    const staffLookupQuery = createMaybeSingleQuery({
+      id: userId,
+      clinic_id: clinicId,
+    });
+    const assignmentQuery = createActiveAssignmentQuery({
+      id: '44444444-4444-4444-8444-444444444444',
+    });
+    const permissionWriteQuery = createPermissionWriteQuery({
+      permissionId: '55555555-5555-4555-8555-555555555555',
+      userId,
+      role: 'therapist',
+      clinicId,
+    });
+
+    const tableQueries = {
+      profiles: [profileQuery],
+      user_permissions: [existingPermissionQuery, permissionWriteQuery],
+      staff: [staffLookupQuery],
+      resources: [],
+      manager_clinic_assignments: [assignmentQuery],
+    };
+    const adminClient = {
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/users/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: userId,
+          clinic_id: clinicId,
+          role: 'therapist',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toBe(
+      '担当店舗が残っているためロールを変更できません'
+    );
+    expect(assignmentQuery.select).toHaveBeenCalledWith('id');
+    expect(assignmentQuery.eq).toHaveBeenCalledWith(
+      'manager_user_id',
+      userId
+    );
+    expect(assignmentQuery.is).toHaveBeenCalledWith('revoked_at', null);
+    expect(assignmentQuery.limit).toHaveBeenCalledWith(1);
+    expect(permissionWriteQuery.insert).not.toHaveBeenCalled();
+    expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 
   it('rejects clinic_admin assignment without clinic scope target', async () => {

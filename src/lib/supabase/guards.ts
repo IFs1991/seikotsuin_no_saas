@@ -4,12 +4,18 @@ import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import {
   createClient,
+  createAdminClient,
   getCurrentUser,
   getUserAccessContext,
   canAccessClinicScope,
   type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
+import {
+  assertClinicInEffectiveScope,
+  resolveEffectiveClinicScope,
+  ScopeAccessError,
+} from '@/lib/auth/manager-scope';
 import {
   canAccessCrossClinicWithCompat,
   normalizeRole,
@@ -102,10 +108,30 @@ export async function ensureClinicAccess(
       );
     }
 
-    // Parent-scope check: use clinic_scope_ids if available, else fallback to clinic_id
-    // Admin bypass REMOVED: admin is also scoped to their parent organization
-    // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
-    const hasClinicAccess = canAccessClinicScope(permissions, clinicId);
+    let hasClinicAccess = false;
+
+    if (normalizedRole === 'manager') {
+      const adminClient = createAdminClient();
+      const scope = await resolveEffectiveClinicScope({
+        adminClient,
+        userId: user.id,
+        permissions,
+      });
+
+      try {
+        assertClinicInEffectiveScope(scope, clinicId);
+        hasClinicAccess = true;
+      } catch (error) {
+        if (!(error instanceof ScopeAccessError)) {
+          throw error;
+        }
+      }
+    } else {
+      // Parent-scope check: use clinic_scope_ids if available, else fallback to clinic_id
+      // Admin bypass REMOVED: admin is also scoped to their parent organization
+      // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
+      hasClinicAccess = canAccessClinicScope(permissions, clinicId);
+    }
 
     if (!hasClinicAccess) {
       await AuditLogger.logUnauthorizedAccess(

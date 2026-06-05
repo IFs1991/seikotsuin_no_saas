@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
     MASTER_DATA_IMPORT: '/api/admin/master-data/import',
     MASTER_DATA_ROLLBACK: '/api/admin/master-data/rollback',
     TENANTS: '/api/admin/tenants',
+    MANAGERS: '/api/admin/managers',
     USERS: '/api/admin/users',
     USER_ACCOUNTS: '/api/admin/users/accounts',
     USER_CANDIDATES: '/api/admin/users/candidates',

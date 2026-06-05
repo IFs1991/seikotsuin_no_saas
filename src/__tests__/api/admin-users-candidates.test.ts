@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
 import { createAdminClient } from '@/lib/supabase';
 
+const mockResolveEffectiveClinicScope = jest.fn();
+
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
   return {
@@ -10,6 +12,11 @@ jest.mock('@/lib/api-helpers', () => {
     logError: jest.fn(),
   };
 });
+
+jest.mock('@/lib/auth/manager-scope', () => ({
+  resolveEffectiveClinicScope: (...args: unknown[]) =>
+    mockResolveEffectiveClinicScope(...args),
+}));
 
 jest.mock('@/lib/supabase', () => ({
   createAdminClient: jest.fn(),
@@ -23,6 +30,12 @@ jest.mock('@/lib/supabase', () => ({
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
+
+type ManagerScopeMockInput = {
+  permissions: {
+    clinic_scope_ids?: string[];
+  };
+};
 
 type QueryRow = Record<string, unknown>;
 
@@ -58,6 +71,12 @@ function createListQuery<T extends QueryRow>(rows: T[]) {
 describe('GET /api/admin/users/candidates', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResolveEffectiveClinicScope.mockImplementation(
+      ({ permissions }: ManagerScopeMockInput) => ({
+        source: 'manager_assignments',
+        clinicIds: permissions.clinic_scope_ids ?? [],
+      })
+    );
   });
 
   it('Japanese name search returns display-safe user candidates', async () => {

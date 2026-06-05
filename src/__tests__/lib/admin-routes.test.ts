@@ -82,6 +82,33 @@ describe('admin route access helpers', () => {
     ).toBe(false);
   });
 
+  it('/admin/managers はadminだけに許可する', () => {
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'admin',
+        pathname: '/admin/managers',
+      })
+    ).toBe(true);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'clinic_admin',
+        pathname: '/admin/managers',
+      })
+    ).toBe(false);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'manager',
+        pathname: '/admin/managers',
+      })
+    ).toBe(false);
+    expect(
+      canAccessAdminRouteWithCompat({
+        role: 'staff',
+        pathname: '/admin/managers',
+      })
+    ).toBe(false);
+  });
+
   it('does not allow manager admin routes when the pathname is unavailable', () => {
     expect(
       canAccessAdminRouteWithCompat({
