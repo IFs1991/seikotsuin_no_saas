@@ -76,6 +76,11 @@ export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
   {
+    id: 'admin-managers',
+    label: 'マネージャー管理',
+    href: '/admin/managers',
+  },
+  {
     id: 'admin-shift-requests',
     label: '希望シフト管理',
     href: '/admin/shift-requests',
