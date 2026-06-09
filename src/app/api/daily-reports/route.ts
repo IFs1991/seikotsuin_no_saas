@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AppError } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { STAFF_ROLES } from '@/lib/constants/roles';
 
 const PATH = '/api/daily-reports';
+const DAILY_REPORT_MUTATION_ROLES = [
+  'admin',
+  'clinic_admin',
+  'therapist',
+  'staff',
+] as const;
+const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
 
 type MonthlyTrend = {
   month: string;
@@ -221,7 +227,7 @@ export async function POST(request: NextRequest) {
       PATH,
       payload.clinic_id,
       {
-        allowedRoles: Array.from(STAFF_ROLES),
+        allowedRoles: Array.from(DAILY_REPORT_MUTATION_ROLES),
       }
     );
 
@@ -347,7 +353,7 @@ export async function DELETE(request: NextRequest) {
       PATH,
       null,
       {
-        allowedRoles: ['manager'],
+        allowedRoles: Array.from(DAILY_REPORT_DELETE_ROLES),
         requireClinicMatch: false,
       }
     );

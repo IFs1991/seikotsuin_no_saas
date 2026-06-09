@@ -11,7 +11,7 @@ import {
   createScopedAdminContext,
   type SupabaseServerClient,
 } from '@/lib/supabase';
-import { CLINIC_ADMIN_ROLES, STAFF_ROLES } from '@/lib/constants/roles';
+import { normalizeRole, STAFF_ROLES } from '@/lib/constants/roles';
 import type { Database } from '@/types/supabase';
 import {
   isCoverageVerificationStatus,
@@ -39,6 +39,13 @@ const CUSTOMER_COVERAGE_SELECT =
   'id, clinic_id, customer_id, patient_burden_rate, effective_from, effective_to, verification_status, verified_at';
 const MENU_BILLING_PROFILE_SELECT =
   'id, clinic_id, menu_id, revenue_context_code, calculation_method, fixed_amount_yen, default_patient_burden_rate, requires_review, effective_from, effective_to, is_active, is_deleted, created_at';
+const DAILY_REPORT_MUTATION_ROLES = [
+  'admin',
+  'clinic_admin',
+  'therapist',
+  'staff',
+] as const;
+const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
 
 type DailyReportItemRow =
   Database['public']['Tables']['daily_report_items']['Row'];
@@ -1046,7 +1053,10 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.success) return auth.error;
 
-    const supabase = createScopedDailyReportClient(auth.permissions, clinic_id);
+    const supabase =
+      normalizeRole(auth.permissions.role) === 'manager'
+        ? auth.supabase
+        : createScopedDailyReportClient(auth.permissions, clinic_id);
 
     const itemsQuery = supabase
       .from('daily_report_items')
@@ -1119,7 +1129,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(request, itemCreateSchema, {
-      allowedRoles: Array.from(STAFF_ROLES),
+      allowedRoles: Array.from(DAILY_REPORT_MUTATION_ROLES),
     });
     if (!result.success) return result.error;
 
@@ -1253,7 +1263,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(request, itemUpdateSchema, {
-      allowedRoles: Array.from(STAFF_ROLES),
+      allowedRoles: Array.from(DAILY_REPORT_MUTATION_ROLES),
     });
     if (!result.success) return result.error;
 
@@ -1417,7 +1427,7 @@ export async function DELETE(request: NextRequest) {
     const auth = await processApiRequest(request, {
       clinicId: clinic_id,
       requireClinicMatch: true,
-      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
+      allowedRoles: Array.from(DAILY_REPORT_DELETE_ROLES),
     });
     if (!auth.success) return auth.error;
 

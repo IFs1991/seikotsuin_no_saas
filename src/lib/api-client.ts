@@ -8,6 +8,10 @@ import {
   RevenueAnalysisData,
   type RevenueEstimateDetailsResponse,
 } from '../types/api';
+import type {
+  ManagerDailyReportsOverview,
+  ManagerDailyReportsOverviewQuery,
+} from './manager-daily-reports';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -50,6 +54,33 @@ interface RevenueCreateRequest {
   menu_id?: string | null;
   payment_method_id?: string | null;
 }
+
+export type DailyReportsListData = {
+  reports: Array<{
+    id: string;
+    reportDate: string;
+    staffName: string;
+    totalPatients: number | null;
+    newPatients: number | null;
+    totalRevenue: number;
+    insuranceRevenue: number;
+    privateRevenue: number;
+    reportText: string | null;
+    createdAt: string | null;
+  }>;
+  summary: {
+    totalReports: number;
+    averagePatients: number;
+    averageRevenue: number;
+    totalRevenue: number;
+  };
+  monthlyTrends: Array<{
+    month: string;
+    reports: number;
+    totalPatients: number;
+    totalRevenue: number;
+  }>;
+};
 
 /**
  * APIクライアントクラス
@@ -409,13 +440,26 @@ export const api = {
   // 日報
   dailyReports: {
     get: (clinicId: string, startDate?: string, endDate?: string) =>
-      apiClient.get('/api/daily-reports', {
+      apiClient.get<DailyReportsListData>('/api/daily-reports', {
         clinic_id: clinicId,
         ...(startDate && { start_date: startDate }),
         ...(endDate && { end_date: endDate }),
       }),
     create: (data: any) => apiClient.post('/api/daily-reports', data),
     delete: (id: string) => apiClient.delete('/api/daily-reports', { id }),
+  },
+
+  managerDailyReports: {
+    getOverview: (query: ManagerDailyReportsOverviewQuery) =>
+      apiClient.get<ManagerDailyReportsOverview>(
+        '/api/manager/daily-reports/overview',
+        {
+          clinic_id: query.clinicId,
+          start_date: query.startDate,
+          end_date: query.endDate,
+          ...(query.status ? { status: query.status } : {}),
+        }
+      ),
   },
 
   // チャット
