@@ -98,6 +98,13 @@ const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
   'therapist',
 ]);
 
+function resolvePermissionClinicId(
+  role: AdminUserRole,
+  clinicId: string | null | undefined
+): string | null {
+  return role === 'admin' || role === 'manager' ? null : (clinicId ?? null);
+}
+
 const mapCreateAccountErrorMessage = (error?: { message?: string | null }) => {
   const normalizedMessage = error?.message?.toLowerCase();
   if (
@@ -569,7 +576,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { full_name, email, password, role } = parsed.data;
-      const clinic_id = parsed.data.clinic_id ?? null;
+      const clinic_id = resolvePermissionClinicId(role, parsed.data.clinic_id);
 
       let adminSupabase: AdminClient | null = null;
       if (isScopedAdminUsersActor(permissions)) {
@@ -702,7 +709,11 @@ export async function POST(request: NextRequest) {
     }
 
     const assignData = parsed.data;
-    const { user_id, clinic_id, role } = assignData;
+    const { user_id, role } = assignData;
+    const targetClinicId = resolvePermissionClinicId(
+      role,
+      assignData.clinic_id
+    );
 
     let scopedClinicIds: string[] | null = null;
     let adminSupabase: AdminClient | null = null;
@@ -714,7 +725,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!clinic_id) {
+      if (!targetClinicId) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
           403
@@ -735,7 +746,10 @@ export async function POST(request: NextRequest) {
       }
 
       if (
-        !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinic_id)
+        !canAccessResolvedScopedAdminUsersClinic(
+          scopedClinicIds,
+          targetClinicId
+        )
       ) {
         return createErrorResponse(
           ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -757,7 +771,7 @@ export async function POST(request: NextRequest) {
       .eq('staff_id', user_id)
       .maybeSingle();
     const staffPromise =
-      role === 'admin' || !clinic_id
+      role === 'admin' || !targetClinicId
         ? Promise.resolve({ data: null, error: null })
         : (() => {
             const staffQuery = adminSupabase
@@ -766,7 +780,7 @@ export async function POST(request: NextRequest) {
               .eq('id', user_id);
 
             return isScopedAdminUsersActor(permissions)
-              ? staffQuery.eq('clinic_id', clinic_id).maybeSingle()
+              ? staffQuery.eq('clinic_id', targetClinicId).maybeSingle()
               : staffQuery.maybeSingle();
           })();
 
@@ -802,7 +816,7 @@ export async function POST(request: NextRequest) {
           endpoint: '/api/admin/users',
           method: 'POST',
           userId: auth.id,
-          params: { user_id, clinic_id },
+          params: { user_id, clinic_id: targetClinicId },
         });
         return createErrorResponse('対象スタッフの確認に失敗しました', 500);
       }
@@ -828,7 +842,6 @@ export async function POST(request: NextRequest) {
       ? { id: staff.id, clinic_id: staff.clinic_id }
       : null;
     const username = profile.email;
-    const targetClinicId = role === 'admin' ? null : (clinic_id ?? null);
 
     if (isScopedAdminUsersActor(permissions) && existingPermission) {
       const existing = existingPermission as ExistingPermissionRow;

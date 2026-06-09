@@ -29,16 +29,20 @@ export type ManagerListResponse = {
 
 export type ManagerAssignmentsResponse = {
   assignments: ManagerAssignedClinic[];
+  primary_clinic_id: string | null;
+  primary_clinic_name: string | null;
   total: number;
 };
 
 export type ReplaceManagerAssignmentsPayload = {
   clinic_ids: string[];
+  primary_clinic_id: string | null;
   revoke_reason: string | null;
 };
 
 export type ManagerAssignmentFormState = {
   clinicIds: string[];
+  primaryClinicId: string;
   revokeReason: string;
 };
 
@@ -97,10 +101,20 @@ export function getManagerAssignedClinicIds(
 }
 
 export function createManagerAssignmentFormState(
-  manager: Pick<ManagerListItem, 'assigned_clinics'> | null
+  manager: Pick<
+    ManagerListItem,
+    'assigned_clinics' | 'primary_clinic_id'
+  > | null
 ): ManagerAssignmentFormState {
+  const clinicIds = manager ? getManagerAssignedClinicIds(manager) : [];
+
   return {
-    clinicIds: manager ? getManagerAssignedClinicIds(manager) : [],
+    clinicIds,
+    primaryClinicId:
+      manager?.primary_clinic_id &&
+      clinicIds.includes(manager.primary_clinic_id)
+        ? manager.primary_clinic_id
+        : '',
     revokeReason: '',
   };
 }
@@ -121,16 +135,26 @@ export function setManagerAssignmentClinicSelected(
   return {
     ...formState,
     clinicIds: Array.from(currentClinicIds),
+    primaryClinicId:
+      !selected && formState.primaryClinicId === clinicId
+        ? ''
+        : formState.primaryClinicId,
   };
 }
 
 export function buildReplaceManagerAssignmentsPayload(
   formState: ManagerAssignmentFormState
 ): ReplaceManagerAssignmentsPayload {
+  const clinicIds = toUniqueClinicIds(formState.clinicIds);
+  const primaryClinicId = formState.primaryClinicId.trim();
   const revokeReason = formState.revokeReason.trim();
 
   return {
-    clinic_ids: toUniqueClinicIds(formState.clinicIds),
+    clinic_ids: clinicIds,
+    primary_clinic_id:
+      primaryClinicId && clinicIds.includes(primaryClinicId)
+        ? primaryClinicId
+        : null,
     revoke_reason: revokeReason ? revokeReason : null,
   };
 }
@@ -156,13 +180,19 @@ function areClinicIdSetsEqual(
 }
 
 export function hasManagerAssignmentChanges(
-  manager: Pick<ManagerListItem, 'assigned_clinics'>,
+  manager: Pick<ManagerListItem, 'assigned_clinics' | 'primary_clinic_id'>,
   formState: ManagerAssignmentFormState
 ): boolean {
-  return !areClinicIdSetsEqual(
-    getManagerAssignedClinicIds(manager),
-    formState.clinicIds
-  );
+  if (
+    !areClinicIdSetsEqual(
+      getManagerAssignedClinicIds(manager),
+      formState.clinicIds
+    )
+  ) {
+    return true;
+  }
+
+  return (manager.primary_clinic_id ?? '') !== formState.primaryClinicId;
 }
 
 export function filterAssignableClinicOptions(
@@ -213,10 +243,16 @@ export function clinicOptionMatchesSearch(
 
 export function mergeAssignmentsIntoManager(
   manager: ManagerListItem,
-  assignments: readonly ManagerAssignedClinic[]
+  assignments: readonly ManagerAssignedClinic[],
+  primaryClinic: Pick<
+    ManagerListItem,
+    'primary_clinic_id' | 'primary_clinic_name'
+  >
 ): ManagerListItem {
   return {
     ...manager,
+    primary_clinic_id: primaryClinic.primary_clinic_id,
+    primary_clinic_name: primaryClinic.primary_clinic_name,
     assigned_clinics: assignments,
     assigned_clinic_count: assignments.length,
   };

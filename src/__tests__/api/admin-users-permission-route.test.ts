@@ -96,6 +96,20 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       }),
     };
 
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'clinic_admin',
+          clinic_id: clinicId,
+          username: 'user@example.com',
+        },
+        error: null,
+      }),
+    };
     const updateQuery = {
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
@@ -105,8 +119,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
           id: permissionId,
           staff_id: userId,
           role: 'manager',
-          clinic_id: clinicId,
-          clinics: { name: '新宿院' },
+          clinic_id: null,
+          clinics: null,
           username: 'user@example.com',
           created_at: '2026-04-24T00:00:00.000Z',
         },
@@ -114,12 +128,20 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       }),
     };
     const resourcesQuery = {
-      upsert: jest.fn().mockResolvedValue({ error: null }),
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
     };
+    const userPermissionQueries = [existingQuery, updateQuery];
 
     createAdminClientMock.mockReturnValue({
       from: jest.fn((table: string) => {
-        if (table === 'user_permissions') return updateQuery;
+        if (table === 'user_permissions') {
+          const query = userPermissionQueries.shift();
+          if (!query) {
+            throw new Error('Unexpected user_permissions query');
+          }
+          return query;
+        }
         if (table === 'resources') return resourcesQuery;
         throw new Error(`Unexpected table: ${table}`);
       }),
@@ -152,12 +174,20 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
 
     expect(response.status).toBe(200);
     expect(createAdminClientMock).toHaveBeenCalledTimes(1);
+    expect(existingQuery.maybeSingle).toHaveBeenCalled();
     expect(updateQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         role: 'manager',
-        clinic_id: clinicId,
+        clinic_id: null,
       })
     );
+    expect(resourcesQuery.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_bookable: false,
+        updated_at: expect.any(String),
+      })
+    );
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
     expect(logAdminActionMock).toHaveBeenCalledWith(
       'admin-1',
@@ -166,7 +196,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       permissionId,
       expect.objectContaining({
         role: 'manager',
-        clinic_id: clinicId,
+        clinic_id: null,
       })
     );
     expect(body).toEqual(
@@ -176,7 +206,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
           id: permissionId,
           user_id: userId,
           role: 'manager',
-          clinic_name: '新宿院',
+          clinic_id: null,
+          clinic_name: null,
         }),
       })
     );
@@ -480,14 +511,9 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     const body = await response.json();
 
     expect(response.status).toBe(409);
-    expect(body.error).toBe(
-      '担当店舗が残っているためロールを変更できません'
-    );
+    expect(body.error).toBe('担当店舗が残っているためロールを変更できません');
     expect(assignmentQuery.select).toHaveBeenCalledWith('id');
-    expect(assignmentQuery.eq).toHaveBeenCalledWith(
-      'manager_user_id',
-      userId
-    );
+    expect(assignmentQuery.eq).toHaveBeenCalledWith('manager_user_id', userId);
     expect(assignmentQuery.is).toHaveBeenCalledWith('revoked_at', null);
     expect(assignmentQuery.limit).toHaveBeenCalledWith(1);
     expect(updateQuery.update).not.toHaveBeenCalled();
@@ -548,13 +574,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     const body = await response.json();
 
     expect(response.status).toBe(409);
-    expect(body.error).toBe(
-      '担当店舗が残っているためロールを変更できません'
-    );
-    expect(assignmentQuery.eq).toHaveBeenCalledWith(
-      'manager_user_id',
-      userId
-    );
+    expect(body.error).toBe('担当店舗が残っているためロールを変更できません');
+    expect(assignmentQuery.eq).toHaveBeenCalledWith('manager_user_id', userId);
     expect(existingQuery.delete).not.toHaveBeenCalled();
     expect(resourcesQuery.update).not.toHaveBeenCalled();
     expect(logAdminActionMock).not.toHaveBeenCalled();
@@ -913,9 +934,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       const body = await response.json();
 
       expect(response.status).toBe(403);
-      expect(body.error).toBe(
-        'この権限はエリアマネージャーでは変更できません'
-      );
+      expect(body.error).toBe('この権限はエリアマネージャーでは変更できません');
       expect(existingQuery.maybeSingle).toHaveBeenCalled();
       expect(logAdminActionMock).not.toHaveBeenCalled();
     }

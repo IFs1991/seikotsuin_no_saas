@@ -14,6 +14,7 @@ import {
   createUpdatePermissionPayload,
   getCandidateInputLabel,
   getAssignableAdminUserRoleOptions,
+  getPermissionClinicId,
   getPermissionAccountPrimary,
   getPermissionAccountSecondary,
   permissionMatchesFilters,
@@ -59,6 +60,34 @@ describe('admin users helpers', () => {
       user_id: '00000000-0000-0000-0000-000000000001',
       role: 'admin',
       clinic_id: null,
+    });
+  });
+
+  test('manager role treats clinic id as optional metadata managed elsewhere', () => {
+    const formState = {
+      ...createEmptyPermissionFormState('manager'),
+      user_id: '  00000000-0000-0000-0000-000000000001  ',
+      role: 'manager' as const,
+      clinic_id: 'clinic-1',
+    };
+
+    expect(getPermissionClinicId('manager', 'clinic-1')).toBeNull();
+    expect(
+      validatePermissionForm(
+        {
+          ...formState,
+          clinic_id: '',
+        },
+        { requireClinicId: true }
+      )
+    ).toBeNull();
+    expect(createAssignPermissionPayload(formState)).toEqual({
+      user_id: '00000000-0000-0000-0000-000000000001',
+      role: 'manager',
+      clinic_id: null,
+    });
+    expect(createUpdatePermissionPayload(formState)).toEqual({
+      role: 'manager',
     });
   });
 
@@ -147,6 +176,26 @@ describe('admin users helpers', () => {
     };
 
     expect(validatePermissionForm(formState)).toBeNull();
+    expect(createAccountOnlyPayload(formState)).toEqual({
+      full_name: '未付与 太郎',
+      email: 'profile-only@example.com',
+      password: 'SafePass123!',
+      role: 'manager',
+      clinic_id: null,
+    });
+  });
+
+  test('account-only manager payload ignores selected clinic id', () => {
+    const formState = {
+      ...createEmptyPermissionFormState('manager'),
+      create_mode: CREATE_ACCOUNT_MODE_ACCOUNT_ONLY,
+      assign_role: true,
+      full_name: '  未付与 太郎  ',
+      email: '  PROFILE-ONLY@example.com  ',
+      password: 'SafePass123!',
+      clinic_id: 'clinic-1',
+    };
+
     expect(createAccountOnlyPayload(formState)).toEqual({
       full_name: '未付与 太郎',
       email: 'profile-only@example.com',

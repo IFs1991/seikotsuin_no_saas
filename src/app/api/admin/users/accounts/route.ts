@@ -35,6 +35,13 @@ const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
   'therapist',
 ]);
 
+function resolvePermissionClinicId(
+  role: AdminUserRole | null,
+  clinicId: string | null | undefined
+): string | null {
+  return role === 'admin' || role === 'manager' ? null : (clinicId ?? null);
+}
+
 const mapCreateAccountErrorMessage = (error?: CreateAccountError | null) => {
   const normalizedMessage = error?.message?.toLowerCase();
   if (
@@ -148,7 +155,7 @@ export async function POST(request: NextRequest) {
     const email = parsed.data.email.trim().toLowerCase();
     const password = parsed.data.password;
     const role = parsed.data.role ?? null;
-    const clinicId = role === 'admin' ? null : (parsed.data.clinic_id ?? null);
+    const clinicId = resolvePermissionClinicId(role, parsed.data.clinic_id);
     const adminClient = createAdminClient();
 
     const { data: authData, error: createUserError } =

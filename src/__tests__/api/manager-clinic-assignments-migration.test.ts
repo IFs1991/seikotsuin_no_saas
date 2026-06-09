@@ -13,6 +13,14 @@ describe('manager clinic assignments migration', () => {
     __dirname,
     '../../../supabase/rollbacks/20260604000100_manager_clinic_assignments_rollback.sql'
   );
+  const primaryMigrationPath = path.resolve(
+    __dirname,
+    '../../../supabase/migrations/20260609000100_manager_primary_clinic_assignments.sql'
+  );
+  const primaryRollbackPath = path.resolve(
+    __dirname,
+    '../../../supabase/rollbacks/20260609000100_manager_primary_clinic_assignments_rollback.sql'
+  );
   const specPath = path.resolve(
     __dirname,
     '../../../docs/stabilization/spec-area-manager-clinic-assignments-v0.2.md'
@@ -31,9 +39,7 @@ describe('manager clinic assignments migration', () => {
     expect(migrationSql).toContain(
       'create table public.manager_clinic_assignments'
     );
-    expect(migrationSql).toContain(
-      'manager_clinic_assignments_active_unique'
-    );
+    expect(migrationSql).toContain('manager_clinic_assignments_active_unique');
     expect(migrationSql).toContain(
       'on public.manager_clinic_assignments (manager_user_id, clinic_id)'
     );
@@ -101,9 +107,7 @@ describe('manager clinic assignments migration', () => {
     );
     expect(migrationSql).toContain('perform pg_advisory_xact_lock(');
     expect(migrationSql).toContain("up.role = 'admin'");
-    expect(migrationSql).toContain(
-      'into v_manager_has_role, v_actor_is_admin'
-    );
+    expect(migrationSql).toContain('into v_manager_has_role, v_actor_is_admin');
     expect(migrationSql).toContain(
       'and not (mca.clinic_id = any(v_target_clinic_ids))'
     );
@@ -140,5 +144,43 @@ describe('manager clinic assignments migration', () => {
     expect(rollbackSql).toContain(
       'primary_clinic_id := app_private.get_current_clinic_id();'
     );
+  });
+
+  test('primary clinic migration keeps manager primary optional and assignment-scoped', () => {
+    expect(fs.existsSync(primaryMigrationPath)).toBe(true);
+    expect(fs.existsSync(primaryRollbackPath)).toBe(true);
+
+    const primaryMigrationSql = fs.readFileSync(primaryMigrationPath, 'utf-8');
+    const primaryRollbackSql = fs.readFileSync(primaryRollbackPath, 'utf-8');
+
+    expect(primaryMigrationSql).toContain('p_primary_clinic_id uuid');
+    expect(primaryMigrationSql).toContain('p_primary_clinic_id is not null');
+    expect(primaryMigrationSql).toContain(
+      'not (p_primary_clinic_id = any(v_target_clinic_ids))'
+    );
+    expect(primaryMigrationSql).toContain(
+      '所属拠点は担当店舗の中から選択してください'
+    );
+    expect(primaryMigrationSql).toContain('update public.user_permissions up');
+    expect(primaryMigrationSql).toContain('update public.profiles p');
+    expect(primaryMigrationSql).toContain(
+      'up.clinic_id is distinct from v_effective_primary_clinic_id'
+    );
+    expect(primaryMigrationSql).toContain(
+      'p.clinic_id is distinct from v_effective_primary_clinic_id'
+    );
+    expect(primaryMigrationSql).toContain(
+      'public.replace_manager_clinic_assignments(uuid, uuid[], text, uuid, uuid)'
+    );
+    expect(primaryMigrationSql).toContain(
+      'public.replace_manager_clinic_assignments(uuid, uuid[], text, uuid)'
+    );
+    expect(primaryRollbackSql).toContain(
+      'drop function if exists public.replace_manager_clinic_assignments(uuid, uuid[], text, uuid, uuid)'
+    );
+    expect(primaryRollbackSql).toContain(
+      'create or replace function public.replace_manager_clinic_assignments('
+    );
+    expect(primaryRollbackSql).not.toContain('p_primary_clinic_id uuid');
   });
 });

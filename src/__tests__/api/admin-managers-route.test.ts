@@ -178,10 +178,7 @@ describe('GET /api/admin/managers', () => {
       managerUserId,
     ]);
     expect(assignmentQuery.is).toHaveBeenCalledWith('revoked_at', null);
-    expect(assignmentQuery.eq).toHaveBeenCalledWith(
-      'clinics.is_active',
-      true
-    );
+    expect(assignmentQuery.eq).toHaveBeenCalledWith('clinics.is_active', true);
     expect(assignmentQuery.order).not.toHaveBeenCalled();
     expect(body.data).toEqual({
       managers: [
@@ -316,7 +313,11 @@ describe('GET /api/admin/managers/[managerUserId]/clinics', () => {
   it('does not implement manager self-read', async () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
-      auth: { id: managerUserId, email: 'manager@example.com', role: 'manager' },
+      auth: {
+        id: managerUserId,
+        email: 'manager@example.com',
+        role: 'manager',
+      },
       permissions: { role: 'manager', clinic_id: null },
       supabase: {},
     });
@@ -354,12 +355,15 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
       supabase: {},
       body: {
         clinic_ids: [clinicA, clinicA, clinicB],
+        primary_clinic_id: clinicA,
         revoke_reason: '担当エリア変更',
       },
     });
     const adminClient = {
       rpc: jest.fn().mockResolvedValue({ error: null }),
-      from: jest.fn(),
+      from: jest.fn((table: string) => {
+        throw new Error(`Unexpected table read: ${table}`);
+      }),
     };
     createAdminClientMock.mockReturnValue(adminClient);
     resolveManagerAssignedClinicsMock.mockResolvedValue([
@@ -390,6 +394,7 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
           method: 'PUT',
           body: JSON.stringify({
             clinic_ids: [clinicA, clinicA, clinicB],
+            primary_clinic_id: clinicA,
             revoke_reason: '担当エリア変更',
           }),
         }
@@ -405,6 +410,7 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
         p_actor_user_id: 'admin-actor',
         p_clinic_ids: [clinicA, clinicB],
         p_manager_user_id: managerUserId,
+        p_primary_clinic_id: clinicA,
         p_revoke_reason: '担当エリア変更',
       }
     );
@@ -412,6 +418,7 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
       adminClient,
       managerUserId
     );
+    expect(adminClient.from).not.toHaveBeenCalled();
     expect(logAdminActionMock).toHaveBeenCalledWith(
       'admin-actor',
       'admin@example.com',
@@ -420,11 +427,14 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
       {
         manager_user_id: managerUserId,
         clinic_ids: [clinicA, clinicB],
+        primary_clinic_id: clinicA,
         assigned_clinic_count: 2,
         revoke_reason: '担当エリア変更',
       }
     );
     expect(body.data.total).toBe(2);
+    expect(body.data.primary_clinic_id).toBe(clinicA);
+    expect(body.data.primary_clinic_name).toBe('A院');
   });
 
   it('allows an empty clinic list to clear active assignments', async () => {
@@ -435,12 +445,15 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
       supabase: {},
       body: {
         clinic_ids: [],
+        primary_clinic_id: null,
         revoke_reason: null,
       },
     });
     const adminClient = {
       rpc: jest.fn().mockResolvedValue({ error: null }),
-      from: jest.fn(),
+      from: jest.fn((table: string) => {
+        throw new Error(`Unexpected table read: ${table}`);
+      }),
     };
     createAdminClientMock.mockReturnValue(adminClient);
     resolveManagerAssignedClinicsMock.mockResolvedValue([]);
@@ -452,7 +465,11 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
         `http://localhost/api/admin/managers/${managerUserId}/clinics`,
         {
           method: 'PUT',
-          body: JSON.stringify({ clinic_ids: [], revoke_reason: null }),
+          body: JSON.stringify({
+            clinic_ids: [],
+            primary_clinic_id: null,
+            revoke_reason: null,
+          }),
         }
       ),
       { params: { managerUserId } }
@@ -464,19 +481,61 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
       'replace_manager_clinic_assignments',
       expect.objectContaining({
         p_clinic_ids: [],
+        p_primary_clinic_id: null,
         p_revoke_reason: null,
       })
     );
+    expect(adminClient.from).not.toHaveBeenCalled();
     expect(body.data).toEqual({
       assignments: [],
+      primary_clinic_id: null,
+      primary_clinic_name: null,
       total: 0,
     });
+  });
+
+  it('rejects primary clinic outside submitted assignments', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-actor', email: 'admin@example.com', role: 'admin' },
+      permissions: { role: 'admin', clinic_id: null },
+      supabase: {},
+      body: {
+        clinic_ids: [clinicA],
+        primary_clinic_id: clinicB,
+      },
+    });
+
+    const { PUT } =
+      await import('@/app/api/admin/managers/[managerUserId]/clinics/route');
+    const response = await PUT(
+      new NextRequest(
+        `http://localhost/api/admin/managers/${managerUserId}/clinics`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            clinic_ids: [clinicA],
+            primary_clinic_id: clinicB,
+          }),
+        }
+      ),
+      { params: { managerUserId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('所属拠点は担当店舗の中から選択してください');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
   it('denies manager self update', async () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
-      auth: { id: managerUserId, email: 'manager@example.com', role: 'manager' },
+      auth: {
+        id: managerUserId,
+        email: 'manager@example.com',
+        role: 'manager',
+      },
       permissions: { role: 'manager', clinic_id: null },
       supabase: {},
       body: {
@@ -580,9 +639,7 @@ describe('PUT /api/admin/managers/[managerUserId]/clinics', () => {
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe(
-      '担当店舗には有効な子クリニックのみ指定できます'
-    );
+    expect(body.error).toBe('担当店舗には有効な子クリニックのみ指定できます');
     expect(resolveManagerAssignedClinicsMock).not.toHaveBeenCalled();
   });
 });

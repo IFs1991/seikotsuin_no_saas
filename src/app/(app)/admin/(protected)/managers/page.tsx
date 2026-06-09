@@ -19,6 +19,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -49,6 +56,8 @@ import {
 } from '@/lib/admin/manager-assignments';
 import { normalizeRole } from '@/lib/constants/roles';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+
+const NO_PRIMARY_CLINIC_VALUE = 'none';
 
 type AssignmentChipListProps = {
   assignments: readonly ManagerAssignedClinic[];
@@ -129,9 +138,42 @@ function filterManagers(
 }
 
 function createClinicSelectionSet(
-  formState: ManagerAssignmentFormState
+  clinicIds: readonly string[]
 ): ReadonlySet<string> {
-  return new Set(formState.clinicIds);
+  return new Set(clinicIds);
+}
+
+type PrimaryClinicOption = {
+  id: string;
+  name: string;
+};
+
+function createPrimaryClinicOptions({
+  assignableClinicOptions,
+  selectedClinicIds,
+  selectedManager,
+}: {
+  assignableClinicOptions: readonly { id: string; name: string }[];
+  selectedClinicIds: ReadonlySet<string>;
+  selectedManager: ManagerListItem | null;
+}): PrimaryClinicOption[] {
+  const optionMap = new Map<string, string>();
+
+  for (const clinic of assignableClinicOptions) {
+    if (selectedClinicIds.has(clinic.id)) {
+      optionMap.set(clinic.id, clinic.name);
+    }
+  }
+
+  for (const assignment of selectedManager?.assigned_clinics ?? []) {
+    if (selectedClinicIds.has(assignment.clinic_id)) {
+      optionMap.set(assignment.clinic_id, getAssignedClinicLabel(assignment));
+    }
+  }
+
+  return Array.from(optionMap, ([id, name]) => ({ id, name })).sort(
+    (left, right) => left.name.localeCompare(right.name, 'ja')
+  );
 }
 
 export default function AdminManagersPage() {
@@ -215,8 +257,17 @@ export default function AdminManagersPage() {
   );
 
   const selectedClinicIds = useMemo(
-    () => createClinicSelectionSet(formState),
-    [formState]
+    () => createClinicSelectionSet(formState.clinicIds),
+    [formState.clinicIds]
+  );
+  const primaryClinicOptions = useMemo(
+    () =>
+      createPrimaryClinicOptions({
+        assignableClinicOptions,
+        selectedClinicIds,
+        selectedManager,
+      }),
+    [assignableClinicOptions, selectedClinicIds, selectedManager]
   );
 
   const hasChanges = useMemo(
@@ -288,6 +339,14 @@ export default function AdminManagersPage() {
     []
   );
 
+  const handlePrimaryClinicChange = useCallback((value: string) => {
+    setFormState(current => ({
+      ...current,
+      primaryClinicId: value === NO_PRIMARY_CLINIC_VALUE ? '' : value,
+    }));
+    setNotice(null);
+  }, []);
+
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -296,17 +355,18 @@ export default function AdminManagersPage() {
         return;
       }
 
-      const assignments = await replaceManagerAssignments(
+      const result = await replaceManagerAssignments(
         selectedManager.user_id,
         buildReplaceManagerAssignmentsPayload(formState)
       );
 
-      if (!assignments) {
+      if (!result) {
         return;
       }
 
       setFormState({
-        clinicIds: assignments.map(assignment => assignment.clinic_id),
+        clinicIds: result.assignments.map(assignment => assignment.clinic_id),
+        primaryClinicId: result.primary_clinic_id ?? '',
         revokeReason: '',
       });
       setNotice('担当店舗を更新しました');
@@ -392,7 +452,7 @@ export default function AdminManagersPage() {
                 <TableRow>
                   <TableHead>氏名</TableHead>
                   <TableHead>メール</TableHead>
-                  <TableHead>主所属店舗</TableHead>
+                  <TableHead>所属拠点</TableHead>
                   <TableHead>担当店舗数</TableHead>
                   <TableHead>担当店舗</TableHead>
                   <TableHead>操作</TableHead>
@@ -431,7 +491,7 @@ export default function AdminManagersPage() {
                   {getManagerEmail(selectedManager)}
                 </div>
                 <div className='text-xs text-slate-600'>
-                  主所属店舗: {getPrimaryClinicLabel(selectedManager)}
+                  所属拠点: {getPrimaryClinicLabel(selectedManager)}
                 </div>
               </div>
 
@@ -440,6 +500,33 @@ export default function AdminManagersPage() {
                 <AssignmentChipList
                   assignments={selectedManager.assigned_clinics}
                 />
+              </div>
+
+              <div className='space-y-2'>
+                <label
+                  htmlFor='admin-manager-primary-clinic'
+                  className='text-sm font-medium'
+                >
+                  所属拠点（任意）
+                </label>
+                <Select
+                  value={formState.primaryClinicId || NO_PRIMARY_CLINIC_VALUE}
+                  onValueChange={handlePrimaryClinicChange}
+                >
+                  <SelectTrigger id='admin-manager-primary-clinic'>
+                    <SelectValue placeholder='所属拠点を選択' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_PRIMARY_CLINIC_VALUE}>
+                      未指定
+                    </SelectItem>
+                    {primaryClinicOptions.map(clinic => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className='space-y-2'>

@@ -61,6 +61,10 @@ type PermissionMutationRow = ExistingPermissionRow & {
 
 const PERMISSION_RESOURCE_SELECT = 'id, staff_id, role, clinic_id, username';
 
+function isManagerPermissionRole(role: string | null | undefined): boolean {
+  return normalizeRole(role) === 'manager';
+}
+
 const buildPermissionStaffResourceRow = ({
   actorUserId,
   permission,
@@ -239,6 +243,7 @@ export async function PATCH(
     const shouldLoadExistingPermission =
       isScopedActor ||
       parsed.data.revoke === true ||
+      parsed.data.clinic_id !== undefined ||
       (parsed.data.role !== undefined && parsed.data.role !== 'manager');
     const scopedClinicIds = isScopedActor
       ? await resolveScopedAdminUsersClinicIds({
@@ -389,6 +394,14 @@ export async function PATCH(
     if (parsed.data.role !== undefined) updatePayload.role = parsed.data.role;
     if (parsed.data.clinic_id !== undefined)
       updatePayload.clinic_id = parsed.data.clinic_id;
+
+    const effectiveRole = parsed.data.role ?? existingPermission?.role;
+    if (
+      isManagerPermissionRole(effectiveRole) &&
+      (parsed.data.role !== undefined || parsed.data.clinic_id !== undefined)
+    ) {
+      updatePayload.clinic_id = null;
+    }
 
     if (isScopedActor) {
       if (

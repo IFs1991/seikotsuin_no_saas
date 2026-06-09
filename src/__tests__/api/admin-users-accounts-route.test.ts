@@ -426,4 +426,50 @@ describe('POST /api/admin/users/accounts', () => {
       })
     );
   });
+
+  it('normalizes manager role clinic_id to null during account-only creation', async () => {
+    const payload = {
+      full_name: 'エリア 管理者',
+      email: 'area-manager@example.com',
+      password: 'SafePass123!',
+      role: 'manager',
+      clinic_id: '33333333-3333-4333-8333-333333333333',
+    };
+    const createdUserId = '22222222-2222-4222-8222-222222222222';
+    processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
+    const { adminClient, profileQuery, sideEffectQueries } =
+      createAdminClientMockValue({ createdUserId });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { POST } = await import('@/app/api/admin/users/accounts/route');
+    const response = await POST(createRequest(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(profileQuery.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: createdUserId,
+        clinic_id: null,
+        role: 'manager',
+      }),
+      { onConflict: 'user_id' }
+    );
+    expect(sideEffectQueries.get('staff')?.upsert).not.toHaveBeenCalled();
+    expect(sideEffectQueries.get('resources')?.upsert).not.toHaveBeenCalled();
+    expect(sideEffectQueries.get('user_permissions')?.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        staff_id: createdUserId,
+        role: 'manager',
+        clinic_id: null,
+        username: 'area-manager@example.com',
+      }),
+      { onConflict: 'staff_id' }
+    );
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        role: 'manager',
+        clinic_id: null,
+      })
+    );
+  });
 });
