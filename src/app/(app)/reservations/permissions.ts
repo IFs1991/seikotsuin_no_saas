@@ -1,7 +1,8 @@
+import { normalizeRole } from '@/lib/constants/roles';
+
 const RESERVATION_WRITE_ROLES = new Set([
   'admin',
   'clinic_admin',
-  'manager',
   'therapist',
   'staff',
 ]);
@@ -29,11 +30,14 @@ export function canWriteReservationsForClinic({
   profileClinicId,
   role,
 }: ReservationClinicPermissionInput): boolean {
-  if (!selectedClinicId || !profileClinicId || !role) {
+  const normalizedRole = normalizeRole(role);
+
+  if (!selectedClinicId || !profileClinicId || !normalizedRole) {
     return false;
   }
 
   return (
-    selectedClinicId === profileClinicId && RESERVATION_WRITE_ROLES.has(role)
+    selectedClinicId === profileClinicId &&
+    RESERVATION_WRITE_ROLES.has(normalizedRole)
   );
 }

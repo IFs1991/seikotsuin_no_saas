@@ -19,6 +19,8 @@ interface Props {
   density: AppointmentDensity;
   onDensityChange: (density: AppointmentDensity) => void;
   canCreateReservation?: boolean;
+  timelineOnly?: boolean;
+  readOnlyMessage?: string;
 }
 
 export const ControlBar: React.FC<Props> = ({
@@ -30,6 +32,8 @@ export const ControlBar: React.FC<Props> = ({
   density,
   onDensityChange,
   canCreateReservation = true,
+  timelineOnly = false,
+  readOnlyMessage = '他院の予約は閲覧専用です。',
 }) => {
   const [showCalendar, setShowCalendar] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -186,22 +190,26 @@ export const ControlBar: React.FC<Props> = ({
           <CalendarDays className='w-4 h-4' />
           タイムライン
         </button>
-        <button
-          onClick={() => onViewChange('list')}
-          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-t-lg border-t border-x border-gray-300 transition-colors flex items-center gap-2 whitespace-nowrap ${currentView === 'list' ? activeTabClass : inactiveTabClass}`}
-        >
-          <LayoutList className='w-4 h-4' />
-          予約一覧
-        </button>
-        <button
-          onClick={() => onViewChange('register')}
-          disabled={!canCreateReservation}
-          title={canCreateReservation ? '新規予約' : '他院の予約は閲覧専用です'}
-          className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-t-lg border-t border-x border-gray-300 transition-colors flex items-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 ${currentView === 'register' ? activeTabClass : inactiveTabClass}`}
-        >
-          <PlusCircle className='w-4 h-4' />
-          新規登録
-        </button>
+        {!timelineOnly && (
+          <button
+            onClick={() => onViewChange('list')}
+            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-t-lg border-t border-x border-gray-300 transition-colors flex items-center gap-2 whitespace-nowrap ${currentView === 'list' ? activeTabClass : inactiveTabClass}`}
+          >
+            <LayoutList className='w-4 h-4' />
+            予約一覧
+          </button>
+        )}
+        {!timelineOnly && (
+          <button
+            onClick={() => onViewChange('register')}
+            disabled={!canCreateReservation}
+            title={canCreateReservation ? '新規予約' : readOnlyMessage}
+            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold rounded-t-lg border-t border-x border-gray-300 transition-colors flex items-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 ${currentView === 'register' ? activeTabClass : inactiveTabClass}`}
+          >
+            <PlusCircle className='w-4 h-4' />
+            新規登録
+          </button>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ interface Props {
   onClose: () => void;
   onConfirm: (appointment: Appointment) => Promise<AppointmentUpdateResult>;
   canConfirm?: boolean;
+  readOnlyMessage?: string;
 }
 
 export const UnconfirmedReservationsModal: React.FC<Props> = ({
@@ -23,6 +24,7 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
   onClose,
   onConfirm,
   canConfirm = true,
+  readOnlyMessage = '他院の予約は閲覧専用です。',
 }) => {
   // Local state to simulate list reducing as user confirms
   const [list, setList] = useState(initialAppointments);
@@ -89,7 +91,7 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
           )}
           {!canConfirm && (
             <div className='px-6 py-3 text-sm text-sky-700 bg-sky-50 border-b border-sky-100'>
-              他院の予約は閲覧専用です。
+              {readOnlyMessage}
             </div>
           )}
           {list.length === 0 ? (

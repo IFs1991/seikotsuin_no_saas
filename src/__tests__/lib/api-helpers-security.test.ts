@@ -1,3 +1,5 @@
+import { NextRequest } from 'next/server';
+
 const ensureClinicAccessMock = jest.fn();
 const loggerErrorMock = jest.fn();
 const loggerWarnMock = jest.fn();
@@ -75,6 +77,35 @@ describe('api-helpers security behavior', () => {
       await expect(result.error.json()).resolves.toMatchObject({
         success: false,
         error: '不正なリクエスト元です',
+      });
+    }
+  });
+
+  it('deniedRoles は requireBody より前に 403 を返す', async () => {
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: {},
+      user: { id: 'manager-1', email: 'manager@example.com' },
+      permissions: { role: 'manager', clinic_id: null },
+    });
+
+    const result = await processApiRequest(
+      new NextRequest('http://localhost/api/test', {
+        method: 'POST',
+        body: 'not-json',
+      }),
+      {
+        requireBody: true,
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは作成できません。',
+      }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.status).toBe(403);
+      await expect(result.error.json()).resolves.toMatchObject({
+        success: false,
+        error: 'マネージャーは作成できません。',
       });
     }
   });

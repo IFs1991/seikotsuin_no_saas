@@ -11,7 +11,7 @@ import {
   getCurrentNavigationItemId,
   getAdminMenuItemsForRole,
   getNavigationMode,
-  getOperationMenuItems,
+  getOperationMenuItemsForRole,
   getVisibleNavigationItems,
   type NavigationItem,
 } from '@/lib/navigation/items';
@@ -79,7 +79,10 @@ export const Sidebar = React.memo(function Sidebar({
     [isAdmin, profileLoading, role]
   );
 
-  const operationMenuItems = useMemo(() => getOperationMenuItems(), []);
+  const operationMenuItems = useMemo(
+    () => getOperationMenuItemsForRole(navigationMode.role),
+    [navigationMode.role]
+  );
   const primaryMenuItems = useMemo(
     () => (navigationMode.isHqAdmin ? ADMIN_MENU_ITEMS : operationMenuItems),
     [navigationMode.isHqAdmin, operationMenuItems]

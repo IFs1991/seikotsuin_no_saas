@@ -50,4 +50,26 @@ describe('resolveInitialSelectedClinicId', () => {
       })
     ).toBeNull();
   });
+
+  it('manager は profile clinic id に fallback しない', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        role: 'manager',
+        profileClinicId: 'profile-clinic',
+        currentClinicId: null,
+        clinics: [],
+      })
+    ).toBeNull();
+  });
+
+  it('manager は担当店舗が1つだけならその店舗を自動選択する', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        role: 'manager',
+        profileClinicId: 'profile-clinic',
+        currentClinicId: null,
+        clinics: [{ id: 'assigned-clinic' }],
+      })
+    ).toBe('assigned-clinic');
+  });
 });

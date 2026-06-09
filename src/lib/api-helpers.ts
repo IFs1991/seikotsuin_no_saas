@@ -228,6 +228,8 @@ export function createSuccessResponse<T>(
 export interface ProcessApiOptions {
   requireBody?: boolean;
   allowedRoles?: readonly string[];
+  deniedRoles?: readonly string[];
+  deniedRoleMessage?: string;
   clinicId?: string | null;
   requireClinicMatch?: boolean;
   sanitizeInputValues?: boolean;
@@ -248,6 +250,14 @@ export interface ProcessApiFailure {
 }
 
 export type ProcessApiResult = ProcessApiSuccess | ProcessApiFailure;
+
+function buildNormalizedRoleSet(roles: readonly string[]): Set<string> {
+  const normalizedRoles = new Set<string>();
+  for (const role of roles) {
+    normalizedRoles.add(normalizeRole(role) ?? role);
+  }
+  return normalizedRoles;
+}
 
 export async function processApiRequest(
   request: NextRequest,
@@ -303,6 +313,24 @@ export async function processApiRequest(
       guardOptions
     );
 
+    // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
+    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
+    const normalizedRoleForAuth =
+      normalizeRole(permissions.role) ?? permissions.role;
+
+    if (options.deniedRoles && options.deniedRoles.length > 0) {
+      const deniedRoles = buildNormalizedRoleSet(options.deniedRoles);
+      if (deniedRoles.has(normalizedRoleForAuth)) {
+        return {
+          success: false,
+          error: createErrorResponse(
+            options.deniedRoleMessage ?? 'この操作は許可されていません',
+            403
+          ),
+        };
+      }
+    }
+
     let body: unknown;
     if (options.requireBody) {
       try {
@@ -318,11 +346,6 @@ export async function processApiRequest(
         };
       }
     }
-
-    // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
-    // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const normalizedRoleForAuth =
-      normalizeRole(permissions.role) ?? permissions.role;
 
     return {
       success: true,
