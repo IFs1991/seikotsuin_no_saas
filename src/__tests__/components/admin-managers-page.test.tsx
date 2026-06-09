@@ -42,8 +42,8 @@ const manager: ManagerListItem = {
   user_id: '11111111-1111-4111-8111-111111111111',
   email: 'manager@example.com',
   full_name: '山田 太郎',
-  primary_clinic_id: 'clinic-primary',
-  primary_clinic_name: '本院',
+  primary_clinic_id: 'clinic-1',
+  primary_clinic_name: '新宿院',
   assigned_clinic_count: 1,
   assigned_clinics: [assignedClinic],
 };
@@ -56,15 +56,20 @@ function setupHooks({
   managers?: ManagerListItem[];
 } = {}) {
   fetchManagersMock.mockResolvedValue(managers);
-  replaceManagerAssignmentsMock.mockResolvedValue([
-    assignedClinic,
-    {
-      assignment_id: 'assignment-2',
-      clinic_id: 'clinic-2',
-      clinic_name: '横浜院',
-      assigned_at: '2026-06-02T00:00:00.000Z',
-    },
-  ]);
+  replaceManagerAssignmentsMock.mockResolvedValue({
+    assignments: [
+      assignedClinic,
+      {
+        assignment_id: 'assignment-2',
+        clinic_id: 'clinic-2',
+        clinic_name: '横浜院',
+        assigned_at: '2026-06-02T00:00:00.000Z',
+      },
+    ],
+    primary_clinic_id: 'clinic-1',
+    primary_clinic_name: '新宿院',
+    total: 2,
+  });
   fetchClinicsMock.mockResolvedValue(undefined);
 
   useManagerAssignmentsMock.mockReturnValue({
@@ -131,7 +136,9 @@ describe('AdminManagersPage', () => {
 
     render(<AdminManagersPage />);
 
-    expect(screen.getByText(MANAGER_ASSIGNMENT_EMPTY_TITLE)).toBeInTheDocument();
+    expect(
+      screen.getByText(MANAGER_ASSIGNMENT_EMPTY_TITLE)
+    ).toBeInTheDocument();
     expect(
       screen.getByText(MANAGER_ASSIGNMENT_EMPTY_DESCRIPTION)
     ).toBeInTheDocument();
@@ -173,7 +180,27 @@ describe('AdminManagersPage', () => {
         manager.user_id,
         {
           clinic_ids: ['clinic-1', 'clinic-2'],
+          primary_clinic_id: 'clinic-1',
           revoke_reason: '担当エリア変更',
+        }
+      );
+    });
+  });
+
+  it('所属拠点を担当店舗から外すと未指定として保存する', async () => {
+    render(<AdminManagersPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '山田 太郎を編集' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '新宿院' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() => {
+      expect(replaceManagerAssignmentsMock).toHaveBeenCalledWith(
+        manager.user_id,
+        {
+          clinic_ids: [],
+          primary_clinic_id: null,
+          revoke_reason: null,
         }
       );
     });

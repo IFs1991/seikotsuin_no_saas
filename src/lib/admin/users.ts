@@ -314,7 +314,7 @@ export function getPermissionClinicId(
   role: AdminUserRole,
   clinicId: string
 ): string | null {
-  if (role === 'admin') {
+  if (role === 'admin' || role === 'manager') {
     return null;
   }
   return clinicId.trim() || null;
@@ -359,6 +359,7 @@ export function validatePermissionForm(
   if (
     options.requireClinicId === true &&
     formState.role !== 'admin' &&
+    formState.role !== 'manager' &&
     !formState.clinic_id.trim()
   ) {
     return '所属先店舗を選択してください';
@@ -413,6 +414,12 @@ export function createAssignPermissionPayload(
 export function createUpdatePermissionPayload(
   formState: PermissionFormState
 ): UpdatePermissionPayload {
+  if (formState.role === 'manager') {
+    return {
+      role: formState.role,
+    };
+  }
+
   return {
     role: formState.role,
     clinic_id: getPermissionClinicId(formState.role, formState.clinic_id),

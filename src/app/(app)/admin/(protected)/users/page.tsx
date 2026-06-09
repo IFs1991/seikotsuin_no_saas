@@ -234,6 +234,9 @@ export default function AdminUsersPage() {
   const isAccountOnlyCreateMode =
     formState.create_mode === CREATE_ACCOUNT_MODE_ACCOUNT_ONLY;
   const usesAccountFields = isStoreAccountCreateMode || isAccountOnlyCreateMode;
+  const usesClinicField =
+    (!isAccountOnlyCreateMode || formState.assign_role) &&
+    formState.role !== 'manager';
   const formRoleOptions = useMemo(
     () => (isStoreAccountCreateMode ? creatableRoleOptions : roleOptions),
     [creatableRoleOptions, isStoreAccountCreateMode, roleOptions]
@@ -471,9 +474,11 @@ export default function AdminUsersPage() {
   }, []);
 
   const handleRoleChange = useCallback((value: string) => {
+    const role = toAdminUserRole(value);
     setFormState(prev => ({
       ...prev,
-      role: toAdminUserRole(value),
+      role,
+      clinic_id: role === 'manager' ? '' : prev.clinic_id,
     }));
   }, []);
 
@@ -532,7 +537,10 @@ export default function AdminUsersPage() {
       setFormState(prev => ({
         ...prev,
         user_id: candidate.user_id,
-        clinic_id: prev.clinic_id || candidate.clinic_id || '',
+        clinic_id:
+          prev.role === 'manager'
+            ? ''
+            : prev.clinic_id || candidate.clinic_id || '',
       }));
       setIsUserPickerOpen(false);
       clearCandidates();
@@ -747,7 +755,7 @@ export default function AdminUsersPage() {
               )}
             </>
           )}
-          {(!isAccountOnlyCreateMode || formState.assign_role) && (
+          {usesClinicField ? (
             <div className='grid gap-4 md:grid-cols-2'>
               <div className='space-y-2'>
                 <label
@@ -780,6 +788,13 @@ export default function AdminUsersPage() {
                 </Select>
               </div>
             </div>
+          ) : (
+            (!isAccountOnlyCreateMode || formState.assign_role) &&
+            formState.role === 'manager' && (
+              <div className='rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700'>
+                担当店舗と所属拠点は「マネージャー管理」で設定します。
+              </div>
+            )
           )}
           <div className='flex flex-wrap items-center gap-2'>
             <Button

@@ -4,7 +4,6 @@ import { API_ENDPOINTS, ERROR_MESSAGES } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import {
   mergeAssignmentsIntoManager,
-  type ManagerAssignedClinic,
   type ManagerAssignmentsResponse,
   type ManagerListItem,
   type ManagerListResponse,
@@ -50,7 +49,7 @@ export type UseManagerAssignmentsResult = {
   replaceManagerAssignments: (
     managerUserId: string,
     payload: ReplaceManagerAssignmentsPayload
-  ) => Promise<ManagerAssignedClinic[] | null>;
+  ) => Promise<ManagerAssignmentsResponse | null>;
 };
 
 const JSON_HEADERS = {
@@ -151,12 +150,15 @@ export function useManagerAssignments(): UseManagerAssignmentsResult {
         setManagers(currentManagers =>
           currentManagers.map(manager =>
             manager.user_id === managerUserId
-              ? mergeAssignmentsIntoManager(manager, data.assignments)
+              ? mergeAssignmentsIntoManager(manager, data.assignments, {
+                  primary_clinic_id: data.primary_clinic_id,
+                  primary_clinic_name: data.primary_clinic_name,
+                })
               : manager
           )
         );
 
-        return data.assignments;
+        return data;
       } catch (err) {
         const message =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;

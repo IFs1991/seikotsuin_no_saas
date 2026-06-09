@@ -93,6 +93,8 @@ describe('useManagerAssignments', () => {
           success: true,
           data: {
             assignments: nextAssignments,
+            primary_clinic_id: 'clinic-2',
+            primary_clinic_name: '横浜院',
             total: nextAssignments.length,
           },
         })
@@ -106,12 +108,15 @@ describe('useManagerAssignments', () => {
     await act(async () => {
       await result.current.replaceManagerAssignments(baseManager.user_id, {
         clinic_ids: ['clinic-1', 'clinic-2'],
+        primary_clinic_id: 'clinic-2',
         revoke_reason: '担当エリア変更',
       });
     });
 
     await waitFor(() => {
       expect(result.current.managers[0]?.assigned_clinic_count).toBe(2);
+      expect(result.current.managers[0]?.primary_clinic_id).toBe('clinic-2');
+      expect(result.current.managers[0]?.primary_clinic_name).toBe('横浜院');
     });
 
     const requestInit = mockFetch.mock.calls[1]?.[1];
@@ -121,6 +126,7 @@ describe('useManagerAssignments', () => {
     expect(requestInit?.method).toBe('PUT');
     expect(JSON.parse(String(requestInit?.body))).toEqual({
       clinic_ids: ['clinic-1', 'clinic-2'],
+      primary_clinic_id: 'clinic-2',
       revoke_reason: '担当エリア変更',
     });
   });
