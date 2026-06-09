@@ -67,9 +67,52 @@ export const OPERATION_MENU_ITEMS: readonly NavigationItem[] = [
 ];
 
 const AI_INSIGHTS_HREF = '/ai-insights';
+const DAILY_INPUT_ITEM_ID = 'daily-input';
+const RESERVATION_REGISTER_ITEM_ID = 'reservation-register';
+const RESERVATION_LIST_ITEM_ID = 'reservation-list';
+const QUICK_RESERVATION_ITEM_ID = 'quick-reservation';
+
+const AREA_MANAGER_OPERATION_MENU_ITEMS: readonly NavigationItem[] =
+  OPERATION_MENU_ITEMS.map(item => {
+    if (item.id === 'daily-reports') {
+      return {
+        ...item,
+        subItems: item.subItems?.filter(
+          subItem => subItem.id !== DAILY_INPUT_ITEM_ID
+        ),
+      };
+    }
+
+    if (item.id === 'reservations') {
+      return {
+        ...item,
+        subItems: item.subItems
+          ?.filter(
+            subItem =>
+              subItem.id !== RESERVATION_REGISTER_ITEM_ID &&
+              subItem.id !== RESERVATION_LIST_ITEM_ID
+          )
+          .map(subItem =>
+            subItem.id === 'reservation-timeline'
+              ? {
+                  ...subItem,
+                  label: '担当院タイムライン',
+                  href: '/reservations?view=timeline',
+                }
+              : subItem
+          ),
+      };
+    }
+
+    return item;
+  });
 
 const OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
   OPERATION_MENU_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
+const AREA_MANAGER_OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
+  AREA_MANAGER_OPERATION_MENU_ITEMS.filter(
+    item => item.href !== AI_INSIGHTS_HREF
+  );
 
 export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
@@ -133,11 +176,14 @@ const OPERATION_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 const OPERATION_WITHOUT_AI_AND_CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] =
   [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...CLINIC_ADMIN_MENU_ITEMS];
 const OPERATION_AND_AREA_MANAGER_MENU_ITEMS: readonly NavigationItem[] = [
-  ...OPERATION_MENU_ITEMS,
+  ...AREA_MANAGER_OPERATION_MENU_ITEMS,
   ...AREA_MANAGER_ADMIN_MENU_ITEMS,
 ];
 const OPERATION_WITHOUT_AI_AND_AREA_MANAGER_MENU_ITEMS: readonly NavigationItem[] =
-  [...OPERATION_MENU_ITEMS_WITHOUT_AI, ...AREA_MANAGER_ADMIN_MENU_ITEMS];
+  [
+    ...AREA_MANAGER_OPERATION_MENU_ITEMS_WITHOUT_AI,
+    ...AREA_MANAGER_ADMIN_MENU_ITEMS,
+  ];
 
 const OPERATION_MENU_ITEMS_BY_AI_FLAG = {
   enabled: OPERATION_MENU_ITEMS,
@@ -159,6 +205,11 @@ const OPERATION_AND_AREA_MANAGER_MENU_ITEMS_BY_AI_FLAG = {
   disabled: OPERATION_WITHOUT_AI_AND_AREA_MANAGER_MENU_ITEMS,
 } as const;
 
+const AREA_MANAGER_OPERATION_MENU_ITEMS_BY_AI_FLAG = {
+  enabled: AREA_MANAGER_OPERATION_MENU_ITEMS,
+  disabled: AREA_MANAGER_OPERATION_MENU_ITEMS_WITHOUT_AI,
+} as const;
+
 export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
   { id: 'quick-daily-input', label: '日報入力', href: '/daily-reports/input' },
   {
@@ -169,6 +220,8 @@ export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
   { id: 'quick-patient', label: '患者検索', href: '/patients' },
   { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
 ];
+const AREA_MANAGER_QUICK_ACCESS_ITEMS: readonly NavigationItem[] =
+  QUICK_ACCESS_ITEMS.filter(item => item.id !== QUICK_RESERVATION_ITEM_ID);
 
 export function isAiInsightsEnabled() {
   return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
@@ -178,6 +231,25 @@ export function getOperationMenuItems() {
   return isAiInsightsEnabled()
     ? OPERATION_MENU_ITEMS_BY_AI_FLAG.enabled
     : OPERATION_MENU_ITEMS_BY_AI_FLAG.disabled;
+}
+
+export function getOperationMenuItemsForRole(
+  role: string | null | undefined
+): readonly NavigationItem[] {
+  const aiInsightsEnabled = isAiInsightsEnabled();
+  const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
+
+  return isAreaManagerRole(role)
+    ? AREA_MANAGER_OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag]
+    : OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
+}
+
+export function getQuickAccessItemsForRole(
+  role: string | null | undefined
+): readonly NavigationItem[] {
+  return isAreaManagerRole(role)
+    ? AREA_MANAGER_QUICK_ACCESS_ITEMS
+    : QUICK_ACCESS_ITEMS;
 }
 
 export function getVisibleNavigationItems({
@@ -199,7 +271,9 @@ export function getVisibleNavigationItems({
   const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
 
   if (!showAdminMenus) {
-    return OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
+    return isAreaManagerRole(role)
+      ? AREA_MANAGER_OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag]
+      : OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
   }
 
   if (isAreaManagerRole(role)) {

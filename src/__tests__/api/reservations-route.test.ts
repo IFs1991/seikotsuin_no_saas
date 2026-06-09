@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { processApiRequest } from '@/lib/api-helpers';
-import { createScopedAdminContext } from '@/lib/supabase';
+import { createAdminClient, createScopedAdminContext } from '@/lib/supabase';
 import {
   enqueueReservationCreated,
   enqueueReservationChange,
@@ -28,6 +28,7 @@ jest.mock('@/lib/supabase', () => {
   const actual = jest.requireActual('@/lib/supabase');
   return {
     ...actual,
+    createAdminClient: jest.fn(),
     createScopedAdminContext: jest.fn(),
   };
 });
@@ -39,6 +40,7 @@ jest.mock('@/lib/notifications/email/reservation-enqueue', () => ({
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
+const createAdminClientMock = createAdminClient as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const enqueueReservationCreatedMock = enqueueReservationCreated as jest.Mock;
 const enqueueReservationChangeMock = enqueueReservationChange as jest.Mock;
@@ -133,11 +135,210 @@ describe('GET /api/reservations', () => {
       ascending: false,
     });
   });
+
+  it('manager reads an assigned clinic with the admin client and no permission fallback client', async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lte: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({
+        data: [
+          {
+            id: validId,
+            customer_id: validCustomerId,
+            customer_name: '山田 太郎',
+            menu_id: '123e4567-e89b-12d3-a456-426614174003',
+            menu_name: '整体',
+            staff_id: '123e4567-e89b-12d3-a456-426614174004',
+            staff_name: '田中先生',
+            start_time: '2026-04-27T10:00:00.000Z',
+            end_time: '2026-04-27T10:30:00.000Z',
+            status: 'confirmed',
+            channel: 'phone',
+            notes: null,
+            selected_options: [],
+            is_staff_requested: false,
+            staff_nomination_fee: 0,
+          },
+        ],
+        error: null,
+      }),
+    };
+    const adminClient = {
+      from: jest.fn().mockReturnValue(query),
+    };
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'fallback-clinic',
+        clinic_scope_ids: ['jwt-clinic'],
+      },
+      supabase: { from: jest.fn() },
+    });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/reservations/route');
+    const request = {
+      nextUrl: new URL(
+        `http://localhost/api/reservations?clinic_id=${validClinicId}&start_date=2026-04-27T00%3A00%3A00.000Z&end_date=2026-04-27T23%3A59%3A59.999Z`
+      ),
+    } as unknown as NextRequest;
+
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId: validClinicId,
+      requireClinicMatch: true,
+    });
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(adminClient.from).toHaveBeenCalledWith('reservation_list_view');
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', validClinicId);
+    expect(query.gte).toHaveBeenCalledWith(
+      'start_time',
+      '2026-04-27T00:00:00.000Z'
+    );
+    expect(query.lte).toHaveBeenCalledWith(
+      'start_time',
+      '2026-04-27T23:59:59.999Z'
+    );
+  });
+
+  it('manager reservation detail lookup is filtered by both id and assigned clinic', async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: validId,
+          customer_id: validCustomerId,
+          customer_name: '山田 太郎',
+          menu_id: '123e4567-e89b-12d3-a456-426614174003',
+          menu_name: '整体',
+          staff_id: '123e4567-e89b-12d3-a456-426614174004',
+          staff_name: '田中先生',
+          start_time: '2026-04-27T10:00:00.000Z',
+          end_time: '2026-04-27T10:30:00.000Z',
+          status: 'confirmed',
+          channel: 'phone',
+          notes: null,
+          selected_options: [],
+          is_staff_requested: false,
+          staff_nomination_fee: 0,
+        },
+        error: null,
+      }),
+    };
+    const adminClient = {
+      from: jest.fn().mockReturnValue(query),
+    };
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'fallback-clinic',
+        clinic_scope_ids: ['jwt-clinic'],
+      },
+      supabase: { from: jest.fn() },
+    });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { GET } = await import('@/app/api/reservations/route');
+    const request = {
+      nextUrl: new URL(
+        `http://localhost/api/reservations?clinic_id=${validClinicId}&id=${validId}`
+      ),
+    } as unknown as NextRequest;
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', validClinicId);
+    expect(query.eq).toHaveBeenCalledWith('id', validId);
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+  });
+
+  it('manager unassigned clinic denial is returned by the assignment-aware guard', async () => {
+    const guardError = Response.json(
+      { success: false, error: '対象クリニックへのアクセス権がありません' },
+      { status: 403 }
+    );
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: guardError,
+    });
+
+    const { GET } = await import('@/app/api/reservations/route');
+    const request = {
+      nextUrl: new URL(
+        `http://localhost/api/reservations?clinic_id=${validClinicId}`
+      ),
+    } as unknown as NextRequest;
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(403);
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /api/reservations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+  });
+
+  it('passes manager deny options to scoped body processing before writes', async () => {
+    const managerDeniedResponse = Response.json(
+      { success: false, error: 'マネージャーは予約の作成はできません。' },
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: false,
+      error: managerDeniedResponse,
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+    const request = new NextRequest('http://localhost/api/reservations', {
+      method: 'POST',
+      body: JSON.stringify({ clinic_id: validClinicId }),
+    });
+    const response = await POST(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe('マネージャーは予約の作成はできません。');
+    expect(processApiRequestMock).not.toHaveBeenCalled();
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      request,
+      expect.anything(),
+      {
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは予約の作成はできません。',
+      }
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(enqueueReservationCreatedMock).not.toHaveBeenCalled();
   });
 
   it('uses scoped admin only for staff resource synchronization', async () => {
@@ -987,6 +1188,50 @@ describe('POST /api/reservations', () => {
 describe('PATCH /api/reservations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'test@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+  });
+
+  it('passes manager deny options before existing lookup, update, or email enqueue', async () => {
+    const managerDeniedResponse = Response.json(
+      { success: false, error: 'マネージャーは予約の変更はできません。' },
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: false,
+      error: managerDeniedResponse,
+    });
+
+    const { PATCH } = await import('@/app/api/reservations/route');
+    const request = new NextRequest('http://localhost/api/reservations', {
+      method: 'PATCH',
+      body: JSON.stringify({ clinic_id: validClinicId, id: validId }),
+    });
+    const response = await PATCH(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe('マネージャーは予約の変更はできません。');
+    expect(processApiRequestMock).not.toHaveBeenCalled();
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      request,
+      expect.anything(),
+      {
+        allowedRoles: Array.from(STAFF_ROLES),
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは予約の変更はできません。',
+      }
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(enqueueReservationChangeMock).not.toHaveBeenCalled();
   });
 
   it('passes allowedRoles to processClinicScopedBody for role guard', async () => {
@@ -1063,7 +1308,11 @@ describe('PATCH /api/reservations', () => {
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      { allowedRoles: Array.from(STAFF_ROLES) }
+      {
+        allowedRoles: Array.from(STAFF_ROLES),
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは予約の変更はできません。',
+      }
     );
   });
 

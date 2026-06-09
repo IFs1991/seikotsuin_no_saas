@@ -3,6 +3,7 @@ import {
   createErrorResponse,
   createSuccessResponse,
   processApiRequest,
+  type ProcessApiSuccess,
 } from '@/lib/api-helpers';
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
@@ -16,7 +17,7 @@ import {
   mapMenuUpdateToRow,
   type MenuRow,
 } from './schema';
-import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import { CLINIC_ADMIN_ROLES, normalizeRole } from '@/lib/constants/roles';
 
 const PATH = '/api/menus';
 const MENU_ADMIN_ROLES = Array.from(CLINIC_ADMIN_ROLES);
@@ -30,6 +31,14 @@ function createMenuScopedClient(
   const scopedAdmin = createScopedAdminContext(permissions);
   scopedAdmin.assertClinicInScope(clinicId);
   return scopedAdmin.client;
+}
+
+function createMenuReadClient(guard: ProcessApiSuccess, clinicId: string) {
+  if (normalizeRole(guard.permissions.role) === 'manager') {
+    return guard.supabase;
+  }
+
+  return createMenuScopedClient(guard.permissions, clinicId);
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +60,7 @@ export async function GET(request: NextRequest) {
     });
     if (!guard.success) return guard.error;
 
-    const supabase = createMenuScopedClient(guard.permissions, clinic_id);
+    const supabase = createMenuReadClient(guard, clinic_id);
     const { data, error } = await supabase
       .from('menus')
       .select(MENU_RESPONSE_COLUMNS)

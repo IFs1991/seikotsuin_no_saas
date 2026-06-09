@@ -32,6 +32,7 @@ import {
   canWriteReservationsForClinic,
   isCrossClinicReservationView,
 } from './permissions';
+import { isAreaManagerRole } from '@/lib/constants/roles';
 import { isCancelledOrNoShowAppointment } from './utils/view';
 import {
   buildAppointmentResourceIds,
@@ -39,7 +40,9 @@ import {
 } from './utils/scheduler-resources';
 import { buildMenuOptions } from './utils/menu-options';
 
-const READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
+const CROSS_CLINIC_READ_ONLY_RESERVATION_MESSAGE = '他院の予約は閲覧専用です。';
+const MANAGER_READ_ONLY_RESERVATION_MESSAGE =
+  'マネージャーは予約タイムラインの閲覧のみ可能です。';
 
 interface StaffShiftApiItem {
   staff_id: string;
@@ -107,7 +110,11 @@ function ReservationsPageContent() {
   const { selectedClinicId } = useSelectedClinic();
   const clinicId = selectedClinicId;
   const role = profile?.role ?? null;
+  const isManager = isAreaManagerRole(role);
   const profileClinicId = profile?.clinicId ?? null;
+  const readOnlyReservationMessage = isManager
+    ? MANAGER_READ_ONLY_RESERVATION_MESSAGE
+    : CROSS_CLINIC_READ_ONLY_RESERVATION_MESSAGE;
   const canWriteReservations = useMemo(
     () =>
       canWriteReservationsForClinic({
@@ -141,6 +148,7 @@ function ReservationsPageContent() {
   const options = useMemo(() => buildMenuOptions(menus), [menus]);
 
   const [currentView, setCurrentView] = useState<ViewMode>('timeline');
+  const effectiveCurrentView: ViewMode = isManager ? 'timeline' : currentView;
   const [appointmentDensity, setAppointmentDensity] =
     useState<AppointmentDensity>('comfortable');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -215,6 +223,20 @@ function ReservationsPageContent() {
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
+
+    if (isManager) {
+      setCurrentView('timeline');
+      setShowAppointmentForm(false);
+      setFormInitialValues(undefined);
+
+      if (viewParam === 'register' || viewParam === 'list') {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('view', 'timeline');
+        router.replace(`/reservations?${params.toString()}`);
+      }
+      return;
+    }
+
     if (
       viewParam === 'list' ||
       viewParam === 'register' ||
@@ -224,7 +246,7 @@ function ReservationsPageContent() {
         if (!canWriteReservations) {
           setCurrentView('timeline');
           setShowAppointmentForm(false);
-          setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+          setUpdateError(readOnlyReservationMessage);
           return;
         }
 
@@ -235,7 +257,13 @@ function ReservationsPageContent() {
 
       setCurrentView(viewParam as ViewMode);
     }
-  }, [canWriteReservations, searchParams]);
+  }, [
+    canWriteReservations,
+    isManager,
+    readOnlyReservationMessage,
+    router,
+    searchParams,
+  ]);
 
   useEffect(() => {
     if (!canWriteReservations) {
@@ -296,7 +324,7 @@ function ReservationsPageContent() {
   const handleTimeSlotClick = useCallback(
     (resourceId: string, hour: number, minute: number) => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        setUpdateError(readOnlyReservationMessage);
         return;
       }
 
@@ -308,14 +336,23 @@ function ReservationsPageContent() {
       });
       setShowAppointmentForm(true);
     },
-    [canWriteReservations, currentDateString]
+    [canWriteReservations, currentDateString, readOnlyReservationMessage]
   );
 
   const handleViewChange = useCallback(
     (view: ViewMode) => {
+      if (isManager) {
+        setCurrentView('timeline');
+        if (view !== 'timeline') {
+          setUpdateError(readOnlyReservationMessage);
+          router.replace('/reservations?view=timeline');
+        }
+        return;
+      }
+
       if (view === 'register') {
         if (!canWriteReservations) {
-          setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+          setUpdateError(readOnlyReservationMessage);
           return;
         }
 
@@ -329,13 +366,19 @@ function ReservationsPageContent() {
       params.set('view', view);
       router.replace(`/reservations?${params.toString()}`);
     },
-    [canWriteReservations, router, searchParams]
+    [
+      canWriteReservations,
+      isManager,
+      readOnlyReservationMessage,
+      router,
+      searchParams,
+    ]
   );
 
   const handleRegistrationSuccess = useCallback(
     (newAppointment: Appointment) => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
+        setUpdateError(readOnlyReservationMessage);
         return;
       }
 
@@ -349,7 +392,13 @@ function ReservationsPageContent() {
       // 画面反映は即時に行い、サーバ真値との再同期は裏で走らせる。
       void loadAppointments(currentDate, { force: true, silent: true });
     },
-    [addAppointment, canWriteReservations, currentDate, loadAppointments]
+    [
+      addAppointment,
+      canWriteReservations,
+      currentDate,
+      loadAppointments,
+      readOnlyReservationMessage,
+    ]
   );
 
   const handleCloseAppointmentForm = useCallback(() => {
@@ -362,8 +411,8 @@ function ReservationsPageContent() {
       updatedAppointment: Appointment
     ): Promise<AppointmentUpdateResult> => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
-        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+        setUpdateError(readOnlyReservationMessage);
+        return { ok: false, error: readOnlyReservationMessage };
       }
 
       setUpdateError(null);
@@ -375,7 +424,7 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [canWriteReservations, updateAppointment]
+    [canWriteReservations, readOnlyReservationMessage, updateAppointment]
   );
 
   const handleMoveAppointment = useCallback(
@@ -386,8 +435,8 @@ function ReservationsPageContent() {
       newStartMinute: number
     ): Promise<AppointmentUpdateResult> => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
-        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+        setUpdateError(readOnlyReservationMessage);
+        return { ok: false, error: readOnlyReservationMessage };
       }
 
       setUpdateError(null);
@@ -402,7 +451,7 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [canWriteReservations, moveAppointment]
+    [canWriteReservations, moveAppointment, readOnlyReservationMessage]
   );
 
   const canCancelReservation = canWriteReservations;
@@ -410,8 +459,8 @@ function ReservationsPageContent() {
   const handleCancelAppointment = useCallback(
     async (id: string): Promise<AppointmentUpdateResult> => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
-        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+        setUpdateError(readOnlyReservationMessage);
+        return { ok: false, error: readOnlyReservationMessage };
       }
 
       setUpdateError(null);
@@ -421,14 +470,14 @@ function ReservationsPageContent() {
       }
       return result;
     },
-    [canWriteReservations, cancelAppointment]
+    [canWriteReservations, cancelAppointment, readOnlyReservationMessage]
   );
 
   const handleConfirmPending = useCallback(
     async (appt: Appointment) => {
       if (!canWriteReservations) {
-        setUpdateError(READ_ONLY_RESERVATION_MESSAGE);
-        return { ok: false, error: READ_ONLY_RESERVATION_MESSAGE };
+        setUpdateError(readOnlyReservationMessage);
+        return { ok: false, error: readOnlyReservationMessage };
       }
 
       return handleUpdateAppointment({
@@ -437,7 +486,7 @@ function ReservationsPageContent() {
         color: 'blue',
       });
     },
-    [canWriteReservations, handleUpdateAppointment]
+    [canWriteReservations, handleUpdateAppointment, readOnlyReservationMessage]
   );
 
   const notifications = useMemo<Notification[]>(() => [], []);
@@ -481,7 +530,7 @@ function ReservationsPageContent() {
       );
     }
 
-    switch (currentView) {
+    switch (effectiveCurrentView) {
       case 'timeline':
         return (
           <Scheduler
@@ -512,7 +561,7 @@ function ReservationsPageContent() {
   }, [
     appointmentDensity,
     canWriteReservations,
-    currentView,
+    effectiveCurrentView,
     error,
     handleMoveAppointment,
     handleTimeSlotClick,
@@ -527,6 +576,19 @@ function ReservationsPageContent() {
   }
 
   if (!clinicId) {
+    if (isManager) {
+      return (
+        <div className='p-6'>
+          <p className='font-bold text-gray-800'>
+            担当院がまだ設定されていません。
+          </p>
+          <p className='mt-2 text-sm text-gray-600'>
+            管理者に担当店舗の設定を依頼してください。
+          </p>
+        </div>
+      );
+    }
+
     return <div className='p-6'>Clinic is not assigned.</div>;
   }
 
@@ -544,7 +606,7 @@ function ReservationsPageContent() {
       />
       <div className='flex-grow flex flex-col h-[calc(100vh-64px)]'>
         <ControlBar
-          currentView={currentView}
+          currentView={effectiveCurrentView}
           onViewChange={handleViewChange}
           currentDate={currentDate}
           onDateChange={setCurrentDate}
@@ -552,6 +614,8 @@ function ReservationsPageContent() {
           density={appointmentDensity}
           onDensityChange={setAppointmentDensity}
           canCreateReservation={canWriteReservations}
+          timelineOnly={isManager}
+          readOnlyMessage={readOnlyReservationMessage}
         />
         <main className='flex flex-grow flex-col overflow-hidden bg-gray-100 relative'>
           <DaySummary
@@ -564,7 +628,7 @@ function ReservationsPageContent() {
               {updateError}
             </div>
           )}
-          {isCrossClinicView && (
+          {isCrossClinicView && !isManager && (
             <div className='mx-4 mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700'>
               他院の予約状況を閲覧中です。新規登録・編集・キャンセルは所属院でのみ行えます。
             </div>
@@ -592,6 +656,7 @@ function ReservationsPageContent() {
                 canCancelReservation ? handleCancelAppointment : undefined
               }
               readOnly={!canWriteReservations}
+              readOnlyMessage={readOnlyReservationMessage}
             />
           )}
 
@@ -615,6 +680,7 @@ function ReservationsPageContent() {
               onClose={closePendingModal}
               onConfirm={handleConfirmPending}
               canConfirm={canWriteReservations}
+              readOnlyMessage={readOnlyReservationMessage}
             />
           )}
 

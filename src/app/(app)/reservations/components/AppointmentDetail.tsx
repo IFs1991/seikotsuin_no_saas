@@ -50,6 +50,7 @@ interface Props {
   ) => Promise<AppointmentUpdateResult>;
   onCancelAppointment?: (id: string) => Promise<AppointmentUpdateResult>;
   readOnly?: boolean;
+  readOnlyMessage?: string;
 }
 
 export const AppointmentDetail: React.FC<Props> = ({
@@ -62,6 +63,7 @@ export const AppointmentDetail: React.FC<Props> = ({
   onUpdate,
   onCancelAppointment,
   readOnly = false,
+  readOnlyMessage = '他院の予約は閲覧専用です。',
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Appointment>(appointment);
@@ -155,7 +157,7 @@ export const AppointmentDetail: React.FC<Props> = ({
 
   const handleSave = async () => {
     if (readOnly) {
-      setErrorMessage('他院の予約は閲覧専用です。');
+      setErrorMessage(readOnlyMessage);
       return;
     }
 
@@ -316,7 +318,7 @@ export const AppointmentDetail: React.FC<Props> = ({
           )}
           {readOnly && (
             <div className='mb-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700'>
-              他院の予約は閲覧専用です。
+              {readOnlyMessage}
             </div>
           )}
           {isEditing ? (

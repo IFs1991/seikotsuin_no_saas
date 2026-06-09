@@ -46,4 +46,14 @@ describe('reservation clinic permissions', () => {
       })
     ).toBe(false);
   });
+
+  it('manager は所属院と選択院が一致しても予約を書き込めない', () => {
+    expect(
+      canWriteReservationsForClinic({
+        selectedClinicId: 'clinic-1',
+        profileClinicId: 'clinic-1',
+        role: 'manager',
+      })
+    ).toBe(false);
+  });
 });

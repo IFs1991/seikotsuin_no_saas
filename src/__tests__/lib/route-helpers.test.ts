@@ -113,6 +113,32 @@ describe('processClinicScopedBody', () => {
     }
   });
 
+  it('passes denied roles into processApiRequest before schema and clinic scope checks', async () => {
+    const mockErrorResponse = { status: 403 };
+    const request = fakeRequest();
+    processApiRequestMock.mockResolvedValue({
+      success: false,
+      error: mockErrorResponse,
+    });
+
+    const result = await processClinicScopedBody(
+      request,
+      testInsertSchema,
+      {
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは作成できません。',
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      requireBody: true,
+      deniedRoles: ['manager'],
+      deniedRoleMessage: 'マネージャーは作成できません。',
+    });
+    expect(canAccessClinicScopeMock).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when body fails schema validation', async () => {
     processApiRequestMock.mockResolvedValue({
       success: true,

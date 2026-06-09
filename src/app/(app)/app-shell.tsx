@@ -12,7 +12,10 @@ import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { canUseAdminNavigation } from '@/lib/navigation/items';
-import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  canAccessAdminUIWithCompat,
+  isAreaManagerRole,
+} from '@/lib/constants/roles';
 import { resolveInitialSelectedClinicId } from '@/lib/clinics/selection';
 
 const DARK_CLASS = 'dark';
@@ -49,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const profileRole = profile?.role ?? null;
   const profileClinicId = profile?.clinicId ?? null;
+  const isManagerProfile = isAreaManagerRole(profileRole);
 
   const canAccessAdminNavigation = React.useMemo(
     () => canUseAdminNavigation(profileRole),
@@ -113,19 +117,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const initialClinicId = React.useMemo(
     () =>
       resolveInitialSelectedClinicId({
+        role: profileRole,
         profileClinicId,
         currentClinicId,
         clinics,
       }),
-    [clinics, currentClinicId, profileClinicId]
+    [clinics, currentClinicId, profileClinicId, profileRole]
   );
   const fallbackClinic = React.useMemo(
     () =>
-      buildFallbackClinic(
-        profile?.clinicId ?? null,
-        profile?.clinicName ?? null
-      ),
-    [profile?.clinicId, profile?.clinicName]
+      isManagerProfile
+        ? null
+        : buildFallbackClinic(
+            profile?.clinicId ?? null,
+            profile?.clinicName ?? null
+          ),
+    [isManagerProfile, profile?.clinicId, profile?.clinicName]
   );
   const shouldShowLegalFooter = !pathname.startsWith('/reservations');
 

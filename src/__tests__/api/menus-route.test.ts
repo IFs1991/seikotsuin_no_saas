@@ -2,6 +2,7 @@ import { processClinicScopedBody } from '@/lib/route-helpers';
 import { processApiRequest } from '@/lib/api-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import type { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -111,6 +112,72 @@ describe('GET /api/menus', () => {
         clinicId,
         name: '子院独自メニュー',
         durationMinutes: 45,
+      }),
+    ]);
+  });
+
+  it('manager lists assigned clinic menus through the guarded user client without permission fallback', async () => {
+    const menu = {
+      id: '123e4567-e89b-12d3-a456-426614174003',
+      clinic_id: clinicId,
+      name: '担当院メニュー',
+      description: null,
+      category: 'treatment',
+      price: 5000,
+      duration_minutes: 30,
+      is_insurance_applicable: false,
+      options: [],
+      is_active: true,
+    };
+    const order = jest.fn().mockResolvedValue({ data: [menu], error: null });
+    const eqDeleted = jest.fn().mockReturnValue({ order });
+    const eqClinic = jest.fn().mockReturnValue({ eq: eqDeleted });
+    const select = jest.fn().mockReturnValue({ eq: eqClinic });
+    const userScopedSupabase = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'menus') return { select };
+        return {};
+      }),
+    };
+    const request = {
+      nextUrl: {
+        searchParams: new URLSearchParams({ clinic_id: clinicId }),
+      },
+      url: `http://localhost/api/menus?clinic_id=${clinicId}`,
+      method: 'GET',
+    } as unknown as NextRequest;
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: {
+        id: userId,
+        email: 'manager@example.com',
+        role: 'manager',
+      },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'fallback-clinic',
+        clinic_scope_ids: ['jwt-clinic'],
+      },
+      supabase: userScopedSupabase,
+    });
+
+    const { GET } = await import('@/app/api/menus/route');
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId,
+      requireClinicMatch: true,
+    });
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+    expect(userScopedSupabase.from).toHaveBeenCalledWith('menus');
+    expect(json.data).toEqual([
+      expect.objectContaining({
+        id: menu.id,
+        clinicId,
+        name: '担当院メニュー',
       }),
     ]);
   });

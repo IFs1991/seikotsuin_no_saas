@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   createScopedAdminContext,
+  createAdminClient,
   type SupabaseServerClient,
 } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
@@ -20,7 +21,7 @@ import {
   mapReservationUpdateToRow,
   type ReservationPricingSnapshot,
 } from './schema';
-import { STAFF_ROLES } from '@/lib/constants/roles';
+import { normalizeRole, STAFF_ROLES } from '@/lib/constants/roles';
 import {
   enqueueReservationCreated,
   enqueueReservationChange,
@@ -88,6 +89,10 @@ const RESERVATION_LIST_SELECT =
   'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, is_staff_requested, staff_nomination_fee';
 const RESERVATION_INSERT_RETURN_SELECT =
   'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
+const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
+  'マネージャーは予約の作成はできません。';
+const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
+  'マネージャーは予約の変更はできません。';
 
 function isReservationOptionSelection(
   value: unknown
@@ -260,6 +265,17 @@ function createScopedReservationClient(
   const scopedAdmin = createScopedAdminContext(permissions);
   scopedAdmin.assertClinicInScope(clinicId);
   return scopedAdmin.client;
+}
+
+function createReservationReadClient(
+  permissions: Parameters<typeof createScopedAdminContext>[0],
+  clinicId: string
+) {
+  if (normalizeRole(permissions.role) === 'manager') {
+    return createAdminClient();
+  }
+
+  return createScopedReservationClient(permissions, clinicId);
 }
 
 function getReservationConstraintErrorMessage(
@@ -638,7 +654,7 @@ export async function GET(request: NextRequest) {
     });
     if (!auth.success) return auth.error;
 
-    const supabase = createScopedReservationClient(auth.permissions, clinic_id);
+    const supabase = createReservationReadClient(auth.permissions, clinic_id);
 
     const query = supabase
       .from('reservation_list_view')
@@ -687,7 +703,11 @@ export async function POST(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(
       request,
-      reservationInsertSchema
+      reservationInsertSchema,
+      {
+        deniedRoles: ['manager'],
+        deniedRoleMessage: MANAGER_RESERVATION_CREATE_DENIED_MESSAGE,
+      }
     );
     if (!result.success) return result.error;
 
@@ -825,7 +845,11 @@ export async function PATCH(request: NextRequest) {
     const result = await processClinicScopedBody(
       request,
       reservationUpdateSchema,
-      { allowedRoles: Array.from(STAFF_ROLES) }
+      {
+        allowedRoles: Array.from(STAFF_ROLES),
+        deniedRoles: ['manager'],
+        deniedRoleMessage: MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE,
+      }
     );
     if (!result.success) return result.error;
 

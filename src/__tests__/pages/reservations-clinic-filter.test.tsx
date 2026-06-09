@@ -11,18 +11,24 @@
  */
 
 import React from 'react';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
+
+const mockRouterReplace = jest.fn();
+const mockSearchView: { value: string | null } = { value: null };
 
 // next/navigation をモック
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: jest.fn(),
-    replace: jest.fn(),
+    replace: mockRouterReplace,
     prefetch: jest.fn(),
   }),
   useSearchParams: () => ({
-    get: jest.fn().mockReturnValue(null),
-    toString: () => '',
+    get: (key: string) => (key === 'view' ? mockSearchView.value : null),
+    toString: () =>
+      mockSearchView.value
+        ? new URLSearchParams({ view: mockSearchView.value }).toString()
+        : '',
   }),
   usePathname: () => '/reservations',
 }));
@@ -86,6 +92,8 @@ jest.mock('@/hooks/useReservationFormData', () => ({
 
 // useAppointments をモック（引数を記録）
 const mockAppointmentsFn = jest.fn();
+const mockLoadAppointments = jest.fn();
+const mockMoveAppointment = jest.fn();
 jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
   useAppointments: (clinicId: string | null) => {
     mockAppointmentsFn(clinicId);
@@ -94,10 +102,10 @@ jest.mock('@/app/(app)/reservations/hooks/useAppointments', () => ({
       pendingAppointments: [],
       loading: false,
       error: null,
-      loadAppointments: jest.fn(),
+      loadAppointments: mockLoadAppointments,
       addAppointment: jest.fn(),
       updateAppointment: jest.fn().mockResolvedValue({ ok: true }),
-      moveAppointment: jest.fn().mockResolvedValue({ ok: true }),
+      moveAppointment: mockMoveAppointment,
       cancelAppointment: jest.fn().mockResolvedValue({ ok: true }),
     };
   },
@@ -121,6 +129,9 @@ jest.mock('@/app/(app)/reservations/components/AppointmentList', () => ({
 jest.mock('@/app/(app)/reservations/components/AppointmentForm', () => ({
   AppointmentForm: () => <div data-testid='appointment-form' />,
 }));
+jest.mock('@/app/(app)/reservations/components/AppointmentFormModal', () => ({
+  AppointmentFormModal: () => <div data-testid='appointment-form-modal' />,
+}));
 jest.mock('@/app/(app)/reservations/components/AppointmentDetail', () => ({
   AppointmentDetail: () => <div data-testid='appointment-detail' />,
 }));
@@ -141,12 +152,55 @@ jest.mock('lucide-react', () => ({
 
 import ReservationsPage from '@/app/(app)/reservations/page';
 
+interface AppointmentUpdateResultForTest {
+  ok: boolean;
+  error?: string;
+}
+
+interface SchedulerPropsForTest {
+  readOnly: boolean;
+  onAppointmentMove: (
+    id: string,
+    newResourceId: string,
+    newStartHour: number,
+    newStartMinute: number
+  ) => Promise<AppointmentUpdateResultForTest>;
+}
+
+function isSchedulerPropsForTest(
+  value: unknown
+): value is SchedulerPropsForTest {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const props = value as {
+    readOnly?: unknown;
+    onAppointmentMove?: unknown;
+  };
+  return (
+    typeof props.readOnly === 'boolean' &&
+    typeof props.onAppointmentMove === 'function'
+  );
+}
+
+function getLatestSchedulerProps(): SchedulerPropsForTest {
+  const props = mockScheduler.mock.calls.at(-1)?.[0];
+  if (!isSchedulerPropsForTest(props)) {
+    throw new Error('Scheduler props were not captured');
+  }
+
+  return props;
+}
+
 describe('ReservationsPage クリニックフィルタ', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSelectedClinicId.value = 'clinic-selected';
     mockProfileClinicId.value = 'clinic-original';
     mockProfileRole.value = 'staff';
+    mockSearchView.value = null;
+    mockMoveAppointment.mockResolvedValue({ ok: true });
   });
 
   // 🔴 Red: Task C 実装前は profile.clinicId ('clinic-original') が渡される
@@ -227,5 +281,112 @@ describe('ReservationsPage クリニックフィルタ', () => {
     expect(schedulerProps).toEqual(
       expect.objectContaining({ readOnly: false })
     );
+  });
+
+  it('manager は所属院と同じ店舗を選択中でも予約画面を書き込めない', async () => {
+    mockSelectedClinicId.value = 'clinic-original';
+    mockProfileClinicId.value = 'clinic-original';
+    mockProfileRole.value = 'manager';
+
+    render(<ReservationsPage />);
+
+    await waitFor(() => {
+      expect(mockAppointmentsFn).toHaveBeenCalledWith('clinic-original');
+    });
+
+    const controlBarProps = mockControlBar.mock.calls.at(-1)?.[0];
+    const schedulerProps = getLatestSchedulerProps();
+    expect(controlBarProps).toEqual(
+      expect.objectContaining({ canCreateReservation: false })
+    );
+    expect(schedulerProps.readOnly).toBe(true);
+  });
+
+  it('manager が view=list を直接開いてもタイムラインだけを表示する', async () => {
+    mockSelectedClinicId.value = 'clinic-original';
+    mockProfileClinicId.value = 'clinic-original';
+    mockProfileRole.value = 'manager';
+    mockSearchView.value = 'list';
+
+    render(<ReservationsPage />);
+
+    await waitFor(() => {
+      expect(mockScheduler).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByTestId('appointment-list')).not.toBeInTheDocument();
+    expect(getLatestSchedulerProps().readOnly).toBe(true);
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      '/reservations?view=timeline'
+    );
+  });
+
+  it('manager が view=register を直接開いても予約フォームを開かない', async () => {
+    mockSelectedClinicId.value = 'clinic-original';
+    mockProfileClinicId.value = 'clinic-original';
+    mockProfileRole.value = 'manager';
+    mockSearchView.value = 'register';
+
+    render(<ReservationsPage />);
+
+    await waitFor(() => {
+      expect(mockScheduler).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.queryByTestId('appointment-form-modal')
+    ).not.toBeInTheDocument();
+    expect(getLatestSchedulerProps().readOnly).toBe(true);
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      '/reservations?view=timeline'
+    );
+  });
+
+  it('manager に担当院がない場合は空状態を表示して予約読み込みを呼ばない', async () => {
+    mockSelectedClinicId.value = null;
+    mockProfileClinicId.value = 'profile-clinic';
+    mockProfileRole.value = 'manager';
+
+    render(<ReservationsPage />);
+
+    expect(
+      await screen.findByText('担当院がまだ設定されていません。')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('管理者に担当店舗の設定を依頼してください。')
+    ).toBeInTheDocument();
+    expect(mockAppointmentsFn).toHaveBeenCalledWith(null);
+    expect(mockFormDataFn).toHaveBeenCalledWith(null, {
+      includeCustomers: false,
+    });
+    expect(mockLoadAppointments).not.toHaveBeenCalled();
+  });
+
+  it('manager の予約移動コールバックは mutation hook を呼ばず読み取り専用エラーを返す', async () => {
+    mockSelectedClinicId.value = 'clinic-original';
+    mockProfileClinicId.value = 'clinic-original';
+    mockProfileRole.value = 'manager';
+
+    render(<ReservationsPage />);
+
+    await waitFor(() => {
+      expect(mockScheduler).toHaveBeenCalled();
+    });
+
+    let result: AppointmentUpdateResultForTest | null = null;
+    await act(async () => {
+      result = await getLatestSchedulerProps().onAppointmentMove(
+        'appointment-1',
+        'resource-1',
+        10,
+        0
+      );
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'マネージャーは予約タイムラインの閲覧のみ可能です。',
+    });
+    expect(mockMoveAppointment).not.toHaveBeenCalled();
   });
 });

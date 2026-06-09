@@ -11,6 +11,7 @@ import {
   createErrorResponse,
   processApiRequest,
   type ApiErrorResponse,
+  type ProcessApiOptions,
   type ProcessApiSuccess,
 } from '@/lib/api-helpers';
 import {
@@ -82,6 +83,11 @@ export type ClinicScopedBodyResult<T> =
   | ClinicScopedBodySuccess<T>
   | ClinicScopedBodyFailure;
 
+export type ProcessClinicScopedBodyOptions = Pick<
+  ProcessApiOptions,
+  'allowedRoles' | 'deniedRoles' | 'deniedRoleMessage'
+>;
+
 /**
  * POST/PATCH で共通の「body 取得 → schema validation → clinic scope 検証」を
  * processApiRequest 1 回で完結させる。
@@ -97,13 +103,23 @@ export type ClinicScopedBodyResult<T> =
 export async function processClinicScopedBody<T>(
   request: NextRequest,
   schema: ZodType<T>,
-  options?: { allowedRoles?: string[] }
+  options?: ProcessClinicScopedBodyOptions
 ): Promise<ClinicScopedBodyResult<T>> {
   // 1. Auth + origin + body を 1 回で取得
-  const result = await processApiRequest(request, {
+  const apiOptions: ProcessApiOptions = {
     requireBody: true,
-    allowedRoles: options?.allowedRoles,
-  });
+  };
+  if (options?.allowedRoles) {
+    apiOptions.allowedRoles = options.allowedRoles;
+  }
+  if (options?.deniedRoles) {
+    apiOptions.deniedRoles = options.deniedRoles;
+  }
+  if (options?.deniedRoleMessage) {
+    apiOptions.deniedRoleMessage = options.deniedRoleMessage;
+  }
+
+  const result = await processApiRequest(request, apiOptions);
   if (!result.success) {
     return { success: false, error: result.error };
   }

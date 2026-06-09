@@ -1,4 +1,5 @@
 import { processClinicScopedBody } from '@/lib/route-helpers';
+import { processApiRequest } from '@/lib/api-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import {
   enqueueReservationChange,
@@ -11,6 +12,14 @@ jest.mock('@/lib/route-helpers', () => {
   return {
     ...actual,
     processClinicScopedBody: jest.fn(),
+  };
+});
+
+jest.mock('@/lib/api-helpers', () => {
+  const actual = jest.requireActual('@/lib/api-helpers');
+  return {
+    ...actual,
+    processApiRequest: jest.fn(),
   };
 });
 
@@ -28,6 +37,7 @@ jest.mock('@/lib/notifications/email/reservation-enqueue', () => ({
 }));
 
 const processClinicScopedBodyMock = processClinicScopedBody as jest.Mock;
+const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const enqueueReservationCreatedMock = enqueueReservationCreated as jest.Mock;
 const enqueueReservationChangeMock = enqueueReservationChange as jest.Mock;
@@ -73,6 +83,44 @@ const buildRequest = () =>
   new NextRequest('http://localhost/api/reservations', {
     method: 'POST',
   });
+
+const buildUsableResourceRow = (id: string) => ({
+  id,
+  type: 'staff',
+  is_deleted: false,
+  is_active: true,
+  is_bookable: true,
+  nomination_fee: 0,
+});
+
+const buildReservationListViewRow = (row: {
+  id: string;
+  clinic_id: string;
+  customer_id: string;
+  menu_id: string;
+  staff_id: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  notes?: string | null;
+}) => ({
+  id: row.id,
+  clinic_id: row.clinic_id,
+  customer_id: row.customer_id,
+  customer_name: 'テスト患者',
+  menu_id: row.menu_id,
+  menu_name: '整体',
+  staff_id: row.staff_id,
+  staff_name: '田中先生',
+  start_time: row.start_time,
+  end_time: row.end_time,
+  status: row.status,
+  channel: 'web',
+  notes: row.notes ?? null,
+  selected_options: [],
+  is_staff_requested: false,
+  staff_nomination_fee: 0,
+});
 
 function createPendingCountQuery(count: number) {
   const query = {} as PendingCountQuery;
@@ -124,15 +172,20 @@ function createUpdateBuilder<T>(data: T) {
 describe('POST/PATCH /api/reservations email enqueue route', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-001', email: 'staff@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: 'clinic-001',
+        clinic_scope_ids: ['clinic-001'],
+      },
+      supabase: { from: jest.fn() },
+    });
   });
 
   it('passes menu_id and the scoped admin client into reservation_created enqueue', async () => {
-    const notificationClient = { from: jest.fn() };
     const assertClinicInScope = jest.fn();
-    createScopedAdminContextMock.mockReturnValue({
-      client: notificationClient,
-      assertClinicInScope,
-    });
 
     const conflictQuery = createPendingCountQuery(0);
     const insertedRow = {
@@ -154,15 +207,41 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     const resourcesTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'staff-001' })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder(buildUsableResourceRow('staff-001'))
+        ),
     };
-    const supabase = {
+    const customersTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'customer-001' })),
+    };
+    const menusTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'menu-001', price: 0 })),
+    };
+    const reservationListViewTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder(buildReservationListViewRow(insertedRow))
+        ),
+    };
+    const notificationClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
         if (table === 'resources') return resourcesTable;
+        if (table === 'customers') return customersTable;
+        if (table === 'menus') return menusTable;
+        if (table === 'reservation_list_view') return reservationListViewTable;
         return {};
       }),
     };
+    createScopedAdminContextMock.mockReturnValue({
+      client: notificationClient,
+      assertClinicInScope,
+    });
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -182,7 +261,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
         clinic_id: 'clinic-001',
         clinic_scope_ids: ['clinic-001'],
       },
-      supabase,
+      supabase: notificationClient,
     });
     enqueueReservationCreatedMock.mockResolvedValueOnce({ id: 'outbox-001' });
 
@@ -208,12 +287,6 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
   });
 
   it('keeps POST successful even when reservation_created enqueue fails', async () => {
-    const notificationClient = { from: jest.fn() };
-    createScopedAdminContextMock.mockReturnValue({
-      client: notificationClient,
-      assertClinicInScope: jest.fn(),
-    });
-
     const conflictQuery = createPendingCountQuery(0);
     const insertedRow = {
       id: 'res-002',
@@ -234,15 +307,41 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     const resourcesTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'staff-001' })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder(buildUsableResourceRow('staff-001'))
+        ),
     };
-    const supabase = {
+    const customersTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'customer-002' })),
+    };
+    const menusTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'menu-002', price: 0 })),
+    };
+    const reservationListViewTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder(buildReservationListViewRow(insertedRow))
+        ),
+    };
+    const notificationClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
         if (table === 'resources') return resourcesTable;
+        if (table === 'customers') return customersTable;
+        if (table === 'menus') return menusTable;
+        if (table === 'reservation_list_view') return reservationListViewTable;
         return {};
       }),
     };
+    createScopedAdminContextMock.mockReturnValue({
+      client: notificationClient,
+      assertClinicInScope: jest.fn(),
+    });
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -261,7 +360,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
         clinic_id: 'clinic-001',
         clinic_scope_ids: ['clinic-001'],
       },
-      supabase,
+      supabase: notificationClient,
     });
     enqueueReservationCreatedMock.mockRejectedValueOnce(
       new Error('RLS: permission denied for table email_outbox')
@@ -275,13 +374,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
   });
 
   it('keeps PATCH successful even when reservation_change enqueue fails', async () => {
-    const notificationClient = { from: jest.fn() };
     const assertClinicInScope = jest.fn();
-    createScopedAdminContextMock.mockReturnValue({
-      client: notificationClient,
-      assertClinicInScope,
-    });
-
     const existingRow = {
       id: 'res-003',
       clinic_id: 'clinic-001',
@@ -304,12 +397,16 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       select: jest.fn().mockReturnValue(createSingleSelectBuilder(existingRow)),
       update: jest.fn().mockReturnValue(createUpdateBuilder(updatedRow)),
     };
-    const supabase = {
+    const notificationClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
         return {};
       }),
     };
+    createScopedAdminContextMock.mockReturnValue({
+      client: notificationClient,
+      assertClinicInScope,
+    });
 
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
@@ -325,7 +422,7 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
         clinic_id: 'clinic-001',
         clinic_scope_ids: ['clinic-001'],
       },
-      supabase,
+      supabase: notificationClient,
     });
     enqueueReservationChangeMock.mockRejectedValueOnce(
       new Error('RLS: permission denied for table email_outbox')

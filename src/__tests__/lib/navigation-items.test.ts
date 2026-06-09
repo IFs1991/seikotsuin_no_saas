@@ -3,10 +3,13 @@ import {
   AREA_MANAGER_ADMIN_MENU_ITEMS,
   CLINIC_ADMIN_MENU_ITEMS,
   OPERATION_MENU_ITEMS,
+  QUICK_ACCESS_ITEMS,
   canUseAdminNavigation,
   getCurrentNavigationItemId,
   getAdminMenuItemsForRole,
   getNavigationMode,
+  getOperationMenuItemsForRole,
+  getQuickAccessItemsForRole,
   getVisibleNavigationItems,
 } from '@/lib/navigation/items';
 
@@ -102,6 +105,91 @@ describe('navigation items', () => {
     expect(visibleItems.map(item => item.href)).toContain('/admin/settings');
     expect(visibleItems.map(item => item.href)).toContain('/multi-store');
     expect(visibleItems.map(item => item.href)).not.toContain('/admin/tenants');
+  });
+
+  it('manager の日報管理サブメニューには日報入力を表示しない', () => {
+    const mode = getNavigationMode({
+      role: 'manager',
+      profileLoading: false,
+    });
+    const visibleItems = getVisibleNavigationItems(mode);
+    const dailyReportsItem = visibleItems.find(
+      item => item.id === 'daily-reports'
+    );
+
+    expect(dailyReportsItem?.subItems?.map(item => item.id)).toEqual([
+      'daily-list',
+    ]);
+    expect(
+      getCurrentNavigationItemId('/daily-reports/input', visibleItems)
+    ).toBe('daily-reports');
+    const defaultDailyReportsItem = OPERATION_MENU_ITEMS.find(
+      item => item.id === 'daily-reports'
+    );
+
+    expect(
+      defaultDailyReportsItem?.subItems?.map(item => item.id)
+    ).toEqual(['daily-input', 'daily-list']);
+  });
+
+  it('manager の予約管理サブメニューは担当院タイムラインだけを表示する', () => {
+    const managerOperationItems = getOperationMenuItemsForRole('manager');
+    const reservationsItem = managerOperationItems.find(
+      item => item.id === 'reservations'
+    );
+
+    expect(reservationsItem?.subItems).toEqual([
+      {
+        id: 'reservation-timeline',
+        label: '担当院タイムライン',
+        href: '/reservations?view=timeline',
+      },
+    ]);
+    expect(
+      reservationsItem?.subItems?.map(item => item.id)
+    ).not.toContain('reservation-register');
+    expect(
+      reservationsItem?.subItems?.map(item => item.id)
+    ).not.toContain('reservation-list');
+
+    const defaultReservationsItem = OPERATION_MENU_ITEMS.find(
+      item => item.id === 'reservations'
+    );
+    expect(defaultReservationsItem?.subItems?.map(item => item.id)).toEqual([
+      'reservation-timeline',
+      'reservation-register',
+      'reservation-list',
+    ]);
+  });
+
+  it('manager は管理セクション非表示時も manager 用の店舗運用メニューを使う', () => {
+    const visibleItems = getVisibleNavigationItems({
+      role: 'manager',
+      isHqAdmin: false,
+      showOperationMenus: true,
+      showAdminMenus: false,
+    });
+    const reservationsItem = visibleItems.find(
+      item => item.id === 'reservations'
+    );
+
+    expect(reservationsItem?.subItems?.map(item => item.id)).toEqual([
+      'reservation-timeline',
+    ]);
+  });
+
+  it('manager の quick access には新規予約導線を表示しない', () => {
+    const managerQuickAccessItems = getQuickAccessItemsForRole('manager');
+
+    expect(managerQuickAccessItems.map(item => item.id)).not.toContain(
+      'quick-reservation'
+    );
+    expect(managerQuickAccessItems.map(item => item.href)).not.toContain(
+      '/reservations?view=register'
+    );
+    expect(QUICK_ACCESS_ITEMS.map(item => item.id)).toContain(
+      'quick-reservation'
+    );
   });
 
   it('staff は店舗運用メニューのみ表示対象にする', () => {
