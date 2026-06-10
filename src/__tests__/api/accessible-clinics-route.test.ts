@@ -39,7 +39,7 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     jest.clearAllMocks();
   });
 
-  it('returns only clinics from active manager assignments', async () => {
+  it('returns only clinics from active manager assignments and selects the first sorted clinic', async () => {
     const adminClient = {
       from: jest.fn(),
     };
@@ -91,7 +91,7 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
         { id: 'clinic-b', name: '渋谷院' },
         { id: 'clinic-a', name: '池袋院' },
       ],
-      currentClinicId: 'clinic-a',
+      currentClinicId: 'clinic-b',
     });
     expect(mockResolveManagerAssignedClinics).toHaveBeenCalledWith(
       adminClient,
@@ -100,6 +100,48 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     expect(adminClient.from).not.toHaveBeenCalled();
     expect(resolveScopedClinicIdsMock).not.toHaveBeenCalled();
     expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+  });
+
+  it('selects the only active manager assignment as currentClinicId', async () => {
+    const adminClient = {
+      from: jest.fn(),
+    };
+    const permissions = {
+      role: 'manager',
+      clinic_id: null,
+      clinic_scope_ids: [],
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+    mockResolveManagerAssignedClinics.mockResolvedValue([
+      {
+        id: 'assignment-a',
+        manager_user_id: 'manager-1',
+        clinic_id: 'clinic-a',
+        clinic_name: '池袋院',
+        assigned_at: '2026-06-04T00:00:00.000Z',
+        revoked_at: null,
+      },
+    ]);
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual({
+      clinics: [{ id: 'clinic-a', name: '池袋院' }],
+      currentClinicId: 'clinic-a',
+    });
+    expect(resolveScopedClinicIdsMock).not.toHaveBeenCalled();
   });
 
   it('returns empty clinics and null currentClinicId when manager has no assignments', async () => {

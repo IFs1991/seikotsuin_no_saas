@@ -158,13 +158,11 @@ export async function GET(request: NextRequest) {
       }
 
       const clinics = toSortedUniqueClinicOptions(managerAssignments);
+      const currentClinicId = clinics[0]?.id ?? null;
 
       return createSuccessResponse({
         clinics,
-        currentClinicId: resolveCurrentAccessibleClinicId(
-          clinics,
-          permissions.clinic_id
-        ),
+        currentClinicId,
       });
     }
 

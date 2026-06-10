@@ -62,6 +62,20 @@ describe('resolveInitialSelectedClinicId', () => {
     ).toBeNull();
   });
 
+  it('manager は current clinic id がある場合はそれを初期選択する', () => {
+    expect(
+      resolveInitialSelectedClinicId({
+        role: 'manager',
+        profileClinicId: 'profile-clinic',
+        currentClinicId: 'assigned-current-clinic',
+        clinics: [
+          { id: 'assigned-current-clinic' },
+          { id: 'assigned-other-clinic' },
+        ],
+      })
+    ).toBe('assigned-current-clinic');
+  });
+
   it('manager は担当店舗が1つだけならその店舗を自動選択する', () => {
     expect(
       resolveInitialSelectedClinicId({

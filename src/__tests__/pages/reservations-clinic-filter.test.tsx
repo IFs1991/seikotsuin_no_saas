@@ -37,10 +37,23 @@ jest.mock('next/navigation', () => ({
 const mockSelectedClinicId: { value: string | null } = {
   value: 'clinic-selected',
 };
+interface MockAccessibleClinic {
+  id: string;
+  name: string;
+}
+const mockAccessibleClinics: { value: MockAccessibleClinic[] } = {
+  value: [{ id: 'clinic-selected', name: '選択院' }],
+};
+const mockClinicsLoading: { value: boolean } = { value: false };
+const mockClinicsError: { value: string | null } = { value: null };
 jest.mock('@/providers/selected-clinic-context', () => ({
   useSelectedClinic: () => ({
     selectedClinicId: mockSelectedClinicId.value,
     setSelectedClinicId: jest.fn(),
+    clinics: mockAccessibleClinics.value,
+    currentClinicId: mockSelectedClinicId.value,
+    clinicsLoading: mockClinicsLoading.value,
+    clinicsError: mockClinicsError.value,
   }),
 }));
 
@@ -197,6 +210,9 @@ describe('ReservationsPage クリニックフィルタ', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSelectedClinicId.value = 'clinic-selected';
+    mockAccessibleClinics.value = [{ id: 'clinic-selected', name: '選択院' }];
+    mockClinicsLoading.value = false;
+    mockClinicsError.value = null;
     mockProfileClinicId.value = 'clinic-original';
     mockProfileRole.value = 'staff';
     mockSearchView.value = null;
@@ -344,6 +360,7 @@ describe('ReservationsPage クリニックフィルタ', () => {
 
   it('manager に担当院がない場合は空状態を表示して予約読み込みを呼ばない', async () => {
     mockSelectedClinicId.value = null;
+    mockAccessibleClinics.value = [];
     mockProfileClinicId.value = 'profile-clinic';
     mockProfileRole.value = 'manager';
 
@@ -360,6 +377,47 @@ describe('ReservationsPage クリニックフィルタ', () => {
       includeCustomers: false,
     });
     expect(mockLoadAppointments).not.toHaveBeenCalled();
+  });
+
+  it('manager に担当院があるが未選択の場合は担当院選択を案内する', async () => {
+    mockSelectedClinicId.value = null;
+    mockAccessibleClinics.value = [
+      { id: 'clinic-assigned-a', name: '池袋院' },
+      { id: 'clinic-assigned-b', name: '渋谷院' },
+    ];
+    mockProfileClinicId.value = null;
+    mockProfileRole.value = 'manager';
+
+    render(<ReservationsPage />);
+
+    expect(
+      await screen.findByText('担当院を選択してください。')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '画面上部の店舗選択から予約タイムラインを表示する担当院を選んでください。'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('担当院がまだ設定されていません。')
+    ).not.toBeInTheDocument();
+    expect(mockLoadAppointments).not.toHaveBeenCalled();
+  });
+
+  it('manager に担当院がある場合は未設定メッセージを表示しない', async () => {
+    mockSelectedClinicId.value = 'clinic-assigned-a';
+    mockAccessibleClinics.value = [{ id: 'clinic-assigned-a', name: '池袋院' }];
+    mockProfileClinicId.value = null;
+    mockProfileRole.value = 'manager';
+
+    render(<ReservationsPage />);
+
+    await waitFor(() => {
+      expect(mockAppointmentsFn).toHaveBeenCalledWith('clinic-assigned-a');
+    });
+    expect(
+      screen.queryByText('担当院がまだ設定されていません。')
+    ).not.toBeInTheDocument();
   });
 
   it('manager の予約移動コールバックは mutation hook を呼ばず読み取り専用エラーを返す', async () => {
