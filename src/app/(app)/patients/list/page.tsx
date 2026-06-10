@@ -3,12 +3,14 @@
 import React, { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePatientsList, type Patient } from '@/hooks/usePatientsList';
+import { useUserProfileContext } from '@/providers/user-profile-context';
 import { PatientsTable } from '@/components/patients/patients-table';
 import { PatientModal } from '@/components/patients/patient-modal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Loader2 } from 'lucide-react';
+import { normalizeRole } from '@/lib/constants/roles';
 
 // トースト用の簡易実装
 function Toast({
@@ -36,7 +38,24 @@ function Toast({
   );
 }
 
-export default function PatientsListPage() {
+function ManagerAccessClosedMessage() {
+  return (
+    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <Card className='max-w-[900px] mx-auto bg-card'>
+        <CardHeader>
+          <CardTitle>マネージャーは患者一覧を利用できません</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className='text-gray-600 dark:text-gray-300'>
+            患者分析画面から担当院の集計を確認してください。
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PatientsListContent() {
   const {
     patients,
     isLoading,
@@ -216,4 +235,14 @@ export default function PatientsListPage() {
       )}
     </div>
   );
+}
+
+export default function PatientsListPage() {
+  const { profile, loading } = useUserProfileContext();
+
+  if (!loading && normalizeRole(profile?.role) === 'manager') {
+    return <ManagerAccessClosedMessage />;
+  }
+
+  return <PatientsListContent />;
 }

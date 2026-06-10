@@ -1,7 +1,9 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { PatientAnalysisData, PatientRiskScore } from '@/types/api';
+import type { Database } from '@/types/supabase';
 
-interface PatientVisitSummaryRow {
+export interface PatientVisitSummaryRow {
+  clinic_id: string | null;
   patient_id: string;
   patient_name: string;
   first_visit_date: string | null;
@@ -22,6 +24,20 @@ interface NormalizedPatientSummary {
   lastVisitDate: string | null;
   visitCategory: VisitCategoryLabel;
 }
+
+export interface PatientAnalysisWithMetrics {
+  data: PatientAnalysisData;
+  totalRevenue: number;
+  totalVisitCount: number;
+  highRiskPatientCount: number;
+}
+
+export type BuildPatientAnalysisOptions = {
+  now?: Date;
+  includePatientLists?: boolean;
+};
+
+export type PatientAnalysisClient = Pick<SupabaseClient<Database>, 'from'>;
 
 const PATIENT_VISIT_SUMMARY_COLUMNS = [
   'patient_id',
@@ -167,32 +183,13 @@ function createVisitSegmentCounts(): Record<VisitCategoryLabel, number> {
   return { ...EMPTY_VISIT_SEGMENT_COUNTS };
 }
 
-/**
- * 患者分析データを生成する共有ヘルパー関数
- *
- * /api/patients と /api/customers/analysis の両方で使用され、
- * 同一のペイロードを保証します。
- *
- * @param supabase - Supabaseクライアント
- * @param clinicId - クリニックID
- * @returns 患者分析データ
- */
-export async function generatePatientAnalysis(
-  supabase: SupabaseClient,
-  clinicId: string
-): Promise<PatientAnalysisData> {
-  // patient_visit_summary ビューからデータ取得
-  const { data: patients, error: patientsError } = await supabase
-    .from('patient_visit_summary')
-    .select(PATIENT_VISIT_SUMMARY_COLUMNS)
-    .eq('clinic_id', clinicId);
-
-  if (patientsError) {
-    throw patientsError;
-  }
-
-  const typedPatients = (patients as unknown as PatientVisitSummaryRow[]) ?? [];
-  const todayUtcTime = startOfUtcDay(new Date()).getTime();
+export function buildPatientAnalysisFromRows(
+  typedPatients: readonly PatientVisitSummaryRow[],
+  options: BuildPatientAnalysisOptions = {}
+): PatientAnalysisWithMetrics {
+  const now = options.now ?? new Date();
+  const includePatientLists = options.includePatientLists ?? true;
+  const todayUtcTime = startOfUtcDay(now).getTime();
   const visitSegmentCounts = createVisitSegmentCounts();
   const riskScores: PatientRiskScore[] = [];
   const ltvRanking: PatientAnalysisData['ltvRanking'] = [];
@@ -201,10 +198,13 @@ export async function generatePatientAnalysis(
   let continuingPatientCount = 0;
   let activePatientCount = 0;
   let totalVisitCount = 0;
+  let totalRevenue = 0;
+  let highRiskPatientCount = 0;
 
   for (const row of typedPatients) {
     const patient = normalizePatientSummary(row);
     totalVisitCount += patient.visitCount;
+    totalRevenue += patient.totalRevenue;
     visitSegmentCounts[patient.visitCategory] += 1;
 
     if (patient.visitCount >= 1) initialVisitPatientCount += 1;
@@ -214,23 +214,32 @@ export async function generatePatientAnalysis(
     }
     if (patient.visitCount >= 5) continuingPatientCount += 1;
 
-    ltvRanking.push({
-      patient_id: patient.patientId,
-      name: patient.name,
-      ltv: patient.totalRevenue,
-      visit_count: patient.visitCount,
-      total_revenue: patient.totalRevenue,
-    });
+    if (includePatientLists) {
+      ltvRanking.push({
+        patient_id: patient.patientId,
+        name: patient.name,
+        ltv: patient.totalRevenue,
+        visit_count: patient.visitCount,
+        total_revenue: patient.totalRevenue,
+      });
+    }
 
     const score = calculateChurnRiskScore(patient, todayUtcTime);
 
-    riskScores.push({
-      patient_id: patient.patientId,
-      name: patient.name,
-      riskScore: score,
-      lastVisit: patient.lastVisitDate,
-      category: getRiskCategory(score),
-    });
+    const category = getRiskCategory(score);
+    if (category === 'high') {
+      highRiskPatientCount += 1;
+    }
+
+    if (includePatientLists) {
+      riskScores.push({
+        patient_id: patient.patientId,
+        name: patient.name,
+        riskScore: score,
+        lastVisit: patient.lastVisitDate,
+        category,
+      });
+    }
   }
 
   const conversionRate =
@@ -250,19 +259,23 @@ export async function generatePatientAnalysis(
     ],
   };
 
-  const sortedRiskScores = riskScores.sort((a, b) => b.riskScore - a.riskScore);
+  const sortedRiskScores = includePatientLists
+    ? riskScores.sort((a, b) => b.riskScore - a.riskScore)
+    : [];
 
   // フォローアップリスト
-  const followUpList = sortedRiskScores
-    .filter(patient => patient.riskScore > FOLLOW_UP_RISK_THRESHOLD)
-    .slice(0, 10)
-    .map(patient => ({
-      patient_id: patient.patient_id,
-      name: patient.name,
-      reason: `${patient.riskScore}%の離脱リスク`,
-      lastVisit: patient.lastVisit,
-      action: '電話フォロー推奨',
-    }));
+  const followUpList = includePatientLists
+    ? sortedRiskScores
+        .filter(patient => patient.riskScore > FOLLOW_UP_RISK_THRESHOLD)
+        .slice(0, 10)
+        .map(patient => ({
+          patient_id: patient.patient_id,
+          name: patient.name,
+          reason: `${patient.riskScore}%の離脱リスク`,
+          lastVisit: patient.lastVisit,
+          action: '電話フォロー推奨',
+        }))
+    : [];
 
   // 訪問回数
   const visitCounts = {
@@ -275,20 +288,78 @@ export async function generatePatientAnalysis(
 
   // 分析データを組み立てて返す
   return {
-    conversionData,
-    visitCounts,
-    riskScores: sortedRiskScores.slice(0, TOP_ANALYSIS_ROWS_LIMIT),
-    ltvRanking: ltvRanking
-      .sort((a, b) => b.ltv - a.ltv)
-      .slice(0, TOP_ANALYSIS_ROWS_LIMIT),
-    segmentData: {
-      visit: VISIT_CATEGORY_LABELS.map(label => ({
-        label,
-        value: visitSegmentCounts[label],
-      })),
+    data: {
+      conversionData,
+      visitCounts,
+      riskScores: includePatientLists
+        ? sortedRiskScores.slice(0, TOP_ANALYSIS_ROWS_LIMIT)
+        : [],
+      ltvRanking: includePatientLists
+        ? ltvRanking
+            .sort((a, b) => b.ltv - a.ltv)
+            .slice(0, TOP_ANALYSIS_ROWS_LIMIT)
+        : [],
+      segmentData: {
+        visit: VISIT_CATEGORY_LABELS.map(label => ({
+          label,
+          value: visitSegmentCounts[label],
+        })),
+      },
+      followUpList,
+      totalPatients: typedPatients.length,
+      activePatients: activePatientCount,
     },
-    followUpList,
-    totalPatients: typedPatients.length,
-    activePatients: activePatientCount,
+    totalRevenue,
+    totalVisitCount,
+    highRiskPatientCount,
   };
+}
+
+export async function fetchPatientVisitSummaryRowsForClinicIds(
+  supabase: PatientAnalysisClient,
+  clinicIds: readonly string[]
+): Promise<PatientVisitSummaryRow[]> {
+  if (clinicIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('patient_visit_summary')
+    .select(PATIENT_VISIT_SUMMARY_COLUMNS)
+    .in('clinic_id', [...clinicIds])
+    .returns<PatientVisitSummaryRow[]>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+/**
+ * 患者分析データを生成する共有ヘルパー関数
+ *
+ * /api/patients と /api/customers/analysis の両方で使用され、
+ * 同一のペイロードを保証します。
+ *
+ * @param supabase - Supabaseクライアント
+ * @param clinicId - クリニックID
+ * @returns 患者分析データ
+ */
+export async function generatePatientAnalysis(
+  supabase: PatientAnalysisClient,
+  clinicId: string
+): Promise<PatientAnalysisData> {
+  // patient_visit_summary ビューからデータ取得
+  const { data: patients, error: patientsError } = await supabase
+    .from('patient_visit_summary')
+    .select(PATIENT_VISIT_SUMMARY_COLUMNS)
+    .eq('clinic_id', clinicId)
+    .returns<PatientVisitSummaryRow[]>();
+
+  if (patientsError) {
+    throw patientsError;
+  }
+
+  return buildPatientAnalysisFromRows(patients ?? []).data;
 }

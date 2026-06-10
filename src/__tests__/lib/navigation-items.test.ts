@@ -178,6 +178,27 @@ describe('navigation items', () => {
     ]);
   });
 
+  it('manager の患者導線は患者分析だけを表示する', () => {
+    const managerOperationItems = getOperationMenuItemsForRole('manager');
+    const patientsItem = managerOperationItems.find(
+      item => item.id === 'patients'
+    );
+
+    expect(patientsItem).toEqual({
+      id: 'patients',
+      label: '患者分析',
+      href: '/patients',
+    });
+    expect(managerOperationItems.map(item => item.href)).not.toContain(
+      '/patients/list'
+    );
+    expect(
+      managerOperationItems.flatMap(item => item.subItems ?? []).map(
+        item => item.href
+      )
+    ).not.toContain('/patients/list');
+  });
+
   it('manager の quick access には新規予約導線を表示しない', () => {
     const managerQuickAccessItems = getQuickAccessItemsForRole('manager');
 

@@ -66,19 +66,21 @@ describe('🔴 Red: GET /api/customers/analysis', () => {
     const mockSupabase = {
       from: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: [
-              {
-                patient_id: 'patient-1',
-                patient_name: '田中太郎',
-                clinic_id: clinicId,
-                visit_count: 5,
-                total_revenue: 50000,
-                last_visit_date: '2025-01-15',
-                visit_category: '中度リピート',
-              },
-            ],
-            error: null,
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockResolvedValue({
+              data: [
+                {
+                  patient_id: 'patient-1',
+                  patient_name: '田中太郎',
+                  clinic_id: clinicId,
+                  visit_count: 5,
+                  total_revenue: 50000,
+                  last_visit_date: '2025-01-15',
+                  visit_category: '中度リピート',
+                },
+              ],
+              error: null,
+            }),
           }),
         }),
       }),
@@ -113,9 +115,11 @@ describe('🔴 Red: GET /api/customers/analysis', () => {
     const mockSupabase = {
       from: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
           }),
         }),
       }),
@@ -148,9 +152,11 @@ describe('🔴 Red: GET /api/customers/analysis', () => {
     const mockSupabase = {
       from: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: [],
-            error: null,
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockResolvedValue({
+              data: [],
+              error: null,
+            }),
           }),
         }),
       }),

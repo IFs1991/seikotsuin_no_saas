@@ -12,6 +12,10 @@ import type {
   ManagerDailyReportsOverview,
   ManagerDailyReportsOverviewQuery,
 } from './manager-daily-reports';
+import type {
+  ManagerPatientAnalysisPeriodType,
+  ManagerPatientAnalysisResponse,
+} from './manager-patient-analysis';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -54,6 +58,13 @@ interface RevenueCreateRequest {
   menu_id?: string | null;
   payment_method_id?: string | null;
 }
+
+export type ManagerPatientAnalysisQuery = {
+  clinicId?: string | null;
+  period?: ManagerPatientAnalysisPeriodType;
+  startDate?: string | null;
+  endDate?: string | null;
+};
 
 export type DailyReportsListData = {
   reports: Array<{
@@ -458,6 +469,19 @@ export const api = {
           start_date: query.startDate,
           end_date: query.endDate,
           ...(query.status ? { status: query.status } : {}),
+        }
+      ),
+  },
+
+  managerPatients: {
+    getAnalysis: (query: ManagerPatientAnalysisQuery = {}) =>
+      apiClient.get<ManagerPatientAnalysisResponse>(
+        '/api/manager/patients/analysis',
+        {
+          ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
+          ...(query.period ? { period: query.period } : {}),
+          ...(query.startDate ? { start_date: query.startDate } : {}),
+          ...(query.endDate ? { end_date: query.endDate } : {}),
         }
       ),
   },
