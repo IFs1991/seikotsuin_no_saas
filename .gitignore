@@ -20,6 +20,20 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+jest-output.json
+jest-windows.json
+jest-windows.md
+eslint-out*.json
+eslint-output.json
+eslint-report.json
+build-errors.txt
+build_errors.txt
+ts-errors*
+tsc-errors.txt
+tmpclaude-*
+playwright-report/
+test-results/
+.kamui/
 
 # Runtime data
 pids
@@ -137,4 +151,3 @@ supabase/.env
 # Windows reserved / accidental files
 nul
 .worktrees/
-
