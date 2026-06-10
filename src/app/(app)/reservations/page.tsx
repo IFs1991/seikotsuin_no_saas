@@ -107,7 +107,12 @@ function ReservationsPageContent() {
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading } = useUserProfileContext();
   // Task C: profile.clinicId の代わりに Context の selectedClinicId を使用
-  const { selectedClinicId } = useSelectedClinic();
+  const {
+    selectedClinicId,
+    clinics: accessibleClinics,
+    clinicsLoading,
+    clinicsError,
+  } = useSelectedClinic();
   const clinicId = selectedClinicId;
   const role = profile?.role ?? null;
   const isManager = isAreaManagerRole(role);
@@ -577,6 +582,27 @@ function ReservationsPageContent() {
 
   if (!clinicId) {
     if (isManager) {
+      if (clinicsLoading) {
+        return <div className='p-6'>担当院を読み込んでいます...</div>;
+      }
+
+      if (clinicsError) {
+        return <div className='p-6 text-red-600'>{clinicsError}</div>;
+      }
+
+      if (accessibleClinics.length > 0) {
+        return (
+          <div className='p-6'>
+            <p className='font-bold text-gray-800'>
+              担当院を選択してください。
+            </p>
+            <p className='mt-2 text-sm text-gray-600'>
+              画面上部の店舗選択から予約タイムラインを表示する担当院を選んでください。
+            </p>
+          </div>
+        );
+      }
+
       return (
         <div className='p-6'>
           <p className='font-bold text-gray-800'>
