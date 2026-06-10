@@ -82,7 +82,7 @@
 - メール: Resend
 - テスト: Jest, React Testing Library, Playwright
 
-主要依存とスクリプトは [package.json](/C:/Users/seekf/Desktop/seikotsuin_management_saas/package.json) を正本としてください。
+主要依存とスクリプトは [package.json](package.json) を正本としてください。
 
 ## セキュリティとアクセス制御
 
@@ -91,7 +91,7 @@
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `NEXT_PUBLIC_APP_URL`
-- 保護対象ルートとログイン分岐は [middleware.ts](/C:/Users/seekf/Desktop/seikotsuin_management_saas/middleware.ts) で管理しています。
+- 保護対象ルートとログイン分岐は [middleware.ts](middleware.ts) で管理しています。
   - `/admin/**` は管理者ログインへ
   - それ以外の保護ルートはスタッフログインへ
 - CSP ヘッダー、レート制限、Pilot mode の制御も `middleware.ts` に集約されています。
@@ -136,7 +136,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - 本番相当: `.env.production.example`
 - 参考: `env.example`
 
-環境変数の取り扱い方針は [docs/operations/ENV_MANAGEMENT_POLICY.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/operations/ENV_MANAGEMENT_POLICY.md) を参照してください。
+環境変数の取り扱い方針は [docs/operations/ENV_MANAGEMENT_POLICY.md](docs/operations/ENV_MANAGEMENT_POLICY.md) を参照してください。
 
 ## ローカル起動
 
@@ -171,7 +171,7 @@ npm run verify:supabase
 - `supabase db push --local --dry-run`
 - `npm run verify:supabase`
 
-詳細は [docs/stabilization/DoD-v0.1.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/stabilization/DoD-v0.1.md) を参照してください。
+詳細は [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md) を参照してください。
 
 ### Docker
 
@@ -189,7 +189,7 @@ docker compose up -d
 docker compose ps
 ```
 
-ヘルスチェックは `GET /api/health` で確認できます。実装は [src/app/api/health/route.ts](/C:/Users/seekf/Desktop/seikotsuin_management_saas/src/app/api/health/route.ts) です。
+ヘルスチェックは `GET /api/health` で確認できます。実装は [src/app/api/health/route.ts](src/app/api/health/route.ts) です。
 
 ## テストと検証
 
@@ -211,7 +211,7 @@ npm run test:e2e:pw
 npm run e2e:cleanup
 ```
 
-- Playwright 設定は [playwright.config.ts](/C:/Users/seekf/Desktop/seikotsuin_management_saas/playwright.config.ts) を参照してください。
+- Playwright 設定は [playwright.config.ts](playwright.config.ts) を参照してください。
 - `PLAYWRIGHT_BASE_URL` 未指定時は `NEXT_PUBLIC_APP_URL`、それもなければ `http://127.0.0.1:3000` を使います。
 - `webServer` は `npm run dev -- --port <baseURL port>` で起動します。
 
@@ -224,11 +224,11 @@ npm run scan:secrets
 
 ## 運用ドキュメント
 
-- 安定化 DoD: [docs/stabilization/DoD-v0.1.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/stabilization/DoD-v0.1.md)
-- Runbook: [docs/operations/RUNBOOK.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/operations/RUNBOOK.md)
-- 環境変数管理: [docs/operations/ENV_MANAGEMENT_POLICY.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/operations/ENV_MANAGEMENT_POLICY.md)
-- 全体概要: [docs/PROJECT_OVERVIEW.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/PROJECT_OVERVIEW.md)
-- Playwright 手引き: [docs/Playwright_E2E手引書.md](/C:/Users/seekf/Desktop/seikotsuin_management_saas/docs/Playwright_E2E手引書.md)
+- 安定化 DoD: [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md)
+- Runbook: [docs/operations/RUNBOOK.md](docs/operations/RUNBOOK.md)
+- 環境変数管理: [docs/operations/ENV_MANAGEMENT_POLICY.md](docs/operations/ENV_MANAGEMENT_POLICY.md)
+- 全体概要: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md)
+- Playwright 手引き: [docs/Playwright_E2E手引書.md](docs/Playwright_E2E手引書.md)
 
 ## ディレクトリ概要
 

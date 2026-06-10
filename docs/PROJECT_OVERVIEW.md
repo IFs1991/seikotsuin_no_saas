@@ -4,6 +4,8 @@
 **バージョン**: 1.0
 **作成者**: Claude Code (Sonnet 4.5)
 
+> 注記: この文書は歴史的な概要資料です。現行コードベースの正本は `README.md` と `docs/stabilization/DoD-v0.1.md` を参照してください。
+
 ---
 
 ## 📋 目次
