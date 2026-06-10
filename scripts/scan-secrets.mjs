@@ -27,7 +27,6 @@ const allowLists = {
     'src/lib/env.ts',
     'src/lib/supabase/server.ts',
     'src/lib/supabase/client.ts',
-    'src/lib/supabase-browser.ts',
   ]),
 };
 

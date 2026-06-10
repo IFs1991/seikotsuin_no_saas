@@ -20,22 +20,8 @@ describe('Supabase client Database generics', () => {
     expect(source).toMatch(/createServerClient<Database>/);
   });
 
-  test('supabase-browser.ts が createSupabaseClient<Database> を使用する', () => {
-    const filePath = path.resolve(__dirname, '../../lib/supabase-browser.ts');
-    const source = fs.readFileSync(filePath, 'utf-8');
-    expect(source).toMatch(/createSupabaseClient<Database>/);
-  });
-
   test('server.ts が Database 型をインポートしている', () => {
     const filePath = path.resolve(__dirname, '../../lib/supabase/server.ts');
-    const source = fs.readFileSync(filePath, 'utf-8');
-    expect(source).toMatch(
-      /import.*Database.*from.*['"]@\/types\/supabase['"]/
-    );
-  });
-
-  test('supabase-browser.ts が Database 型をインポートしている', () => {
-    const filePath = path.resolve(__dirname, '../../lib/supabase-browser.ts');
     const source = fs.readFileSync(filePath, 'utf-8');
     expect(source).toMatch(
       /import.*Database.*from.*['"]@\/types\/supabase['"]/
