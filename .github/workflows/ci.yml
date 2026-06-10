@@ -84,6 +84,10 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          # src/lib/env.ts requires this at module load during page-data
+          # collection. The build never uses the real key, so a placeholder
+          # is sufficient (least privilege: do not pass the real secret).
+          SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key'
           NEXT_PUBLIC_APP_URL: 'http://localhost:3000'
           NEXT_PUBLIC_APP_ENV: 'ci'
           NEXT_PUBLIC_ENABLE_ADMIN_FEATURES: 'true'
