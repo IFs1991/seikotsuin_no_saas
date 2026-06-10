@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PatientsPage from '@/app/(app)/patients/page';
 import { usePatientAnalysis } from '@/hooks/usePatientAnalysis';
+import { useManagerPatientAnalysis } from '@/hooks/useManagerPatientAnalysis';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 
 // Mock the custom hook
@@ -12,6 +13,12 @@ jest.mock('@/hooks/usePatientAnalysis');
 const mockUsePatientAnalysis = usePatientAnalysis as jest.MockedFunction<
   typeof usePatientAnalysis
 >;
+
+jest.mock('@/hooks/useManagerPatientAnalysis');
+const mockUseManagerPatientAnalysis =
+  useManagerPatientAnalysis as jest.MockedFunction<
+    typeof useManagerPatientAnalysis
+  >;
 
 jest.mock('@/providers/user-profile-context');
 const mockUseUserProfileContext = useUserProfileContext as jest.MockedFunction<
@@ -86,11 +93,101 @@ describe('PatientsPage', () => {
       loading: false,
       error: null,
     });
+    mockUseManagerPatientAnalysis.mockReturnValue({
+      data: {
+        summary: {
+          assignedClinicCount: 2,
+          totalPatients: 120,
+          activePatients: 90,
+          newPatients: 80,
+          returnPatients: 60,
+          conversionRate: 75,
+          averageVisitCount: 3.4,
+          totalRevenue: 2400000,
+          averageRevenuePerPatient: 20000,
+          highRiskPatientCount: 5,
+        },
+        clinics: [
+          {
+            clinicId: 'clinic-1',
+            clinicName: '池袋院',
+            totalPatients: 70,
+            activePatients: 50,
+            newPatients: 45,
+            returnPatients: 30,
+            conversionRate: 66.67,
+            averageVisitCount: 3,
+            totalRevenue: 1400000,
+            averageRevenuePerPatient: 20000,
+            highRiskPatientCount: 3,
+          },
+          {
+            clinicId: 'clinic-2',
+            clinicName: '渋谷院',
+            totalPatients: 50,
+            activePatients: 40,
+            newPatients: 35,
+            returnPatients: 30,
+            conversionRate: 85.71,
+            averageVisitCount: 4,
+            totalRevenue: 1000000,
+            averageRevenuePerPatient: 20000,
+            highRiskPatientCount: 2,
+          },
+        ],
+        selectedClinic: {
+          clinicId: 'clinic-1',
+          clinicName: '池袋院',
+          totalPatients: 70,
+          activePatients: 50,
+          newPatients: 45,
+          returnPatients: 30,
+          conversionRate: 66.67,
+          averageVisitCount: 3,
+          totalRevenue: 1400000,
+          averageRevenuePerPatient: 20000,
+          highRiskPatientCount: 3,
+          segmentData: {
+            visit: [{ label: '軽度リピート', value: 30 }],
+          },
+          riskScores: [
+            {
+              patient_id: 'patient-1',
+              name: '選択院 太郎',
+              riskScore: 80,
+              lastVisit: '2026-05-01',
+              category: 'high',
+            },
+          ],
+          ltvRanking: [],
+          followUpList: [
+            {
+              patient_id: 'patient-1',
+              name: '選択院 太郎',
+              reason: '80%の離脱リスク',
+              lastVisit: '2026-05-01',
+              action: '電話フォロー推奨',
+            },
+          ],
+        },
+        period: {
+          type: 'all',
+          startDate: null,
+          endDate: null,
+          periodApplied: false,
+        },
+      },
+      loading: false,
+      error: null,
+      selectedClinicId: 'clinic-1',
+      setSelectedClinicId: jest.fn(),
+      refetch: jest.fn(),
+    });
     mockUseUserProfileContext.mockReturnValue({
       profile: {
         id: 'user-1',
         email: 'user@example.com',
-        role: 'manager',
+        role: 'staff',
         clinicId: 'clinic-1',
         isActive: true,
         isAdmin: false,
@@ -158,5 +255,84 @@ describe('PatientsPage', () => {
     expect(screen.getByText('来院区分')).toBeInTheDocument();
     expect(screen.getByText('軽度リピート')).toBeInTheDocument();
     expect(screen.getByText('35人')).toBeInTheDocument();
+  });
+
+  test('manager should render assigned clinic analysis without calling single-clinic analysis hook', () => {
+    mockUseUserProfileContext.mockReturnValue({
+      profile: {
+        id: 'manager-1',
+        email: 'manager@example.com',
+        role: 'manager',
+        clinicId: 'legacy-clinic',
+        isActive: true,
+        isAdmin: false,
+      },
+      loading: false,
+      error: null,
+    });
+
+    render(<PatientsPage />);
+
+    expect(mockUsePatientAnalysis).not.toHaveBeenCalled();
+    expect(mockUseManagerPatientAnalysis).toHaveBeenCalled();
+    expect(screen.getByText('担当院合計')).toBeInTheDocument();
+    expect(screen.getByText('担当院別分析')).toBeInTheDocument();
+    expect(screen.getByText('分析期間: 全期間')).toBeInTheDocument();
+    expect(screen.getAllByText('池袋院').length).toBeGreaterThan(0);
+    expect(screen.queryByText('患者一覧')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '連絡する' })).toBeNull();
+  });
+
+  test('manager without assignments should show assignment empty state', () => {
+    mockUseUserProfileContext.mockReturnValue({
+      profile: {
+        id: 'manager-1',
+        email: 'manager@example.com',
+        role: 'manager',
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
+      },
+      loading: false,
+      error: null,
+    });
+    mockUseManagerPatientAnalysis.mockReturnValue({
+      data: {
+        summary: {
+          assignedClinicCount: 0,
+          totalPatients: 0,
+          activePatients: 0,
+          newPatients: 0,
+          returnPatients: 0,
+          conversionRate: 0,
+          averageVisitCount: 0,
+          totalRevenue: 0,
+          averageRevenuePerPatient: 0,
+          highRiskPatientCount: 0,
+        },
+        clinics: [],
+        selectedClinic: null,
+        period: {
+          type: 'all',
+          startDate: null,
+          endDate: null,
+          periodApplied: false,
+        },
+      },
+      loading: false,
+      error: null,
+      selectedClinicId: null,
+      setSelectedClinicId: jest.fn(),
+      refetch: jest.fn(),
+    });
+
+    render(<PatientsPage />);
+
+    expect(
+      screen.getByText('担当院がまだ設定されていません。')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('管理者に担当店舗の設定を依頼してください。')
+    ).toBeInTheDocument();
   });
 });

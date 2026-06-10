@@ -1,4 +1,7 @@
-import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service';
+import {
+  generatePatientAnalysis,
+  type PatientAnalysisClient,
+} from '@/lib/services/patient-analysis-service';
 
 describe('generatePatientAnalysis', () => {
   beforeEach(() => {
@@ -12,16 +15,22 @@ describe('generatePatientAnalysis', () => {
   });
 
   function buildSupabase(rows: unknown[]) {
-    const eq = jest.fn().mockResolvedValue({ data: rows, error: null });
-    const select = jest.fn().mockReturnValue({ eq });
+    const returns = jest.fn().mockResolvedValue({ data: rows, error: null });
+    const eq = jest.fn().mockReturnValue({ returns });
+    const inFilter = jest.fn().mockReturnValue({ returns });
+    const select = jest.fn().mockReturnValue({ eq, in: inFilter });
     const from = jest.fn().mockReturnValue({ select });
     const rpc = jest.fn();
 
+    const client = { from } as PatientAnalysisClient;
+
     return {
-      client: { from, rpc },
+      client,
       from,
       select,
       eq,
+      inFilter,
+      returns,
       rpc,
     };
   }
@@ -67,7 +76,7 @@ describe('generatePatientAnalysis', () => {
       },
     ]);
 
-    const result = await generatePatientAnalysis(supabase.client as any, clinicId);
+    const result = await generatePatientAnalysis(supabase.client, clinicId);
 
     expect(supabase.from).toHaveBeenCalledWith('patient_visit_summary');
     expect(supabase.rpc).not.toHaveBeenCalled();

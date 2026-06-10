@@ -10,6 +10,7 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { normalizeRole } from '@/lib/constants/roles';
 
 type CustomerDetail = {
   id: string;
@@ -26,6 +27,23 @@ const customAttributeLabels: Record<string, string> = {
   memo: '補足メモ',
 };
 
+function ManagerAccessClosedMessage() {
+  return (
+    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='max-w-[900px] mx-auto'>
+        <Card className='bg-card'>
+          <CardHeader>
+            <CardTitle>マネージャーは患者詳細を利用できません</CardTitle>
+            <CardDescription>
+              患者分析画面から担当院の集計を確認してください。
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function PatientDetailPage() {
   const params = useParams();
   const patientIdRaw = params?.id;
@@ -39,6 +57,7 @@ export default function PatientDetailPage() {
     error: profileError,
   } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
+  const isManager = normalizeRole(profile?.role) === 'manager';
 
   const [data, setData] = useState<CustomerDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(clinicId));
@@ -46,6 +65,10 @@ export default function PatientDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    if (isManager) {
+      return;
+    }
 
     if (!clinicId || !patientId) {
       setLoading(false);
@@ -89,7 +112,7 @@ export default function PatientDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [clinicId, patientId]);
+  }, [clinicId, isManager, patientId]);
 
   const customAttributes = useMemo(() => {
     if (!data?.customAttributes) return [];
@@ -115,6 +138,10 @@ export default function PatientDetailPage() {
         </div>
       </div>
     );
+  }
+
+  if (!profileLoading && isManager) {
+    return <ManagerAccessClosedMessage />;
   }
 
   if (!clinicId && !profileLoading) {

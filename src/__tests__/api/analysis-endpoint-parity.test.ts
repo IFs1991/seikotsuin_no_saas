@@ -80,9 +80,11 @@ describe('🔴 Red: Analysis Endpoint Parity', () => {
     const mockSupabase = {
       from: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({
-            data: mockPatients,
-            error: null,
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockResolvedValue({
+              data: mockPatients,
+              error: null,
+            }),
           }),
         }),
       }),
