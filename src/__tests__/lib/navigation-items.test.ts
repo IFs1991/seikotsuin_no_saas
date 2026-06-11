@@ -97,6 +97,9 @@ describe('navigation items', () => {
     expect(mode.canAccessAdminNavigation).toBe(true);
     expect(mode.showAdminMenus).toBe(true);
     expect(mode.showOperationMenus).toBe(true);
+    expect(visibleItems.find(item => item.id === 'dashboard')?.href).toBe(
+      '/dashboard'
+    );
     expect(visibleItems.map(item => item.href)).toContain('/admin');
     expect(visibleItems.map(item => item.href)).toContain('/admin/users');
     expect(visibleItems.map(item => item.href)).toContain(
@@ -127,9 +130,10 @@ describe('navigation items', () => {
       item => item.id === 'daily-reports'
     );
 
-    expect(
-      defaultDailyReportsItem?.subItems?.map(item => item.id)
-    ).toEqual(['daily-input', 'daily-list']);
+    expect(defaultDailyReportsItem?.subItems?.map(item => item.id)).toEqual([
+      'daily-input',
+      'daily-list',
+    ]);
   });
 
   it('manager の予約管理サブメニューは担当院タイムラインだけを表示する', () => {
@@ -145,12 +149,12 @@ describe('navigation items', () => {
         href: '/reservations?view=timeline',
       },
     ]);
-    expect(
-      reservationsItem?.subItems?.map(item => item.id)
-    ).not.toContain('reservation-register');
-    expect(
-      reservationsItem?.subItems?.map(item => item.id)
-    ).not.toContain('reservation-list');
+    expect(reservationsItem?.subItems?.map(item => item.id)).not.toContain(
+      'reservation-register'
+    );
+    expect(reservationsItem?.subItems?.map(item => item.id)).not.toContain(
+      'reservation-list'
+    );
 
     const defaultReservationsItem = OPERATION_MENU_ITEMS.find(
       item => item.id === 'reservations'
@@ -193,9 +197,9 @@ describe('navigation items', () => {
       '/patients/list'
     );
     expect(
-      managerOperationItems.flatMap(item => item.subItems ?? []).map(
-        item => item.href
-      )
+      managerOperationItems
+        .flatMap(item => item.subItems ?? [])
+        .map(item => item.href)
     ).not.toContain('/patients/list');
   });
 

@@ -21,6 +21,8 @@ import useDashboard from '@/hooks/useDashboard';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import RevenueChart from '@/components/dashboard/revenue-chart';
 import PatientFlowHeatmap from '@/components/dashboard/patient-flow-heatmap';
+import AdminDashboard from '@/components/dashboard/admin-dashboard';
+import { isAreaManagerRole } from '@/lib/constants/roles';
 
 // パフォーマンス最適化のためのメモ化コンポーネント
 const DailyDataCard = memo(
@@ -121,17 +123,10 @@ const QuickActionsCard = memo(
 
 QuickActionsCard.displayName = 'QuickActionsCard';
 
-export default function DashboardPage() {
-  const {
-    profile,
-    loading: profileLoading,
-    error: profileError,
-  } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+function ClinicDashboard({ clinicId }: { clinicId: string | null }) {
   const { dashboardData, loading, error, handleQuickAction } =
     useDashboard(clinicId);
 
-  const isLoading = profileLoading || loading;
   const hasClinic = Boolean(clinicId);
 
   // メモ化されたデータ計算
@@ -148,7 +143,7 @@ export default function DashboardPage() {
     };
   }, [dashboardData]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
         <div className='flex items-center space-x-2'>
@@ -157,28 +152,6 @@ export default function DashboardPage() {
             ダッシュボードデータを読み込み中...
           </span>
         </div>
-      </div>
-    );
-  }
-
-  if (profileError) {
-    return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
-        <Card className='max-w-md w-full mx-4'>
-          <CardHeader>
-            <CardTitle className='text-red-600'>
-              プロフィール取得に失敗しました
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className='text-gray-700 dark:text-gray-300 mb-4'>
-              {profileError}
-            </p>
-            <Button onClick={() => window.location.reload()} className='w-full'>
-              再読み込み
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -292,4 +265,53 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+}
+
+export default function DashboardPage() {
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfileContext();
+
+  if (profileLoading) {
+    return (
+      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+        <div className='flex items-center space-x-2'>
+          <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
+          <span className='text-gray-600 dark:text-gray-400'>
+            ダッシュボードデータを読み込み中...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+        <Card className='max-w-md w-full mx-4'>
+          <CardHeader>
+            <CardTitle className='text-red-600'>
+              プロフィール取得に失敗しました
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className='text-gray-700 dark:text-gray-300 mb-4'>
+              {profileError}
+            </p>
+            <Button onClick={() => window.location.reload()} className='w-full'>
+              再読み込み
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isAreaManagerRole(profile?.role)) {
+    return <AdminDashboard />;
+  }
+
+  return <ClinicDashboard clinicId={profile?.clinicId ?? null} />;
 }
