@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { logger } from '@/lib/logger';
+import type { SupabaseServerClient } from '@/lib/supabase';
+import type { Database, Json } from '@/types/supabase';
 
 /**
  * Resend Webhook の署名を検証する。
@@ -67,7 +69,7 @@ export type ResendWebhookEvent = {
   data: {
     email_id: string;
     to?: string[];
-    [key: string]: unknown;
+    [key: string]: Json | undefined;
   };
 };
 
@@ -80,6 +82,9 @@ type WebhookOutboxRecord = {
   id: string;
   clinic_id: string | null;
 };
+
+type EmailSupabaseClient = Pick<SupabaseServerClient, 'from'>;
+type EmailLogInsert = Database['public']['Tables']['email_logs']['Insert'];
 
 function assertNoSupabaseError<T>(
   result: SupabaseQueryResult<T>,
@@ -99,7 +104,7 @@ function assertNoSupabaseError<T>(
  * outbox レコードを特定できる場合は、それに紐付けて記録する。
  */
 export async function handleResendWebhookEvent(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   event: ResendWebhookEvent
 ): Promise<void> {
   const messageId = event.data.email_id;
@@ -126,14 +131,18 @@ export async function handleResendWebhookEvent(
   const outboxId = outboxRecord.id;
 
   // email_logs に記録
-  const logResult = (await supabase.from('email_logs').insert({
+  const logInsert: EmailLogInsert = {
     outbox_id: outboxId,
     clinic_id: outboxRecord.clinic_id,
     event_type: event.type,
     provider: 'resend',
     provider_message_id: messageId,
     detail: event.data,
-  })) as SupabaseQueryResult<unknown>;
+  };
+
+  const logResult = (await supabase
+    .from('email_logs')
+    .insert(logInsert)) as SupabaseQueryResult<unknown>;
 
   assertNoSupabaseError(logResult, 'Failed to insert email log');
 }
