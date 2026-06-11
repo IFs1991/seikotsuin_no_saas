@@ -5600,6 +5600,40 @@ export type Database = {
         };
         Returns: undefined;
       };
+      manager_patient_period_series: {
+        Args: {
+          p_bucket?: string;
+          p_clinic_ids: string[];
+          p_end?: string | null;
+          p_start?: string | null;
+        };
+        Returns: {
+          bucket_end: string;
+          bucket_start: string;
+          converted_new_patients: number;
+          new_patients: number;
+          patient_count: number;
+          repeat_patients: number;
+          total_revenue: number;
+          visit_count: number;
+        }[];
+      };
+      manager_patient_period_totals: {
+        Args: {
+          p_clinic_ids: string[];
+          p_end?: string | null;
+          p_start?: string | null;
+        };
+        Returns: {
+          clinic_id: string;
+          converted_new_patients: number;
+          new_patients: number;
+          patient_count: number;
+          repeat_patients: number;
+          total_revenue: number;
+          visit_count: number;
+        }[];
+      };
       upsert_clinic_settings: {
         Args: {
           p_category: string;

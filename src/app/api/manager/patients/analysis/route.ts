@@ -8,10 +8,17 @@ import {
 import { normalizeRole } from '@/lib/constants/roles';
 import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
 import { createAdminClient } from '@/lib/supabase';
-import { fetchPatientVisitSummaryRowsForClinicIds } from '@/lib/services/patient-analysis-service';
+import { fetchManagerPatientVisitSummaryRows } from '@/lib/services/patient-analysis-service';
+import {
+  fetchManagerPatientPeriodSeries,
+  fetchManagerPatientPeriodTotals,
+} from '@/lib/services/manager-patient-period-service';
 import {
   buildManagerPatientAnalysis,
   parseManagerPatientAnalysisQuery,
+  resolveManagerPatientSelectedClinicId,
+  resolveManagerPatientAnalysisPeriod,
+  resolveManagerPatientAnalysisRpcBounds,
   type ManagerPatientAssignedClinic,
 } from '@/lib/manager-patient-analysis';
 
@@ -58,12 +65,18 @@ export async function GET(request: NextRequest) {
     const assignedClinicIds = assignedClinics.map(clinic => clinic.clinicId);
 
     if (assignedClinicIds.length === 0) {
+      const period = resolveManagerPatientAnalysisPeriod(
+        parsedQuery.query.period
+      );
       return createSuccessResponse(
         buildManagerPatientAnalysis({
           assignedClinics: [],
-          rows: [],
+          patientRows: [],
+          periodTotals: [],
+          periodSeries: [],
           selectedClinicId: null,
-          period: parsedQuery.query.period,
+          target: parsedQuery.query.target,
+          period,
         })
       );
     }
@@ -78,17 +91,48 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rows = await fetchPatientVisitSummaryRowsForClinicIds(
-      adminClient,
-      assignedClinicIds
+    const period = resolveManagerPatientAnalysisPeriod(
+      parsedQuery.query.period
     );
+    const { startIso, endIso } = resolveManagerPatientAnalysisRpcBounds(period);
+    const selectedClinicId = resolveManagerPatientSelectedClinicId({
+      assignedClinics,
+      requestedClinicId: parsedQuery.query.clinicId,
+    });
+    const seriesClinicIds =
+      parsedQuery.query.target === 'clinic' && parsedQuery.query.clinicId
+        ? [parsedQuery.query.clinicId]
+        : assignedClinicIds;
+    const [patientRows, periodTotals, periodSeries] = await Promise.all([
+      fetchManagerPatientVisitSummaryRows({
+        supabase: adminClient,
+        clinicIds: assignedClinicIds,
+        selectedClinicId,
+      }),
+      fetchManagerPatientPeriodTotals(
+        adminClient,
+        assignedClinicIds,
+        startIso,
+        endIso
+      ),
+      fetchManagerPatientPeriodSeries(
+        adminClient,
+        seriesClinicIds,
+        startIso,
+        endIso,
+        period.bucket
+      ),
+    ]);
 
     return createSuccessResponse(
       buildManagerPatientAnalysis({
         assignedClinics,
-        rows,
+        patientRows,
+        periodTotals,
+        periodSeries,
         selectedClinicId: parsedQuery.query.clinicId,
-        period: parsedQuery.query.period,
+        target: parsedQuery.query.target,
+        period,
       })
     );
   } catch (error) {

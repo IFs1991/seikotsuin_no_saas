@@ -1,4 +1,5 @@
 import {
+  fetchManagerPatientVisitSummaryRows,
   generatePatientAnalysis,
   type PatientAnalysisClient,
 } from '@/lib/services/patient-analysis-service';
@@ -98,5 +99,65 @@ describe('generatePatientAnalysis', () => {
       { label: '中度リピート', value: 1 },
       { label: '高度リピート', value: 0 },
     ]);
+  });
+
+  it('fetches patient names only for the selected manager clinic detail', async () => {
+    const selectedClinicId = '11111111-1111-4111-8111-111111111111';
+    const metricClinicId = '22222222-2222-4222-8222-222222222222';
+    const metricRow = {
+      patient_id: '00000000-0000-0000-0000-000000000002',
+      clinic_id: metricClinicId,
+      first_visit_date: '2026-01-01',
+      last_visit_date: '2026-01-15',
+      visit_count: 3,
+      total_revenue: 30000,
+      average_revenue_per_visit: 10000,
+      treatment_period_days: 14,
+      visit_category: '軽度リピート',
+    };
+    const detailRow = {
+      patient_id: '00000000-0000-0000-0000-000000000001',
+      patient_name: '選択 太郎',
+      clinic_id: selectedClinicId,
+      first_visit_date: '2026-01-01',
+      last_visit_date: '2026-04-25',
+      visit_count: 8,
+      total_revenue: 80000,
+      average_revenue_per_visit: 10000,
+      treatment_period_days: 114,
+      visit_category: '中度リピート',
+    };
+    const metricReturns = jest
+      .fn()
+      .mockResolvedValue({ data: [metricRow], error: null });
+    const detailReturns = jest
+      .fn()
+      .mockResolvedValue({ data: [detailRow], error: null });
+    const metricIn = jest.fn().mockReturnValue({ returns: metricReturns });
+    const detailIn = jest.fn().mockReturnValue({ returns: detailReturns });
+    const select = jest
+      .fn()
+      .mockReturnValueOnce({ in: metricIn })
+      .mockReturnValueOnce({ in: detailIn });
+    const from = jest.fn().mockReturnValue({ select });
+    const client = { from } as PatientAnalysisClient;
+
+    const rows = await fetchManagerPatientVisitSummaryRows({
+      supabase: client,
+      clinicIds: [selectedClinicId, metricClinicId],
+      selectedClinicId,
+    });
+
+    expect(select).toHaveBeenNthCalledWith(
+      1,
+      expect.not.stringContaining('patient_name')
+    );
+    expect(select).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('patient_name')
+    );
+    expect(metricIn).toHaveBeenCalledWith('clinic_id', [metricClinicId]);
+    expect(detailIn).toHaveBeenCalledWith('clinic_id', [selectedClinicId]);
+    expect(rows).toEqual([{ ...metricRow, patient_name: '' }, detailRow]);
   });
 });
