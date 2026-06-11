@@ -2,6 +2,8 @@
 // メール通知基盤 - 型定義
 // =================================================================
 
+import type { Json } from '@/types/supabase';
+
 /** 送信テンプレート種別 */
 export type EmailTemplateType =
   | 'reservation_created'
@@ -71,7 +73,7 @@ export type EnqueueEmailInput = {
   customerId?: string;
   templateType: EmailTemplateType;
   toEmail: string;
-  payload: Record<string, unknown>;
+  payload: Json;
 };
 
 /** 通知ポリシー判定用の予約差分 */
