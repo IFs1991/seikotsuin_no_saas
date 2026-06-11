@@ -7,10 +7,16 @@ import { renderReservationCreatedEmail } from './templates/reservation-created';
 import { renderReservationUpdatedEmail } from './templates/reservation-updated';
 import { renderReservationCancelledEmail } from './templates/reservation-cancelled';
 import { renderReminderDayBeforeEmail } from './templates/reminder-day-before';
+import type { SupabaseServerClient } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
 /** retry 間隔 (分) */
 const RETRY_DELAYS = [5, 15, 60];
 const MAX_SEND_ATTEMPTS = RETRY_DELAYS.length + 1;
+
+type EmailSupabaseClient = Pick<SupabaseServerClient, 'from'>;
+type EmailOutboxUpdate = Database['public']['Tables']['email_outbox']['Update'];
+type EmailLogInsert = Database['public']['Tables']['email_logs']['Insert'];
 
 export type ProcessorOptions = {
   batchSize?: number;
@@ -51,10 +57,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 async function updateOutboxStatus(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   jobId: string,
   expectedStatus: string,
-  values: Record<string, unknown>
+  values: EmailOutboxUpdate
 ): Promise<{ applied: boolean; errorMessage: string | null }> {
   try {
     const { data, error } = await supabase
@@ -76,8 +82,8 @@ async function updateOutboxStatus(
 }
 
 async function insertEmailLog(
-  supabase: any,
-  payload: Record<string, unknown>
+  supabase: EmailSupabaseClient,
+  payload: EmailLogInsert
 ): Promise<{ ok: boolean; errorMessage: string | null }> {
   try {
     const { error } = await supabase.from('email_logs').insert(payload);
@@ -113,7 +119,7 @@ function getFailureTransition(attempts: number): {
  * email_outbox の pending ジョブを取得し、テンプレート描画 → 送信 → ステータス更新を行う。
  */
 export async function processEmailOutbox(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   provider: EmailProvider,
   options: ProcessorOptions = {}
 ): Promise<ProcessorResult> {
