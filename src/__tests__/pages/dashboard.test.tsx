@@ -4,23 +4,20 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DashboardPage from '@/app/(app)/dashboard/page';
-import useAdminDashboard from '@/hooks/useAdminDashboard';
 import useDashboard from '@/hooks/useDashboard';
-import {
-  ADMIN_DASHBOARD_COPY,
-  AREA_MANAGER_ADMIN_DASHBOARD_COPY,
-} from '@/components/dashboard/admin-dashboard.utils';
 import { UserProfileProvider } from '@/providers/user-profile-context';
 import type { UserProfile } from '@/types/user-profile';
-
-jest.mock('@/hooks/useAdminDashboard', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
 
 jest.mock('@/hooks/useDashboard', () => ({
   __esModule: true,
   default: jest.fn(),
+}));
+
+jest.mock('@/components/dashboard/manager-dashboard', () => ({
+  __esModule: true,
+  default: function ManagerDashboardMock() {
+    return <div>担当エリアダッシュボード</div>;
+  },
 }));
 
 jest.mock('@/components/dashboard/revenue-chart', () => ({
@@ -37,7 +34,6 @@ jest.mock('@/components/dashboard/patient-flow-heatmap', () => ({
   },
 }));
 
-const mockedUseAdminDashboard = jest.mocked(useAdminDashboard);
 const mockedUseDashboard = jest.mocked(useDashboard);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
@@ -63,31 +59,6 @@ function renderDashboard(profile: UserProfile | null) {
   );
 }
 
-function mockAdminDashboardData() {
-  mockedUseAdminDashboard.mockReturnValue({
-    clinicsData: [
-      {
-        id: clinicId,
-        name: '本町院',
-        totalRevenue: 1250000,
-        totalPatientCount: 200,
-        averagePerformanceScore: 4.2,
-      },
-    ],
-    overallKpis: {
-      totalGroupRevenue: 1250000,
-      totalGroupPatientCount: 200,
-      averageGroupPerformance: 4.2,
-    },
-    loading: false,
-    error: null,
-    setSort: jest.fn(),
-    setClinicFilter: jest.fn(),
-    refreshData: jest.fn().mockResolvedValue(undefined),
-    isRefreshing: false,
-  });
-}
-
 function mockClinicDashboardData() {
   mockedUseDashboard.mockReturnValue({
     dashboardData: {
@@ -107,11 +78,10 @@ function mockClinicDashboardData() {
 describe('DashboardPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAdminDashboardData();
     mockClinicDashboardData();
   });
 
-  it('manager without primary clinic renders the area manager dashboard', () => {
+  it('manager without primary clinic renders the manager dashboard', () => {
     renderDashboard(
       createProfile({
         role: 'manager',
@@ -120,16 +90,10 @@ describe('DashboardPage', () => {
       })
     );
 
-    expect(
-      screen.getByText(AREA_MANAGER_ADMIN_DASHBOARD_COPY.title)
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(ADMIN_DASHBOARD_COPY.title)
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('担当エリアダッシュボード')).toBeInTheDocument();
     expect(
       screen.queryByText('クリニック情報が見つかりません')
     ).not.toBeInTheDocument();
-    expect(mockedUseAdminDashboard).toHaveBeenCalledTimes(1);
     expect(mockedUseDashboard).not.toHaveBeenCalled();
   });
 
@@ -146,7 +110,6 @@ describe('DashboardPage', () => {
       screen.getByText('クリニック情報が見つかりません')
     ).toBeInTheDocument();
     expect(mockedUseDashboard).toHaveBeenCalledWith(null);
-    expect(mockedUseAdminDashboard).not.toHaveBeenCalled();
   });
 
   it('non-manager with clinic keeps the existing single clinic dashboard', () => {
@@ -155,6 +118,5 @@ describe('DashboardPage', () => {
     expect(screen.getByText('メインダッシュボード')).toBeInTheDocument();
     expect(screen.getByText('本日のリアルタイムデータ')).toBeInTheDocument();
     expect(mockedUseDashboard).toHaveBeenCalledWith(clinicId);
-    expect(mockedUseAdminDashboard).not.toHaveBeenCalled();
   });
 });
