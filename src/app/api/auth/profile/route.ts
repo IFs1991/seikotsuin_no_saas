@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
 import {
   createAdminClient,
   createClient,
   getUserAccessContext,
 } from '@/lib/supabase';
+import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
 
 interface ProfileResponse {
   id: string;
@@ -68,10 +68,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: '認証が必要です' },
-        { status: 401 }
-      );
+      return createErrorResponse('認証が必要です', 401);
     }
 
     const accessContext = await getUserAccessContext(user.id, supabase);
@@ -90,12 +87,9 @@ export async function GET() {
       isAdmin: accessContext.isAdmin,
     });
 
-    return NextResponse.json({ success: true, data: response });
+    return createSuccessResponse(response);
   } catch (error) {
     console.error('Failed to fetch profile', error);
-    return NextResponse.json(
-      { success: false, error: 'プロフィール情報の取得に失敗しました' },
-      { status: 500 }
-    );
+    return createErrorResponse('プロフィール情報の取得に失敗しました', 500);
   }
 }

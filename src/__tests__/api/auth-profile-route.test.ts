@@ -59,14 +59,17 @@ describe('GET /api/auth/profile', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data).toEqual({
-      id: 'user-1',
-      email: 'legacy@example.com',
-      role: 'clinic_admin',
-      clinicId: 'clinic-1',
-      clinicName: '健康堂整骨院',
-      isActive: true,
-      isAdmin: true,
+    expect(body).toEqual({
+      success: true,
+      data: {
+        id: 'user-1',
+        email: 'legacy@example.com',
+        role: 'clinic_admin',
+        clinicId: 'clinic-1',
+        clinicName: '健康堂整骨院',
+        isActive: true,
+        isAdmin: true,
+      },
     });
   });
 
@@ -82,7 +85,12 @@ describe('GET /api/auth/profile', () => {
 
     const { GET } = await import('@/app/api/auth/profile/route');
     const response = await GET();
+    const body = await response.json();
 
     expect(response.status).toBe(401);
+    expect(body).toEqual({
+      success: false,
+      error: '認証が必要です',
+    });
   });
 });
