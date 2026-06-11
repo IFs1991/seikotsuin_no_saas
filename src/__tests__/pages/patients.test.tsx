@@ -25,6 +25,24 @@ const mockUseUserProfileContext = useUserProfileContext as jest.MockedFunction<
   typeof useUserProfileContext
 >;
 
+jest.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='responsive-container'>{children}</div>
+  ),
+  LineChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='line-chart'>{children}</div>
+  ),
+  BarChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='bar-chart'>{children}</div>
+  ),
+  CartesianGrid: () => <div data-testid='cartesian-grid' />,
+  XAxis: () => <div data-testid='x-axis' />,
+  YAxis: () => <div data-testid='y-axis' />,
+  Tooltip: () => <div data-testid='tooltip' />,
+  Line: () => <div data-testid='line' />,
+  Bar: () => <div data-testid='bar' />,
+}));
+
 // Mock data
 const mockPatientData = {
   conversionData: {
@@ -102,6 +120,7 @@ describe('PatientsPage', () => {
           newPatients: 80,
           returnPatients: 60,
           conversionRate: 75,
+          visitCount: 300,
           averageVisitCount: 3.4,
           totalRevenue: 2400000,
           averageRevenuePerPatient: 20000,
@@ -116,6 +135,7 @@ describe('PatientsPage', () => {
             newPatients: 45,
             returnPatients: 30,
             conversionRate: 66.67,
+            visitCount: 180,
             averageVisitCount: 3,
             totalRevenue: 1400000,
             averageRevenuePerPatient: 20000,
@@ -129,6 +149,7 @@ describe('PatientsPage', () => {
             newPatients: 35,
             returnPatients: 30,
             conversionRate: 85.71,
+            visitCount: 120,
             averageVisitCount: 4,
             totalRevenue: 1000000,
             averageRevenuePerPatient: 20000,
@@ -143,6 +164,7 @@ describe('PatientsPage', () => {
           newPatients: 45,
           returnPatients: 30,
           conversionRate: 66.67,
+          visitCount: 180,
           averageVisitCount: 3,
           totalRevenue: 1400000,
           averageRevenuePerPatient: 20000,
@@ -170,11 +192,36 @@ describe('PatientsPage', () => {
             },
           ],
         },
+        target: 'total',
         period: {
-          type: 'all',
-          startDate: null,
-          endDate: null,
-          periodApplied: false,
+          type: 'month',
+          startDate: '2026-06-01',
+          endDate: '2026-06-30',
+          bucket: 'daily',
+        },
+        charts: {
+          revenue: [
+            {
+              bucketStart: '2026-06-01',
+              bucketEnd: '2026-06-01',
+              label: '6/1',
+              value: 100000,
+            },
+          ],
+          patients: [
+            {
+              bucketStart: '2026-06-01',
+              bucketEnd: '2026-06-01',
+              label: '6/1',
+              value: 20,
+            },
+          ],
+          newPatients: [],
+          repeatPatients: [],
+          visits: [],
+          conversionRate: [],
+          clinicRevenueComparison: [],
+          clinicPatientComparison: [],
         },
       },
       loading: false,
@@ -277,7 +324,10 @@ describe('PatientsPage', () => {
     expect(mockUseManagerPatientAnalysis).toHaveBeenCalled();
     expect(screen.getByText('担当院合計')).toBeInTheDocument();
     expect(screen.getByText('担当院別分析')).toBeInTheDocument();
-    expect(screen.getByText('分析期間: 全期間')).toBeInTheDocument();
+    expect(screen.getByText('売上推移')).toBeInTheDocument();
+    expect(
+      screen.getByText(/担当院の患者動向を期間別に確認できます。/)
+    ).toBeInTheDocument();
     expect(screen.getAllByText('池袋院').length).toBeGreaterThan(0);
     expect(screen.queryByText('患者一覧')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '連絡する' })).toBeNull();
@@ -305,6 +355,7 @@ describe('PatientsPage', () => {
           newPatients: 0,
           returnPatients: 0,
           conversionRate: 0,
+          visitCount: 0,
           averageVisitCount: 0,
           totalRevenue: 0,
           averageRevenuePerPatient: 0,
@@ -312,11 +363,22 @@ describe('PatientsPage', () => {
         },
         clinics: [],
         selectedClinic: null,
+        target: 'total',
         period: {
           type: 'all',
           startDate: null,
           endDate: null,
-          periodApplied: false,
+          bucket: 'monthly',
+        },
+        charts: {
+          revenue: [],
+          patients: [],
+          newPatients: [],
+          repeatPatients: [],
+          visits: [],
+          conversionRate: [],
+          clinicRevenueComparison: [],
+          clinicPatientComparison: [],
         },
       },
       loading: false,

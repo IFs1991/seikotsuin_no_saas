@@ -39,9 +39,26 @@ export type BuildPatientAnalysisOptions = {
 
 export type PatientAnalysisClient = Pick<SupabaseClient<Database>, 'from'>;
 
+type PatientVisitSummaryMetricRow = Omit<
+  PatientVisitSummaryRow,
+  'patient_name'
+>;
+
 const PATIENT_VISIT_SUMMARY_COLUMNS = [
   'patient_id',
   'patient_name',
+  'clinic_id',
+  'first_visit_date',
+  'last_visit_date',
+  'visit_count',
+  'total_revenue',
+  'average_revenue_per_visit',
+  'treatment_period_days',
+  'visit_category',
+].join(', ');
+
+const PATIENT_VISIT_SUMMARY_METRIC_COLUMNS = [
+  'patient_id',
   'clinic_id',
   'first_visit_date',
   'last_visit_date',
@@ -334,6 +351,60 @@ export async function fetchPatientVisitSummaryRowsForClinicIds(
   }
 
   return data ?? [];
+}
+
+async function fetchPatientVisitSummaryMetricRowsForClinicIds(
+  supabase: PatientAnalysisClient,
+  clinicIds: readonly string[]
+): Promise<PatientVisitSummaryMetricRow[]> {
+  if (clinicIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('patient_visit_summary')
+    .select(PATIENT_VISIT_SUMMARY_METRIC_COLUMNS)
+    .in('clinic_id', [...clinicIds])
+    .returns<PatientVisitSummaryMetricRow[]>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function fetchManagerPatientVisitSummaryRows(params: {
+  supabase: PatientAnalysisClient;
+  clinicIds: readonly string[];
+  selectedClinicId: string | null;
+}): Promise<PatientVisitSummaryRow[]> {
+  if (params.clinicIds.length === 0) {
+    return [];
+  }
+
+  const metricClinicIds = params.clinicIds.filter(
+    clinicId => clinicId !== params.selectedClinicId
+  );
+  const [metricRows, selectedRows] = await Promise.all([
+    fetchPatientVisitSummaryMetricRowsForClinicIds(
+      params.supabase,
+      metricClinicIds
+    ),
+    params.selectedClinicId
+      ? fetchPatientVisitSummaryRowsForClinicIds(params.supabase, [
+          params.selectedClinicId,
+        ])
+      : Promise.resolve([]),
+  ]);
+
+  return [
+    ...metricRows.map(row => ({
+      ...row,
+      patient_name: '',
+    })),
+    ...selectedRows,
+  ];
 }
 
 /**

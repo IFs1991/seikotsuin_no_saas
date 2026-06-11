@@ -4,6 +4,17 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   usePatientAnalysis,
   type PatientAnalysisViewModel,
 } from '@/hooks/usePatientAnalysis';
@@ -12,8 +23,12 @@ import { useUserProfileContext } from '@/providers/user-profile-context';
 import { normalizeRole } from '@/lib/constants/roles';
 import type {
   ManagerPatientAnalysisResponse,
+  ManagerPatientAnalysisPeriodType,
+  ManagerPatientAnalysisTarget,
   ManagerPatientClinicDetail,
   ManagerPatientClinicSummary,
+  ClinicSeriesPoint,
+  TimeSeriesPoint,
 } from '@/lib/manager-patient-analysis';
 import {
   Card,
@@ -32,6 +47,8 @@ const INACTIVE_TAB_CLASS = `${TAB_BASE_CLASS} bg-gray-200 text-gray-700 hover:bg
 const ROW_CLASS =
   'flex items-center justify-between rounded bg-gray-50 p-3 dark:bg-[#2d2d2d]';
 const SUMMARY_CARD_CLASS = 'bg-card';
+const MANAGER_INPUT_CLASS =
+  'h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
 
 type RiskLevel = PatientAnalysisViewModel['riskScores'][number]['riskLevel'];
 
@@ -46,6 +63,26 @@ const RISK_LABEL: Record<RiskLevel, string> = {
   medium: '中リスク',
   low: '低リスク',
 };
+
+const MANAGER_PERIOD_OPTIONS: Array<{
+  value: ManagerPatientAnalysisPeriodType;
+  label: string;
+}> = [
+  { value: 'all', label: '全期間' },
+  { value: 'month', label: '今月' },
+  { value: 'previous_month', label: '先月' },
+  { value: 'last_3_months', label: '直近3か月' },
+  { value: 'year', label: '今年' },
+  { value: 'custom', label: '任意期間' },
+];
+
+const MANAGER_TARGET_OPTIONS: Array<{
+  value: ManagerPatientAnalysisTarget;
+  label: string;
+}> = [
+  { value: 'total', label: '担当院合計' },
+  { value: 'clinic', label: '選択院' },
+];
 
 function isManagerRole(role: string | null | undefined): boolean {
   return normalizeRole(role) === 'manager';
@@ -341,13 +378,17 @@ const ManagerSummaryCards = React.memo(function ManagerSummaryCards({
       label: '担当院',
       value: `${summary.assignedClinicCount.toLocaleString()}院`,
     },
-    { label: '患者数', value: `${summary.totalPatients.toLocaleString()}人` },
-    { label: '新規患者', value: `${summary.newPatients.toLocaleString()}人` },
+    {
+      label: '来院患者数',
+      value: `${summary.totalPatients.toLocaleString()}人`,
+    },
+    { label: '新患数', value: `${summary.newPatients.toLocaleString()}人` },
     {
       label: '再来患者',
       value: `${summary.returnPatients.toLocaleString()}人`,
     },
-    { label: '再来率', value: formatPercent(summary.conversionRate) },
+    { label: '新患再来率', value: formatPercent(summary.conversionRate) },
+    { label: '来院数', value: `${summary.visitCount.toLocaleString()}回` },
     { label: '平均来院回数', value: `${summary.averageVisitCount}回` },
     { label: '総売上', value: formatCurrency(summary.totalRevenue) },
     {
@@ -355,7 +396,7 @@ const ManagerSummaryCards = React.memo(function ManagerSummaryCards({
       value: formatCurrency(summary.averageRevenuePerPatient),
     },
     {
-      label: '離脱リスク高',
+      label: '離脱リスク高（現在）',
       value: `${summary.highRiskPatientCount.toLocaleString()}人`,
     },
   ];
@@ -398,7 +439,7 @@ const ManagerClinicSelector = React.memo(function ManagerClinicSelector({
       <select
         id='manager-patient-clinic'
         aria-label='担当院を選択'
-        className='h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+        className={MANAGER_INPUT_CLASS}
         value={selectedClinicId ?? ''}
         onChange={event => onChange(event.target.value || null)}
       >
@@ -408,6 +449,243 @@ const ManagerClinicSelector = React.memo(function ManagerClinicSelector({
           </option>
         ))}
       </select>
+    </div>
+  );
+});
+
+function getDateRangeDays(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  return Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
+  target,
+  period,
+  customStartDate,
+  customEndDate,
+  validationError,
+  onTargetChange,
+  onPeriodChange,
+  onCustomStartDateChange,
+  onCustomEndDateChange,
+  onApply,
+  onReset,
+}: {
+  target: ManagerPatientAnalysisTarget;
+  period: ManagerPatientAnalysisPeriodType;
+  customStartDate: string;
+  customEndDate: string;
+  validationError: string | null;
+  onTargetChange: (target: ManagerPatientAnalysisTarget) => void;
+  onPeriodChange: (period: ManagerPatientAnalysisPeriodType) => void;
+  onCustomStartDateChange: (value: string) => void;
+  onCustomEndDateChange: (value: string) => void;
+  onApply: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <Card className='bg-card'>
+      <CardContent className='pt-6'>
+        <div className='grid grid-cols-1 gap-4 lg:grid-cols-[minmax(160px,1fr)_minmax(180px,1fr)_minmax(260px,2fr)_auto] lg:items-end'>
+          <div className='flex flex-col gap-2'>
+            <label
+              htmlFor='manager-patient-target'
+              className='text-sm font-medium text-gray-700 dark:text-gray-200'
+            >
+              対象
+            </label>
+            <select
+              id='manager-patient-target'
+              className={MANAGER_INPUT_CLASS}
+              value={target}
+              onChange={event => {
+                const nextTarget = MANAGER_TARGET_OPTIONS.find(
+                  option => option.value === event.target.value
+                )?.value;
+                if (nextTarget) {
+                  onTargetChange(nextTarget);
+                }
+              }}
+            >
+              {MANAGER_TARGET_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <label
+              htmlFor='manager-patient-period'
+              className='text-sm font-medium text-gray-700 dark:text-gray-200'
+            >
+              期間
+            </label>
+            <select
+              id='manager-patient-period'
+              className={MANAGER_INPUT_CLASS}
+              value={period}
+              onChange={event => {
+                const nextPeriod = MANAGER_PERIOD_OPTIONS.find(
+                  option => option.value === event.target.value
+                )?.value;
+                if (nextPeriod) {
+                  onPeriodChange(nextPeriod);
+                }
+              }}
+            >
+              {MANAGER_PERIOD_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+            <div className='flex flex-col gap-2'>
+              <label
+                htmlFor='manager-patient-start-date'
+                className='text-sm font-medium text-gray-700 dark:text-gray-200'
+              >
+                開始日
+              </label>
+              <input
+                id='manager-patient-start-date'
+                type='date'
+                className={MANAGER_INPUT_CLASS}
+                value={customStartDate}
+                onChange={event => onCustomStartDateChange(event.target.value)}
+                disabled={period !== 'custom'}
+              />
+            </div>
+            <div className='flex flex-col gap-2'>
+              <label
+                htmlFor='manager-patient-end-date'
+                className='text-sm font-medium text-gray-700 dark:text-gray-200'
+              >
+                終了日
+              </label>
+              <input
+                id='manager-patient-end-date'
+                type='date'
+                className={MANAGER_INPUT_CLASS}
+                value={customEndDate}
+                onChange={event => onCustomEndDateChange(event.target.value)}
+                disabled={period !== 'custom'}
+              />
+            </div>
+          </div>
+
+          <div className='flex gap-2'>
+            <Button onClick={onApply} className='bg-blue-600 text-white'>
+              適用
+            </Button>
+            <Button variant='outline' onClick={onReset}>
+              リセット
+            </Button>
+          </div>
+        </div>
+        {validationError && (
+          <p className='mt-3 text-sm text-red-600'>{validationError}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
+const ManagerLineChartCard = React.memo(function ManagerLineChartCard({
+  title,
+  data,
+}: {
+  title: string;
+  data: TimeSeriesPoint[];
+}) {
+  return (
+    <Card className='bg-card'>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className='h-72'>
+          <ResponsiveContainer width='100%' height='100%'>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray='3 3' />
+              <XAxis dataKey='label' />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type='monotone'
+                dataKey='value'
+                stroke='#2563eb'
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+const ManagerComparisonChartCard = React.memo(
+  function ManagerComparisonChartCard({
+    title,
+    data,
+  }: {
+    title: string;
+    data: ClinicSeriesPoint[];
+  }) {
+    return (
+      <Card className='bg-card'>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='h-72'>
+            <ResponsiveContainer width='100%' height='100%'>
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray='3 3' />
+                <XAxis dataKey='clinicName' />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey='value' fill='#16a34a' />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+);
+
+const ManagerChartsSection = React.memo(function ManagerChartsSection({
+  charts,
+}: {
+  charts: ManagerPatientAnalysisResponse['charts'];
+}) {
+  return (
+    <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
+      <ManagerLineChartCard title='売上推移' data={charts.revenue} />
+      <ManagerLineChartCard title='来院患者数推移' data={charts.patients} />
+      <ManagerLineChartCard title='新患推移' data={charts.newPatients} />
+      <ManagerLineChartCard title='再来推移' data={charts.repeatPatients} />
+      <ManagerLineChartCard title='来院数推移' data={charts.visits} />
+      <ManagerLineChartCard
+        title='新患再来率推移'
+        data={charts.conversionRate}
+      />
+      <ManagerComparisonChartCard
+        title='院別売上比較'
+        data={charts.clinicRevenueComparison}
+      />
+      <ManagerComparisonChartCard
+        title='院別来院患者数比較'
+        data={charts.clinicPatientComparison}
+      />
     </div>
   );
 });
@@ -431,22 +709,28 @@ const ManagerClinicComparison = React.memo(function ManagerClinicComparison({
                   担当院
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
-                  患者数
+                  来院患者数
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
-                  新規患者
+                  新患数
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
                   再来患者
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
-                  再来率
+                  新患再来率
+                </th>
+                <th className='whitespace-nowrap px-3 py-2 font-medium'>
+                  来院数
+                </th>
+                <th className='whitespace-nowrap px-3 py-2 font-medium'>
+                  総売上
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
                   患者単価
                 </th>
                 <th className='whitespace-nowrap px-3 py-2 font-medium'>
-                  離脱リスク高
+                  離脱リスク高（現在）
                 </th>
               </tr>
             </thead>
@@ -467,6 +751,12 @@ const ManagerClinicComparison = React.memo(function ManagerClinicComparison({
                   </td>
                   <td className='whitespace-nowrap px-3 py-3'>
                     {formatPercent(clinic.conversionRate)}
+                  </td>
+                  <td className='whitespace-nowrap px-3 py-3'>
+                    {clinic.visitCount.toLocaleString()}回
+                  </td>
+                  <td className='whitespace-nowrap px-3 py-3'>
+                    {formatCurrency(clinic.totalRevenue)}
                   </td>
                   <td className='whitespace-nowrap px-3 py-3'>
                     {formatCurrency(clinic.averageRevenuePerPatient)}
@@ -548,9 +838,96 @@ const ManagerFollowUpSection = React.memo(function ManagerFollowUpSection({
   );
 });
 
+function validateManagerPatientFilters(params: {
+  period: ManagerPatientAnalysisPeriodType;
+  customStartDate: string;
+  customEndDate: string;
+}): string | null {
+  if (params.period !== 'custom') {
+    return null;
+  }
+
+  if (!params.customStartDate || !params.customEndDate) {
+    return '任意期間では開始日と終了日を指定してください。';
+  }
+
+  if (params.customStartDate > params.customEndDate) {
+    return '開始日は終了日以前の日付を指定してください。';
+  }
+
+  if (getDateRangeDays(params.customStartDate, params.customEndDate) > 1095) {
+    return '期間は最大3年（1095日）以内で指定してください。';
+  }
+
+  return null;
+}
+
 function ManagerPatientAnalysisContent() {
+  const [appliedTarget, setAppliedTarget] =
+    React.useState<ManagerPatientAnalysisTarget>('total');
+  const [appliedPeriod, setAppliedPeriod] =
+    React.useState<ManagerPatientAnalysisPeriodType>('month');
+  const [appliedCustomStartDate, setAppliedCustomStartDate] =
+    React.useState('');
+  const [appliedCustomEndDate, setAppliedCustomEndDate] = React.useState('');
+  const [draftTarget, setDraftTarget] =
+    React.useState<ManagerPatientAnalysisTarget>('total');
+  const [draftPeriod, setDraftPeriod] =
+    React.useState<ManagerPatientAnalysisPeriodType>('month');
+  const [draftCustomStartDate, setDraftCustomStartDate] = React.useState('');
+  const [draftCustomEndDate, setDraftCustomEndDate] = React.useState('');
+  const [validationError, setValidationError] = React.useState<string | null>(
+    null
+  );
   const { data, loading, error, selectedClinicId, setSelectedClinicId } =
-    useManagerPatientAnalysis();
+    useManagerPatientAnalysis({
+      target: appliedTarget,
+      period: appliedPeriod,
+      startDate:
+        appliedPeriod === 'custom' ? appliedCustomStartDate || null : null,
+      endDate: appliedPeriod === 'custom' ? appliedCustomEndDate || null : null,
+    });
+
+  const applyFilters = React.useCallback(() => {
+    const nextError = validateManagerPatientFilters({
+      period: draftPeriod,
+      customStartDate: draftCustomStartDate,
+      customEndDate: draftCustomEndDate,
+    });
+    setValidationError(nextError);
+    if (nextError) {
+      return;
+    }
+
+    if (draftTarget === 'clinic' && selectedClinicId) {
+      setSelectedClinicId(selectedClinicId);
+    }
+
+    setAppliedTarget(draftTarget);
+    setAppliedPeriod(draftPeriod);
+    setAppliedCustomStartDate(draftCustomStartDate);
+    setAppliedCustomEndDate(draftCustomEndDate);
+  }, [
+    draftCustomEndDate,
+    draftCustomStartDate,
+    draftPeriod,
+    draftTarget,
+    selectedClinicId,
+    setSelectedClinicId,
+  ]);
+
+  const resetFilters = React.useCallback(() => {
+    setValidationError(null);
+    setDraftTarget('total');
+    setDraftPeriod('month');
+    setDraftCustomStartDate('');
+    setDraftCustomEndDate('');
+    setAppliedTarget('total');
+    setAppliedPeriod('month');
+    setAppliedCustomStartDate('');
+    setAppliedCustomEndDate('');
+    setSelectedClinicId(null);
+  }, [setSelectedClinicId]);
 
   if (loading) {
     return (
@@ -593,9 +970,10 @@ function ManagerPatientAnalysisContent() {
   }
 
   const periodLabel =
-    data.period.periodApplied && data.period.startDate && data.period.endDate
+    data.period.startDate && data.period.endDate
       ? `${data.period.startDate} - ${data.period.endDate}`
       : '全期間';
+  const hasPeriodData = data.summary.visitCount > 0;
 
   return (
     <div className={PAGE_CLASS}>
@@ -603,10 +981,10 @@ function ManagerPatientAnalysisContent() {
         <div className='flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
           <div>
             <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-              担当院合計
+              患者分析
             </h1>
             <p className='mt-1 text-sm text-gray-500'>
-              分析期間: {periodLabel}
+              担当院の患者動向を期間別に確認できます。分析期間: {periodLabel}
             </p>
           </div>
           <ManagerClinicSelector
@@ -616,19 +994,36 @@ function ManagerPatientAnalysisContent() {
           />
         </div>
 
+        <ManagerAnalysisFilterBar
+          target={draftTarget}
+          period={draftPeriod}
+          customStartDate={draftCustomStartDate}
+          customEndDate={draftCustomEndDate}
+          validationError={validationError}
+          onTargetChange={setDraftTarget}
+          onPeriodChange={setDraftPeriod}
+          onCustomStartDateChange={setDraftCustomStartDate}
+          onCustomEndDateChange={setDraftCustomEndDate}
+          onApply={applyFilters}
+          onReset={resetFilters}
+        />
+
         <ManagerSummaryCards summary={data.summary} />
 
-        {data.summary.totalPatients === 0 ? (
+        {!hasPeriodData ? (
           <Card className='bg-card'>
             <CardHeader>
-              <CardTitle>対象期間の患者分析データがまだありません。</CardTitle>
+              <CardTitle>
+                選択した期間の患者分析データはまだありません。
+              </CardTitle>
               <CardDescription>
-                予約・来院データが登録されると分析が表示されます。
+                期間を変更するか、来院データの登録状況を確認してください。
               </CardDescription>
             </CardHeader>
           </Card>
         ) : (
           <>
+            <ManagerChartsSection charts={data.charts} />
             <ManagerClinicComparison clinics={data.clinics} />
             {data.selectedClinic && (
               <div className='grid grid-cols-1 gap-6 lg:grid-cols-2'>

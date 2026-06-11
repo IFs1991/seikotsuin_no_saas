@@ -13,6 +13,7 @@ import type {
   ManagerDailyReportsOverviewQuery,
 } from './manager-daily-reports';
 import type {
+  ManagerPatientAnalysisTarget,
   ManagerPatientAnalysisPeriodType,
   ManagerPatientAnalysisResponse,
 } from './manager-patient-analysis';
@@ -61,6 +62,7 @@ interface RevenueCreateRequest {
 
 export type ManagerPatientAnalysisQuery = {
   clinicId?: string | null;
+  target?: ManagerPatientAnalysisTarget;
   period?: ManagerPatientAnalysisPeriodType;
   startDate?: string | null;
   endDate?: string | null;
@@ -479,6 +481,7 @@ export const api = {
         '/api/manager/patients/analysis',
         {
           ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
+          ...(query.target ? { target: query.target } : {}),
           ...(query.period ? { period: query.period } : {}),
           ...(query.startDate ? { start_date: query.startDate } : {}),
           ...(query.endDate ? { end_date: query.endDate } : {}),

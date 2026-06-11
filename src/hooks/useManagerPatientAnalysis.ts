@@ -8,6 +8,7 @@ import {
   isSuccessResponse,
 } from '@/lib/api-client';
 import type {
+  ManagerPatientAnalysisTarget,
   ManagerPatientAnalysisPeriodType,
   ManagerPatientAnalysisResponse,
 } from '@/lib/manager-patient-analysis';
@@ -26,7 +27,10 @@ const MANAGER_PATIENT_ANALYSIS_ERROR =
 
 export function useManagerPatientAnalysis(
   params: {
+    target?: ManagerPatientAnalysisTarget;
     period?: ManagerPatientAnalysisPeriodType;
+    startDate?: string | null;
+    endDate?: string | null;
   } = {}
 ): UseManagerPatientAnalysisResult {
   const [data, setData] = useState<ManagerPatientAnalysisResponse | null>(null);
@@ -48,7 +52,10 @@ export function useManagerPatientAnalysis(
 
       const response = await api.managerPatients.getAnalysis({
         ...(requestedClinicId ? { clinicId: requestedClinicId } : {}),
+        ...(params.target ? { target: params.target } : {}),
         ...(params.period ? { period: params.period } : {}),
+        ...(params.startDate ? { startDate: params.startDate } : {}),
+        ...(params.endDate ? { endDate: params.endDate } : {}),
       });
 
       if (isSuccessResponse(response)) {
@@ -87,7 +94,13 @@ export function useManagerPatientAnalysis(
         setLoading(false);
       }
     }
-  }, [params.period, requestedClinicId]);
+  }, [
+    params.endDate,
+    params.period,
+    params.startDate,
+    params.target,
+    requestedClinicId,
+  ]);
 
   useEffect(() => {
     void loadAnalysis();

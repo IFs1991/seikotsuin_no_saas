@@ -31,6 +31,7 @@ function buildResponse(
           newPatients: 1,
           returnPatients: 1,
           conversionRate: 100,
+          visitCount: 2,
           averageVisitCount: 2,
           totalRevenue: 12000,
           averageRevenuePerPatient: 12000,
@@ -49,6 +50,7 @@ function buildResponse(
       newPatients: 2,
       returnPatients: 2,
       conversionRate: 100,
+      visitCount: 4,
       averageVisitCount: 2,
       totalRevenue: 24000,
       averageRevenuePerPatient: 12000,
@@ -63,6 +65,7 @@ function buildResponse(
         newPatients: 1,
         returnPatients: 1,
         conversionRate: 100,
+        visitCount: 2,
         averageVisitCount: 2,
         totalRevenue: 12000,
         averageRevenuePerPatient: 12000,
@@ -76,6 +79,7 @@ function buildResponse(
         newPatients: 1,
         returnPatients: 1,
         conversionRate: 100,
+        visitCount: 2,
         averageVisitCount: 2,
         totalRevenue: 12000,
         averageRevenuePerPatient: 12000,
@@ -83,11 +87,22 @@ function buildResponse(
       },
     ],
     selectedClinic,
+    target: 'total',
     period: {
       type: 'all',
       startDate: null,
       endDate: null,
-      periodApplied: false,
+      bucket: 'monthly',
+    },
+    charts: {
+      revenue: [],
+      patients: [],
+      newPatients: [],
+      repeatPatients: [],
+      visits: [],
+      conversionRate: [],
+      clinicRevenueComparison: [],
+      clinicPatientComparison: [],
     },
   };
 }
@@ -148,6 +163,33 @@ describe('useManagerPatientAnalysis', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('passes target and custom date filters to the manager endpoint', async () => {
+    getManagerAnalysisMock.mockResolvedValueOnce({
+      success: true,
+      data: buildResponse(),
+    });
+
+    const { result } = renderHook(() =>
+      useManagerPatientAnalysis({
+        target: 'total',
+        period: 'custom',
+        startDate: '2026-01-01',
+        endDate: '2026-04-30',
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(getManagerAnalysisMock).toHaveBeenCalledWith({
+      target: 'total',
+      period: 'custom',
+      startDate: '2026-01-01',
+      endDate: '2026-04-30',
+    });
+  });
+
   it('refetches focused clinic detail when selected clinic changes', async () => {
     getManagerAnalysisMock
       .mockResolvedValueOnce({ success: true, data: buildResponse(clinicA) })
@@ -184,6 +226,7 @@ describe('useManagerPatientAnalysis', () => {
           newPatients: 0,
           returnPatients: 0,
           conversionRate: 0,
+          visitCount: 0,
           averageVisitCount: 0,
           totalRevenue: 0,
           averageRevenuePerPatient: 0,
