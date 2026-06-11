@@ -12,12 +12,15 @@
  * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
  */
 
+import { ScopeAccessError } from '@/lib/auth/manager-scope';
 import {
   createAdminClient,
   resolveScopedClinicIds,
   type UserPermissions,
   type SupabaseServerClient,
 } from './server';
+
+export { ScopeAccessError };
 
 // ──────────────────────────────────────────────
 // Error types
@@ -27,13 +30,6 @@ export class ScopeNotConfiguredError extends Error {
   constructor(message = 'クリニックスコープが設定されていません') {
     super(message);
     this.name = 'ScopeNotConfiguredError';
-  }
-}
-
-export class ScopeAccessError extends Error {
-  constructor(message = '対象クリニックへのアクセス権がありません') {
-    super(message);
-    this.name = 'ScopeAccessError';
   }
 }
 

@@ -7,6 +7,9 @@ import {
   ClinicNotFoundError,
   ClinicInactiveError,
 } from '@/lib/supabase/scoped-admin';
+import {
+  ScopeAccessError as ManagerScopeAccessError,
+} from '@/lib/auth/manager-scope';
 
 // Shared mock admin client used via DI
 const mockFrom = jest.fn();
@@ -16,6 +19,10 @@ const mockAdminClient = { from: mockFrom } as any;
 // createScopedAdminContext (authenticated admin APIs)
 // ──────────────────────────────────────────────
 describe('createScopedAdminContext', () => {
+  it('exports the shared ScopeAccessError constructor', () => {
+    expect(ScopeAccessError).toBe(ManagerScopeAccessError);
+  });
+
   it('returns context with resolved scopedClinicIds from clinic_scope_ids', () => {
     const permissions: UserPermissions = {
       role: 'admin',
