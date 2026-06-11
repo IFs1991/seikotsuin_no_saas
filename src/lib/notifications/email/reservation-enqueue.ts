@@ -2,6 +2,8 @@ import { determineNotificationType } from './policy';
 import { enqueueEmail } from './enqueue-email';
 import type { EmailTemplateType, ReservationSnapshot } from './types';
 import { logger } from '@/lib/logger';
+import type { SupabaseServerClient } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
 type ReservationWithUpdatedAt = {
   id: string;
@@ -42,8 +44,11 @@ type EnqueueDependencies = {
   failure: LookupFailure;
 };
 
+type EmailSupabaseClient = Pick<SupabaseServerClient, 'from'>;
+type EmailLogInsert = Database['public']['Tables']['email_logs']['Insert'];
+
 async function insertEnqueueLookupFailureLog(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   input: {
     clinicId: string;
     reservationId: string;
@@ -56,7 +61,7 @@ async function insertEnqueueLookupFailureLog(
   }
 ): Promise<void> {
   try {
-    const { error } = await supabase.from('email_logs').insert({
+    const logInsert: EmailLogInsert = {
       clinic_id: input.clinicId,
       outbox_id: null,
       event_type: 'enqueue_lookup_failed',
@@ -70,7 +75,9 @@ async function insertEnqueueLookupFailureLog(
         stage: input.stage,
         error: input.errorMessage,
       },
-    });
+    };
+
+    const { error } = await supabase.from('email_logs').insert(logInsert);
 
     if (error) {
       logger.error('Failed to persist enqueue lookup failure log', {
@@ -95,7 +102,7 @@ async function insertEnqueueLookupFailureLog(
  * 顧客のメールアドレスがない場合はスキップする。
  */
 export async function enqueueReservationCreated(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   reservation: ReservationWithUpdatedAt
 ): Promise<void> {
   try {
@@ -151,7 +158,7 @@ export async function enqueueReservationCreated(
  * - notes のみ → スキップ
  */
 export async function enqueueReservationChange(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   before: ReservationSnapshot,
   after: ReservationSnapshot,
   updatedAt: string
@@ -203,7 +210,7 @@ export async function enqueueReservationChange(
 }
 
 async function resolveEnqueueDependencies(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   reservation: {
     id: string;
     clinic_id: string;
@@ -251,7 +258,7 @@ async function resolveEnqueueDependencies(
 }
 
 async function fetchCustomerEmail(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   clinicId: string,
   customerId: string
 ): Promise<CustomerLookupResult> {
@@ -283,7 +290,7 @@ async function fetchCustomerEmail(
 }
 
 async function fetchReservationContext(
-  supabase: any,
+  supabase: EmailSupabaseClient,
   reservation: { clinic_id: string; staff_id: string; menu_id?: string | null }
 ): Promise<ContextLookupResult> {
   const context = createEmptyReservationContext();
