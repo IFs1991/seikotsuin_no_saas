@@ -9,41 +9,36 @@ import {
   buildPatientAnalysisFromRows,
   type PatientVisitSummaryRow,
 } from '@/lib/services/patient-analysis-service';
+import {
+  MANAGER_ANALYSIS_BUCKETS,
+  MANAGER_ANALYSIS_PERIOD_TYPES,
+  formatManagerAnalysisSeriesLabel,
+  parseManagerAnalysisPeriodRequest,
+  resolveManagerAnalysisPeriod,
+  resolveManagerAnalysisRpcTimestampBounds,
+  type ClinicComparisonPoint,
+  type ManagerAnalysisBucket,
+  type ManagerAnalysisPeriod,
+  type ManagerAnalysisPeriodRequest,
+  type ManagerAnalysisPeriodType,
+  type TimeSeriesPoint,
+} from '@/lib/manager-analysis-period';
 
-export const MANAGER_PATIENT_ANALYSIS_PERIOD_TYPES = [
-  'all',
-  'month',
-  'previous_month',
-  'last_3_months',
-  'year',
-  'custom',
-] as const;
+export const MANAGER_PATIENT_ANALYSIS_PERIOD_TYPES =
+  MANAGER_ANALYSIS_PERIOD_TYPES;
 
 export const MANAGER_PATIENT_ANALYSIS_TARGETS = ['total', 'clinic'] as const;
 
-export const MANAGER_PATIENT_ANALYSIS_BUCKETS = [
-  'daily',
-  'weekly',
-  'monthly',
-] as const;
+export const MANAGER_PATIENT_ANALYSIS_BUCKETS = MANAGER_ANALYSIS_BUCKETS;
 
-export type ManagerPatientAnalysisPeriodType =
-  (typeof MANAGER_PATIENT_ANALYSIS_PERIOD_TYPES)[number];
+export type ManagerPatientAnalysisPeriodType = ManagerAnalysisPeriodType;
 export type ManagerPatientAnalysisTarget =
   (typeof MANAGER_PATIENT_ANALYSIS_TARGETS)[number];
-export type ManagerPatientAnalysisBucket =
-  (typeof MANAGER_PATIENT_ANALYSIS_BUCKETS)[number];
+export type ManagerPatientAnalysisBucket = ManagerAnalysisBucket;
 
-export type ManagerPatientAnalysisPeriodRequest = {
-  type: ManagerPatientAnalysisPeriodType;
-  startDate: string | null;
-  endDate: string | null;
-};
+export type ManagerPatientAnalysisPeriodRequest = ManagerAnalysisPeriodRequest;
 
-export type ManagerPatientAnalysisPeriod =
-  ManagerPatientAnalysisPeriodRequest & {
-    bucket: ManagerPatientAnalysisBucket;
-  };
+export type ManagerPatientAnalysisPeriod = ManagerAnalysisPeriod;
 
 export type ManagerPatientAssignedClinic = {
   clinicId: string;
@@ -71,18 +66,8 @@ export type ManagerPatientPeriodSeriesRow = {
   total_revenue: number;
 };
 
-export type TimeSeriesPoint = {
-  bucketStart: string;
-  bucketEnd: string;
-  label: string;
-  value: number;
-};
-
-export type ClinicSeriesPoint = {
-  clinicId: string;
-  clinicName: string;
-  value: number;
-};
+export type { TimeSeriesPoint };
+export type ClinicSeriesPoint = ClinicComparisonPoint;
 
 export type ManagerPatientAnalysisSummary = {
   assignedClinicCount: number;
@@ -156,10 +141,6 @@ export type ParsedManagerPatientAnalysisQuery =
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const DAY_MS = 24 * 60 * 60 * 1000;
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
-const MAX_CUSTOM_PERIOD_DAYS = 1095;
 const DEFAULT_PERIOD_TYPE: ManagerPatientAnalysisPeriodType = 'month';
 const EMPTY_CHARTS: ManagerPatientAnalysisCharts = {
   revenue: [],
@@ -185,12 +166,6 @@ const EMPTY_SUMMARY: ManagerPatientAnalysisSummary = {
   highRiskPatientCount: 0,
 };
 
-type DateParts = {
-  year: number;
-  month: number;
-  day: number;
-};
-
 type NormalizedPeriodTotals = {
   clinicId: string;
   patientCount: number;
@@ -201,107 +176,8 @@ type NormalizedPeriodTotals = {
   totalRevenue: number;
 };
 
-function isPeriodType(
-  value: string
-): value is ManagerPatientAnalysisPeriodType {
-  return MANAGER_PATIENT_ANALYSIS_PERIOD_TYPES.some(type => type === value);
-}
-
 function isTarget(value: string): value is ManagerPatientAnalysisTarget {
   return MANAGER_PATIENT_ANALYSIS_TARGETS.some(target => target === value);
-}
-
-function parseIsoDate(value: string): Date | null {
-  if (!ISO_DATE_PATTERN.test(value)) {
-    return null;
-  }
-
-  const [yearText, monthText, dayText] = value.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
-}
-
-function getJstDateParts(date: Date): DateParts {
-  const shifted = new Date(date.getTime() + JST_OFFSET_MS);
-  return {
-    year: shifted.getUTCFullYear(),
-    month: shifted.getUTCMonth() + 1,
-    day: shifted.getUTCDate(),
-  };
-}
-
-function formatDateParts(parts: DateParts): string {
-  return `${parts.year}-${String(parts.month).padStart(2, '0')}-${String(
-    parts.day
-  ).padStart(2, '0')}`;
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate();
-}
-
-function addMonths(parts: DateParts, delta: number): DateParts {
-  const zeroBasedMonth = parts.month - 1 + delta;
-  const date = new Date(Date.UTC(parts.year, zeroBasedMonth, 1));
-  return {
-    year: date.getUTCFullYear(),
-    month: date.getUTCMonth() + 1,
-    day: Math.min(
-      parts.day,
-      daysInMonth(date.getUTCFullYear(), date.getUTCMonth() + 1)
-    ),
-  };
-}
-
-function startOfMonth(parts: DateParts): DateParts {
-  return { year: parts.year, month: parts.month, day: 1 };
-}
-
-function endOfMonth(parts: DateParts): DateParts {
-  return {
-    year: parts.year,
-    month: parts.month,
-    day: daysInMonth(parts.year, parts.month),
-  };
-}
-
-function dateOnlyToUtcTime(value: string): number {
-  const parsed = parseIsoDate(value);
-  return parsed ? parsed.getTime() : 0;
-}
-
-function dateRangeDays(startDate: string, endDate: string): number {
-  return (
-    Math.floor(
-      (dateOnlyToUtcTime(endDate) - dateOnlyToUtcTime(startDate)) / DAY_MS
-    ) + 1
-  );
-}
-
-function chooseBucket(
-  startDate: string | null,
-  endDate: string | null
-): ManagerPatientAnalysisBucket {
-  if (!startDate || !endDate) {
-    return 'monthly';
-  }
-
-  const days = dateRangeDays(startDate, endDate);
-  if (days <= 31) return 'daily';
-  if (days <= 180) return 'weekly';
-  return 'monthly';
 }
 
 function roundToTwo(value: number): number {
@@ -488,20 +364,7 @@ function formatSeriesLabel(
   bucketStart: string,
   bucket: ManagerPatientAnalysisBucket
 ): string {
-  const [yearText, monthText, dayText] = bucketStart.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-
-  if (bucket === 'monthly') {
-    return `${year}/${month}`;
-  }
-
-  if (bucket === 'weekly') {
-    return `${month}/${day}週`;
-  }
-
-  return `${month}/${day}`;
+  return formatManagerAnalysisSeriesLabel(bucketStart, bucket);
 }
 
 function toTimeSeries(
@@ -560,12 +423,12 @@ function buildCharts(params: {
 export function parseManagerPatientAnalysisQuery(
   searchParams: URLSearchParams
 ): ParsedManagerPatientAnalysisQuery {
-  const periodText = searchParams.get('period') ?? DEFAULT_PERIOD_TYPE;
-  if (!isPeriodType(periodText)) {
-    return {
-      success: false,
-      message: 'period の値が正しくありません',
-    };
+  const parsedPeriod = parseManagerAnalysisPeriodRequest(
+    searchParams,
+    DEFAULT_PERIOD_TYPE
+  );
+  if (parsedPeriod.success === false) {
+    return parsedPeriod;
   }
 
   const targetText = searchParams.get('target') ?? 'total';
@@ -591,54 +454,12 @@ export function parseManagerPatientAnalysisQuery(
     };
   }
 
-  const startDateText = searchParams.get('start_date');
-  const endDateText = searchParams.get('end_date');
-  const startDate = startDateText ? parseIsoDate(startDateText) : null;
-  const endDate = endDateText ? parseIsoDate(endDateText) : null;
-
-  if ((startDateText && !startDate) || (endDateText && !endDate)) {
-    return {
-      success: false,
-      message: '日付はYYYY-MM-DD形式で指定してください',
-    };
-  }
-
-  if (periodText === 'custom' && (!startDateText || !endDateText)) {
-    return {
-      success: false,
-      message: 'custom 期間では start_date と end_date が必須です',
-    };
-  }
-
-  if (startDate && endDate && startDate.getTime() > endDate.getTime()) {
-    return {
-      success: false,
-      message: 'start_date は end_date 以前の日付を指定してください',
-    };
-  }
-
-  if (
-    periodText === 'custom' &&
-    startDateText &&
-    endDateText &&
-    dateRangeDays(startDateText, endDateText) > MAX_CUSTOM_PERIOD_DAYS
-  ) {
-    return {
-      success: false,
-      message: '期間は最大3年（1095日）以内で指定してください',
-    };
-  }
-
   return {
     success: true,
     query: {
       clinicId,
       target: targetText,
-      period: {
-        type: periodText,
-        startDate: periodText === 'custom' ? startDateText : null,
-        endDate: periodText === 'custom' ? endDateText : null,
-      },
+      period: parsedPeriod.period,
     },
   };
 }
@@ -647,99 +468,13 @@ export function resolveManagerPatientAnalysisPeriod(
   request: ManagerPatientAnalysisPeriodRequest,
   now: Date = new Date()
 ): ManagerPatientAnalysisPeriod {
-  if (request.type === 'all') {
-    return {
-      type: 'all',
-      startDate: null,
-      endDate: null,
-      bucket: 'monthly',
-    };
-  }
-
-  if (request.type === 'custom') {
-    return {
-      type: 'custom',
-      startDate: request.startDate,
-      endDate: request.endDate,
-      bucket: chooseBucket(request.startDate, request.endDate),
-    };
-  }
-
-  const today = getJstDateParts(now);
-
-  if (request.type === 'previous_month') {
-    const previousMonth = addMonths(today, -1);
-    const startDate = formatDateParts(startOfMonth(previousMonth));
-    const endDate = formatDateParts(endOfMonth(previousMonth));
-    return {
-      type: 'previous_month',
-      startDate,
-      endDate,
-      bucket: chooseBucket(startDate, endDate),
-    };
-  }
-
-  if (request.type === 'last_3_months') {
-    const firstMonth = addMonths(today, -2);
-    const startDate = formatDateParts(startOfMonth(firstMonth));
-    const endDate = formatDateParts(endOfMonth(today));
-    return {
-      type: 'last_3_months',
-      startDate,
-      endDate,
-      bucket: chooseBucket(startDate, endDate),
-    };
-  }
-
-  if (request.type === 'year') {
-    const startDate = formatDateParts({
-      year: today.year,
-      month: 1,
-      day: 1,
-    });
-    const endDate = formatDateParts({
-      year: today.year,
-      month: 12,
-      day: 31,
-    });
-    return {
-      type: 'year',
-      startDate,
-      endDate,
-      bucket: chooseBucket(startDate, endDate),
-    };
-  }
-
-  const startDate = formatDateParts(startOfMonth(today));
-  const endDate = formatDateParts(endOfMonth(today));
-  return {
-    type: 'month',
-    startDate,
-    endDate,
-    bucket: chooseBucket(startDate, endDate),
-  };
+  return resolveManagerAnalysisPeriod(request, { now });
 }
 
 export function resolveManagerPatientAnalysisRpcBounds(
   period: ManagerPatientAnalysisPeriod
 ): { startIso: string | null; endIso: string | null } {
-  if (!period.startDate || !period.endDate) {
-    return { startIso: null, endIso: null };
-  }
-
-  const [startYear, startMonth, startDay] = period.startDate
-    .split('-')
-    .map(Number);
-  const [endYear, endMonth, endDay] = period.endDate.split('-').map(Number);
-  const startUtcTime =
-    Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0) - JST_OFFSET_MS;
-  const endUtcTime =
-    Date.UTC(endYear, endMonth - 1, endDay + 1, 0, 0, 0, 0) - JST_OFFSET_MS - 1;
-
-  return {
-    startIso: new Date(startUtcTime).toISOString(),
-    endIso: new Date(endUtcTime).toISOString(),
-  };
+  return resolveManagerAnalysisRpcTimestampBounds(period);
 }
 
 export function buildManagerPatientAnalysis(params: {

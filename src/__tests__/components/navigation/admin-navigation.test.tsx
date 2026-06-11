@@ -141,6 +141,7 @@ describe('Admin navigation alignment', () => {
     expect(screen.getByText('日報管理')).toBeInTheDocument();
     expect(screen.getByText('予約管理')).toBeInTheDocument();
     expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
+    expect(screen.getByText('収益分析')).toBeInTheDocument();
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
     expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
     expect(screen.getByText('店舗比較分析')).toBeInTheDocument();

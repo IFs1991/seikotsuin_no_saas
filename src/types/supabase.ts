@@ -5600,6 +5600,63 @@ export type Database = {
         };
         Returns: undefined;
       };
+      manager_revenue_context_breakdown: {
+        Args: {
+          p_clinic_ids: string[];
+          p_end?: string | null;
+          p_start?: string | null;
+        };
+        Returns: {
+          blocked_count: number;
+          item_count: number;
+          needs_review_count: number;
+          revenue_context_code: string;
+          revenue_context_name: string;
+          total_revenue: number;
+        }[];
+      };
+      manager_revenue_period_series: {
+        Args: {
+          p_bucket?: string;
+          p_clinic_ids: string[];
+          p_end?: string | null;
+          p_start?: string | null;
+        };
+        Returns: {
+          bucket_end: string;
+          bucket_start: string;
+          insurance_revenue: number;
+          operating_revenue: number;
+          private_revenue: number;
+          visit_count: number;
+        }[];
+      };
+      manager_revenue_period_totals: {
+        Args: {
+          p_clinic_ids: string[];
+          p_end?: string | null;
+          p_start?: string | null;
+        };
+        Returns: {
+          blocked_count: number;
+          clinic_id: string;
+          first_report_date: string | null;
+          insurance_revenue: number;
+          insurer_receivable_estimated: number;
+          missing_report_days: number;
+          needs_review_count: number;
+          operating_revenue: number;
+          patient_copay_estimated: number;
+          private_revenue: number;
+          private_revenue_estimated: number;
+          product_revenue: number;
+          report_days: number;
+          ticket_revenue: number;
+          traffic_accident_revenue: number;
+          visit_count: number;
+          workers_comp_revenue: number;
+        }[];
+      };
       manager_patient_period_series: {
         Args: {
           p_bucket?: string;

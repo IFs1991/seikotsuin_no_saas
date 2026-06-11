@@ -17,6 +17,12 @@ import type {
   ManagerPatientAnalysisPeriodType,
   ManagerPatientAnalysisResponse,
 } from './manager-patient-analysis';
+import type {
+  ManagerRevenueAnalysisPeriodType,
+  ManagerRevenueAnalysisResponse,
+  ManagerRevenueAnalysisTarget,
+  ManagerRevenueCompareMode,
+} from './manager-revenue-analysis';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -66,6 +72,15 @@ export type ManagerPatientAnalysisQuery = {
   period?: ManagerPatientAnalysisPeriodType;
   startDate?: string | null;
   endDate?: string | null;
+};
+
+export type ManagerRevenueAnalysisQuery = {
+  clinicId?: string | null;
+  target?: ManagerRevenueAnalysisTarget;
+  period?: ManagerRevenueAnalysisPeriodType;
+  startDate?: string | null;
+  endDate?: string | null;
+  compare?: ManagerRevenueCompareMode;
 };
 
 export type DailyReportsListData = {
@@ -485,6 +500,21 @@ export const api = {
           ...(query.period ? { period: query.period } : {}),
           ...(query.startDate ? { start_date: query.startDate } : {}),
           ...(query.endDate ? { end_date: query.endDate } : {}),
+        }
+      ),
+  },
+
+  managerRevenue: {
+    getAnalysis: (query: ManagerRevenueAnalysisQuery = {}) =>
+      apiClient.get<ManagerRevenueAnalysisResponse>(
+        '/api/manager/revenue/analysis',
+        {
+          ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
+          ...(query.target ? { target: query.target } : {}),
+          ...(query.period ? { period: query.period } : {}),
+          ...(query.startDate ? { start_date: query.startDate } : {}),
+          ...(query.endDate ? { end_date: query.endDate } : {}),
+          ...(query.compare ? { compare: query.compare } : {}),
         }
       ),
   },
