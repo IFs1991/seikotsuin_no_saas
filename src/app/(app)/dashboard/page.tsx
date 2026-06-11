@@ -21,7 +21,7 @@ import useDashboard from '@/hooks/useDashboard';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import RevenueChart from '@/components/dashboard/revenue-chart';
 import PatientFlowHeatmap from '@/components/dashboard/patient-flow-heatmap';
-import AdminDashboard from '@/components/dashboard/admin-dashboard';
+import ManagerDashboard from '@/components/dashboard/manager-dashboard';
 import { isAreaManagerRole } from '@/lib/constants/roles';
 
 // パフォーマンス最適化のためのメモ化コンポーネント
@@ -310,7 +310,7 @@ export default function DashboardPage() {
   }
 
   if (isAreaManagerRole(profile?.role)) {
-    return <AdminDashboard />;
+    return <ManagerDashboard />;
   }
 
   return <ClinicDashboard clinicId={profile?.clinicId ?? null} />;

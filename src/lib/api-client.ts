@@ -23,6 +23,7 @@ import type {
   ManagerRevenueAnalysisTarget,
   ManagerRevenueCompareMode,
 } from './manager-revenue-analysis';
+import type { ManagerDashboardResponse } from '@/types/manager-dashboard';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -517,6 +518,11 @@ export const api = {
           ...(query.compare ? { compare: query.compare } : {}),
         }
       ),
+  },
+
+  managerDashboard: {
+    get: () =>
+      apiClient.get<ManagerDashboardResponse>('/api/manager/dashboard'),
   },
 
   // チャット
