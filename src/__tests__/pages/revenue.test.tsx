@@ -4,14 +4,17 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RevenuePage from '@/app/(app)/revenue/page';
+import { useManagerRevenueAnalysis } from '@/hooks/useManagerRevenueAnalysis';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import type { ManagerRevenueAnalysisResponse } from '@/lib/manager-revenue-analysis';
 
 // Mock the custom hooks
 jest.mock('@/hooks/useRevenue');
 jest.mock('@/hooks/useRevenueEstimateDetails');
 jest.mock('@/hooks/useUserProfile');
+jest.mock('@/hooks/useManagerRevenueAnalysis');
 
 const mockUseRevenue = useRevenue as jest.MockedFunction<typeof useRevenue>;
 const mockUseRevenueEstimateDetails =
@@ -21,9 +24,14 @@ const mockUseRevenueEstimateDetails =
 const mockUseUserProfile = useUserProfile as jest.MockedFunction<
   typeof useUserProfile
 >;
+const mockUseManagerRevenueAnalysis =
+  useManagerRevenueAnalysis as jest.MockedFunction<
+    typeof useManagerRevenueAnalysis
+  >;
 
 // Mock data
 const mockClinicId = '123e4567-e89b-12d3-a456-426614174000';
+const resolvedRefetch = (): Promise<void> => Promise.resolve();
 
 const mockRevenueData = {
   dailyRevenue: 150000,
@@ -129,10 +137,10 @@ const mockUserProfile = {
   profile: {
     id: 'user-1',
     email: 'test@example.com',
-    role: 'manager',
+    role: 'clinic_admin',
     clinicId: mockClinicId,
     isActive: true,
-    isAdmin: false,
+    isAdmin: true,
   },
   loading: false,
   error: null,
@@ -187,11 +195,124 @@ const mockRevenueEstimateDetails = {
   error: null,
 };
 
+const mockManagerRevenueAnalysisData: ManagerRevenueAnalysisResponse = {
+  period: {
+    type: 'month' as const,
+    startDate: '2026-06-01',
+    endDate: '2026-06-11',
+    bucket: 'daily' as const,
+    label: '今月（2026-06-01 - 2026-06-11）',
+  },
+  target: {
+    type: 'total' as const,
+    clinicId: null,
+  },
+  assignedClinics: [{ id: mockClinicId, name: '池袋院' }],
+  summary: {
+    clinicCount: 1,
+    operatingRevenue: 300000,
+    insuranceRevenue: 120000,
+    privateRevenue: 180000,
+    productRevenue: 0,
+    ticketRevenue: 0,
+    trafficAccidentRevenue: 0,
+    workersCompRevenue: 0,
+    patientCopayEstimated: 0,
+    insurerReceivableEstimated: 0,
+    privateRevenueEstimated: 0,
+    visitCount: 30,
+    averageRevenuePerVisit: 10000,
+    reportDays: 10,
+    missingReportDays: 0,
+    needsReviewCount: 1,
+    blockedCount: 0,
+  },
+  comparison: {
+    active: true,
+    previousStartDate: '2026-05-21',
+    previousEndDate: '2026-05-31',
+    previousOperatingRevenue: 200000,
+    operatingRevenueChangeRate: 50,
+    previousVisitCount: 20,
+    visitCountChangeRate: 50,
+    previousAverageRevenuePerVisit: 10000,
+    averageRevenuePerVisitChangeRate: 0,
+  },
+  charts: {
+    revenue: [
+      {
+        bucketStart: '2026-06-01',
+        bucketEnd: '2026-06-11',
+        label: '6/1',
+        value: 300000,
+      },
+    ],
+    visits: [
+      {
+        bucketStart: '2026-06-01',
+        bucketEnd: '2026-06-11',
+        label: '6/1',
+        value: 30,
+      },
+    ],
+    averageRevenuePerVisit: [
+      {
+        bucketStart: '2026-06-01',
+        bucketEnd: '2026-06-11',
+        label: '6/1',
+        value: 10000,
+      },
+    ],
+    insurancePrivateBreakdown: [
+      {
+        bucketStart: '2026-06-01',
+        bucketEnd: '2026-06-11',
+        label: '6/1',
+        insuranceRevenue: 120000,
+        privateRevenue: 180000,
+      },
+    ],
+    contextBreakdown: [],
+    clinicRevenueComparison: [
+      { clinicId: mockClinicId, clinicName: '池袋院', value: 300000 },
+    ],
+    clinicAverageRevenueComparison: [
+      { clinicId: mockClinicId, clinicName: '池袋院', value: 10000 },
+    ],
+  },
+  clinicComparison: [
+    {
+      clinicId: mockClinicId,
+      clinicName: '池袋院',
+      operatingRevenue: 300000,
+      revenueShare: 100,
+      visitCount: 30,
+      averageRevenuePerVisit: 10000,
+      reportDays: 10,
+      missingReportDays: 0,
+      needsReviewCount: 1,
+      operatingRevenueChangeRate: 50,
+    },
+  ],
+  disclaimers: [
+    'この画面の売上は日報入力に基づく経営分析用の集計です。請求確定額や入金額ではありません。',
+    '患者分析の売上（予約ベース）とは集計方法が異なるため、数値は一致しません。',
+  ],
+};
+
 describe('RevenuePage', () => {
   beforeEach(() => {
     mockUseUserProfile.mockReturnValue(mockUserProfile);
     mockUseRevenue.mockReturnValue(mockRevenueData);
     mockUseRevenueEstimateDetails.mockReturnValue(mockRevenueEstimateDetails);
+    mockUseManagerRevenueAnalysis.mockReturnValue({
+      data: mockManagerRevenueAnalysisData,
+      loading: false,
+      error: null,
+      selectedClinicId: mockClinicId,
+      setSelectedClinicId: jest.fn(),
+      refetch: resolvedRefetch,
+    });
   });
 
   afterEach(() => {
@@ -277,7 +398,7 @@ describe('RevenuePage', () => {
       expect(screen.getByText('240,000')).toBeInTheDocument();
       expect(screen.getByText('計算済み')).toBeInTheDocument();
       expect(screen.getByText('見込み件数')).toBeInTheDocument();
-      expect(screen.getByText('警告')).toBeInTheDocument();
+      expect(screen.getAllByText('警告').length).toBeGreaterThan(0);
       expect(screen.getByText('上書き')).toBeInTheDocument();
     });
 
@@ -354,6 +475,45 @@ describe('RevenuePage', () => {
         screen.queryByText('療養費・売上見込み詳細')
       ).not.toBeInTheDocument();
       expect(screen.queryByText('佐藤 花子')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('担当院の売上推移と収益構造を確認できます。')
+      ).toBeInTheDocument();
+    });
+
+    test('manager without primary clinic should render manager revenue analysis', () => {
+      jest.clearAllMocks();
+      mockUseUserProfile.mockReturnValue({
+        profile: {
+          ...mockUserProfile.profile,
+          role: 'manager',
+          clinicId: null,
+          isAdmin: true,
+        },
+        loading: false,
+        error: null,
+      });
+      mockUseManagerRevenueAnalysis.mockReturnValue({
+        data: mockManagerRevenueAnalysisData,
+        loading: false,
+        error: null,
+        selectedClinicId: mockClinicId,
+        setSelectedClinicId: jest.fn(),
+        refetch: resolvedRefetch,
+      });
+
+      render(<RevenuePage />);
+
+      expect(
+        screen.getByText('担当院の売上推移と収益構造を確認できます。')
+      ).toBeInTheDocument();
+      expect(screen.getByText('担当院数')).toBeInTheDocument();
+      expect(
+        screen.getByText('前期間 2026-05-21 - 2026-05-31')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('店舗情報が設定されていません')
+      ).not.toBeInTheDocument();
+      expect(mockUseRevenue).not.toHaveBeenCalled();
     });
 
     test('should display hourly and daily patterns', () => {
@@ -461,7 +621,7 @@ describe('RevenuePage', () => {
         profile: {
           id: 'user-1',
           email: 'test@example.com',
-          role: 'manager',
+          role: 'clinic_admin',
           clinicId: null,
           isActive: true,
           isAdmin: false,

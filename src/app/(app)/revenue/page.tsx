@@ -4,13 +4,18 @@ import React from 'react';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
+import {
+  canAccessAdminUIWithCompat,
+  normalizeRole,
+} from '@/lib/constants/roles';
 import type { RevenueContextCode } from '@/lib/revenue-context';
+import { ManagerRevenueAnalysis } from '@/components/revenue/manager-revenue-analysis';
 import type {
   RevenueBreakdownSummary,
   RevenueEstimateAmountDetail,
   RevenueEstimateAmountDetailLine,
 } from '@/types/api';
+import type { UserProfile } from '@/types/user-profile';
 import {
   Card,
   CardHeader,
@@ -119,13 +124,12 @@ function buildBreakdownDisplayRows(
   });
 }
 
-const RevenuePage: React.FC = () => {
-  const {
-    profile,
-    loading: profileLoading,
-    error: profileError,
-  } = useUserProfile();
-  const clinicId = profile?.clinicId || '';
+type ClinicRevenuePageProps = {
+  profile: UserProfile;
+};
+
+const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
+  const clinicId = profile.clinicId || '';
 
   const {
     dailyRevenue,
@@ -159,46 +163,20 @@ const RevenuePage: React.FC = () => {
     loading: revenueLoading,
     error: revenueError,
   } = useRevenue(clinicId, {
-    enabled: Boolean(clinicId) && !profileLoading && !profileError,
+    enabled: Boolean(clinicId),
   });
   const revenueBreakdownRows = React.useMemo(
     () => buildBreakdownDisplayRows(revenueBreakdownSummary),
     [revenueBreakdownSummary]
   );
-  const canViewEstimateDetails = canAccessAdminUIWithCompat(profile?.role);
+  const canViewEstimateDetails = canAccessAdminUIWithCompat(profile.role);
   const {
     details: revenueEstimateDetails,
     loading: revenueEstimateDetailsLoading,
     error: revenueEstimateDetailsError,
-  } = useRevenueEstimateDetails(clinicId, profile?.role, {
-    enabled:
-      Boolean(clinicId) &&
-      !profileLoading &&
-      !profileError &&
-      canViewEstimateDetails,
+  } = useRevenueEstimateDetails(clinicId, profile.role, {
+    enabled: Boolean(clinicId) && canViewEstimateDetails,
   });
-
-  // プロファイル読み込み中
-  if (profileLoading) {
-    return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
-        <div className='max-w-screen-md mx-auto text-center py-8'>
-          <p className='text-gray-500'>読み込み中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // プロファイルエラー
-  if (profileError) {
-    return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
-        <div className='max-w-screen-md mx-auto text-center py-8'>
-          <p className='text-red-500'>エラー: {profileError}</p>
-        </div>
-      </div>
-    );
-  }
 
   // clinicIdがない場合
   if (!clinicId) {
@@ -875,6 +853,50 @@ const RevenuePage: React.FC = () => {
       </div>
     </div>
   );
+};
+
+const RevenuePage: React.FC = () => {
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfile();
+
+  if (profileLoading) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-gray-500'>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-red-500'>エラー: {profileError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-yellow-600'>店舗情報が設定されていません</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (normalizeRole(profile.role) === 'manager') {
+    return <ManagerRevenueAnalysis />;
+  }
+
+  return <ClinicRevenuePage profile={profile} />;
 };
 
 export default RevenuePage;
