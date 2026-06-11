@@ -5,7 +5,7 @@ import {
   AlertTriangle,
   Lightbulb,
 } from 'lucide-react';
-import { AICommentCardProps } from '@/types';
+import type { AICommentCardProps } from '@/types/ai-comment';
 import { clsx } from 'clsx';
 
 export function AICommentCard({ comment, className }: AICommentCardProps) {

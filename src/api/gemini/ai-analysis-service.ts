@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { type AnalysisResult } from '@/lib/ai/analysis-client';
 import { supabase } from '@/lib/supabase/client';
-import type { AIComment } from '@/types';
+import type { AIComment } from '@/types/ai-comment';
 
 type InsightImpact = 'high' | 'mid' | 'low';
 
