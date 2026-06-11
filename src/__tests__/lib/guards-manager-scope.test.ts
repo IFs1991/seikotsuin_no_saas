@@ -135,6 +135,46 @@ describe('ensureClinicAccess manager assignment scope', () => {
     );
   });
 
+  it('returns 403 when manager assignment scope rejects the requested clinic', async () => {
+    const { adminClient } = createAssignmentAdminClient([
+      { clinic_id: 'assigned-clinic' },
+    ]);
+    createAdminClientMock.mockReturnValue(adminClient);
+    getCurrentUserMock.mockResolvedValue({
+      id: 'manager-1',
+      email: 'manager@example.com',
+    });
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: 'primary-clinic',
+        clinic_scope_ids: ['requested-clinic'],
+      },
+      normalizedRole: 'manager',
+      clinicId: 'primary-clinic',
+      isActive: true,
+      isAdmin: false,
+    });
+    canAccessClinicScopeMock.mockReturnValue(true);
+
+    await expect(
+      ensureClinicAccess(request, '/api/test', 'requested-clinic')
+    ).rejects.toMatchObject<AppError>({
+      code: ERROR_CODES.FORBIDDEN,
+      statusCode: 403,
+    });
+
+    expect(canAccessClinicScopeMock).not.toHaveBeenCalled();
+    expect(logUnauthorizedAccessMock).toHaveBeenCalledWith(
+      '/api/test?clinic_id=requested-clinic',
+      'Forbidden clinic access (parent-scope violation)',
+      'manager-1',
+      'manager@example.com',
+      '127.0.0.1',
+      'jest'
+    );
+  });
+
   it('keeps existing canAccessClinicScope behavior for non-manager roles', async () => {
     getCurrentUserMock.mockResolvedValue({
       id: 'clinic-admin-1',

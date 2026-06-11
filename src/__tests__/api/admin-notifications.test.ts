@@ -1,6 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { createScopedAdminContext } from '@/lib/supabase/scoped-admin';
+import {
+  createScopedAdminContext,
+  ScopeAccessError,
+} from '@/lib/supabase/scoped-admin';
 
 const mockAdminClient = {
   from: jest.fn(),
@@ -137,6 +140,26 @@ describe('/api/admin/notifications', () => {
     expect(listQuery.eq).toHaveBeenCalledWith('clinic_id', mockClinicId);
     expect(listQuery.eq).toHaveBeenCalledWith('is_read', false);
     expect(countQuery.eq).toHaveBeenCalledWith('is_read', false);
+  });
+
+  it('GET: scope外clinicは403を返し通知を読まない', async () => {
+    const scopeOutClinicId = '33333333-3333-4333-8333-333333333333';
+    mockAssertClinicInScope.mockImplementation(() => {
+      throw new ScopeAccessError();
+    });
+
+    const { GET } = await import('@/app/api/admin/notifications/route');
+    const response = await GET(
+      toNextRequest(
+        `http://localhost/api/admin/notifications?clinic_id=${scopeOutClinicId}`
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.success).toBe(false);
+    expect(mockAssertClinicInScope).toHaveBeenCalledWith(scopeOutClinicId);
+    expect(mockAdminClient.from).not.toHaveBeenCalled();
   });
 
   it('PATCH: ids指定で通知を既読化し、更新後の未読数を返す', async () => {
