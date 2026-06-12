@@ -71,49 +71,52 @@ const DAILY_INPUT_ITEM_ID = 'daily-input';
 const RESERVATION_REGISTER_ITEM_ID = 'reservation-register';
 const RESERVATION_LIST_ITEM_ID = 'reservation-list';
 const QUICK_RESERVATION_ITEM_ID = 'quick-reservation';
+const SHIFT_REQUEST_ITEM_ID = 'shift-requests';
 
 const AREA_MANAGER_OPERATION_MENU_ITEMS: readonly NavigationItem[] =
-  OPERATION_MENU_ITEMS.map(item => {
-    if (item.id === 'daily-reports') {
-      return {
-        ...item,
-        subItems: item.subItems?.filter(
-          subItem => subItem.id !== DAILY_INPUT_ITEM_ID
-        ),
-      };
-    }
-
-    if (item.id === 'reservations') {
-      return {
-        ...item,
-        subItems: item.subItems
-          ?.filter(
-            subItem =>
-              subItem.id !== RESERVATION_REGISTER_ITEM_ID &&
-              subItem.id !== RESERVATION_LIST_ITEM_ID
-          )
-          .map(subItem =>
-            subItem.id === 'reservation-timeline'
-              ? {
-                  ...subItem,
-                  label: '担当院タイムライン',
-                  href: '/reservations?view=timeline',
-                }
-              : subItem
+  OPERATION_MENU_ITEMS.filter(item => item.id !== SHIFT_REQUEST_ITEM_ID)
+    .map(item => {
+      if (item.id === 'daily-reports') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(
+            subItem => subItem.id !== DAILY_INPUT_ITEM_ID
           ),
-      };
-    }
+        };
+      }
 
-    return item;
-  }).map(item =>
-    item.id === 'staff'
-      ? {
-          id: 'manager-staff-analysis',
-          label: '担当院スタッフ分析',
-          href: '/manager/staff-analysis',
-        }
-      : item
-  );
+      if (item.id === 'reservations') {
+        return {
+          ...item,
+          subItems: item.subItems
+            ?.filter(
+              subItem =>
+                subItem.id !== RESERVATION_REGISTER_ITEM_ID &&
+                subItem.id !== RESERVATION_LIST_ITEM_ID
+            )
+            .map(subItem =>
+              subItem.id === 'reservation-timeline'
+                ? {
+                    ...subItem,
+                    label: '担当院タイムライン',
+                    href: '/reservations?view=timeline',
+                  }
+                : subItem
+            ),
+        };
+      }
+
+      return item;
+    })
+    .map(item =>
+      item.id === 'staff'
+        ? {
+            id: 'manager-staff-analysis',
+            label: '担当院スタッフ分析',
+            href: '/manager/staff-analysis',
+          }
+        : item
+    );
 
 const OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
   OPERATION_MENU_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
@@ -157,15 +160,22 @@ export const CLINIC_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
 ];
 
 export const AREA_MANAGER_ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
-  { id: 'admin', label: '管理ホーム', href: '/admin' },
-  { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
+  { id: 'manager-home', label: '管理ホーム', href: '/manager' },
   {
-    id: 'admin-shift-requests',
-    label: '希望シフト管理',
-    href: '/admin/shift-requests',
+    id: 'manager-staff-list',
+    label: '担当院スタッフ一覧',
+    href: '/manager/staff',
   },
-  { id: 'admin-settings', label: 'Clinic設定', href: '/admin/settings' },
-  { id: 'multi-store', label: '店舗比較分析', href: '/multi-store' },
+  {
+    id: 'manager-shift-requests',
+    label: '担当院希望シフト',
+    href: '/manager/shift-requests',
+  },
+  {
+    id: 'manager-clinic-comparison',
+    label: '担当院比較分析',
+    href: '/manager/clinic-comparison',
+  },
 ];
 
 const EMPTY_NAVIGATION_ITEMS: readonly NavigationItem[] = [];
@@ -322,9 +332,9 @@ export function getAdminMenuItemsForRole(
 }
 
 export function getAdminNavigationHrefForRole(
-  _role: string | null | undefined
+  role: string | null | undefined
 ): string {
-  return '/admin';
+  return isAreaManagerRole(role) ? '/manager' : '/admin';
 }
 
 export function getNavigationMode({

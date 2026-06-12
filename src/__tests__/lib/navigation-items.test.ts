@@ -57,18 +57,28 @@ describe('navigation items', () => {
     expect(canUseAdminNavigation('manager')).toBe(true);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.label)).toEqual([
       '管理ホーム',
-      'スタッフ管理',
-      '希望シフト管理',
-      'Clinic設定',
-      '店舗比較分析',
+      '担当院スタッフ一覧',
+      '担当院希望シフト',
+      '担当院比較分析',
     ]);
     expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).toEqual([
-      '/admin',
-      '/admin/users',
-      '/admin/shift-requests',
-      '/admin/settings',
-      '/multi-store',
+      '/manager',
+      '/manager/staff',
+      '/manager/shift-requests',
+      '/manager/clinic-comparison',
     ]);
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.id)).toEqual([
+      'manager-home',
+      'manager-staff-list',
+      'manager-shift-requests',
+      'manager-clinic-comparison',
+    ]);
+    expect(
+      AREA_MANAGER_ADMIN_MENU_ITEMS.some(item => item.href.startsWith('/admin'))
+    ).toBe(false);
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).not.toContain(
+      '/multi-store'
+    );
     expect(getAdminMenuItemsForRole('manager')).toBe(
       AREA_MANAGER_ADMIN_MENU_ITEMS
     );
@@ -100,14 +110,35 @@ describe('navigation items', () => {
     expect(visibleItems.find(item => item.id === 'dashboard')?.href).toBe(
       '/dashboard'
     );
-    expect(visibleItems.map(item => item.href)).toContain('/admin');
-    expect(visibleItems.map(item => item.href)).toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).toContain('/manager');
+    expect(visibleItems.map(item => item.href)).toContain('/manager/staff');
     expect(visibleItems.map(item => item.href)).toContain(
+      '/manager/shift-requests'
+    );
+    expect(visibleItems.map(item => item.href)).toContain(
+      '/manager/clinic-comparison'
+    );
+    expect(visibleItems.map(item => item.href)).not.toContain('/admin');
+    expect(visibleItems.map(item => item.href)).not.toContain('/admin/users');
+    expect(visibleItems.map(item => item.href)).not.toContain(
       '/admin/shift-requests'
     );
-    expect(visibleItems.map(item => item.href)).toContain('/admin/settings');
-    expect(visibleItems.map(item => item.href)).toContain('/multi-store');
+    expect(visibleItems.map(item => item.href)).not.toContain(
+      '/admin/settings'
+    );
+    expect(visibleItems.map(item => item.href)).not.toContain('/multi-store');
     expect(visibleItems.map(item => item.href)).not.toContain('/admin/tenants');
+  });
+
+  it('manager の運用メニューからセルフ提出用の希望シフト導線を表示しない', () => {
+    const managerOperationItems = getOperationMenuItemsForRole('manager');
+
+    expect(managerOperationItems.map(item => item.href)).not.toContain(
+      '/staff/shift-requests'
+    );
+    expect(OPERATION_MENU_ITEMS.map(item => item.href)).toContain(
+      '/staff/shift-requests'
+    );
   });
 
   it('manager の日報管理サブメニューには日報入力を表示しない', () => {

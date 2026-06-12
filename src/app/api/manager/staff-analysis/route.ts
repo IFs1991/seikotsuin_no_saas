@@ -18,6 +18,7 @@ import {
   resolveManagerAnalysisRpcTimestampBounds,
   type ManagerAnalysisPeriod,
 } from '@/lib/manager-analysis-period';
+import { fetchAllRows } from '@/lib/manager-fetch';
 import { createAdminClient } from '@/lib/supabase';
 import type {
   DailyReportItemMetricRecord,
@@ -30,9 +31,6 @@ import type {
 
 const PATH = '/api/manager/staff-analysis';
 const MANAGER_STAFF_ANALYSIS_ALLOWED_ROLES = ['manager'] as const;
-// PostgRESTの max_rows (supabase/config.toml: 1000) に合わせたページサイズ。
-// 1リクエストでは1000行までしか返らないため、全行揃うまでページングする。
-const FETCH_PAGE_SIZE = 1000;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -134,28 +132,6 @@ function toDailyReportItemRecord(
     reportDate: row.report_date,
     fee: Number(row.fee),
   };
-}
-
-// クエリを from/to ごとに組み立て直し、ページが満杯の間は次ページを取得する
-async function fetchAllRows<T>(
-  fetchPage: (
-    from: number,
-    to: number
-  ) => PromiseLike<{ data: T[] | null; error: unknown }>
-): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += FETCH_PAGE_SIZE) {
-    const { data, error } = await fetchPage(from, from + FETCH_PAGE_SIZE - 1);
-    if (error) {
-      throw error;
-    }
-
-    const page = data ?? [];
-    rows.push(...page);
-    if (page.length < FETCH_PAGE_SIZE) {
-      return rows;
-    }
-  }
 }
 
 async function fetchStaffResources(
