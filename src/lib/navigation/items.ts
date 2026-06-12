@@ -105,7 +105,15 @@ const AREA_MANAGER_OPERATION_MENU_ITEMS: readonly NavigationItem[] =
     }
 
     return item;
-  });
+  }).map(item =>
+    item.id === 'staff'
+      ? {
+          id: 'manager-staff-analysis',
+          label: '担当院スタッフ分析',
+          href: '/manager/staff-analysis',
+        }
+      : item
+  );
 
 const OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
   OPERATION_MENU_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);

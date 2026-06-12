@@ -203,6 +203,24 @@ describe('navigation items', () => {
     ).not.toContain('/patients/list');
   });
 
+  it('manager の運用メニューに担当院スタッフ分析を表示し既存 staff 導線は通常メニューに残す', () => {
+    const managerOperationItems = getOperationMenuItemsForRole('manager');
+
+    expect(managerOperationItems).toContainEqual({
+      id: 'manager-staff-analysis',
+      label: '担当院スタッフ分析',
+      href: '/manager/staff-analysis',
+    });
+    expect(managerOperationItems.map(item => item.href)).not.toContain(
+      '/staff'
+    );
+    expect(OPERATION_MENU_ITEMS).toContainEqual({
+      id: 'staff',
+      label: 'スタッフ分析',
+      href: '/staff',
+    });
+  });
+
   it('manager の quick access には新規予約導線を表示しない', () => {
     const managerQuickAccessItems = getQuickAccessItemsForRole('manager');
 
