@@ -79,7 +79,7 @@ const DEFAULT_ADMIN_ITEM: MobileNavigationItem = {
 
 const AREA_MANAGER_ADMIN_ITEM: MobileNavigationItem = {
   ...DEFAULT_ADMIN_ITEM,
-  href: '/admin/users',
+  href: '/manager',
 };
 
 const ADMIN_ONLY_ITEMS: readonly MobileNavigationItem[] = [DEFAULT_ADMIN_ITEM];

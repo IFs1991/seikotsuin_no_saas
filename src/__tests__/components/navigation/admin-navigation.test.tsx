@@ -140,11 +140,15 @@ describe('Admin navigation alignment', () => {
 
     expect(screen.getByText('日報管理')).toBeInTheDocument();
     expect(screen.getByText('予約管理')).toBeInTheDocument();
-    expect(screen.getByText('スタッフ分析')).toBeInTheDocument();
+    expect(screen.getByText('担当院スタッフ分析')).toBeInTheDocument();
     expect(screen.getByText('収益分析')).toBeInTheDocument();
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
-    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
-    expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
+    expect(screen.getByText('担当院スタッフ一覧')).toBeInTheDocument();
+    expect(screen.getByText('担当院希望シフト')).toBeInTheDocument();
+    expect(screen.queryByText('希望シフト')).not.toBeInTheDocument();
+    expect(screen.queryByText('スタッフ管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('Clinic設定')).not.toBeInTheDocument();
+    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
     expect(screen.queryByText('患者管理')).not.toBeInTheDocument();
     expect(screen.queryByText('施術メニュー')).not.toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
@@ -162,8 +166,11 @@ describe('Admin navigation alignment', () => {
     await userEvent.click(screen.getByRole('button', { name: /管理メニュー/ }));
 
     expect(screen.getByText('管理ホーム')).toBeInTheDocument();
-    expect(screen.getByText('スタッフ管理')).toBeInTheDocument();
-    expect(screen.getByText('店舗比較分析')).toBeInTheDocument();
+    expect(screen.getByText('担当院スタッフ一覧')).toBeInTheDocument();
+    expect(screen.getByText('担当院希望シフト')).toBeInTheDocument();
+    expect(screen.queryByText('スタッフ管理')).not.toBeInTheDocument();
+    expect(screen.queryByText('Clinic設定')).not.toBeInTheDocument();
+    expect(screen.queryByText('店舗比較分析')).not.toBeInTheDocument();
     expect(screen.queryByText('クリニック管理')).not.toBeInTheDocument();
     expect(screen.queryByText('システム設定')).not.toBeInTheDocument();
     expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
@@ -180,10 +187,10 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('収益')).not.toBeInTheDocument();
   });
 
-  it('MobileBottomNav は manager の管理導線を /admin に向ける', () => {
+  it('MobileBottomNav は manager の管理導線を /manager に向ける', () => {
     render(<MobileBottomNav isAdmin profileLoading={false} role='manager' />);
 
     const adminLink = screen.getByRole('tab', { name: /管理/ });
-    expect(adminLink).toHaveAttribute('href', '/admin');
+    expect(adminLink).toHaveAttribute('href', '/manager');
   });
 });

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
 import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { getManagerDashboardDateKeys } from '@/lib/manager-dashboard';
 import { createAdminClient } from '@/lib/supabase';
 import type { ManagerDashboardResponse } from '@/types/manager-dashboard';
 
@@ -117,6 +118,10 @@ function mockAuth(role = 'manager') {
   });
 }
 
+function toUtcMorningIso(dateKey: string): string {
+  return `${dateKey}T01:00:00.000Z`;
+}
+
 async function getDashboard() {
   const { GET } = await import('@/app/api/manager/dashboard/route');
   return await GET(new NextRequest('http://localhost/api/manager/dashboard'));
@@ -181,59 +186,60 @@ describe('GET /api/manager/dashboard', () => {
   });
 
   it('aggregates assigned clinics only and does not fallback to permission or JWT clinic scope', async () => {
+    const date = getManagerDashboardDateKeys(new Date());
     const dailyReportsQuery = createQuery([
       {
         id: 'today-a',
         clinic_id: clinicA,
-        report_date: '2026-06-12',
+        report_date: date.today,
         total_patients: 10,
         total_revenue: 50000,
         insurance_revenue: 20000,
         private_revenue: 30000,
-        updated_at: '2026-06-12T02:00:00.000Z',
+        updated_at: toUtcMorningIso(date.today),
       },
       {
         id: 'previous-a',
         clinic_id: clinicA,
-        report_date: '2026-06-11',
+        report_date: date.previousDay,
         total_patients: 12,
         total_revenue: 100000,
         insurance_revenue: 40000,
         private_revenue: 60000,
-        updated_at: '2026-06-11T02:00:00.000Z',
+        updated_at: toUtcMorningIso(date.previousDay),
       },
     ]);
     const reviewSignalsQuery = createQuery([
       {
         clinic_id: clinicA,
-        report_date: '2026-06-12',
+        report_date: date.today,
         estimate_status: 'needs_review',
-        updated_at: '2026-06-12T02:30:00.000Z',
+        updated_at: toUtcMorningIso(date.today),
       },
     ]);
     const reservationsQuery = createQuery([
       {
         id: 'reservation-active',
         clinic_id: clinicA,
-        start_time: '2026-06-12T01:00:00.000Z',
+        start_time: toUtcMorningIso(date.today),
         status: 'confirmed',
       },
       {
         id: 'reservation-cancelled',
         clinic_id: clinicA,
-        start_time: '2026-06-12T02:00:00.000Z',
+        start_time: toUtcMorningIso(date.today),
         status: 'cancelled',
       },
       {
         id: 'reservation-cancelled-2',
         clinic_id: clinicA,
-        start_time: '2026-06-12T03:00:00.000Z',
+        start_time: toUtcMorningIso(date.today),
         status: 'no_show',
       },
       {
         id: 'reservation-previous',
         clinic_id: clinicA,
-        start_time: '2026-06-05T01:00:00.000Z',
+        start_time: toUtcMorningIso(date.previousWeekday),
         status: 'confirmed',
       },
     ]);

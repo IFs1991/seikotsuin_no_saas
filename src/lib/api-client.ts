@@ -24,6 +24,12 @@ import type {
   ManagerRevenueCompareMode,
 } from './manager-revenue-analysis';
 import type { ManagerDashboardResponse } from '@/types/manager-dashboard';
+import type { ManagerAssignedClinicsResponse } from '@/types/manager-assigned-clinics';
+import type {
+  ManagerClinicComparisonCompareMode,
+  ManagerClinicComparisonResponse,
+} from '@/types/manager-clinic-comparison';
+import type { ManagerStaffListResponse } from '@/types/manager-staff-list';
 import {
   normalizeError,
   getErrorCodeFromStatus,
@@ -109,6 +115,17 @@ export type DailyReportsListData = {
     totalPatients: number;
     totalRevenue: number;
   }>;
+};
+
+export type ManagerStaffListQuery = {
+  clinicId?: string | null;
+};
+
+export type ManagerClinicComparisonQuery = {
+  period?: ManagerRevenueAnalysisPeriodType;
+  startDate?: string | null;
+  endDate?: string | null;
+  compare?: ManagerClinicComparisonCompareMode;
 };
 
 /**
@@ -523,6 +540,33 @@ export const api = {
   managerDashboard: {
     get: () =>
       apiClient.get<ManagerDashboardResponse>('/api/manager/dashboard'),
+  },
+
+  managerAssignedClinics: {
+    get: () =>
+      apiClient.get<ManagerAssignedClinicsResponse>(
+        '/api/manager/assigned-clinics'
+      ),
+  },
+
+  managerStaff: {
+    get: (query: ManagerStaffListQuery = {}) =>
+      apiClient.get<ManagerStaffListResponse>('/api/manager/staff', {
+        ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
+      }),
+  },
+
+  managerClinicComparison: {
+    get: (query: ManagerClinicComparisonQuery = {}) =>
+      apiClient.get<ManagerClinicComparisonResponse>(
+        '/api/manager/clinic-comparison',
+        {
+          ...(query.period ? { period: query.period } : {}),
+          ...(query.startDate ? { start_date: query.startDate } : {}),
+          ...(query.endDate ? { end_date: query.endDate } : {}),
+          ...(query.compare ? { compare: query.compare } : {}),
+        }
+      ),
   },
 
   // チャット
