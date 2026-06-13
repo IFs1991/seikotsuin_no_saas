@@ -166,4 +166,25 @@ describe('/admin/callback reset-password contract', () => {
       'http://localhost:3000/dashboard'
     );
   });
+
+  test('manager は clinic_id が null でも onboarding ではなく manager home に進む', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: null,
+      data: { user: { id: 'manager-1', email: 'manager@clinic.com' } },
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { role: 'manager', clinic_id: null },
+      error: null,
+    });
+
+    const { GET } = await import('@/app/(public)/admin/callback/route');
+    const response = await GET(
+      new Request('http://localhost:3000/admin/callback?code=manager123')
+    );
+
+    expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/manager');
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/manager'
+    );
+  });
 });

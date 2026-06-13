@@ -285,12 +285,14 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
 
     // 7. パス再検証とリダイレクト
     revalidatePath('/', 'layout');
-    const redirectPath =
-      accessContext.clinicId === null
-        ? '/onboarding'
-        : canAccessAdminUIWithCompat(effectiveRole)
-          ? getDefaultRedirect(effectiveRole ?? 'admin')
-          : '/dashboard';
+    let redirectPath = '/dashboard';
+    if (effectiveRole === 'manager') {
+      redirectPath = getDefaultRedirect(effectiveRole);
+    } else if (accessContext.clinicId === null) {
+      redirectPath = '/onboarding';
+    } else if (canAccessAdminUIWithCompat(effectiveRole)) {
+      redirectPath = getDefaultRedirect(effectiveRole ?? 'admin');
+    }
     redirect(redirectPath);
   } catch (error) {
     if (isRedirectLikeError(error)) {

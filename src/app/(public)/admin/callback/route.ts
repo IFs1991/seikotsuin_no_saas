@@ -46,6 +46,8 @@ export async function GET(request: Request) {
         let finalRedirectPath: string;
         if (isRecoveryRedirect && safeRedirectPath) {
           finalRedirectPath = safeRedirectPath;
+        } else if (userRole === 'manager') {
+          finalRedirectPath = safeRedirectPath ?? getDefaultRedirect(userRole);
         } else if (!hasClinic) {
           finalRedirectPath = '/onboarding';
         } else if (safeRedirectPath) {

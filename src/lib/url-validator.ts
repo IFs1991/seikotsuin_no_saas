@@ -99,7 +99,7 @@ export function getDefaultRedirect(userRole?: string): string {
     case 'admin':
       return '/admin/settings';
     case 'manager':
-      return '/dashboard';
+      return '/manager';
     case 'staff':
       return '/dashboard';
     default:

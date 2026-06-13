@@ -147,6 +147,32 @@ describe('Authentication Integration Tests', () => {
       });
     });
 
+    test('manager login redirects to manager home even when clinic_id is null', async () => {
+      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+        error: null,
+        data: { user: { id: 'manager-123', email: 'manager@example.com' } },
+      });
+      getUserPermissionsMock.mockResolvedValue({
+        role: 'manager',
+        clinic_id: null,
+      });
+      mockSupabaseClient
+        .from()
+        .select()
+        .eq()
+        .single.mockResolvedValue({
+          data: { role: 'manager', is_active: true },
+        });
+
+      const formData = new FormData();
+      formData.append('email', 'manager@example.com');
+      formData.append('password', 'ValidPassword123!');
+
+      await expect(clinicLogin(null, formData)).rejects.toThrow(
+        'REDIRECT:/manager'
+      );
+    });
+
     test('login action rejects invalid input', async () => {
       // Test with invalid email
       const formData = new FormData();

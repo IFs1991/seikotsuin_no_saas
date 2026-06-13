@@ -170,6 +170,41 @@ describe('admin/actions login', () => {
     );
   });
 
+  test('manager は clinic_id が null でも onboarding ではなく manager home に進める', async () => {
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: { role: 'manager', clinic_id: null },
+      role: 'manager',
+      normalizedRole: 'manager',
+      clinicId: null,
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
+    const profileSyncBuilder = createQueryBuilder({});
+    const profileBuilders = [profileLookupBuilder, profileSyncBuilder];
+
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return profileBuilders.shift() ?? createQueryBuilder({});
+      }
+
+      return createQueryBuilder({});
+    });
+
+    const formData = new FormData();
+    formData.append('email', 'manager@example.com');
+    formData.append('password', 'ValidPassword123!');
+
+    await expect(login(null, formData)).rejects.toThrow('REDIRECT:/manager');
+    expect(profileSyncBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'manager@example.com',
+        role: 'manager',
+      })
+    );
+  });
+
   test('inactive なユーザーは従来どおりログイン拒否する', async () => {
     mockGetUserAccessContext.mockResolvedValue({
       permissions: { role: 'admin', clinic_id: 'clinic-1' },

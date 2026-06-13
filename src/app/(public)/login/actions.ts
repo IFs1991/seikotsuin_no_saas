@@ -10,7 +10,7 @@ import {
 } from '@/lib/schemas/auth';
 import { getServerClient, getUserPermissions } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
-import { isHQRole } from '@/lib/constants/roles';
+import { isAreaManagerRole, isHQRole } from '@/lib/constants/roles';
 
 /**
  * @file actions.ts
@@ -197,6 +197,26 @@ export async function clinicLogin(
       // 6. パス再検証とリダイレクト
       revalidatePath('/', 'layout');
       redirect('/admin');
+    }
+
+    if (isAreaManagerRole(permissions?.role)) {
+      await recordSuccessfulLogin();
+      // 4. last_login_at を更新
+      await supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('user_id', data.user.id);
+
+      // 5. 成功ログ
+      console.info('[Auth] Successful manager login:', {
+        email: sanitizedEmail,
+        role: permissions?.role,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 6. パス再検証とリダイレクト
+      revalidatePath('/', 'layout');
+      redirect('/manager');
     }
 
     // 非HQロール + clinic_id = null → /onboarding へリダイレクト
