@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter } from '@/lib/rate-limiting/rate-limiter';
 import { z } from 'zod';
 import { processApiRequest } from '@/lib/api-helpers';
-import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import { HQ_ROLES } from '@/lib/constants/roles';
 
 // リクエストスキーマ
 const ResetRateLimitSchema = z.object({
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
+      allowedRoles: Array.from(HQ_ROLES),
       requireClinicMatch: false,
     });
     if (!auth.success) {

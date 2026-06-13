@@ -71,6 +71,7 @@ describe('認証と権限制御 Middleware', () => {
   describe('未認証ユーザーのアクセス制御', () => {
     const protectedRoutes = [
       '/dashboard',
+      '/manager',
       '/reservations',
       '/daily-reports',
       '/chat',

@@ -14,6 +14,7 @@ import type { Database } from '@/types/supabase';
  */
 const PROTECTED_ROUTE_PREFIXES = [
   '/dashboard',
+  '/manager',
   '/admin',
   '/staff',
   '/patients',
