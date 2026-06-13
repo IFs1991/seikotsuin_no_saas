@@ -343,6 +343,17 @@ function getCancellationSeverity(
   return cancellationRate >= 0.4 ? 'critical' : 'warning';
 }
 
+function getZeroReservationSeverity(
+  todayReservationCount: number,
+  previousWeekdayReservationCount: number
+): ManagerDashboardSeverity | null {
+  if (todayReservationCount !== 0) {
+    return null;
+  }
+
+  return previousWeekdayReservationCount > 0 ? 'critical' : 'warning';
+}
+
 export function sortAttentionItems(
   items: readonly ManagerDashboardAttentionItem[]
 ): ManagerDashboardAttentionItem[] {
@@ -410,20 +421,37 @@ export function generateAttentionItems(
       });
     }
 
-    const reservationSeverity = getDropSeverity(
-      card.reservationChangeRateFromPreviousWeekday
+    const zeroReservationSeverity = getZeroReservationSeverity(
+      card.todayReservationCount,
+      card.previousWeekdayReservationCount
     );
-    if (reservationSeverity) {
+    if (zeroReservationSeverity) {
       items.push({
         id: `${card.clinicId}:low_reservations`,
         clinicId: card.clinicId,
         clinicName: card.clinicName,
         type: 'low_reservations',
-        severity: reservationSeverity,
-        title: '予約数が前週同曜日より低下しています',
-        description: `${card.clinicName} の本日予約数が前週同曜日比で30%以上低下しています。`,
+        severity: zeroReservationSeverity,
+        title: '本日の予約がまだありません',
+        description: `${card.clinicName} の本日の予約がまだ登録されていません。`,
         href: card.links.reservations,
       });
+    } else {
+      const reservationSeverity = getDropSeverity(
+        card.reservationChangeRateFromPreviousWeekday
+      );
+      if (reservationSeverity) {
+        items.push({
+          id: `${card.clinicId}:low_reservations`,
+          clinicId: card.clinicId,
+          clinicName: card.clinicName,
+          type: 'low_reservations',
+          severity: reservationSeverity,
+          title: '予約数が前週同曜日より低下しています',
+          description: `${card.clinicName} の本日予約数が前週同曜日比で30%以上低下しています。`,
+          href: card.links.reservations,
+        });
+      }
     }
 
     const cancellationSeverity = getCancellationSeverity(

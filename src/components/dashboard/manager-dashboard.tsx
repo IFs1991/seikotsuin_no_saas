@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BarChart3,
@@ -26,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { useManagerDashboard } from '@/hooks/useManagerDashboard';
 import { cn } from '@/lib/utils';
 import type {
+  ManagerDashboardAttentionItem,
   ManagerDashboardDailyReportStatus,
   ManagerDashboardResponse,
   ManagerDashboardSeverity,
@@ -34,6 +36,7 @@ import type {
 const EMPTY_ASSIGNMENT_TITLE = '担当院がまだ設定されていません。';
 const EMPTY_ASSIGNMENT_DESCRIPTION =
   '管理者にマネージャー管理から担当店舗の設定を依頼してください。';
+const TIMELINE_INITIAL_VISIBLE_COUNT = 5;
 
 const shortcuts = [
   { label: '日報管理', href: '/daily-reports', icon: ClipboardList },
@@ -45,7 +48,7 @@ const shortcuts = [
   { label: '患者分析', href: '/patients', icon: Users },
   { label: '収益分析', href: '/revenue', icon: CircleDollarSign },
   { label: '店舗比較分析', href: '/multi-store', icon: BarChart3 },
-  { label: 'スタッフ管理', href: '/admin/users', icon: Stethoscope },
+  { label: '担当院スタッフ', href: '/manager/staff', icon: Stethoscope },
 ] as const;
 
 const linkButtonClassName =
@@ -57,12 +60,20 @@ function formatCurrency(value: number): string {
   })}`;
 }
 
-function formatPercent(value: number | null): string {
-  if (value === null) {
-    return '-';
+function formatComparisonPercent(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return '比較データなし';
   }
 
   return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
+}
+
+function formatActualRate(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return '実績なし';
+  }
+
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 // Intl.DateTimeFormat の生成は高コストなのでモジュールスコープで使い回す
@@ -114,6 +125,86 @@ function getDailyReportStatusVariant(
   }
 
   return status === 'needs_review' ? 'default' : 'destructive';
+}
+
+type ClinicHealthStatus = 'critical' | 'warning' | 'normal';
+
+type DailyReportStatusGroups = {
+  missingCards: ManagerDashboardResponse['clinicCards'];
+  needsReviewCards: ManagerDashboardResponse['clinicCards'];
+};
+
+type ManagerDashboardViewModel = {
+  dailyReportStatusGroups: DailyReportStatusGroups;
+  healthStatusByClinicId: ReadonlyMap<string, ClinicHealthStatus>;
+  visibleTimeline: ManagerDashboardResponse['timeline'];
+  hiddenTimelineCount: number;
+};
+
+function buildDailyReportStatusGroups(
+  clinicCards: ManagerDashboardResponse['clinicCards']
+): DailyReportStatusGroups {
+  const missingCards: ManagerDashboardResponse['clinicCards'] = [];
+  const needsReviewCards: ManagerDashboardResponse['clinicCards'] = [];
+
+  for (const card of clinicCards) {
+    if (card.dailyReportStatus === 'missing') {
+      missingCards.push(card);
+    } else if (card.dailyReportStatus === 'needs_review') {
+      needsReviewCards.push(card);
+    }
+  }
+
+  return { missingCards, needsReviewCards };
+}
+
+function buildClinicHealthStatusMap(
+  attentionItems: readonly ManagerDashboardAttentionItem[]
+): ReadonlyMap<string, ClinicHealthStatus> {
+  const healthStatusByClinicId = new Map<string, ClinicHealthStatus>();
+
+  for (const item of attentionItems) {
+    const currentStatus = healthStatusByClinicId.get(item.clinicId);
+    if (currentStatus === 'critical') {
+      continue;
+    }
+
+    if (item.severity === 'critical') {
+      healthStatusByClinicId.set(item.clinicId, 'critical');
+    } else if (item.severity === 'warning' && currentStatus !== 'warning') {
+      healthStatusByClinicId.set(item.clinicId, 'warning');
+    }
+  }
+
+  return healthStatusByClinicId;
+}
+
+function buildManagerDashboardViewModel(
+  data: ManagerDashboardResponse
+): ManagerDashboardViewModel {
+  return {
+    dailyReportStatusGroups: buildDailyReportStatusGroups(data.clinicCards),
+    healthStatusByClinicId: buildClinicHealthStatusMap(data.attentionItems),
+    visibleTimeline: data.timeline.slice(0, TIMELINE_INITIAL_VISIBLE_COUNT),
+    hiddenTimelineCount: Math.max(
+      data.timeline.length - TIMELINE_INITIAL_VISIBLE_COUNT,
+      0
+    ),
+  };
+}
+
+function getClinicHealthLabel(status: ClinicHealthStatus): string {
+  if (status === 'critical') {
+    return '緊急';
+  }
+  return status === 'warning' ? '注意' : '正常';
+}
+
+function getClinicHealthVariant(status: ClinicHealthStatus): BadgeVariant {
+  if (status === 'critical') {
+    return 'destructive';
+  }
+  return status === 'warning' ? 'default' : 'secondary';
 }
 
 function LoadingState() {
@@ -275,7 +366,103 @@ function AttentionSection({ data }: { data: ManagerDashboardResponse }) {
   );
 }
 
-function ClinicCardsSection({ data }: { data: ManagerDashboardResponse }) {
+function DailyReportStatusPanel({
+  data,
+  statusGroups,
+}: {
+  data: ManagerDashboardResponse;
+  statusGroups: DailyReportStatusGroups;
+}) {
+  return (
+    <Card className='bg-card'>
+      <CardHeader>
+        <CardTitle>日報提出状況</CardTitle>
+        <CardDescription>
+          未提出院と要確認院を優先して確認できます。
+        </CardDescription>
+      </CardHeader>
+      <CardContent className='space-y-4'>
+        <div className='grid grid-cols-1 gap-3 text-sm sm:grid-cols-3'>
+          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
+            <p className='text-gray-500 dark:text-gray-400'>提出済み</p>
+            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+              {data.summary.submittedDailyReportCount}院
+            </p>
+          </div>
+          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
+            <p className='text-gray-500 dark:text-gray-400'>要確認</p>
+            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+              {data.summary.needsReviewCount}院
+            </p>
+          </div>
+          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
+            <p className='text-gray-500 dark:text-gray-400'>未提出</p>
+            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+              {data.summary.missingDailyReportCount}院
+            </p>
+          </div>
+        </div>
+
+        <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+          <ClinicDailyReportLinkList
+            title='未提出院'
+            cards={statusGroups.missingCards}
+            emptyText='未提出の日報はありません'
+          />
+          <ClinicDailyReportLinkList
+            title='要確認院'
+            cards={statusGroups.needsReviewCards}
+            emptyText='要確認の日報はありません'
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ClinicDailyReportLinkList({
+  title,
+  cards,
+  emptyText,
+}: {
+  title: string;
+  cards: ManagerDashboardResponse['clinicCards'];
+  emptyText: string;
+}) {
+  return (
+    <div>
+      <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100'>
+        {title}
+      </h3>
+      {cards.length === 0 ? (
+        <p className='mt-2 text-sm text-gray-600 dark:text-gray-300'>
+          {emptyText}
+        </p>
+      ) : (
+        <ul className='mt-2 space-y-2'>
+          {cards.map(card => (
+            <li key={card.clinicId}>
+              <Link
+                href={card.links.dailyReports}
+                className='text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100'
+              >
+                {card.clinicName}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ClinicCardsSection({
+  data,
+  healthStatusByClinicId,
+}: {
+  data: ManagerDashboardResponse;
+  healthStatusByClinicId: ReadonlyMap<string, ClinicHealthStatus>;
+}) {
   return (
     <section className='space-y-3' aria-label='担当院別カード'>
       <div>
@@ -287,90 +474,119 @@ function ClinicCardsSection({ data }: { data: ManagerDashboardResponse }) {
         </p>
       </div>
       <div className='grid grid-cols-1 xl:grid-cols-2 gap-4'>
-        {data.clinicCards.map(card => (
-          <Card key={card.clinicId} className='bg-card'>
-            <CardHeader>
-              <div className='flex flex-wrap items-center justify-between gap-2'>
-                <CardTitle className='break-words'>{card.clinicName}</CardTitle>
-                <Badge
-                  variant={getDailyReportStatusVariant(card.dailyReportStatus)}
-                >
-                  {getDailyReportStatusLabel(card.dailyReportStatus)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className='space-y-4'>
-              <div className='grid grid-cols-2 gap-3 text-sm md:grid-cols-3'>
-                <div>
-                  <p className='text-gray-500 dark:text-gray-400'>本日売上</p>
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                    {formatCurrency(card.todayRevenue)}
-                  </p>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
-                    前日比{' '}
-                    {formatPercent(card.revenueChangeRateFromPreviousDay)}
-                  </p>
-                </div>
-                <div>
-                  <p className='text-gray-500 dark:text-gray-400'>来院数</p>
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                    {card.todayVisitCount.toLocaleString('ja-JP')}名
-                  </p>
-                </div>
-                <div>
-                  <p className='text-gray-500 dark:text-gray-400'>予約数</p>
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                    {card.todayReservationCount.toLocaleString('ja-JP')}件
-                  </p>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
-                    前週同曜日比{' '}
-                    {formatPercent(
-                      card.reservationChangeRateFromPreviousWeekday
+        {data.clinicCards.map(card => {
+          const healthStatus =
+            healthStatusByClinicId.get(card.clinicId) ?? 'normal';
+          return (
+            <Card key={card.clinicId} className='bg-card'>
+              <CardHeader>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                    <Badge variant={getClinicHealthVariant(healthStatus)}>
+                      {getClinicHealthLabel(healthStatus)}
+                    </Badge>
+                    <CardTitle className='break-words'>
+                      {card.clinicName}
+                    </CardTitle>
+                  </div>
+                  <Badge
+                    variant={getDailyReportStatusVariant(
+                      card.dailyReportStatus
                     )}
-                  </p>
+                  >
+                    日報: {getDailyReportStatusLabel(card.dailyReportStatus)}
+                  </Badge>
                 </div>
-                <div>
-                  <p className='text-gray-500 dark:text-gray-400'>
-                    キャンセル率
-                  </p>
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                    {formatPercent(card.cancellationRate)}
-                  </p>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='grid grid-cols-2 gap-3 text-sm md:grid-cols-3'>
+                  <div>
+                    <p className='text-gray-500 dark:text-gray-400'>本日売上</p>
+                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                      {formatCurrency(card.todayRevenue)}
+                    </p>
+                    <p className='text-xs text-gray-500 dark:text-gray-400'>
+                      前日比{' '}
+                      {formatComparisonPercent(
+                        card.revenueChangeRateFromPreviousDay
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-500 dark:text-gray-400'>来院数</p>
+                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                      {card.todayVisitCount.toLocaleString('ja-JP')}名
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-500 dark:text-gray-400'>予約数</p>
+                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                      {card.todayReservationCount.toLocaleString('ja-JP')}件
+                    </p>
+                    <p className='text-xs text-gray-500 dark:text-gray-400'>
+                      前週同曜日比{' '}
+                      {formatComparisonPercent(
+                        card.reservationChangeRateFromPreviousWeekday
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className='text-gray-500 dark:text-gray-400'>
+                      キャンセル率
+                    </p>
+                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                      {formatActualRate(card.cancellationRate)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Separator />
-              <div className='grid grid-cols-2 gap-2'>
-                <Link
-                  href={card.links.dailyReports}
-                  className={linkButtonClassName}
-                >
-                  日報を見る
-                </Link>
-                <Link
-                  href={card.links.reservations}
-                  className={linkButtonClassName}
-                >
-                  予約を見る
-                </Link>
-                <Link
-                  href={card.links.patients}
-                  className={linkButtonClassName}
-                >
-                  患者分析
-                </Link>
-                <Link href={card.links.revenue} className={linkButtonClassName}>
-                  収益分析
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <Separator />
+                <div className='grid grid-cols-2 gap-2'>
+                  <Link
+                    href={card.links.dailyReports}
+                    className={linkButtonClassName}
+                  >
+                    日報を見る
+                  </Link>
+                  <Link
+                    href={card.links.reservations}
+                    className={linkButtonClassName}
+                  >
+                    予約を見る
+                  </Link>
+                  <Link
+                    href={card.links.patients}
+                    className={linkButtonClassName}
+                  >
+                    患者分析
+                  </Link>
+                  <Link
+                    href={card.links.revenue}
+                    className={linkButtonClassName}
+                  >
+                    収益分析
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-function TimelineSection({ data }: { data: ManagerDashboardResponse }) {
+function TimelineSection({
+  data,
+  visibleTimeline,
+  hiddenTimelineCount,
+}: {
+  data: ManagerDashboardResponse;
+  visibleTimeline: ManagerDashboardResponse['timeline'];
+  hiddenTimelineCount: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const timelineItems = expanded ? data.timeline : visibleTimeline;
+
   return (
     <Card className='bg-card'>
       <CardHeader>
@@ -385,30 +601,49 @@ function TimelineSection({ data }: { data: ManagerDashboardResponse }) {
             本日のタイムラインに表示できるイベントはまだありません。
           </p>
         ) : (
-          <ol className='space-y-3'>
-            {data.timeline.map(item => (
-              <li key={item.id} className='border-l-2 border-blue-200 pl-4'>
-                <div className='flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400'>
-                  <time dateTime={item.occurredAt}>
-                    {formatDateTime(item.occurredAt)}
-                  </time>
-                  <span>{item.clinicName}</span>
-                </div>
-                <p className='mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100'>
-                  {item.label}
+          <div className='space-y-3'>
+            <ol className='space-y-3'>
+              {timelineItems.map(item => (
+                <li key={item.id} className='border-l-2 border-blue-200 pl-4'>
+                  <div className='flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400'>
+                    <time dateTime={item.occurredAt}>
+                      {formatDateTime(item.occurredAt)}
+                    </time>
+                    <span>{item.clinicName}</span>
+                  </div>
+                  <p className='mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100'>
+                    {item.label}
+                  </p>
+                  <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+                    {item.detail}
+                  </p>
+                  <Link
+                    href={item.href}
+                    className='mt-2 inline-flex text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100'
+                  >
+                    関連画面を見る
+                  </Link>
+                </li>
+              ))}
+            </ol>
+            {hiddenTimelineCount > 0 ? (
+              <div className='flex flex-wrap items-center gap-3 border-t border-gray-200 pt-3 dark:border-gray-700'>
+                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                  {expanded
+                    ? 'すべてのタイムラインを表示しています'
+                    : `他に${hiddenTimelineCount}件のタイムラインがあります`}
                 </p>
-                <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
-                  {item.detail}
-                </p>
-                <Link
-                  href={item.href}
-                  className='mt-2 inline-flex text-sm font-medium text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100'
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setExpanded(current => !current)}
                 >
-                  関連画面を見る
-                </Link>
-              </li>
-            ))}
-          </ol>
+                  {expanded ? '折りたたむ' : 'すべて表示'}
+                </Button>
+              </div>
+            ) : null}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -443,6 +678,10 @@ function ShortcutsSection() {
 
 export default function ManagerDashboard() {
   const { data, loading, error, refetch } = useManagerDashboard();
+  const viewModel = useMemo(
+    () => (data ? buildManagerDashboardViewModel(data) : null),
+    [data]
+  );
 
   if (loading) {
     return <LoadingState />;
@@ -453,6 +692,10 @@ export default function ManagerDashboard() {
   }
 
   if (!data) {
+    return null;
+  }
+
+  if (!viewModel) {
     return null;
   }
 
@@ -480,9 +723,20 @@ export default function ManagerDashboard() {
         ) : (
           <>
             <SummaryKpis data={data} />
+            <DailyReportStatusPanel
+              data={data}
+              statusGroups={viewModel.dailyReportStatusGroups}
+            />
             <AttentionSection data={data} />
-            <ClinicCardsSection data={data} />
-            <TimelineSection data={data} />
+            <ClinicCardsSection
+              data={data}
+              healthStatusByClinicId={viewModel.healthStatusByClinicId}
+            />
+            <TimelineSection
+              data={data}
+              visibleTimeline={viewModel.visibleTimeline}
+              hiddenTimelineCount={viewModel.hiddenTimelineCount}
+            />
             <ShortcutsSection />
           </>
         )}

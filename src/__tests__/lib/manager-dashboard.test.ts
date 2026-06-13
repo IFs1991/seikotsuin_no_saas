@@ -20,6 +20,17 @@ function clinicCard(
   overrides: Partial<ManagerDashboardClinicCard> = {}
 ): ManagerDashboardClinicCard {
   const clinicId = overrides.clinicId ?? clinicA;
+  const revenueChangeRateFromPreviousDay =
+    'revenueChangeRateFromPreviousDay' in overrides
+      ? (overrides.revenueChangeRateFromPreviousDay ?? null)
+      : 0;
+  const reservationChangeRateFromPreviousWeekday =
+    'reservationChangeRateFromPreviousWeekday' in overrides
+      ? (overrides.reservationChangeRateFromPreviousWeekday ?? null)
+      : 0;
+  const cancellationRate =
+    'cancellationRate' in overrides ? (overrides.cancellationRate ?? null) : 0;
+
   return {
     clinicId,
     clinicName: overrides.clinicName ?? '池袋院',
@@ -31,11 +42,9 @@ function clinicCard(
       overrides.previousWeekdayReservationCount ?? 8,
     todayCancellationCount: overrides.todayCancellationCount ?? 0,
     dailyReportStatus: overrides.dailyReportStatus ?? 'submitted',
-    revenueChangeRateFromPreviousDay:
-      overrides.revenueChangeRateFromPreviousDay ?? 0,
-    reservationChangeRateFromPreviousWeekday:
-      overrides.reservationChangeRateFromPreviousWeekday ?? 0,
-    cancellationRate: overrides.cancellationRate ?? 0,
+    revenueChangeRateFromPreviousDay,
+    reservationChangeRateFromPreviousWeekday,
+    cancellationRate,
     links: overrides.links ?? buildClinicLinks(clinicId),
   };
 }
@@ -82,6 +91,64 @@ describe('manager-dashboard domain', () => {
       'low_reservations',
     ]);
     expect(items[0]?.severity).toBe('critical');
+  });
+
+  it('generates critical zero reservation attention when previous weekday had reservations', () => {
+    const items = generateAttentionItems({
+      clinicCards: [
+        clinicCard({
+          todayReservationCount: 0,
+          previousWeekdayReservationCount: 8,
+          reservationChangeRateFromPreviousWeekday: -1,
+        }),
+      ],
+    });
+
+    const reservationItems = items.filter(
+      item => item.type === 'low_reservations'
+    );
+    expect(reservationItems).toHaveLength(1);
+    expect(reservationItems[0]).toMatchObject({
+      severity: 'critical',
+      title: '本日の予約がまだありません',
+      description: '池袋院 の本日の予約がまだ登録されていません。',
+    });
+  });
+
+  it('generates warning zero reservation attention without previous weekday baseline', () => {
+    const items = generateAttentionItems({
+      clinicCards: [
+        clinicCard({
+          todayReservationCount: 0,
+          previousWeekdayReservationCount: 0,
+          reservationChangeRateFromPreviousWeekday: null,
+        }),
+      ],
+    });
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'low_reservations',
+          severity: 'warning',
+          title: '本日の予約がまだありません',
+        }),
+      ])
+    );
+  });
+
+  it('does not generate zero reservation attention when reservations exist', () => {
+    const items = generateAttentionItems({
+      clinicCards: [
+        clinicCard({
+          todayReservationCount: 1,
+          previousWeekdayReservationCount: 0,
+          reservationChangeRateFromPreviousWeekday: null,
+        }),
+      ],
+    });
+
+    expect(items.some(item => item.type === 'low_reservations')).toBe(false);
   });
 
   it('sorts attention items by severity, clinic name, and type', () => {
