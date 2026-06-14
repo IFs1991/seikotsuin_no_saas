@@ -89,7 +89,7 @@ const AiInsightsPage: React.FC = () => {
 
   if (profileError && !profileLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card'>
             <CardHeader>
@@ -98,7 +98,7 @@ const AiInsightsPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <p className='text-gray-700 dark:text-gray-300'>{profileError}</p>
+              <p className='text-foreground'>{profileError}</p>
             </CardContent>
           </Card>
         </div>
@@ -108,7 +108,7 @@ const AiInsightsPage: React.FC = () => {
 
   if (!clinicId && !profileLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card'>
             <CardHeader>
@@ -125,7 +125,7 @@ const AiInsightsPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+      <div className='p-6 bg-background min-h-screen flex items-center justify-center'>
         <div className='text-gray-500'>AIインサイトを読み込み中です...</div>
       </div>
     );
@@ -133,7 +133,7 @@ const AiInsightsPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card border border-red-200'>
             <CardHeader>
@@ -150,7 +150,7 @@ const AiInsightsPage: React.FC = () => {
 
   if (!data) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+      <div className='p-6 bg-background min-h-screen flex items-center justify-center'>
         <div className='text-gray-500'>
           表示できるAIインサイトがありません。
         </div>
@@ -159,7 +159,7 @@ const AiInsightsPage: React.FC = () => {
   }
 
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <div className='max-w-[900px] mx-auto space-y-6'>
         <Card className='bg-card'>
           <CardHeader>
@@ -169,7 +169,7 @@ const AiInsightsPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='bg-white dark:bg-gray-800 rounded-lg border p-4 text-gray-800 dark:text-gray-100'>
+            <div className='bg-background rounded-lg border p-4 text-foreground'>
               {data.summary}
             </div>
           </CardContent>
@@ -184,10 +184,10 @@ const AiInsightsPage: React.FC = () => {
             {data.insights.map((insight, index) => (
               <div
                 key={`${insight.title}-${index}`}
-                className='border rounded-lg p-4 bg-white dark:bg-gray-800'
+                className='border rounded-lg p-4 bg-background'
               >
                 <div className='flex items-center justify-between gap-3'>
-                  <div className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                  <div className='text-lg font-semibold text-foreground'>
                     {insight.title}
                   </div>
                   <span
@@ -196,14 +196,12 @@ const AiInsightsPage: React.FC = () => {
                     影響度: {impactMeta[insight.impact].label}
                   </span>
                 </div>
-                <p className='text-sm text-gray-600 dark:text-gray-300 mt-2'>
+                <p className='text-sm text-muted-foreground mt-2'>
                   {insight.why}
                 </p>
                 <div className='mt-3 flex items-start gap-2'>
                   <Badge variant='secondary'>推奨</Badge>
-                  <p className='text-sm text-gray-700 dark:text-gray-200'>
-                    {insight.action}
-                  </p>
+                  <p className='text-sm text-foreground'>{insight.action}</p>
                 </div>
               </div>
             ))}
@@ -226,15 +224,13 @@ const AiInsightsPage: React.FC = () => {
               anomalies.map((item, index) => (
                 <div
                   key={`${item.title}-${index}`}
-                  className='border rounded-lg p-4 bg-white dark:bg-gray-800'
+                  className='border rounded-lg p-4 bg-background'
                 >
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                    {item.title}
-                  </p>
-                  <p className='text-sm text-gray-600 dark:text-gray-300 mt-2'>
+                  <p className='font-semibold text-foreground'>{item.title}</p>
+                  <p className='text-sm text-muted-foreground mt-2'>
                     {item.evidence}
                   </p>
-                  <p className='text-sm text-gray-700 dark:text-gray-200 mt-2'>
+                  <p className='text-sm text-foreground mt-2'>
                     推奨: {item.action}
                   </p>
                 </div>

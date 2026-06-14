@@ -73,14 +73,14 @@ function AdminClinicScopeSelectorComponent({
           value={clinicSearchTerm}
           onChange={handleClinicSearchChange}
           placeholder='例: 新宿院、本院、渋谷院'
-          className='flex-1 border-[#4C1D95]'
+          className='flex-1 border-admin-950'
         />
         <Button
           type='submit'
           disabled={!draftClinic}
           className={
             draftClinic
-              ? 'bg-[#4C1D95] text-white hover:bg-[#3B1673]'
+              ? 'bg-admin-950 text-white hover:bg-admin-950/90'
               : 'bg-gray-200 text-gray-500'
           }
         >
@@ -117,8 +117,8 @@ function AdminClinicScopeSelectorComponent({
                   onClick={() => handleClinicSelect(clinic)}
                   className={`w-full rounded-md border px-3 py-2 text-left text-sm transition-colors ${
                     isSelected
-                      ? 'border-[#4C1D95] bg-[#EEF2FF] text-[#312E81]'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-[#4C1D95]'
+                      ? 'border-admin-950 bg-admin-50 text-admin-900'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-admin-950'
                   }`}
                   aria-pressed={isSelected}
                 >

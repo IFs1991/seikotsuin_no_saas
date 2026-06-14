@@ -77,9 +77,7 @@ export const AdminAccountCreateFields = memo(function AdminAccountCreateFields({
           autoComplete='new-password'
         />
         {passwordHelpText && (
-          <p className='text-xs text-gray-500 dark:text-gray-400'>
-            {passwordHelpText}
-          </p>
+          <p className='text-xs text-muted-foreground'>{passwordHelpText}</p>
         )}
       </div>
     </div>

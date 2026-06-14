@@ -409,7 +409,7 @@ function SettingsLoadingCard() {
     <AdminState
       variant='loading'
       title='設定を読み込み中...'
-      className='bg-white dark:bg-gray-900'
+      className='bg-card'
     />
   );
 }
@@ -607,7 +607,7 @@ function UnavailableSettingsCard({ description }: { description: string }) {
           </p>
         </div>
       }
-      className='bg-white dark:bg-gray-900'
+      className='bg-card'
     />
   );
 }
@@ -626,7 +626,7 @@ const SettingsContent = memo(function SettingsContent({
         variant='empty'
         title='設定項目を選択してください'
         description='左側の設定メニューから編集したい項目を選択してください。'
-        className='bg-white dark:bg-gray-900'
+        className='bg-card'
       />
     );
   }
@@ -651,14 +651,14 @@ const SettingsContent = memo(function SettingsContent({
         <AdminState
           variant='loading'
           title='担当Clinicを読み込み中...'
-          className='bg-white dark:bg-gray-900'
+          className='bg-card'
         />
       ) : requiresClinicSelection ? (
         <AdminState
           variant='empty'
           title='対象Clinicを選択してください'
           description='担当Clinicが選択されるまで設定の読み書きは行いません。'
-          className='bg-white dark:bg-gray-900'
+          className='bg-card'
         />
       ) : SelectedComponent ? (
         <SelectedComponent clinicId={clinicId} />

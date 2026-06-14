@@ -3,7 +3,7 @@
  * DOD-09: API経由でdaily_reportsテーブルにアクセス（直接Supabaseアクセス排除）
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 
 // 型定義
@@ -35,23 +35,42 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+function createEmptyDailyReport(): DailyReport {
+  return {
+    staff_id: 0,
+    date: new Date().toISOString().slice(0, 10),
+    treatment_count: 0,
+    revenue: 0,
+  };
+}
+
 const useDailyReports = () => {
   const { profile } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
 
   const [reports, setReports] = useState<DailyReport[]>([]);
+  const reportsRef = useRef<DailyReport[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [formState, setFormState] = useState<DailyReport>({
-    staff_id: 0,
-    date: new Date().toISOString().slice(0, 10),
-    treatment_count: 0,
-    revenue: 0,
-  });
+  const [formState, setFormState] = useState<DailyReport>(
+    createEmptyDailyReport
+  );
   const [tempSave, setTempSave] = useState<DailyReport | null>(null);
   const [queue, setQueue] = useState<DailyReport[]>([]);
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  const updateReports = useCallback(
+    (updater: (currentReports: DailyReport[]) => DailyReport[]) => {
+      setReports(currentReports => {
+        const nextReports = updater(currentReports);
+        reportsRef.current = nextReports;
+        return nextReports;
+      });
+    },
+    []
   );
 
   // フォーム状態の更新
@@ -92,12 +111,13 @@ const useDailyReports = () => {
   // データ取得（API経由）
   const fetchReports = useCallback(async () => {
     if (!clinicId) {
-      setReports([]);
+      updateReports(() => []);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`/api/daily-reports?clinic_id=${clinicId}`, {
         credentials: 'include',
@@ -112,9 +132,9 @@ const useDailyReports = () => {
         await response.json();
 
       if (result.success && result.data?.reports) {
-        setReports(result.data.reports.map(mapApiToLocal));
+        updateReports(() => result.data.reports.map(mapApiToLocal));
       } else {
-        setReports([]);
+        updateReports(() => []);
       }
     } catch (err: unknown) {
       const message =
@@ -123,7 +143,7 @@ const useDailyReports = () => {
     } finally {
       setLoading(false);
     }
-  }, [clinicId, mapApiToLocal]);
+  }, [clinicId, mapApiToLocal, updateReports]);
 
   // データ作成（API経由）
   const createReport = useCallback(
@@ -134,6 +154,7 @@ const useDailyReports = () => {
       }
 
       try {
+        setError(null);
         const response = await fetch('/api/daily-reports', {
           method: 'POST',
           headers: {
@@ -163,13 +184,8 @@ const useDailyReports = () => {
 
         if (result.success && result.data) {
           const newReport = mapApiToLocal(result.data);
-          setReports(prev => [...prev, newReport]);
-          setFormState({
-            staff_id: 0,
-            date: new Date().toISOString().slice(0, 10),
-            treatment_count: 0,
-            revenue: 0,
-          });
+          updateReports(prev => [...prev, newReport]);
+          setFormState(createEmptyDailyReport());
         }
       } catch (err: unknown) {
         const message =
@@ -177,7 +193,7 @@ const useDailyReports = () => {
         setError(message);
       }
     },
-    [clinicId, mapApiToLocal]
+    [clinicId, mapApiToLocal, updateReports]
   );
 
   // データ更新（API経由）
@@ -189,8 +205,8 @@ const useDailyReports = () => {
       }
 
       try {
-        // 現在のレポートデータを取得
-        const currentReport = reports.find(r => r.id === id);
+        setError(null);
+        const currentReport = reportsRef.current.find(r => r.id === id);
         if (!currentReport) {
           throw new Error('更新対象のレポートが見つかりません');
         }
@@ -225,7 +241,7 @@ const useDailyReports = () => {
 
         if (result.success && result.data) {
           const updatedReport = mapApiToLocal(result.data);
-          setReports(prev =>
+          updateReports(prev =>
             prev.map(report =>
               report.id === id ? { ...report, ...updatedReport } : report
             )
@@ -237,43 +253,57 @@ const useDailyReports = () => {
         setError(message);
       }
     },
-    [clinicId, reports, mapApiToLocal]
+    [clinicId, mapApiToLocal, updateReports]
   );
 
   // データ削除（API経由）
-  const deleteReport = useCallback(async (id: number) => {
-    try {
-      const response = await fetch(`/api/daily-reports?id=${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+  const deleteReport = useCallback(
+    async (id: number) => {
+      try {
+        setError(null);
+        const response = await fetch(`/api/daily-reports?id=${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '日報の削除に失敗しました');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || '日報の削除に失敗しました');
+        }
+
+        updateReports(prev => prev.filter(report => report.id !== id));
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : '日報の削除に失敗しました';
+        setError(message);
       }
-
-      setReports(prev => prev.filter(report => report.id !== id));
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : '日報の削除に失敗しました';
-      setError(message);
-    }
-  }, []);
+    },
+    [updateReports]
+  );
 
   // フォーム送信
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (submitting) {
+        return;
+      }
+
       if (validateForm()) {
+        setSubmitting(true);
         if (isOnline) {
-          await createReport(formState);
+          try {
+            await createReport(formState);
+          } finally {
+            setSubmitting(false);
+          }
         } else {
           setQueue(prev => [...prev, formState]);
+          setSubmitting(false);
         }
       }
     },
-    [validateForm, isOnline, createReport, formState]
+    [validateForm, submitting, isOnline, createReport, formState]
   );
 
   // 一時保存
@@ -333,6 +363,7 @@ const useDailyReports = () => {
   return {
     reports,
     loading,
+    submitting,
     error,
     formState,
     updateFormState,

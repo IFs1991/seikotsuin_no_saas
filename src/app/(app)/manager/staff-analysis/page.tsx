@@ -11,7 +11,7 @@ export default function ManagerStaffAnalysisPage() {
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <p className='text-gray-500'>読み込み中...</p>
       </div>
     );
@@ -19,7 +19,7 @@ export default function ManagerStaffAnalysisPage() {
 
   if (error) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle className='text-red-600'>
@@ -34,7 +34,7 @@ export default function ManagerStaffAnalysisPage() {
 
   if (!isAreaManagerRole(profile?.role)) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle>アクセス権限がありません</CardTitle>

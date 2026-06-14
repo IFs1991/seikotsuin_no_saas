@@ -122,7 +122,7 @@ function isManagerPeriod(value: string): value is ManagerPeriod {
 
 function ProfileErrorView({ message }: { message: string }) {
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
+    <div className='bg-background min-h-screen py-8'>
       <div className='container mx-auto px-4'>
         <Card className='w-full bg-card'>
           <CardHeader className='bg-card'>
@@ -131,7 +131,7 @@ function ProfileErrorView({ message }: { message: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className='bg-card space-y-4'>
-            <p className='text-gray-700 dark:text-gray-300'>{message}</p>
+            <p className='text-foreground'>{message}</p>
             <Button
               onClick={() => window.location.reload()}
               className='bg-blue-600 text-white'
@@ -238,7 +238,7 @@ function ManagerDailyReportsView() {
     clinics.find(clinic => clinic.id === selectedClinicId)?.name ?? '';
 
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
+    <div className='bg-background min-h-screen py-8'>
       <div className='container mx-auto px-4 space-y-6'>
         <Card className='w-full bg-card'>
           <CardHeader className='bg-card'>
@@ -260,14 +260,14 @@ function ManagerDailyReportsView() {
               <>
                 <div className='grid gap-4 md:grid-cols-3'>
                   {clinics.length > 1 ? (
-                    <label className='space-y-2 text-sm font-medium text-gray-700 dark:text-gray-200'>
+                    <label className='space-y-2 text-sm font-medium text-foreground'>
                       <span>担当院</span>
                       <select
                         value={selectedClinicId ?? ''}
                         onChange={event =>
                           setSelectedClinicId(event.target.value)
                         }
-                        className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
+                        className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-card dark:text-foreground'
                       >
                         {clinics.map(clinic => (
                           <option key={clinic.id} value={clinic.id}>
@@ -277,7 +277,7 @@ function ManagerDailyReportsView() {
                       </select>
                     </label>
                   ) : (
-                    <div className='space-y-2 text-sm text-gray-700 dark:text-gray-200'>
+                    <div className='space-y-2 text-sm text-foreground'>
                       <div className='font-medium'>担当院</div>
                       <div className='rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700'>
                         {selectedClinicName}
@@ -285,7 +285,7 @@ function ManagerDailyReportsView() {
                     </div>
                   )}
 
-                  <label className='space-y-2 text-sm font-medium text-gray-700 dark:text-gray-200'>
+                  <label className='space-y-2 text-sm font-medium text-foreground'>
                     <span>期間</span>
                     <select
                       value={period}
@@ -294,7 +294,7 @@ function ManagerDailyReportsView() {
                           setPeriod(event.target.value);
                         }
                       }}
-                      className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
+                      className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-card dark:text-foreground'
                     >
                       {MANAGER_PERIOD_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -304,7 +304,7 @@ function ManagerDailyReportsView() {
                     </select>
                   </label>
 
-                  <label className='space-y-2 text-sm font-medium text-gray-700 dark:text-gray-200'>
+                  <label className='space-y-2 text-sm font-medium text-foreground'>
                     <span>ステータス</span>
                     <select
                       value={status}
@@ -317,7 +317,7 @@ function ManagerDailyReportsView() {
                           setStatus(event.target.value);
                         }
                       }}
-                      className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100'
+                      className='w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-card dark:text-foreground'
                     >
                       {MANAGER_STATUS_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -459,7 +459,7 @@ function ManagerDailyReportsView() {
                             {MANAGER_STATUS_LABELS[report.status]}
                           </div>
                         </div>
-                        <div className='text-sm text-gray-600 dark:text-gray-300'>
+                        <div className='text-sm text-muted-foreground'>
                           <span className='mr-4'>
                             患者数: {report.patientCount}名
                           </span>
@@ -482,9 +482,9 @@ function ManagerDailyReportsView() {
 
 function MetricBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className='text-center p-4 bg-gray-50 dark:bg-gray-700 rounded'>
+    <div className='text-center p-4 bg-muted rounded'>
       <p className='text-xl font-bold text-blue-600'>{value}</p>
-      <p className='text-sm text-gray-600 dark:text-gray-400'>{label}</p>
+      <p className='text-sm text-muted-foreground'>{label}</p>
     </div>
   );
 }
@@ -541,7 +541,7 @@ function StandardDailyReportsView({ clinicId }: { clinicId: string | null }) {
   const hasClinic = Boolean(clinicId);
 
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
+    <div className='bg-background min-h-screen py-8'>
       <div className='container mx-auto px-4'>
         <Card className='w-full bg-card mb-8'>
           <CardHeader className='bg-card'>
@@ -604,23 +604,23 @@ function StandardDailyReportsView({ clinicId }: { clinicId: string | null }) {
                 {monthlyTrends.map(trend => (
                   <div
                     key={trend.month}
-                    className='flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded'
+                    className='flex justify-between items-center p-3 bg-muted rounded'
                   >
-                    <div className='font-medium text-gray-900 dark:text-gray-100'>
+                    <div className='font-medium text-foreground'>
                       {trend.month}
                     </div>
                     <div className='flex space-x-6 text-sm'>
-                      <div className='text-gray-600 dark:text-gray-400'>
+                      <div className='text-muted-foreground'>
                         <span className='font-medium'>{trend.reports}</span> 件
                       </div>
-                      <div className='text-gray-600 dark:text-gray-400'>
+                      <div className='text-muted-foreground'>
                         患者:{' '}
                         <span className='font-medium'>
                           {trend.totalPatients}
                         </span>{' '}
                         名
                       </div>
-                      <div className='text-gray-600 dark:text-gray-400'>
+                      <div className='text-muted-foreground'>
                         売上:{' '}
                         <span className='font-medium'>
                           {Math.round(trend.totalRevenue).toLocaleString()}
@@ -660,13 +660,13 @@ function StandardDailyReportsView({ clinicId }: { clinicId: string | null }) {
                   rows.map(report => (
                     <div
                       key={report.id}
-                      className='flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded'
+                      className='flex justify-between items-center p-3 bg-muted rounded'
                     >
                       <div className='flex-1'>
-                        <div className='font-medium text-gray-900 dark:text-gray-100'>
+                        <div className='font-medium text-foreground'>
                           {report.date}
                         </div>
-                        <div className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
+                        <div className='text-sm text-muted-foreground mt-1'>
                           <span className='mr-4'>
                             患者数: {report.patients}名
                           </span>
@@ -703,7 +703,7 @@ const Page: React.FC = () => {
 
   if (profileLoading) {
     return (
-      <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
+      <div className='bg-background min-h-screen py-8'>
         <div className='container mx-auto px-4'>
           <Card className='w-full bg-card'>
             <CardContent className='bg-card py-6 text-gray-500'>

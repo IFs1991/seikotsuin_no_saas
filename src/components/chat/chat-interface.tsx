@@ -44,9 +44,9 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className='fixed bottom-4 right-4 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg'>
+    <div className='fixed bottom-4 right-4 w-96 bg-background rounded-lg shadow-lg'>
       <div className='p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center'>
-        <h3 className='text-lg font-semibold text-[#1e3a8a] dark:text-white'>
+        <h3 className='text-lg font-semibold text-primary-600 dark:text-white'>
           AIアシスタント
         </h3>
         <Button
@@ -80,15 +80,15 @@ const ChatInterface: React.FC = () => {
                 key={index}
                 className={`p-3 rounded-lg ${
                   msg.role === 'user'
-                    ? 'bg-[#1e3a8a] text-white ml-8'
-                    : 'bg-gray-100 dark:bg-gray-700 mr-8'
+                    ? 'bg-primary-600 text-white ml-8'
+                    : 'bg-muted mr-8'
                 }`}
               >
                 {msg.content}
               </div>
             ))}
             {isLoading && (
-              <div className='bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mr-8 animate-pulse'>
+              <div className='bg-muted p-3 rounded-lg mr-8 animate-pulse'>
                 応答を生成中...
               </div>
             )}

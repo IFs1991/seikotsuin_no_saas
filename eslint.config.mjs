@@ -12,6 +12,77 @@ const compat = new FlatCompat({
   recommendedConfig: js.configs.recommended,
 });
 
+const restrictedUiColorPattern =
+  /\b(?:bg|text|border)-\[#|\bdark:(?:bg-gray|bg-slate|text-gray)/u;
+
+function classNameContainsRestrictedColor(value) {
+  return restrictedUiColorPattern.test(value);
+}
+
+const uiStabilizationPlugin = {
+  rules: {
+    'no-hardcoded-ui-colors': {
+      meta: {
+        type: 'suggestion',
+        docs: {
+          description:
+            'Warn when className uses hardcoded Tailwind hex utilities or gray dark-mode color pairs.',
+        },
+        messages: {
+          restrictedColor:
+            'Use design tokens instead of hardcoded UI colors or gray dark-mode color pairs.',
+        },
+        schema: [],
+      },
+      create(context) {
+        function reportIfRestricted(node, value) {
+          if (classNameContainsRestrictedColor(value)) {
+            context.report({
+              node,
+              messageId: 'restrictedColor',
+            });
+          }
+        }
+
+        return {
+          JSXAttribute(node) {
+            if (node.name.name !== 'className' || node.value === null) {
+              return;
+            }
+
+            if (
+              node.value.type === 'Literal' &&
+              typeof node.value.value === 'string'
+            ) {
+              reportIfRestricted(node.value, node.value.value);
+              return;
+            }
+
+            if (node.value.type !== 'JSXExpressionContainer') {
+              return;
+            }
+
+            const expression = node.value.expression;
+            if (
+              expression.type === 'Literal' &&
+              typeof expression.value === 'string'
+            ) {
+              reportIfRestricted(expression, expression.value);
+              return;
+            }
+
+            if (expression.type === 'TemplateLiteral') {
+              for (const quasi of expression.quasis) {
+                reportIfRestricted(quasi, quasi.value.raw);
+              }
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 const eslintConfig = [
   // Base JavaScript recommended rules
   js.configs.recommended,
@@ -124,6 +195,7 @@ const eslintConfig = [
   {
     plugins: {
       'unused-imports': unusedImports,
+      'ui-stabilization': uiStabilizationPlugin,
     },
     rules: {
       // 未使用 import を --fix で自動削除
@@ -142,6 +214,7 @@ const eslintConfig = [
 
       // 二重報告防止（typescript-eslint側をoff）
       '@typescript-eslint/no-unused-vars': 'off',
+      'ui-stabilization/no-hardcoded-ui-colors': 'warn',
     },
   },
 
@@ -161,7 +234,12 @@ const eslintConfig = [
 
   // テストファイル向けのルール緩和
   {
-    files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**', 'src/**/e2e/**'],
+    files: [
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/__tests__/**',
+      'src/**/e2e/**',
+    ],
     rules: {
       '@typescript-eslint/no-var-requires': 'off',
       'no-console': 'off',

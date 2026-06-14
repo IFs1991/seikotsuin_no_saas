@@ -94,7 +94,7 @@ export default function AdminChatPage() {
       <div className='max-w-4xl mx-auto'>
         <Card className='bg-white'>
           <CardHeader>
-            <CardTitle className='text-[#4C1D95]'>
+            <CardTitle className='text-admin-950'>
               管理者AIアシスタント
             </CardTitle>
             <CardDescription>
@@ -115,8 +115,8 @@ export default function AdminChatPage() {
                       onClick={() => handleSelectScope(button.value)}
                       className={
                         isActive
-                          ? 'bg-[#4C1D95] text-white hover:bg-[#3B1673]'
-                          : 'bg-white text-[#4C1D95] hover:bg-[#F5F3FF]'
+                          ? 'bg-admin-950 text-white hover:bg-admin-950/90'
+                          : 'bg-white text-admin-950 hover:bg-admin-50'
                       }
                       aria-pressed={isActive}
                     >
@@ -152,7 +152,7 @@ export default function AdminChatPage() {
               <div className='flex gap-2'>
                 <Button
                   onClick={handleExportChat}
-                  className='bg-[#4C1D95] text-white hover:bg-[#3B1673]'
+                  className='bg-admin-950 text-white hover:bg-admin-950/90'
                 >
                   JSONエクスポート
                 </Button>
@@ -161,7 +161,7 @@ export default function AdminChatPage() {
                 placeholder='チャット履歴を検索'
                 value={searchTerm}
                 onChange={handleSearchChange}
-                className='w-64 border-[#4C1D95]'
+                className='w-64 border-admin-950'
               />
             </div>
           </CardContent>

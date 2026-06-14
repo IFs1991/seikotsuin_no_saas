@@ -106,9 +106,9 @@ type MultiStoreCopy = ReturnType<typeof getMultiStoreCopy>;
 
 const CURRENCY_FORMATTER = new Intl.NumberFormat('ja-JP');
 const TABLE_HEADER_CLASS =
-  'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider';
+  'px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider';
 const TABLE_CELL_CLASS =
-  'px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300';
+  'px-6 py-4 whitespace-nowrap text-sm text-muted-foreground';
 
 const formatCurrency = (value: number): string =>
   CURRENCY_FORMATTER.format(value);
@@ -124,14 +124,14 @@ const SummaryCard = memo(function SummaryCard({
   return (
     <Card className='bg-card shadow-md'>
       <CardHeader className='pb-2'>
-        <CardDescription className='text-gray-600 dark:text-gray-300'>
+        <CardDescription className='text-muted-foreground'>
           {label}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <p
           data-testid={testId}
-          className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'
+          className='text-2xl font-bold text-primary-600 dark:text-foreground'
         >
           {value}
         </p>
@@ -150,10 +150,10 @@ const MultiStoreHeader = memo(function MultiStoreHeader({
       <p className='mb-2 text-sm font-semibold text-blue-700 dark:text-blue-300'>
         分析専用
       </p>
-      <h1 className='text-2xl font-bold text-[#1e3a8a] dark:text-gray-100'>
+      <h1 className='text-2xl font-bold text-primary-600 dark:text-foreground'>
         {copy.title}
       </h1>
-      <p className='mx-auto mt-3 max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300'>
+      <p className='mx-auto mt-3 max-w-3xl text-sm leading-6 text-muted-foreground'>
         {copy.description}
       </p>
     </header>
@@ -236,7 +236,7 @@ const ClinicsTable = memo(function ClinicsTable({
 }: ClinicsTableProps) {
   if (clinics.length === 0) {
     return (
-      <p className='text-gray-500 dark:text-gray-400 text-center py-8'>
+      <p className='text-muted-foreground text-center py-8'>
         {copy.emptyState}
       </p>
     );
@@ -245,7 +245,7 @@ const ClinicsTable = memo(function ClinicsTable({
   return (
     <div className='overflow-x-auto'>
       <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
-        <thead className='bg-gray-50 dark:bg-gray-700'>
+        <thead className='bg-muted'>
           <tr>
             <th className={TABLE_HEADER_CLASS}>店舗名</th>
             <SortableHeader
@@ -272,10 +272,10 @@ const ClinicsTable = memo(function ClinicsTable({
             <th className={TABLE_HEADER_CLASS}>ステータス</th>
           </tr>
         </thead>
-        <tbody className='bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700'>
+        <tbody className='bg-background divide-y divide-gray-200 dark:divide-gray-700'>
           {clinics.map(clinic => (
             <tr key={clinic.id}>
-              <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
+              <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground'>
                 {clinic.name}
               </td>
               <td className={TABLE_CELL_CLASS}>
@@ -302,7 +302,7 @@ const LoadingState = memo(function LoadingState({
   copy: MultiStoreCopy;
 }) {
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-gray-900 dark:text-gray-100'>
+    <div className='bg-background min-h-screen flex items-center justify-center text-foreground'>
       <div
         data-testid='loading-spinner'
         role='status'
@@ -315,7 +315,7 @@ const LoadingState = memo(function LoadingState({
 
 const ErrorState = memo(function ErrorState({ error }: { error: string }) {
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
+    <div className='bg-background min-h-screen flex items-center justify-center text-red-600 dark:text-red-400'>
       <p>{error}</p>
     </div>
   );
@@ -342,10 +342,10 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
       <CardHeader>
         <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
-            <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
+            <CardTitle className='text-lg font-semibold text-primary-600 dark:text-foreground'>
               {MULTI_STORE_COPY.ai.title}
             </CardTitle>
-            <CardDescription className='mt-2 text-gray-600 dark:text-gray-300'>
+            <CardDescription className='mt-2 text-muted-foreground'>
               {MULTI_STORE_COPY.ai.description}
             </CardDescription>
           </div>
@@ -353,7 +353,7 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
             type='button'
             onClick={onFetch}
             disabled={status === 'loading'}
-            className='rounded-md bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60'
+            className='rounded-md bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60'
           >
             {status === 'loading'
               ? MULTI_STORE_COPY.ai.loading
@@ -363,7 +363,7 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
       </CardHeader>
       <CardContent>
         {status === 'idle' && (
-          <p className='text-sm text-gray-500 dark:text-gray-400'>
+          <p className='text-sm text-muted-foreground'>
             {MULTI_STORE_COPY.ai.empty}
           </p>
         )}
@@ -381,35 +381,33 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
         )}
 
         {status === 'success' && !hasResult && (
-          <p className='text-sm text-gray-500 dark:text-gray-400'>
+          <p className='text-sm text-muted-foreground'>
             {MULTI_STORE_COPY.ai.noResult}
           </p>
         )}
 
         {status === 'success' && hasResult && (
-          <div className='space-y-5 text-sm text-gray-700 dark:text-gray-200'>
+          <div className='space-y-5 text-sm text-foreground'>
             {data?.summary && (
               <section>
-                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
-                  サマリー
-                </h3>
+                <h3 className='mb-2 font-semibold text-foreground'>サマリー</h3>
                 <p>{data.summary}</p>
               </section>
             )}
 
             {insights.length > 0 && (
               <section>
-                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
+                <h3 className='mb-2 font-semibold text-foreground'>
                   {MULTI_STORE_COPY.ai.insights}
                 </h3>
                 <ul className='list-disc space-y-1 pl-5'>
                   {insights.map(insight => (
                     <li key={`${insight.title}-${insight.action}`}>
                       <span className='font-medium'>{insight.title}</span>
-                      <span className='block text-gray-600 dark:text-gray-300'>
+                      <span className='block text-muted-foreground'>
                         {insight.why}
                       </span>
-                      <span className='block text-gray-700 dark:text-gray-200'>
+                      <span className='block text-foreground'>
                         対応: {insight.action}
                       </span>
                     </li>
@@ -420,17 +418,17 @@ const AdminAiInsightsSection = memo(function AdminAiInsightsSection({
 
             {anomalies.length > 0 && (
               <section>
-                <h3 className='mb-2 font-semibold text-gray-900 dark:text-gray-100'>
+                <h3 className='mb-2 font-semibold text-foreground'>
                   {MULTI_STORE_COPY.ai.anomalies}
                 </h3>
                 <ul className='list-disc space-y-1 pl-5'>
                   {anomalies.map(anomaly => (
                     <li key={`${anomaly.title}-${anomaly.action}`}>
                       <span className='font-medium'>{anomaly.title}</span>
-                      <span className='block text-gray-600 dark:text-gray-300'>
+                      <span className='block text-muted-foreground'>
                         根拠: {anomaly.evidence}
                       </span>
-                      <span className='block text-gray-700 dark:text-gray-200'>
+                      <span className='block text-foreground'>
                         対応: {anomaly.action}
                       </span>
                     </li>
@@ -539,7 +537,7 @@ const MultiStorePage = () => {
   }
 
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen text-gray-900 dark:text-gray-100 p-4'>
+    <div className='bg-background min-h-screen text-foreground p-4'>
       <div className='max-w-6xl mx-auto py-8'>
         <MultiStoreHeader copy={copy} />
         <SummaryCardsGrid items={summaryItems} />
@@ -555,10 +553,10 @@ const MultiStorePage = () => {
         {/* 店舗別KPI比較テーブル */}
         <Card className='bg-card shadow-lg'>
           <CardHeader>
-            <CardTitle className='text-lg font-semibold text-[#1e3a8a] dark:text-gray-100'>
+            <CardTitle className='text-lg font-semibold text-primary-600 dark:text-foreground'>
               {copy.tableTitle}
             </CardTitle>
-            <CardDescription className='text-gray-600 dark:text-gray-300'>
+            <CardDescription className='text-muted-foreground'>
               {copy.tableDescription}
             </CardDescription>
           </CardHeader>

@@ -221,11 +221,11 @@ export const ADMIN_DASHBOARD_STYLES = {
   actionDescription: 'mt-2 block text-sm leading-6 text-slate-600',
   actionCta: 'mt-4 inline-flex text-sm font-semibold text-blue-800',
   linkButton:
-    'inline-flex items-center justify-center rounded-medical bg-[#1e3a8a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1e3a8a]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
+    'inline-flex items-center justify-center rounded-medical bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-600/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
   clinicDetailLink:
     'mt-3 inline-flex text-sm font-semibold text-blue-800 hover:underline',
   primaryActionButton:
-    'bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90 dark:bg-[#10b981] dark:hover:bg-[#10b981]/90',
+    'bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90',
 } as const;
 
 const PERFORMANCE_ALERT_THRESHOLD = 3.0;

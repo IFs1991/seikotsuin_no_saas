@@ -2,18 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { ArrowRight } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import {
   usePatientAnalysis,
   type PatientAnalysisViewModel,
@@ -27,8 +17,6 @@ import type {
   ManagerPatientAnalysisTarget,
   ManagerPatientClinicDetail,
   ManagerPatientClinicSummary,
-  ClinicSeriesPoint,
-  TimeSeriesPoint,
 } from '@/lib/manager-patient-analysis';
 import {
   Card,
@@ -39,16 +27,32 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-const PAGE_CLASS = 'min-h-screen bg-[#f9fafb] p-4 dark:bg-[#1a1a1a] sm:p-6';
+const PAGE_CLASS = 'min-h-screen bg-background p-4 sm:p-6';
 const CONTENT_CLASS = 'mx-auto max-w-[960px] space-y-6';
 const TAB_BASE_CLASS = 'px-4 py-2 rounded text-sm font-medium';
 const ACTIVE_TAB_CLASS = `${TAB_BASE_CLASS} bg-blue-600 text-white`;
 const INACTIVE_TAB_CLASS = `${TAB_BASE_CLASS} bg-gray-200 text-gray-700 hover:bg-gray-300`;
-const ROW_CLASS =
-  'flex items-center justify-between rounded bg-gray-50 p-3 dark:bg-[#2d2d2d]';
+const ROW_CLASS = 'flex items-center justify-between rounded bg-muted p-3';
 const SUMMARY_CARD_CLASS = 'bg-card';
 const MANAGER_INPUT_CLASS =
-  'h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+  'h-10 rounded border border-border bg-background px-3 text-sm text-foreground';
+
+const ManagerChartsSection = dynamic(
+  () =>
+    import('@/components/patients/manager-patient-charts').then(
+      module => module.ManagerChartsSection
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <Card className='bg-card'>
+        <CardContent className='p-6 text-sm text-muted-foreground'>
+          グラフを読み込み中です...
+        </CardContent>
+      </Card>
+    ),
+  }
+);
 
 type RiskLevel = PatientAnalysisViewModel['riskScores'][number]['riskLevel'];
 
@@ -200,10 +204,12 @@ const SummaryCards = React.memo(function SummaryCards({
           <CardTitle>平均通院回数</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='text-4xl font-bold text-[#1e3a8a]'>
+          <div className='text-4xl font-bold text-primary-600'>
             {visitCounts.average}回
           </div>
-          <p className='text-[#6b7280]'>前月比: {visitCounts.monthlyChange}%</p>
+          <p className='text-muted-foreground'>
+            前月比: {visitCounts.monthlyChange}%
+          </p>
         </CardContent>
       </Card>
 
@@ -331,7 +337,9 @@ const FollowUpSection = React.memo(function FollowUpSection({
               <div key={patient.id} className={ROW_CLASS}>
                 <div>
                   <p className='font-medium'>{patient.name}</p>
-                  <p className='text-sm text-[#6b7280]'>{patient.reason}</p>
+                  <p className='text-sm text-muted-foreground'>
+                    {patient.reason}
+                  </p>
                 </div>
                 <Button variant='outline'>
                   連絡する
@@ -409,7 +417,7 @@ const ManagerSummaryCards = React.memo(function ManagerSummaryCards({
             <CardDescription>{item.label}</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
+            <div className='text-2xl font-bold text-foreground'>
               {item.value}
             </div>
           </CardContent>
@@ -432,7 +440,7 @@ const ManagerClinicSelector = React.memo(function ManagerClinicSelector({
     <div className='flex flex-col gap-2 sm:max-w-xs'>
       <label
         htmlFor='manager-patient-clinic'
-        className='text-sm font-medium text-gray-700 dark:text-gray-200'
+        className='text-sm font-medium text-foreground'
       >
         担当院
       </label>
@@ -491,7 +499,7 @@ const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
           <div className='flex flex-col gap-2'>
             <label
               htmlFor='manager-patient-target'
-              className='text-sm font-medium text-gray-700 dark:text-gray-200'
+              className='text-sm font-medium text-foreground'
             >
               対象
             </label>
@@ -519,7 +527,7 @@ const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
           <div className='flex flex-col gap-2'>
             <label
               htmlFor='manager-patient-period'
-              className='text-sm font-medium text-gray-700 dark:text-gray-200'
+              className='text-sm font-medium text-foreground'
             >
               期間
             </label>
@@ -548,7 +556,7 @@ const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
             <div className='flex flex-col gap-2'>
               <label
                 htmlFor='manager-patient-start-date'
-                className='text-sm font-medium text-gray-700 dark:text-gray-200'
+                className='text-sm font-medium text-foreground'
               >
                 開始日
               </label>
@@ -564,7 +572,7 @@ const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
             <div className='flex flex-col gap-2'>
               <label
                 htmlFor='manager-patient-end-date'
-                className='text-sm font-medium text-gray-700 dark:text-gray-200'
+                className='text-sm font-medium text-foreground'
               >
                 終了日
               </label>
@@ -593,100 +601,6 @@ const ManagerAnalysisFilterBar = React.memo(function ManagerAnalysisFilterBar({
         )}
       </CardContent>
     </Card>
-  );
-});
-
-const ManagerLineChartCard = React.memo(function ManagerLineChartCard({
-  title,
-  data,
-}: {
-  title: string;
-  data: TimeSeriesPoint[];
-}) {
-  return (
-    <Card className='bg-card'>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className='h-72'>
-          <ResponsiveContainer width='100%' height='100%'>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray='3 3' />
-              <XAxis dataKey='label' />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type='monotone'
-                dataKey='value'
-                stroke='#2563eb'
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
-  );
-});
-
-const ManagerComparisonChartCard = React.memo(
-  function ManagerComparisonChartCard({
-    title,
-    data,
-  }: {
-    title: string;
-    data: ClinicSeriesPoint[];
-  }) {
-    return (
-      <Card className='bg-card'>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='h-72'>
-            <ResponsiveContainer width='100%' height='100%'>
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray='3 3' />
-                <XAxis dataKey='clinicName' />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey='value' fill='#16a34a' />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-);
-
-const ManagerChartsSection = React.memo(function ManagerChartsSection({
-  charts,
-}: {
-  charts: ManagerPatientAnalysisResponse['charts'];
-}) {
-  return (
-    <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
-      <ManagerLineChartCard title='売上推移' data={charts.revenue} />
-      <ManagerLineChartCard title='来院患者数推移' data={charts.patients} />
-      <ManagerLineChartCard title='新患推移' data={charts.newPatients} />
-      <ManagerLineChartCard title='再来推移' data={charts.repeatPatients} />
-      <ManagerLineChartCard title='来院数推移' data={charts.visits} />
-      <ManagerLineChartCard
-        title='新患再来率推移'
-        data={charts.conversionRate}
-      />
-      <ManagerComparisonChartCard
-        title='院別売上比較'
-        data={charts.clinicRevenueComparison}
-      />
-      <ManagerComparisonChartCard
-        title='院別来院患者数比較'
-        data={charts.clinicPatientComparison}
-      />
-    </div>
   );
 });
 
@@ -826,7 +740,7 @@ const ManagerFollowUpSection = React.memo(function ManagerFollowUpSection({
                   <p className='font-medium'>{patient.name}</p>
                   <p className='text-sm text-gray-500'>{patient.reason}</p>
                 </div>
-                <span className='text-sm text-gray-600 dark:text-gray-300'>
+                <span className='text-sm text-muted-foreground'>
                   {patient.action}
                 </span>
               </div>
@@ -980,9 +894,7 @@ function ManagerPatientAnalysisContent() {
       <div className='mx-auto max-w-[1200px] space-y-6'>
         <div className='flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
           <div>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-              患者分析
-            </h1>
+            <h1 className='text-2xl font-bold text-foreground'>患者分析</h1>
             <p className='mt-1 text-sm text-gray-500'>
               担当院の患者動向を期間別に確認できます。分析期間: {periodLabel}
             </p>

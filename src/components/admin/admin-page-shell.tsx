@@ -19,7 +19,7 @@ function AdminPageShellComponent({
   return (
     <main
       className={cn(
-        'min-h-screen bg-white p-4 dark:bg-gray-800 sm:p-6',
+        'min-h-screen bg-white p-4 dark:bg-background sm:p-6',
         className
       )}
     >
@@ -29,7 +29,7 @@ function AdminPageShellComponent({
             {title}
           </h1>
           {description && (
-            <p className='max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300'>
+            <p className='max-w-3xl text-sm leading-6 text-slate-600 dark:text-muted-foreground'>
               {description}
             </p>
           )}

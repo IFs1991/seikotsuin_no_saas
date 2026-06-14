@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 
 const ReportSummary: React.FC = () => {
   return (
-    <div className='w-full bg-white dark:bg-gray-800 flex justify-center pt-4'>
+    <div className='w-full bg-background flex justify-center pt-4'>
       <Card className='w-full max-w-2xl bg-card'>
         <CardHeader className='bg-card'>
           <CardTitle className='text-lg font-semibold bg-card'>
@@ -23,14 +23,14 @@ const ReportSummary: React.FC = () => {
         <CardContent className='bg-card'>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             {/* 本日の施術件数・売上表示 */}
-            <div className='bg-gray-100 dark:bg-gray-700 p-4 rounded-md'>
-              <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>
+            <div className='bg-muted p-4 rounded-md'>
+              <h3 className='text-md font-semibold text-foreground'>
                 本日の施術件数
               </h3>
               <p className='text-2xl font-bold text-blue-600 dark:text-blue-400'>
                 50 件
               </p>
-              <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200 mt-2'>
+              <h3 className='text-md font-semibold text-foreground mt-2'>
                 本日の売上
               </h3>
               <p className='text-2xl font-bold text-green-600 dark:text-green-400'>
@@ -39,49 +39,43 @@ const ReportSummary: React.FC = () => {
             </div>
 
             {/* 施術者別パフォーマンス */}
-            <div className='bg-gray-100 dark:bg-gray-700 p-4 rounded-md'>
-              <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>
+            <div className='bg-muted p-4 rounded-md'>
+              <h3 className='text-md font-semibold text-foreground'>
                 施術者別パフォーマンス
               </h3>
               <ul className='list-disc pl-5 mt-2'>
-                <li className='text-gray-700 dark:text-gray-300'>田中：15件</li>
-                <li className='text-gray-700 dark:text-gray-300'>山田：20件</li>
-                <li className='text-gray-700 dark:text-gray-300'>佐藤：15件</li>
+                <li className='text-foreground'>田中：15件</li>
+                <li className='text-foreground'>山田：20件</li>
+                <li className='text-foreground'>佐藤：15件</li>
               </ul>
             </div>
 
             {/* メニュー別集計 */}
-            <div className='bg-gray-100 dark:bg-gray-700 p-4 rounded-md'>
-              <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>
+            <div className='bg-muted p-4 rounded-md'>
+              <h3 className='text-md font-semibold text-foreground'>
                 メニュー別集計
               </h3>
               <ul className='list-disc pl-5 mt-2'>
-                <li className='text-gray-700 dark:text-gray-300'>整体：25件</li>
-                <li className='text-gray-700 dark:text-gray-300'>
-                  マッサージ：15件
-                </li>
-                <li className='text-gray-700 dark:text-gray-300'>鍼灸：10件</li>
+                <li className='text-foreground'>整体：25件</li>
+                <li className='text-foreground'>マッサージ：15件</li>
+                <li className='text-foreground'>鍼灸：10件</li>
               </ul>
             </div>
 
             {/* 時間帯別グラフ（仮） */}
-            <div className='bg-gray-100 dark:bg-gray-700 p-4 rounded-md'>
-              <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>
+            <div className='bg-muted p-4 rounded-md'>
+              <h3 className='text-md font-semibold text-foreground'>
                 時間帯別グラフ
               </h3>
-              <p className='text-gray-700 dark:text-gray-300'>
-                （グラフのイメージ）
-              </p>
+              <p className='text-foreground'>（グラフのイメージ）</p>
             </div>
           </div>
 
           {/* 前日比較 */}
-          <div className='mt-6 bg-gray-100 dark:bg-gray-700 p-4 rounded-md'>
-            <h3 className='text-md font-semibold text-gray-800 dark:text-gray-200'>
-              前日比較
-            </h3>
-            <p className='text-gray-700 dark:text-gray-300'>売上：+10%</p>
-            <p className='text-gray-700 dark:text-gray-300'>施術件数：+5件</p>
+          <div className='mt-6 bg-muted p-4 rounded-md'>
+            <h3 className='text-md font-semibold text-foreground'>前日比較</h3>
+            <p className='text-foreground'>売上：+10%</p>
+            <p className='text-foreground'>施術件数：+5件</p>
           </div>
 
           {/* 編集・削除機能（ボタンのイメージ） */}

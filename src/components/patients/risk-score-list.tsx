@@ -80,7 +80,7 @@ const RiskScoreList: React.FC = () => {
   };
 
   return (
-    <div className='p-6 bg-white dark:bg-gray-800'>
+    <div className='p-6 bg-background'>
       <Card className='w-full bg-card'>
         <CardHeader>
           <CardTitle>離脱リスク患者一覧</CardTitle>

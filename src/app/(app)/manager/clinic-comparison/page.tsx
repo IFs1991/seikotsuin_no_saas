@@ -10,7 +10,7 @@ export default function ManagerClinicComparisonPage() {
 
   if (loading) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-white dark:bg-gray-800'>
+      <div className='flex min-h-screen items-center justify-center bg-background'>
         <p className='text-gray-500'>読み込み中...</p>
       </div>
     );
@@ -18,7 +18,7 @@ export default function ManagerClinicComparisonPage() {
 
   if (error) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-white dark:bg-gray-800'>
+      <div className='flex min-h-screen items-center justify-center bg-background'>
         <Card className='mx-4 w-full max-w-md'>
           <CardHeader>
             <CardTitle className='text-red-600'>
@@ -33,7 +33,7 @@ export default function ManagerClinicComparisonPage() {
 
   if (!isAreaManagerRole(profile?.role)) {
     return (
-      <div className='flex min-h-screen items-center justify-center bg-white dark:bg-gray-800'>
+      <div className='flex min-h-screen items-center justify-center bg-background'>
         <Card className='mx-4 w-full max-w-md'>
           <CardHeader>
             <CardTitle>アクセス権限がありません</CardTitle>

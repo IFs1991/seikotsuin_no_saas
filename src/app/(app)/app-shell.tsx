@@ -146,13 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           clinicsLoading={clinicsLoading}
           clinicsError={clinicsError}
         >
-          <div
-            className={
-              isDarkMode
-                ? 'min-h-screen bg-gray-800'
-                : 'min-h-screen bg-gray-50'
-            }
-          >
+          <div className='min-h-screen bg-background'>
             <Header
               onToggleSidebar={toggleSidebar}
               onToggleDarkMode={toggleDarkMode}
@@ -184,25 +178,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 role={profileRole}
               />
 
-              <main
-                className={
-                  isDarkMode
-                    ? 'min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-gray-900 transition-colors duration-300'
-                    : 'min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-white transition-colors duration-300'
-                }
-              >
+              <main className='min-h-[calc(100vh-4rem)] min-w-0 flex-1 bg-background transition-colors duration-300'>
                 <div className='p-6 lg:p-8'>
-                  <div
-                    className={
-                      isDarkMode
-                        ? 'mx-auto max-w-7xl text-gray-100'
-                        : 'mx-auto max-w-7xl text-gray-900'
-                    }
-                  >
+                  <div className='mx-auto max-w-7xl text-foreground'>
                     {children}
                   </div>
                   {shouldShowLegalFooter && (
-                    <footer className='mx-auto mt-10 max-w-7xl border-t border-slate-200 pt-4 text-sm text-slate-500'>
+                    <footer className='mx-auto mt-10 max-w-7xl border-t border-border pt-4 text-sm text-muted-foreground'>
                       <LegalFooterLinks />
                     </footer>
                   )}

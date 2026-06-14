@@ -178,7 +178,7 @@ export default function DailyReportEditPage() {
 
   if (isLoading) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <div className='flex items-center space-x-2'>
           <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
           <span className='text-gray-500'>日報データを読み込み中です...</span>
@@ -189,13 +189,13 @@ export default function DailyReportEditPage() {
 
   if (errorMessage) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle className='text-red-600'>エラーが発生しました</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <p className='text-gray-700 dark:text-gray-300'>{errorMessage}</p>
+            <p className='text-foreground'>{errorMessage}</p>
             <div className='flex space-x-2'>
               <Button onClick={() => router.back()} className='flex-1'>
                 戻る
@@ -215,7 +215,7 @@ export default function DailyReportEditPage() {
 
   if (!hasClinic) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle>クリニック情報が見つかりません</CardTitle>
@@ -224,9 +224,7 @@ export default function DailyReportEditPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-gray-700 dark:text-gray-300'>
-              管理者にお問い合わせください。
-            </p>
+            <p className='text-foreground'>管理者にお問い合わせください。</p>
           </CardContent>
         </Card>
       </div>
@@ -235,7 +233,7 @@ export default function DailyReportEditPage() {
 
   if (!reportData) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle>日報が見つかりません</CardTitle>
@@ -254,7 +252,7 @@ export default function DailyReportEditPage() {
   }
 
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 p-4'>
+    <div className='min-h-screen bg-background p-4'>
       <div className='max-w-4xl mx-auto space-y-6'>
         {formError && (
           <Card className='border-red-200 bg-red-50 dark:bg-red-950/40'>
@@ -285,9 +283,7 @@ export default function DailyReportEditPage() {
                 戻る
               </Button>
             </Link>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-              日報編集
-            </h1>
+            <h1 className='text-2xl font-bold text-foreground'>日報編集</h1>
           </div>
           <Button
             onClick={handleSubmit}

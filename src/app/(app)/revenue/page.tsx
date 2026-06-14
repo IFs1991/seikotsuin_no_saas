@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -9,7 +10,6 @@ import {
   normalizeRole,
 } from '@/lib/constants/roles';
 import type { RevenueContextCode } from '@/lib/revenue-context';
-import { ManagerRevenueAnalysis } from '@/components/revenue/manager-revenue-analysis';
 import type {
   RevenueBreakdownSummary,
   RevenueEstimateAmountDetail,
@@ -23,6 +23,23 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
+
+const ManagerRevenueAnalysis = dynamic(
+  () =>
+    import('@/components/revenue/manager-revenue-analysis').then(
+      module => module.ManagerRevenueAnalysis
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className='w-full bg-background p-4'>
+        <div className='max-w-screen-md mx-auto text-center py-8'>
+          <p className='text-muted-foreground'>収益分析を読み込み中...</p>
+        </div>
+      </div>
+    ),
+  }
+);
 
 function formatRevenueContextLabel(code: RevenueContextCode): string {
   switch (code) {
@@ -181,7 +198,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
   // clinicIdがない場合
   if (!clinicId) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-yellow-600'>店舗情報が設定されていません</p>
         </div>
@@ -192,7 +209,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
   // 収益データ読み込み中
   if (revenueLoading) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-gray-500'>収益データを読み込み中...</p>
         </div>
@@ -203,7 +220,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
   // 収益データエラー
   if (revenueError) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-red-500'>エラー: {revenueError}</p>
         </div>
@@ -212,7 +229,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
   }
 
   return (
-    <div className='w-full bg-white dark:bg-gray-800 p-4'>
+    <div className='w-full bg-background p-4'>
       <div className='max-w-screen-md mx-auto'>
         <Card className='w-full bg-card mb-4'>
           <CardHeader className='bg-card'>
@@ -255,46 +272,38 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='grid grid-cols-2 md:grid-cols-3 gap-3'>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  交通事故
-                </p>
+                <p className='text-sm text-muted-foreground'>交通事故</p>
                 <p className='font-semibold text-amber-700 dark:text-amber-300'>
                   {trafficAccidentRevenue.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>労災</p>
+                <p className='text-sm text-muted-foreground'>労災</p>
                 <p className='font-semibold text-sky-700 dark:text-sky-300'>
                   {workersCompRevenue.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>物販</p>
+                <p className='text-sm text-muted-foreground'>物販</p>
                 <p className='font-semibold text-emerald-700 dark:text-emerald-300'>
                   {productRevenue.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  回数券
-                </p>
+                <p className='text-sm text-muted-foreground'>回数券</p>
                 <p className='font-semibold text-fuchsia-700 dark:text-fuchsia-300'>
                   {ticketRevenue.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  要確認
-                </p>
+                <p className='text-sm text-muted-foreground'>要確認</p>
                 <p className='font-semibold text-red-700 dark:text-red-300'>
                   {needsReviewCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  ブロック
-                </p>
-                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                <p className='text-sm text-muted-foreground'>ブロック</p>
+                <p className='font-semibold text-foreground'>
                   {blockedCount.toLocaleString()}
                 </p>
               </div>
@@ -312,39 +321,31 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  通院回数
-                </p>
-                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                <p className='text-sm text-muted-foreground'>通院回数</p>
+                <p className='font-semibold text-foreground'>
                   {careEpisodeMetrics.totalEpisodes.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  初診2回目到達率
-                </p>
+                <p className='text-sm text-muted-foreground'>初診2回目到達率</p>
                 <p className='font-semibold text-blue-700 dark:text-blue-300'>
                   {careEpisodeMetrics.secondVisitReachRate.toLocaleString()}%
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  初診5回目到達率
-                </p>
+                <p className='text-sm text-muted-foreground'>初診5回目到達率</p>
                 <p className='font-semibold text-emerald-700 dark:text-emerald-300'>
                   {careEpisodeMetrics.fifthVisitReachRate.toLocaleString()}%
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  平均来院回数
-                </p>
+                <p className='text-sm text-muted-foreground'>平均来院回数</p>
                 <p className='font-semibold text-violet-700 dark:text-violet-300'>
                   {careEpisodeMetrics.averageVisitsPerEpisode.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3 md:col-span-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                <p className='text-sm text-muted-foreground'>
                   通院あたり平均売上
                 </p>
                 <p className='font-semibold text-amber-700 dark:text-amber-300'>
@@ -352,9 +353,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                 </p>
               </div>
               <div className='rounded border p-3 md:col-span-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  継続率
-                </p>
+                <p className='text-sm text-muted-foreground'>継続率</p>
                 <p className='font-semibold text-teal-700 dark:text-teal-300'>
                   {careEpisodeMetrics.episodeContinuationRate.toLocaleString()}%
                 </p>
@@ -375,69 +374,55 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
               <div className='rounded border p-3 md:col-span-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  見込み合計
-                </p>
+                <p className='text-sm text-muted-foreground'>見込み合計</p>
                 <p className='font-semibold text-indigo-700 dark:text-indigo-300'>
                   {revenueEstimateSummary.estimatedTotal.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  計算済み
-                </p>
+                <p className='text-sm text-muted-foreground'>計算済み</p>
                 <p className='font-semibold text-emerald-700 dark:text-emerald-300'>
                   {revenueEstimateSummary.calculatedCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  要確認
-                </p>
+                <p className='text-sm text-muted-foreground'>要確認</p>
                 <p className='font-semibold text-red-700 dark:text-red-300'>
                   {revenueEstimateSummary.needsReviewCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  見込み件数
-                </p>
-                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                <p className='text-sm text-muted-foreground'>見込み件数</p>
+                <p className='font-semibold text-foreground'>
                   {revenueEstimateSummary.estimateCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>警告</p>
+                <p className='text-sm text-muted-foreground'>警告</p>
                 <p className='font-semibold text-amber-700 dark:text-amber-300'>
                   {revenueEstimateSummary.warningCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  ブロック
-                </p>
-                <p className='font-semibold text-gray-800 dark:text-gray-100'>
+                <p className='text-sm text-muted-foreground'>ブロック</p>
+                <p className='font-semibold text-foreground'>
                   {revenueEstimateSummary.blockedCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  上書き
-                </p>
+                <p className='text-sm text-muted-foreground'>上書き</p>
                 <p className='font-semibold text-violet-700 dark:text-violet-300'>
                   {revenueEstimateSummary.overriddenCount.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3 md:col-span-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  患者負担見込み
-                </p>
+                <p className='text-sm text-muted-foreground'>患者負担見込み</p>
                 <p className='font-semibold text-blue-700 dark:text-blue-300'>
                   {patientCopayEstimated.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3 md:col-span-2'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                <p className='text-sm text-muted-foreground'>
                   保険者請求見込み
                 </p>
                 <p className='font-semibold text-cyan-700 dark:text-cyan-300'>
@@ -445,25 +430,19 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  自費見込み
-                </p>
+                <p className='text-sm text-muted-foreground'>自費見込み</p>
                 <p className='font-semibold text-green-700 dark:text-green-300'>
                   {privateRevenueEstimated.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  交通事故概算
-                </p>
+                <p className='text-sm text-muted-foreground'>交通事故概算</p>
                 <p className='font-semibold text-amber-700 dark:text-amber-300'>
                   {trafficAccidentEstimated.toLocaleString()}
                 </p>
               </div>
               <div className='rounded border p-3'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
-                  労災概算
-                </p>
+                <p className='text-sm text-muted-foreground'>労災概算</p>
                 <p className='font-semibold text-sky-700 dark:text-sky-300'>
                   {workersCompEstimated.toLocaleString()}
                 </p>
@@ -509,7 +488,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                 </tbody>
               </table>
             </div>
-            <p className='mt-3 text-xs text-gray-600 dark:text-gray-300'>
+            <p className='mt-3 text-xs text-muted-foreground'>
               交通事故・労災は手入力概算です。請求確定額ではありません。
             </p>
           </CardContent>
@@ -594,7 +573,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                           <td className='py-2 min-w-48'>
                             <div className='space-y-1'>
                               <p>{formatEstimateSource(detail)}</p>
-                              <p className='text-xs text-gray-600 dark:text-gray-300'>
+                              <p className='text-xs text-muted-foreground'>
                                 {detail.patientBurdenRate === null
                                   ? '負担割合未確定'
                                   : `${detail.patientBurdenRate / 10}割`}
@@ -604,7 +583,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                               {detail.lines.map(line => (
                                 <p
                                   key={line.id}
-                                  className='text-xs text-gray-600 dark:text-gray-300'
+                                  className='text-xs text-muted-foreground'
                                 >
                                   {line.feeItemCode
                                     ? `${line.feeItemCode} / ${formatLineSummary(line)}`
@@ -684,17 +663,13 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='flex flex-col md:flex-row gap-4'>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                  保険診療:
-                </p>
+                <p className='text-sm font-medium text-foreground'>保険診療:</p>
                 <p className='text-lg font-semibold text-blue-600 dark:text-blue-400'>
                   {insuranceRevenue.toLocaleString()}
                 </p>
               </div>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                  自費診療:
-                </p>
+                <p className='text-sm font-medium text-foreground'>自費診療:</p>
                 <p className='text-lg font-semibold text-green-600 dark:text-green-400'>
                   {selfPayRevenue.toLocaleString()}
                 </p>
@@ -748,7 +723,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='flex flex-col md:flex-row gap-4'>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                <p className='text-sm font-medium text-foreground'>
                   時間帯別収益:
                 </p>
                 <p className='text-lg font-semibold text-purple-600 dark:text-purple-400'>
@@ -756,7 +731,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                 </p>
               </div>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                <p className='text-sm font-medium text-foreground'>
                   曜日別収益:
                 </p>
                 <p className='text-lg font-semibold text-orange-600 dark:text-orange-400'>
@@ -779,7 +754,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
           <CardContent className='bg-card'>
             <div className='flex flex-col md:flex-row gap-4'>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                <p className='text-sm font-medium text-foreground'>
                   前年同期売上:
                 </p>
                 <p className='text-lg font-semibold text-red-600 dark:text-red-400'>
@@ -787,9 +762,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
                 </p>
               </div>
               <div className='w-full md:w-1/2'>
-                <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                  成長率:
-                </p>
+                <p className='text-sm font-medium text-foreground'>成長率:</p>
                 <p className='text-lg font-semibold text-teal-600 dark:text-teal-400'>
                   {growthRate}
                 </p>
@@ -808,9 +781,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className='bg-card'>
-            <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              予測収益:
-            </p>
+            <p className='text-sm font-medium text-foreground'>予測収益:</p>
             <p className='text-lg font-semibold text-indigo-600 dark:text-indigo-400'>
               {revenueForecast.toLocaleString()}
             </p>
@@ -823,9 +794,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
             <CardDescription className='bg-card'>人件費率など</CardDescription>
           </CardHeader>
           <CardContent className='bg-card'>
-            <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              人件費率:
-            </p>
+            <p className='text-sm font-medium text-foreground'>人件費率:</p>
             <p className='text-lg font-semibold text-pink-600 dark:text-pink-400'>
               {costAnalysis || 'データなし'}
             </p>
@@ -842,9 +811,7 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className='bg-card'>
-            <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-              貢献度:
-            </p>
+            <p className='text-sm font-medium text-foreground'>貢献度:</p>
             <p className='text-lg font-semibold text-lime-600 dark:text-lime-400'>
               {staffRevenueContribution || 'データなし'}
             </p>
@@ -864,7 +831,7 @@ const RevenuePage: React.FC = () => {
 
   if (profileLoading) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-gray-500'>読み込み中...</p>
         </div>
@@ -874,7 +841,7 @@ const RevenuePage: React.FC = () => {
 
   if (profileError) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-red-500'>エラー: {profileError}</p>
         </div>
@@ -884,7 +851,7 @@ const RevenuePage: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className='w-full bg-white dark:bg-gray-800 p-4'>
+      <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
           <p className='text-yellow-600'>店舗情報が設定されていません</p>
         </div>

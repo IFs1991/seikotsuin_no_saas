@@ -44,24 +44,24 @@ const MenuRanking: React.FC<MenuRankingProps> = ({ data }) => {
   };
 
   return (
-    <Card className='w-full bg-card text-[#111827] dark:text-[#f9fafb]'>
+    <Card className='w-full bg-card text-foreground'>
       <CardHeader className='bg-card'>
-        <CardTitle className='text-center text-2xl font-bold text-[#1e3a8a] dark:text-[#10b981]'>
+        <CardTitle className='text-center text-2xl font-bold text-primary-600 dark:text-medical-green-500'>
           施術メニュー別収益ランキング
         </CardTitle>
-        <CardDescription className='text-center text-gray-600 dark:text-gray-400'>
+        <CardDescription className='text-center text-muted-foreground'>
           各施術メニューの売上と利用回数を表示します。
         </CardDescription>
       </CardHeader>
       <CardContent className='bg-card p-6'>
         {!hasData ? (
-          <div className='flex items-center justify-center h-64 text-gray-500 dark:text-gray-400'>
+          <div className='flex items-center justify-center h-64 text-muted-foreground'>
             データがありません
           </div>
         ) : (
           <>
             <div className='flex justify-end mb-4'>
-              <Button className='bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90 dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'>
+              <Button className='bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'>
                 エクスポート
               </Button>
             </div>
@@ -71,16 +71,16 @@ const MenuRanking: React.FC<MenuRankingProps> = ({ data }) => {
               onValueChange={setActiveTab}
               className='w-full'
             >
-              <TabsList className='grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-700'>
+              <TabsList className='grid w-full grid-cols-2 bg-muted'>
                 <TabsTrigger
                   value='graph'
-                  className='data-[state=active]:bg-[#1e3a8a] data-[state=active]:text-white dark:data-[state=active]:bg-[#10b981] dark:data-[state=active]:text-white'
+                  className='data-[state=active]:bg-primary-600 data-[state=active]:text-white dark:data-[state=active]:bg-medical-green-500 dark:data-[state=active]:text-white'
                 >
                   グラフ
                 </TabsTrigger>
                 <TabsTrigger
                   value='table'
-                  className='data-[state=active]:bg-[#1e3a8a] data-[state=active]:text-white dark:data-[state=active]:bg-[#10b981] dark:data-[state=active]:text-white'
+                  className='data-[state=active]:bg-primary-600 data-[state=active]:text-white dark:data-[state=active]:bg-medical-green-500 dark:data-[state=active]:text-white'
                 >
                   テーブル
                 </TabsTrigger>
@@ -128,22 +128,22 @@ const MenuRanking: React.FC<MenuRankingProps> = ({ data }) => {
               </TabsContent>
               <TabsContent value='table' className='mt-4'>
                 <div className='overflow-x-auto'>
-                  <table className='min-w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md'>
+                  <table className='min-w-full bg-background border border-border rounded-md'>
                     <thead>
-                      <tr className='bg-gray-100 dark:bg-gray-700 text-left text-sm font-medium text-gray-700 dark:text-gray-300'>
-                        <th className='py-2 px-4 border-b border-gray-200 dark:border-gray-700'>
+                      <tr className='bg-muted text-left text-sm font-medium text-foreground'>
+                        <th className='py-2 px-4 border-b border-border'>
                           ランキング
                         </th>
-                        <th className='py-2 px-4 border-b border-gray-200 dark:border-gray-700'>
+                        <th className='py-2 px-4 border-b border-border'>
                           メニュー名
                         </th>
-                        <th className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                        <th className='py-2 px-4 border-b border-border text-right'>
                           売上
                         </th>
-                        <th className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                        <th className='py-2 px-4 border-b border-border text-right'>
                           利用回数
                         </th>
-                        <th className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                        <th className='py-2 px-4 border-b border-border text-right'>
                           平均単価
                         </th>
                       </tr>
@@ -153,21 +153,21 @@ const MenuRanking: React.FC<MenuRankingProps> = ({ data }) => {
                         <tr
                           key={menu.menu_id || index}
                           data-testid='menu-ranking-item'
-                          className='hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                          className='hover:bg-gray-50 dark:hover:bg-muted'
                         >
-                          <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700'>
+                          <td className='py-2 px-4 border-b border-border'>
                             {index + 1}
                           </td>
-                          <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700'>
+                          <td className='py-2 px-4 border-b border-border'>
                             {menu.menu_name}
                           </td>
-                          <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                          <td className='py-2 px-4 border-b border-border text-right'>
                             {formatCurrency(menu.total_revenue)}
                           </td>
-                          <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                          <td className='py-2 px-4 border-b border-border text-right'>
                             {menu.transaction_count.toLocaleString()}回
                           </td>
-                          <td className='py-2 px-4 border-b border-gray-200 dark:border-gray-700 text-right'>
+                          <td className='py-2 px-4 border-b border-border text-right'>
                             {menu.transaction_count > 0
                               ? formatCurrency(
                                   Math.round(

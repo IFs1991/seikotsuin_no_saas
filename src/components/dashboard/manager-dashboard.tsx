@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge, type BadgeVariant } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClassName } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -51,8 +51,7 @@ const shortcuts = [
   { label: '担当院スタッフ', href: '/manager/staff', icon: Stethoscope },
 ] as const;
 
-const linkButtonClassName =
-  'inline-flex h-10 items-center justify-center whitespace-nowrap rounded-medical border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-all duration-200 ease-out hover:bg-accent hover:text-accent-foreground hover:shadow-medical-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2';
+const linkButtonClassName = buttonClassName({ variant: 'outline' });
 
 function formatCurrency(value: number): string {
   return `¥${value.toLocaleString('ja-JP', {
@@ -209,8 +208,8 @@ function getClinicHealthVariant(status: ClinicHealthStatus): BadgeVariant {
 
 function LoadingState() {
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
-      <div className='flex items-center gap-2 text-gray-600 dark:text-gray-300'>
+    <div className='min-h-screen bg-background flex items-center justify-center'>
+      <div className='flex items-center gap-2 text-muted-foreground'>
         <Loader2 className='h-5 w-5 animate-spin text-blue-600' />
         <span>担当エリアダッシュボードを読み込み中...</span>
       </div>
@@ -226,7 +225,7 @@ function ErrorState({
   onRetry: () => void;
 }) {
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center p-4'>
+    <div className='min-h-screen bg-background flex items-center justify-center p-4'>
       <Card className='w-full max-w-md'>
         <CardHeader>
           <CardTitle className='text-red-600'>エラーが発生しました</CardTitle>
@@ -245,7 +244,7 @@ function ErrorState({
 
 function EmptyAssignments() {
   return (
-    <Alert className='bg-white dark:bg-gray-900'>
+    <Alert className='bg-card'>
       <AlertTriangle className='h-4 w-4' />
       <AlertTitle>{EMPTY_ASSIGNMENT_TITLE}</AlertTitle>
       <AlertDescription>{EMPTY_ASSIGNMENT_DESCRIPTION}</AlertDescription>
@@ -300,15 +299,11 @@ function SummaryKpis({ data }: { data: ManagerDashboardResponse }) {
       {kpis.map(kpi => (
         <Card key={kpi.label} className='bg-card'>
           <CardContent className='p-4'>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              {kpi.label}
-            </p>
-            <p className='mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100 break-words'>
+            <p className='text-sm text-muted-foreground'>{kpi.label}</p>
+            <p className='mt-2 text-2xl font-bold text-foreground break-words'>
               {kpi.value}
             </p>
-            <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-              {kpi.detail}
-            </p>
+            <p className='mt-1 text-xs text-muted-foreground'>{kpi.detail}</p>
           </CardContent>
         </Card>
       ))}
@@ -327,28 +322,28 @@ function AttentionSection({ data }: { data: ManagerDashboardResponse }) {
       </CardHeader>
       <CardContent className='space-y-3'>
         {data.attentionItems.length === 0 ? (
-          <p className='text-sm text-gray-600 dark:text-gray-300'>
+          <p className='text-sm text-muted-foreground'>
             現時点で緊急の確認事項はありません。
           </p>
         ) : (
           data.attentionItems.map(item => (
             <div
               key={item.id}
-              className='flex flex-col gap-3 rounded-md border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 md:flex-row md:items-center md:justify-between'
+              className='flex flex-col gap-3 rounded-md border border-border bg-card p-4 md:flex-row md:items-center md:justify-between'
             >
               <div className='min-w-0'>
                 <div className='flex flex-wrap items-center gap-2'>
                   <Badge variant={getSeverityBadgeVariant(item.severity)}>
                     {getSeverityLabel(item.severity)}
                   </Badge>
-                  <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                  <p className='font-semibold text-foreground'>
                     {item.clinicName}
                   </p>
                 </div>
-                <p className='mt-2 text-sm font-medium text-gray-800 dark:text-gray-100'>
+                <p className='mt-2 text-sm font-medium text-foreground'>
                   {item.title}
                 </p>
-                <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+                <p className='mt-1 text-sm text-muted-foreground'>
                   {item.description}
                 </p>
               </div>
@@ -383,21 +378,21 @@ function DailyReportStatusPanel({
       </CardHeader>
       <CardContent className='space-y-4'>
         <div className='grid grid-cols-1 gap-3 text-sm sm:grid-cols-3'>
-          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
-            <p className='text-gray-500 dark:text-gray-400'>提出済み</p>
-            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+          <div className='rounded-md border border-border bg-card p-3'>
+            <p className='text-muted-foreground'>提出済み</p>
+            <p className='mt-1 text-xl font-bold text-foreground'>
               {data.summary.submittedDailyReportCount}院
             </p>
           </div>
-          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
-            <p className='text-gray-500 dark:text-gray-400'>要確認</p>
-            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+          <div className='rounded-md border border-border bg-card p-3'>
+            <p className='text-muted-foreground'>要確認</p>
+            <p className='mt-1 text-xl font-bold text-foreground'>
               {data.summary.needsReviewCount}院
             </p>
           </div>
-          <div className='rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900'>
-            <p className='text-gray-500 dark:text-gray-400'>未提出</p>
-            <p className='mt-1 text-xl font-bold text-gray-900 dark:text-gray-100'>
+          <div className='rounded-md border border-border bg-card p-3'>
+            <p className='text-muted-foreground'>未提出</p>
+            <p className='mt-1 text-xl font-bold text-foreground'>
               {data.summary.missingDailyReportCount}院
             </p>
           </div>
@@ -431,13 +426,9 @@ function ClinicDailyReportLinkList({
 }) {
   return (
     <div>
-      <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100'>
-        {title}
-      </h3>
+      <h3 className='text-sm font-semibold text-foreground'>{title}</h3>
       {cards.length === 0 ? (
-        <p className='mt-2 text-sm text-gray-600 dark:text-gray-300'>
-          {emptyText}
-        </p>
+        <p className='mt-2 text-sm text-muted-foreground'>{emptyText}</p>
       ) : (
         <ul className='mt-2 space-y-2'>
           {cards.map(card => (
@@ -466,10 +457,8 @@ function ClinicCardsSection({
   return (
     <section className='space-y-3' aria-label='担当院別カード'>
       <div>
-        <h2 className='text-xl font-bold text-gray-900 dark:text-gray-100'>
-          担当院別カード
-        </h2>
-        <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+        <h2 className='text-xl font-bold text-foreground'>担当院別カード</h2>
+        <p className='mt-1 text-sm text-muted-foreground'>
           各院の本日KPIと詳細画面への導線です。
         </p>
       </div>
@@ -501,11 +490,11 @@ function ClinicCardsSection({
               <CardContent className='space-y-4'>
                 <div className='grid grid-cols-2 gap-3 text-sm md:grid-cols-3'>
                   <div>
-                    <p className='text-gray-500 dark:text-gray-400'>本日売上</p>
-                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                    <p className='text-muted-foreground'>本日売上</p>
+                    <p className='font-semibold text-foreground'>
                       {formatCurrency(card.todayRevenue)}
                     </p>
-                    <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    <p className='text-xs text-muted-foreground'>
                       前日比{' '}
                       {formatComparisonPercent(
                         card.revenueChangeRateFromPreviousDay
@@ -513,17 +502,17 @@ function ClinicCardsSection({
                     </p>
                   </div>
                   <div>
-                    <p className='text-gray-500 dark:text-gray-400'>来院数</p>
-                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                    <p className='text-muted-foreground'>来院数</p>
+                    <p className='font-semibold text-foreground'>
                       {card.todayVisitCount.toLocaleString('ja-JP')}名
                     </p>
                   </div>
                   <div>
-                    <p className='text-gray-500 dark:text-gray-400'>予約数</p>
-                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                    <p className='text-muted-foreground'>予約数</p>
+                    <p className='font-semibold text-foreground'>
                       {card.todayReservationCount.toLocaleString('ja-JP')}件
                     </p>
-                    <p className='text-xs text-gray-500 dark:text-gray-400'>
+                    <p className='text-xs text-muted-foreground'>
                       前週同曜日比{' '}
                       {formatComparisonPercent(
                         card.reservationChangeRateFromPreviousWeekday
@@ -531,10 +520,8 @@ function ClinicCardsSection({
                     </p>
                   </div>
                   <div>
-                    <p className='text-gray-500 dark:text-gray-400'>
-                      キャンセル率
-                    </p>
-                    <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                    <p className='text-muted-foreground'>キャンセル率</p>
+                    <p className='font-semibold text-foreground'>
                       {formatActualRate(card.cancellationRate)}
                     </p>
                   </div>
@@ -597,7 +584,7 @@ function TimelineSection({
       </CardHeader>
       <CardContent>
         {data.timeline.length === 0 ? (
-          <p className='text-sm text-gray-600 dark:text-gray-300'>
+          <p className='text-sm text-muted-foreground'>
             本日のタイムラインに表示できるイベントはまだありません。
           </p>
         ) : (
@@ -605,16 +592,16 @@ function TimelineSection({
             <ol className='space-y-3'>
               {timelineItems.map(item => (
                 <li key={item.id} className='border-l-2 border-blue-200 pl-4'>
-                  <div className='flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400'>
+                  <div className='flex flex-wrap items-center gap-2 text-xs text-muted-foreground'>
                     <time dateTime={item.occurredAt}>
                       {formatDateTime(item.occurredAt)}
                     </time>
                     <span>{item.clinicName}</span>
                   </div>
-                  <p className='mt-1 text-sm font-semibold text-gray-900 dark:text-gray-100'>
+                  <p className='mt-1 text-sm font-semibold text-foreground'>
                     {item.label}
                   </p>
-                  <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+                  <p className='mt-1 text-sm text-muted-foreground'>
                     {item.detail}
                   </p>
                   <Link
@@ -628,7 +615,7 @@ function TimelineSection({
             </ol>
             {hiddenTimelineCount > 0 ? (
               <div className='flex flex-wrap items-center gap-3 border-t border-gray-200 pt-3 dark:border-gray-700'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                <p className='text-sm text-muted-foreground'>
                   {expanded
                     ? 'すべてのタイムラインを表示しています'
                     : `他に${hiddenTimelineCount}件のタイムラインがあります`}
@@ -700,15 +687,15 @@ export default function ManagerDashboard() {
   }
 
   return (
-    <main className='min-h-screen bg-white p-4 pt-8 text-gray-900 dark:bg-gray-800 dark:text-gray-100'>
+    <main className='min-h-screen bg-background p-4 pt-8 text-foreground'>
       <div className='mx-auto max-w-7xl space-y-6'>
         <header className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
             <h1 className='text-3xl font-bold'>担当エリアダッシュボード</h1>
-            <p className='mt-2 text-sm text-gray-600 dark:text-gray-300'>
+            <p className='mt-2 text-sm text-muted-foreground'>
               担当院の今日の状況と確認すべき項目をまとめています。
             </p>
-            <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
+            <p className='mt-2 text-xs text-muted-foreground'>
               最終更新: {formatDateTime(data.generatedAt)}
             </p>
           </div>

@@ -54,12 +54,12 @@ export function ManagerShiftRequests() {
   const state = useManagerShiftRequests();
 
   return (
-    <main className='min-h-screen bg-white p-4 pt-8 text-gray-900 dark:bg-gray-800 dark:text-gray-100'>
+    <main className='min-h-screen bg-background p-4 pt-8 text-foreground'>
       <div className='mx-auto max-w-7xl space-y-6'>
         <header className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
             <h1 className='text-3xl font-bold'>担当院希望シフト</h1>
-            <p className='mt-2 text-sm text-gray-600 dark:text-gray-300'>
+            <p className='mt-2 text-sm text-muted-foreground'>
               担当院の希望シフトを確認し、承認・却下・シフト変換を行います。
             </p>
           </div>

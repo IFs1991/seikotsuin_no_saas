@@ -58,8 +58,8 @@ const featureCards = [
 
 function LoadingState() {
   return (
-    <main className='min-h-screen bg-white p-4 pt-8 text-gray-900 dark:bg-gray-800 dark:text-gray-100'>
-      <div className='flex min-h-[50vh] items-center justify-center gap-2 text-gray-600 dark:text-gray-300'>
+    <main className='min-h-screen bg-background p-4 pt-8 text-foreground'>
+      <div className='flex min-h-[50vh] items-center justify-center gap-2 text-muted-foreground'>
         <Loader2 className='h-5 w-5 animate-spin text-blue-600' />
         <span>管理ホームを読み込み中...</span>
       </div>
@@ -75,7 +75,7 @@ function ErrorState({
   onRetry: () => void;
 }) {
   return (
-    <main className='min-h-screen bg-white p-4 pt-8 text-gray-900 dark:bg-gray-800 dark:text-gray-100'>
+    <main className='min-h-screen bg-background p-4 pt-8 text-foreground'>
       <div className='mx-auto flex min-h-[50vh] max-w-md items-center'>
         <Card className='w-full'>
           <CardHeader>
@@ -96,7 +96,7 @@ function ErrorState({
 
 function EmptyAssignments() {
   return (
-    <Alert className='bg-white dark:bg-gray-900'>
+    <Alert className='bg-card'>
       <AlertTriangle className='h-4 w-4' />
       <AlertTitle>{EMPTY_ASSIGNMENT_TITLE}</AlertTitle>
       <AlertDescription>{EMPTY_ASSIGNMENT_DESCRIPTION}</AlertDescription>
@@ -118,11 +118,11 @@ export function ManagerHome() {
   const clinics = data?.clinics ?? [];
 
   return (
-    <main className='min-h-screen bg-white p-4 pt-8 text-gray-900 dark:bg-gray-800 dark:text-gray-100'>
+    <main className='min-h-screen bg-background p-4 pt-8 text-foreground'>
       <div className='mx-auto max-w-6xl space-y-6'>
         <header>
           <h1 className='text-3xl font-bold'>管理ホーム</h1>
-          <p className='mt-2 text-sm text-gray-600 dark:text-gray-300'>
+          <p className='mt-2 text-sm text-muted-foreground'>
             担当院の管理機能の入口です。
           </p>
         </header>
@@ -131,11 +131,11 @@ export function ManagerHome() {
           <div>
             <h2
               id='assigned-clinics-title'
-              className='text-xl font-bold text-gray-900 dark:text-gray-100'
+              className='text-xl font-bold text-foreground'
             >
               担当院一覧
             </h2>
-            <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+            <p className='mt-1 text-sm text-muted-foreground'>
               active なマネージャー担当院のみを表示します。
             </p>
           </div>
@@ -148,7 +148,7 @@ export function ManagerHome() {
                 <li key={clinic.id}>
                   <Card className='h-full bg-card'>
                     <CardContent className='p-4'>
-                      <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                      <p className='font-semibold text-foreground'>
                         {clinic.name}
                       </p>
                     </CardContent>
@@ -163,11 +163,11 @@ export function ManagerHome() {
           <div>
             <h2
               id='manager-features-title'
-              className='text-xl font-bold text-gray-900 dark:text-gray-100'
+              className='text-xl font-bold text-foreground'
             >
               管理機能
             </h2>
-            <p className='mt-1 text-sm text-gray-600 dark:text-gray-300'>
+            <p className='mt-1 text-sm text-muted-foreground'>
               現在利用できる manager 専用画面です。
             </p>
           </div>
