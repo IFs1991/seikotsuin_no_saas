@@ -32,8 +32,8 @@ interface SidebarItemButtonProps {
   children: React.ReactNode;
 }
 
-const ACTIVE_MENU_CLASS = 'bg-[#2d4ba0]';
-const INACTIVE_MENU_CLASS = 'hover:bg-[#2d4ba0]';
+const ACTIVE_MENU_CLASS = 'bg-primary-800';
+const INACTIVE_MENU_CLASS = 'hover:bg-primary-800';
 
 function SidebarItemButton({
   item,
@@ -155,13 +155,13 @@ export const Sidebar = React.memo(function Sidebar({
   return (
     <div
       className={cn(
-        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] overflow-hidden bg-[#1e3a8a] text-white shadow-xl transition-all duration-300',
+        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] overflow-hidden bg-primary-600 text-white shadow-xl transition-all duration-300',
         isOpen ? 'translate-x-0' : '-translate-x-full',
         'md:sticky md:translate-x-0 md:flex-shrink-0 md:shadow-none',
         isExpanded ? 'w-64' : 'w-20'
       )}
     >
-      <div className='p-4 flex justify-between items-center border-b border-[#2d4ba0]'>
+      <div className='p-4 flex justify-between items-center border-b border-primary-800'>
         <h1
           className={cn(
             'font-bold text-sm tracking-wide',
@@ -173,7 +173,7 @@ export const Sidebar = React.memo(function Sidebar({
         <Button
           onClick={handleToggleExpanded}
           variant='ghost'
-          className='text-white hover:bg-[#2d4ba0]'
+          className='text-white hover:bg-primary-800'
         >
           {isExpanded ? '←' : '→'}
         </Button>
@@ -224,7 +224,7 @@ export const Sidebar = React.memo(function Sidebar({
 
         {navigationMode.showAdminMenus && !navigationMode.isHqAdmin && (
           <div>
-            <Separator className='my-4 bg-[#2d4ba0]' />
+            <Separator className='my-4 bg-primary-800' />
             <div className={cn('space-y-2', !isExpanded && 'space-y-0')}>
               {isExpanded && (
                 <h2 className='text-sm font-bold mb-1 text-blue-100'>

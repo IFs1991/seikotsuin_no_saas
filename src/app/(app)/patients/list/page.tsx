@@ -40,13 +40,13 @@ function Toast({
 
 function ManagerAccessClosedMessage() {
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <Card className='max-w-[900px] mx-auto bg-card'>
         <CardHeader>
           <CardTitle>マネージャーは患者一覧を利用できません</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className='text-gray-600 dark:text-gray-300'>
+          <p className='text-muted-foreground'>
             患者分析画面から担当院の集計を確認してください。
           </p>
         </CardContent>
@@ -150,7 +150,7 @@ function PatientsListContent() {
 
   if (error) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <Card className='max-w-[1200px] mx-auto bg-card border border-red-200'>
           <CardHeader>
             <CardTitle className='text-red-600'>
@@ -166,7 +166,7 @@ function PatientsListContent() {
   }
 
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <div className='max-w-[1200px] mx-auto space-y-6'>
         <div className='flex space-x-2'>
           <Link href='/patients' className={inactiveTabClass}>
@@ -178,9 +178,7 @@ function PatientsListContent() {
         </div>
         {/* ヘッダー */}
         <div className='flex items-center justify-between'>
-          <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-            患者一覧
-          </h1>
+          <h1 className='text-2xl font-bold text-foreground'>患者一覧</h1>
           <Button onClick={handleOpenCreate}>
             <Plus className='h-4 w-4 mr-2' />
             新規登録

@@ -677,7 +677,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
   // エラー状態
   if (error) {
     return (
-      <div className='flex justify-center py-8 bg-white dark:bg-gray-800'>
+      <div className='flex justify-center py-8 bg-background'>
         <Card className='w-full max-w-4xl bg-red-50 dark:bg-red-900/20 border-red-200'>
           <CardHeader>
             <CardTitle className='flex items-center gap-2 text-red-600'>
@@ -714,19 +714,19 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
   const bulkTargetCount = bulkTargetDates.length;
 
   return (
-    <div className='flex justify-center py-8 bg-white dark:bg-gray-800 text-[#111827] dark:text-[#f9fafb]'>
+    <div className='flex justify-center py-8 bg-background text-foreground'>
       <Card className='w-full max-w-4xl bg-card shadow-lg rounded-lg'>
         <CardHeader className='bg-card border-b border-gray-200 dark:border-gray-700 pb-4'>
-          <CardTitle className='text-2xl font-bold text-center text-[#1e3a8a] dark:text-[#10b981]'>
+          <CardTitle className='text-2xl font-bold text-center text-primary-600 dark:text-medical-green-500'>
             シフト最適化提案
           </CardTitle>
-          <CardDescription className='text-center text-gray-600 dark:text-gray-400 mt-2'>
+          <CardDescription className='text-center text-muted-foreground mt-2'>
             AIによる最適なシフト提案と、カレンダー上での直感的な編集・管理が可能です。
           </CardDescription>
         </CardHeader>
         <CardContent className='bg-card p-6 space-y-8'>
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               単日シフト作成
             </h3>
             {shiftNotice && (
@@ -734,7 +734,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 {shiftNotice}
               </div>
             )}
-            <div className='grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700'>
+            <div className='grid grid-cols-1 md:grid-cols-5 gap-3 rounded-md border border-border bg-muted p-4'>
               <label className='text-sm font-medium'>
                 スタッフ
                 <select
@@ -790,7 +790,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                   type='button'
                   onClick={createShift}
                   disabled={isSavingShift || staffResources.length === 0}
-                  className='w-full bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90'
+                  className='w-full bg-primary-600 text-white hover:bg-primary-600/90'
                 >
                   {isSavingShift ? '保存中...' : '作成'}
                 </Button>
@@ -811,10 +811,10 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
           </div>
 
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               ユーザー別一括作成
             </h3>
-            <div className='space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700'>
+            <div className='space-y-4 rounded-md border border-border bg-muted p-4'>
               <div className='grid grid-cols-1 gap-3 md:grid-cols-5'>
                 <label className='text-sm font-medium'>
                   対象スタッフ
@@ -885,7 +885,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                       key={option.value}
                       className={`inline-flex min-w-12 items-center justify-center rounded border px-3 py-2 text-sm font-medium ${
                         bulkShiftForm.weekdays.includes(option.value)
-                          ? 'border-[#1e3a8a] bg-[#1e3a8a] text-white'
+                          ? 'border-primary-600 bg-primary-600 text-white'
                           : 'border-gray-300 bg-white text-gray-700'
                       }`}
                     >
@@ -913,7 +913,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 />
               </label>
               <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                <p className='text-sm text-gray-600 dark:text-gray-300'>
+                <p className='text-sm text-muted-foreground'>
                   作成対象: {bulkTargetCount}件
                 </p>
                 <Button
@@ -924,7 +924,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     staffResources.length === 0 ||
                     bulkTargetCount === 0
                   }
-                  className='bg-[#1e3a8a] text-white hover:bg-[#1e3a8a]/90'
+                  className='bg-primary-600 text-white hover:bg-primary-600/90'
                 >
                   {isSavingShift ? '保存中...' : '一括作成'}
                 </Button>
@@ -932,19 +932,19 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
             </div>
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* AIによるシフト提案表示 */}
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               AIによるシフト提案
             </h3>
             {shifts.length === 0 ? (
-              <div className='p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700 text-center'>
-                <p className='text-gray-500 dark:text-gray-400'>
+              <div className='p-4 border border-border rounded-md bg-muted text-center'>
+                <p className='text-gray-500 text-muted-foreground'>
                   シフトデータがありません
                 </p>
-                <p className='text-sm text-gray-400 dark:text-gray-500 mt-1'>
+                <p className='text-sm text-gray-400 text-muted-foreground mt-1'>
                   シフトを作成するには、管理者にお問い合わせください
                 </p>
               </div>
@@ -953,12 +953,12 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 {shifts.slice(0, 8).map(shift => (
                   <div
                     key={shift.id}
-                    className='p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700'
+                    className='p-4 border border-border rounded-md bg-muted'
                   >
-                    <p className='font-medium text-[#111827] dark:text-[#f9fafb]'>
+                    <p className='font-medium text-foreground'>
                       {shift.staff?.name || '未割り当て'}
                     </p>
-                    <p className='text-sm text-gray-600 dark:text-gray-400'>
+                    <p className='text-sm text-muted-foreground'>
                       {new Date(shift.start_time).toLocaleDateString('ja-JP', {
                         timeZone: 'Asia/Tokyo',
                       })}{' '}
@@ -968,7 +968,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     <p
                       className={`text-sm font-semibold ${
                         shift.status === 'confirmed'
-                          ? 'text-[#10b981]'
+                          ? 'text-medical-green-500'
                           : 'text-orange-500'
                       }`}
                     >
@@ -991,27 +991,27 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
             )}
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* カレンダービュー */}
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               カレンダービュー
             </h3>
             <div className='flex justify-between items-center mb-4'>
               <Button
                 variant='outline'
-                className='bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'
+                className='bg-primary-600 hover:bg-primary-600/90 text-white dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
                 disabled
               >
                 前月
               </Button>
-              <span className='text-lg font-medium text-[#111827] dark:text-[#f9fafb]'>
+              <span className='text-lg font-medium text-foreground'>
                 {currentYear}年 {monthNames[currentMonth]}
               </span>
               <Button
                 variant='outline'
-                className='bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'
+                className='bg-primary-600 hover:bg-primary-600/90 text-white dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
                 disabled
               >
                 翌月
@@ -1021,7 +1021,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
               {['日', '月', '火', '水', '木', '金', '土'].map(day => (
                 <div
                   key={day}
-                  className='font-bold text-[#1e3a8a] dark:text-[#10b981]'
+                  className='font-bold text-primary-600 dark:text-medical-green-500'
                 >
                   {day}
                 </div>
@@ -1042,17 +1042,17 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     className={`p-2 border border-gray-200 dark:border-gray-700 rounded-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500
                       ${
                         dateStr === selectedDate
-                          ? 'bg-[#1e3a8a] text-white dark:bg-[#10b981]'
-                          : 'bg-gray-50 dark:bg-gray-700 text-[#111827] dark:text-[#f9fafb]'
+                          ? 'bg-primary-600 text-white dark:bg-medical-green-500'
+                          : 'bg-muted text-foreground'
                       }
-                      hover:bg-gray-200 dark:hover:bg-gray-600`}
+                      hover:bg-gray-200 dark:hover:bg-muted`}
                     onClick={() => setSelectedDate(dateStr)}
                   >
                     {day}
                     {dayShifts.slice(0, 2).map(s => (
                       <div
                         key={s.id}
-                        className='text-xs mt-1 truncate text-gray-700 dark:text-gray-200'
+                        className='text-xs mt-1 truncate text-gray-700 text-muted-foreground'
                       >
                         {s.staff?.name?.split(' ')[0] || '未割当'}
                       </div>
@@ -1068,14 +1068,14 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
             </div>
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               選択日のシフト
             </h3>
             {selectedDayShifts.length === 0 ? (
-              <div className='p-4 border border-gray-200 dark:border-gray-700 rounded-md text-center text-gray-500 dark:text-gray-400'>
+              <div className='p-4 border border-border rounded-md text-center text-muted-foreground'>
                 選択日のシフトはありません
               </div>
             ) : (
@@ -1083,13 +1083,13 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 {selectedDayShifts.map(shift => (
                   <div
                     key={shift.id}
-                    className='flex flex-col gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-700 sm:flex-row sm:items-center sm:justify-between'
+                    className='flex flex-col gap-2 rounded-md border border-border bg-muted p-3 sm:flex-row sm:items-center sm:justify-between'
                   >
                     <div>
                       <p className='font-medium'>
                         {shift.staff?.name || '未割り当て'}
                       </p>
-                      <p className='text-sm text-gray-600 dark:text-gray-400'>
+                      <p className='text-sm text-muted-foreground'>
                         {formatTimeJst(shift.start_time)}-
                         {formatTimeJst(shift.end_time)}
                         {' / '}
@@ -1112,19 +1112,19 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
             )}
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* 需要予測オーバーレイ */}
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               需要予測
             </h3>
             {demandForecasts.length === 0 ? (
-              <div className='p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700 text-center'>
-                <p className='text-gray-500 dark:text-gray-400'>
+              <div className='p-4 border border-border rounded-md bg-muted text-center'>
+                <p className='text-gray-500 text-muted-foreground'>
                   需要予測データがありません
                 </p>
-                <p className='text-sm text-gray-400 dark:text-gray-500 mt-1'>
+                <p className='text-sm text-gray-400 text-muted-foreground mt-1'>
                   予約データが蓄積されると、需要予測が表示されます
                 </p>
               </div>
@@ -1135,9 +1135,9 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     selectedDayForecasts.map((forecast, index) => (
                       <div
                         key={`${forecast.date}-${forecast.hour}-${index}`}
-                        className='p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700'
+                        className='p-4 border border-border rounded-md bg-muted'
                       >
-                        <p className='font-medium text-[#111827] dark:text-[#f9fafb]'>
+                        <p className='font-medium text-foreground'>
                           {forecast.date} {forecast.hour}:00-
                           {forecast.hour + 1}:00
                         </p>
@@ -1155,31 +1155,31 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                     </div>
                   )}
                 </div>
-                <p className='text-sm text-gray-600 dark:text-gray-400 mt-2'>
+                <p className='text-sm text-muted-foreground mt-2'>
                   需要予測に基づいて、最適な人員配置を提案します。
                 </p>
               </>
             )}
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* スタッフ希望の反映 */}
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               スタッフ希望
             </h3>
             {preferences.length === 0 ? (
-              <div className='p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-700 text-center'>
-                <p className='text-gray-500 dark:text-gray-400'>
+              <div className='p-4 border border-border rounded-md bg-muted text-center'>
+                <p className='text-gray-500 text-muted-foreground'>
                   スタッフ希望データがありません
                 </p>
-                <p className='text-sm text-gray-400 dark:text-gray-500 mt-1'>
+                <p className='text-sm text-gray-400 text-muted-foreground mt-1'>
                   スタッフが希望を登録すると、ここに表示されます
                 </p>
               </div>
             ) : (
-              <ul className='list-disc list-inside text-[#111827] dark:text-[#f9fafb] space-y-1'>
+              <ul className='list-disc list-inside text-foreground space-y-1'>
                 {preferences.map(pref => (
                   <li key={pref.id}>
                     {pref.staff?.name || '不明'}: {pref.preference_text}
@@ -1187,43 +1187,43 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 ))}
               </ul>
             )}
-            <p className='text-sm text-gray-600 dark:text-gray-400 mt-2'>
+            <p className='text-sm text-muted-foreground mt-2'>
               スタッフの希望を考慮し、公平かつ効率的なシフトを生成します。
             </p>
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* コスト計算 */}
           <div>
-            <h3 className='text-xl font-semibold mb-4 text-[#1e3a8a] dark:text-[#10b981]'>
+            <h3 className='text-xl font-semibold mb-4 text-primary-600 dark:text-medical-green-500'>
               コスト計算
             </h3>
-            <p className='text-2xl font-bold text-[#111827] dark:text-[#f9fafb]'>
+            <p className='text-2xl font-bold text-foreground'>
               総人件費予測:{' '}
-              <span className='text-[#10b981]'>
+              <span className='text-medical-green-500'>
                 {shifts.length > 0
                   ? `¥${(shifts.length * 8 * 1200).toLocaleString()}`
                   : '—'}
               </span>
             </p>
-            <p className='text-sm text-gray-600 dark:text-gray-400 mt-2'>
+            <p className='text-sm text-muted-foreground mt-2'>
               提案されたシフトに基づく人件費をリアルタイムで計算します。
             </p>
           </div>
 
-          <Separator className='bg-gray-200 dark:bg-gray-700' />
+          <Separator className='bg-muted' />
 
           {/* 承認フロー & 通知機能 */}
           <div className='flex flex-col md:flex-row justify-between items-center gap-4'>
             <div className='flex items-center space-x-2'>
-              <CheckCircle className='h-6 w-6 text-[#10b981]' />
-              <span className='text-lg font-medium text-[#111827] dark:text-[#f9fafb]'>
+              <CheckCircle className='h-6 w-6 text-medical-green-500' />
+              <span className='text-lg font-medium text-foreground'>
                 承認ステータス:{' '}
                 <span
                   className={
                     shifts.some(s => s.status === 'confirmed')
-                      ? 'text-[#10b981]'
+                      ? 'text-medical-green-500'
                       : 'text-orange-500'
                   }
                 >
@@ -1233,12 +1233,12 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
                 </span>
               </span>
             </div>
-            <Button className='bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white dark:bg-[#10b981] dark:hover:bg-[#10b981]/90'>
+            <Button className='bg-primary-600 hover:bg-primary-600/90 text-white dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'>
               シフトを承認
             </Button>
             <Button
               variant='outline'
-              className='border-[#1e3a8a] text-[#1e3a8a] hover:bg-gray-100 dark:border-[#10b981] dark:text-[#10b981] dark:hover:bg-gray-700'
+              className='border-primary-600 text-primary-600 hover:bg-gray-100 dark:border-medical-green-500 dark:text-medical-green-500 dark:hover:bg-muted'
             >
               スタッフへ通知
             </Button>

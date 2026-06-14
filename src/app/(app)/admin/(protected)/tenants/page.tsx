@@ -753,7 +753,7 @@ export default function AdminTenantsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-muted-foreground'>
                 子テナントは同一スコープ内の本部配下に作成します
               </p>
               {shouldLockHierarchy && (
@@ -763,12 +763,12 @@ export default function AdminTenantsPage() {
               )}
             </div>
           </div>
-          <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40'>
+          <section className='space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-muted'>
             <div>
               <h3 className='text-sm font-semibold text-slate-950 dark:text-slate-50'>
                 {isCreateMode ? '初期アクセス設定' : '管理者アクセス設定'}
               </h3>
-              <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300'>
+              <p className='mt-1 text-xs leading-5 text-slate-600 dark:text-muted-foreground'>
                 {isCreateMode
                   ? '店舗/テナント作成時点で、誰が最初に管理画面へアクセスするかを選択します。既存の院長・施術者・管理者が担う場合は、既存ユーザーを割り当ててください。'
                   : 'このテナントにログインできる店舗管理者を追加します。新規管理者を作成するか、既存ユーザーを割り当ててください。'}
@@ -796,7 +796,7 @@ export default function AdminTenantsPage() {
                     className={`rounded-lg border p-3 text-left transition-colors ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50 text-blue-950 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-card dark:text-muted-foreground dark:hover:bg-slate-900'
                     }`}
                     onClick={() => handleInitialAccessModeChange(option.value)}
                   >
@@ -811,7 +811,7 @@ export default function AdminTenantsPage() {
               })}
             </div>
             {formState.initial_access_mode === TENANT_INITIAL_ACCESS_LATER && (
-              <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-slate-950 dark:text-slate-300'>
+              <p className='rounded-md bg-white px-3 py-2 text-xs leading-5 text-slate-600 dark:bg-card dark:text-muted-foreground'>
                 テナント作成後、アカウント・権限管理から店舗管理者、マネージャー、施術者、スタッフを追加してください。
               </p>
             )}

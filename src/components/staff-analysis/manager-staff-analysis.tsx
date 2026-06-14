@@ -95,12 +95,12 @@ export function ManagerStaffAnalysis() {
   }, [data]);
 
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 pt-8'>
+    <div className='min-h-screen bg-background text-foreground p-4 pt-8'>
       <div className='max-w-6xl mx-auto space-y-6'>
         <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div>
             <h1 className='text-3xl font-bold'>担当院スタッフ分析</h1>
-            <p className='mt-2 text-gray-600 dark:text-gray-300'>
+            <p className='mt-2 text-muted-foreground'>
               担当院のスタッフ稼働、予約対応、売上貢献、キャンセル傾向を確認できます。
             </p>
             <p className='mt-1 text-sm text-amber-700 dark:text-amber-300'>
@@ -230,7 +230,7 @@ export function ManagerStaffAnalysis() {
           <Card>
             <CardContent className='py-8 text-center'>
               <p className='font-medium'>担当院がまだ設定されていません。</p>
-              <p className='mt-2 text-gray-600 dark:text-gray-300'>
+              <p className='mt-2 text-muted-foreground'>
                 管理者にマネージャー管理から担当店舗の設定を依頼してください。
               </p>
             </CardContent>
@@ -243,7 +243,7 @@ export function ManagerStaffAnalysis() {
               <p className='font-medium'>
                 選択した期間のスタッフ分析データがありません。
               </p>
-              <p className='mt-2 text-gray-600 dark:text-gray-300'>
+              <p className='mt-2 text-muted-foreground'>
                 期間または担当院を変更してください。
               </p>
             </CardContent>
@@ -426,7 +426,7 @@ export function ManagerStaffAnalysis() {
                     {data.attentionItems.map(item => (
                       <li key={item.id} className='rounded border p-3'>
                         <p className='font-medium'>{item.title}</p>
-                        <p className='text-sm text-gray-600 dark:text-gray-300'>
+                        <p className='text-sm text-muted-foreground'>
                           {item.clinicName}
                           {item.staffName ? ` / ${item.staffName}` : ''}
                           {' - '}
@@ -444,7 +444,7 @@ export function ManagerStaffAnalysis() {
                 <CardTitle>注意事項</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className='list-disc space-y-1 pl-5 text-sm text-gray-600 dark:text-gray-300'>
+                <ul className='list-disc space-y-1 pl-5 text-sm text-muted-foreground'>
                   {data.disclaimers.map(disclaimer => (
                     <li key={disclaimer}>{disclaimer}</li>
                   ))}
@@ -462,7 +462,7 @@ function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <Card>
       <CardContent className='p-4'>
-        <p className='text-sm text-gray-600 dark:text-gray-300'>{label}</p>
+        <p className='text-sm text-muted-foreground'>{label}</p>
         <p className='mt-2 text-2xl font-semibold'>{value}</p>
       </CardContent>
     </Card>

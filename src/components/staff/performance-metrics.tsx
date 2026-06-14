@@ -44,10 +44,10 @@ const PerformanceMetrics: React.FC = () => {
   );
 
   return (
-    <div className='bg-white dark:bg-gray-800 p-6 rounded-lg'>
+    <div className='bg-background p-6 rounded-lg'>
       <Card className='bg-card mb-6'>
         <CardHeader className='bg-card'>
-          <CardTitle className='text-xl font-bold text-[#1e3a8a]'>
+          <CardTitle className='text-xl font-bold text-primary-600'>
             スタッフパフォーマンス分析
           </CardTitle>
           <CardDescription>個人別の実績とスキル評価</CardDescription>
@@ -56,7 +56,9 @@ const PerformanceMetrics: React.FC = () => {
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <div className='space-y-4'>
               <div className='mb-2'>
-                <span className='text-sm text-[#6b7280] mr-2'>絞り込み:</span>
+                <span className='text-sm text-muted-foreground mr-2'>
+                  絞り込み:
+                </span>
                 <select
                   value={selectedStaff}
                   onChange={e => setSelectedStaff(e.target.value)}
@@ -70,33 +72,33 @@ const PerformanceMetrics: React.FC = () => {
                   ))}
                 </select>
               </div>
-              <div className='p-4 rounded-lg border border-[#e5e7eb]'>
+              <div className='p-4 rounded-lg border border-border'>
                 <h3 className='font-semibold mb-2'>主要KPI</h3>
                 <div className='grid grid-cols-2 gap-4'>
                   <div className='text-center'>
-                    <p className='text-sm text-[#6b7280]'>担当患者数</p>
-                    <p className='text-2xl font-bold text-[#1e3a8a]'>
+                    <p className='text-sm text-muted-foreground'>担当患者数</p>
+                    <p className='text-2xl font-bold text-primary-600'>
                       {performanceData.kpi.patients}
                     </p>
                   </div>
                   <div className='text-center'>
-                    <p className='text-sm text-[#6b7280]'>患者満足度</p>
-                    <p className='text-2xl font-bold text-[#10b981]'>
+                    <p className='text-sm text-muted-foreground'>患者満足度</p>
+                    <p className='text-2xl font-bold text-medical-green-500'>
                       {performanceData.kpi.satisfaction}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className='p-4 rounded-lg border border-[#e5e7eb]'>
+              <div className='p-4 rounded-lg border border-border'>
                 <h3 className='font-semibold mb-2'>スキルマトリックス</h3>
                 <div className='space-y-2'>
                   {performanceData.skills.map(skill => (
                     <div key={skill.name} className='flex items-center'>
                       <span className='w-24 text-sm'>{skill.name}</span>
-                      <div className='flex-1 h-2 bg-[#e5e7eb] rounded'>
+                      <div className='flex-1 h-2 bg-muted rounded'>
                         <div
-                          className='h-full bg-[#1e3a8a] rounded'
+                          className='h-full bg-primary-600 rounded'
                           style={{ width: `${skill.level}%` }}
                         />
                       </div>
@@ -108,13 +110,13 @@ const PerformanceMetrics: React.FC = () => {
             </div>
 
             <div className='space-y-4'>
-              <div className='p-4 rounded-lg border border-[#e5e7eb]'>
+              <div className='p-4 rounded-lg border border-border'>
                 <h3 className='font-semibold mb-2'>スタッフランキング</h3>
                 <div className='space-y-2'>
                   {visibleStaff.map(staff => (
                     <div
                       key={staff.id}
-                      className='flex items-center justify-between p-2 hover:bg-[#f9fafb] rounded'
+                      className='flex items-center justify-between p-2 hover:bg-muted rounded'
                     >
                       <div className='flex items-center'>
                         <Avatar className='h-8 w-8'>
@@ -122,11 +124,13 @@ const PerformanceMetrics: React.FC = () => {
                         </Avatar>
                         <div className='ml-2'>
                           <p className='font-medium'>{staff.name}</p>
-                          <p className='text-sm text-[#6b7280]'>{staff.role}</p>
+                          <p className='text-sm text-muted-foreground'>
+                            {staff.role}
+                          </p>
                         </div>
                       </div>
                       <div className='flex items-center'>
-                        <span className='text-[#1e3a8a] font-semibold'>
+                        <span className='text-primary-600 font-semibold'>
                           {staff.rating}
                         </span>
                       </div>
@@ -135,16 +139,20 @@ const PerformanceMetrics: React.FC = () => {
                 </div>
               </div>
 
-              <div className='p-4 rounded-lg border border-[#e5e7eb]'>
+              <div className='p-4 rounded-lg border border-border'>
                 <h3 className='font-semibold mb-2'>最近のフィードバック</h3>
                 <div className='space-y-2'>
-                  <div className='p-2 bg-[#f9fafb] rounded'>
+                  <div className='p-2 bg-muted rounded'>
                     <p className='text-sm'>患者対応が丁寧で好評です。</p>
-                    <p className='text-xs text-[#6b7280] mt-1'>2024/03/15</p>
+                    <p className='text-xs text-muted-foreground mt-1'>
+                      2024/03/15
+                    </p>
                   </div>
-                  <div className='p-2 bg-[#f9fafb] rounded'>
+                  <div className='p-2 bg-muted rounded'>
                     <p className='text-sm'>施術技術の向上が見られます。</p>
-                    <p className='text-xs text-[#6b7280] mt-1'>2024/03/10</p>
+                    <p className='text-xs text-muted-foreground mt-1'>
+                      2024/03/10
+                    </p>
                   </div>
                 </div>
               </div>

@@ -20,10 +20,10 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-const PAGE_CLASS = 'min-h-screen bg-[#f9fafb] p-4 dark:bg-[#1a1a1a] sm:p-6';
+const PAGE_CLASS = 'min-h-screen bg-background p-4 sm:p-6';
 const CONTENT_CLASS = 'mx-auto max-w-[1120px] space-y-6';
 const INPUT_CLASS =
-  'h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100';
+  'h-10 rounded border border-border bg-background px-3 text-sm text-foreground';
 
 const PERIOD_OPTIONS: Array<{
   value: ManagerRevenueAnalysisPeriodType;
@@ -95,14 +95,10 @@ function SummaryCard({
   return (
     <Card className='bg-card'>
       <CardContent className='p-4'>
-        <p className='text-sm text-gray-500 dark:text-gray-400'>{label}</p>
-        <p className='mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100'>
-          {value}
-        </p>
+        <p className='text-sm text-muted-foreground'>{label}</p>
+        <p className='mt-2 text-2xl font-semibold text-foreground'>{value}</p>
         {description ? (
-          <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-            {description}
-          </p>
+          <p className='mt-1 text-xs text-muted-foreground'>{description}</p>
         ) : null}
       </CardContent>
     </Card>
@@ -119,15 +115,11 @@ function DetailMetric({
   description?: string;
 }) {
   return (
-    <div className='rounded border bg-white p-4 dark:border-gray-800 dark:bg-gray-900'>
-      <p className='text-sm text-gray-500 dark:text-gray-400'>{label}</p>
-      <p className='mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100'>
-        {value}
-      </p>
+    <div className='rounded border border-border bg-card p-4'>
+      <p className='text-sm text-muted-foreground'>{label}</p>
+      <p className='mt-2 text-xl font-semibold text-foreground'>{value}</p>
       {description ? (
-        <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-          {description}
-        </p>
+        <p className='mt-1 text-xs text-muted-foreground'>{description}</p>
       ) : null}
     </div>
   );
@@ -162,7 +154,7 @@ function TrendCard({
                     <span>{point.label}</span>
                     <span>{formatValue(point.value)}</span>
                   </div>
-                  <div className='h-2 rounded bg-gray-100 dark:bg-gray-800'>
+                  <div className='h-2 rounded bg-muted'>
                     <div
                       className='h-2 rounded bg-blue-600'
                       style={{ width: `${width}%` }}
@@ -210,7 +202,7 @@ function InsurancePrivateTrend({
                     <span>{formatCurrency(total)}</span>
                   </div>
                   <div
-                    className='flex h-2 overflow-hidden rounded bg-gray-100 dark:bg-gray-800'
+                    className='flex h-2 overflow-hidden rounded bg-muted'
                     style={{ width: `${width}%` }}
                   >
                     <div
@@ -300,7 +292,7 @@ function ClinicComparisonBars({
                     <span>{point.clinicName}</span>
                     <span>{formatValue(point.value)}</span>
                   </div>
-                  <div className='h-2 rounded bg-gray-100 dark:bg-gray-800'>
+                  <div className='h-2 rounded bg-muted'>
                     <div
                       className='h-2 rounded bg-emerald-600'
                       style={{ width: `${width}%` }}
@@ -535,9 +527,7 @@ export function ManagerRevenueAnalysis() {
     <div className={PAGE_CLASS}>
       <div className={CONTENT_CLASS}>
         <div>
-          <h1 className='text-2xl font-semibold text-gray-900 dark:text-gray-100'>
-            収益分析
-          </h1>
+          <h1 className='text-2xl font-semibold text-foreground'>収益分析</h1>
           <p className='mt-1 text-sm text-gray-500'>
             担当院の売上推移と収益構造を確認できます。
           </p>

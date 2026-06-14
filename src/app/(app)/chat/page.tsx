@@ -35,8 +35,8 @@ const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
       <div
         className={`rounded-lg p-3 max-w-[80%] ${
           isUser
-            ? 'bg-[#1e3a8a] text-white'
-            : 'bg-white dark:bg-[#4b5563] text-[#111827] dark:text-[#e5e7eb]'
+            ? 'bg-primary-600 text-white'
+            : 'bg-white dark:bg-muted text-foreground dark:text-foreground'
         }`}
       >
         {message.content}
@@ -50,8 +50,8 @@ const ChatMessage: React.FC<{ message: Message }> = ({ message }) => {
  */
 const LoadingIndicator: React.FC = () => (
   <div className='flex justify-start'>
-    <div className='bg-white dark:bg-[#4b5563] rounded-lg p-3 max-w-[80%] animate-pulse'>
-      <span className='text-[#6b7280]'>応答を生成中...</span>
+    <div className='bg-white dark:bg-muted rounded-lg p-3 max-w-[80%] animate-pulse'>
+      <span className='text-muted-foreground'>応答を生成中...</span>
     </div>
   </div>
 );
@@ -134,8 +134,8 @@ const ChatPage: React.FC = () => {
   // プロフィール読み込み中
   if (profileLoading) {
     return (
-      <div className='flex flex-col items-center justify-center min-h-screen bg-[#f9fafb] dark:bg-[#1a1a1a] p-6'>
-        <div className='text-[#6b7280]'>読み込み中...</div>
+      <div className='flex flex-col items-center justify-center min-h-screen bg-background p-6'>
+        <div className='text-muted-foreground'>読み込み中...</div>
       </div>
     );
   }
@@ -143,7 +143,7 @@ const ChatPage: React.FC = () => {
   // プロフィール取得エラー
   if (profileError) {
     return (
-      <div className='flex flex-col items-center justify-center min-h-screen bg-[#f9fafb] dark:bg-[#1a1a1a] p-6'>
+      <div className='flex flex-col items-center justify-center min-h-screen bg-background p-6'>
         <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4'>
           <p className='text-red-600 dark:text-red-400'>{profileError}</p>
         </div>
@@ -152,7 +152,7 @@ const ChatPage: React.FC = () => {
   }
 
   return (
-    <div className='flex flex-col items-center min-h-screen bg-[#f9fafb] dark:bg-[#1a1a1a] p-6'>
+    <div className='flex flex-col items-center min-h-screen bg-background p-6'>
       <div className='w-full max-w-3xl'>
         {/* clinicId未割当時の案内メッセージ */}
         {!isClinicAssigned && (
@@ -163,10 +163,10 @@ const ChatPage: React.FC = () => {
           </div>
         )}
 
-        <Card className='bg-[#ffffff] dark:bg-[#2d2d2d]'>
+        <Card className='bg-card'>
           <CardHeader>
             <div className='flex justify-between items-center'>
-              <CardTitle className='text-[#111827] dark:text-[#e5e7eb]'>
+              <CardTitle className='text-foreground dark:text-foreground'>
                 AIチャット
               </CardTitle>
               <div className='flex items-center gap-2'>
@@ -179,7 +179,7 @@ const ChatPage: React.FC = () => {
                 >
                   新規チャット
                 </Button>
-                <span className='text-sm text-[#4b5563] dark:text-[#9ca3af]'>
+                <span className='text-sm text-muted-foreground dark:text-muted-foreground'>
                   {isEnabled ? 'オン' : 'オフ'}
                 </span>
                 <Button
@@ -188,14 +188,14 @@ const ChatPage: React.FC = () => {
                   size='sm'
                   disabled={!isClinicAssigned}
                   className={`${
-                    isEnabled ? 'bg-[#1e3a8a]' : 'bg-[#e5e7eb]'
+                    isEnabled ? 'bg-primary-600' : 'bg-muted'
                   } transition-colors`}
                 >
                   {isEnabled ? '有効' : '無効'}
                 </Button>
               </div>
             </div>
-            <CardDescription className='text-[#4b5563] dark:text-[#9ca3af]'>
+            <CardDescription className='text-muted-foreground dark:text-muted-foreground'>
               AIを活用した経営相談・データ分析が可能です
             </CardDescription>
           </CardHeader>
@@ -221,17 +221,17 @@ const ChatPage: React.FC = () => {
               {error && <ErrorMessage error={error} />}
 
               {/* メッセージエリア */}
-              <div className='h-[500px] bg-[#f3f4f6] dark:bg-[#374151] rounded-lg p-4 overflow-y-auto'>
+              <div className='h-[500px] bg-muted dark:bg-muted rounded-lg p-4 overflow-y-auto'>
                 {!isClinicAssigned ? (
-                  <div className='flex items-center justify-center h-full text-[#6b7280]'>
+                  <div className='flex items-center justify-center h-full text-muted-foreground'>
                     管理者に権限割当を依頼してください
                   </div>
                 ) : !isEnabled ? (
-                  <div className='flex items-center justify-center h-full text-[#6b7280]'>
+                  <div className='flex items-center justify-center h-full text-muted-foreground'>
                     チャットを有効にしてください
                   </div>
                 ) : messages.length === 0 && !isLoading ? (
-                  <div className='flex items-center justify-center h-full text-[#6b7280]'>
+                  <div className='flex items-center justify-center h-full text-muted-foreground'>
                     メッセージを入力して会話を開始してください
                   </div>
                 ) : (
@@ -253,7 +253,7 @@ const ChatPage: React.FC = () => {
                   onKeyPress={handleKeyPress}
                   placeholder='メッセージを入力...'
                   disabled={!isClinicAssigned || !isEnabled || isLoading}
-                  className='bg-white dark:bg-[#374151]'
+                  className='bg-white dark:bg-muted'
                 />
                 <Button
                   onClick={handleSend}
@@ -263,7 +263,7 @@ const ChatPage: React.FC = () => {
                     isLoading ||
                     !inputValue.trim()
                   }
-                  className='bg-[#1e3a8a]'
+                  className='bg-primary-600'
                 >
                   送信
                 </Button>
@@ -272,10 +272,10 @@ const ChatPage: React.FC = () => {
           </CardContent>
 
           <CardFooter className='flex justify-between'>
-            <Button variant='outline' className='bg-white dark:bg-[#374151]'>
+            <Button variant='outline' className='bg-white dark:bg-muted'>
               履歴を検索
             </Button>
-            <Button variant='outline' className='bg-white dark:bg-[#374151]'>
+            <Button variant='outline' className='bg-white dark:bg-muted'>
               エクスポート
             </Button>
           </CardFooter>

@@ -29,7 +29,7 @@ const customAttributeLabels: Record<string, string> = {
 
 function ManagerAccessClosedMessage() {
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <div className='max-w-[900px] mx-auto'>
         <Card className='bg-card'>
           <CardHeader>
@@ -123,7 +123,7 @@ export default function PatientDetailPage() {
 
   if (profileError && !profileLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card'>
             <CardHeader>
@@ -132,7 +132,7 @@ export default function PatientDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
-              <p className='text-gray-700 dark:text-gray-300'>{profileError}</p>
+              <p className='text-foreground'>{profileError}</p>
             </CardContent>
           </Card>
         </div>
@@ -146,7 +146,7 @@ export default function PatientDetailPage() {
 
   if (!clinicId && !profileLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card'>
             <CardHeader>
@@ -163,7 +163,7 @@ export default function PatientDetailPage() {
 
   if (loading || profileLoading) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+      <div className='p-6 bg-background min-h-screen flex items-center justify-center'>
         <div className='text-gray-500'>患者情報を読み込み中です...</div>
       </div>
     );
@@ -171,7 +171,7 @@ export default function PatientDetailPage() {
 
   if (error) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
           <Card className='bg-card border border-red-200'>
             <CardHeader>
@@ -188,14 +188,14 @@ export default function PatientDetailPage() {
 
   if (!data) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen flex items-center justify-center'>
+      <div className='p-6 bg-background min-h-screen flex items-center justify-center'>
         <div className='text-gray-500'>患者情報が見つかりません。</div>
       </div>
     );
   }
 
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <div className='max-w-[900px] mx-auto space-y-6'>
         <Card className='bg-card'>
           <CardHeader>
@@ -206,25 +206,21 @@ export default function PatientDetailPage() {
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <p className='text-sm text-gray-500'>氏名</p>
-                <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                  {data.name}
-                </p>
+                <p className='font-semibold text-foreground'>{data.name}</p>
               </div>
               <div>
                 <p className='text-sm text-gray-500'>電話番号</p>
-                <p className='font-semibold text-gray-900 dark:text-gray-100'>
-                  {data.phone}
-                </p>
+                <p className='font-semibold text-foreground'>{data.phone}</p>
               </div>
               <div>
                 <p className='text-sm text-gray-500'>メール</p>
-                <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                <p className='font-semibold text-foreground'>
                   {data.email || '-'}
                 </p>
               </div>
               <div>
                 <p className='text-sm text-gray-500'>メモ</p>
-                <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                <p className='font-semibold text-foreground'>
                   {data.notes || '-'}
                 </p>
               </div>
@@ -249,12 +245,12 @@ export default function PatientDetailPage() {
                 {customAttributes.map(([key, value]) => (
                   <div
                     key={key}
-                    className='border rounded-lg p-3 bg-white dark:bg-gray-800'
+                    className='border border-border rounded-lg p-3 bg-card'
                   >
                     <p className='text-xs text-gray-500 uppercase tracking-wide'>
                       {customAttributeLabels[key] ?? key}
                     </p>
-                    <p className='text-sm text-gray-900 dark:text-gray-100 mt-1'>
+                    <p className='text-sm text-foreground mt-1'>
                       {String(value)}
                     </p>
                   </div>

@@ -38,18 +38,18 @@ const ConversionFunnel: React.FC<ConversionFunnelProps> = ({ stages }) => {
   };
 
   return (
-    <Card className='w-full bg-card text-[#111827] dark:text-[#f9fafb]'>
-      <CardHeader className='bg-card border-b border-gray-200 dark:border-gray-700 pb-4'>
-        <CardTitle className='text-center text-2xl font-bold text-[#1e3a8a] dark:text-[#10b981]'>
+    <Card className='w-full bg-card text-foreground'>
+      <CardHeader className='bg-card border-b border-border pb-4'>
+        <CardTitle className='text-center text-2xl font-bold text-primary-600 dark:text-medical-green-500'>
           新患→再診転換ファネル
         </CardTitle>
-        <CardDescription className='text-center text-gray-600 dark:text-gray-400 mt-2'>
+        <CardDescription className='text-center text-muted-foreground mt-2'>
           患者フローと各段階の転換率を視覚化します。
         </CardDescription>
       </CardHeader>
       <CardContent className='bg-card p-6'>
         {!hasData ? (
-          <div className='flex items-center justify-center h-64 text-gray-500 dark:text-gray-400'>
+          <div className='flex items-center justify-center h-64 text-muted-foreground'>
             データがありません
           </div>
         ) : (
@@ -73,10 +73,10 @@ const ConversionFunnel: React.FC<ConversionFunnelProps> = ({ stages }) => {
                 </div>
                 {/* 転換率表示 */}
                 <div
-                  className='absolute top-1/2 left-full -translate-y-1/2 ml-4 text-[#111827] dark:text-[#f9fafb] text-sm font-medium whitespace-nowrap'
+                  className='absolute top-1/2 left-full -translate-y-1/2 ml-4 text-foreground text-sm font-medium whitespace-nowrap'
                   data-testid='conversion-rate'
                 >
-                  <span className='text-[#10b981] dark:text-[#10b981] font-bold'>
+                  <span className='text-medical-green-500 font-bold'>
                     {stage.percentage}%
                   </span>
                 </div>

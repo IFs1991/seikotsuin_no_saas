@@ -49,9 +49,9 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
   };
 
   return (
-    <div className='flex flex-col h-[800px] bg-white dark:bg-gray-800 p-6'>
-      <Card className='flex-1 bg-[#F8F9FA]'>
-        <CardHeader className='bg-[#7C3AED] text-white'>
+    <div className='flex flex-col h-[800px] bg-background p-6'>
+      <Card className='flex-1 bg-muted'>
+        <CardHeader className='bg-admin-700 text-white'>
           <CardTitle>管理者用AIアシスタント</CardTitle>
           <CardDescription className='text-gray-100'>
             現在選択されている分析対象スコープに基づいて分析・提案を行います
@@ -77,7 +77,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
                 <div
                   className={`max-w-[70%] rounded-lg p-3 ${
                     msg.role === 'user'
-                      ? 'bg-[#7C3AED] text-white'
+                      ? 'bg-admin-700 text-white'
                       : 'bg-white border border-gray-200'
                   }`}
                 >
@@ -107,7 +107,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
                 <Button
                   key={suggestion}
                   variant='outline'
-                  className='text-[#7C3AED] border-[#7C3AED]'
+                  className='text-admin-700 border-admin-700'
                   onClick={() => setMessage(suggestion)}
                   disabled={disabled}
                 >
@@ -126,7 +126,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
               />
               <Button
                 type='submit'
-                className='bg-[#7C3AED] hover:bg-[#6D28D9] text-white'
+                className='bg-admin-700 hover:bg-admin-800 text-white'
                 disabled={isLoading || disabled}
               >
                 送信
@@ -134,7 +134,7 @@ const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
               <Button
                 type='button'
                 variant='outline'
-                className='border-[#7C3AED] text-[#7C3AED]'
+                className='border-admin-700 text-admin-700'
                 onClick={onExport}
               >
                 JSONエクスポート

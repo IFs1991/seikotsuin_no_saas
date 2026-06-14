@@ -55,7 +55,7 @@ interface ClinicSelectProps {
 
 const EMPTY_CLINICS: readonly ClinicOption[] = [];
 const BASE_CLINIC_SELECT_CLASS =
-  'bg-[#2563eb] text-white px-3 py-1 rounded border border-blue-300/40';
+  'bg-medical-blue-600 text-white px-3 py-1 rounded border border-blue-300/40';
 const CLINIC_SELECT_PLACEHOLDER = '操作対象店舗を選択';
 const EMPTY_CLINIC_SELECT_LABEL = '利用可能な店舗なし';
 const CLINIC_SELECT_ERROR_LABEL = '店舗一覧を取得できません';
@@ -173,7 +173,7 @@ const NotificationBadge = React.memo(function NotificationBadge({
   }
 
   return (
-    <span className='absolute -top-1 -right-1 h-4 w-4 bg-[#ef4444] rounded-full text-xs flex items-center justify-center'>
+    <span className='absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs flex items-center justify-center'>
       {label}
     </span>
   );
@@ -329,7 +329,7 @@ export const Header = React.memo(function Header({
   );
 
   return (
-    <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-[#1e3a8a] text-white flex items-center justify-between'>
+    <div className='fixed top-0 left-0 right-0 z-50 w-full px-4 py-2 bg-primary-600 text-white flex items-center justify-between'>
       <div className='flex items-center gap-4'>
         <Button
           variant='ghost'
@@ -481,7 +481,7 @@ export const Header = React.memo(function Header({
             onClick={closeMenus}
             aria-hidden='true'
           />
-          <div className='absolute top-16 right-4 bg-[#1e3a8a] p-4 rounded shadow-lg md:hidden w-60 space-y-3 z-50'>
+          <div className='absolute top-16 right-4 bg-primary-600 p-4 rounded shadow-lg md:hidden w-60 space-y-3 z-50'>
             <ClinicSelect
               selectedClinicId={selectedClinicId}
               clinics={displayClinics}

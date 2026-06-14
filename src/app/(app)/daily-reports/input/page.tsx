@@ -1136,7 +1136,7 @@ export default function DailyReportInputPage() {
 
   if (profileLoading) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <div className='text-gray-500'>プロフィール情報を読み込み中です...</div>
       </div>
     );
@@ -1144,7 +1144,7 @@ export default function DailyReportInputPage() {
 
   if (errorMessage) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle className='text-red-600'>
@@ -1152,7 +1152,7 @@ export default function DailyReportInputPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <p className='text-gray-700 dark:text-gray-300'>{errorMessage}</p>
+            <p className='text-foreground'>{errorMessage}</p>
             <Button
               onClick={() => window.location.reload()}
               className='bg-blue-600 text-white'
@@ -1167,7 +1167,7 @@ export default function DailyReportInputPage() {
 
   if (!hasClinic) {
     return (
-      <div className='min-h-screen bg-white dark:bg-gray-800 flex items-center justify-center'>
+      <div className='min-h-screen bg-background flex items-center justify-center'>
         <Card className='max-w-md w-full mx-4'>
           <CardHeader>
             <CardTitle>クリニック情報が見つかりません</CardTitle>
@@ -1176,9 +1176,7 @@ export default function DailyReportInputPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-gray-700 dark:text-gray-300'>
-              管理者にお問い合わせください。
-            </p>
+            <p className='text-foreground'>管理者にお問い合わせください。</p>
           </CardContent>
         </Card>
       </div>
@@ -1186,7 +1184,7 @@ export default function DailyReportInputPage() {
   }
 
   return (
-    <div className='min-h-screen bg-white dark:bg-gray-800 p-4'>
+    <div className='min-h-screen bg-background p-4'>
       <div className='max-w-6xl mx-auto space-y-6'>
         {(formError || loadError) && (
           <Card className='border-red-200 bg-red-50 dark:bg-red-950/40'>
@@ -1206,9 +1204,7 @@ export default function DailyReportInputPage() {
                 戻る
               </Button>
             </Link>
-            <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-              日報入力
-            </h1>
+            <h1 className='text-2xl font-bold text-foreground'>日報入力</h1>
           </div>
           <Button
             onClick={handleSubmit}
@@ -1292,7 +1288,7 @@ export default function DailyReportInputPage() {
                 <Label htmlFor='newPaymentMethod'>決済方法</Label>
                 <select
                   id='newPaymentMethod'
-                  className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                  className='w-full h-10 px-3 border rounded bg-card'
                   value={newItem.paymentMethodId}
                   onChange={event =>
                     setNewItem(prev => ({
@@ -1349,7 +1345,7 @@ export default function DailyReportInputPage() {
                 <Label htmlFor='billingType'>区分</Label>
                 <select
                   id='billingType'
-                  className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                  className='w-full h-10 px-3 border rounded bg-card'
                   value={newItem.billingType}
                   onChange={event =>
                     setNewItem(prev => {
@@ -1374,7 +1370,7 @@ export default function DailyReportInputPage() {
                 <Label htmlFor='newRevenueContext'>売上文脈</Label>
                 <select
                   id='newRevenueContext'
-                  className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                  className='w-full h-10 px-3 border rounded bg-card'
                   value={newItem.revenueContextCode}
                   onChange={event => {
                     const revenueContextCode = isRevenueContextCode(
@@ -1532,7 +1528,7 @@ export default function DailyReportInputPage() {
                           <Label htmlFor={`billing-${item.id}`}>区分</Label>
                           <select
                             id={`billing-${item.id}`}
-                            className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                            className='w-full h-10 px-3 border rounded bg-card'
                             value={item.billingType}
                             onChange={event => {
                               const billingType = isBillingType(
@@ -1560,7 +1556,7 @@ export default function DailyReportInputPage() {
                           <Label htmlFor={`context-${item.id}`}>売上文脈</Label>
                           <select
                             id={`context-${item.id}`}
-                            className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                            className='w-full h-10 px-3 border rounded bg-card'
                             value={item.revenueContextCode}
                             onChange={event => {
                               const revenueContextCode = isRevenueContextCode(
@@ -1591,7 +1587,7 @@ export default function DailyReportInputPage() {
                           <Label htmlFor={`payment-${item.id}`}>決済方法</Label>
                           <select
                             id={`payment-${item.id}`}
-                            className='w-full h-10 px-3 border rounded bg-white dark:bg-gray-900'
+                            className='w-full h-10 px-3 border rounded bg-card'
                             value={item.paymentMethodId ?? ''}
                             onChange={event => {
                               const paymentMethodId =
@@ -1658,21 +1654,21 @@ export default function DailyReportInputPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className='mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40'>
+                      <div className='mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-muted'>
                         <div className='flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
                           <div className='space-y-2'>
                             <div className='flex flex-wrap items-center gap-2'>
                               <span className='text-sm font-semibold text-slate-900 dark:text-slate-100'>
                                 会計内訳
                               </span>
-                              <span className='rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200'>
+                              <span className='rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 dark:border-slate-600 dark:bg-muted dark:text-muted-foreground'>
                                 状態: {pricingPreview.statusLabel}
                               </span>
                               <span className='rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200'>
                                 {pricingPreview.contextLabel}
                               </span>
                             </div>
-                            <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700 dark:text-slate-200'>
+                            <div className='flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700 dark:text-muted-foreground'>
                               {pricingPreview.lines.map(line => (
                                 <span key={line}>{line}</span>
                               ))}
@@ -1693,7 +1689,7 @@ export default function DailyReportInputPage() {
                                   <select
                                     id={`burden-override-${item.id}`}
                                     aria-label={`${item.patientName} 負担割合の上書き`}
-                                    className='h-9 w-full rounded border bg-white px-3 text-sm dark:bg-gray-900'
+                                    className='h-9 w-full rounded border bg-white px-3 text-sm dark:bg-card'
                                     value={burdenOverrideValue}
                                     onChange={event =>
                                       setPatientBurdenOverrides(prev => ({
@@ -1713,7 +1709,7 @@ export default function DailyReportInputPage() {
                                     ))}
                                   </select>
                                 </div>
-                                <label className='flex items-center gap-2 pb-2 text-xs text-slate-700 dark:text-slate-200'>
+                                <label className='flex items-center gap-2 pb-2 text-xs text-slate-700 dark:text-muted-foreground'>
                                   <input
                                     type='checkbox'
                                     checked={Boolean(
@@ -1757,7 +1753,7 @@ export default function DailyReportInputPage() {
                           {REVENUE_CONTEXT_LABELS[item.revenueContextCode]}
                         </span>
                         {item.revenueContextSource === 'manual' && (
-                          <span className='rounded border px-2 py-0.5 text-gray-700 dark:text-gray-200'>
+                          <span className='rounded border px-2 py-0.5 text-foreground'>
                             手動分類
                           </span>
                         )}

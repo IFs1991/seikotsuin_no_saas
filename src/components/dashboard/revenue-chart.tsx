@@ -42,16 +42,14 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
   return (
     <Card className='w-full bg-card'>
       <CardHeader className='bg-card'>
-        <CardTitle className='bg-card text-gray-900 dark:text-gray-100'>
-          収益トレンド
-        </CardTitle>
-        <CardDescription className='bg-card text-gray-600 dark:text-gray-400'>
+        <CardTitle className='bg-card text-foreground'>収益トレンド</CardTitle>
+        <CardDescription className='bg-card text-muted-foreground'>
           日次の収益推移を表示します（総売上・保険診療・自費診療）。
         </CardDescription>
       </CardHeader>
       <CardContent className='bg-card'>
         {!hasData ? (
-          <div className='flex items-center justify-center h-64 text-gray-500 dark:text-gray-400'>
+          <div className='flex items-center justify-center h-64 text-muted-foreground'>
             データがありません
           </div>
         ) : (

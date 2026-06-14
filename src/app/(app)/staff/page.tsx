@@ -29,9 +29,9 @@ const StaffManagementPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center min-h-screen bg-[#f9fafb] dark:bg-[#1a1a1a]'>
+      <div className='flex items-center justify-center min-h-screen bg-background'>
         <div
-          className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1e3a8a]'
+          className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600'
           role='status'
           aria-label='Loading'
         ></div>
@@ -41,7 +41,7 @@ const StaffManagementPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+      <div className='p-6 bg-background min-h-screen'>
         <Card className='max-w-[1200px] mx-auto bg-card border border-red-200'>
           <CardHeader>
             <CardTitle className='text-red-600'>
@@ -60,11 +60,11 @@ const StaffManagementPage: React.FC = () => {
   );
 
   return (
-    <div className='p-6 bg-[#f9fafb] dark:bg-[#1a1a1a] min-h-screen'>
+    <div className='p-6 bg-background min-h-screen'>
       <div className='max-w-[1200px] mx-auto space-y-6'>
         {/* ヘッダー */}
         <div className='flex items-center justify-between'>
-          <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
+          <h1 className='text-2xl font-bold text-foreground'>
             スタッフ分析とシフト最適化
           </h1>
           <div className='flex items-center gap-2'>
@@ -82,7 +82,7 @@ const StaffManagementPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
+              <p className='text-3xl font-bold text-foreground'>
                 {staffMetrics.dailyPatients.toFixed(1)}
               </p>
             </CardContent>
@@ -94,7 +94,7 @@ const StaffManagementPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
+              <p className='text-3xl font-bold text-foreground'>
                 ¥{staffMetrics.totalRevenue.toLocaleString()}
               </p>
             </CardContent>
@@ -106,7 +106,7 @@ const StaffManagementPage: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className='text-3xl font-bold text-gray-900 dark:text-gray-100'>
+              <p className='text-3xl font-bold text-foreground'>
                 {staffMetrics.averageSatisfaction.toFixed(2)}
               </p>
             </CardContent>
@@ -145,7 +145,7 @@ const StaffManagementPage: React.FC = () => {
               <div className='space-y-6'>
                 {/* 売上ランキング */}
                 <div>
-                  <h3 className='text-lg font-semibold mb-4 text-[#111827] dark:text-[#f3f4f6]'>
+                  <h3 className='text-lg font-semibold mb-4 text-foreground'>
                     売上ランキング
                   </h3>
                   {revenueRanking.length === 0 ? (
@@ -203,7 +203,7 @@ const StaffManagementPage: React.FC = () => {
 
                 {/* 満足度と売上の相関 */}
                 <div>
-                  <h3 className='text-lg font-semibold mb-4 text-[#111827] dark:text-[#f3f4f6]'>
+                  <h3 className='text-lg font-semibold mb-4 text-foreground'>
                     満足度と売上の相関
                   </h3>
                   {satisfactionCorrelation.length === 0 ? (
@@ -213,9 +213,9 @@ const StaffManagementPage: React.FC = () => {
                       {satisfactionCorrelation.map(staff => (
                         <div
                           key={staff.name}
-                          className='border rounded-lg p-4 bg-white dark:bg-gray-800'
+                          className='border border-border rounded-lg p-4 bg-card'
                         >
-                          <p className='font-semibold text-gray-900 dark:text-gray-100'>
+                          <p className='font-semibold text-foreground'>
                             {staff.name}
                           </p>
                           <div className='mt-2 space-y-1 text-sm'>
@@ -251,7 +251,7 @@ const StaffManagementPage: React.FC = () => {
                 {/* 稼働率 */}
                 <div className='flex items-center gap-4'>
                   <span className='text-gray-500'>稼働率:</span>
-                  <div className='flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4'>
+                  <div className='flex-1 bg-muted rounded-full h-4'>
                     <div
                       className={`h-4 rounded-full ${
                         shiftAnalysis.utilizationRate < 50
@@ -272,7 +272,7 @@ const StaffManagementPage: React.FC = () => {
 
                 {/* 時間帯別予約数 */}
                 <div>
-                  <p className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                  <p className='text-sm font-medium text-foreground mb-2'>
                     時間帯別予約数（過去30日）
                   </p>
                   <div className='flex items-end gap-1 h-32'>
@@ -301,7 +301,7 @@ const StaffManagementPage: React.FC = () => {
 
                 {/* 推奨事項 */}
                 <div>
-                  <p className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                  <p className='text-sm font-medium text-foreground mb-2'>
                     推奨事項
                   </p>
                   <div className='space-y-2'>
@@ -313,9 +313,7 @@ const StaffManagementPage: React.FC = () => {
                         <Badge variant='secondary' className='mt-0.5'>
                           {index + 1}
                         </Badge>
-                        <p className='text-sm text-gray-700 dark:text-gray-300'>
-                          {rec}
-                        </p>
+                        <p className='text-sm text-muted-foreground'>{rec}</p>
                       </div>
                     ))}
                   </div>

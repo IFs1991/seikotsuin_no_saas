@@ -89,29 +89,41 @@ export const DesignSystemShowcase = () => {
             <h3 className='text-lg font-medium'>医療系バリアント</h3>
             <div className='flex flex-wrap gap-4'>
               <Button variant='medical-primary'>医療プライマリー</Button>
-              <Button variant='medical-urgent' priority='urgent'>
-                緊急対応
+              <Button variant='medical-urgent'>緊急対応</Button>
+              <Button className='border-0 bg-medical-green-600 text-white shadow-medical hover:bg-medical-green-700'>
+                成功
               </Button>
-              <Button variant='medical-success'>成功</Button>
-              <Button variant='medical-safety'>安全確認</Button>
-              <Button variant='medical-caution'>注意</Button>
-              <Button variant='medical-neutral'>ニュートラル</Button>
+              <Button className='border-0 bg-emerald-600 text-white shadow-medical hover:bg-emerald-700'>
+                安全確認
+              </Button>
+              <Button className='border-0 bg-yellow-500 font-medium text-yellow-950 shadow-medical hover:bg-yellow-600'>
+                注意
+              </Button>
+              <Button className='border-0 bg-gray-500 text-white shadow-medical hover:bg-gray-600'>
+                ニュートラル
+              </Button>
             </div>
           </div>
 
           <div className='space-y-4'>
             <h3 className='text-lg font-medium'>ロール別バリアント</h3>
             <div className='flex flex-wrap gap-4'>
-              <Button variant='admin-primary' role='admin'>
+              <Button
+                variant='admin-primary'
+                className='border-l-4 border-l-admin-600'
+              >
                 管理者プライマリー
               </Button>
-              <Button variant='admin-secondary' role='admin'>
+              <Button
+                variant='admin-secondary'
+                className='border-l-4 border-l-admin-600'
+              >
                 管理者セカンダリー
               </Button>
-              <Button variant='patient-primary' role='patient'>
+              <Button variant='patient-primary' className='rounded-lg'>
                 患者向けプライマリー
               </Button>
-              <Button variant='patient-gentle' role='patient'>
+              <Button className='rounded-lg border border-blue-200 bg-blue-50 text-blue-700 shadow-medical hover:bg-blue-100'>
                 患者向け優しい
               </Button>
             </div>
@@ -132,14 +144,10 @@ export const DesignSystemShowcase = () => {
               <Button variant='medical-primary' size='touch'>
                 タッチ
               </Button>
-              <Button variant='medical-primary' size='clinical'>
+              <Button variant='medical-primary' className='h-11 px-6 py-3'>
                 診療用
               </Button>
-              <Button
-                variant='medical-urgent'
-                size='emergency'
-                priority='urgent'
-              >
+              <Button variant='medical-urgent' size='emergency'>
                 緊急
               </Button>
             </div>
@@ -153,7 +161,10 @@ export const DesignSystemShowcase = () => {
           <h2 className='text-xl font-semibold'>カードバリアント</h2>
 
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            <Card variant='medical' interactive>
+            <Card
+              interactive
+              className='rounded-medical border-gray-300 shadow-medical'
+            >
               <CardHeader>
                 <CardTitle>医療カード</CardTitle>
                 <CardDescription>標準的な医療情報カード</CardDescription>
@@ -161,7 +172,7 @@ export const DesignSystemShowcase = () => {
               <CardContent>医療関連の情報を表示</CardContent>
             </Card>
 
-            <Card variant='emergency' priority='urgent'>
+            <Card className='rounded-medical border-red-200 border-l-red-500 bg-red-50 text-red-900 shadow-medical-lg animate-pulse-soft ring-2 ring-red-300 ring-opacity-50'>
               <CardHeader>
                 <CardTitle>緊急カード</CardTitle>
                 <CardDescription>緊急時の情報表示</CardDescription>
@@ -169,7 +180,7 @@ export const DesignSystemShowcase = () => {
               <CardContent>緊急度の高い情報</CardContent>
             </Card>
 
-            <Card variant='admin' elevation='high'>
+            <Card className='rounded-medical border-admin-200 bg-admin-50 text-admin-900 shadow-2xl shadow-gray-400/20'>
               <CardHeader>
                 <CardTitle>管理者カード</CardTitle>
                 <CardDescription>管理者専用情報</CardDescription>
@@ -177,7 +188,7 @@ export const DesignSystemShowcase = () => {
               <CardContent>管理者向けデータ</CardContent>
             </Card>
 
-            <Card variant='patient'>
+            <Card className='rounded-medical border-blue-200 bg-blue-50 text-blue-900 shadow-medical'>
               <CardHeader>
                 <CardTitle>患者カード</CardTitle>
                 <CardDescription>患者向け情報</CardDescription>
@@ -185,7 +196,7 @@ export const DesignSystemShowcase = () => {
               <CardContent>患者が見やすい表示</CardContent>
             </Card>
 
-            <Card variant='clinical'>
+            <Card className='rounded-medical border-medical-blue-200 bg-medical-blue-50 text-medical-blue-900 shadow-medical'>
               <CardHeader>
                 <CardTitle>診療カード</CardTitle>
                 <CardDescription>診療関連情報</CardDescription>
@@ -193,7 +204,7 @@ export const DesignSystemShowcase = () => {
               <CardContent>診療データの表示</CardContent>
             </Card>
 
-            <Card variant='security' priority='high'>
+            <Card className='rounded-medical border-yellow-200 border-l-orange-500 bg-yellow-50 text-yellow-900 shadow-medical'>
               <CardHeader>
                 <CardTitle>セキュリティカード</CardTitle>
                 <CardDescription>セキュリティ関連情報</CardDescription>

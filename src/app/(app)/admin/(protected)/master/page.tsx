@@ -21,7 +21,7 @@ const AdminMasterPage: React.FC = () => {
   const [currentTable, setCurrentTable] = useState<string>('');
 
   return (
-    <div className='bg-white dark:bg-gray-800 min-h-screen py-8'>
+    <div className='bg-background min-h-screen py-8'>
       <div className='container mx-auto px-4 max-w-7xl'>
         <Card className='w-full bg-card'>
           <CardHeader className='bg-card'>

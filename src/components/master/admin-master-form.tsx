@@ -105,10 +105,10 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
   };
 
   return (
-    <div className='p-6 bg-[#ffffff] dark:bg-[#1a1a1a] min-h-screen'>
-      <Card className='w-[800px] mx-auto bg-[#f8fafc] dark:bg-[#2d2d2d]'>
+    <div className='p-6 bg-background min-h-screen'>
+      <Card className='w-[800px] mx-auto bg-card'>
         <CardHeader>
-          <CardTitle className='text-[#1e3a8a] dark:text-[#60a5fa]'>
+          <CardTitle className='text-primary-600 dark:text-medical-blue-500'>
             マスタデータ管理
           </CardTitle>
           <CardDescription>
@@ -165,7 +165,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
             <TabsContent value='custom'>
               <div className='space-y-4'>
                 <Label>店舗別カスタマイズ</Label>
-                <div className='border border-[#e2e8f0] dark:border-[#4a5568] rounded-lg p-4'>
+                <div className='border border-border rounded-lg p-4'>
                   {/* 店舗別設定フォーム */}
                 </div>
               </div>
@@ -174,7 +174,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
             <TabsContent value='validation'>
               <div className='space-y-4'>
                 <Label>バリデーションルール</Label>
-                <div className='border border-[#e2e8f0] dark:border-[#4a5568] rounded-lg p-4'>
+                <div className='border border-border rounded-lg p-4'>
                   {/* バリデーションルール設定 */}
                 </div>
               </div>
@@ -211,7 +211,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
             </div>
 
             {impactedStores.length > 0 && (
-              <div className='bg-[#fff3cd] dark:bg-[#433619] text-[#856404] dark:text-[#ffd970] p-4 rounded-lg'>
+              <div className='bg-yellow-50 text-yellow-900 dark:bg-yellow-900/30 dark:text-yellow-100 p-4 rounded-lg'>
                 <h4 className='font-semibold mb-2'>変更の影響範囲</h4>
                 <ul className='list-disc list-inside'>
                   {impactedStores.map((store, index) => (
@@ -222,7 +222,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
             )}
 
             {needsApproval && (
-              <div className='bg-[#cce5ff] dark:bg-[#1e3a8a] text-[#004085] dark:text-[#93c5fd] p-4 rounded-lg'>
+              <div className='bg-blue-50 text-blue-900 dark:bg-primary-600 dark:text-blue-100 p-4 rounded-lg'>
                 承認が必要な変更です
               </div>
             )}
