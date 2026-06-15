@@ -165,7 +165,10 @@ async function syncProfileAccess(
   }
 }
 
-export async function login(_: any, formData: FormData): Promise<AuthResponse> {
+export async function login(
+  _: unknown,
+  formData: FormData
+): Promise<AuthResponse> {
   const supabase = await getServerClient();
   const headerList = await headers();
   const { ipAddress, userAgent } = getRequestInfoFromHeaders(headerList);
@@ -288,10 +291,10 @@ export async function login(_: any, formData: FormData): Promise<AuthResponse> {
     let redirectPath = '/dashboard';
     if (effectiveRole === 'manager') {
       redirectPath = getDefaultRedirect(effectiveRole);
-    } else if (accessContext.clinicId === null) {
-      redirectPath = '/onboarding';
     } else if (canAccessAdminUIWithCompat(effectiveRole)) {
       redirectPath = getDefaultRedirect(effectiveRole ?? 'admin');
+    } else if (accessContext.clinicId === null) {
+      redirectPath = '/onboarding';
     }
     redirect(redirectPath);
   } catch (error) {

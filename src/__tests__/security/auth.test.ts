@@ -71,8 +71,8 @@ describe('Security Enhancement Tests', () => {
     });
 
     test('returns appropriate default redirects by role', () => {
-      expect(getDefaultRedirect('admin')).toBe('/admin/settings');
-      expect(getDefaultRedirect('manager')).toBe('/dashboard');
+      expect(getDefaultRedirect('admin')).toBe('/admin');
+      expect(getDefaultRedirect('manager')).toBe('/manager');
       expect(getDefaultRedirect('staff')).toBe('/dashboard');
       expect(getDefaultRedirect()).toBe('/admin/settings');
     });

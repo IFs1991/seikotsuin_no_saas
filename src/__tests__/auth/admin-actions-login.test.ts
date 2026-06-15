@@ -132,7 +132,7 @@ describe('admin/actions login', () => {
     expect(mockSignOut).not.toHaveBeenCalled();
   });
 
-  test('admin 権限と clinic_id があれば admin settings に進める', async () => {
+  test('admin 権限と clinic_id があれば admin dashboard に進める', async () => {
     mockGetUserAccessContext.mockResolvedValue({
       permissions: { role: 'admin', clinic_id: 'clinic-1' },
       role: 'admin',
@@ -158,14 +158,47 @@ describe('admin/actions login', () => {
     formData.append('email', 'owner@example.com');
     formData.append('password', 'ValidPassword123!');
 
-    await expect(login(null, formData)).rejects.toThrow(
-      'REDIRECT:/admin/settings'
-    );
+    await expect(login(null, formData)).rejects.toThrow('REDIRECT:/admin');
     expect(profileSyncBuilder.update).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'owner@example.com',
         role: 'admin',
         clinic_id: 'clinic-1',
+      })
+    );
+  });
+
+  test('admin 権限なら clinic_id が null でも admin dashboard に進める', async () => {
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: { role: 'admin', clinic_id: null },
+      role: 'admin',
+      normalizedRole: 'admin',
+      clinicId: null,
+      isActive: true,
+      isAdmin: true,
+    });
+
+    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
+    const profileSyncBuilder = createQueryBuilder({});
+    const profileBuilders = [profileLookupBuilder, profileSyncBuilder];
+
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return profileBuilders.shift() ?? createQueryBuilder({});
+      }
+
+      return createQueryBuilder({});
+    });
+
+    const formData = new FormData();
+    formData.append('email', 'owner@example.com');
+    formData.append('password', 'ValidPassword123!');
+
+    await expect(login(null, formData)).rejects.toThrow('REDIRECT:/admin');
+    expect(profileSyncBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'owner@example.com',
+        role: 'admin',
       })
     );
   });

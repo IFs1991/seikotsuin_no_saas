@@ -97,7 +97,7 @@ export function isValidRelativePath(path: string): boolean {
 export function getDefaultRedirect(userRole?: string): string {
   switch (userRole) {
     case 'admin':
-      return '/admin/settings';
+      return '/admin';
     case 'manager':
       return '/manager';
     case 'staff':
