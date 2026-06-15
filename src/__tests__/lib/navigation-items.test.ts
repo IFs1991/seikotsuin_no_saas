@@ -14,6 +14,16 @@ import {
 } from '@/lib/navigation/items';
 
 describe('navigation items', () => {
+  const originalAiInsightsFlag = process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS;
+
+  afterEach(() => {
+    if (originalAiInsightsFlag === undefined) {
+      delete process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS;
+      return;
+    }
+    process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = originalAiInsightsFlag;
+  });
+
   it('HQ admin は管理メニューのみ表示対象にする', () => {
     const mode = getNavigationMode({
       role: 'admin',
@@ -264,6 +274,78 @@ describe('navigation items', () => {
     expect(QUICK_ACCESS_ITEMS.map(item => item.id)).toContain(
       'quick-reservation'
     );
+  });
+
+  it('therapist の店舗運用メニューは予約管理、日報管理、希望シフトだけに限定する', () => {
+    const therapistOperationItems = getOperationMenuItemsForRole('therapist');
+
+    expect(therapistOperationItems.map(item => item.id)).toEqual([
+      'reservations',
+      'daily-reports',
+      'shift-requests',
+    ]);
+    expect(therapistOperationItems.map(item => item.id)).not.toEqual(
+      expect.arrayContaining([
+        'dashboard',
+        'patients',
+        'revenue',
+        'staff',
+        'ai-insights',
+      ])
+    );
+    expect(
+      therapistOperationItems
+        .find(item => item.id === 'reservations')
+        ?.subItems?.map(item => item.id)
+    ).toEqual([
+      'reservation-timeline',
+      'reservation-register',
+      'reservation-list',
+    ]);
+    expect(
+      therapistOperationItems
+        .find(item => item.id === 'daily-reports')
+        ?.subItems?.map(item => item.id)
+    ).toEqual(['daily-input', 'daily-list']);
+  });
+
+  it('therapist の店舗運用メニューは AI flag ON でも AI 分析を表示しない', () => {
+    process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = 'true';
+
+    expect(
+      getOperationMenuItemsForRole('therapist').map(item => item.id)
+    ).toEqual(['reservations', 'daily-reports', 'shift-requests']);
+  });
+
+  it('therapist は管理セクション非表示時も therapist 用の店舗運用メニューを使う', () => {
+    const visibleItems = getVisibleNavigationItems({
+      role: 'therapist',
+      isHqAdmin: false,
+      showOperationMenus: true,
+      showAdminMenus: false,
+    });
+
+    expect(visibleItems.map(item => item.id)).toEqual([
+      'reservations',
+      'daily-reports',
+      'shift-requests',
+    ]);
+  });
+
+  it('therapist の quick access は新規予約と日報入力だけに限定する', () => {
+    const therapistQuickAccessItems = getQuickAccessItemsForRole('therapist');
+
+    expect(therapistQuickAccessItems.map(item => item.id)).toEqual([
+      'quick-reservation',
+      'quick-daily-input',
+    ]);
+    expect(therapistQuickAccessItems.map(item => item.id)).not.toEqual(
+      expect.arrayContaining(['quick-patient', 'quick-revenue'])
+    );
+    expect(therapistQuickAccessItems.map(item => item.href)).toEqual([
+      '/reservations?view=register',
+      '/daily-reports/input',
+    ]);
   });
 
   it('staff は店舗運用メニューのみ表示対象にする', () => {

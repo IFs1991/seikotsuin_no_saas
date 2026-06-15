@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
+import { isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
 
@@ -223,6 +224,7 @@ export const Header = React.memo(function Header({
   const [previewClinicId, setPreviewClinicId] = useState<string | null>(null);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
   const profileRole = profile?.role ?? null;
+  const homeHref = isTherapistRole(profileRole) ? '/reservations' : '/';
   const showAdminMenu = canAccessAdminNavigation ?? isAdmin;
   const adminMenuRole = profileRole ?? (isAdmin ? 'admin' : null);
   const adminNotifications = useAdminNotifications({
@@ -268,8 +270,8 @@ export const Header = React.memo(function Header({
 
   const handleNavigateHome = useCallback(() => {
     closeMenus();
-    router.push('/');
-  }, [closeMenus, router]);
+    router.push(homeHref);
+  }, [closeMenus, router, homeHref]);
 
   const handleToggleUserMenu = useCallback(() => {
     setIsAdminMenuOpen(false);

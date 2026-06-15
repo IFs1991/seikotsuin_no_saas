@@ -9,6 +9,7 @@ import {
   getNavigationMode,
   isAiInsightsEnabled,
 } from '@/lib/navigation/items';
+import { isTherapistRole } from '@/lib/constants/roles';
 import {
   BarChart3,
   FileText,
@@ -69,6 +70,26 @@ const BASE_ITEMS: readonly MobileNavigationItem[] = [
 const AI_INSIGHTS_HREF = '/ai-insights';
 const BASE_ITEMS_WITHOUT_AI: readonly MobileNavigationItem[] =
   BASE_ITEMS.filter(item => item.href !== AI_INSIGHTS_HREF);
+const THERAPIST_MOBILE_ITEMS: readonly MobileNavigationItem[] = [
+  {
+    id: 'reservations',
+    label: '予約',
+    href: '/reservations',
+    icon: Calendar,
+  },
+  {
+    id: 'reports',
+    label: '日報',
+    href: '/daily-reports',
+    icon: FileText,
+  },
+  {
+    id: 'shift-requests',
+    label: 'シフト',
+    href: '/staff/shift-requests',
+    icon: Users,
+  },
+];
 
 const DEFAULT_ADMIN_ITEM: MobileNavigationItem = {
   id: 'admin',
@@ -105,7 +126,7 @@ interface MobileBottomNavProps {
   role?: string | null;
 }
 
-function getMobileNavigationItems({
+export function getMobileNavigationItems({
   isAdmin,
   profileLoading,
   role,
@@ -118,6 +139,10 @@ function getMobileNavigationItems({
 
   if (!navigationMode.showOperationMenus && !navigationMode.showAdminMenus) {
     return EMPTY_MOBILE_NAVIGATION_ITEMS;
+  }
+
+  if (isTherapistRole(navigationMode.role)) {
+    return THERAPIST_MOBILE_ITEMS;
   }
 
   const aiInsightsEnabled = isAiInsightsEnabled();
@@ -153,6 +178,12 @@ export function MobileBottomNav({
     () => getMobileNavigationItems({ isAdmin, profileLoading, role }),
     [isAdmin, profileLoading, role]
   );
+  const gridStyle = useMemo<React.CSSProperties>(
+    () => ({
+      gridTemplateColumns: `repeat(${navigationItems.length}, minmax(0, 1fr))`,
+    }),
+    [navigationItems.length]
+  );
 
   if (navigationItems.length === 0) {
     return null;
@@ -173,12 +204,7 @@ export function MobileBottomNav({
         'pb-safe-area-bottom'
       )}
     >
-      <div
-        className='grid h-16'
-        style={{
-          gridTemplateColumns: `repeat(${navigationItems.length}, minmax(0, 1fr))`,
-        }}
-      >
+      <div className='grid h-16' style={gridStyle}>
         {navigationItems.map(item => {
           const active = isActive(item.href);
           const Icon = active && item.activeIcon ? item.activeIcon : item.icon;
@@ -216,14 +242,22 @@ export function MobileBottomNav({
 export function MobileAwarePage({
   children,
   isAdmin = false,
+  profileLoading = false,
+  role = null,
 }: {
   children: React.ReactNode;
   isAdmin?: boolean;
+  profileLoading?: boolean;
+  role?: string | null;
 }) {
   return (
     <div className={cn('min-h-screen', 'md:pb-0 pb-20')}>
       {children}
-      <MobileBottomNav isAdmin={isAdmin} />
+      <MobileBottomNav
+        isAdmin={isAdmin}
+        profileLoading={profileLoading}
+        role={role}
+      />
     </div>
   );
 }

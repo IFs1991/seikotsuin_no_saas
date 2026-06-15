@@ -10,7 +10,11 @@ import {
 } from '@/lib/schemas/auth';
 import { getServerClient, getUserPermissions } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
-import { isAreaManagerRole, isHQRole } from '@/lib/constants/roles';
+import {
+  isAreaManagerRole,
+  isHQRole,
+  isTherapistRole,
+} from '@/lib/constants/roles';
 
 /**
  * @file actions.ts
@@ -262,7 +266,9 @@ export async function clinicLogin(
 
     // 6. パス再検証とリダイレクト
     revalidatePath('/', 'layout');
-    redirect('/dashboard');
+    redirect(
+      isTherapistRole(permissions?.role) ? '/reservations' : '/dashboard'
+    );
   } catch (error) {
     if (isRedirectLikeError(error)) {
       throw error;

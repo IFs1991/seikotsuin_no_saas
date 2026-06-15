@@ -2,6 +2,7 @@ import {
   canAccessAdminUIWithCompat,
   isAreaManagerRole,
   isHQRole,
+  isTherapistRole,
   normalizeRole,
 } from '@/lib/constants/roles';
 
@@ -72,6 +73,34 @@ const RESERVATION_REGISTER_ITEM_ID = 'reservation-register';
 const RESERVATION_LIST_ITEM_ID = 'reservation-list';
 const QUICK_RESERVATION_ITEM_ID = 'quick-reservation';
 const SHIFT_REQUEST_ITEM_ID = 'shift-requests';
+
+function createNavigationItemMap(
+  items: readonly NavigationItem[]
+): ReadonlyMap<string, NavigationItem> {
+  return new Map(items.map(item => [item.id, item]));
+}
+
+function pickNavigationItemsFromMap(
+  itemById: ReadonlyMap<string, NavigationItem>,
+  ids: readonly string[]
+): readonly NavigationItem[] {
+  return ids
+    .map(id => itemById.get(id))
+    .filter((item): item is NavigationItem => Boolean(item));
+}
+
+const OPERATION_MENU_ITEM_BY_ID = createNavigationItemMap(OPERATION_MENU_ITEMS);
+
+const THERAPIST_OPERATION_MENU_ITEM_IDS = [
+  'reservations',
+  'daily-reports',
+  'shift-requests',
+] as const;
+
+const THERAPIST_OPERATION_MENU_ITEMS = pickNavigationItemsFromMap(
+  OPERATION_MENU_ITEM_BY_ID,
+  THERAPIST_OPERATION_MENU_ITEM_IDS
+);
 
 const AREA_MANAGER_OPERATION_MENU_ITEMS: readonly NavigationItem[] =
   OPERATION_MENU_ITEMS.filter(item => item.id !== SHIFT_REQUEST_ITEM_ID)
@@ -238,8 +267,17 @@ export const QUICK_ACCESS_ITEMS: readonly NavigationItem[] = [
   { id: 'quick-patient', label: '患者検索', href: '/patients' },
   { id: 'quick-revenue', label: '収益レポート', href: '/revenue' },
 ];
+const QUICK_ACCESS_ITEM_BY_ID = createNavigationItemMap(QUICK_ACCESS_ITEMS);
 const AREA_MANAGER_QUICK_ACCESS_ITEMS: readonly NavigationItem[] =
   QUICK_ACCESS_ITEMS.filter(item => item.id !== QUICK_RESERVATION_ITEM_ID);
+const THERAPIST_QUICK_ACCESS_ITEM_IDS = [
+  'quick-reservation',
+  'quick-daily-input',
+] as const;
+const THERAPIST_QUICK_ACCESS_ITEMS = pickNavigationItemsFromMap(
+  QUICK_ACCESS_ITEM_BY_ID,
+  THERAPIST_QUICK_ACCESS_ITEM_IDS
+);
 
 export function isAiInsightsEnabled() {
   return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
@@ -254,6 +292,10 @@ export function getOperationMenuItems() {
 export function getOperationMenuItemsForRole(
   role: string | null | undefined
 ): readonly NavigationItem[] {
+  if (isTherapistRole(role)) {
+    return THERAPIST_OPERATION_MENU_ITEMS;
+  }
+
   const aiInsightsEnabled = isAiInsightsEnabled();
   const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
 
@@ -265,6 +307,10 @@ export function getOperationMenuItemsForRole(
 export function getQuickAccessItemsForRole(
   role: string | null | undefined
 ): readonly NavigationItem[] {
+  if (isTherapistRole(role)) {
+    return THERAPIST_QUICK_ACCESS_ITEMS;
+  }
+
   return isAreaManagerRole(role)
     ? AREA_MANAGER_QUICK_ACCESS_ITEMS
     : QUICK_ACCESS_ITEMS;
@@ -285,14 +331,21 @@ export function getVisibleNavigationItems({
       : EMPTY_NAVIGATION_ITEMS;
   }
 
-  const aiInsightsEnabled = isAiInsightsEnabled();
-  const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
-
   if (!showAdminMenus) {
+    if (isTherapistRole(role)) {
+      return THERAPIST_OPERATION_MENU_ITEMS;
+    }
+
+    const aiInsightsEnabled = isAiInsightsEnabled();
+    const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
+
     return isAreaManagerRole(role)
       ? AREA_MANAGER_OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag]
       : OPERATION_MENU_ITEMS_BY_AI_FLAG[aiFlag];
   }
+
+  const aiInsightsEnabled = isAiInsightsEnabled();
+  const aiFlag = aiInsightsEnabled ? 'enabled' : 'disabled';
 
   if (isAreaManagerRole(role)) {
     return OPERATION_AND_AREA_MANAGER_MENU_ITEMS_BY_AI_FLAG[aiFlag];

@@ -173,6 +173,61 @@ describe('Authentication Integration Tests', () => {
       );
     });
 
+    test('therapist login redirects to reservations after clinic assignment is confirmed', async () => {
+      mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+        error: null,
+        data: { user: { id: 'therapist-123', email: 'therapist@example.com' } },
+      });
+      getUserPermissionsMock.mockResolvedValue({
+        role: 'therapist',
+        clinic_id: 'clinic-1',
+      });
+      mockSupabaseClient
+        .from()
+        .select()
+        .eq()
+        .single.mockResolvedValue({
+          data: { role: 'therapist', is_active: true },
+        });
+
+      const formData = new FormData();
+      formData.append('email', 'therapist@example.com');
+      formData.append('password', 'ValidPassword123!');
+
+      await expect(clinicLogin(null, formData)).rejects.toThrow(
+        'REDIRECT:/reservations'
+      );
+    });
+
+    test('clinic_admin and staff login redirects remain dashboard', async () => {
+      const formData = new FormData();
+      formData.append('email', 'user@example.com');
+      formData.append('password', 'ValidPassword123!');
+
+      for (const role of ['clinic_admin', 'staff'] as const) {
+        jest.clearAllMocks();
+        mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
+          error: null,
+          data: { user: { id: `${role}-123`, email: 'user@example.com' } },
+        });
+        getUserPermissionsMock.mockResolvedValue({
+          role,
+          clinic_id: 'clinic-1',
+        });
+        mockSupabaseClient
+          .from()
+          .select()
+          .eq()
+          .single.mockResolvedValue({
+            data: { role, is_active: true },
+          });
+
+        await expect(clinicLogin(null, formData)).rejects.toThrow(
+          'REDIRECT:/dashboard'
+        );
+      }
+    });
+
     test('login action rejects invalid input', async () => {
       // Test with invalid email
       const formData = new FormData();

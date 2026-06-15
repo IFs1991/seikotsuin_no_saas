@@ -141,6 +141,13 @@ export function isAreaManagerRole(role: string | null | undefined): boolean {
 }
 
 /**
+ * Check if role is the lightweight field therapist role.
+ */
+export function isTherapistRole(role: string | null | undefined): boolean {
+  return normalizeRole(role) === 'therapist';
+}
+
+/**
  * Check if role can access admin UI
  */
 export function canAccessAdminUI(role: string | null | undefined): boolean {

@@ -6,7 +6,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Header } from '@/components/navigation/header';
-import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
+import {
+  MobileBottomNav,
+  getMobileNavigationItems,
+} from '@/components/navigation/mobile-bottom-nav';
 import { Sidebar } from '@/components/navigation/sidebar';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 
@@ -22,6 +25,16 @@ const managerProfile = {
   id: 'manager-1',
   email: 'manager@example.com',
   role: 'manager',
+  clinicId: 'clinic-1',
+  clinicName: 'テスト院',
+  isActive: true,
+  isAdmin: false,
+};
+
+const therapistProfile = {
+  id: 'therapist-1',
+  email: 'therapist@example.com',
+  role: 'therapist',
   clinicId: 'clinic-1',
   clinicName: 'テスト院',
   isActive: true,
@@ -47,9 +60,19 @@ function renderHeader(
 }
 
 describe('Admin navigation alignment', () => {
+  const originalAiInsightsFlag = process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS;
+
   beforeEach(() => {
     mockPush.mockReset();
     mockPathname = '/admin/settings';
+  });
+
+  afterEach(() => {
+    if (originalAiInsightsFlag === undefined) {
+      delete process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS;
+      return;
+    }
+    process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = originalAiInsightsFlag;
   });
 
   it('Header の管理メニューから非MVP/廃止導線を除外する', async () => {
@@ -176,6 +199,32 @@ describe('Admin navigation alignment', () => {
     expect(screen.queryByText('AIチャット')).not.toBeInTheDocument();
   });
 
+  it('Header のホーム導線は therapist を予約管理へ向ける', async () => {
+    renderHeader({
+      isAdmin: false,
+      profile: therapistProfile,
+    });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'トップページへ移動' })
+    );
+
+    expect(mockPush).toHaveBeenCalledWith('/reservations');
+  });
+
+  it('Header のホーム導線は non-therapist では / のままにする', async () => {
+    renderHeader({
+      isAdmin: false,
+      profile: managerProfile,
+    });
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'トップページへ移動' })
+    );
+
+    expect(mockPush).toHaveBeenCalledWith('/');
+  });
+
   it('MobileBottomNav は HQ admin に店舗運用導線を表示しない', () => {
     render(<MobileBottomNav isAdmin profileLoading={false} role='admin' />);
 
@@ -192,5 +241,39 @@ describe('Admin navigation alignment', () => {
 
     const adminLink = screen.getByRole('tab', { name: /管理/ });
     expect(adminLink).toHaveAttribute('href', '/manager');
+  });
+
+  it('MobileBottomNav は therapist に予約、日報、シフトだけを表示する', () => {
+    render(<MobileBottomNav profileLoading={false} role='therapist' />);
+
+    expect(screen.getByRole('tab', { name: /予約/ })).toHaveAttribute(
+      'href',
+      '/reservations'
+    );
+    expect(screen.getByRole('tab', { name: /日報/ })).toHaveAttribute(
+      'href',
+      '/daily-reports'
+    );
+    expect(screen.getByRole('tab', { name: /シフト/ })).toHaveAttribute(
+      'href',
+      '/staff/shift-requests'
+    );
+    expect(screen.queryByText('ホーム')).not.toBeInTheDocument();
+    expect(screen.queryByText('患者')).not.toBeInTheDocument();
+    expect(screen.queryByText('収益')).not.toBeInTheDocument();
+    expect(screen.queryByText('AI')).not.toBeInTheDocument();
+    expect(screen.queryByText('管理')).not.toBeInTheDocument();
+  });
+
+  it('MobileBottomNav は AI flag ON でも therapist に AI を表示しない', () => {
+    process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS = 'true';
+
+    expect(
+      getMobileNavigationItems({
+        isAdmin: false,
+        profileLoading: false,
+        role: 'therapist',
+      }).map(item => item.id)
+    ).toEqual(['reservations', 'reports', 'shift-requests']);
   });
 });
