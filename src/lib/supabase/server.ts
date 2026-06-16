@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import type { Session, User } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 import { assertEnv } from '@/lib/env';
@@ -22,6 +23,7 @@ import {
   resolvePermissionRecord,
   type UserAuthAccessContext,
 } from './auth-context';
+import { logPerf, nowMs } from '@/lib/performance/server-timing';
 
 async function createSupabaseClient() {
   const cookieStore = await cookies();
@@ -134,6 +136,11 @@ export interface UserPermissions {
 
 export type UserAccessContext = UserAuthAccessContext<UserPermissions>;
 
+export interface UserAccessContextOptions {
+  user?: User | null;
+  session?: Session | null;
+}
+
 /**
  * Resolve the effective clinic scope for a user.
  * Priority: clinic_scope_ids array > clinic_id fallback
@@ -206,24 +213,39 @@ async function resolveHierarchicalClinicScopeIds(
 
 async function getUserPermissionsUncached(
   userId: string,
-  supabase: SupabaseServerClient
+  supabase: SupabaseServerClient,
+  options: UserAccessContextOptions = {}
 ): Promise<UserPermissions | null> {
+  const tTotal = nowMs();
   // Use Service Role to bypass RLS for reading user's own permissions.
   // This is safe because:
   // 1. This function is only called server-side after authentication
   // 2. It only reads the authenticated user's own permission data
   // 3. RLS on user_permissions table can cause performance issues during auth flow
   const adminClient = createAdminClient();
+  const tPermissions = nowMs();
   const permissionsData = await fetchUserPermissionsRecord(adminClient, userId);
+  logPerf('supabase.permissions.fetchUserPermissionsRecord', tPermissions, {
+    userId,
+  });
 
   // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
   // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
   // Use normal client for JWT session access (not RLS-protected)
-  const currentUser = await getCurrentUser(supabase);
-  const permissions = resolvePermissionRecord(
-    permissionsData,
-    currentUser && currentUser.id === userId ? currentUser : null
-  );
+  let currentUser: User | null = null;
+  if (options.user?.id === userId) {
+    currentUser = options.user;
+  } else {
+    const tCurrentUser = nowMs();
+    const currentUserCandidate = await getCurrentUser(supabase);
+    logPerf('supabase.permissions.getCurrentUser', tCurrentUser, { userId });
+    currentUser =
+      currentUserCandidate && currentUserCandidate.id === userId
+        ? currentUserCandidate
+        : null;
+  }
+
+  const permissions = resolvePermissionRecord(permissionsData, currentUser);
 
   if (!permissions) {
     return null;
@@ -231,9 +253,17 @@ async function getUserPermissionsUncached(
 
   let clinic_scope_ids: string[] | undefined = permissions.clinic_scope_ids;
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    let session: Session | null = null;
+    if (options.session?.user?.id === userId) {
+      session = options.session;
+    } else {
+      const tSession = nowMs();
+      const result = await supabase.auth.getSession();
+      logPerf('supabase.permissions.getSession', tSession, { userId });
+      session =
+        result.data.session?.user?.id === userId ? result.data.session : null;
+    }
+
     const scopeIdsFromMetadata = session?.user?.app_metadata?.clinic_scope_ids;
     let scopeIdsFromJwt: unknown = scopeIdsFromMetadata;
 
@@ -252,6 +282,7 @@ async function getUserPermissionsUncached(
     // JWT parsing failed, fall back to single clinic_id
   }
 
+  const tHierarchy = nowMs();
   const expandedClinicScopeIds = await resolveHierarchicalClinicScopeIds(
     adminClient,
     userId,
@@ -260,16 +291,28 @@ async function getUserPermissionsUncached(
       clinic_scope_ids,
     }
   );
+  logPerf(
+    'supabase.permissions.resolveHierarchicalClinicScopeIds',
+    tHierarchy,
+    {
+      userId,
+      count: expandedClinicScopeIds?.length ?? 0,
+    }
+  );
 
-  return {
+  const result = {
     ...permissions,
     clinic_scope_ids: expandedClinicScopeIds,
   };
+  logPerf('supabase.permissions.total', tTotal, { userId });
+
+  return result;
 }
 
 export async function getUserPermissions(
   userId: string,
-  client?: SupabaseServerClient
+  client?: SupabaseServerClient,
+  options: UserAccessContextOptions = {}
 ): Promise<UserPermissions | null> {
   const supabase = client ?? (await getServerClient());
   let cachedPermissionsByUser = userPermissionsRequestCache.get(supabase);
@@ -284,12 +327,14 @@ export async function getUserPermissions(
     return cachedPermissions;
   }
 
-  const permissionsPromise = getUserPermissionsUncached(userId, supabase).catch(
-    error => {
-      cachedPermissionsByUser.delete(userId);
-      throw error;
-    }
-  );
+  const permissionsPromise = getUserPermissionsUncached(
+    userId,
+    supabase,
+    options
+  ).catch(error => {
+    cachedPermissionsByUser.delete(userId);
+    throw error;
+  });
   cachedPermissionsByUser.set(userId, permissionsPromise);
 
   return permissionsPromise;
@@ -310,11 +355,12 @@ export function canAccessClinicScope(
 
 export async function getUserAccessContext(
   userId: string,
-  client?: SupabaseServerClient
+  client?: SupabaseServerClient,
+  options: UserAccessContextOptions = {}
 ): Promise<UserAccessContext> {
   const supabase = client ?? (await getServerClient());
   const [permissions, profileStatus] = await Promise.all([
-    getUserPermissions(userId, supabase),
+    getUserPermissions(userId, supabase, options),
     fetchProfileStatus(supabase, userId),
   ]);
 

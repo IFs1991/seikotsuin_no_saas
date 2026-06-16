@@ -59,6 +59,13 @@ describe('GET /api/auth/profile', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(getUserAccessContextMock).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Object),
+      {
+        user: { id: 'user-1', email: 'legacy@example.com' },
+      }
+    );
     expect(body).toEqual({
       success: true,
       data: {

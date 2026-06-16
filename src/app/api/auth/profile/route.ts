@@ -4,6 +4,7 @@ import {
   getUserAccessContext,
 } from '@/lib/supabase';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import { logPerf, nowMs } from '@/lib/performance/server-timing';
 
 interface ProfileResponse {
   id: string;
@@ -61,21 +62,30 @@ function buildProfileResponse(input: ProfileResponseInput): ProfileResponse {
 
 export async function GET() {
   try {
+    const tTotal = nowMs();
     const supabase = await createClient();
+    const tAuth = nowMs();
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
+    logPerf('auth.profile.getUser', tAuth);
 
     if (authError || !user) {
       return createErrorResponse('認証が必要です', 401);
     }
 
-    const accessContext = await getUserAccessContext(user.id, supabase);
+    const tAccess = nowMs();
+    const accessContext = await getUserAccessContext(user.id, supabase, {
+      user,
+    });
+    logPerf('auth.profile.getUserAccessContext', tAccess);
     const role = accessContext.normalizedRole;
     const clinicId = accessContext.clinicId;
     const isActive = accessContext.isActive;
+    const tClinic = nowMs();
     const clinicName = await fetchClinicName(clinicId);
+    logPerf('auth.profile.fetchClinicName', tClinic, { clinicId });
 
     const response = buildProfileResponse({
       id: user.id,
@@ -87,6 +97,7 @@ export async function GET() {
       isAdmin: accessContext.isAdmin,
     });
 
+    logPerf('auth.profile.total', tTotal);
     return createSuccessResponse(response);
   } catch (error) {
     console.error('Failed to fetch profile', error);

@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AppError } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { logPerf, nowMs } from '@/lib/performance/server-timing';
 
 const PATH = '/api/daily-reports';
+const DAILY_REPORT_SELECT = `
+  id,
+  report_date,
+  staff_id,
+  total_patients,
+  new_patients,
+  total_revenue,
+  insurance_revenue,
+  private_revenue,
+  report_text,
+  created_at,
+  staff(name, role)
+`;
 const DAILY_REPORT_MUTATION_ROLES = [
   'admin',
   'clinic_admin',
@@ -43,6 +57,7 @@ function getStaffNameFromReport(report: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
+    const tTotal = nowMs();
     const searchParams = request.nextUrl.searchParams;
     const clinicId = searchParams.get('clinic_id');
     const reportId = searchParams.get('id');
@@ -56,21 +71,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const tAccess = nowMs();
     const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
+    logPerf('dailyReports.ensureClinicAccess', tAccess, { clinicId });
 
     // 個別日報取得
     if (reportId) {
+      const tQuery = nowMs();
       const { data: report, error: reportError } = await supabase
         .from('daily_reports')
-        .select(
-          `
-          *,
-          staff(name, role)
-        `
-        )
+        .select(DAILY_REPORT_SELECT)
         .eq('id', reportId)
         .eq('clinic_id', clinicId)
         .single();
+      logPerf('dailyReports.query', tQuery, {
+        clinicId,
+        count: report ? 1 : 0,
+        reportId,
+      });
 
       if (reportError) {
         throw reportError;
@@ -83,7 +101,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({
+      const tMapping = nowMs();
+      const response = {
         success: true,
         data: {
           id: report.id,
@@ -97,18 +116,17 @@ export async function GET(request: NextRequest) {
           reportText: report.report_text,
           createdAt: report.created_at,
         },
-      });
+      };
+      logPerf('dailyReports.mapping', tMapping, { count: 1, reportId });
+      logPerf('dailyReports.total', tTotal, { clinicId, reportId });
+
+      return NextResponse.json(response);
     }
 
     // 日報一覧取得
     let query = supabase
       .from('daily_reports')
-      .select(
-        `
-        *,
-        staff(name, role)
-      `
-      )
+      .select(DAILY_REPORT_SELECT)
       .eq('clinic_id', clinicId);
 
     if (startDate) {
@@ -118,13 +136,20 @@ export async function GET(request: NextRequest) {
       query = query.lte('report_date', endDate);
     }
 
+    const tQuery = nowMs();
     const { data: reports, error: reportsError } = await query
       .order('report_date', { ascending: false })
       .limit(30);
+    logPerf('dailyReports.query', tQuery, {
+      clinicId,
+      count: reports?.length ?? 0,
+    });
 
     if (reportsError) {
       throw reportsError;
     }
+
+    const tMapping = nowMs();
 
     // レポートサマリー計算
     const summary = {
@@ -164,7 +189,7 @@ export async function GET(request: NextRequest) {
         {} as Record<string, MonthlyTrend>
       ) || {};
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         reports:
@@ -183,7 +208,13 @@ export async function GET(request: NextRequest) {
         summary,
         monthlyTrends: Object.values(monthlyTrends),
       },
+    };
+    logPerf('dailyReports.mapping', tMapping, {
+      count: reports?.length ?? 0,
     });
+    logPerf('dailyReports.total', tTotal, { clinicId });
+
+    return NextResponse.json(response);
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(

@@ -62,7 +62,9 @@ export async function ensureClinicAccess(
     throw new AppError(ERROR_CODES.UNAUTHORIZED, undefined, 401);
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await getUserAccessContext(user.id, supabase, {
+    user,
+  });
   const permissions = accessContext.permissions;
   if (!permissions) {
     await AuditLogger.logUnauthorizedAccess(

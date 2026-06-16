@@ -53,6 +53,7 @@ function createSessionClient(
         data: {
           session: {
             user: {
+              id: userId,
               app_metadata: appMetadata,
             },
             access_token: null,
@@ -238,6 +239,104 @@ describe('getUserPermissions clinic scope expansion', () => {
         scopedClinicIds: ['parent-1'],
       })
     );
+    resetSupabaseClientFactory();
+  });
+
+  it('uses matching options user and session without refetching auth state', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'admin',
+      clinic_id: 'parent-1',
+    });
+    const clinicsQuery = createClinicsQuery([]);
+    const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
+    const sessionClient = createSessionClient('user-options', [
+      'parent-1',
+      'child-1',
+    ]);
+
+    const { getUserPermissions, resetSupabaseClientFactory } =
+      await importServerWithClients(sessionClient, adminClient);
+    const permissions = await getUserPermissions('user-options', undefined, {
+      user: {
+        id: 'user-options',
+        aud: 'authenticated',
+        created_at: '2026-06-16T00:00:00.000Z',
+        app_metadata: {
+          user_role: 'admin',
+          clinic_id: 'parent-1',
+          clinic_scope_ids: ['parent-1', 'child-1'],
+        },
+        user_metadata: {},
+      },
+      session: {
+        user: {
+          id: 'user-options',
+          aud: 'authenticated',
+          created_at: '2026-06-16T00:00:00.000Z',
+          app_metadata: {
+            clinic_scope_ids: ['parent-1', 'child-1'],
+          },
+          user_metadata: {},
+        },
+        access_token: '',
+        token_type: 'bearer',
+        expires_in: 3600,
+        refresh_token: '',
+      },
+    });
+
+    expect(permissions?.clinic_scope_ids).toEqual(['parent-1', 'child-1']);
+    expect(sessionClient.auth.getUser).not.toHaveBeenCalled();
+    expect(sessionClient.auth.getSession).not.toHaveBeenCalled();
+    resetSupabaseClientFactory();
+  });
+
+  it('ignores mismatched options user and session and falls back to auth state', async () => {
+    const userPermissionsQuery = createUserPermissionsQuery({
+      role: 'admin',
+      clinic_id: 'parent-1',
+    });
+    const clinicsQuery = createClinicsQuery([]);
+    const adminClient = createAdminClient(userPermissionsQuery, clinicsQuery);
+    const sessionClient = createSessionClient('user-real', [
+      'parent-1',
+      'child-real',
+    ]);
+
+    const { getUserPermissions, resetSupabaseClientFactory } =
+      await importServerWithClients(sessionClient, adminClient);
+    const permissions = await getUserPermissions('user-real', undefined, {
+      user: {
+        id: 'other-user',
+        aud: 'authenticated',
+        created_at: '2026-06-16T00:00:00.000Z',
+        app_metadata: {
+          user_role: 'admin',
+          clinic_id: 'parent-1',
+          clinic_scope_ids: ['child-other'],
+        },
+        user_metadata: {},
+      },
+      session: {
+        user: {
+          id: 'other-user',
+          aud: 'authenticated',
+          created_at: '2026-06-16T00:00:00.000Z',
+          app_metadata: {
+            clinic_scope_ids: ['child-other'],
+          },
+          user_metadata: {},
+        },
+        access_token: '',
+        token_type: 'bearer',
+        expires_in: 3600,
+        refresh_token: '',
+      },
+    });
+
+    expect(permissions?.clinic_scope_ids).toEqual(['parent-1', 'child-real']);
+    expect(sessionClient.auth.getUser).toHaveBeenCalledTimes(1);
+    expect(sessionClient.auth.getSession).toHaveBeenCalledTimes(1);
     resetSupabaseClientFactory();
   });
 });

@@ -11,7 +11,8 @@ jest.mock('@/lib/supabase', () => ({
   getCurrentUser: (...args: unknown[]) => getCurrentUserMock(...args),
   getUserAccessContext: (...args: unknown[]) =>
     getUserAccessContextMock(...args),
-  canAccessClinicScope: (...args: unknown[]) => canAccessClinicScopeMock(...args),
+  canAccessClinicScope: (...args: unknown[]) =>
+    canAccessClinicScopeMock(...args),
 }));
 
 jest.mock('@/lib/audit-logger', () => ({
@@ -71,6 +72,13 @@ describe('ensureClinicAccess', () => {
       code: ERROR_CODES.FORBIDDEN,
       statusCode: 403,
     });
+    expect(getUserAccessContextMock).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Object),
+      {
+        user: { id: 'user-1', email: 'user@test' },
+      }
+    );
 
     expect(logUnauthorizedAccessMock).toHaveBeenCalledWith(
       '/api/test',
