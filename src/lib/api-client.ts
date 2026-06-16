@@ -117,6 +117,25 @@ export type DailyReportsListData = {
   }>;
 };
 
+export type DashboardBootstrapData = {
+  profile: {
+    id: string;
+    email: string | null;
+    role: string | null;
+    clinicId: string | null;
+    clinicName: string | null;
+    isActive: boolean;
+    isAdmin: boolean;
+  };
+  dailyReports: DailyReportsListData;
+};
+
+export type DashboardBootstrapQuery = {
+  clinicId?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+};
+
 export type ManagerStaffListQuery = {
   clinicId?: string | null;
 };
@@ -493,6 +512,15 @@ export const api = {
       }),
     create: (data: any) => apiClient.post('/api/daily-reports', data),
     delete: (id: string) => apiClient.delete('/api/daily-reports', { id }),
+  },
+
+  dashboardBootstrap: {
+    get: (query: DashboardBootstrapQuery = {}) =>
+      apiClient.get<DashboardBootstrapData>('/api/dashboard/bootstrap', {
+        ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
+        ...(query.startDate ? { start_date: query.startDate } : {}),
+        ...(query.endDate ? { end_date: query.endDate } : {}),
+      }),
   },
 
   managerDailyReports: {

@@ -100,4 +100,43 @@ export const queryKeys = {
     config: (tableName: string) =>
       [...queryKeys.tables.all, 'config', tableName] as const,
   },
+
+  dailyReports: {
+    all: ['dailyReports'] as const,
+    lists: () => [...queryKeys.dailyReports.all, 'list'] as const,
+    list: (
+      clinicId: string,
+      filters: {
+        startDate?: string | null;
+        endDate?: string | null;
+      } = {}
+    ) =>
+      [
+        ...queryKeys.dailyReports.lists(),
+        clinicId,
+        {
+          startDate: filters.startDate ?? null,
+          endDate: filters.endDate ?? null,
+        },
+      ] as const,
+  },
+
+  dashboardBootstrap: {
+    all: ['dashboardBootstrap'] as const,
+    detail: (
+      clinicId: string | null,
+      filters: {
+        startDate?: string | null;
+        endDate?: string | null;
+      } = {}
+    ) =>
+      [
+        ...queryKeys.dashboardBootstrap.all,
+        clinicId ?? 'fallback',
+        {
+          startDate: filters.startDate ?? null,
+          endDate: filters.endDate ?? null,
+        },
+      ] as const,
+  },
 } as const;

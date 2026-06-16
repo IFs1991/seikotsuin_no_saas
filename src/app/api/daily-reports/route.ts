@@ -3,21 +3,12 @@ import { z } from 'zod';
 import { AppError } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { logPerf, nowMs } from '@/lib/performance/server-timing';
+import {
+  fetchDailyReportByIdReadModel,
+  fetchDailyReportsReadModel,
+} from '@/lib/daily-reports/read-model';
 
 const PATH = '/api/daily-reports';
-const DAILY_REPORT_SELECT = `
-  id,
-  report_date,
-  staff_id,
-  total_patients,
-  new_patients,
-  total_revenue,
-  insurance_revenue,
-  private_revenue,
-  report_text,
-  created_at,
-  staff(name, role)
-`;
 const DAILY_REPORT_MUTATION_ROLES = [
   'admin',
   'clinic_admin',
@@ -25,35 +16,6 @@ const DAILY_REPORT_MUTATION_ROLES = [
   'staff',
 ] as const;
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
-
-type MonthlyTrend = {
-  month: string;
-  reports: number;
-  totalPatients: number;
-  totalRevenue: number;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function getStaffNameFromReport(report: unknown) {
-  if (!isRecord(report)) {
-    return '未設定';
-  }
-
-  const staff = report.staff;
-  if (Array.isArray(staff)) {
-    const firstStaff = staff[0];
-    return isRecord(firstStaff) && typeof firstStaff.name === 'string'
-      ? firstStaff.name
-      : '未設定';
-  }
-
-  return isRecord(staff) && typeof staff.name === 'string'
-    ? staff.name
-    : '未設定';
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,22 +39,11 @@ export async function GET(request: NextRequest) {
 
     // 個別日報取得
     if (reportId) {
-      const tQuery = nowMs();
-      const { data: report, error: reportError } = await supabase
-        .from('daily_reports')
-        .select(DAILY_REPORT_SELECT)
-        .eq('id', reportId)
-        .eq('clinic_id', clinicId)
-        .single();
-      logPerf('dailyReports.query', tQuery, {
+      const report = await fetchDailyReportByIdReadModel({
+        supabase,
         clinicId,
-        count: report ? 1 : 0,
         reportId,
       });
-
-      if (reportError) {
-        throw reportError;
-      }
 
       if (!report) {
         return NextResponse.json(
@@ -101,117 +52,26 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const tMapping = nowMs();
       const response = {
         success: true,
-        data: {
-          id: report.id,
-          reportDate: report.report_date,
-          staffName: getStaffNameFromReport(report),
-          totalPatients: report.total_patients,
-          newPatients: report.new_patients,
-          totalRevenue: report.total_revenue ?? 0,
-          insuranceRevenue: report.insurance_revenue ?? 0,
-          privateRevenue: report.private_revenue ?? 0,
-          reportText: report.report_text,
-          createdAt: report.created_at,
-        },
+        data: report,
       };
-      logPerf('dailyReports.mapping', tMapping, { count: 1, reportId });
       logPerf('dailyReports.total', tTotal, { clinicId, reportId });
 
       return NextResponse.json(response);
     }
 
-    // 日報一覧取得
-    let query = supabase
-      .from('daily_reports')
-      .select(DAILY_REPORT_SELECT)
-      .eq('clinic_id', clinicId);
-
-    if (startDate) {
-      query = query.gte('report_date', startDate);
-    }
-    if (endDate) {
-      query = query.lte('report_date', endDate);
-    }
-
-    const tQuery = nowMs();
-    const { data: reports, error: reportsError } = await query
-      .order('report_date', { ascending: false })
-      .limit(30);
-    logPerf('dailyReports.query', tQuery, {
+    const readModel = await fetchDailyReportsReadModel({
+      supabase,
       clinicId,
-      count: reports?.length ?? 0,
+      startDate,
+      endDate,
     });
-
-    if (reportsError) {
-      throw reportsError;
-    }
-
-    const tMapping = nowMs();
-
-    // レポートサマリー計算
-    const summary = {
-      totalReports: reports?.length || 0,
-      averagePatients:
-        reports?.length > 0
-          ? reports.reduce((sum, r) => sum + (r.total_patients || 0), 0) /
-            reports.length
-          : 0,
-      averageRevenue:
-        reports?.length > 0
-          ? reports.reduce((sum, r) => sum + (r.total_revenue ?? 0), 0) /
-            reports.length
-          : 0,
-      totalRevenue:
-        reports?.reduce((sum, r) => sum + (r.total_revenue ?? 0), 0) || 0,
-    };
-
-    // 月別トレンド
-    const monthlyTrends =
-      reports?.reduce(
-        (acc, report) => {
-          const month = report.report_date.slice(0, 7); // YYYY-MM
-          if (!acc[month]) {
-            acc[month] = {
-              month,
-              reports: 0,
-              totalPatients: 0,
-              totalRevenue: 0,
-            };
-          }
-          acc[month].reports += 1;
-          acc[month].totalPatients += report.total_patients || 0;
-          acc[month].totalRevenue += report.total_revenue ?? 0;
-          return acc;
-        },
-        {} as Record<string, MonthlyTrend>
-      ) || {};
 
     const response = {
       success: true,
-      data: {
-        reports:
-          reports?.map(report => ({
-            id: report.id,
-            reportDate: report.report_date,
-            staffName: getStaffNameFromReport(report),
-            totalPatients: report.total_patients,
-            newPatients: report.new_patients,
-            totalRevenue: report.total_revenue ?? 0,
-            insuranceRevenue: report.insurance_revenue ?? 0,
-            privateRevenue: report.private_revenue ?? 0,
-            reportText: report.report_text,
-            createdAt: report.created_at,
-          })) || [],
-        summary,
-        monthlyTrends: Object.values(monthlyTrends),
-      },
+      data: readModel,
     };
-    logPerf('dailyReports.mapping', tMapping, {
-      count: reports?.length ?? 0,
-    });
     logPerf('dailyReports.total', tTotal, { clinicId });
 
     return NextResponse.json(response);

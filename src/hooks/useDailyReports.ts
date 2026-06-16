@@ -4,12 +4,15 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useDailyReportsQuery } from '@/hooks/queries/useDailyReportsQuery';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { queryKeys } from '@/providers/query-provider';
 
 // 型定義
 interface DailyReport {
-  id?: number;
-  staff_id: number;
+  id?: string;
+  staff_id: string;
   date: string;
   treatment_count: number;
   revenue: number;
@@ -17,7 +20,7 @@ interface DailyReport {
 }
 
 interface DailyReportApiResponse {
-  id: number;
+  id: string | number;
   reportDate: string;
   staffName: string;
   totalPatients: number;
@@ -37,7 +40,7 @@ interface ApiResponse<T> {
 
 function createEmptyDailyReport(): DailyReport {
   return {
-    staff_id: 0,
+    staff_id: '',
     date: new Date().toISOString().slice(0, 10),
     treatment_count: 0,
     revenue: 0,
@@ -47,6 +50,8 @@ function createEmptyDailyReport(): DailyReport {
 const useDailyReports = () => {
   const { profile } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
+  const queryClient = useQueryClient();
+  const reportsQuery = useDailyReportsQuery({ clinicId });
 
   const [reports, setReports] = useState<DailyReport[]>([]);
   const reportsRef = useRef<DailyReport[]>([]);
@@ -97,8 +102,8 @@ const useDailyReports = () => {
   const mapApiToLocal = useCallback(
     (apiReport: DailyReportApiResponse): DailyReport => {
       return {
-        id: apiReport.id,
-        staff_id: 0, // APIからはスタッフ名のみ取得できるため
+        id: String(apiReport.id),
+        staff_id: '', // APIからはスタッフ名のみ取得できるため
         date: apiReport.reportDate,
         treatment_count: apiReport.totalPatients,
         revenue: apiReport.totalRevenue,
@@ -107,6 +112,43 @@ const useDailyReports = () => {
     },
     []
   );
+
+  useEffect(() => {
+    if (!clinicId) {
+      updateReports(() => []);
+      setLoading(false);
+      return;
+    }
+
+    if (reportsQuery.isLoading) {
+      setLoading(true);
+      return;
+    }
+
+    setLoading(false);
+
+    if (reportsQuery.isError) {
+      setError(
+        reportsQuery.error instanceof Error
+          ? reportsQuery.error.message
+          : '日報の取得に失敗しました'
+      );
+      return;
+    }
+
+    if (reportsQuery.data) {
+      updateReports(() => reportsQuery.data.reports.map(mapApiToLocal));
+      setError(null);
+    }
+  }, [
+    clinicId,
+    mapApiToLocal,
+    reportsQuery.data,
+    reportsQuery.error,
+    reportsQuery.isError,
+    reportsQuery.isLoading,
+    updateReports,
+  ]);
 
   // データ取得（API経由）
   const fetchReports = useCallback(async () => {
@@ -119,19 +161,9 @@ const useDailyReports = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/daily-reports?clinic_id=${clinicId}`, {
-        credentials: 'include',
-      });
+      const result = await reportsQuery.refetch();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || '日報の取得に失敗しました');
-      }
-
-      const result: ApiResponse<{ reports: DailyReportApiResponse[] }> =
-        await response.json();
-
-      if (result.success && result.data?.reports) {
+      if (result.data) {
         updateReports(() => result.data.reports.map(mapApiToLocal));
       } else {
         updateReports(() => []);
@@ -143,7 +175,7 @@ const useDailyReports = () => {
     } finally {
       setLoading(false);
     }
-  }, [clinicId, mapApiToLocal, updateReports]);
+  }, [clinicId, mapApiToLocal, reportsQuery, updateReports]);
 
   // データ作成（API経由）
   const createReport = useCallback(
@@ -186,6 +218,9 @@ const useDailyReports = () => {
           const newReport = mapApiToLocal(result.data);
           updateReports(prev => [...prev, newReport]);
           setFormState(createEmptyDailyReport());
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.dailyReports.lists(),
+          });
         }
       } catch (err: unknown) {
         const message =
@@ -193,12 +228,12 @@ const useDailyReports = () => {
         setError(message);
       }
     },
-    [clinicId, mapApiToLocal, updateReports]
+    [clinicId, mapApiToLocal, queryClient, updateReports]
   );
 
   // データ更新（API経由）
   const updateReport = useCallback(
-    async (id: number, updates: Partial<DailyReport>) => {
+    async (id: string, updates: Partial<DailyReport>) => {
       if (!clinicId) {
         setError('クリニックIDが設定されていません');
         return;
@@ -246,6 +281,9 @@ const useDailyReports = () => {
               report.id === id ? { ...report, ...updatedReport } : report
             )
           );
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.dailyReports.lists(),
+          });
         }
       } catch (err: unknown) {
         const message =
@@ -253,12 +291,12 @@ const useDailyReports = () => {
         setError(message);
       }
     },
-    [clinicId, mapApiToLocal, updateReports]
+    [clinicId, mapApiToLocal, queryClient, updateReports]
   );
 
   // データ削除（API経由）
   const deleteReport = useCallback(
-    async (id: number) => {
+    async (id: string) => {
       try {
         setError(null);
         const response = await fetch(`/api/daily-reports?id=${id}`, {
@@ -272,13 +310,16 @@ const useDailyReports = () => {
         }
 
         updateReports(prev => prev.filter(report => report.id !== id));
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.dailyReports.lists(),
+        });
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : '日報の削除に失敗しました';
         setError(message);
       }
     },
-    [updateReports]
+    [queryClient, updateReports]
   );
 
   // フォーム送信
@@ -313,7 +354,7 @@ const useDailyReports = () => {
 
   // 施術者別集計
   const getStaffReport = useCallback(
-    (staffId: number) => {
+    (staffId: string) => {
       return reports.filter(report => report.staff_id === staffId);
     },
     [reports]
@@ -352,13 +393,6 @@ const useDailyReports = () => {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  // 初期データロード
-  useEffect(() => {
-    if (clinicId) {
-      fetchReports();
-    }
-  }, [clinicId, fetchReports]);
 
   return {
     reports,

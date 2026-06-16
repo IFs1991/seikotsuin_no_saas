@@ -351,7 +351,10 @@ function createDashboardSupabaseMock({
       if (table === 'visits') {
         return {
           select: jest.fn(
-            (_columns?: string, options?: { count?: string; head?: boolean }) => ({
+            (
+              _columns?: string,
+              options?: { count?: string; head?: boolean }
+            ) => ({
               eq: jest.fn(() => ({
                 gte: jest.fn((_, gteValue: string) => ({
                   lt: jest.fn(async (_field: string, ltValue: string) => {
@@ -359,7 +362,9 @@ function createDashboardSupabaseMock({
                     const rangeEnd = ltValue.split('T')[0];
                     const isYesterdayRange =
                       rangeStart === yesterday && rangeEnd === today;
-                    const rows = isYesterdayRange ? yesterdayVisits || [] : visits;
+                    const rows = isYesterdayRange
+                      ? yesterdayVisits || []
+                      : visits;
 
                     if (options?.count === 'exact' && options?.head === true) {
                       return {
@@ -448,6 +453,7 @@ function createDailyReportsSupabaseMock({ reports }: { reports: Array<any> }) {
         const query = {
           gte: jest.fn(() => query),
           lte: jest.fn(() => query),
+          returns: jest.fn(() => query),
           order: jest.fn(() => ({
             limit: jest.fn(async () => ({ data: reports, error: null })),
           })),

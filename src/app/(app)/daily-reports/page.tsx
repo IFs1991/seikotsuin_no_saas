@@ -21,6 +21,8 @@ import {
   type ManagerDailyReportsOverviewStatus,
 } from '@/lib/manager-daily-reports';
 import { useAccessibleClinics } from '@/hooks/useAccessibleClinics';
+import { useDashboardBootstrapQuery } from '@/hooks/queries/useDashboardBootstrapQuery';
+import { useDailyReportsQuery } from '@/hooks/queries/useDailyReportsQuery';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 
 type ReportRow = {
@@ -489,54 +491,34 @@ function MetricBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StandardDailyReportsView({ clinicId }: { clinicId: string | null }) {
-  const [rows, setRows] = useState<ReportRow[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [monthlyTrends, setMonthlyTrends] = useState<MonthlyTrend[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchReports = async () => {
-      if (!clinicId) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await api.dailyReports.get(clinicId);
-        if (isSuccessResponse(response)) {
-          if (!cancelled) {
-            setRows(mapReportRows(response.data.reports));
-            setSummary(response.data.summary || null);
-            setMonthlyTrends(response.data.monthlyTrends || []);
-          }
-        } else if (!cancelled) {
-          setError('日報データの取得に失敗しました');
-        }
-      } catch {
-        if (!cancelled) {
-          setError('日報データの取得に失敗しました');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void fetchReports();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clinicId]);
+function StandardDailyReportsView({
+  clinicId,
+  initialDailyReports,
+  deferReportsFetch,
+}: {
+  clinicId: string | null;
+  initialDailyReports?: DailyReportsListData;
+  deferReportsFetch: boolean;
+}) {
+  const reportsQuery = useDailyReportsQuery({
+    clinicId,
+    initialData: initialDailyReports,
+    enabled: !deferReportsFetch,
+  });
+  const reportsData = reportsQuery.data ?? initialDailyReports;
+  const rows = useMemo(
+    () => mapReportRows(reportsData?.reports ?? []),
+    [reportsData?.reports]
+  );
+  const summary: Summary | null = reportsData?.summary ?? null;
+  const monthlyTrends: MonthlyTrend[] = reportsData?.monthlyTrends ?? [];
+  const loading = !reportsData && (deferReportsFetch || reportsQuery.isLoading);
+  const error =
+    !reportsData && reportsQuery.isError
+      ? reportsQuery.error instanceof Error
+        ? reportsQuery.error.message
+        : '日報データの取得に失敗しました'
+      : null;
 
   const hasClinic = Boolean(clinicId);
 
@@ -696,12 +678,27 @@ const Page: React.FC = () => {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
+  const bootstrapQuery = useDashboardBootstrapQuery({
+    clinicId: profile?.clinicId ?? null,
+    enabled: !profile || profile.role !== 'manager',
+  });
+  const bootstrapData = bootstrapQuery.data;
+  const effectiveProfile = profile ?? bootstrapData?.profile ?? null;
+  const initialDailyReports =
+    effectiveProfile?.clinicId &&
+    effectiveProfile.clinicId === bootstrapData?.profile.clinicId
+      ? bootstrapData.dailyReports
+      : undefined;
+  const deferReportsFetch =
+    effectiveProfile?.role !== 'manager' &&
+    bootstrapQuery.isLoading &&
+    !initialDailyReports;
 
-  if (profileError && !profileLoading) {
+  if (profileError && !profileLoading && !bootstrapData) {
     return <ProfileErrorView message={profileError} />;
   }
 
-  if (profileLoading) {
+  if (profileLoading && !bootstrapData) {
     return (
       <div className='bg-background min-h-screen py-8'>
         <div className='container mx-auto px-4'>
@@ -715,11 +712,17 @@ const Page: React.FC = () => {
     );
   }
 
-  if (profile?.role === 'manager') {
+  if (effectiveProfile?.role === 'manager') {
     return <ManagerDailyReportsView />;
   }
 
-  return <StandardDailyReportsView clinicId={profile?.clinicId ?? null} />;
+  return (
+    <StandardDailyReportsView
+      clinicId={effectiveProfile?.clinicId ?? null}
+      initialDailyReports={initialDailyReports}
+      deferReportsFetch={deferReportsFetch}
+    />
+  );
 };
 
 export default Page;
