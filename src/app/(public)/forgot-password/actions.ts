@@ -9,9 +9,15 @@ import {
   type AuthResponse,
 } from '@/lib/schemas/auth';
 import { getServerClient } from '@/lib/supabase';
+import {
+  createAuthLog,
+  getEmailDomainLogData,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 
 const GENERIC_PASSWORD_RESET_MESSAGE =
   'メールアドレスが登録されている場合、パスワード再設定用のメールを送信しました。受信トレイと迷惑メールフォルダをご確認ください。';
+const log = createAuthLog('ForgotPasswordActions');
 
 type ResetSource = 'admin' | 'clinic';
 
@@ -55,14 +61,11 @@ export async function requestPasswordReset(
     });
 
     if (error) {
-      console.warn(
-        '[Auth] Password reset request failed with non-enumeration response',
-        {
-          source,
-          timestamp: new Date().toISOString(),
-          ip: ipAddress,
-        }
-      );
+      log.warn('Password reset request failed with non-enumeration response', {
+        source,
+        ...getEmailDomainLogData(email),
+        ...getSafeAuthErrorLogData(error),
+      });
     }
 
     await AuditLogger.logAdminAction(
@@ -72,7 +75,6 @@ export async function requestPasswordReset(
       undefined,
       {
         source,
-        email,
         userAgent,
       },
       ipAddress
@@ -83,7 +85,11 @@ export async function requestPasswordReset(
       message: GENERIC_PASSWORD_RESET_MESSAGE,
     };
   } catch (error) {
-    console.error('[Auth] Unexpected password reset error:', error);
+    log.error('Unexpected password reset error', {
+      source,
+      ...getEmailDomainLogData(email),
+      ...getSafeAuthErrorLogData(error),
+    });
 
     await AuditLogger.logAdminAction(
       'anonymous',
@@ -92,7 +98,6 @@ export async function requestPasswordReset(
       undefined,
       {
         source,
-        email,
         userAgent,
         failed: true,
       },

@@ -110,7 +110,7 @@ describe('api-helpers security behavior', () => {
     }
   });
 
-  it('本番では logError に stack を含めない', () => {
+  it('本番では logError に stack と raw message を含めない', () => {
     process.env.NODE_ENV = 'production';
     const error = new Error('boom');
     error.stack = 'STACK SHOULD NOT LEAK';
@@ -125,7 +125,7 @@ describe('api-helpers security behavior', () => {
     const payload = JSON.parse(loggerErrorMock.mock.calls[0][0]);
     expect(payload.error).toEqual({
       name: 'Error',
-      message: 'boom',
+      message: '[redacted]',
     });
   });
 });

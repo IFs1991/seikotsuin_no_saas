@@ -6,9 +6,14 @@ import {
   getPasswordRecoveryIntentCookieOptions,
   PASSWORD_RECOVERY_INTENT_COOKIE,
 } from '@/lib/auth/password-recovery-intent';
+import {
+  createAuthLog,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 import type { Database } from '@/types/supabase';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
+const log = createAuthLog('AdminCallbackRoute');
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -56,10 +61,10 @@ export async function GET(request: Request) {
           finalRedirectPath = getDefaultRedirect(userRole);
         }
 
-        // 成功ログ
-        console.info(
-          `[Auth] Successful login: ${data.user.email} -> ${finalRedirectPath}`
-        );
+        log.info('Authentication callback succeeded', {
+          redirectPath: finalRedirectPath,
+          isRecoveryRedirect,
+        });
 
         const response = NextResponse.redirect(`${origin}${finalRedirectPath}`);
 
@@ -73,31 +78,29 @@ export async function GET(request: Request) {
 
         return response;
       } else {
-        // 認証エラーをログに記録
-        console.error('[Auth] Exchange code failed:', {
-          error: error?.message,
-          code: code?.substring(0, 10) + '...', // セキュリティのため一部のみ
-          timestamp: new Date().toISOString(),
+        log.warn('Authentication code exchange failed', {
+          hasCode: true,
+          ...getSafeAuthErrorLogData(error),
         });
       }
     } catch (error) {
-      // 予期しないエラーをログに記録
-      console.error('[Auth] Unexpected error during code exchange:', error);
+      log.error(
+        'Unexpected authentication callback error',
+        getSafeAuthErrorLogData(error)
+      );
     }
   } else {
-    console.warn('[Auth] No authorization code provided in callback');
+    log.warn('No authorization code provided in callback');
   }
 
   // 認証失敗時は安全なエラーメッセージでリダイレクト
   const errorUrl = `${origin}/admin/login?error=auth_failed`;
 
-  // セキュリティログ
-  console.warn('[Security] Authentication callback failed:', {
+  log.warn('Authentication callback failed', {
     hasCode: !!code,
-    nextParam,
-    safeRedirectUrl,
-    userAgent: request.headers.get('user-agent')?.substring(0, 100),
-    timestamp: new Date().toISOString(),
+    hasNextParam: nextParam !== null,
+    hasSafeRedirect: safeRedirectUrl !== null,
+    isRecoveryRedirect,
   });
 
   return NextResponse.redirect(errorUrl);

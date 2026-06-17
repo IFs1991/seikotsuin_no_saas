@@ -18,12 +18,18 @@ import {
 import { canAccessAdminUIWithCompat } from '@/lib/constants/roles';
 import { getSafeRedirectUrl, getDefaultRedirect } from '@/lib/url-validator';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
+import {
+  createAuthLog,
+  getEmailDomainLogData,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 
 const INACTIVE_ACCOUNT_MESSAGE =
   'アカウントが無効化されています。管理者にお問い合わせください';
 const INVALID_CREDENTIALS_MESSAGE =
   'メールアドレスまたはパスワードが正しくありません';
 const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
+const log = createAuthLog('AdminAuthActions');
 
 function isRedirectLikeError(error: unknown): error is Error {
   if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
@@ -107,7 +113,10 @@ async function ensureProfileExists(user: {
     .maybeSingle();
 
   if (lookupError) {
-    console.error('[Auth] Profile bootstrap lookup error:', lookupError);
+    log.error('Profile bootstrap lookup error', {
+      ...getSafeAuthErrorLogData(lookupError),
+      hasUser: true,
+    });
     return;
   }
 
@@ -122,7 +131,10 @@ async function ensureProfileExists(user: {
   });
 
   if (insertError) {
-    console.error('[Auth] Profile bootstrap insert error:', insertError);
+    log.error('Profile bootstrap insert error', {
+      ...getSafeAuthErrorLogData(insertError),
+      hasUser: true,
+    });
   }
 }
 
@@ -161,7 +173,11 @@ async function syncProfileAccess(
     .eq('user_id', userId);
 
   if (error) {
-    console.error('[Auth] Profile access sync error:', error);
+    log.error('Profile access sync error', {
+      ...getSafeAuthErrorLogData(error),
+      hasUser: true,
+      hasClinic: clinicId !== null,
+    });
   }
 }
 
@@ -181,7 +197,9 @@ export async function login(
       if (!fieldErrors.password || fieldErrors.password.length === 0) {
         fieldErrors.password = ['パスワードを入力してください'];
       }
-      console.warn('[Auth] Login validation failed:', fieldErrors);
+      log.warn('Admin login validation failed', {
+        fields: Object.keys(fieldErrors).join(','),
+      });
       return {
         success: false,
         errors: fieldErrors,
@@ -202,25 +220,11 @@ export async function login(
 
     if (error) {
       const errorMessage = mapAuthError(error);
-      const warningPayload: {
-        email: string;
-        error: string;
-        status?: number | null;
-        details?: string;
-      } = {
-        email: sanitizedEmail,
-        error: errorMessage,
-      };
-
-      if (typeof error.status !== 'undefined') {
-        warningPayload.status = error.status ?? null;
-      }
-
-      if (error.message && error.message !== errorMessage) {
-        warningPayload.details = error.message;
-      }
-
-      console.warn('[Security] Login attempt failed:', warningPayload);
+      log.warn('Admin login attempt failed', {
+        ...getEmailDomainLogData(sanitizedEmail),
+        reason: errorMessage,
+        ...getSafeAuthErrorLogData(error),
+      });
       await AuditLogger.logFailedLogin(
         sanitizedEmail,
         ipAddress,
@@ -278,12 +282,9 @@ export async function login(
       userAgent
     );
 
-    // 6. 成功ログ
-    console.info('[Auth] Successful login:', {
-      email: sanitizedEmail,
+    log.info('Successful admin login', {
       role: effectiveRole,
-      clinic_id: accessContext.clinicId,
-      timestamp: new Date().toISOString(),
+      hasClinic: accessContext.clinicId !== null,
     });
 
     // 7. パス再検証とリダイレクト
@@ -301,7 +302,7 @@ export async function login(
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Auth] Login error:', error);
+    log.error('Admin login error', getSafeAuthErrorLogData(error));
     return {
       success: false,
       errors: {
@@ -328,7 +329,9 @@ export async function signup(
     if (!fieldErrors.password || fieldErrors.password.length === 0) {
       fieldErrors.password = ['パスワードを入力してください'];
     }
-    console.warn('[Auth] Signup validation failed:', fieldErrors);
+    log.warn('Admin signup validation failed', {
+      fields: Object.keys(fieldErrors).join(','),
+    });
     return {
       success: false,
       errors: fieldErrors,
@@ -349,10 +352,9 @@ export async function signup(
     });
 
     if (error) {
-      console.warn('[Security] Signup attempt failed:', {
-        email: sanitizedEmail,
-        error: error.message,
-        timestamp: new Date().toISOString(),
+      log.warn('Admin signup attempt failed', {
+        ...getEmailDomainLogData(sanitizedEmail),
+        ...getSafeAuthErrorLogData(error),
       });
 
       const errorMessage = error.message.includes('already registered')
@@ -367,10 +369,8 @@ export async function signup(
       };
     }
 
-    console.info('[Auth] Successful signup:', {
-      email: sanitizedEmail,
-      userId: data.user?.id,
-      timestamp: new Date().toISOString(),
+    log.info('Successful admin signup', {
+      hasUser: Boolean(data.user?.id),
     });
 
     revalidatePath('/', 'layout');
@@ -381,7 +381,7 @@ export async function signup(
         '確認メールを送信しました。メールを確認してアカウントを有効化してください。',
     };
   } catch (error) {
-    console.error('[Auth] Signup error:', error);
+    log.error('Admin signup error', getSafeAuthErrorLogData(error));
     return {
       success: false,
       errors: {
@@ -408,15 +408,14 @@ export async function logout(): Promise<void> {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      console.error('[Auth] Logout error:', error);
+      log.error('Admin logout error', getSafeAuthErrorLogData(error));
       redirect('/admin/login?error=logout_failed');
     }
 
     // ログアウトログ
     if (user) {
-      console.info('[Auth] Successful logout:', {
-        email: user.email,
-        timestamp: new Date().toISOString(),
+      log.info('Successful admin logout', {
+        hasUser: true,
       });
       await AuditLogger.logLogout(user.id, user.email || '', ipAddress);
     }
@@ -427,7 +426,7 @@ export async function logout(): Promise<void> {
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Auth] Logout error:', error);
+    log.error('Admin logout error', getSafeAuthErrorLogData(error));
     redirect('/admin/login?error=logout_failed');
   }
 }

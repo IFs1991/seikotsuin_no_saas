@@ -14,6 +14,10 @@ import {
   type PasswordRecoveryResponse,
 } from '@/lib/schemas/auth';
 import { getServerClient } from '@/lib/supabase';
+import {
+  createAuthLog,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 
 type ResetSource = 'admin' | 'clinic';
 
@@ -25,6 +29,7 @@ const PASSWORD_POLICY_MESSAGE =
   'パスワードがセキュリティ要件を満たしていません。入力内容を確認してください。';
 const GENERIC_ERROR_MESSAGE =
   'パスワードの更新に失敗しました。しばらくしてから再度お試しください。';
+const log = createAuthLog('ResetPasswordActions');
 
 function normalizeSource(value: FormDataEntryValue | null): ResetSource {
   return value === 'admin' ? 'admin' : 'clinic';
@@ -153,7 +158,10 @@ export async function completePasswordRecovery(
       throw error;
     }
 
-    console.error('[Auth] Password recovery completion failed:', error);
+    log.error('Password recovery completion failed', {
+      source,
+      ...getSafeAuthErrorLogData(error),
+    });
     return {
       success: false,
       errors: {
