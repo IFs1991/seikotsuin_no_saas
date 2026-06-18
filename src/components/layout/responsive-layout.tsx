@@ -37,7 +37,9 @@ export function ResponsiveLayout({
 
       <div className='mobile-only'>
         {sidebarOpen && (
-          <div
+          <button
+            type='button'
+            aria-label='サイドバーを閉じる'
             className='fixed inset-0 z-40 bg-black bg-opacity-50'
             onClick={() => setSidebarOpen(false)}
           />

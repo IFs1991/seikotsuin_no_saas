@@ -447,10 +447,14 @@ export const AppointmentForm: React.FC<Props> = ({
       <form onSubmit={handleSubmit} className='space-y-6'>
         {/* Date */}
         <div>
-          <label className='block text-sm font-medium text-gray-700 mb-1'>
+          <label
+            htmlFor='appointment-form-date'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
             来店日
           </label>
           <input
+            id='appointment-form-date'
             type='date'
             required
             value={formData.date}
@@ -462,11 +466,12 @@ export const AppointmentForm: React.FC<Props> = ({
         {/* Time */}
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
-            <label className='block text-sm font-medium text-gray-700'>
+            <div className='block text-sm font-medium text-gray-700'>
               開始時間
-            </label>
+            </div>
             <div className='flex gap-2 items-center mt-1'>
               <input
+                aria-label='開始時'
                 type='number'
                 min='9'
                 max='23'
@@ -478,6 +483,7 @@ export const AppointmentForm: React.FC<Props> = ({
               />
               <span>:</span>
               <input
+                aria-label='開始分'
                 type='number'
                 min='0'
                 max='59'
@@ -491,14 +497,15 @@ export const AppointmentForm: React.FC<Props> = ({
             </div>
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700'>
+            <div className='block text-sm font-medium text-gray-700'>
               終了時間
               <span className='text-xs font-normal text-gray-500 ml-2'>
                 (自動計算)
               </span>
-            </label>
+            </div>
             <div className='flex gap-2 items-center mt-1'>
               <input
+                aria-label='終了時'
                 type='number'
                 disabled
                 value={endTime.hour}
@@ -506,6 +513,7 @@ export const AppointmentForm: React.FC<Props> = ({
               />
               <span>:</span>
               <input
+                aria-label='終了分'
                 type='number'
                 disabled
                 value={endTime.minute}
@@ -517,10 +525,14 @@ export const AppointmentForm: React.FC<Props> = ({
 
         {/* Resource Selection */}
         <div>
-          <label className='block text-sm font-medium text-gray-700'>
+          <label
+            htmlFor='appointment-form-resource'
+            className='block text-sm font-medium text-gray-700'
+          >
             担当・設備
           </label>
           <select
+            id='appointment-form-resource'
             value={formData.resourceId}
             onChange={e => handleInputChange('resourceId', e.target.value)}
             className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
@@ -551,7 +563,11 @@ export const AppointmentForm: React.FC<Props> = ({
             </p>
           )}
           {selectedResource?.type === 'staff' && (
-            <label className='mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2'>
+            <label
+              htmlFor='appointment-form-staff-requested'
+              aria-label='この施術者を指名'
+              className='mt-3 flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2'
+            >
               <span>
                 <span className='block text-sm font-medium text-gray-800'>
                   この施術者を指名
@@ -561,6 +577,7 @@ export const AppointmentForm: React.FC<Props> = ({
                 </span>
               </span>
               <input
+                id='appointment-form-staff-requested'
                 type='checkbox'
                 checked={formData.isStaffRequested}
                 onChange={e =>
@@ -575,10 +592,14 @@ export const AppointmentForm: React.FC<Props> = ({
         {/* Menu & Options */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           <div>
-            <label className='block text-sm font-medium text-gray-700'>
+            <label
+              htmlFor='appointment-form-menu'
+              className='block text-sm font-medium text-gray-700'
+            >
               メニュー
             </label>
             <select
+              id='appointment-form-menu'
               value={formData.menuId}
               onChange={e => handleInputChange('menuId', e.target.value)}
               className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
@@ -591,10 +612,14 @@ export const AppointmentForm: React.FC<Props> = ({
             </select>
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700'>
+            <label
+              htmlFor='appointment-form-option'
+              className='block text-sm font-medium text-gray-700'
+            >
               オプション
             </label>
             <select
+              id='appointment-form-option'
               value={formData.optionId}
               onChange={e => handleInputChange('optionId', e.target.value)}
               className='mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md border'
@@ -631,10 +656,14 @@ export const AppointmentForm: React.FC<Props> = ({
 
         {/* Customer Fields */}
         <div>
-          <label className='block text-sm font-medium text-gray-700 mb-1'>
+          <label
+            htmlFor='appointment-form-phone'
+            className='block text-sm font-medium text-gray-700 mb-1'
+          >
             電話番号
           </label>
           <input
+            id='appointment-form-phone'
             type='text'
             required
             value={formData.phone}
@@ -644,12 +673,13 @@ export const AppointmentForm: React.FC<Props> = ({
           />
         </div>
         <div>
-          <label className='block text-sm font-medium text-gray-700 mb-1'>
+          <div className='block text-sm font-medium text-gray-700 mb-1'>
             お名前
-          </label>
+          </div>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <div>
               <input
+                aria-label='姓'
                 type='text'
                 required
                 value={formData.lastName}
@@ -660,6 +690,7 @@ export const AppointmentForm: React.FC<Props> = ({
             </div>
             <div>
               <input
+                aria-label='名'
                 type='text'
                 required
                 value={formData.firstName}
@@ -672,13 +703,16 @@ export const AppointmentForm: React.FC<Props> = ({
         </div>
 
         <div>
-          <label className='block text-sm font-medium text-gray-700 mb-2'>
+          <div className='block text-sm font-medium text-gray-700 mb-2'>
             カスタム属性
-          </label>
+          </div>
           <div className='space-y-3'>
             {CUSTOM_ATTR_TEMPLATE.map(field => (
               <div key={field.key}>
-                <label className='block text-xs font-medium text-gray-600 mb-1'>
+                <label
+                  htmlFor={`appointment-form-custom-${field.key}`}
+                  className='block text-xs font-medium text-gray-600 mb-1'
+                >
                   {field.label}
                   {field.required ? (
                     <span className='text-red-500 ml-1'>*</span>
@@ -686,6 +720,7 @@ export const AppointmentForm: React.FC<Props> = ({
                 </label>
                 {field.type === 'textarea' ? (
                   <textarea
+                    id={`appointment-form-custom-${field.key}`}
                     value={formData.customAttributes[field.key] ?? ''}
                     onChange={e =>
                       handleCustomAttributeChange(field.key, e.target.value)
@@ -696,6 +731,7 @@ export const AppointmentForm: React.FC<Props> = ({
                   />
                 ) : (
                   <input
+                    id={`appointment-form-custom-${field.key}`}
                     type='text'
                     value={formData.customAttributes[field.key] ?? ''}
                     onChange={e =>

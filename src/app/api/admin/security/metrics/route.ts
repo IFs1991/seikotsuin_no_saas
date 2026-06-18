@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       return processResult.error!;
     }
 
-    const { supabase, auth } = processResult;
+    const { supabase } = processResult;
 
     // バリデーション
     if (!clinicId) {

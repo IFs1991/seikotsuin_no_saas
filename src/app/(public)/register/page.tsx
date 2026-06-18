@@ -248,6 +248,7 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor='register-terms'
+              aria-label='利用規約に同意する'
               className='flex items-start gap-2 cursor-pointer'
             >
               <input

@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { MedicalBanner } from '@/components/ui/medical-banner';
 import { MedicalIcon } from '@/components/ui/medical-icons';
+import { logger } from '@/lib/logger';
 
 // 更新されたデザインシステムの動作確認用コンポーネント
 export const DesignSystemShowcase = () => {
@@ -50,7 +51,7 @@ export const DesignSystemShowcase = () => {
           actions={{
             primary: {
               label: '詳細を確認',
-              onClick: () => console.log('詳細確認'),
+              onClick: () => logger.info('詳細確認'),
             },
             secondary: {
               label: '後で確認',

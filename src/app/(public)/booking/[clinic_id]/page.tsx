@@ -447,9 +447,13 @@ export function PublicBookingForm({
               )}
 
               <div className='grid gap-4'>
-                <label className={labelClassName}>
+                <label
+                  htmlFor='booking-customer-name'
+                  className={labelClassName}
+                >
                   お名前
                   <Input
+                    id='booking-customer-name'
                     className={fieldClassName}
                     value={formData.customerName}
                     onChange={event =>
@@ -462,9 +466,13 @@ export function PublicBookingForm({
                   />
                 </label>
 
-                <label className={labelClassName}>
+                <label
+                  htmlFor='booking-customer-phone'
+                  className={labelClassName}
+                >
                   電話番号
                   <Input
+                    id='booking-customer-phone'
                     className={fieldClassName}
                     type='tel'
                     value={formData.customerPhone}
@@ -480,9 +488,13 @@ export function PublicBookingForm({
                 </label>
               </div>
 
-              <label className={labelClassName}>
+              <label
+                htmlFor='booking-customer-email'
+                className={labelClassName}
+              >
                 メールアドレス
                 <Input
+                  id='booking-customer-email'
                   className={fieldClassName}
                   type='email'
                   value={formData.customerEmail}
@@ -496,9 +508,10 @@ export function PublicBookingForm({
                 />
               </label>
 
-              <label className={labelClassName}>
+              <label htmlFor='booking-menu' className={labelClassName}>
                 メニュー
                 <select
+                  id='booking-menu'
                   className={selectClassName}
                   value={formData.menuId}
                   onChange={event => handleChange('menuId', event.target.value)}
@@ -508,9 +521,10 @@ export function PublicBookingForm({
                 </select>
               </label>
 
-              <label className={labelClassName}>
+              <label htmlFor='booking-resource' className={labelClassName}>
                 担当
                 <select
+                  id='booking-resource'
                   className={selectClassName}
                   value={formData.resourceId}
                   onChange={event =>
@@ -523,12 +537,13 @@ export function PublicBookingForm({
               </label>
 
               <div className='grid gap-4 sm:grid-cols-2'>
-                <label className={labelClassName}>
+                <label htmlFor='booking-date' className={labelClassName}>
                   <span className='inline-flex items-center gap-1'>
                     <CalendarDays className='h-4 w-4' />
                     日付
                   </span>
                   <Input
+                    id='booking-date'
                     className={fieldClassName}
                     type='date'
                     min={todayString}
@@ -538,12 +553,13 @@ export function PublicBookingForm({
                   />
                 </label>
 
-                <label className={labelClassName}>
+                <label htmlFor='booking-time' className={labelClassName}>
                   <span className='inline-flex items-center gap-1'>
                     <Clock className='h-4 w-4' />
                     時間
                   </span>
                   <select
+                    id='booking-time'
                     className={selectClassName}
                     value={formData.time}
                     onChange={event => handleChange('time', event.target.value)}
@@ -570,9 +586,10 @@ export function PublicBookingForm({
                 </div>
               )}
 
-              <label className={labelClassName}>
+              <label htmlFor='booking-notes' className={labelClassName}>
                 相談内容・メモ
                 <Textarea
+                  id='booking-notes'
                   className='min-h-28 text-base'
                   value={formData.notes}
                   onChange={event => handleChange('notes', event.target.value)}

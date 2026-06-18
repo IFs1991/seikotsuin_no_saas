@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useChat } from '../../hooks/useChat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { logger } from '@/lib/logger';
 
 const ChatInterface: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,7 +37,7 @@ const ChatInterface: React.FC = () => {
           setIsRecording(true);
           // 音声認識処理を実装
         })
-        .catch(error => console.error('音声入力エラー:', error));
+        .catch(error => logger.error('音声入力エラー:', error));
     } else {
       setIsRecording(false);
       // 音声認識停止処理

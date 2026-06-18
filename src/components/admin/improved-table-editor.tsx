@@ -9,6 +9,7 @@ import { DataTable } from './data-table';
 import { DataFormDialog } from './data-form-dialog';
 import { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 import { TableData, FormMode } from '@/types/admin';
+import { logger } from '@/lib/logger';
 
 interface ImprovedTableEditorProps {
   onTableChange?: (tableName: string) => void;
@@ -26,7 +27,6 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
     error,
     pagination,
     sortState,
-    filterState,
     setCurrentTable,
     fetchTableData,
     createTableData,
@@ -97,7 +97,7 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
         setDeleteDialog({ open: false, id: '', name: '' });
       }
     } catch (error) {
-      console.error('削除エラー:', error);
+      logger.error('削除エラー:', error);
     }
   }, [deleteTableData, deleteDialog.id]);
 
@@ -119,7 +119,7 @@ export const ImprovedTableEditor: React.FC<ImprovedTableEditorProps> = ({
           setEditingItem(null);
         }
       } catch (error) {
-        console.error('フォーム送信エラー:', error);
+        logger.error('フォーム送信エラー:', error);
       }
     },
     [formMode, editingItem, createTableData, updateTableData]

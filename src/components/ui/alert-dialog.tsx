@@ -97,7 +97,9 @@ const AlertDialogContent = React.forwardRef<
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center'>
       {/* Backdrop */}
-      <div
+      <button
+        type='button'
+        aria-label='ダイアログを閉じる'
         className='fixed inset-0 bg-black bg-opacity-50'
         onClick={() => context.setOpen(false)}
       />
@@ -136,11 +138,13 @@ const AlertDialogFooter = React.forwardRef<
 AlertDialogFooter.displayName = 'AlertDialogFooter';
 
 const AlertDialogTitle = React.forwardRef<
-  HTMLHeadingElement,
-  React.HTMLAttributes<HTMLHeadingElement>
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <h2
+  <div
     ref={ref}
+    role='heading'
+    aria-level={2}
     className={cn('text-lg font-semibold text-gray-900', className)}
     {...props}
   />

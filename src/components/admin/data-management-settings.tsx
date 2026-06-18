@@ -143,7 +143,7 @@ export function DataManagementSettings() {
     await handleSave();
   };
 
-  const handleExportData = async (type: string) => {
+  const handleExportData = async (_type: string) => {
     setExportLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));

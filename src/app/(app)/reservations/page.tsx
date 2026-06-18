@@ -571,6 +571,7 @@ function ReservationsPageContent() {
     handleMoveAppointment,
     handleTimeSlotClick,
     resources,
+    appointments,
     showMoveError,
     timeSlots,
     visibleTimelineAppointments,

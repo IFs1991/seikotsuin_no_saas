@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { SessionManager, parseUserAgent } from '@/lib/session-manager';
 import { useSessionTimeout } from '@/lib/session-timeout';
+import { logger } from '@/lib/logger';
 
 interface SessionManagementConfig {
   enableCustomSession: boolean;
@@ -83,7 +84,7 @@ export function useSessionManagement(
       // セッション情報のリセット
       setSessionInfo({ isAuthenticated: false });
     } catch (err) {
-      console.error('Logout handling error:', err);
+      logger.error('Logout handling error:', err);
     }
   }, [
     config.enableTimeout,
@@ -129,7 +130,7 @@ export function useSessionManagement(
 
         return session.id;
       } catch (error) {
-        console.error('Custom session creation error:', error);
+        logger.error('Custom session creation error:', error);
         throw new Error('カスタムセッションの作成に失敗しました');
       }
     },
@@ -178,7 +179,7 @@ export function useSessionManagement(
           sessionTimeout.manager.start();
         }
       } catch (err) {
-        console.error('Login handling error:', err);
+        logger.error('Login handling error:', err);
         setError(err instanceof Error ? err.message : 'ログイン処理エラー');
       }
     },
@@ -206,7 +207,7 @@ export function useSessionManagement(
       } = await supabase.auth.getSession();
 
       if (error) {
-        console.error('Session check error:', error);
+        logger.error('Session check error:', error);
         setError('セッションの確認に失敗しました');
         return;
       }
@@ -217,7 +218,7 @@ export function useSessionManagement(
         setSessionInfo({ isAuthenticated: false });
       }
     } catch (err) {
-      console.error('Session initialization error:', err);
+      logger.error('Session initialization error:', err);
       setError('セッションの初期化に失敗しました');
     } finally {
       setIsLoading(false);
@@ -234,7 +235,7 @@ export function useSessionManagement(
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.id);
+      logger.info('Auth state changed:', event, session?.user?.id);
 
       if (event === 'SIGNED_IN' && session) {
         await handleLogin(session);
@@ -256,7 +257,7 @@ export function useSessionManagement(
       await handleLogout();
       router.push('/admin/login');
     } catch (err) {
-      console.error('Manual logout error:', err);
+      logger.error('Manual logout error:', err);
       setError('ログアウトに失敗しました');
     } finally {
       setIsLoading(false);
@@ -275,10 +276,10 @@ export function useSessionManagement(
       // カスタムセッションも延長
       if (sessionInfo.customSessionId && config.enableCustomSession) {
         // カスタムセッション延長のロジックを実装
-        console.log('Extending custom session:', minutes);
+        logger.info('Extending custom session:', minutes);
       }
     } catch (err) {
-      console.error('Session extension error:', err);
+      logger.error('Session extension error:', err);
       setError('セッション延長に失敗しました');
     }
   };
@@ -290,7 +291,7 @@ export function useSessionManagement(
     try {
       await initializeSession();
     } catch (err) {
-      console.error('Session refresh error:', err);
+      logger.error('Session refresh error:', err);
       setError('セッション更新に失敗しました');
     }
   };
@@ -322,7 +323,7 @@ async function getCurrentUserIP(): Promise<string | undefined> {
     // 実際の実装では外部APIまたはサーバーサイドで取得
     return 'unknown';
   } catch (error) {
-    console.error('IP address fetch error:', error);
+    logger.error('IP address fetch error:', error);
     return undefined;
   }
 }

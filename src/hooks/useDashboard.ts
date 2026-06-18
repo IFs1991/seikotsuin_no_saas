@@ -8,6 +8,7 @@ import {
   isErrorResponse,
   handleApiError,
 } from '../lib/api-client';
+import { logger } from '@/lib/logger';
 
 interface UseDashboardReturn {
   dashboardData: DashboardData | null;
@@ -46,7 +47,7 @@ const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
         setError(handleApiError(response.error));
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+      logger.error('Failed to fetch dashboard data:', err);
       setDashboardData(null);
       setError('ダッシュボードデータの取得に失敗しました');
     } finally {
@@ -89,10 +90,10 @@ const useDashboard = (clinicId?: string | null): UseDashboardReturn => {
           window.location.href = '/chat';
           break;
         default:
-          console.warn('Unknown quick action:', action);
+          logger.warn('Unknown quick action:', action);
       }
     } catch (err) {
-      console.error('Failed to handle quick action:', err);
+      logger.error('Failed to handle quick action:', err);
     }
   }, []);
 

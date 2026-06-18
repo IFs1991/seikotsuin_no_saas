@@ -317,7 +317,7 @@ export async function login(
  * サインアップ処理（入力値検証強化版）
  */
 export async function signup(
-  _: any,
+  _: unknown,
   formData: FormData
 ): Promise<AuthResponse> {
   const supabase = await getServerClient();

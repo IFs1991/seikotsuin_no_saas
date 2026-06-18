@@ -7,6 +7,7 @@ import {
 import { ADMIN_ROUTE_PATH_HEADER } from '@/lib/admin/routes';
 import { CSPConfig } from '@/lib/security/csp-config';
 import type { Database } from '@/types/supabase';
+import { logger } from '@/lib/logger';
 
 /**
  * 保護対象ルート（認証必須）
@@ -159,7 +160,7 @@ export async function middleware(request: NextRequest) {
     }
   } catch (error) {
     // Fail open: CSP should not take the whole app down.
-    console.warn('CSP header application failed:', error);
+    logger.warn('CSP header application failed:', error);
   }
 
   const isProtectedRoute = matchesAnyPrefix(pathname, PROTECTED_ROUTE_PREFIXES);

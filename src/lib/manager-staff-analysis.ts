@@ -633,9 +633,6 @@ export function buildManagerStaffAnalysis(
       assignedClinics,
     }).filter(clinicId => assignedClinicIds.has(clinicId))
   );
-  const clinicById = new Map(
-    assignedClinics.map(clinic => [clinic.id, clinic])
-  );
   const scopedStaff = params.staffResources.filter(
     staff =>
       selectedClinicIds.has(staff.clinicId) &&

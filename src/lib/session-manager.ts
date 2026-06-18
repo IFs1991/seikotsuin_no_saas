@@ -274,7 +274,7 @@ export class SessionManager {
         clinicId: profile?.clinic_id ?? clinicId,
         isActive: profile?.is_active ?? true,
       };
-    } catch (_) {
+    } catch {
       return {
         id: userId,
         email: `${userId}@placeholder.local`,

@@ -43,6 +43,7 @@ import type {
   DeviceSession,
   DeviceManagementAction,
 } from '@/lib/multi-device-manager';
+import { logger } from '@/lib/logger';
 
 interface DeviceCardProps {
   device: DeviceSession;
@@ -97,7 +98,7 @@ export function DeviceCard({ device, onAction }: DeviceCardProps) {
         alert(`エラー: ${result.message}`);
       }
     } catch (error) {
-      console.error('Action execution error:', error);
+      logger.error('Action execution error:', error);
       alert('アクション実行中にエラーが発生しました');
     } finally {
       setIsLoading(false);

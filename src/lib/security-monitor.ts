@@ -445,7 +445,7 @@ export class SecurityMonitor {
    */
   private async detectMultipleDeviceLogins(
     userId: string,
-    userAgent: string
+    _userAgent: string
   ): Promise<AnomalyDetectionResult> {
     const timeWindow = 30 * 60 * 1000; // 30分
     const startTime = new Date(Date.now() - timeWindow);

@@ -6,6 +6,7 @@ import {
   FilterState,
   UseSystemSettingsReturn,
 } from '@/types/admin';
+import { logger } from '@/lib/logger';
 
 export const useSystemSettings = (): UseSystemSettingsReturn => {
   const [masterData, setMasterData] = useState<MasterDataDetail[]>([]);
@@ -59,7 +60,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
       } catch (err: any) {
         const errorMessage = formatErrorMessage(err);
         setError(errorMessage);
-        console.error('マスターデータ作成エラー:', err);
+        logger.error('マスターデータ作成エラー:', err);
         return false;
       } finally {
         setLoading(false);
@@ -82,7 +83,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
       } catch (err: any) {
         const errorMessage = formatErrorMessage(err);
         setError(errorMessage);
-        console.error('マスターデータ更新エラー:', err);
+        logger.error('マスターデータ更新エラー:', err);
         return false;
       } finally {
         setLoading(false);
@@ -101,7 +102,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
       const errorMessage =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(errorMessage);
-      console.error('マスターデータ削除エラー:', err);
+      logger.error('マスターデータ削除エラー:', err);
       return false;
     } finally {
       setLoading(false);
@@ -133,7 +134,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(errorMessage);
-        console.error('マスターデータエクスポートエラー:', err);
+        logger.error('マスターデータエクスポートエラー:', err);
         return null;
       } finally {
         setLoading(false);
@@ -153,7 +154,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(errorMessage);
-        console.error('マスターデータインポートエラー:', err);
+        logger.error('マスターデータインポートエラー:', err);
         return false;
       } finally {
         setLoading(false);
@@ -171,7 +172,7 @@ export const useSystemSettings = (): UseSystemSettingsReturn => {
       const errorMessage =
         err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
       setError(errorMessage);
-      console.error('マスターデータロールバックエラー:', err);
+      logger.error('マスターデータロールバックエラー:', err);
       return false;
     } finally {
       setLoading(false);

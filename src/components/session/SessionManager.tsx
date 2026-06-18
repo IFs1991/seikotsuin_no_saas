@@ -13,9 +13,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Shield,
-  Smartphone,
-  Monitor,
-  Tablet,
   Clock,
   AlertTriangle,
   CheckCircle,
@@ -87,18 +84,6 @@ export function SessionManager({
 
   const handleLogout = () => {
     sessionTimeout.logout();
-  };
-
-  // デバイスアイコンの取得
-  const getDeviceIcon = (deviceType: string) => {
-    switch (deviceType.toLowerCase()) {
-      case 'mobile':
-        return <Smartphone className='h-5 w-5' />;
-      case 'tablet':
-        return <Tablet className='h-5 w-5' />;
-      default:
-        return <Monitor className='h-5 w-5' />;
-    }
   };
 
   // セッション状態の表示

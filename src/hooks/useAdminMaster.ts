@@ -19,7 +19,7 @@ export const useAdminMaster = () => {
   const fetchTableData = async (
     tableName: string,
     page = 1,
-    limit = 20,
+    _limit = 20,
     search?: string,
     sortBy?: string,
     sortOrder?: 'asc' | 'desc'

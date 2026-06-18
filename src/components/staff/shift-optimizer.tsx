@@ -11,6 +11,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 // 型定義
 interface Staff {
@@ -228,9 +229,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
   const [staffResources, setStaffResources] = useState<StaffResource[]>([]);
   const [preferences, setPreferences] = useState<Preference[]>([]);
   const [demandForecasts, setDemandForecasts] = useState<DemandForecast[]>([]);
-  const [hourlyDistribution, setHourlyDistribution] = useState<
-    HourlyDistribution[]
-  >([]);
+  const [, setHourlyDistribution] = useState<HourlyDistribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -347,7 +346,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
         )
       );
     } catch (err) {
-      console.error('Shift optimizer data fetch error:', err);
+      logger.error('Shift optimizer data fetch error:', err);
       setError(err instanceof Error ? err.message : 'データ取得に失敗しました');
     } finally {
       setIsLoading(false);
@@ -383,7 +382,7 @@ const ShiftOptimizer: React.FC<ShiftOptimizerProps> = ({ clinicId }) => {
       setDemandForecasts(demandData.forecasts ?? []);
       setHourlyDistribution(demandData.hourlyDistribution ?? []);
     } catch (err) {
-      console.error('Shift optimizer insight fetch error:', err);
+      logger.error('Shift optimizer insight fetch error:', err);
       setPreferences([]);
       setDemandForecasts([]);
       setHourlyDistribution([]);

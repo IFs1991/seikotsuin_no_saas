@@ -156,9 +156,13 @@ export function ManagerClinicComparison() {
                 ))}
               </select>
             </label>
-            <label className='space-y-1 text-sm'>
+            <label
+              htmlFor='manager-clinic-comparison-start-date'
+              className='space-y-1 text-sm'
+            >
               <span className='font-medium'>開始日</span>
               <Input
+                id='manager-clinic-comparison-start-date'
                 aria-label='開始日'
                 type='date'
                 value={state.startDate}
@@ -166,9 +170,13 @@ export function ManagerClinicComparison() {
                 disabled={state.loading || state.period !== 'custom'}
               />
             </label>
-            <label className='space-y-1 text-sm'>
+            <label
+              htmlFor='manager-clinic-comparison-end-date'
+              className='space-y-1 text-sm'
+            >
               <span className='font-medium'>終了日</span>
               <Input
+                id='manager-clinic-comparison-end-date'
                 aria-label='終了日'
                 type='date'
                 value={state.endDate}

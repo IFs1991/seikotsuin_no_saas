@@ -316,13 +316,13 @@ export interface MFAChallenge {
 // API レスポンス型定義
 // ================================================================
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   warnings?: string[];
   metadata?: {
@@ -332,7 +332,7 @@ export interface ApiResponse<T = any> {
   };
 }
 
-export interface SecurityApiResponse<T = any> extends ApiResponse<T> {
+export interface SecurityApiResponse<T = unknown> extends ApiResponse<T> {
   securityContext?: {
     threatLevel: ThreatSeverity;
     requiresAction: boolean;

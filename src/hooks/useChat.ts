@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, isSuccessResponse, handleApiError } from '@/lib/api-client';
+import { logger } from '@/lib/logger';
 
 /**
  * チャットメッセージの型定義
@@ -122,7 +123,7 @@ export const useChat = (clinicId: string | null) => {
         }));
       }
     } catch (error) {
-      console.error('Failed to fetch chat history:', error);
+      logger.error('Failed to fetch chat history:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -232,7 +233,7 @@ export const useChat = (clinicId: string | null) => {
           }));
         }
       } catch (error) {
-        console.error('Failed to send message:', error);
+        logger.error('Failed to send message:', error);
         setState(prev => ({
           ...prev,
           isLoading: false,

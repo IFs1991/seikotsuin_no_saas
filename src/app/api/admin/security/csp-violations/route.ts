@@ -116,12 +116,6 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    // 統計情報も含める
-    const statsQuery = await supabase
-      .from('csp_violations')
-      .select('severity', { count: 'exact' })
-      .gte('created_at', sinceTime.toISOString());
-
     const severityStats =
       violations?.reduce(
         (acc, v) => {

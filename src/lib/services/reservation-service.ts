@@ -670,8 +670,8 @@ export class ReservationService {
   }
 
   async getStaffUtilization(
-    startDate: Date,
-    endDate: Date
+    _startDate: Date,
+    _endDate: Date
   ): Promise<StaffUtilization[]> {
     // 簡略化された実装
     return [
