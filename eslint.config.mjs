@@ -90,7 +90,7 @@ const eslintConfig = [
   // Next.js configuration with TypeScript support
   ...compat.config({
     extends: [
-      'plugin:@next/next/core-web-vitals',
+      'next/core-web-vitals',
       'plugin:@typescript-eslint/recommended',
       'plugin:react/recommended',
       'plugin:react-hooks/recommended',
@@ -335,7 +335,6 @@ const eslintConfig = [
       '**/*.spec.jsx',
       '**/*.spec.ts',
       '**/*.spec.tsx',
-      'eslint.config.mjs',
     ],
   },
 ];
