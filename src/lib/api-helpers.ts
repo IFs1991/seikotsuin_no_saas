@@ -83,7 +83,7 @@ export async function verifyAdminAuth(
       };
     }
 
-    logger.error('認証エラー:', error);
+    logger.error('認証エラー:', redactApiLogValue(error));
     return {
       success: false,
       error: '認証処理中にエラーが発生しました',
@@ -371,7 +371,7 @@ export async function processApiRequest(
       };
     }
 
-    logger.error('processApiRequest error', error);
+    logger.error('processApiRequest error', redactApiLogValue(error));
     return {
       success: false,
       error: createErrorResponse('サーバーエラーが発生しました', 500),
@@ -382,6 +382,50 @@ export async function processApiRequest(
 /**
  * エラーログ出力（本番環境用）
  */
+const REDACTED_API_LOG_VALUE = '[redacted]';
+
+function isLogRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSensitiveLogKey(key: string) {
+  const normalized = key.toLowerCase();
+  return (
+    normalized.includes('email') ||
+    normalized.includes('password') ||
+    normalized.includes('token') ||
+    normalized.includes('userid') ||
+    normalized.includes('user_id') ||
+    normalized.includes('clinicid') ||
+    normalized.includes('clinic_id') ||
+    normalized.includes('staffid') ||
+    normalized.includes('staff_id')
+  );
+}
+
+function redactApiLogValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(item => redactApiLogValue(item));
+  }
+
+  if (!isLogRecord(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entryValue]) => [
+      key,
+      isSensitiveLogKey(key)
+        ? REDACTED_API_LOG_VALUE
+        : redactApiLogValue(entryValue),
+    ])
+  );
+}
+
+function redactApiLogIdentifier(value: string) {
+  return value === 'unknown' ? value : REDACTED_API_LOG_VALUE;
+}
+
 export function logError(
   error: unknown,
   context: {
@@ -395,18 +439,18 @@ export function logError(
     error instanceof Error
       ? {
           name: error.name,
-          message: error.message,
+          message: isProduction() ? REDACTED_API_LOG_VALUE : error.message,
           ...(!isProduction() ? { stack: error.stack } : {}),
         }
-      : error;
+      : redactApiLogValue(error);
 
   const logData = {
     timestamp: new Date().toISOString(),
     level: 'error',
     endpoint: context.endpoint,
-    userId: context.userId,
+    userId: redactApiLogIdentifier(context.userId),
     method: context.method,
-    params: context.params,
+    params: redactApiLogValue(context.params),
     error: serializedError,
   };
 

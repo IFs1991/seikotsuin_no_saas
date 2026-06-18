@@ -13,6 +13,11 @@ import { assertEnv } from '@/lib/env';
 import { createAdminClient, getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 import type { Database } from '@/types/supabase';
+import {
+  createAuthLog,
+  getEmailDomainLogData,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 
 /**
  * @file actions.ts
@@ -24,6 +29,7 @@ const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const log = createAuthLog('InviteActions');
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 type StaffInviteRow = Database['public']['Tables']['staff_invites']['Row'];
@@ -84,7 +90,7 @@ async function fetchOpenInvite(
     .maybeSingle();
 
   if (error) {
-    console.error('[Invite] staff_invites lookup error:', error);
+    log.error('Invite lookup error', getSafeAuthErrorLogData(error));
     throw new Error('招待情報の取得に失敗しました');
   }
 
@@ -115,9 +121,9 @@ async function acceptInviteForUser(
     .is('accepted_at', null);
 
   if (inviteUpdateError) {
-    console.error(
-      '[Invite] staff_invites accept update error:',
-      inviteUpdateError
+    log.error(
+      'Invite accept update error',
+      getSafeAuthErrorLogData(inviteUpdateError)
     );
     return { success: false, error: '招待の受諾に失敗しました' };
   }
@@ -132,7 +138,10 @@ async function acceptInviteForUser(
     .eq('user_id', userId);
 
   if (profileUpdateError) {
-    console.error('[Invite] profile assignment error:', profileUpdateError);
+    log.error(
+      'Invite profile assignment error',
+      getSafeAuthErrorLogData(profileUpdateError)
+    );
     return { success: false, error: '招待の受諾に失敗しました' };
   }
 
@@ -150,9 +159,9 @@ async function acceptInviteForUser(
     );
 
   if (permissionUpsertError) {
-    console.error(
-      '[Invite] user_permissions upsert error:',
-      permissionUpsertError
+    log.error(
+      'Invite user permissions upsert error',
+      getSafeAuthErrorLogData(permissionUpsertError)
     );
     return { success: false, error: '招待の受諾に失敗しました' };
   }
@@ -194,7 +203,10 @@ export async function getInviteByToken(
       .maybeSingle();
 
     if (clinicError) {
-      console.error('[Invite] clinic lookup error:', clinicError);
+      log.error(
+        'Invite clinic lookup error',
+        getSafeAuthErrorLogData(clinicError)
+      );
       return { success: false, error: '招待情報の取得に失敗しました' };
     }
 
@@ -211,7 +223,7 @@ export async function getInviteByToken(
       },
     };
   } catch (error) {
-    console.error('[Invite] getInviteByToken error:', error);
+    log.error('Get invite by token error', getSafeAuthErrorLogData(error));
     return { success: false, error: GENERIC_AUTH_ERROR_MESSAGE };
   }
 }
@@ -243,16 +255,15 @@ export async function acceptInvite(
       };
     }
 
-    console.info('[Auth] Invite accepted:', {
-      userId: user.id,
-      clinicId: result.clinicId,
-      timestamp: new Date().toISOString(),
+    log.info('Invite accepted', {
+      hasUser: true,
+      hasClinic: Boolean(result.clinicId),
     });
 
     revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
-    console.error('[Invite] acceptInvite error:', error);
+    log.error('Accept invite error', getSafeAuthErrorLogData(error));
     return { success: false, error: GENERIC_AUTH_ERROR_MESSAGE };
   }
 }
@@ -302,7 +313,10 @@ export async function signupAndAcceptInvite(
     );
 
     if (signupError) {
-      console.error('[Invite] Signup error:', signupError);
+      log.warn('Invite signup failed', {
+        ...getEmailDomainLogData(sanitizedEmail),
+        ...getSafeAuthErrorLogData(signupError),
+      });
       const errorMessage = signupError.message.includes('already registered')
         ? 'このメールアドレスは既に登録されています。ログインしてください。'
         : 'アカウントの作成に失敗しました';
@@ -335,8 +349,8 @@ export async function signupAndAcceptInvite(
 
       const acceptResult = await acceptInviteForUser(token, signupData.user.id);
       if (!acceptResult.success) {
-        console.error('[Invite] Accept invite after signup error:', {
-          error: acceptResult.error,
+        log.warn('Accept invite after signup failed', {
+          reason: acceptResult.error,
         });
         // サインアップは成功しているので、後で招待を受諾できるようにメッセージを返す
         return {
@@ -346,11 +360,9 @@ export async function signupAndAcceptInvite(
         };
       }
 
-      console.info('[Auth] Signup and invite accepted:', {
-        userId: signupData.user.id,
-        email: sanitizedEmail,
-        clinicId: acceptResult.clinicId,
-        timestamp: new Date().toISOString(),
+      log.info('Signup and invite accepted', {
+        hasUser: true,
+        hasClinic: Boolean(acceptResult.clinicId),
       });
 
       revalidatePath('/', 'layout');
@@ -366,7 +378,7 @@ export async function signupAndAcceptInvite(
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Invite] signupAndAcceptInvite error:', error);
+    log.error('Signup and accept invite error', getSafeAuthErrorLogData(error));
     return {
       success: false,
       errors: { _form: [GENERIC_AUTH_ERROR_MESSAGE] },
@@ -416,7 +428,10 @@ export async function loginAndAcceptInvite(
       });
 
     if (loginError) {
-      console.error('[Invite] Login error:', loginError);
+      log.warn('Invite login failed', {
+        ...getEmailDomainLogData(sanitizedEmail),
+        ...getSafeAuthErrorLogData(loginError),
+      });
       await AuditLogger.logFailedLogin(
         sanitizedEmail,
         ipAddress,
@@ -448,8 +463,8 @@ export async function loginAndAcceptInvite(
 
     const acceptResult = await acceptInviteForUser(token, loginData.user.id);
     if (!acceptResult.success) {
-      console.error('[Invite] Accept invite after login error:', {
-        error: acceptResult.error,
+      log.warn('Accept invite after login failed', {
+        reason: acceptResult.error,
       });
       return {
         success: false,
@@ -463,11 +478,9 @@ export async function loginAndAcceptInvite(
       .update({ last_login_at: new Date().toISOString() })
       .eq('user_id', loginData.user.id);
 
-    console.info('[Auth] Login and invite accepted:', {
-      userId: loginData.user.id,
-      email: sanitizedEmail,
-      clinicId: acceptResult.clinicId,
-      timestamp: new Date().toISOString(),
+    log.info('Login and invite accepted', {
+      hasUser: true,
+      hasClinic: Boolean(acceptResult.clinicId),
     });
 
     revalidatePath('/', 'layout');
@@ -476,7 +489,7 @@ export async function loginAndAcceptInvite(
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Invite] loginAndAcceptInvite error:', error);
+    log.error('Login and accept invite error', getSafeAuthErrorLogData(error));
     return {
       success: false,
       errors: { _form: [GENERIC_AUTH_ERROR_MESSAGE] },

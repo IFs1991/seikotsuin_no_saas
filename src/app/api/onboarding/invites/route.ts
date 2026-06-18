@@ -12,6 +12,13 @@ import {
 } from '@/lib/supabase';
 import { assertEnv } from '@/lib/env';
 import { staffInviteSchema } from '../schema';
+import {
+  createAuthLog,
+  getEmailDomainLogData,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
+
+const log = createAuthLog('OnboardingInvitesRoute');
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,7 +109,10 @@ export async function POST(request: NextRequest) {
             });
 
           if (inviteError) {
-            console.error('Staff invite record error:', inviteError);
+            log.error(
+              'Staff invite record error',
+              getSafeAuthErrorLogData(inviteError)
+            );
             // 招待メールは送信済みなので成功扱い
           }
 
@@ -123,7 +133,10 @@ export async function POST(request: NextRequest) {
 
           results.push({ email: invite.email, success: true });
         } catch (error) {
-          console.error('Invite error for', invite.email, error);
+          log.error('Invite processing error', {
+            ...getEmailDomainLogData(invite.email),
+            ...getSafeAuthErrorLogData(error),
+          });
           results.push({
             email: invite.email,
             success: false,
@@ -143,7 +156,10 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id);
 
     if (stateError) {
-      console.error('Onboarding state update error:', stateError);
+      log.error(
+        'Onboarding state update error',
+        getSafeAuthErrorLogData(stateError)
+      );
     }
 
     return NextResponse.json({
@@ -154,7 +170,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Staff invite error:', error);
+    log.error('Staff invite error', getSafeAuthErrorLogData(error));
     return NextResponse.json(
       { success: false, error: 'スタッフ招待に失敗しました' },
       { status: 500 }

@@ -157,10 +157,14 @@ describe('requestPasswordReset', () => {
       undefined,
       expect.objectContaining({
         source: 'clinic',
-        email: 'staff@clinic.com',
         userAgent: 'jest-test',
       }),
       '127.0.0.1'
+    );
+    expect(mockLogAdminAction.mock.calls[0][4]).toEqual(
+      expect.not.objectContaining({
+        email: 'staff@clinic.com',
+      })
     );
   });
 });

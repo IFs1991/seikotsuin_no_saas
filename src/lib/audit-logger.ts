@@ -60,6 +60,84 @@ function getAuditLogger(): Logger {
   return auditLoggerDependencies.createLogger('AuditLogger');
 }
 
+const REDACTED_LOG_VALUE = '[redacted]';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function shouldRedactLogKey(key: string) {
+  const normalized = key.toLowerCase();
+  return (
+    normalized.includes('email') ||
+    normalized.includes('password') ||
+    normalized.includes('token')
+  );
+}
+
+function redactLogDetails(
+  details: Record<string, unknown> | undefined
+): Record<string, unknown> | undefined {
+  if (!details) {
+    return undefined;
+  }
+
+  return Object.fromEntries(
+    Object.entries(details).map(([key, value]) => {
+      if (shouldRedactLogKey(key)) {
+        return [key, REDACTED_LOG_VALUE];
+      }
+
+      if (isRecord(value)) {
+        return [key, redactLogDetails(value)];
+      }
+
+      if (Array.isArray(value)) {
+        return [key, REDACTED_LOG_VALUE];
+      }
+
+      return [key, value];
+    })
+  );
+}
+
+function readLogStringProperty(
+  value: unknown,
+  key: string
+): string | undefined {
+  if (!isRecord(value) || !(key in value)) {
+    return undefined;
+  }
+
+  const property = value[key];
+  return typeof property === 'string' ? property : undefined;
+}
+
+function readLogNumberProperty(
+  value: unknown,
+  key: string
+): number | undefined {
+  if (!isRecord(value) || !(key in value)) {
+    return undefined;
+  }
+
+  const property = value[key];
+  return typeof property === 'number' ? property : undefined;
+}
+
+function getSafeAuditErrorLogData(error: unknown): Record<string, unknown> {
+  return {
+    errorName:
+      error instanceof Error
+        ? error.name
+        : readLogStringProperty(error, 'name'),
+    errorCode: readLogStringProperty(error, 'code'),
+    status:
+      readLogNumberProperty(error, 'status') ??
+      readLogNumberProperty(error, 'statusCode'),
+  };
+}
+
 export class AuditLogger {
   private static async createLogEntry(entry: AuditLogEntry) {
     const logData = {
@@ -89,8 +167,18 @@ export class AuditLogger {
     } catch (error) {
       // DB障害時のフォールバック: 構造化ログとして出力
       getAuditLogger().error('監査ログDB書き込み失敗 - フォールバック出力', {
-        error,
-        logData,
+        error: getSafeAuditErrorLogData(error),
+        logData: {
+          ...logData,
+          user_id: logData.user_id ? REDACTED_LOG_VALUE : undefined,
+          user_email: logData.user_email ? REDACTED_LOG_VALUE : undefined,
+          target_id: logData.target_id ? REDACTED_LOG_VALUE : undefined,
+          clinic_id: logData.clinic_id ? REDACTED_LOG_VALUE : undefined,
+          ip_address: logData.ip_address ? REDACTED_LOG_VALUE : undefined,
+          user_agent: logData.user_agent ? REDACTED_LOG_VALUE : undefined,
+          error_message: logData.error_message ? REDACTED_LOG_VALUE : undefined,
+          details: redactLogDetails(logData.details),
+        },
       });
 
       // 本番環境では外部ログサービスへ転送可能（TODO: 将来実装）

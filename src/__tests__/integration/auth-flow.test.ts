@@ -286,7 +286,7 @@ describe('Authentication Integration Tests', () => {
   });
 
   describe('Error Handling and Logging', () => {
-    test('logs security events appropriately', async () => {
+    test('records failed login audits without console PII output', async () => {
       mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
         error: { message: 'Invalid credentials', status: 400 },
         data: null,
@@ -299,13 +299,13 @@ describe('Authentication Integration Tests', () => {
       const result = await clinicLogin(null, formData);
 
       expect(result.success).toBe(false);
-      expect(consoleMock.warn).toHaveBeenCalledWith(
-        '[Security] Clinic login attempt failed:',
-        expect.objectContaining({
-          email: 'user@example.com',
-          error: 'メールアドレスまたはパスワードが正しくありません',
-        })
+      expect(auditLoggerMocks.logFailedLogin).toHaveBeenCalledWith(
+        'user@example.com',
+        '127.0.0.1',
+        'jest',
+        'メールアドレスまたはパスワードが正しくありません'
       );
+      expect(consoleMock.warn).not.toHaveBeenCalled();
       expect(result.errors._form).toContain(
         'メールアドレスまたはパスワードが正しくありません'
       );
@@ -327,13 +327,13 @@ describe('Authentication Integration Tests', () => {
       expect(result.errors._form).toContain(
         'アカウントが無効化されています。管理者にお問い合わせください'
       );
-      expect(consoleMock.warn).toHaveBeenCalledWith(
-        '[Security] Clinic login attempt failed:',
-        expect.objectContaining({
-          email: 'user@example.com',
-          error: 'アカウントが無効化されています。管理者にお問い合わせください',
-        })
+      expect(auditLoggerMocks.logFailedLogin).toHaveBeenCalledWith(
+        'user@example.com',
+        '127.0.0.1',
+        'jest',
+        'アカウントが無効化されています。管理者にお問い合わせください'
       );
+      expect(consoleMock.warn).not.toHaveBeenCalled();
     });
 
     test('handles system errors gracefully', async () => {
@@ -349,7 +349,7 @@ describe('Authentication Integration Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.errors._form).toContain('システムエラーが発生しました');
-      expect(consoleMock.error).toHaveBeenCalled();
+      expect(consoleMock.error).not.toHaveBeenCalled();
     });
   });
 

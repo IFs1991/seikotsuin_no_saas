@@ -25,7 +25,10 @@ export function getSafeRedirectUrl(
 
   // 明らかに無効なURLパターンを事前にチェック
   if (!isSecureUrl(trimmedUrl)) {
-    logger.warn(`[Security] Invalid URL format rejected: ${trimmedUrl}`);
+    logger.warn('[Security] Invalid URL format rejected', {
+      reason: 'invalid_format',
+      inputLength: trimmedUrl.length,
+    });
     return null;
   }
 
@@ -38,7 +41,10 @@ export function getSafeRedirectUrl(
       process.env.NODE_ENV === 'production' &&
       redirectUrl.protocol !== 'https:'
     ) {
-      logger.warn(`[Security] Non-HTTPS redirect rejected: ${trimmedUrl}`);
+      logger.warn('[Security] Non-HTTPS redirect rejected', {
+        reason: 'non_https_protocol',
+        inputLength: trimmedUrl.length,
+      });
       return null;
     }
 
@@ -47,9 +53,10 @@ export function getSafeRedirectUrl(
       process.env.NODE_ENV === 'development' &&
       !['http:', 'https:'].includes(redirectUrl.protocol)
     ) {
-      logger.warn(
-        `[Security] Invalid protocol redirect rejected: ${trimmedUrl}`
-      );
+      logger.warn('[Security] Invalid protocol redirect rejected', {
+        reason: 'invalid_protocol',
+        inputLength: trimmedUrl.length,
+      });
       return null;
     }
 
@@ -64,16 +71,18 @@ export function getSafeRedirectUrl(
     }
 
     // 許可されていないオリジン
-    logger.warn(
-      `[Security] Unauthorized redirect origin rejected: ${redirectUrl.origin}`
-    );
+    logger.warn('[Security] Unauthorized redirect origin rejected', {
+      reason: 'unauthorized_origin',
+      inputLength: trimmedUrl.length,
+    });
     return null;
   } catch (error) {
     // 不正なURL形式
-    logger.warn(
-      `[Security] Malformed redirect URL rejected: ${trimmedUrl}`,
-      error
-    );
+    logger.warn('[Security] Malformed redirect URL rejected', {
+      reason: 'malformed_url',
+      inputLength: trimmedUrl.length,
+      errorName: error instanceof Error ? error.name : undefined,
+    });
     return null;
   }
 }

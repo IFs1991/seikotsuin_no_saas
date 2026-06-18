@@ -11,6 +11,11 @@ import {
 import { getServerClient, getUserPermissions } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 import {
+  createAuthLog,
+  getEmailDomainLogData,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
+import {
   isAreaManagerRole,
   isHQRole,
   isTherapistRole,
@@ -29,6 +34,7 @@ const INVALID_CREDENTIALS_MESSAGE =
 const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
 const NO_CLINIC_ASSIGNED_MESSAGE =
   '所属クリニックが設定されていません。招待リンクから登録してください';
+const log = createAuthLog('ClinicAuthActions');
 
 function isRedirectLikeError(error: unknown): error is Error {
   if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
@@ -97,7 +103,9 @@ export async function clinicLogin(
       if (!fieldErrors.password || fieldErrors.password.length === 0) {
         fieldErrors.password = ['パスワードを入力してください'];
       }
-      console.warn('[Auth] Clinic login validation failed:', fieldErrors);
+      log.warn('Clinic login validation failed', {
+        fields: Object.keys(fieldErrors).join(','),
+      });
       return {
         success: false,
         errors: fieldErrors,
@@ -115,9 +123,10 @@ export async function clinicLogin(
 
     if (error) {
       const errorMessage = mapAuthError(error);
-      console.warn('[Security] Clinic login attempt failed:', {
-        email: sanitizedEmail,
-        error: errorMessage,
+      log.warn('Clinic login attempt failed', {
+        ...getEmailDomainLogData(sanitizedEmail),
+        reason: errorMessage,
+        ...getSafeAuthErrorLogData(error),
       });
       await AuditLogger.logFailedLogin(
         sanitizedEmail,
@@ -191,11 +200,9 @@ export async function clinicLogin(
         .eq('user_id', data.user.id);
 
       // 5. 成功ログ
-      console.info('[Auth] Successful HQ admin login:', {
-        email: sanitizedEmail,
+      log.info('Successful HQ admin login', {
         role: permissions?.role,
-        clinic_id: permissions?.clinic_id,
-        timestamp: new Date().toISOString(),
+        hasClinic: Boolean(permissions?.clinic_id),
       });
 
       // 6. パス再検証とリダイレクト
@@ -212,10 +219,8 @@ export async function clinicLogin(
         .eq('user_id', data.user.id);
 
       // 5. 成功ログ
-      console.info('[Auth] Successful manager login:', {
-        email: sanitizedEmail,
+      log.info('Successful manager login', {
         role: permissions?.role,
-        timestamp: new Date().toISOString(),
       });
 
       // 6. パス再検証とリダイレクト
@@ -234,14 +239,10 @@ export async function clinicLogin(
         .eq('user_id', data.user.id);
 
       // 5. 成功ログ
-      console.info(
-        '[Auth] Successful clinic login (no clinic assigned, redirecting to onboarding):',
-        {
-          email: sanitizedEmail,
-          role: permissions?.role,
-          timestamp: new Date().toISOString(),
-        }
-      );
+      log.info('Successful clinic login without clinic assignment', {
+        role: permissions?.role,
+        redirectTarget: 'onboarding',
+      });
 
       // 6. パス再検証とリダイレクト
       revalidatePath('/', 'layout');
@@ -257,11 +258,9 @@ export async function clinicLogin(
       .eq('user_id', data.user.id);
 
     // 5. 成功ログ
-    console.info('[Auth] Successful clinic login:', {
-      email: sanitizedEmail,
+    log.info('Successful clinic login', {
       role: permissions?.role,
-      clinic_id: permissions?.clinic_id,
-      timestamp: new Date().toISOString(),
+      hasClinic: Boolean(permissions?.clinic_id),
     });
 
     // 6. パス再検証とリダイレクト
@@ -273,7 +272,7 @@ export async function clinicLogin(
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Auth] Clinic login error:', error);
+    log.error('Clinic login error', getSafeAuthErrorLogData(error));
     return {
       success: false,
       errors: {
@@ -300,14 +299,13 @@ export async function clinicLogout(): Promise<void> {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      console.error('[Auth] Clinic logout error:', error);
+      log.error('Clinic logout error', getSafeAuthErrorLogData(error));
       redirect('/login?error=logout_failed');
     }
 
     if (user) {
-      console.info('[Auth] Successful clinic logout:', {
-        email: user.email,
-        timestamp: new Date().toISOString(),
+      log.info('Successful clinic logout', {
+        hasUser: true,
       });
       await AuditLogger.logLogout(user.id, user.email || '', ipAddress);
     }
@@ -318,7 +316,7 @@ export async function clinicLogout(): Promise<void> {
     if (isRedirectLikeError(error)) {
       throw error;
     }
-    console.error('[Auth] Clinic logout error:', error);
+    log.error('Clinic logout error', getSafeAuthErrorLogData(error));
     redirect('/login?error=logout_failed');
   }
 }

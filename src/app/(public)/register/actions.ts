@@ -18,10 +18,15 @@ import { sanitizeAuthInput } from '@/lib/schemas/auth';
 import { assertEnv } from '@/lib/env';
 import { getServerClient } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
+import {
+  createAuthLog,
+  getSafeAuthErrorLogData,
+} from '@/lib/auth/safe-auth-logging';
 
 /** AC-03: 既存メール有無を開示しない安全文言 */
 const GENERIC_REGISTER_ERROR =
   '登録処理中にエラーが発生しました。しばらくしてから再度お試しください。';
+const log = createAuthLog('RegisterActions');
 
 function isRedirectError(error: unknown): boolean {
   if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
@@ -101,10 +106,10 @@ export async function registerOwner(
 
     if (error) {
       // AC-03: 非列挙型 - "already registered" も含め全エラーを同一文言で返す
-      console.warn('[Register] signUp error (non-enumeration response):', {
-        timestamp: new Date().toISOString(),
-        ip: ipAddress,
-      });
+      log.warn(
+        'Owner registration signUp failed with non-enumeration response',
+        getSafeAuthErrorLogData(error)
+      );
 
       await AuditLogger.logAdminAction(
         'anonymous',
@@ -122,9 +127,7 @@ export async function registerOwner(
     }
 
     // Step 4: 成功ログ
-    console.info('[Register] Owner signup initiated:', {
-      timestamp: new Date().toISOString(),
-    });
+    log.info('Owner signup initiated');
 
     await AuditLogger.logAdminAction(
       'register_pending',
@@ -143,7 +146,10 @@ export async function registerOwner(
     if (isRedirectError(error)) {
       throw error;
     }
-    console.error('[Register] Unexpected error:', error);
+    log.error(
+      'Owner registration unexpected error',
+      getSafeAuthErrorLogData(error)
+    );
     return {
       success: false,
       errors: { _form: [GENERIC_REGISTER_ERROR] },
