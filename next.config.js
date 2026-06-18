@@ -104,30 +104,6 @@ const nextConfig = {
   // Docker本番運用のためNext.jsをstandaloneビルド
   output: 'standalone',
 
-  // バンドル分析と最適化
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            priority: 10,
-            reuseExistingChunk: true,
-          },
-          common: {
-            name: 'common',
-            minChunks: 2,
-            priority: 5,
-            reuseExistingChunk: true,
-          },
-        },
-      };
-    }
-    return config;
-  },
-
   // 画像最適化設定
   images: {
     unoptimized: false,
