@@ -14,6 +14,7 @@ import type {
   SeedFormData,
   SeedResponse,
 } from '@/types/onboarding';
+import { logger } from '@/lib/logger';
 
 interface OnboardingState {
   status: OnboardingStatusResponse['data'] | null;
@@ -65,7 +66,7 @@ export function useOnboarding() {
         }));
       }
     } catch (err) {
-      console.error('useOnboarding fetchStatus error:', err);
+      logger.error('useOnboarding fetchStatus error:', err);
       setState(prev => ({
         ...prev,
         error: err instanceof Error ? err.message : String(err),
@@ -99,7 +100,7 @@ export function useOnboarding() {
 
         return json;
       } catch (err) {
-        console.error('updateProfile error:', err);
+        logger.error('updateProfile error:', err);
         return {
           success: false,
           error:
@@ -140,7 +141,7 @@ export function useOnboarding() {
 
         return json;
       } catch (err) {
-        console.error('createClinic error:', err);
+        logger.error('createClinic error:', err);
         return {
           success: false,
           error:
@@ -175,7 +176,7 @@ export function useOnboarding() {
 
         return json;
       } catch (err) {
-        console.error('inviteStaff error:', err);
+        logger.error('inviteStaff error:', err);
         return {
           success: false,
           error:
@@ -210,7 +211,7 @@ export function useOnboarding() {
 
         return json;
       } catch (err) {
-        console.error('seedMaster error:', err);
+        logger.error('seedMaster error:', err);
         return {
           success: false,
           error:

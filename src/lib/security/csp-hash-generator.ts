@@ -64,7 +64,7 @@ export class CSPHashGenerator {
           } else {
             return cached;
           }
-        } catch (error) {
+        } catch {
           // ファイルが存在しない場合はキャッシュを削除
           this.cachedHashes.delete(cacheKey);
         }
@@ -120,7 +120,7 @@ export class CSPHashGenerator {
             hashes.push(`'sha256-${styleHash.hash}'`);
           }
         }
-      } catch (error) {
+      } catch {
         // ディレクトリが存在しない場合は無視
         continue;
       }

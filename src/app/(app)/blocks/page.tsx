@@ -15,13 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Block, CreateBlockData } from '@/types/reservation';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { logger } from '@/lib/logger';
 
 // 通知関数
 const showNotification = (
   message: string,
   type: 'success' | 'error' = 'success'
 ) => {
-  console.log(`[${type.toUpperCase()}] ${message}`);
+  logger.info(`[${type.toUpperCase()}] ${message}`);
   if (type === 'error') {
     alert(message);
   }
@@ -43,7 +44,6 @@ export default function BlockManagementPage() {
   } = useUserProfileContext();
 
   // プロフィールから値を取得
-  const userId = profile?.id ?? null;
   const clinicId = profile?.clinicId ?? null;
 
   // clinicId未割当フラグ
@@ -88,7 +88,7 @@ export default function BlockManagementPage() {
       const data = await response.json();
       setResources(data.data || []);
     } catch (error) {
-      console.error('Resource fetch error:', error);
+      logger.error('Resource fetch error:', error);
       setResourcesError(
         error instanceof Error ? error.message : 'リソースの取得に失敗しました'
       );
@@ -139,7 +139,7 @@ export default function BlockManagementPage() {
       const result = await response.json();
       setBlocks(result.data || []);
     } catch (error) {
-      console.error('Block fetch error:', error);
+      logger.error('Block fetch error:', error);
     }
   }, [clinicId]);
 
@@ -216,7 +216,7 @@ export default function BlockManagementPage() {
       // Block一覧を再取得
       refreshBlocks();
     } catch (error) {
-      console.error('Block creation error:', error);
+      logger.error('Block creation error:', error);
       showNotification(
         error instanceof Error ? error.message : '販売停止の設定に失敗しました',
         'error'
@@ -246,7 +246,7 @@ export default function BlockManagementPage() {
       showNotification('販売停止設定を削除しました', 'success');
       refreshBlocks();
     } catch (error) {
-      console.error('Block deletion error:', error);
+      logger.error('Block deletion error:', error);
       showNotification('削除に失敗しました', 'error');
     }
   };
@@ -337,7 +337,8 @@ export default function BlockManagementPage() {
                 ) : (
                   <div className='grid grid-cols-4 gap-2 mt-2'>
                     {resources.map(resource => (
-                      <div
+                      <button
+                        type='button'
                         key={resource.id}
                         data-testid='resource-item'
                         className={cn(
@@ -352,7 +353,7 @@ export default function BlockManagementPage() {
                         <Badge variant='outline' className='mt-1 text-xs'>
                           {resource.type === 'staff' ? 'スタッフ' : '施術室'}
                         </Badge>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 )}

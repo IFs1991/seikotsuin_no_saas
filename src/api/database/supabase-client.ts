@@ -1,28 +1,42 @@
 'server-only';
 
-import { createClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  type RealtimePostgresChangesPayload,
+  type Session,
+} from '@supabase/supabase-js';
 import { assertEnv } from '@/lib/env';
+import { logger } from '@/lib/logger';
+import type { Database } from '@/types/supabase';
 
 const supabaseUrl = assertEnv('NEXT_PUBLIC_SUPABASE_URL');
 const supabaseServiceRoleKey = assertEnv('SUPABASE_SERVICE_ROLE_KEY');
+type DailyReportUpdate =
+  Database['public']['Tables']['daily_reports']['Update'];
 
 // サーバーサイド専用のクライアント（管理者権限）
-export const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
+export const supabase = createClient<Database>(
+  supabaseUrl,
+  supabaseServiceRoleKey,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
     },
-  },
-});
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+  }
+);
 
 export const subscribeToTable = async (
   tableName: string,
-  callback: (payload: any) => void
+  callback: (
+    payload: RealtimePostgresChangesPayload<Record<string, unknown>>
+  ) => void
 ) => {
   try {
     const subscription = supabase
@@ -38,15 +52,15 @@ export const subscribeToTable = async (
       subscription.unsubscribe();
     };
   } catch (error) {
-    console.error('サブスクリプションエラー:', error);
+    logger.error('サブスクリプションエラー:', error);
     throw error;
   }
 };
 
-export const fetchWithRetry = async (
-  operation: () => Promise<any>,
+export const fetchWithRetry = async <T>(
+  operation: () => Promise<T>,
   maxRetries = 3
-) => {
+): Promise<T> => {
   let retries = 0;
   while (retries < maxRetries) {
     try {
@@ -57,6 +71,8 @@ export const fetchWithRetry = async (
       await new Promise(resolve => setTimeout(resolve, 1000 * retries));
     }
   }
+
+  throw new Error('Retry operation failed');
 };
 
 export const dbHelpers = {
@@ -91,7 +107,7 @@ export const dbHelpers = {
     });
   },
 
-  async updateDailyReport(id: string, data: any) {
+  async updateDailyReport(id: string, data: DailyReportUpdate) {
     return await fetchWithRetry(async () => {
       const { data: result, error } = await supabase
         .from('daily_reports')
@@ -104,7 +120,7 @@ export const dbHelpers = {
 };
 
 export const handleAuthStateChange = (
-  callback: (event: string, session: any) => void
+  callback: (event: string, session: Session | null) => void
 ) => {
   return supabase.auth.onAuthStateChange(callback);
 };
@@ -118,7 +134,7 @@ export const getCurrentSession = async () => {
     if (error) throw error;
     return session;
   } catch (error) {
-    console.error('セッション取得エラー:', error);
+    logger.error('セッション取得エラー:', error);
     return null;
   }
 };

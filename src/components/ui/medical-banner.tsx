@@ -11,6 +11,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { Button } from './button';
+import { logger } from '@/lib/logger';
 
 export interface MedicalBannerProps {
   type:
@@ -231,11 +232,11 @@ export const MedicalBannerExamples = () => {
           actions={{
             primary: {
               label: '即座に対応',
-              onClick: () => console.log('Emergency response triggered'),
+              onClick: () => logger.info('Emergency response triggered'),
             },
             secondary: {
               label: '詳細を確認',
-              onClick: () => console.log('View details'),
+              onClick: () => logger.info('View details'),
             },
           }}
           onDismiss={() => setShowBanner(false)}
@@ -251,11 +252,11 @@ export const MedicalBannerExamples = () => {
         actions={{
           primary: {
             label: 'セキュリティ対応',
-            onClick: () => console.log('Security response'),
+            onClick: () => logger.info('Security response'),
           },
           secondary: {
             label: 'ログを確認',
-            onClick: () => console.log('View logs'),
+            onClick: () => logger.info('View logs'),
           },
         }}
         autoHideDuration={10000}
@@ -279,7 +280,7 @@ export const MedicalBannerExamples = () => {
         actions={{
           primary: {
             label: '詳細を確認',
-            onClick: () => console.log('View maintenance details'),
+            onClick: () => logger.info('View maintenance details'),
           },
         }}
         autoHideDuration={0}

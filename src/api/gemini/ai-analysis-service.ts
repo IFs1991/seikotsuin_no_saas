@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { type AnalysisResult } from '@/lib/ai/analysis-client';
 import { supabase } from '@/lib/supabase/client';
 import type { AIComment } from '@/types/ai-comment';
+import { logger } from '@/lib/logger';
 
 type InsightImpact = 'high' | 'mid' | 'low';
 
@@ -17,6 +18,18 @@ interface InsightInput {
     staff_revenue: InsightTable;
     patient_funnel: InsightTable;
   };
+}
+
+interface GeminiPart {
+  text?: string;
+}
+
+interface GeminiResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: GeminiPart[];
+    };
+  }>;
 }
 
 export interface AiInsightItem {
@@ -110,10 +123,10 @@ export async function generateAIComment(
       throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as GeminiResponse;
     const text =
       data?.candidates?.[0]?.content?.parts
-        ?.map((p: any) => p?.text ?? '')
+        ?.map(p => p.text ?? '')
         .join('\n') ?? '';
 
     // 応答はJSONで返すようプロンプトを設定しているが、安全のため抽出ロジックを用意
@@ -159,7 +172,7 @@ export async function generateAIComment(
 
     return aiComment;
   } catch (error) {
-    console.error('AI comment generation failed:', error);
+    logger.error('AI comment generation failed:', error);
     return generateMockAIComment(analysisResult);
   }
 }
@@ -211,17 +224,17 @@ async function buildInsightInput(
 
   const revenueRows = (revenueRes.data ?? [])
     .map(row => [
-      toStringOrEmpty((row as any).revenue_date),
-      toNumber((row as any).total_revenue),
+      toStringOrEmpty(row.revenue_date),
+      toNumber(row.total_revenue),
     ])
     .filter(row => row[0])
     .slice(-MAX_REVENUE_ROWS);
 
   const staffRows = (staffRes.data ?? [])
     .map(row => [
-      toStringOrEmpty((row as any).staff_name),
-      toNumber((row as any).total_revenue_generated),
-      toNumber((row as any).total_visits),
+      toStringOrEmpty(row.staff_name),
+      toNumber(row.total_revenue_generated),
+      toNumber(row.total_visits),
     ])
     .filter(row => row[0]);
 
@@ -297,10 +310,10 @@ async function requestAiInsights(
       throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as GeminiResponse;
     const text =
       data?.candidates?.[0]?.content?.parts
-        ?.map((p: any) => p?.text ?? '')
+        ?.map(p => p.text ?? '')
         .join('\n') ?? '';
 
     const parsedJson = parseJsonFromText(text);
@@ -313,7 +326,7 @@ async function requestAiInsights(
       };
     }
   } catch (error) {
-    console.error('AI insights generation failed:', error);
+    logger.error('AI insights generation failed:', error);
   } finally {
     if (timeoutId) {
       clearTimeout(timeoutId);

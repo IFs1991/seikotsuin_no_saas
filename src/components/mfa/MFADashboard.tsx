@@ -22,6 +22,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { MFASetupWizard } from './MFASetupWizard';
+import { logger } from '@/lib/logger';
 
 interface MFAStatus {
   isEnabled: boolean;
@@ -71,7 +72,7 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
         setMFAStatus(data);
       }
     } catch (err) {
-      console.error('MFA状態取得エラー:', err);
+      logger.error('MFA状態取得エラー:', err);
     }
   }, [userId]);
 
@@ -88,7 +89,7 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
         setBackupCodeUsage(data);
       }
     } catch (err) {
-      console.error('バックアップコード使用状況取得エラー:', err);
+      logger.error('バックアップコード使用状況取得エラー:', err);
     }
   }, [mfaStatus.isEnabled, userId]);
 

@@ -102,7 +102,7 @@ export class MultiDeviceManager {
           const res = await query;
           // Supabase builder may return thenable without strict typing
           data = res && res.data ? res.data : null;
-        } catch (_) {
+        } catch {
           // ignore
         }
       }
@@ -125,7 +125,7 @@ export class MultiDeviceManager {
         record.trust_level === 'trusted' ||
         (typeof record.trust_score === 'number' && record.trust_score >= 80)
       );
-    } catch (_) {
+    } catch {
       return false;
     }
   }

@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Patient } from '@/hooks/usePatientsList';
+import { logger } from '@/lib/logger';
 
 interface PatientFormData {
   name: string;
@@ -157,7 +158,7 @@ function PatientModalComponent({
       });
       onClose();
     } catch (error) {
-      console.error('保存に失敗しました', error);
+      logger.error('保存に失敗しました', error);
     } finally {
       setIsSubmitting(false);
     }

@@ -19,6 +19,7 @@ import {
   type AuthResponse,
 } from '@/lib/schemas/auth';
 import { createClient } from '@/lib/supabase/client';
+import { ZodError } from 'zod';
 
 /**
  * @file page.tsx
@@ -122,10 +123,17 @@ function InvitePageContent() {
       schema.parse({ email, password });
       setClientErrors({});
       return true;
-    } catch (error: any) {
-      error.errors.forEach((err: any) => {
-        errors[err.path[0]] = err.message;
-      });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        error.issues.forEach(err => {
+          const [path] = err.path;
+          if (typeof path === 'string') {
+            errors[path] = err.message;
+          }
+        });
+      } else {
+        errors._form = '入力内容を確認してください';
+      }
       setClientErrors(errors);
       return false;
     }
@@ -287,10 +295,14 @@ function InvitePageContent() {
           <input type='hidden' name='token' value={token || ''} />
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              htmlFor='invite-email'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
               メールアドレス <span className='text-red-500'>*</span>
             </label>
             <Input
+              id='invite-email'
               type='email'
               name='email'
               value={email}
@@ -306,11 +318,15 @@ function InvitePageContent() {
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              htmlFor='invite-password'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
               パスワード <span className='text-red-500'>*</span>
             </label>
             <div className='relative'>
               <Input
+                id='invite-password'
                 type={showPassword ? 'text' : 'password'}
                 name='password'
                 value={password}

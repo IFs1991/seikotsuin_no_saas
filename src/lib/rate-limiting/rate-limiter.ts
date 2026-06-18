@@ -6,7 +6,6 @@ import 'server-only';
  */
 
 import { Redis } from '@upstash/redis';
-import { z } from 'zod';
 import { createLogger } from '@/lib/logger';
 import { getOrCreateRedis } from '@/lib/rate-limiting/redis-client';
 
@@ -61,21 +60,13 @@ export interface RateLimitResult {
   escalated?: boolean;
 }
 
-// レート制限ルール
-const RateLimitRuleSchema = z.object({
-  type: z.enum([
-    'login_attempts',
-    'api_calls',
-    'session_creation',
-    'mfa_attempts',
-  ]),
-  identifier: z.string().min(1, '識別子が必要です'),
-  window: z.number().positive('ウィンドウは正の数である必要があります'),
-  limit: z.number().positive('制限値は正の数である必要があります'),
-  blockDuration: z.number().positive().optional(),
-});
-
-export type RateLimitRule = z.infer<typeof RateLimitRuleSchema>;
+export interface RateLimitRule {
+  type: RateLimitType;
+  identifier: string;
+  window: number;
+  limit: number;
+  blockDuration?: number;
+}
 
 /**
  * Redis対応高性能レート制限クラス

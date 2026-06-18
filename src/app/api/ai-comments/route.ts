@@ -222,12 +222,6 @@ function analyzePerformance(
       ? weeklyData.reduce((sum, day) => sum + (day.total_revenue || 0), 0) /
         weeklyData.length
       : 0;
-  const weeklyAvgPatients =
-    weeklyData.length > 0
-      ? weeklyData.reduce((sum, day) => sum + (day.unique_patients || 0), 0) /
-        weeklyData.length
-      : 0;
-
   let summary = '';
   const highlights: string[] = [];
   const improvements: string[] = [];

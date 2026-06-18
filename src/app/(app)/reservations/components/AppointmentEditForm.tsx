@@ -61,9 +61,9 @@ export const AppointmentEditForm: React.FC<Props> = ({
     <div className='space-y-4 sm:space-y-5'>
       {/* Name */}
       <div>
-        <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+        <div className='block text-xs font-bold text-gray-500 uppercase mb-1'>
           お名前
-        </label>
+        </div>
         <div className='grid grid-cols-2 gap-3'>
           <input
             type='text'
@@ -87,10 +87,14 @@ export const AppointmentEditForm: React.FC<Props> = ({
       {/* Date & Time */}
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
         <div>
-          <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+          <label
+            htmlFor='appointment-edit-date'
+            className='block text-xs font-bold text-gray-500 uppercase mb-1'
+          >
             来店日
           </label>
           <input
+            id='appointment-edit-date'
             type='date'
             value={formData.date}
             onChange={e => onChange('date', e.target.value)}
@@ -98,11 +102,12 @@ export const AppointmentEditForm: React.FC<Props> = ({
           />
         </div>
         <div>
-          <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+          <div className='block text-xs font-bold text-gray-500 uppercase mb-1'>
             開始時間
-          </label>
+          </div>
           <div className='flex items-center gap-1'>
             <select
+              aria-label='開始時'
               value={formData.startHour}
               onChange={e => onChange('startHour', parseInt(e.target.value))}
               className='w-full text-sm border-gray-300 rounded-md border p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none'
@@ -115,6 +120,7 @@ export const AppointmentEditForm: React.FC<Props> = ({
             </select>
             <span className='text-gray-400 font-bold'>:</span>
             <select
+              aria-label='開始分'
               value={formData.startMinute}
               onChange={e => onChange('startMinute', parseInt(e.target.value))}
               className='w-full text-sm border-gray-300 rounded-md border p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none'
@@ -131,10 +137,14 @@ export const AppointmentEditForm: React.FC<Props> = ({
 
       {/* Resource */}
       <div>
-        <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+        <label
+          htmlFor='appointment-edit-resource'
+          className='block text-xs font-bold text-gray-500 uppercase mb-1'
+        >
           担当スタッフ
         </label>
         <select
+          id='appointment-edit-resource'
           value={formData.resourceId}
           onChange={e => onChange('resourceId', e.target.value)}
           className='block w-full text-sm border-gray-300 rounded-md border p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none'
@@ -152,10 +162,14 @@ export const AppointmentEditForm: React.FC<Props> = ({
       {/* Menu & Options */}
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
         <div>
-          <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+          <label
+            htmlFor='appointment-edit-menu'
+            className='block text-xs font-bold text-gray-500 uppercase mb-1'
+          >
             メニュー
           </label>
           <select
+            id='appointment-edit-menu'
             value={formData.menuId || ''}
             onChange={e => onChange('menuId', e.target.value)}
             disabled
@@ -169,10 +183,14 @@ export const AppointmentEditForm: React.FC<Props> = ({
           </select>
         </div>
         <div>
-          <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+          <label
+            htmlFor='appointment-edit-option'
+            className='block text-xs font-bold text-gray-500 uppercase mb-1'
+          >
             オプション
           </label>
           <select
+            id='appointment-edit-option'
             value={formData.optionId || ''}
             onChange={e => onChange('optionId', e.target.value)}
             disabled
@@ -191,11 +209,15 @@ export const AppointmentEditForm: React.FC<Props> = ({
       <div className='bg-gray-50 p-3 rounded-md border border-gray-200 flex flex-col gap-2'>
         <div className='flex justify-between items-center'>
           <div className='flex items-center gap-3'>
-            <label className='text-xs font-bold text-gray-500 uppercase'>
+            <label
+              htmlFor='appointment-edit-duration'
+              className='text-xs font-bold text-gray-500 uppercase'
+            >
               所要時間
             </label>
             <div className='relative'>
               <select
+                id='appointment-edit-duration'
                 value={currentDuration}
                 onChange={handleDurationChangeLocal}
                 className='appearance-none pl-3 pr-8 py-1.5 text-sm border-gray-300 rounded border bg-white text-gray-900 focus:ring-2 focus:ring-sky-500 focus:outline-none font-medium'
@@ -232,10 +254,14 @@ export const AppointmentEditForm: React.FC<Props> = ({
 
       {/* Memo */}
       <div>
-        <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+        <label
+          htmlFor='appointment-edit-memo'
+          className='block text-xs font-bold text-gray-500 uppercase mb-1'
+        >
           メモ
         </label>
         <textarea
+          id='appointment-edit-memo'
           value={formData.memo || ''}
           onChange={e => onChange('memo', e.target.value)}
           className='block w-full text-sm border-gray-300 rounded-md border p-2 focus:ring-2 focus:ring-sky-500 focus:outline-none h-24'
@@ -244,9 +270,9 @@ export const AppointmentEditForm: React.FC<Props> = ({
 
       {/* Color */}
       <div>
-        <label className='block text-xs font-bold text-gray-500 uppercase mb-1'>
+        <div className='block text-xs font-bold text-gray-500 uppercase mb-1'>
           カラー
-        </label>
+        </div>
         <div className='flex gap-2'>
           {(['red', 'pink', 'blue', 'orange', 'purple'] as const).map(color => (
             <button

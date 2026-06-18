@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 
 import { SecurityMonitor } from '@/lib/security-monitor';
+import { logger } from '@/lib/logger';
 
 interface SecurityAlertsProps {
   userId: string;
@@ -83,7 +84,7 @@ export function SecurityAlerts({ userId, clinicId }: SecurityAlertsProps) {
       setEvents(formattedEvents);
       setSummary(summaryData);
     } catch (err) {
-      console.error('Security data loading error:', err);
+      logger.error('Security data loading error:', err);
       setError('セキュリティ情報の読み込みに失敗しました');
     } finally {
       setLoading(false);

@@ -319,7 +319,7 @@ export interface UserProfile {
 }
 
 export interface AuthState {
-  user: any; // Supabaseのユーザー型
+  user: User | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -461,3 +461,4 @@ export interface ErrorEvent {
   details?: unknown;
   timestamp: Date;
 }
+import type { User } from '@supabase/supabase-js';

@@ -32,8 +32,6 @@ const INACTIVE_ACCOUNT_MESSAGE =
 const INVALID_CREDENTIALS_MESSAGE =
   'メールアドレスまたはパスワードが正しくありません';
 const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
-const NO_CLINIC_ASSIGNED_MESSAGE =
-  '所属クリニックが設定されていません。招待リンクから登録してください';
 const log = createAuthLog('ClinicAuthActions');
 
 function isRedirectLikeError(error: unknown): error is Error {

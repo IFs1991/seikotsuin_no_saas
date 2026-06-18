@@ -42,6 +42,7 @@ import {
   CheckCircle,
   Search,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 interface SecurityMetrics {
   totalUsers: number;
@@ -132,7 +133,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         setMetrics(data.data || data);
       }
     } catch (error) {
-      console.error('セキュリティメトリクス取得エラー:', error);
+      logger.error('セキュリティメトリクス取得エラー:', error);
     }
   }, [clinicId]);
 
@@ -149,7 +150,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         setSecurityEvents(data.events || data.data?.events || []);
       }
     } catch (error) {
-      console.error('セキュリティイベント取得エラー:', error);
+      logger.error('セキュリティイベント取得エラー:', error);
     }
   }, [clinicId, statusFilter]);
 
@@ -164,7 +165,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         setActiveSessions(data.sessions || data.data?.sessions || []);
       }
     } catch (error) {
-      console.error('アクティブセッション取得エラー:', error);
+      logger.error('アクティブセッション取得エラー:', error);
     }
   }, [clinicId]);
 
@@ -203,7 +204,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         setResolutionNotes('');
       }
     } catch (error) {
-      console.error('イベント更新エラー:', error);
+      logger.error('イベント更新エラー:', error);
     } finally {
       setUpdating(false);
     }
@@ -252,7 +253,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         await fetchSecurityMetrics();
       }
     } catch (error) {
-      console.error('セッション終了エラー:', error);
+      logger.error('セッション終了エラー:', error);
     }
   };
 

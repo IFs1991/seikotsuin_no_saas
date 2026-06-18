@@ -6,6 +6,7 @@ import {
   isErrorResponse,
   handleApiError,
 } from '@/lib/api-client';
+import { logger } from '@/lib/logger';
 
 const DEFAULT_ANALYSIS_ERROR = '患者データの取得に失敗しました';
 
@@ -166,7 +167,7 @@ export const usePatientAnalysis = (
         }
       } catch (e) {
         if (!cancelled) {
-          console.warn('usePatientAnalysis fetch error:', e);
+          logger.warn('usePatientAnalysis fetch error:', e);
           setError(DEFAULT_ANALYSIS_ERROR);
           setData(null);
         }

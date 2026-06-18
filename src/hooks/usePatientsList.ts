@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { logger } from '@/lib/logger';
 
 export interface Patient {
   id: string;
@@ -152,7 +153,7 @@ export function usePatientsList(): UsePatientsListResult {
       setPatients(incoming);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.error('fetchPatients error', err);
+      logger.error('fetchPatients error', err);
       setError(err instanceof Error ? err.message : '不明なエラー');
     } finally {
       if (fetchAbortRef.current === abortController) {

@@ -170,9 +170,10 @@ export const DataTable: React.FC<DataTableProps> = ({
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(config.columns).map(([key, columnConfig]) => (
-                  <div
+                  <button
+                    type='button'
                     key={key}
-                    className='flex items-center space-x-2 px-2 py-1 cursor-pointer hover:bg-accent'
+                    className='flex w-full items-center space-x-2 px-2 py-1 cursor-pointer hover:bg-accent text-left'
                     onClick={() => toggleColumnVisibility(key)}
                   >
                     {visibleColumns[key] ? (
@@ -181,7 +182,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       <EyeOff className='h-4 w-4' />
                     )}
                     <span className='text-sm'>{columnConfig.label || key}</span>
-                  </div>
+                  </button>
                 ))}
               </SelectContent>
             </Select>

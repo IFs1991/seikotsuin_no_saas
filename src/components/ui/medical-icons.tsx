@@ -58,6 +58,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 
 // アイコンのバリアント定義
 export interface MedicalIconProps {
@@ -177,7 +178,7 @@ export const MedicalIcon = React.forwardRef<SVGSVGElement, MedicalIconProps>(
     const IconComponent = iconMap[name];
 
     if (!IconComponent) {
-      console.warn(`MedicalIcon: Unknown icon name "${name}"`);
+      logger.warn(`MedicalIcon: Unknown icon name "${name}"`);
       return null;
     }
 

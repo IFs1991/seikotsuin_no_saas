@@ -15,6 +15,7 @@ import type {
   FilterState,
   UseSystemSettingsReturn,
 } from '@/types/admin';
+import { logger } from '@/lib/logger';
 
 /**
  * システム設定管理フック v2 (React Query版)
@@ -49,7 +50,7 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
       // 成功時の追加処理があれば記述
     },
     onError: error => {
-      console.error('作成エラー:', error.message);
+      logger.error('作成エラー:', error.message);
     },
   });
 
@@ -58,7 +59,7 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
       // 成功時の追加処理があれば記述
     },
     onError: error => {
-      console.error('更新エラー:', error.message);
+      logger.error('更新エラー:', error.message);
     },
   });
 
@@ -67,7 +68,7 @@ export function useSystemSettingsV2(): UseSystemSettingsReturn {
       // 成功時の追加処理があれば記述
     },
     onError: error => {
-      console.error('削除エラー:', error.message);
+      logger.error('削除エラー:', error.message);
     },
   });
 

@@ -78,7 +78,7 @@ export const DataFormDialog: React.FC<DataFormDialogProps> = ({
 
   // バリデーション
   const validateField = (field: FormField): string | null => {
-    const { name, type, required, value, maxLength, min, max } = field;
+    const { type, required, value, maxLength, min, max } = field;
 
     // 必須チェック
     if (required && (value === '' || value === null || value === undefined)) {

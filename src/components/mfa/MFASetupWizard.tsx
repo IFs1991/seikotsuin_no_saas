@@ -284,11 +284,15 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
 
               <TabsContent value='manual' className='space-y-4'>
                 <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-2'>
+                  <label
+                    htmlFor='mfa-manual-entry-key'
+                    className='block text-sm font-medium text-gray-700 mb-2'
+                  >
                     手動入力キー
                   </label>
                   <div className='flex items-center gap-2'>
                     <Input
+                      id='mfa-manual-entry-key'
                       value={setupData?.manualEntryKey || ''}
                       readOnly
                       className='font-mono text-sm'
@@ -338,10 +342,14 @@ export const MFASetupWizard: React.FC<MFASetupWizardProps> = ({
             </div>
 
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
+              <label
+                htmlFor='mfa-verification-code'
+                className='block text-sm font-medium text-gray-700 mb-2'
+              >
                 認証コード
               </label>
               <Input
+                id='mfa-verification-code'
                 type='text'
                 value={verificationCode}
                 onChange={e => {

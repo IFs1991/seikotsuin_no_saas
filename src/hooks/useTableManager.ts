@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { logger } from '@/lib/logger';
 import { API_ENDPOINTS, ERROR_MESSAGES, PAGINATION } from '@/lib/constants';
 import {
   TableData,
@@ -12,6 +11,7 @@ import {
   UseTableManagerReturn,
   ApiResponse,
 } from '@/types/admin';
+import { logger } from '@/lib/logger';
 
 export const useTableManager = (): UseTableManagerReturn => {
   // データ状態
@@ -126,7 +126,7 @@ export const useTableManager = (): UseTableManagerReturn => {
         const errorMessage =
           err instanceof Error ? err.message : ERROR_MESSAGES.NETWORK_ERROR;
         setError(errorMessage);
-        console.error('テーブルデータ取得エラー:', err);
+        logger.error('テーブルデータ取得エラー:', err);
       } finally {
         setLoading(false);
       }

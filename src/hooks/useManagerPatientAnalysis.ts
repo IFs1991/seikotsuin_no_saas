@@ -12,6 +12,7 @@ import type {
   ManagerPatientAnalysisPeriodType,
   ManagerPatientAnalysisResponse,
 } from '@/lib/manager-patient-analysis';
+import { logger } from '@/lib/logger';
 
 export type UseManagerPatientAnalysisResult = {
   data: ManagerPatientAnalysisResponse | null;
@@ -86,7 +87,7 @@ export function useManagerPatientAnalysis(
       if (!isCurrentRequest()) {
         return;
       }
-      console.warn('useManagerPatientAnalysis fetch error:', fetchError);
+      logger.warn('useManagerPatientAnalysis fetch error:', fetchError);
       setError(MANAGER_PATIENT_ANALYSIS_ERROR);
       setData(null);
     } finally {

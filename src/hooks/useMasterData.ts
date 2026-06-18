@@ -9,6 +9,7 @@ import {
   deleteMasterData,
   type MasterDataItem,
 } from '@/lib/api/admin/master-data-client';
+import { logger } from '@/lib/logger';
 
 export interface UseMasterDataOptions {
   clinicId?: string | null;
@@ -59,7 +60,7 @@ export function useMasterData(
       }),
   });
 
-  const allItems = query.data?.items ?? [];
+  const allItems = useMemo(() => query.data?.items ?? [], [query.data?.items]);
 
   const filteredItems = useMemo(() => {
     if (!searchQuery) return allItems;
@@ -150,7 +151,7 @@ export function useMasterData(
         )
       );
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       throw new Error(
         'インポートに失敗しました。ファイル形式を確認してください。'
       );

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { useOptionalUserProfileContext } from '@/providers/user-profile-context';
 import type { UserProfile } from '@/types/user-profile';
 import { CLINIC_ADMIN_ROLES, type Role } from '@/lib/constants/roles';
+import { logger } from '@/lib/logger';
 
 interface ProfileState {
   profile: UserProfile | null;
@@ -202,7 +203,7 @@ export function useUserProfile(): ProfileState {
         }
         return buildProfileFromUser(data.session.user);
       } catch (err) {
-        console.error('useUserProfile session error', err);
+        logger.error('useUserProfile session error', err);
         return loadProfileFromCookie();
       } finally {
         if (timeoutId) {
@@ -247,7 +248,7 @@ export function useUserProfile(): ProfileState {
           return;
         }
 
-        console.error('useUserProfile error', err);
+        logger.error('useUserProfile error', err);
         if (isMounted) {
           setError(err instanceof Error ? err.message : String(err));
           if (!hasSessionFallback) {

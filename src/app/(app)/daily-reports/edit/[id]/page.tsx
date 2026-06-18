@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { logger } from '@/lib/logger';
 
 interface DailyReportData {
   id: string;
@@ -26,6 +27,19 @@ interface DailyReportData {
   insuranceRevenue: number;
   privateRevenue: number;
   reportText: string | null;
+}
+
+interface DailyReportApiResponse {
+  success?: boolean;
+  data?: DailyReportData;
+  error?: {
+    message?: string;
+    fieldErrors?: Record<string, string[]>;
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export default function DailyReportEditPage() {
@@ -77,7 +91,7 @@ export default function DailyReportEditPage() {
           throw new Error('日報の取得に失敗しました');
         }
 
-        const json = await res.json();
+        const json = (await res.json()) as DailyReportApiResponse;
         if (json.success && json.data) {
           const data = json.data;
           setReportData(data);
@@ -92,9 +106,9 @@ export default function DailyReportEditPage() {
         } else {
           throw new Error('日報データの取得に失敗しました');
         }
-      } catch (e: any) {
-        console.error(e);
-        setLoadError(e?.message || '日報の取得に失敗しました');
+      } catch (e: unknown) {
+        logger.error(e);
+        setLoadError(getErrorMessage(e, '日報の取得に失敗しました'));
       } finally {
         setLoading(false);
       }
@@ -142,16 +156,14 @@ export default function DailyReportEditPage() {
       if (!res.ok) {
         let errorMessage = '保存に失敗しました';
         try {
-          const errorJson = await res.json();
+          const errorJson = (await res.json()) as DailyReportApiResponse;
           if (errorJson?.error?.message) {
             errorMessage = errorJson.error.message;
           }
           if (errorJson?.error?.fieldErrors) {
-            setFieldErrors(
-              errorJson.error.fieldErrors as Record<string, string[]>
-            );
+            setFieldErrors(errorJson.error.fieldErrors);
           }
-        } catch (parseError) {
+        } catch {
           const text = await res.text();
           if (text) {
             errorMessage = text;
@@ -163,9 +175,9 @@ export default function DailyReportEditPage() {
 
       alert('日報を更新しました');
       router.push('/daily-reports');
-    } catch (e: any) {
-      console.error(e);
-      const fallbackMessage = e?.message || String(e) || '保存に失敗しました';
+    } catch (e: unknown) {
+      logger.error(e);
+      const fallbackMessage = getErrorMessage(e, '保存に失敗しました');
       setFormError(fallbackMessage);
     } finally {
       setIsSubmitting(false);

@@ -14,7 +14,9 @@ export const NotificationsModal: React.FC<Props> = ({
   return (
     <div className='fixed inset-0 z-[60] flex items-center justify-center p-4'>
       {/* Backdrop */}
-      <div
+      <button
+        type='button'
+        aria-label='お知らせを閉じる'
         className='absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity'
         onClick={onClose}
       />

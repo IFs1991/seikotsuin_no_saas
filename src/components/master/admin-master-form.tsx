@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { MasterDataDetail } from '@/types/admin';
+import { logger } from '@/lib/logger';
 
 interface AdminMasterFormProps {
   masterData: MasterDataDetail[];
@@ -28,10 +29,10 @@ interface AdminMasterFormProps {
 }
 
 const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
-  masterData,
-  onCreate,
-  onUpdate,
-  onDelete,
+  masterData: _masterData,
+  onCreate: _onCreate,
+  onUpdate: _onUpdate,
+  onDelete: _onDelete,
   onImport,
   onExport,
   onRollback,
@@ -45,8 +46,8 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
     description: '',
   });
   const [previewMode, setPreviewMode] = useState(false);
-  const [impactedStores, setImpactedStores] = useState([]);
-  const [needsApproval, setNeedsApproval] = useState(false);
+  const [impactedStores] = useState([]);
+  const [needsApproval] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +70,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
         }
         await onImport(items);
       } catch (error) {
-        console.error('インポート失敗:', error);
+        logger.error('インポート失敗:', error);
       } finally {
         e.target.value = '';
       }
@@ -81,7 +82,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
     try {
       await onRollback();
     } catch (error) {
-      console.error('ロールバック失敗:', error);
+      logger.error('ロールバック失敗:', error);
     }
   };
 
@@ -100,7 +101,7 @@ const AdminMasterForm: React.FC<AdminMasterFormProps> = ({
       link.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('エクスポート失敗:', error);
+      logger.error('エクスポート失敗:', error);
     }
   };
 

@@ -10,6 +10,7 @@ import {
 } from '@/lib/api/admin/master-data-client';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { UserProfile } from '@/types/user-profile';
+import { logger } from '@/lib/logger';
 
 interface MenuItem {
   id: string;
@@ -137,7 +138,7 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
           setMenuItems(DEFAULT_MENU_ITEMS);
         }
       } catch (error) {
-        console.error('Failed to load master data', error);
+        logger.error('Failed to load master data', error);
         if (isMounted) {
           setLoadError('マスターデータの読み込みに失敗しました');
         }
@@ -218,7 +219,7 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
       }
       alert('マスターデータを保存しました');
     } catch (error) {
-      console.error('Save error:', error);
+      logger.error('Save error:', error);
       alert('保存に失敗しました');
     } finally {
       setIsSaving(false);
@@ -252,10 +253,14 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
         <h3 className='font-medium text-gray-900 mb-4'>新規メニュー追加</h3>
         <div className='grid gap-4 md:grid-cols-4'>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              htmlFor='master-data-new-name'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
               メニュー名
             </label>
             <input
+              id='master-data-new-name'
               type='text'
               value={newItem.name || ''}
               onChange={e =>
@@ -266,10 +271,14 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
             />
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              htmlFor='master-data-new-price'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
               料金（円）
             </label>
             <input
+              id='master-data-new-price'
               type='number'
               value={newItem.price || ''}
               onChange={e =>
@@ -280,10 +289,14 @@ export function MasterDataForm({ className }: MasterDataFormProps) {
             />
           </div>
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-1'>
+            <label
+              htmlFor='master-data-new-duration'
+              className='block text-sm font-medium text-gray-700 mb-1'
+            >
               所要時間（分）
             </label>
             <input
+              id='master-data-new-duration'
               type='number'
               value={newItem.duration || ''}
               onChange={e =>

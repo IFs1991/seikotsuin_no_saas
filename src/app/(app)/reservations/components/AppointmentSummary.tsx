@@ -176,9 +176,11 @@ export const AppointmentSummary: React.FC<Props> = ({
           </h3>
         </div>
 
-        <div
+        <button
+          type='button'
           onClick={onEdit}
-          className={`bg-yellow-50 p-4 rounded-lg border border-yellow-100 text-sm text-gray-700 min-h-[100px] whitespace-pre-wrap transition-colors ${onEdit ? 'cursor-pointer hover:bg-yellow-100/50 group relative' : ''}`}
+          disabled={!onEdit}
+          className={`w-full text-left bg-yellow-50 p-4 rounded-lg border border-yellow-100 text-sm text-gray-700 min-h-[100px] whitespace-pre-wrap transition-colors ${onEdit ? 'cursor-pointer hover:bg-yellow-100/50 group relative' : ''}`}
         >
           {appointment.memo || (
             <span className='text-gray-400 italic'>メモはありません。</span>
@@ -188,7 +190,7 @@ export const AppointmentSummary: React.FC<Props> = ({
               クリックして編集
             </div>
           )}
-        </div>
+        </button>
       </div>
     </div>
   );

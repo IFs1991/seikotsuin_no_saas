@@ -73,7 +73,10 @@ export function ManagerStaffAnalysis() {
     endDate,
     compare,
   });
-  const clinics = data?.scope.clinics ?? [];
+  const clinics = useMemo(
+    () => data?.scope.clinics ?? [],
+    [data?.scope.clinics]
+  );
   const hasAssignments = clinics.length > 0;
 
   useEffect(() => {
