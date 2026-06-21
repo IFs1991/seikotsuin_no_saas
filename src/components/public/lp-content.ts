@@ -7,7 +7,6 @@ import {
   Brain,
   Building2,
   CalendarClock,
-  ClipboardList,
   GitCompareArrows,
   LineChart,
   type LucideIcon,
@@ -111,7 +110,12 @@ export const pillarItems: PillarItem[] = [
     title: '本部オペレーション',
     description:
       '日報・売上・予約・シフト・患者データを、本部が同じ形式で確認できる土台。',
-    bullets: ['店舗別日報の一覧', '本部ダッシュボード', '権限別の閲覧範囲', '店舗比較ビュー'],
+    bullets: [
+      '店舗別日報の一覧',
+      '本部ダッシュボード',
+      '権限別の閲覧範囲',
+      '店舗比較ビュー',
+    ],
   },
   {
     index: '02',
@@ -120,7 +124,12 @@ export const pillarItems: PillarItem[] = [
     title: 'AI経営パートナー',
     description:
       '店舗横断の数字を読み込んだAIに、自然言語で確認。集計や会議準備の前さばきを任せる。',
-    bullets: ['売上の異変を要点で提示', '店舗比較の自動要約', '本部レポートの下書き', '確認すべき店舗の抽出'],
+    bullets: [
+      '売上の異変を要点で提示',
+      '店舗比較の自動要約',
+      '本部レポートの下書き',
+      '確認すべき店舗の抽出',
+    ],
     core: true,
   },
   {
@@ -130,7 +139,12 @@ export const pillarItems: PillarItem[] = [
     title: '経営KPI分析',
     description:
       '売上・粗利・リピート率・稼働率。本部判断に直結する指標を時系列で追跡。',
-    bullets: ['月次KPIダッシュボード', '店舗別の差分可視化', 'リピート率の推移', '担当者別パフォーマンス'],
+    bullets: [
+      '月次KPIダッシュボード',
+      '店舗別の差分可視化',
+      'リピート率の推移',
+      '担当者別パフォーマンス',
+    ],
   },
 ];
 
@@ -159,27 +173,32 @@ export const featureItems: FeatureItem[] = [
   {
     icon: GitCompareArrows,
     title: '店舗比較',
-    description: '店舗間の差分を見える化し、好調店舗の運用を横展開しやすくします。',
+    description:
+      '店舗間の差分を見える化し、好調店舗の運用を横展開しやすくします。',
   },
   {
     icon: UsersRound,
     title: 'スタッフ別集計',
-    description: 'スタッフ単位の実績や行動量を確認し、育成と配置の判断を支援します。',
+    description:
+      'スタッフ単位の実績や行動量を確認し、育成と配置の判断を支援します。',
   },
   {
     icon: CalendarClock,
     title: '予約・シフト連携',
-    description: '予約枠・稼働状況・シフト情報を経営確認に使いやすい形へ整理します。',
+    description:
+      '予約枠・稼働状況・シフト情報を経営確認に使いやすい形へ整理します。',
   },
   {
     icon: LineChart,
     title: '権限・多店舗管理',
-    description: '本部・店長・スタッフなど役割に応じた閲覧範囲とスコープを設計できます。',
+    description:
+      '本部・店長・スタッフなど役割に応じた閲覧範囲とスコープを設計できます。',
   },
   {
     icon: Sparkles,
     title: 'AI分析支援',
-    description: '自然言語で店舗データを確認するイメージで、分析業務の前さばきを支援します。',
+    description:
+      '自然言語で店舗データを確認するイメージで、分析業務の前さばきを支援します。',
   },
 ];
 
@@ -280,7 +299,12 @@ export const planItems: PlanItem[] = [
     initialCost: '¥300,000〜¥500,000',
     extraStore: '11店舗目以降 ¥8,000/月',
     recommended: true,
-    features: ['Starterの全機能', 'スタッフ別集計', '予約・シフト連携', '本部レポート支援'],
+    features: [
+      'Starterの全機能',
+      'スタッフ別集計',
+      '予約・シフト連携',
+      '本部レポート支援',
+    ],
   },
   {
     name: 'Enterprise',
@@ -289,7 +313,12 @@ export const planItems: PlanItem[] = [
     stores: '20店舗以上',
     initialCost: '¥500,000〜',
     extraStore: '個別見積',
-    features: ['Standardの全機能', '外部連携相談', '独自帳票設計', '運用設計支援'],
+    features: [
+      'Standardの全機能',
+      '外部連携相談',
+      '独自帳票設計',
+      '運用設計支援',
+    ],
   },
 ];
 
@@ -346,23 +375,27 @@ export const timelineItems: TimelineItem[] = [
   {
     phase: 'STEP 01',
     title: '現状ヒアリング',
-    description: '店舗数・現行の管理方法・本部の確認フローを整理し、必要な数字の出どころを確認します。',
+    description:
+      '店舗数・現行の管理方法・本部の確認フローを整理し、必要な数字の出どころを確認します。',
     active: true,
   },
   {
     phase: 'STEP 02',
     title: '本部ダッシュボード導入',
-    description: '店舗別日報と重要KPIを同じ形式に集約。既存運用と段階的に併用しながら立ち上げます。',
+    description:
+      '店舗別日報と重要KPIを同じ形式に集約。既存運用と段階的に併用しながら立ち上げます。',
   },
   {
     phase: 'STEP 03',
     title: '店舗比較・改善運用',
-    description: '店舗間の差分を可視化し、好調店舗の運用を横展開。週次・月次の確認サイクルを定着させます。',
+    description:
+      '店舗間の差分を可視化し、好調店舗の運用を横展開。週次・月次の確認サイクルを定着させます。',
   },
   {
     phase: 'STEP 04',
     title: 'AI分析支援の活用',
-    description: '本部レポートの下書きや異変検知をAIに前さばきさせ、会議準備と確認の時間をさらに圧縮します。',
+    description:
+      '本部レポートの下書きや異変検知をAIに前さばきさせ、会議準備と確認の時間をさらに圧縮します。',
   },
 ];
 

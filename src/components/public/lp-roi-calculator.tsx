@@ -25,9 +25,24 @@ interface Inputs {
 }
 
 const scenarios: Scenario[] = [
-  { id: 'conservative', label: '控えめ', rate: 0.2, description: '日報確認と集計の一部を整理する想定' },
-  { id: 'standard', label: '標準', rate: 0.35, description: '店舗比較と会議資料作成まで日常利用する想定' },
-  { id: 'active', label: '積極活用', rate: 0.5, description: '本部・院長・エリア管理者が毎週活用する想定' },
+  {
+    id: 'conservative',
+    label: '控えめ',
+    rate: 0.2,
+    description: '日報確認と集計の一部を整理する想定',
+  },
+  {
+    id: 'standard',
+    label: '標準',
+    rate: 0.35,
+    description: '店舗比較と会議資料作成まで日常利用する想定',
+  },
+  {
+    id: 'active',
+    label: '積極活用',
+    rate: 0.5,
+    description: '本部・院長・エリア管理者が毎週活用する想定',
+  },
 ];
 
 const initialInputs: Inputs = {
@@ -42,12 +57,8 @@ const initialInputs: Inputs = {
 
 const demoCta = createCtaLink('この削減余地を自院で試す', 'demo');
 
-function clamp(value: number, min: number, max: number): number {
-  if (Number.isNaN(value)) return min;
-  return Math.min(Math.max(value, min), max);
-}
-
-const fmtHours = (v: number) => `${v.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}時間`;
+const fmtHours = (v: number) =>
+  `${v.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}時間`;
 const fmtYen = (v: number) => `¥${Math.round(v).toLocaleString('ja-JP')}`;
 
 interface SliderProps {
@@ -60,7 +71,15 @@ interface SliderProps {
   onChange: (value: number) => void;
 }
 
-function Slider({ label, value, min, max, step = 1, suffix, onChange }: SliderProps) {
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  onChange,
+}: SliderProps) {
   return (
     <div className='flex flex-col gap-2'>
       <div className='flex items-center justify-between gap-3'>
@@ -87,9 +106,13 @@ function Slider({ label, value, min, max, step = 1, suffix, onChange }: SliderPr
 export function LpRoiCalculator() {
   const [inputs, setInputs] = useState<Inputs>(initialInputs);
 
-  const scenario = scenarios.find(s => s.id === inputs.scenarioId) ?? scenarios[1];
+  const scenario =
+    scenarios.find(s => s.id === inputs.scenarioId) ?? scenarios[1];
   const monthlyHours =
-    (inputs.storeCount * inputs.dailyReportMinutesPerStore * inputs.businessDays) / 60 +
+    (inputs.storeCount *
+      inputs.dailyReportMinutesPerStore *
+      inputs.businessDays) /
+      60 +
     inputs.weeklyAggregationHours * 4 +
     inputs.monthlyMeetingHours;
   const monthlySaved = monthlyHours * scenario.rate;
@@ -156,7 +179,9 @@ export function LpRoiCalculator() {
         </div>
 
         <div className='mt-8'>
-          <p className='mb-3 text-[13px] font-bold text-[#1A1A1A]'>削減シナリオ</p>
+          <p className='mb-3 text-[13px] font-bold text-[#1A1A1A]'>
+            削減シナリオ
+          </p>
           <div className='grid gap-2 sm:grid-cols-3'>
             {scenarios.map(s => {
               const isActive = inputs.scenarioId === s.id;
@@ -164,7 +189,9 @@ export function LpRoiCalculator() {
                 <button
                   key={s.id}
                   type='button'
-                  onClick={() => setInputs(current => ({ ...current, scenarioId: s.id }))}
+                  onClick={() =>
+                    setInputs(current => ({ ...current, scenarioId: s.id }))
+                  }
                   aria-pressed={isActive}
                   className={`min-h-20 rounded-[8px] border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C4956C] ${
                     isActive
@@ -178,7 +205,9 @@ export function LpRoiCalculator() {
                       {Math.round(s.rate * 100)}%
                     </span>
                   </span>
-                  <span className='mt-1 block text-[11px] leading-[1.6]'>{s.description}</span>
+                  <span className='mt-1 block text-[11px] leading-[1.6]'>
+                    {s.description}
+                  </span>
                 </button>
               );
             })}
@@ -213,17 +242,23 @@ export function LpRoiCalculator() {
               <Clock3 className='h-4 w-4' aria-hidden='true' />
               現在の月間本部業務時間
             </p>
-            <p className='font-mono text-[34px] font-bold leading-none'>{fmtHours(monthlyHours)}</p>
+            <p className='font-mono text-[34px] font-bold leading-none'>
+              {fmtHours(monthlyHours)}
+            </p>
           </div>
           <div className='grid gap-4 sm:grid-cols-2'>
             <div className='rounded-[10px] border border-[#E8B87A]/30 bg-[#E8B87A]/10 p-4'>
-              <p className='text-[12px] font-semibold text-[#E8B87A]'>毎月削減できる見込み</p>
+              <p className='text-[12px] font-semibold text-[#E8B87A]'>
+                毎月削減できる見込み
+              </p>
               <p className='mt-2 font-mono text-[26px] font-bold leading-none text-[#E8B87A]'>
                 {fmtHours(monthlySaved)}
               </p>
             </div>
             <div className='rounded-[10px] border border-white/10 bg-white/5 p-4'>
-              <p className='text-[12px] font-semibold text-white/60'>年間で戻る時間</p>
+              <p className='text-[12px] font-semibold text-white/60'>
+                年間で戻る時間
+              </p>
               <p className='mt-2 font-mono text-[26px] font-bold leading-none'>
                 {fmtHours(annualSaved)}
               </p>
@@ -241,7 +276,8 @@ export function LpRoiCalculator() {
         </div>
 
         <p className='mt-5 text-[12px] leading-[1.8] text-white/55'>
-          ※ LP上の簡易試算です。実際の効果は店舗の運用状況・予約率・単価・活用度によって変わり、効果を保証するものではありません。
+          ※
+          LP上の簡易試算です。実際の効果は店舗の運用状況・予約率・単価・活用度によって変わり、効果を保証するものではありません。
         </p>
 
         <a

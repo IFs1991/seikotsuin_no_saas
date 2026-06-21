@@ -8,7 +8,8 @@ import { aiScenarios } from './lp-content';
 // 「分析イメージ」を体験として伝えることに振り切っている。
 export function LpAiShowcase() {
   const [activeId, setActiveId] = useState(aiScenarios[0].id);
-  const active = aiScenarios.find(scene => scene.id === activeId) ?? aiScenarios[0];
+  const active =
+    aiScenarios.find(scene => scene.id === activeId) ?? aiScenarios[0];
   const ActiveIcon = active.icon;
 
   return (
@@ -36,7 +37,9 @@ export function LpAiShowcase() {
               >
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] ${
-                    isActive ? 'bg-[#C4956C] text-white' : 'bg-white text-[#2B3A3F]'
+                    isActive
+                      ? 'bg-[#C4956C] text-white'
+                      : 'bg-white text-[#2B3A3F]'
                   }`}
                 >
                   <Icon className='h-4 w-4' aria-hidden='true' />
@@ -60,7 +63,9 @@ export function LpAiShowcase() {
           </div>
           <div>
             <p className='text-[13px] font-bold text-[#1A1A1A]'>Tiramisu AI</p>
-            <p className='font-mono text-[11px] text-[#595959]'>選択肢クリック式の分析イメージ</p>
+            <p className='font-mono text-[11px] text-[#595959]'>
+              選択肢クリック式の分析イメージ
+            </p>
           </div>
           <span className='ml-auto rounded-full bg-[#C4956C]/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-[#C4956C]'>
             {active.tag}
@@ -83,12 +88,15 @@ export function LpAiShowcase() {
             <p className='mb-1 font-mono text-[10px] font-bold uppercase tracking-wider text-[#C4956C]'>
               分析イメージ
             </p>
-            <p className='text-[13px] leading-[1.85] text-[#1A1A1A]'>{active.answer}</p>
+            <p className='text-[13px] leading-[1.85] text-[#1A1A1A]'>
+              {active.answer}
+            </p>
           </div>
         </div>
 
         <p className='mt-5 border-t border-[#E8E4DE] pt-4 font-mono text-[11px] italic leading-[1.7] text-[#595959]'>
-          ※ 表示はLP上の分析イメージです。患者データ・予約データにはアクセスせず、医療判断や売上改善を保証するものではありません。
+          ※
+          表示はLP上の分析イメージです。患者データ・予約データにはアクセスせず、医療判断や売上改善を保証するものではありません。
         </p>
       </div>
     </div>

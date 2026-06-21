@@ -6,7 +6,8 @@
 
 const RAW_FORM_URL = (process.env.NEXT_PUBLIC_LP_FORM_URL ?? '').trim();
 
-export const LP_FORM_URL: string | null = RAW_FORM_URL.length > 0 ? RAW_FORM_URL : null;
+export const LP_FORM_URL: string | null =
+  RAW_FORM_URL.length > 0 ? RAW_FORM_URL : null;
 
 export const CONTACT_ANCHOR = '#contact';
 

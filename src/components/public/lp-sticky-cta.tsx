@@ -16,7 +16,10 @@ export function LpStickyCta() {
       if (ticking) return;
       ticking = true;
       window.requestAnimationFrame(() => {
-        setVisible(window.scrollY > 600);
+        const nextVisible = window.scrollY > 600;
+        setVisible(current =>
+          current === nextVisible ? current : nextVisible
+        );
         ticking = false;
       });
     };

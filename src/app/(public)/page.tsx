@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Fraunces, JetBrains_Mono, Noto_Sans_JP, Shippori_Mincho } from 'next/font/google';
+import {
+  Fraunces,
+  JetBrains_Mono,
+  Noto_Sans_JP,
+  Shippori_Mincho,
+} from 'next/font/google';
 import {
   ArrowRight,
   Building2,
@@ -23,14 +28,20 @@ import {
   timelineItems,
 } from '@/components/public/lp-content';
 import { createCtaLink, type CtaLink } from '@/components/public/lp-links';
-import { LpAiShowcase } from '@/components/public/lp-ai-showcase';
-import { LpRoiCalculator } from '@/components/public/lp-roi-calculator';
+import {
+  DynamicLpAiShowcase,
+  DynamicLpRoiCalculator,
+  DynamicLpStickyCta,
+} from '@/components/public/lp-dynamic-sections';
 import { LpFaq } from '@/components/public/lp-faq';
-import { LpStickyCta } from '@/components/public/lp-sticky-cta';
 import { cn } from '@/lib/utils';
 import './lp-styles.css';
 
-const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-serif-en', display: 'swap' });
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-serif-en',
+  display: 'swap',
+});
 const shippori = Shippori_Mincho({
   weight: ['500', '700', '800'],
   subsets: ['latin'],
@@ -128,7 +139,9 @@ export default function LandingPage() {
             <span className='flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#C4956C] font-serif-en text-lg font-bold text-white'>
               T
             </span>
-            <span className='font-serif-en text-xl font-bold tracking-tight'>Tiramisu</span>
+            <span className='font-serif-en text-xl font-bold tracking-tight'>
+              Tiramisu
+            </span>
           </Link>
           <nav className='hidden items-center gap-5 text-[13px] text-white/70 lg:flex'>
             {navItems.map(item => (
@@ -146,9 +159,17 @@ export default function LandingPage() {
               <LogIn className='h-4 w-4' aria-hidden='true' />
               スタッフログイン
             </Link>
-            <CtaAnchor cta={demoCta} variant='dark' className='min-h-10 px-4 py-2' />
+            <CtaAnchor
+              cta={demoCta}
+              variant='dark'
+              className='min-h-10 px-4 py-2'
+            />
           </div>
-          <CtaAnchor cta={demoCta} variant='dark' className='min-h-10 px-4 py-2 md:hidden' />
+          <CtaAnchor
+            cta={demoCta}
+            variant='dark'
+            className='min-h-10 px-4 py-2 md:hidden'
+          />
         </div>
       </header>
 
@@ -181,7 +202,11 @@ export default function LandingPage() {
               <CtaAnchor cta={documentCta} variant='light' />
             </div>
             <div className='flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-white/55'>
-              <Link href='/login' prefetch={false} className='underline underline-offset-4 hover:text-white'>
+              <Link
+                href='/login'
+                prefetch={false}
+                className='underline underline-offset-4 hover:text-white'
+              >
                 スタッフログイン
               </Link>
               <Link
@@ -192,7 +217,10 @@ export default function LandingPage() {
                 管理者ログイン
               </Link>
               <span className='inline-flex items-center gap-1.5'>
-                <ShieldCheck className='h-4 w-4 text-[#3F7D5C]' aria-hidden='true' />
+                <ShieldCheck
+                  className='h-4 w-4 text-[#3F7D5C]'
+                  aria-hidden='true'
+                />
                 公開LPは業務データに接続しません
               </span>
             </div>
@@ -207,7 +235,9 @@ export default function LandingPage() {
                     <p className='font-mono text-[11px] font-semibold uppercase tracking-wider text-[#595959]'>
                       Group Dashboard
                     </p>
-                    <p className='font-serif-jp text-xl font-bold'>本部経営サマリー</p>
+                    <p className='font-serif-jp text-xl font-bold'>
+                      本部経営サマリー
+                    </p>
                   </div>
                   <span className='rounded-full bg-[#3F7D5C]/10 px-3 py-1 font-mono text-[11px] font-bold text-[#3F7D5C]'>
                     Daily
@@ -215,9 +245,16 @@ export default function LandingPage() {
                 </div>
                 <div className='grid gap-3 sm:grid-cols-3'>
                   {heroStats.map(stat => (
-                    <div key={stat.label} className='rounded-[8px] bg-[#FAF8F5] p-4'>
-                      <p className='font-mono text-2xl font-bold'>{stat.value}</p>
-                      <p className='mt-1 text-[11px] font-semibold text-[#595959]'>{stat.label}</p>
+                    <div
+                      key={stat.label}
+                      className='rounded-[8px] bg-[#FAF8F5] p-4'
+                    >
+                      <p className='font-mono text-2xl font-bold'>
+                        {stat.value}
+                      </p>
+                      <p className='mt-1 text-[11px] font-semibold text-[#595959]'>
+                        {stat.label}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -228,10 +265,17 @@ export default function LandingPage() {
                       className='flex items-center justify-between rounded-[8px] border border-[#E8E4DE] p-3'
                     >
                       <span className='flex items-center gap-3'>
-                        <span className={cn('h-2.5 w-2.5 rounded-full', toneDot[row.tone])} />
+                        <span
+                          className={cn(
+                            'h-2.5 w-2.5 rounded-full',
+                            toneDot[row.tone]
+                          )}
+                        />
                         <span className='font-bold'>{row.store}</span>
                       </span>
-                      <span className='text-[13px] text-[#595959]'>{row.note}</span>
+                      <span className='text-[13px] text-[#595959]'>
+                        {row.note}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -248,16 +292,25 @@ export default function LandingPage() {
       <div className='overflow-hidden border-y border-[#E8E4DE] bg-[#FAF8F5] py-4'>
         <div className='lp-marquee-track flex items-center gap-8 whitespace-nowrap'>
           {[0, 1].map(loop => (
-            <div key={loop} className='flex items-center gap-8 whitespace-nowrap' aria-hidden={loop === 1}>
+            <div
+              key={loop}
+              className='flex items-center gap-8 whitespace-nowrap'
+              aria-hidden={loop === 1}
+            >
               <span className='font-mono text-[12px] uppercase tracking-widest text-[#595959]'>
                 導入検討エリア
               </span>
               {marqueePrefectures.map(pref => (
-                <span key={`${loop}-${pref}`} className='font-serif-jp text-[14px] font-medium text-[#1A1A1A]'>
+                <span
+                  key={`${loop}-${pref}`}
+                  className='font-serif-jp text-[14px] font-medium text-[#1A1A1A]'
+                >
                   {pref}
                 </span>
               ))}
-              <span className='font-mono text-[12px] text-[#C4956C]'>+ more</span>
+              <span className='font-mono text-[12px] text-[#C4956C]'>
+                + more
+              </span>
             </div>
           ))}
         </div>
@@ -278,9 +331,16 @@ export default function LandingPage() {
           </div>
           <div className='grid gap-4 md:grid-cols-2'>
             {problemItems.map(item => (
-              <div key={item.title} className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-6'>
-                <h3 className='font-serif-jp text-lg font-bold text-[#1A1A1A]'>{item.title}</h3>
-                <p className='mt-3 text-[14px] leading-7 text-[#595959]'>{item.description}</p>
+              <div
+                key={item.title}
+                className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-6'
+              >
+                <h3 className='font-serif-jp text-lg font-bold text-[#1A1A1A]'>
+                  {item.title}
+                </h3>
+                <p className='mt-3 text-[14px] leading-7 text-[#595959]'>
+                  {item.description}
+                </p>
               </div>
             ))}
           </div>
@@ -317,7 +377,9 @@ export default function LandingPage() {
                   <div
                     className={cn(
                       'flex h-11 w-11 items-center justify-center rounded-[8px]',
-                      pillar.core ? 'bg-[#C4956C]/20 text-[#C4956C]' : 'bg-[#2B3A3F]/10 text-[#2B3A3F]'
+                      pillar.core
+                        ? 'bg-[#C4956C]/20 text-[#C4956C]'
+                        : 'bg-[#2B3A3F]/10 text-[#2B3A3F]'
                     )}
                   >
                     <Icon className='h-5 w-5' aria-hidden='true' />
@@ -325,12 +387,22 @@ export default function LandingPage() {
                   <p className='mt-4 font-mono text-[10px] font-bold uppercase tracking-wider text-[#C4956C]'>
                     {pillar.index} / {pillar.eyebrow}
                   </p>
-                  <h3 className='mt-1 font-serif-jp text-xl font-bold text-[#1A1A1A]'>{pillar.title}</h3>
-                  <p className='mt-3 text-[13px] leading-7 text-[#595959]'>{pillar.description}</p>
+                  <h3 className='mt-1 font-serif-jp text-xl font-bold text-[#1A1A1A]'>
+                    {pillar.title}
+                  </h3>
+                  <p className='mt-3 text-[13px] leading-7 text-[#595959]'>
+                    {pillar.description}
+                  </p>
                   <ul className='mt-4 flex flex-col gap-2'>
                     {pillar.bullets.map(bullet => (
-                      <li key={bullet} className='flex items-center gap-2 text-[13px] text-[#1A1A1A]'>
-                        <CheckCircle2 className='h-4 w-4 shrink-0 text-[#3F7D5C]' aria-hidden='true' />
+                      <li
+                        key={bullet}
+                        className='flex items-center gap-2 text-[13px] text-[#1A1A1A]'
+                      >
+                        <CheckCircle2
+                          className='h-4 w-4 shrink-0 text-[#3F7D5C]'
+                          aria-hidden='true'
+                        />
                         {bullet}
                       </li>
                     ))}
@@ -355,10 +427,17 @@ export default function LandingPage() {
             {featureItems.map(item => {
               const Icon = item.icon;
               return (
-                <div key={item.title} className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-5'>
+                <div
+                  key={item.title}
+                  className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-5'
+                >
                   <Icon className='h-6 w-6 text-[#C4956C]' aria-hidden='true' />
-                  <h3 className='mt-4 font-serif-jp text-base font-bold text-[#1A1A1A]'>{item.title}</h3>
-                  <p className='mt-2 text-[13px] leading-7 text-[#595959]'>{item.description}</p>
+                  <h3 className='mt-4 font-serif-jp text-base font-bold text-[#1A1A1A]'>
+                    {item.title}
+                  </h3>
+                  <p className='mt-2 text-[13px] leading-7 text-[#595959]'>
+                    {item.description}
+                  </p>
                 </div>
               );
             })}
@@ -367,7 +446,10 @@ export default function LandingPage() {
       </section>
 
       {/* ===== AI Showcase ===== */}
-      <section id='ai' className='border-y border-[#E8E4DE] bg-[#F3EFE8] py-20 md:py-28'>
+      <section
+        id='ai'
+        className='border-y border-[#E8E4DE] bg-[#F3EFE8] py-20 md:py-28'
+      >
         <div className='mx-auto max-w-6xl px-4 sm:px-6 lg:px-8'>
           <div className='mb-10 max-w-3xl space-y-3'>
             <SectionEyebrow>AI Chat / Real Scenarios</SectionEyebrow>
@@ -378,7 +460,7 @@ export default function LandingPage() {
               店舗横断の数字を読み込んだAIに、自然言語で確認するイメージです。質問候補を選ぶと、分析イメージが表示されます。
             </p>
           </div>
-          <LpAiShowcase />
+          <DynamicLpAiShowcase />
         </div>
       </section>
 
@@ -389,16 +471,18 @@ export default function LandingPage() {
             <div className='aspect-[4/5] w-full rounded-[10px] border border-[#E8E4DE] bg-gradient-to-br from-[#E8E4DE] via-[#F3EFE8] to-[#C4956C]/20' />
             <div className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-5'>
               <ul className='flex flex-col gap-2.5 text-[13px] font-medium text-[#1A1A1A]'>
-                {['施術家として現場を経験', '多店舗グループの本部運営に従事', 'SaaSの開発・導入に携わる'].map(
-                  (line, index) => (
-                    <li key={line} className='flex items-start gap-3'>
-                      <span className='mt-0.5 font-mono text-[11px] font-bold tracking-wider text-[#C4956C]'>
-                        0{index + 1}
-                      </span>
-                      <span>{line}</span>
-                    </li>
-                  )
-                )}
+                {[
+                  '施術家として現場を経験',
+                  '多店舗グループの本部運営に従事',
+                  'SaaSの開発・導入に携わる',
+                ].map((line, index) => (
+                  <li key={line} className='flex items-start gap-3'>
+                    <span className='mt-0.5 font-mono text-[11px] font-bold tracking-wider text-[#C4956C]'>
+                      0{index + 1}
+                    </span>
+                    <span>{line}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -418,21 +502,32 @@ export default function LandingPage() {
               <p>
                 多店舗の整骨院グループでは、店舗が増えるほど本部の確認作業が静かに膨らみます。
                 日報はLINE、売上はExcel、予約は別システム。数字は確かにあるのに、
-                <span className='font-bold'>本部が全店を同じ目線で見られる場所がない。</span>
+                <span className='font-bold'>
+                  本部が全店を同じ目線で見られる場所がない。
+                </span>
               </p>
               <p>
-                集計や確認や報告のような<span className='font-bold'>間接利益の業務が、直接利益の時間を圧迫している</span>
+                集計や確認や報告のような
+                <span className='font-bold'>
+                  間接利益の業務が、直接利益の時間を圧迫している
+                </span>
                 ——この構造を、現場と本部の両方から見てきました。
               </p>
               <p>
                 だからTiramisuは、派手な新機能ではなく、
-                <span className='bg-[#C4956C]/15 px-1'>本部が毎日同じ数字で動ける状態</span>
+                <span className='bg-[#C4956C]/15 px-1'>
+                  本部が毎日同じ数字で動ける状態
+                </span>
                 をつくることに振り切っています。数字を読みに行くのではなく、数字のほうから要点が返ってくる。そんな本部運営を目指しています。
               </p>
             </div>
             <div className='mt-10 border-t border-[#E8E4DE] pt-6'>
-              <p className='font-serif-jp text-2xl text-[#1A1A1A]'>Tiramisu 開発チーム</p>
-              <p className='mt-1 font-mono text-[12px] tracking-wider text-[#595959]'>FOUNDER / TIRAMISU</p>
+              <p className='font-serif-jp text-2xl text-[#1A1A1A]'>
+                Tiramisu 開発チーム
+              </p>
+              <p className='mt-1 font-mono text-[12px] tracking-wider text-[#595959]'>
+                FOUNDER / TIRAMISU
+              </p>
               <a
                 href={contactCta.href}
                 target={contactCta.external ? '_blank' : undefined}
@@ -448,7 +543,10 @@ export default function LandingPage() {
       </section>
 
       {/* ===== ROI ===== */}
-      <section id='roi' className='border-y border-[#E8E4DE] bg-[#FAF8F5] py-20 md:py-28'>
+      <section
+        id='roi'
+        className='border-y border-[#E8E4DE] bg-[#FAF8F5] py-20 md:py-28'
+      >
         <div className='mx-auto max-w-6xl px-4 sm:px-6 lg:px-8'>
           <div className='mb-10 max-w-3xl space-y-3'>
             <SectionEyebrow>Back Office Impact</SectionEyebrow>
@@ -460,7 +558,7 @@ export default function LandingPage() {
               入力値は保存せず、外部APIにも送信しません。
             </p>
           </div>
-          <LpRoiCalculator />
+          <DynamicLpRoiCalculator />
         </div>
       </section>
 
@@ -496,10 +594,17 @@ export default function LandingPage() {
                   </span>
                 )}
                 <h3 className='font-serif-jp text-xl font-bold'>{plan.name}</h3>
-                <p className='mt-2 text-[13px] leading-7 text-white/70'>{plan.positioning}</p>
+                <p className='mt-2 text-[13px] leading-7 text-white/70'>
+                  {plan.positioning}
+                </p>
                 <div className='mt-6 flex items-baseline gap-1'>
-                  <span className='font-mono text-4xl font-bold'>{plan.monthlyPrice}</span>
-                  <span className='text-[13px] font-semibold text-white/60'> / 月（税抜）</span>
+                  <span className='font-mono text-4xl font-bold'>
+                    {plan.monthlyPrice}
+                  </span>
+                  <span className='text-[13px] font-semibold text-white/60'>
+                    {' '}
+                    / 月（税抜）
+                  </span>
                 </div>
                 <dl className='mt-5 grid gap-3 text-[13px]'>
                   <div className='flex justify-between gap-4 border-b border-white/10 pb-3'>
@@ -517,8 +622,14 @@ export default function LandingPage() {
                 </dl>
                 <ul className='mt-6 flex flex-1 flex-col gap-3'>
                   {plan.features.map(feature => (
-                    <li key={feature} className='flex gap-2 text-[13px] text-white/90'>
-                      <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]' aria-hidden='true' />
+                    <li
+                      key={feature}
+                      className='flex gap-2 text-[13px] text-white/90'
+                    >
+                      <CheckCircle2
+                        className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]'
+                        aria-hidden='true'
+                      />
                       {feature}
                     </li>
                   ))}
@@ -556,9 +667,15 @@ export default function LandingPage() {
                   <th className='px-5 py-4 font-mono text-[12px] font-bold uppercase tracking-wider text-[#595959]'>
                     観点
                   </th>
-                  <th className='px-5 py-4 text-[13px] font-bold text-[#1A1A1A]'>Tiramisu</th>
-                  <th className='px-5 py-4 text-[13px] font-medium text-[#595959]'>単店舗向けシステム</th>
-                  <th className='px-5 py-4 text-[13px] font-medium text-[#595959]'>Excel運用</th>
+                  <th className='px-5 py-4 text-[13px] font-bold text-[#1A1A1A]'>
+                    Tiramisu
+                  </th>
+                  <th className='px-5 py-4 text-[13px] font-medium text-[#595959]'>
+                    単店舗向けシステム
+                  </th>
+                  <th className='px-5 py-4 text-[13px] font-medium text-[#595959]'>
+                    Excel運用
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -570,15 +687,24 @@ export default function LandingPage() {
                       index % 2 === 0 ? 'bg-white' : 'bg-[#FAF8F5]/60'
                     )}
                   >
-                    <td className='px-5 py-4 text-[13px] font-bold text-[#1A1A1A]'>{row.axis}</td>
+                    <td className='px-5 py-4 text-[13px] font-bold text-[#1A1A1A]'>
+                      {row.axis}
+                    </td>
                     <td className='border-l-2 border-[#C4956C] bg-[#C4956C]/5 px-5 py-4 text-[13px] text-[#1A1A1A]'>
                       <span className='flex items-start gap-2'>
-                        <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]' aria-hidden='true' />
+                        <CheckCircle2
+                          className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]'
+                          aria-hidden='true'
+                        />
                         {row.tiramisu}
                       </span>
                     </td>
-                    <td className='px-5 py-4 text-[13px] text-[#595959]'>{row.others}</td>
-                    <td className='px-5 py-4 text-[13px] text-[#595959]'>{row.excel}</td>
+                    <td className='px-5 py-4 text-[13px] text-[#595959]'>
+                      {row.others}
+                    </td>
+                    <td className='px-5 py-4 text-[13px] text-[#595959]'>
+                      {row.excel}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -588,12 +714,22 @@ export default function LandingPage() {
           {/* モバイル: カード */}
           <div className='flex flex-col gap-4 md:hidden'>
             {comparisonRows.map(row => (
-              <div key={row.axis} className='overflow-hidden rounded-[8px] border border-[#E8E4DE]'>
-                <div className='bg-[#F3EFE8] px-4 py-2 text-[13px] font-bold text-[#1A1A1A]'>{row.axis}</div>
+              <div
+                key={row.axis}
+                className='overflow-hidden rounded-[8px] border border-[#E8E4DE]'
+              >
+                <div className='bg-[#F3EFE8] px-4 py-2 text-[13px] font-bold text-[#1A1A1A]'>
+                  {row.axis}
+                </div>
                 <div className='flex items-start gap-2 border-l-2 border-[#C4956C] bg-[#C4956C]/5 p-4'>
-                  <CheckCircle2 className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]' aria-hidden='true' />
+                  <CheckCircle2
+                    className='mt-0.5 h-4 w-4 shrink-0 text-[#3F7D5C]'
+                    aria-hidden='true'
+                  />
                   <div>
-                    <p className='mb-0.5 text-[11px] font-bold text-[#C4956C]'>Tiramisu</p>
+                    <p className='mb-0.5 text-[11px] font-bold text-[#C4956C]'>
+                      Tiramisu
+                    </p>
                     <p className='text-[13px] text-[#1A1A1A]'>{row.tiramisu}</p>
                   </div>
                 </div>
@@ -641,8 +777,12 @@ export default function LandingPage() {
                   >
                     {item.phase}
                   </p>
-                  <h3 className='mt-1 font-serif-jp text-xl font-bold text-[#1A1A1A]'>{item.title}</h3>
-                  <p className='mt-2 text-[14px] leading-8 text-[#595959]'>{item.description}</p>
+                  <h3 className='mt-1 font-serif-jp text-xl font-bold text-[#1A1A1A]'>
+                    {item.title}
+                  </h3>
+                  <p className='mt-2 text-[14px] leading-8 text-[#595959]'>
+                    {item.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -664,7 +804,10 @@ export default function LandingPage() {
       </section>
 
       {/* ===== Contact ===== */}
-      <section id='contact' className='scroll-mt-20 bg-[#2B3A3F] py-20 text-white md:py-28'>
+      <section
+        id='contact'
+        className='scroll-mt-20 bg-[#2B3A3F] py-20 text-white md:py-28'
+      >
         <div className='mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-[1fr_0.8fr] lg:px-8'>
           <div className='space-y-5'>
             <SectionEyebrow>Contact</SectionEyebrow>
@@ -680,7 +823,9 @@ export default function LandingPage() {
             </div>
           </div>
           <div className='rounded-[10px] border border-white/10 bg-white/5 p-5'>
-            <h3 className='font-serif-jp text-lg font-bold'>相談時に伺うこと</h3>
+            <h3 className='font-serif-jp text-lg font-bold'>
+              相談時に伺うこと
+            </h3>
             <ul className='mt-4 flex flex-col gap-3 text-[14px] leading-7 text-white/75'>
               {[
                 '会社名 / 屋号、ご担当者名、連絡先',
@@ -689,7 +834,10 @@ export default function LandingPage() {
                 '困っていること、希望連絡方法',
               ].map(item => (
                 <li key={item} className='flex gap-2'>
-                  <CheckCircle2 className='mt-1 h-4 w-4 shrink-0 text-[#E8B87A]' aria-hidden='true' />
+                  <CheckCircle2
+                    className='mt-1 h-4 w-4 shrink-0 text-[#E8B87A]'
+                    aria-hidden='true'
+                  />
                   {item}
                 </li>
               ))}
@@ -702,20 +850,31 @@ export default function LandingPage() {
       <footer className='bg-[#1f292d] py-12 text-white/70'>
         <div className='mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8'>
           <div className='flex flex-col justify-between gap-4 sm:flex-row sm:items-center'>
-            <Link href='/' className='font-serif-en text-2xl font-bold text-white'>
+            <Link
+              href='/'
+              className='font-serif-en text-2xl font-bold text-white'
+            >
               Tiramisu
             </Link>
             <div className='flex flex-wrap gap-x-5 gap-y-2 text-[13px]'>
               <Link href='/login' prefetch={false} className='hover:text-white'>
                 スタッフログイン
               </Link>
-              <Link href='/admin/login' prefetch={false} className='hover:text-white'>
+              <Link
+                href='/admin/login'
+                prefetch={false}
+                className='hover:text-white'
+              >
                 管理者ログイン
               </Link>
               <Link href='/terms' prefetch={false} className='hover:text-white'>
                 利用規約
               </Link>
-              <Link href='/privacy' prefetch={false} className='hover:text-white'>
+              <Link
+                href='/privacy'
+                prefetch={false}
+                className='hover:text-white'
+              >
                 プライバシーポリシー
               </Link>
               <a
@@ -731,11 +890,13 @@ export default function LandingPage() {
           <p className='text-[12px] leading-6 text-white/45'>
             Tiramisuは、5店舗以上の整骨院グループ向けに、日報・売上・予約・シフト・店舗比較を一元管理する本部管理OSです。
           </p>
-          <p className='font-mono text-[11px] text-white/30'>© 2026 Tiramisu. All rights reserved.</p>
+          <p className='font-mono text-[11px] text-white/30'>
+            © 2026 Tiramisu. All rights reserved.
+          </p>
         </div>
       </footer>
 
-      <LpStickyCta />
+      <DynamicLpStickyCta />
     </div>
   );
 }
