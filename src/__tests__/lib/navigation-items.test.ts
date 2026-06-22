@@ -106,6 +106,16 @@ describe('navigation items', () => {
     );
   });
 
+  it('契約管理はHQ管理メニューだけに表示する', () => {
+    expect(ADMIN_MENU_ITEMS.map(item => item.href)).toContain('/admin/billing');
+    expect(CLINIC_ADMIN_MENU_ITEMS.map(item => item.href)).not.toContain(
+      '/admin/billing'
+    );
+    expect(AREA_MANAGER_ADMIN_MENU_ITEMS.map(item => item.href)).not.toContain(
+      '/admin/billing'
+    );
+  });
+
   it('manager は店舗運用メニューと限定管理メニューを表示対象にする', () => {
     const mode = getNavigationMode({
       role: 'manager',
@@ -373,6 +383,9 @@ describe('navigation items', () => {
   it('現在パスに最も近いナビ項目を選択する', () => {
     expect(getCurrentNavigationItemId('/admin/tenants', ADMIN_MENU_ITEMS)).toBe(
       'admin-tenants'
+    );
+    expect(getCurrentNavigationItemId('/admin/billing', ADMIN_MENU_ITEMS)).toBe(
+      'admin-billing'
     );
     expect(getCurrentNavigationItemId('/admin/chat', ADMIN_MENU_ITEMS)).toBe(
       'admin-chat'

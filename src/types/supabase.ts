@@ -4635,6 +4635,189 @@ export type Database = {
           },
         ];
       };
+      stripe_webhook_events: {
+        Row: {
+          created_at: string;
+          event_type: string;
+          id: string;
+          livemode: boolean;
+          payload: Json;
+          processed_at: string | null;
+          processing_error: string | null;
+          processing_status: string;
+          related_org_root_clinic_id: string | null;
+          related_stripe_subscription_id: string | null;
+          retryable: boolean;
+          stripe_created_at: string | null;
+          stripe_event_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          livemode: boolean;
+          payload: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          related_org_root_clinic_id?: string | null;
+          related_stripe_subscription_id?: string | null;
+          retryable?: boolean;
+          stripe_created_at?: string | null;
+          stripe_event_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          livemode?: boolean;
+          payload?: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          related_org_root_clinic_id?: string | null;
+          related_stripe_subscription_id?: string | null;
+          retryable?: boolean;
+          stripe_created_at?: string | null;
+          stripe_event_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_webhook_events_related_org_root_clinic_id_fkey';
+            columns: ['related_org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stripe_webhook_events_related_org_root_clinic_id_fkey';
+            columns: ['related_org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      subscriptions: {
+        Row: {
+          billing_state: string;
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          checkout_expires_at: string | null;
+          checkout_plan_code: string | null;
+          checkout_started_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          ended_at: string | null;
+          grace_until: string | null;
+          id: string;
+          included_store_quantity: number;
+          last_stripe_event_created: string | null;
+          last_stripe_event_id: string | null;
+          last_synced_at: string | null;
+          metadata: Json;
+          org_root_clinic_id: string;
+          paid_extra_store_quantity: number;
+          past_due_since: string | null;
+          plan_code: string;
+          stripe_checkout_session_id: string | null;
+          stripe_customer_id: string | null;
+          stripe_group_base_subscription_item_id: string | null;
+          stripe_single_subscription_item_id: string | null;
+          stripe_status: string;
+          stripe_store_subscription_item_id: string | null;
+          stripe_subscription_id: string | null;
+          trial_consumed: boolean;
+          trial_end: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          billing_state?: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_expires_at?: string | null;
+          checkout_plan_code?: string | null;
+          checkout_started_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          grace_until?: string | null;
+          id?: string;
+          included_store_quantity?: number;
+          last_stripe_event_created?: string | null;
+          last_stripe_event_id?: string | null;
+          last_synced_at?: string | null;
+          metadata?: Json;
+          org_root_clinic_id: string;
+          paid_extra_store_quantity?: number;
+          past_due_since?: string | null;
+          plan_code: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_customer_id?: string | null;
+          stripe_group_base_subscription_item_id?: string | null;
+          stripe_single_subscription_item_id?: string | null;
+          stripe_status?: string;
+          stripe_store_subscription_item_id?: string | null;
+          stripe_subscription_id?: string | null;
+          trial_consumed?: boolean;
+          trial_end?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          billing_state?: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_expires_at?: string | null;
+          checkout_plan_code?: string | null;
+          checkout_started_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          grace_until?: string | null;
+          id?: string;
+          included_store_quantity?: number;
+          last_stripe_event_created?: string | null;
+          last_stripe_event_id?: string | null;
+          last_synced_at?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string;
+          paid_extra_store_quantity?: number;
+          past_due_since?: string | null;
+          plan_code?: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_customer_id?: string | null;
+          stripe_group_base_subscription_item_id?: string | null;
+          stripe_single_subscription_item_id?: string | null;
+          stripe_status?: string;
+          stripe_store_subscription_item_id?: string | null;
+          stripe_subscription_id?: string | null;
+          trial_consumed?: boolean;
+          trial_end?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'subscriptions_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       treatment_menu_records: {
         Row: {
           created_at: string;
