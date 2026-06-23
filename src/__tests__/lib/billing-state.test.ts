@@ -4,7 +4,9 @@ import { describe, expect, test } from '@jest/globals';
 import {
   canUseBillingPortal,
   canUseBusinessReadAccess,
+  canUseBusinessReadAccessWithOverride,
   canUseBusinessWriteAccess,
+  canUseBusinessWriteAccessWithOverride,
   deriveBillingState,
   type DeriveBillingStateInput,
 } from '@/lib/billing/state';
@@ -128,6 +130,22 @@ describe('deriveBillingState', () => {
       )
     ).toBe('canceled');
   });
+
+  test('read/export override does not derive full write access state', () => {
+    expect(
+      deriveBillingState(
+        buildInput({
+          stripeStatus: 'canceled',
+          activeOverride: {
+            state: 'allow_read_export',
+            startsAt: new Date('2026-06-21T00:00:00.000Z'),
+            expiresAt: new Date('2026-06-23T00:00:00.000Z'),
+            revokedAt: null,
+          },
+        })
+      )
+    ).toBe('canceled');
+  });
 });
 
 describe('billing access helpers', () => {
@@ -145,5 +163,29 @@ describe('billing access helpers', () => {
     expect(canUseBusinessReadAccess('none')).toBe(false);
     expect(canUseBillingPortal('past_due_locked')).toBe(true);
     expect(canUseBillingPortal('none')).toBe(false);
+  });
+
+  test('read/export override grants read but not write', () => {
+    const activeOverride = {
+      state: 'allow_read_export' as const,
+      startsAt: new Date('2026-06-21T00:00:00.000Z'),
+      expiresAt: new Date('2026-06-23T00:00:00.000Z'),
+      revokedAt: null,
+    };
+
+    expect(
+      canUseBusinessReadAccessWithOverride({
+        state: 'canceled',
+        activeOverride,
+        now: NOW,
+      })
+    ).toBe(true);
+    expect(
+      canUseBusinessWriteAccessWithOverride({
+        state: 'canceled',
+        activeOverride,
+        now: NOW,
+      })
+    ).toBe(false);
   });
 });

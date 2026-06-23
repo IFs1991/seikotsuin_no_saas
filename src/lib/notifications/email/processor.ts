@@ -1,4 +1,5 @@
 import type {
+  BillingEmailTemplateType,
   EmailProvider,
   EmailTemplateType,
   ReservationEmailPayload,
@@ -7,8 +8,9 @@ import { renderReservationCreatedEmail } from './templates/reservation-created';
 import { renderReservationUpdatedEmail } from './templates/reservation-updated';
 import { renderReservationCancelledEmail } from './templates/reservation-cancelled';
 import { renderReminderDayBeforeEmail } from './templates/reminder-day-before';
+import { renderBillingLifecycleEmail } from './templates/billing-lifecycle';
 import type { SupabaseServerClient } from '@/lib/supabase';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
 
 /** retry 間隔 (分) */
 const RETRY_DELAYS = [5, 15, 60];
@@ -30,17 +32,27 @@ export type ProcessorResult = {
 
 function renderTemplate(
   templateType: EmailTemplateType,
-  payload: ReservationEmailPayload
+  payload: Json
 ): { subject: string; html: string; text: string } {
   switch (templateType) {
     case 'reservation_created':
-      return renderReservationCreatedEmail(payload);
+      return renderReservationCreatedEmail(payload as ReservationEmailPayload);
     case 'reservation_updated':
-      return renderReservationUpdatedEmail(payload);
+      return renderReservationUpdatedEmail(payload as ReservationEmailPayload);
     case 'reservation_cancelled':
-      return renderReservationCancelledEmail(payload);
+      return renderReservationCancelledEmail(
+        payload as ReservationEmailPayload
+      );
     case 'reminder_day_before':
-      return renderReminderDayBeforeEmail(payload);
+      return renderReminderDayBeforeEmail(payload as ReservationEmailPayload);
+    case 'billing_payment_failed':
+    case 'billing_payment_recovered':
+    case 'billing_trial_will_end':
+    case 'billing_access_locked':
+      return renderBillingLifecycleEmail(
+        templateType satisfies BillingEmailTemplateType,
+        payload
+      );
     default:
       throw new Error(`Unknown template type: ${templateType}`);
   }
@@ -166,7 +178,7 @@ export async function processEmailOutbox(
       // 3. テンプレート描画
       const rendered = renderTemplate(
         job.template_type as EmailTemplateType,
-        job.payload as ReservationEmailPayload
+        job.payload
       );
 
       try {

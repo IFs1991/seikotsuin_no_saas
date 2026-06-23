@@ -4650,6 +4650,129 @@ export type Database = {
           },
         ];
       };
+      billing_audit_logs: {
+        Row: {
+          actor_type: string;
+          actor_user_id: string | null;
+          after_state: Json | null;
+          before_state: Json | null;
+          created_at: string;
+          event_type: string;
+          id: string;
+          internal_actor: string | null;
+          metadata: Json;
+          org_root_clinic_id: string | null;
+          request_id: string | null;
+          stripe_event_id: string | null;
+        };
+        Insert: {
+          actor_type: string;
+          actor_user_id?: string | null;
+          after_state?: Json | null;
+          before_state?: Json | null;
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          internal_actor?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string | null;
+          request_id?: string | null;
+          stripe_event_id?: string | null;
+        };
+        Update: {
+          actor_type?: string;
+          actor_user_id?: string | null;
+          after_state?: Json | null;
+          before_state?: Json | null;
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          internal_actor?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string | null;
+          request_id?: string | null;
+          stripe_event_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'billing_audit_logs_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'billing_audit_logs_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      billing_overrides: {
+        Row: {
+          created_at: string;
+          created_by_internal: string;
+          expired_audited_at: string | null;
+          expires_at: string;
+          id: string;
+          metadata: Json;
+          org_root_clinic_id: string;
+          override_state: string;
+          reason: string;
+          revoked_at: string | null;
+          revoked_by_internal: string | null;
+          starts_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by_internal: string;
+          expired_audited_at?: string | null;
+          expires_at: string;
+          id?: string;
+          metadata?: Json;
+          org_root_clinic_id: string;
+          override_state: string;
+          reason: string;
+          revoked_at?: string | null;
+          revoked_by_internal?: string | null;
+          starts_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by_internal?: string;
+          expired_audited_at?: string | null;
+          expires_at?: string;
+          id?: string;
+          metadata?: Json;
+          org_root_clinic_id?: string;
+          override_state?: string;
+          reason?: string;
+          revoked_at?: string | null;
+          revoked_by_internal?: string | null;
+          starts_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'billing_overrides_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'billing_overrides_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       stripe_webhook_events: {
         Row: {
           created_at: string;

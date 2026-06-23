@@ -17,7 +17,7 @@ export type DeriveBillingStateInput = {
   now: Date;
 };
 
-function isActiveOverride(
+export function isActiveBillingOverride(
   override: BillingOverride | null | undefined,
   now: Date
 ) {
@@ -30,6 +30,16 @@ function isActiveOverride(
   );
 }
 
+function isActiveFullAccessOverride(
+  override: BillingOverride | null | undefined,
+  now: Date
+) {
+  return (
+    isActiveBillingOverride(override, now) &&
+    override.state === 'allow_full_access'
+  );
+}
+
 function isStillInsideCurrentPeriod(currentPeriodEnd: Date | null, now: Date) {
   return currentPeriodEnd === null || currentPeriodEnd > now;
 }
@@ -37,7 +47,7 @@ function isStillInsideCurrentPeriod(currentPeriodEnd: Date | null, now: Date) {
 export function deriveBillingState(
   input: DeriveBillingStateInput
 ): BillingState {
-  if (isActiveOverride(input.activeOverride, input.now)) {
+  if (isActiveFullAccessOverride(input.activeOverride, input.now)) {
     return 'override_active';
   }
 
@@ -105,4 +115,28 @@ export function canUseBusinessReadAccess(state: BillingState) {
     'past_due_locked',
     'override_active',
   ].includes(state);
+}
+
+export function canUseBusinessWriteAccessWithOverride(input: {
+  state: BillingState;
+  activeOverride?: BillingOverride | null;
+  now: Date;
+}) {
+  if (isActiveFullAccessOverride(input.activeOverride, input.now)) {
+    return true;
+  }
+
+  return canUseBusinessWriteAccess(input.state);
+}
+
+export function canUseBusinessReadAccessWithOverride(input: {
+  state: BillingState;
+  activeOverride?: BillingOverride | null;
+  now: Date;
+}) {
+  if (isActiveBillingOverride(input.activeOverride, input.now)) {
+    return true;
+  }
+
+  return canUseBusinessReadAccess(input.state);
 }

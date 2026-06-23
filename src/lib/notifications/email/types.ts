@@ -9,7 +9,14 @@ export type EmailTemplateType =
   | 'reservation_created'
   | 'reservation_updated'
   | 'reservation_cancelled'
-  | 'reminder_day_before';
+  | 'reminder_day_before'
+  | BillingEmailTemplateType;
+
+export type BillingEmailTemplateType =
+  | 'billing_payment_failed'
+  | 'billing_payment_recovered'
+  | 'billing_trial_will_end'
+  | 'billing_access_locked';
 
 /** outbox ステータス */
 export type EmailOutboxStatus =
@@ -109,6 +116,14 @@ export type ReservationEmailPayload = {
     before: string;
     after: string;
   }[];
+};
+
+export type BillingEmailPayload = {
+  clinicName: string;
+  billingState?: string;
+  graceUntil?: string | null;
+  trialEnd?: string | null;
+  currentPeriodEnd?: string | null;
 };
 
 /** Webhook イベント種別 */
