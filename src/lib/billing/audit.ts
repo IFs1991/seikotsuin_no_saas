@@ -15,6 +15,7 @@ export const BILLING_AUDIT_EVENT_TYPES = [
   'billing.payment_recovered',
   'billing.trial_started',
   'billing.trial_will_end',
+  'billing.plan_upgraded',
   'billing.tenant_add_requested',
   'billing.tenant_pending_created',
   'billing.tenant_activated',

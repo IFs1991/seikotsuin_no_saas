@@ -6,6 +6,7 @@ import {
 } from '@/components/admin/billing-page-client';
 import {
   getEnabledBillingPlans,
+  isBillingUpgradeEnabled,
   isBillingUiEnabled,
 } from '@/lib/billing/config';
 import {
@@ -62,6 +63,7 @@ export default async function AdminBillingPage() {
   ]);
   const snapshot: AdminBillingSnapshot = {
     billingEnabled: isBillingUiEnabled(),
+    upgradeEnabled: isBillingUpgradeEnabled(),
     enabledPlans: getEnabledBillingPlans(),
     subscription: subscription
       ? {

@@ -24,7 +24,8 @@ export type WebhookProcessingStatus =
 export type StripeEventProcessingSource =
   | 'stripe_webhook'
   | 'internal_replay'
-  | 'internal_resync';
+  | 'internal_resync'
+  | 'plan_upgrade';
 
 export type StripeEventLike = {
   id: string;

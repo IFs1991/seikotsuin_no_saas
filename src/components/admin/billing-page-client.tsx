@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import { ArrowUpRight, CreditCard, ExternalLink } from 'lucide-react';
 import type { BillingPlanCode, BillingState } from '@/lib/billing/config';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export type AdminBillingSnapshot = {
   billingEnabled: boolean;
+  upgradeEnabled: boolean;
   enabledPlans: BillingPlanCode[];
   subscription: {
     planCode: BillingPlanCode;
@@ -28,6 +29,7 @@ export type AdminBillingSnapshot = {
 type ActionState =
   | { status: 'idle' }
   | { status: 'loading'; message: string }
+  | { status: 'success'; message: string }
   | { status: 'error'; message: string };
 
 type AdminBillingPageClientProps = {
@@ -91,16 +93,34 @@ function formatBillingState(state: BillingState | null) {
   }
 }
 
-async function parseActionResponse(response: Response) {
-  const json = (await response.json()) as
-    | { success: true; data: { url: string } }
-    | { success: false; error: string };
+type UrlActionResponse =
+  | { success: true; data: { url: string } }
+  | { success: false; error: string };
+
+type MutationActionResponse =
+  | { success: true; data: unknown }
+  | { success: false; error: string };
+
+async function parseUrlActionResponse(response: Response) {
+  const json = (await response.json()) as UrlActionResponse;
 
   if ('error' in json) {
     throw new Error(json.error);
   }
 
   return json.data.url;
+}
+
+async function parseMutationActionResponse(response: Response) {
+  const json = (await response.json()) as MutationActionResponse;
+
+  if ('error' in json) {
+    throw new Error(json.error);
+  }
+}
+
+function isUpgradeableSingleState(state: BillingState) {
+  return ['trialing', 'active', 'cancel_scheduled'].includes(state);
 }
 
 export function AdminBillingPageClient({
@@ -130,7 +150,7 @@ export function AdminBillingPageClient({
         },
         body: JSON.stringify({ plan_code: planCode }),
       });
-      const url = await parseActionResponse(response);
+      const url = await parseUrlActionResponse(response);
       window.location.href = url;
     } catch (error) {
       setActionState({
@@ -149,7 +169,7 @@ export function AdminBillingPageClient({
       const response = await fetch('/api/admin/billing/portal', {
         method: 'POST',
       });
-      const url = await parseActionResponse(response);
+      const url = await parseUrlActionResponse(response);
       window.location.href = url;
     } catch (error) {
       setActionState({
@@ -161,6 +181,37 @@ export function AdminBillingPageClient({
       });
     }
   };
+  const upgradeToGroup = async () => {
+    setActionState({
+      status: 'loading',
+      message: 'Groupプランへアップグレードしています',
+    });
+    try {
+      const response = await fetch('/api/admin/billing/upgrade', {
+        method: 'POST',
+      });
+      await parseMutationActionResponse(response);
+      setActionState({
+        status: 'success',
+        message: 'Groupプランへのアップグレードを反映しました',
+      });
+      window.location.reload();
+    } catch (error) {
+      setActionState({
+        status: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Groupプランへのアップグレードに失敗しました',
+      });
+    }
+  };
+  const canUpgradeToGroup =
+    snapshot.billingEnabled &&
+    snapshot.upgradeEnabled &&
+    snapshot.enabledPlans.includes('group') &&
+    subscription?.planCode === 'single_clinic' &&
+    isUpgradeableSingleState(subscription.billingState);
 
   return (
     <div className='space-y-4'>
@@ -176,7 +227,9 @@ export function AdminBillingPageClient({
           className={
             actionState.status === 'error'
               ? 'rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'
-              : 'rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700'
+              : actionState.status === 'success'
+                ? 'rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700'
+                : 'rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700'
           }
         >
           {actionState.message}
@@ -242,6 +295,16 @@ export function AdminBillingPageClient({
       </div>
 
       <div className='flex flex-wrap gap-2'>
+        {canUpgradeToGroup && (
+          <Button
+            type='button'
+            disabled={actionState.status === 'loading'}
+            onClick={() => void upgradeToGroup()}
+          >
+            <ArrowUpRight className='mr-2 h-4 w-4' />
+            Groupへアップグレード
+          </Button>
+        )}
         {snapshot.enabledPlans.includes('group') && (
           <Button
             type='button'

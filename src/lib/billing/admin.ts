@@ -14,6 +14,9 @@ export type BillingSubscriptionRow = {
   plan_code: BillingPlanCode;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  stripe_single_subscription_item_id: string | null;
+  stripe_group_base_subscription_item_id: string | null;
+  stripe_store_subscription_item_id: string | null;
   stripe_checkout_session_id: string | null;
   checkout_expires_at: string | null;
   billing_state: BillingState;
@@ -52,6 +55,9 @@ function assertBillingSubscriptionRow(
     plan_code: string;
     stripe_customer_id: string | null;
     stripe_subscription_id: string | null;
+    stripe_single_subscription_item_id: string | null;
+    stripe_group_base_subscription_item_id: string | null;
+    stripe_store_subscription_item_id: string | null;
     stripe_checkout_session_id: string | null;
     checkout_expires_at: string | null;
     billing_state: string;
@@ -115,7 +121,7 @@ export async function fetchBillingSubscription(input: {
   const { data, error } = await input.client
     .from('subscriptions')
     .select(
-      'id, org_root_clinic_id, plan_code, stripe_customer_id, stripe_subscription_id, stripe_checkout_session_id, checkout_expires_at, billing_state, stripe_status, trial_consumed, current_period_end, trial_end, cancel_at_period_end, included_store_quantity, paid_extra_store_quantity'
+      'id, org_root_clinic_id, plan_code, stripe_customer_id, stripe_subscription_id, stripe_single_subscription_item_id, stripe_group_base_subscription_item_id, stripe_store_subscription_item_id, stripe_checkout_session_id, checkout_expires_at, billing_state, stripe_status, trial_consumed, current_period_end, trial_end, cancel_at_period_end, included_store_quantity, paid_extra_store_quantity'
     )
     .eq('org_root_clinic_id', input.orgRootClinicId)
     .maybeSingle();
