@@ -34,7 +34,7 @@ export const TENANT_INITIAL_ACCESS_OPTIONS = [
   },
 ] as const;
 export const CLINIC_LIST_SELECT =
-  'id, name, address, phone_number, is_active, created_at, parent_id';
+  'id, name, address, phone_number, is_active, created_at, parent_id, billing_activation_status, billing_activation_requested_at, billing_activated_at, billing_activation_failed_at, billing_activation_error';
 export const CLINIC_HIERARCHY_SELECT = 'id, name, parent_id';
 
 export type ClinicHierarchyType =
@@ -65,6 +65,11 @@ export type ClinicListRow = {
   is_active: boolean;
   created_at: string;
   parent_id: string | null;
+  billing_activation_status?: string | null;
+  billing_activation_requested_at?: string | null;
+  billing_activated_at?: string | null;
+  billing_activation_failed_at?: string | null;
+  billing_activation_error?: string | null;
 };
 
 export interface ClinicSummary {
@@ -75,6 +80,11 @@ export interface ClinicSummary {
   is_active: boolean;
   created_at?: string | null;
   parent_id?: string | null;
+  billing_activation_status?: string | null;
+  billing_activation_requested_at?: string | null;
+  billing_activated_at?: string | null;
+  billing_activation_failed_at?: string | null;
+  billing_activation_error?: string | null;
   parent_name?: string | null;
   clinic_type?: ClinicHierarchyType;
   child_count?: number;

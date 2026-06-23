@@ -713,6 +713,11 @@ export type Database = {
       clinics: {
         Row: {
           address: string | null;
+          billing_activated_at: string | null;
+          billing_activation_error: string | null;
+          billing_activation_failed_at: string | null;
+          billing_activation_requested_at: string | null;
+          billing_activation_status: string;
           created_at: string | null;
           id: string;
           is_active: boolean | null;
@@ -724,6 +729,11 @@ export type Database = {
         };
         Insert: {
           address?: string | null;
+          billing_activated_at?: string | null;
+          billing_activation_error?: string | null;
+          billing_activation_failed_at?: string | null;
+          billing_activation_requested_at?: string | null;
+          billing_activation_status?: string;
           created_at?: string | null;
           id?: string;
           is_active?: boolean | null;
@@ -735,6 +745,11 @@ export type Database = {
         };
         Update: {
           address?: string | null;
+          billing_activated_at?: string | null;
+          billing_activation_error?: string | null;
+          billing_activation_failed_at?: string | null;
+          billing_activation_requested_at?: string | null;
+          billing_activation_status?: string;
           created_at?: string | null;
           id?: string;
           is_active?: boolean | null;
@@ -5598,6 +5613,15 @@ export type Database = {
       };
     };
     Functions: {
+      activate_billable_store_if_capacity: {
+        Args: { p_clinic_id: string; p_org_root_clinic_id: string };
+        Returns: {
+          active_billable_store_count: number;
+          allowed_billable_store_count: number;
+          error_code: string | null;
+          success: boolean;
+        }[];
+      };
       accept_invite: { Args: { invite_token: string }; Returns: Json };
       aggregate_mfa_stats: {
         Args: { p_clinic_id: string; p_end_date: string; p_start_date: string };
