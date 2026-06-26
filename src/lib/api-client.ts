@@ -29,6 +29,14 @@ import type {
   ManagerClinicComparisonCompareMode,
   ManagerClinicComparisonResponse,
 } from '@/types/manager-clinic-comparison';
+import type {
+  ManagerRosterAssignRequest,
+  ManagerRosterAssignResponse,
+  ManagerRosterCandidatesQuery,
+  ManagerRosterCandidatesResponse,
+  ManagerRostersQuery,
+  ManagerRostersResponse,
+} from '@/types/manager-rosters';
 import type { ManagerStaffListResponse } from '@/types/manager-staff-list';
 import {
   normalizeError,
@@ -582,6 +590,29 @@ export const api = {
       apiClient.get<ManagerStaffListResponse>('/api/manager/staff', {
         ...(query.clinicId ? { clinic_id: query.clinicId } : {}),
       }),
+  },
+
+  managerRosters: {
+    get: (query: ManagerRostersQuery) =>
+      apiClient.get<ManagerRostersResponse>('/api/manager/rosters', {
+        clinic_id: query.clinicId,
+        start: query.start,
+        end: query.end,
+      }),
+    getCandidates: (query: ManagerRosterCandidatesQuery) =>
+      apiClient.get<ManagerRosterCandidatesResponse>(
+        '/api/manager/rosters/candidates',
+        {
+          clinic_id: query.clinicId,
+          date: query.date,
+          ...(query.periodId ? { period_id: query.periodId } : {}),
+        }
+      ),
+    assign: (request: ManagerRosterAssignRequest) =>
+      apiClient.post<ManagerRosterAssignResponse>(
+        '/api/manager/rosters/assign',
+        request
+      ),
   },
 
   managerClinicComparison: {
