@@ -5,21 +5,36 @@ const createJestConfig = nextJest({ dir: './' });
 const sharedConfig = {
   setupFiles: ['<rootDir>/jest.setup.messagechannel.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
+  modulePathIgnorePatterns: [
+    '<rootDir>/.next/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/.claude/worktrees/',
+    '<rootDir>/TiramisuUI-UX/',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  transformIgnorePatterns: ['/node_modules/', '^.+\\.module\\.(css|sass|scss)$'],
+  transformIgnorePatterns: [
+    '/node_modules/',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/coverage/',
     '<rootDir>/dist/',
     '<rootDir>/.worktrees/',
+    '<rootDir>/.claude/worktrees/',
+    '<rootDir>/TiramisuUI-UX/',
     '<rootDir>/src/__tests__/session-management/penetration-test-prep.ts',
     '<rootDir>/src/__tests__/.*/mocks/.*',
   ],
-  watchPathIgnorePatterns: ['<rootDir>/.worktrees/'],
+  watchPathIgnorePatterns: [
+    '<rootDir>/.next/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/.claude/worktrees/',
+    '<rootDir>/TiramisuUI-UX/',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   globals: {
     'ts-jest': {
