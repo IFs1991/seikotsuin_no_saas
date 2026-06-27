@@ -214,7 +214,7 @@ function CandidatePanel({
         <CardTitle className='text-base'>候補パネル</CardTitle>
         <CardDescription>
           {selectedDate
-            ? `${formatDate(selectedDate)} の同一院候補`
+            ? `${formatDate(selectedDate)} の配置候補`
             : '日付未選択'}
         </CardDescription>
       </CardHeader>
@@ -264,10 +264,17 @@ function CandidatePanel({
                       <Badge variant='outline'>
                         優先度 {candidate.priority}
                       </Badge>
+                      {candidate.assignment_type === 'help' && (
+                        <Badge variant='secondary'>ヘルプ可</Badge>
+                      )}
                     </div>
                     <p className='mt-1 text-xs text-muted-foreground'>
                       {formatTime(candidate.start_time)}-
                       {formatTime(candidate.end_time)}
+                      {candidate.home_clinic_name &&
+                      candidate.home_clinic_name !== candidate.clinic_name
+                        ? ` / 所属: ${candidate.home_clinic_name}`
+                        : ''}
                       {candidate.note ? ` / ${candidate.note}` : ''}
                     </p>
                   </div>

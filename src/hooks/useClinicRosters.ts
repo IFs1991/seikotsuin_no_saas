@@ -335,6 +335,9 @@ export function useClinicRosters(): UseClinicRostersResult {
         const response = await api.managerRosters.assign({
           clinic_id: selectedClinicId,
           staff_id: candidate.staff_id,
+          staff_profile_id: candidate.staff_profile_id,
+          home_clinic_id: candidate.home_clinic_id,
+          assignment_type: candidate.assignment_type,
           source_shift_request_id: candidate.source_shift_request_id,
           time_preset: timePreset,
           start_time: range.startTime,

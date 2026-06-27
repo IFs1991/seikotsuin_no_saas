@@ -130,10 +130,17 @@ set
     when coalesce(ss.home_clinic_id, scm.clinic_id) = ss.clinic_id then 'regular'
     else 'help'
   end,
-  source_shift_request_id = coalesce(ss.source_shift_request_id, sr.id)
+  source_shift_request_id = coalesce(
+    ss.source_shift_request_id,
+    (
+      select sr.id
+      from public.shift_requests sr
+      where sr.converted_shift_id = ss.id
+      order by sr.created_at asc, sr.id asc
+      limit 1
+    )
+  )
 from public.staff_clinic_memberships scm
-left join public.shift_requests sr
-  on sr.converted_shift_id = ss.id
 where ss.staff_id = scm.resource_id
   and ss.staff_profile_id is null;
 

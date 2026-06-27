@@ -47,6 +47,10 @@ type StaffShiftRosterRow = {
   id: string;
   clinic_id: string;
   staff_id: string;
+  staff_profile_id: string | null;
+  home_clinic_id: string | null;
+  assignment_type: string | null;
+  time_preset: string | null;
   start_time: string;
   end_time: string;
   status: string;
@@ -165,6 +169,10 @@ async function fetchRosterRows(
         id,
         clinic_id,
         staff_id,
+        staff_profile_id,
+        home_clinic_id,
+        assignment_type,
+        time_preset,
         start_time,
         end_time,
         status,
@@ -190,7 +198,7 @@ function toRosterShift(
 ): ManagerRosterShift {
   const staffResource = normalizeResource(row.resources);
   const workClinic = normalizeClinic(row.clinics);
-  const homeClinicId = staffResource?.clinic_id ?? null;
+  const homeClinicId = row.home_clinic_id ?? staffResource?.clinic_id ?? null;
   const workClinicName = workClinic?.name ?? requestedClinic.name;
   const homeClinicName = homeClinicId
     ? (clinicById.get(homeClinicId)?.name ?? workClinicName)
@@ -199,14 +207,24 @@ function toRosterShift(
   return {
     shift_id: row.id,
     staff_id: row.staff_id,
-    staff_profile_id: null,
+    staff_profile_id: row.staff_profile_id ?? null,
     staff_name: staffResource?.name ?? row.staff_id,
     home_clinic_id: homeClinicId,
     home_clinic_name: homeClinicName,
     work_clinic_id: row.clinic_id,
     work_clinic_name: workClinicName,
-    assignment_type: 'regular' satisfies ManagerRosterAssignmentType,
-    time_preset: null satisfies ManagerRosterTimePreset | null,
+    assignment_type:
+      row.assignment_type === 'help'
+        ? 'help'
+        : ('regular' satisfies ManagerRosterAssignmentType),
+    time_preset:
+      row.time_preset === 'full_day' ||
+      row.time_preset === 'morning' ||
+      row.time_preset === 'afternoon' ||
+      row.time_preset === 'late' ||
+      row.time_preset === 'custom'
+        ? row.time_preset
+        : (null satisfies ManagerRosterTimePreset | null),
     start_time: row.start_time,
     end_time: row.end_time,
     status: normalizeStatus(row.status),

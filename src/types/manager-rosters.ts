@@ -61,9 +61,13 @@ export type ManagerRosterCandidateRequestType = 'available' | 'preferred';
 export type ManagerRosterCandidate = {
   candidate_id: string;
   staff_id: string;
+  staff_profile_id: string | null;
   staff_name: string;
   clinic_id: string;
   clinic_name: string;
+  home_clinic_id: string | null;
+  home_clinic_name: string | null;
+  assignment_type: ManagerRosterAssignmentType;
   source_shift_request_id: string;
   request_type: ManagerRosterCandidateRequestType;
   priority: number;
@@ -95,6 +99,9 @@ export type ManagerRosterCandidatesQuery = {
 export type ManagerRosterAssignRequest = {
   clinic_id: string;
   staff_id: string;
+  staff_profile_id?: string | null;
+  home_clinic_id?: string | null;
+  assignment_type?: ManagerRosterAssignmentType;
   source_shift_request_id?: string | null;
   time_preset: ManagerRosterTimePreset;
   start_time: string;

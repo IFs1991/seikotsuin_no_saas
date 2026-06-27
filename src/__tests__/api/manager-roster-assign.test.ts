@@ -133,6 +133,20 @@ class TableQueryMock {
     return this;
   }
 
+  in(column: string, values: readonly string[]) {
+    if (column === 'status') {
+      this.requestRows = this.requestRows.filter(row =>
+        values.includes(row.status)
+      );
+    }
+    if (column === 'request_type') {
+      this.requestRows = this.requestRows.filter(row =>
+        values.includes(row.request_type)
+      );
+    }
+    return this;
+  }
+
   lt(column: string, value: string) {
     if (column === 'start_time') {
       this.shiftRows = this.shiftRows.filter(row => row.start_time < value);
