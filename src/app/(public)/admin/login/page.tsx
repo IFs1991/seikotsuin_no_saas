@@ -12,12 +12,14 @@
 
 import React, { Suspense, useState, useActionState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { login } from '../actions';
 import { loginSchema, type AuthResponse } from '@/lib/schemas/auth';
+import tiramisuIconOutline from '@/images/brand/tiramisu-icon-outline.png';
 
 function AdminLoginContent() {
   const [email, setEmail] = useState('');
@@ -83,9 +85,14 @@ function AdminLoginContent() {
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4'>
       <Card className='w-full max-w-md p-8 space-y-6 bg-white shadow-xl rounded-xl'>
         <div className='text-center'>
-          <div className='w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4'>
-            <span className='text-white font-bold text-2xl'>骨</span>
-          </div>
+          <Image
+            src={tiramisuIconOutline}
+            alt='ティラミス'
+            width={72}
+            height={72}
+            className='mx-auto mb-4 h-[72px] w-[72px] object-contain'
+            priority
+          />
           <h1 className='text-2xl font-bold text-gray-900 mb-2'>
             管理者ログイン
           </h1>
