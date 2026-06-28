@@ -36,6 +36,8 @@ import {
 } from '@/components/public/lp-dynamic-sections';
 import { LpFaq } from '@/components/public/lp-faq';
 import { cn } from '@/lib/utils';
+import tiramisuIcon from '@/images/brand/tiramisu-icon.png';
+import tiramisuLogotype from '@/images/brand/tiramisu-logotype.png';
 import './lp-styles.css';
 
 const fraunces = Fraunces({
@@ -137,11 +139,23 @@ export default function LandingPage() {
       <header className='sticky top-0 z-40 border-b border-white/10 bg-[#2B3A3F]/95 text-white backdrop-blur'>
         <div className='mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8'>
           <Link href='/' className='flex items-center gap-3'>
-            <span className='flex h-9 w-9 items-center justify-center rounded-[8px] bg-[#C4956C] font-serif-en text-lg font-bold text-white'>
-              T
-            </span>
-            <span className='font-serif-en text-xl font-bold tracking-tight'>
-              Tiramisu
+            <Image
+              src={tiramisuIcon}
+              alt=''
+              width={36}
+              height={36}
+              className='h-9 w-9 shrink-0 object-contain'
+              priority
+            />
+            <span className='rounded bg-white/95 px-2.5 py-1.5 shadow-sm'>
+              <Image
+                src={tiramisuLogotype}
+                alt='Tiramisu'
+                width={124}
+                height={27}
+                className='h-5 w-auto'
+                priority
+              />
             </span>
           </Link>
           <nav className='hidden items-center gap-5 text-[13px] text-white/70 lg:flex'>
@@ -860,11 +874,23 @@ export default function LandingPage() {
       <footer className='bg-[#1f292d] py-12 text-white/70'>
         <div className='mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8'>
           <div className='flex flex-col justify-between gap-4 sm:flex-row sm:items-center'>
-            <Link
-              href='/'
-              className='font-serif-en text-2xl font-bold text-white'
-            >
-              Tiramisu
+            <Link href='/' className='flex w-fit items-center gap-3'>
+              <Image
+                src={tiramisuIcon}
+                alt=''
+                width={36}
+                height={36}
+                className='h-9 w-9 shrink-0 object-contain'
+              />
+              <span className='rounded bg-white/95 px-2.5 py-1.5 shadow-sm'>
+                <Image
+                  src={tiramisuLogotype}
+                  alt='Tiramisu'
+                  width={124}
+                  height={27}
+                  className='h-5 w-auto'
+                />
+              </span>
             </Link>
             <div className='flex flex-wrap gap-x-5 gap-y-2 text-[13px]'>
               <Link href='/login' prefetch={false} className='hover:text-white'>
