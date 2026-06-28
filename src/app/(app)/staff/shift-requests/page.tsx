@@ -1,5 +1,5 @@
-import { ShiftRequestsWorkflow } from '@/components/staff/shift-requests-workflow';
+import { ShiftRequestCalendarWorkflow } from '@/components/staff/shift-request-calendar-workflow';
 
 export default function StaffShiftRequestsPage() {
-  return <ShiftRequestsWorkflow mode='self' title='希望シフト提出' />;
+  return <ShiftRequestCalendarWorkflow />;
 }

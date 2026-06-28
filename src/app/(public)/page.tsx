@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   Fraunces,
@@ -468,13 +469,22 @@ export default function LandingPage() {
       <section className='bg-white py-20 md:py-28'>
         <div className='mx-auto grid max-w-5xl gap-12 px-4 sm:px-6 md:grid-cols-[0.42fr_0.58fr] md:gap-16 lg:px-8'>
           <div className='flex flex-col gap-5'>
-            <div className='aspect-[4/5] w-full rounded-[10px] border border-[#E8E4DE] bg-gradient-to-br from-[#E8E4DE] via-[#F3EFE8] to-[#C4956C]/20' />
+            <div className='relative aspect-[4/5] w-full overflow-hidden rounded-[10px] border border-[#E8E4DE] bg-[#F3EFE8]'>
+              <Image
+                src='/images/lp/founder-letter-field-origin.jpg'
+                alt='整骨院の受付で、紙資料とPC画面の数字を確認している様子'
+                fill
+                sizes='(min-width: 768px) 420px, 100vw'
+                className='object-cover object-[55%_50%] saturate-[0.92]'
+              />
+              <div className='absolute inset-0 bg-gradient-to-t from-[#2B3A3F]/20 via-transparent to-transparent' />
+            </div>
             <div className='rounded-[8px] border border-[#E8E4DE] bg-[#FAF8F5] p-5'>
               <ul className='flex flex-col gap-2.5 text-[13px] font-medium text-[#1A1A1A]'>
                 {[
-                  '施術家として現場を経験',
-                  '多店舗グループの本部運営に従事',
-                  'SaaSの開発・導入に携わる',
+                  '紙・Excel・LINEに情報が分散',
+                  '店舗が増えるほど本部確認が重くなる',
+                  '数字を見に行く運営から、数字が集まる運営へ',
                 ].map((line, index) => (
                   <li key={line} className='flex items-start gap-3'>
                     <span className='mt-0.5 font-mono text-[11px] font-bold tracking-wider text-[#C4956C]'>
@@ -526,7 +536,7 @@ export default function LandingPage() {
                 Tiramisu 開発チーム
               </p>
               <p className='mt-1 font-mono text-[12px] tracking-wider text-[#595959]'>
-                FOUNDER / TIRAMISU
+                PRODUCT NOTE / FROM THE FIELD
               </p>
               <a
                 href={contactCta.href}

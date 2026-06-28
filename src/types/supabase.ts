@@ -416,6 +416,129 @@ export type Database = {
           },
         ];
       };
+      billing_audit_logs: {
+        Row: {
+          actor_type: string;
+          actor_user_id: string | null;
+          after_state: Json | null;
+          before_state: Json | null;
+          created_at: string;
+          event_type: string;
+          id: string;
+          internal_actor: string | null;
+          metadata: Json;
+          org_root_clinic_id: string | null;
+          request_id: string | null;
+          stripe_event_id: string | null;
+        };
+        Insert: {
+          actor_type: string;
+          actor_user_id?: string | null;
+          after_state?: Json | null;
+          before_state?: Json | null;
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          internal_actor?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string | null;
+          request_id?: string | null;
+          stripe_event_id?: string | null;
+        };
+        Update: {
+          actor_type?: string;
+          actor_user_id?: string | null;
+          after_state?: Json | null;
+          before_state?: Json | null;
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          internal_actor?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string | null;
+          request_id?: string | null;
+          stripe_event_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'billing_audit_logs_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'billing_audit_logs_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      billing_overrides: {
+        Row: {
+          created_at: string;
+          created_by_internal: string;
+          expired_audited_at: string | null;
+          expires_at: string;
+          id: string;
+          metadata: Json;
+          org_root_clinic_id: string;
+          override_state: string;
+          reason: string;
+          revoked_at: string | null;
+          revoked_by_internal: string | null;
+          starts_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by_internal: string;
+          expired_audited_at?: string | null;
+          expires_at: string;
+          id?: string;
+          metadata?: Json;
+          org_root_clinic_id: string;
+          override_state: string;
+          reason: string;
+          revoked_at?: string | null;
+          revoked_by_internal?: string | null;
+          starts_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by_internal?: string;
+          expired_audited_at?: string | null;
+          expires_at?: string;
+          id?: string;
+          metadata?: Json;
+          org_root_clinic_id?: string;
+          override_state?: string;
+          reason?: string;
+          revoked_at?: string | null;
+          revoked_by_internal?: string | null;
+          starts_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'billing_overrides_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'billing_overrides_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       blocks: {
         Row: {
           block_type: string | null;
@@ -499,6 +622,67 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
             referencedColumns: ['staff_id'];
+          },
+        ];
+      };
+      calendar_feed_tokens: {
+        Row: {
+          clinic_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          feed_type: string;
+          id: string;
+          is_active: boolean;
+          label: string | null;
+          revoked_at: string | null;
+          staff_profile_id: string | null;
+          token_hash: string;
+        };
+        Insert: {
+          clinic_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          feed_type: string;
+          id?: string;
+          is_active?: boolean;
+          label?: string | null;
+          revoked_at?: string | null;
+          staff_profile_id?: string | null;
+          token_hash: string;
+        };
+        Update: {
+          clinic_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          feed_type?: string;
+          id?: string;
+          is_active?: boolean;
+          label?: string | null;
+          revoked_at?: string | null;
+          staff_profile_id?: string | null;
+          token_hash?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'calendar_feed_tokens_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'calendar_feed_tokens_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'calendar_feed_tokens_staff_profile_id_fkey';
+            columns: ['staff_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profiles';
+            referencedColumns: ['id'];
           },
         ];
       };
@@ -713,6 +897,11 @@ export type Database = {
       clinics: {
         Row: {
           address: string | null;
+          billing_activated_at: string | null;
+          billing_activation_error: string | null;
+          billing_activation_failed_at: string | null;
+          billing_activation_requested_at: string | null;
+          billing_activation_status: string;
           created_at: string | null;
           id: string;
           is_active: boolean | null;
@@ -724,6 +913,11 @@ export type Database = {
         };
         Insert: {
           address?: string | null;
+          billing_activated_at?: string | null;
+          billing_activation_error?: string | null;
+          billing_activation_failed_at?: string | null;
+          billing_activation_requested_at?: string | null;
+          billing_activation_status?: string;
           created_at?: string | null;
           id?: string;
           is_active?: boolean | null;
@@ -735,6 +929,11 @@ export type Database = {
         };
         Update: {
           address?: string | null;
+          billing_activated_at?: string | null;
+          billing_activation_error?: string | null;
+          billing_activation_failed_at?: string | null;
+          billing_activation_requested_at?: string | null;
+          billing_activation_status?: string;
           created_at?: string | null;
           id?: string;
           is_active?: boolean | null;
@@ -2109,6 +2308,60 @@ export type Database = {
         };
         Relationships: [];
       };
+      manager_clinic_assignments: {
+        Row: {
+          assigned_at: string;
+          assigned_by: string | null;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          manager_user_id: string;
+          revoke_reason: string | null;
+          revoked_at: string | null;
+          revoked_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_at?: string;
+          assigned_by?: string | null;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          manager_user_id: string;
+          revoke_reason?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_at?: string;
+          assigned_by?: string | null;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          manager_user_id?: string;
+          revoke_reason?: string | null;
+          revoked_at?: string | null;
+          revoked_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       master_categories: {
         Row: {
           created_at: string | null;
@@ -2180,60 +2433,6 @@ export type Database = {
           updated_at?: string | null;
         };
         Relationships: [];
-      };
-      manager_clinic_assignments: {
-        Row: {
-          assigned_at: string;
-          assigned_by: string | null;
-          clinic_id: string;
-          created_at: string;
-          id: string;
-          manager_user_id: string;
-          revoke_reason: string | null;
-          revoked_at: string | null;
-          revoked_by: string | null;
-          updated_at: string;
-        };
-        Insert: {
-          assigned_at?: string;
-          assigned_by?: string | null;
-          clinic_id: string;
-          created_at?: string;
-          id?: string;
-          manager_user_id: string;
-          revoke_reason?: string | null;
-          revoked_at?: string | null;
-          revoked_by?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          assigned_at?: string;
-          assigned_by?: string | null;
-          clinic_id?: string;
-          created_at?: string;
-          id?: string;
-          manager_user_id?: string;
-          revoke_reason?: string | null;
-          revoked_at?: string | null;
-          revoked_by?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinic_hierarchy';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'manager_clinic_assignments_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinics';
-            referencedColumns: ['id'];
-          },
-        ];
       };
       menu_billing_profiles: {
         Row: {
@@ -4378,6 +4577,78 @@ export type Database = {
           },
         ];
       };
+      staff_clinic_memberships: {
+        Row: {
+          can_help: boolean;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          membership_type: string;
+          priority: number;
+          resource_id: string | null;
+          staff_profile_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          can_help?: boolean;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          membership_type?: string;
+          priority?: number;
+          resource_id?: string | null;
+          staff_profile_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          can_help?: boolean;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          membership_type?: string;
+          priority?: number;
+          resource_id?: string | null;
+          staff_profile_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_clinic_memberships_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_clinic_memberships_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_clinic_memberships_resource_id_fkey';
+            columns: ['resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'resources';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_clinic_memberships_resource_id_fkey';
+            columns: ['resource_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_performance_summary';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_clinic_memberships_staff_profile_id_fkey';
+            columns: ['staff_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       staff_invites: {
         Row: {
           accepted_at: string | null;
@@ -4567,41 +4838,83 @@ export type Database = {
           },
         ];
       };
+      staff_profiles: {
+        Row: {
+          created_at: string;
+          display_name: string;
+          id: string;
+          is_active: boolean;
+          updated_at: string;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          display_name: string;
+          id?: string;
+          is_active?: boolean;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          display_name?: string;
+          id?: string;
+          is_active?: boolean;
+          updated_at?: string;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
       staff_shifts: {
         Row: {
+          assignment_type: string;
           clinic_id: string;
           created_at: string;
           created_by: string | null;
           end_time: string;
+          home_clinic_id: string | null;
           id: string;
           notes: string | null;
+          source_shift_request_id: string | null;
           staff_id: string;
+          staff_profile_id: string | null;
           start_time: string;
           status: string;
+          time_preset: string | null;
           updated_at: string;
         };
         Insert: {
+          assignment_type?: string;
           clinic_id: string;
           created_at?: string;
           created_by?: string | null;
           end_time: string;
+          home_clinic_id?: string | null;
           id?: string;
           notes?: string | null;
+          source_shift_request_id?: string | null;
           staff_id: string;
+          staff_profile_id?: string | null;
           start_time: string;
           status?: string;
+          time_preset?: string | null;
           updated_at?: string;
         };
         Update: {
+          assignment_type?: string;
           clinic_id?: string;
           created_at?: string;
           created_by?: string | null;
           end_time?: string;
+          home_clinic_id?: string | null;
           id?: string;
           notes?: string | null;
+          source_shift_request_id?: string | null;
           staff_id?: string;
+          staff_profile_id?: string | null;
           start_time?: string;
           status?: string;
+          time_preset?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -4620,6 +4933,27 @@ export type Database = {
             referencedColumns: ['id'];
           },
           {
+            foreignKeyName: 'staff_shifts_home_clinic_id_fkey';
+            columns: ['home_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_shifts_home_clinic_id_fkey';
+            columns: ['home_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_shifts_source_shift_request_id_fkey';
+            columns: ['source_shift_request_id'];
+            isOneToOne: false;
+            referencedRelation: 'shift_requests';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'staff_shifts_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
@@ -4632,6 +4966,196 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
             referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_shifts_staff_profile_id_fkey';
+            columns: ['staff_profile_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      stripe_webhook_events: {
+        Row: {
+          created_at: string;
+          event_type: string;
+          id: string;
+          livemode: boolean;
+          payload: Json;
+          processed_at: string | null;
+          processing_error: string | null;
+          processing_status: string;
+          related_org_root_clinic_id: string | null;
+          related_stripe_subscription_id: string | null;
+          retryable: boolean;
+          stripe_created_at: string | null;
+          stripe_event_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          livemode: boolean;
+          payload: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          related_org_root_clinic_id?: string | null;
+          related_stripe_subscription_id?: string | null;
+          retryable?: boolean;
+          stripe_created_at?: string | null;
+          stripe_event_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          livemode?: boolean;
+          payload?: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          related_org_root_clinic_id?: string | null;
+          related_stripe_subscription_id?: string | null;
+          retryable?: boolean;
+          stripe_created_at?: string | null;
+          stripe_event_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'stripe_webhook_events_related_org_root_clinic_id_fkey';
+            columns: ['related_org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'stripe_webhook_events_related_org_root_clinic_id_fkey';
+            columns: ['related_org_root_clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      subscriptions: {
+        Row: {
+          billing_state: string;
+          cancel_at_period_end: boolean;
+          canceled_at: string | null;
+          checkout_expires_at: string | null;
+          checkout_plan_code: string | null;
+          checkout_started_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          ended_at: string | null;
+          grace_until: string | null;
+          id: string;
+          included_store_quantity: number;
+          last_stripe_event_created: string | null;
+          last_stripe_event_id: string | null;
+          last_synced_at: string | null;
+          metadata: Json;
+          org_root_clinic_id: string;
+          paid_extra_store_quantity: number;
+          past_due_since: string | null;
+          plan_code: string;
+          stripe_checkout_session_id: string | null;
+          stripe_customer_id: string | null;
+          stripe_group_base_subscription_item_id: string | null;
+          stripe_single_subscription_item_id: string | null;
+          stripe_status: string;
+          stripe_store_subscription_item_id: string | null;
+          stripe_subscription_id: string | null;
+          trial_consumed: boolean;
+          trial_end: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          billing_state?: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_expires_at?: string | null;
+          checkout_plan_code?: string | null;
+          checkout_started_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          grace_until?: string | null;
+          id?: string;
+          included_store_quantity?: number;
+          last_stripe_event_created?: string | null;
+          last_stripe_event_id?: string | null;
+          last_synced_at?: string | null;
+          metadata?: Json;
+          org_root_clinic_id: string;
+          paid_extra_store_quantity?: number;
+          past_due_since?: string | null;
+          plan_code: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_customer_id?: string | null;
+          stripe_group_base_subscription_item_id?: string | null;
+          stripe_single_subscription_item_id?: string | null;
+          stripe_status?: string;
+          stripe_store_subscription_item_id?: string | null;
+          stripe_subscription_id?: string | null;
+          trial_consumed?: boolean;
+          trial_end?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          billing_state?: string;
+          cancel_at_period_end?: boolean;
+          canceled_at?: string | null;
+          checkout_expires_at?: string | null;
+          checkout_plan_code?: string | null;
+          checkout_started_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          grace_until?: string | null;
+          id?: string;
+          included_store_quantity?: number;
+          last_stripe_event_created?: string | null;
+          last_stripe_event_id?: string | null;
+          last_synced_at?: string | null;
+          metadata?: Json;
+          org_root_clinic_id?: string;
+          paid_extra_store_quantity?: number;
+          past_due_since?: string | null;
+          plan_code?: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_customer_id?: string | null;
+          stripe_group_base_subscription_item_id?: string | null;
+          stripe_single_subscription_item_id?: string | null;
+          stripe_status?: string;
+          stripe_store_subscription_item_id?: string | null;
+          stripe_subscription_id?: string | null;
+          trial_consumed?: boolean;
+          trial_end?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'subscriptions_org_root_clinic_id_fkey';
+            columns: ['org_root_clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
           },
         ];
       };
@@ -5416,6 +5940,15 @@ export type Database = {
     };
     Functions: {
       accept_invite: { Args: { invite_token: string }; Returns: Json };
+      activate_billable_store_if_capacity: {
+        Args: { p_clinic_id: string; p_org_root_clinic_id: string };
+        Returns: {
+          active_billable_store_count: number;
+          allowed_billable_store_count: number;
+          error_code: string;
+          success: boolean;
+        }[];
+      };
       aggregate_mfa_stats: {
         Args: { p_clinic_id: string; p_end_date: string; p_start_date: string };
         Returns: undefined;
@@ -5578,34 +6111,38 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean };
       jwt_clinic_id: { Args: never; Returns: string };
       jwt_is_admin: { Args: never; Returns: boolean };
-      predict_revenue: {
-        Args: { clinic_uuid: string; forecast_days?: number };
+      manager_patient_period_series: {
+        Args: {
+          p_bucket?: string;
+          p_clinic_ids: string[];
+          p_end?: string;
+          p_start?: string;
+        };
         Returns: {
-          confidence_level: string;
-          forecast_date: string;
-          predicted_revenue: number;
+          bucket_end: string;
+          bucket_start: string;
+          converted_new_patients: number;
+          new_patients: number;
+          patient_count: number;
+          repeat_patients: number;
+          total_revenue: number;
+          visit_count: number;
         }[];
       };
-      recalculate_daily_report_totals: {
-        Args: { p_daily_report_id: string };
-        Returns: undefined;
-      };
-      refresh_daily_stats: { Args: never; Returns: undefined };
-      replace_manager_clinic_assignments: {
-        Args: {
-          p_actor_user_id: string;
-          p_clinic_ids: string[];
-          p_manager_user_id: string;
-          p_revoke_reason: string | null;
-        };
-        Returns: undefined;
+      manager_patient_period_totals: {
+        Args: { p_clinic_ids: string[]; p_end?: string; p_start?: string };
+        Returns: {
+          clinic_id: string;
+          converted_new_patients: number;
+          new_patients: number;
+          patient_count: number;
+          repeat_patients: number;
+          total_revenue: number;
+          visit_count: number;
+        }[];
       };
       manager_revenue_context_breakdown: {
-        Args: {
-          p_clinic_ids: string[];
-          p_end?: string | null;
-          p_start?: string | null;
-        };
+        Args: { p_clinic_ids: string[]; p_end?: string; p_start?: string };
         Returns: {
           blocked_count: number;
           item_count: number;
@@ -5619,8 +6156,8 @@ export type Database = {
         Args: {
           p_bucket?: string;
           p_clinic_ids: string[];
-          p_end?: string | null;
-          p_start?: string | null;
+          p_end?: string;
+          p_start?: string;
         };
         Returns: {
           bucket_end: string;
@@ -5632,15 +6169,11 @@ export type Database = {
         }[];
       };
       manager_revenue_period_totals: {
-        Args: {
-          p_clinic_ids: string[];
-          p_end?: string | null;
-          p_start?: string | null;
-        };
+        Args: { p_clinic_ids: string[]; p_end?: string; p_start?: string };
         Returns: {
           blocked_count: number;
           clinic_id: string;
-          first_report_date: string | null;
+          first_report_date: string;
           insurance_revenue: number;
           insurer_receivable_estimated: number;
           missing_report_days: number;
@@ -5657,40 +6190,39 @@ export type Database = {
           workers_comp_revenue: number;
         }[];
       };
-      manager_patient_period_series: {
-        Args: {
-          p_bucket?: string;
-          p_clinic_ids: string[];
-          p_end?: string | null;
-          p_start?: string | null;
-        };
+      predict_revenue: {
+        Args: { clinic_uuid: string; forecast_days?: number };
         Returns: {
-          bucket_end: string;
-          bucket_start: string;
-          converted_new_patients: number;
-          new_patients: number;
-          patient_count: number;
-          repeat_patients: number;
-          total_revenue: number;
-          visit_count: number;
+          confidence_level: string;
+          forecast_date: string;
+          predicted_revenue: number;
         }[];
       };
-      manager_patient_period_totals: {
-        Args: {
-          p_clinic_ids: string[];
-          p_end?: string | null;
-          p_start?: string | null;
-        };
-        Returns: {
-          clinic_id: string;
-          converted_new_patients: number;
-          new_patients: number;
-          patient_count: number;
-          repeat_patients: number;
-          total_revenue: number;
-          visit_count: number;
-        }[];
+      recalculate_daily_report_totals: {
+        Args: { p_daily_report_id: string };
+        Returns: undefined;
       };
+      refresh_daily_stats: { Args: never; Returns: undefined };
+      replace_manager_clinic_assignments:
+        | {
+            Args: {
+              p_actor_user_id: string;
+              p_clinic_ids: string[];
+              p_manager_user_id: string;
+              p_revoke_reason: string;
+            };
+            Returns: undefined;
+          }
+        | {
+            Args: {
+              p_actor_user_id: string;
+              p_clinic_ids: string[];
+              p_manager_user_id: string;
+              p_primary_clinic_id?: string;
+              p_revoke_reason: string;
+            };
+            Returns: undefined;
+          };
       upsert_clinic_settings: {
         Args: {
           p_category: string;

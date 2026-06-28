@@ -157,6 +157,7 @@ const AREA_MANAGER_OPERATION_MENU_ITEMS_WITHOUT_AI: readonly NavigationItem[] =
 export const ADMIN_MENU_ITEMS: readonly NavigationItem[] = [
   { id: 'admin', label: '管理ホーム', href: '/admin' },
   { id: 'admin-tenants', label: 'クリニック管理', href: '/admin/tenants' },
+  { id: 'admin-billing', label: '契約管理', href: '/admin/billing' },
   { id: 'admin-users', label: 'スタッフ管理', href: '/admin/users' },
   {
     id: 'admin-managers',

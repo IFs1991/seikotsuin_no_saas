@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "es6"
-    ],
+    "lib": ["dom", "dom.iterable", "es6"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -13,6 +9,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types"],
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
@@ -22,27 +19,13 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/components/*": [
-        "./src/components/*"
-      ],
-      "@/lib/*": [
-        "./src/lib/*"
-      ],
-      "@/hooks/*": [
-        "./src/hooks/*"
-      ],
-      "@/types/*": [
-        "./src/types/*"
-      ],
-      "@/api/*": [
-        "./src/api/*"
-      ],
-      "@/app/*": [
-        "./src/app/*"
-      ]
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/types/*": ["./src/types/*"],
+      "@/api/*": ["./src/api/*"],
+      "@/app/*": ["./src/app/*"]
     },
     "target": "ES2017",
     "baseUrl": ".",
@@ -71,6 +54,7 @@
     "out",
     "dist",
     "build",
+    "TiramisuUI-UX",
     "src/__tests__",
     "src/legacy"
   ],

@@ -34,6 +34,17 @@ import {
   buildClinicScopeOrFilter,
   selectReservableAdminClinicRows,
 } from '@/lib/clinics/scope';
+import { countActiveChildClinics } from '@/lib/billing/admin';
+import {
+  activateBillableStoreIfCapacity,
+  buildStoreActivationPlan,
+  ensureStripeStoreAddOnQuantity,
+  fetchTenantBillingSubscription,
+  isTenantBillingGuardActive,
+  markClinicBillingActivationFailed,
+  type BillingActivationStatus,
+  type StoreActivationPlan,
+} from '@/lib/billing/tenant-activation';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -92,6 +103,11 @@ type NormalizedClinicCreateInput = {
     phone_number: string | null;
     is_active: boolean;
     parent_id: string;
+    billing_activation_status?: BillingActivationStatus;
+    billing_activation_requested_at?: string | null;
+    billing_activated_at?: string | null;
+    billing_activation_failed_at?: string | null;
+    billing_activation_error?: string | null;
   };
   loginFullName: string | null;
   loginEmail: string | null;
@@ -113,6 +129,7 @@ type CreateClinicAdminResourcesInput = {
   clinicAdminName: string;
   loginEmail: string;
   loginPassword: string;
+  activationMode: ClinicAdminActivationMode;
 };
 type CreateClinicAdminResourcesResult =
   | {
@@ -142,6 +159,7 @@ type ClinicAdminRecordInput = {
   clinicAdminName: string;
   loginEmail: string;
   timestamp: string;
+  activationMode: ClinicAdminActivationMode;
 };
 type ClinicAdminPersistenceInput = ClinicAdminRecordInput & {
   adminClient: AdminClient;
@@ -151,6 +169,11 @@ type ClinicAdminWriteFailure = {
   stage: string;
   message: string;
   error: unknown;
+};
+type ClinicAdminActivationMode = 'active' | 'pending';
+type PendingClinicAdminRow = {
+  id: string;
+  email: string;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -311,6 +334,22 @@ async function validateParentClinic(
   };
 }
 
+function createBillingActivationPlanErrorResponse(
+  plan: Extract<StoreActivationPlan, { success: false }>
+) {
+  switch (plan.errorCode) {
+    case 'subscription_not_found':
+      return createErrorResponse('店舗追加には有効なGroup契約が必要です', 402);
+    case 'subscription_not_group':
+      return createErrorResponse(
+        'Single Clinicプランでは子テナントを追加できません',
+        403
+      );
+    case 'subscription_not_writable':
+      return createErrorResponse('現在の契約状態では店舗を追加できません', 402);
+  }
+}
+
 function mapCreateUserErrorMessage(error?: { message?: string | null }) {
   const normalizedMessage = error?.message?.toLowerCase();
   if (
@@ -393,6 +432,7 @@ function buildClinicAdminProfileRow({
   clinicAdminName,
   loginEmail,
   timestamp,
+  activationMode,
 }: ClinicAdminRecordInput) {
   return {
     user_id: createdUserId,
@@ -400,7 +440,7 @@ function buildClinicAdminProfileRow({
     email: loginEmail,
     full_name: clinicAdminName,
     role: CLINIC_ADMIN_ROLE,
-    is_active: true,
+    is_active: activationMode === 'active',
     updated_at: timestamp,
   };
 }
@@ -411,6 +451,7 @@ function buildClinicAdminStaffRow({
   clinicAdminName,
   loginEmail,
   timestamp,
+  activationMode,
 }: ClinicAdminRecordInput) {
   return {
     id: createdUserId,
@@ -419,7 +460,7 @@ function buildClinicAdminStaffRow({
     role: CLINIC_ADMIN_ROLE,
     email: loginEmail,
     password_hash: MANAGED_PASSWORD_PLACEHOLDER,
-    is_therapist: true,
+    is_therapist: activationMode === 'active',
     updated_at: timestamp,
   };
 }
@@ -431,7 +472,9 @@ function buildClinicAdminResourceRow({
   loginEmail,
   timestamp,
   endpointUserId,
+  activationMode,
 }: ClinicAdminPersistenceInput) {
+  const isActive = activationMode === 'active';
   return {
     id: createdUserId,
     clinic_id: clinicId,
@@ -440,8 +483,8 @@ function buildClinicAdminResourceRow({
     staff_code: `clinic-admin-${createdUserId}`,
     email: loginEmail,
     max_concurrent: 1,
-    is_active: true,
-    is_bookable: true,
+    is_active: isActive,
+    is_bookable: isActive,
     is_deleted: false,
     updated_at: timestamp,
     created_by: endpointUserId,
@@ -528,6 +571,7 @@ async function createClinicAdminResources({
   clinicAdminName,
   loginEmail,
   loginPassword,
+  activationMode,
 }: CreateClinicAdminResourcesInput): Promise<CreateClinicAdminResourcesResult> {
   const timestamp = new Date().toISOString();
 
@@ -565,6 +609,7 @@ async function createClinicAdminResources({
     clinicAdminName,
     loginEmail,
     timestamp,
+    activationMode,
   };
 
   const cleanupAndReturn = async (
@@ -595,13 +640,16 @@ async function createClinicAdminResources({
     );
   }
 
-  const permissionFailure = await upsertClinicAdminPermission(persistenceInput);
-  if (permissionFailure) {
-    return await cleanupAndReturn(
-      permissionFailure.error,
-      permissionFailure.message,
-      permissionFailure.stage
-    );
+  if (activationMode === 'active') {
+    const permissionFailure =
+      await upsertClinicAdminPermission(persistenceInput);
+    if (permissionFailure) {
+      return await cleanupAndReturn(
+        permissionFailure.error,
+        permissionFailure.message,
+        permissionFailure.stage
+      );
+    }
   }
 
   return {
@@ -610,6 +658,92 @@ async function createClinicAdminResources({
       email: loginEmail,
       role: CLINIC_ADMIN_ROLE,
     },
+  };
+}
+
+function isPendingClinicAdminRow(
+  value: unknown
+): value is PendingClinicAdminRow {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.email === 'string'
+  );
+}
+
+function toPendingClinicAdminRows(value: unknown): PendingClinicAdminRow[] {
+  return Array.isArray(value) ? value.filter(isPendingClinicAdminRow) : [];
+}
+
+async function enablePendingClinicAdminResources(input: {
+  adminClient: AdminClient;
+  clinicId: string;
+}): Promise<ClinicAdminAccount | null> {
+  const timestamp = new Date().toISOString();
+  const { data: staffRows, error: staffError } = await input.adminClient
+    .from('staff')
+    .select('id, email')
+    .eq('clinic_id', input.clinicId)
+    .eq('role', CLINIC_ADMIN_ROLE);
+
+  if (staffError) {
+    throw staffError;
+  }
+
+  const pendingAdmins = toPendingClinicAdminRows(staffRows);
+
+  const [profileUpdate, staffUpdate, resourceUpdate] = await Promise.all([
+    input.adminClient
+      .from('profiles')
+      .update({ is_active: true, updated_at: timestamp })
+      .eq('clinic_id', input.clinicId)
+      .eq('role', CLINIC_ADMIN_ROLE),
+    input.adminClient
+      .from('staff')
+      .update({ is_therapist: true, updated_at: timestamp })
+      .eq('clinic_id', input.clinicId)
+      .eq('role', CLINIC_ADMIN_ROLE),
+    input.adminClient
+      .from('resources')
+      .update({
+        is_active: true,
+        is_bookable: true,
+        is_deleted: false,
+        updated_at: timestamp,
+      })
+      .eq('clinic_id', input.clinicId)
+      .eq('type', 'staff'),
+  ]);
+
+  const writeFailure =
+    profileUpdate.error ?? staffUpdate.error ?? resourceUpdate.error ?? null;
+  if (writeFailure) {
+    throw writeFailure;
+  }
+
+  if (pendingAdmins.length === 0) {
+    return null;
+  }
+
+  const permissionRows = pendingAdmins.map(row => ({
+    staff_id: row.id,
+    clinic_id: input.clinicId,
+    role: CLINIC_ADMIN_ROLE,
+    username: row.email,
+    hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
+    updated_at: timestamp,
+  }));
+  const { error: permissionError } = await input.adminClient
+    .from('user_permissions')
+    .upsert(permissionRows, { onConflict: 'staff_id' });
+
+  if (permissionError) {
+    throw permissionError;
+  }
+
+  return {
+    email: pendingAdmins[0].email,
+    role: CLINIC_ADMIN_ROLE,
   };
 }
 
@@ -797,6 +931,43 @@ export async function POST(request: NextRequest) {
       return parentValidation.errorResponse;
     }
 
+    const tenantBillingGuardActive = isTenantBillingGuardActive();
+    let storeActivationPlan: StoreActivationPlan | null = null;
+    let tenantBillingSubscription: Awaited<
+      ReturnType<typeof fetchTenantBillingSubscription>
+    > = null;
+
+    if (tenantBillingGuardActive) {
+      const [subscription, activeBillableStoreCount] = await Promise.all([
+        fetchTenantBillingSubscription({
+          client: adminSupabase,
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+        }),
+        countActiveChildClinics({
+          client: adminSupabase,
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+        }),
+      ]);
+      const plan = buildStoreActivationPlan({
+        subscription,
+        activeBillableStoreCount,
+      });
+
+      if (plan.success === false) {
+        return createBillingActivationPlanErrorResponse(plan);
+      }
+
+      tenantBillingSubscription = subscription;
+      storeActivationPlan = plan;
+      normalizedInput.clinic.is_active = false;
+      normalizedInput.clinic.billing_activation_status = 'pending_billing';
+      normalizedInput.clinic.billing_activation_requested_at =
+        new Date().toISOString();
+      normalizedInput.clinic.billing_activated_at = null;
+      normalizedInput.clinic.billing_activation_failed_at = null;
+      normalizedInput.clinic.billing_activation_error = null;
+    }
+
     const { data, error } = await adminSupabase
       .from('clinics')
       .insert(normalizedInput.clinic)
@@ -828,6 +999,7 @@ export async function POST(request: NextRequest) {
           buildClinicAdminName(normalizedInput.clinic.name),
         loginEmail: normalizedInput.loginEmail,
         loginPassword: normalizedInput.loginPassword,
+        activationMode: tenantBillingGuardActive ? 'pending' : 'active',
       });
 
       if (adminAccountResult.success === false) {
@@ -836,6 +1008,83 @@ export async function POST(request: NextRequest) {
       }
 
       adminAccount = adminAccountResult.adminAccount;
+    }
+
+    let responseStatus = 201;
+    const responseClinic = { ...data };
+    let billingActivationResult: {
+      status:
+        | 'not_required'
+        | 'activated'
+        | 'pending_webhook'
+        | 'billing_failed'
+        | 'pending_capacity';
+      error_code?: string | null;
+    } | null = null;
+
+    if (
+      tenantBillingGuardActive &&
+      storeActivationPlan?.success === true &&
+      tenantBillingSubscription
+    ) {
+      if (storeActivationPlan.requiresStripeQuantityIncrease) {
+        try {
+          await ensureStripeStoreAddOnQuantity({
+            subscription: tenantBillingSubscription,
+            targetPaidExtraStoreQuantity:
+              storeActivationPlan.targetPaidExtraStoreQuantity,
+          });
+          responseStatus = 202;
+          billingActivationResult = { status: 'pending_webhook' };
+        } catch (stripeError) {
+          const errorMessage =
+            stripeError instanceof Error
+              ? stripeError.message
+              : 'Stripe store add-on quantity update failed';
+          await markClinicBillingActivationFailed({
+            client: adminSupabase,
+            clinicId: data.id,
+            errorMessage,
+          });
+          responseStatus = 202;
+          responseClinic.billing_activation_status = 'billing_failed';
+          responseClinic.billing_activation_failed_at =
+            new Date().toISOString();
+          responseClinic.billing_activation_error = errorMessage;
+          billingActivationResult = {
+            status: 'billing_failed',
+            error_code: 'stripe_quantity_update_failed',
+          };
+          logTenantPostError(stripeError, auth.id, {
+            clinic_id: data.id,
+            stage: 'stripe_store_addon_quantity_update',
+          });
+        }
+      } else {
+        const activationResult = await activateBillableStoreIfCapacity({
+          client: adminSupabase,
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+          clinicId: data.id,
+        });
+
+        if (activationResult.success) {
+          const enabledAdminAccount = await enablePendingClinicAdminResources({
+            adminClient: serviceAdminClient,
+            clinicId: data.id,
+          });
+          adminAccount = enabledAdminAccount ?? adminAccount;
+          responseClinic.is_active = true;
+          responseClinic.billing_activation_status = 'active';
+          responseClinic.billing_activated_at = new Date().toISOString();
+          billingActivationResult = { status: 'activated' };
+        } else {
+          responseStatus = 202;
+          billingActivationResult = {
+            status: 'pending_capacity',
+            error_code: activationResult.error_code,
+          };
+        }
+      }
     }
 
     await AuditLogger.logAdminAction(
@@ -850,18 +1099,22 @@ export async function POST(request: NextRequest) {
         login_full_name: normalizedInput.loginFullName,
         login_email: normalizedInput.loginEmail,
         created_clinic_admin: normalizedInput.shouldCreateClinicAdmin,
+        billing_activation_status:
+          responseClinic.billing_activation_status ?? null,
+        billing_activation_result: billingActivationResult,
       }
     );
 
     return createSuccessResponse(
       {
-        ...buildClinicHierarchySummary(data, {
+        ...buildClinicHierarchySummary(responseClinic, {
           parentName: parentValidation.parent?.name ?? null,
           childCount: 0,
         }),
         admin_account: adminAccount,
+        billing_activation_result: billingActivationResult,
       },
-      201
+      responseStatus
     );
   } catch (error) {
     logTenantPostError(error, 'unknown');
