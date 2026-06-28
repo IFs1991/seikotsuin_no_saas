@@ -11,8 +11,7 @@ import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
 import { isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
-import tiramisuIcon from '@/images/brand/tiramisu-icon.png';
-import tiramisuLogotype from '@/images/brand/tiramisu-logotype.png';
+import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
 
 const ClinicReservationsPreviewModal = dynamic(
@@ -351,24 +350,14 @@ export const Header = React.memo(function Header({
           aria-label='トップページへ移動'
         >
           <Image
-            src={tiramisuIcon}
-            alt=''
-            width={32}
-            height={32}
-            className='h-8 w-8 shrink-0 object-contain'
+            src={tiramisuWordmark}
+            alt='ティラミス'
+            width={143}
+            height={40}
+            className='h-10 w-auto shrink-0 object-contain'
             priority
           />
           <span className='text-left'>
-            <span className='block rounded bg-white/95 px-2 py-1 shadow-sm'>
-              <Image
-                src={tiramisuLogotype}
-                alt='ティラミス'
-                width={111}
-                height={24}
-                className='h-5 w-auto'
-                priority
-              />
-            </span>
             {profile && (
               <span className='block text-xs text-blue-200 mt-0.5'>
                 {profile.email ?? 'アカウント'}
