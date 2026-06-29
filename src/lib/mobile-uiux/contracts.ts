@@ -1,6 +1,9 @@
 import type { AdminUserRole } from '@/lib/constants/roles';
-import type { DashboardData } from '@/types/api';
+import type { DashboardData, PatientAnalysisData } from '@/types/api';
+import type { SettingsCategory } from '@/lib/admin-settings/defaults';
+import type { DailyReportsReadModel } from '@/lib/daily-reports/read-model';
 import type { ReservationListItem } from '@/lib/reservations/read-model';
+import type { Menu } from '@/types/reservation';
 
 export type MobileUiuxDisplayMode = 'desktop' | 'mobile' | 'system';
 
@@ -50,4 +53,48 @@ export type MobileUiuxReservationsResponse = {
   date: string;
   timezone: 'Asia/Tokyo';
   reservations: ReservationListItem[];
+};
+
+export type MobileUiuxPatientAnalysisResponse = {
+  clinicId: string;
+  analysis: PatientAnalysisData;
+};
+
+export type MobileUiuxDailyReportsResponse = {
+  clinicId: string;
+  startDate: string | null;
+  endDate: string | null;
+  dailyReports: DailyReportsReadModel;
+};
+
+export type MobileUiuxSettingsResponse = {
+  clinicId: string;
+  category: SettingsCategory;
+  settings: Record<string, unknown>;
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+
+export type MobileUiuxSettingsDetailResource = {
+  id: string;
+  name: string;
+  type: string;
+  workingHours: Record<string, unknown>;
+  supportedMenus: string[];
+  maxConcurrent: number;
+  nominationFee: number;
+  isActive: boolean;
+  isBookable: boolean;
+};
+
+export type MobileUiuxSettingsDetailResponse = {
+  clinicId: string;
+  clinic: {
+    id: string;
+    name: string;
+    address: string | null;
+    phoneNumber: string | null;
+  } | null;
+  menus: Menu[];
+  resources: MobileUiuxSettingsDetailResource[];
 };

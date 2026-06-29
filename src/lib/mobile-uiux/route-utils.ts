@@ -56,3 +56,17 @@ export function dateKeyToUtcMidnight(dateKey: string): Date {
     Date.UTC(Number(yearText), Number(monthText) - 1, Number(dayText))
   );
 }
+
+export function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+export function getRequiredClinicId(value: string | null): string | null {
+  if (!value || !isValidUuid(value)) {
+    return null;
+  }
+
+  return value;
+}
