@@ -1,5 +1,17 @@
 import { NextRequest } from 'next/server';
 import { middleware } from '../../../middleware';
+import { CSPConfig } from '@/lib/security/csp-config';
+
+jest.mock('@supabase/ssr', () => ({
+  createServerClient: jest.fn().mockReturnValue({
+    auth: {
+      getUser: jest.fn().mockResolvedValue({
+        data: { user: { id: 'user-1' } },
+        error: null,
+      }),
+    },
+  }),
+}));
 
 jest.mock('@/lib/security/csp-config', () => ({
   CSPConfig: {
@@ -31,6 +43,21 @@ function createMockRequest(
 }
 
 describe('Middleware Boundary: public/app route separation', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = {
+      ...originalEnv,
+      NEXT_PUBLIC_SUPABASE_URL: 'http://localhost:54321',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
+    };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
   it('unauthenticated + /dashboard -> redirect to /login?redirectTo=/dashboard', async () => {
     const res = await middleware(createMockRequest('/dashboard'));
     expect(res.status).toBe(307);
@@ -43,6 +70,24 @@ describe('Middleware Boundary: public/app route separation', () => {
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/login');
     expect(res.headers.get('location')).toContain('redirectTo=%2Fmobile-uiux');
+  });
+
+  it('/mobile-uiux receives the route-scoped mobile CSP', async () => {
+    await middleware(
+      createMockRequest('/mobile-uiux', 'sb-test-auth-token=session')
+    );
+
+    expect(CSPConfig.getMobileUiuxCSP).toHaveBeenCalled();
+    expect(CSPConfig.getGradualRolloutCSP).not.toHaveBeenCalled();
+  });
+
+  it('/dashboard does not receive mobile CSP exceptions', async () => {
+    await middleware(
+      createMockRequest('/dashboard', 'sb-test-auth-token=session')
+    );
+
+    expect(CSPConfig.getGradualRolloutCSP).toHaveBeenCalled();
+    expect(CSPConfig.getMobileUiuxCSP).not.toHaveBeenCalled();
   });
 
   it('unauthenticated + /admin -> redirect to /admin/login?redirectTo=/admin', async () => {

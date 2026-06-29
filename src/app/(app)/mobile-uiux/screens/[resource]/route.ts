@@ -8,6 +8,8 @@ import {
   normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
+import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import {
   createClient,
   getCurrentUser,
@@ -115,6 +117,11 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ resource: string }> }
 ) {
+  const flags = getMobileUiuxFlags();
+  if (!flags.enabled) {
+    return createErrorResponse('モバイル UI/UX は無効です', 404);
+  }
+
   const { resource } = await context.params;
 
   if (!isResourceKey(resource)) {
@@ -134,6 +141,17 @@ export async function GET(
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
+  const mobileAccess = evaluateMobileUiuxAccess(
+    accessContext.permissions,
+    flags
+  );
+
+  if (mobileAccess.allowed === false) {
+    return createErrorResponse(
+      'このモバイル UI/UX へのアクセス権限がありません',
+      mobileAccess.status
+    );
+  }
 
   if (!isAllowedRole(normalizedRole, definition.allowedRoles)) {
     return createErrorResponse(

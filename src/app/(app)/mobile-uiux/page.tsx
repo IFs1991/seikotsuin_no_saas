@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import {
   ArrowLeft,
   BarChart3,
@@ -9,6 +10,14 @@ import {
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
+
+import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import {
+  createClient,
+  getCurrentUser,
+  getUserAccessContext,
+} from '@/lib/supabase';
 
 const screens = [
   {
@@ -49,7 +58,73 @@ const screens = [
   },
 ] as const;
 
-export default function MobileUiuxPage() {
+function MobileUiuxUnavailablePage({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <main className='min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8'>
+      <div className='mx-auto flex max-w-3xl flex-col gap-6'>
+        <Link
+          href='/dashboard'
+          className='inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted'
+        >
+          <ArrowLeft className='h-4 w-4' aria-hidden='true' />
+          PC版ダッシュボードへ戻る
+        </Link>
+        <section className='rounded-md border border-border bg-card p-5 shadow-sm'>
+          <div className='space-y-2'>
+            <p className='text-sm font-medium text-muted-foreground'>
+              Mobile UI/UX
+            </p>
+            <h1 className='text-2xl font-semibold tracking-normal text-foreground'>
+              {title}
+            </h1>
+            <p className='text-sm leading-6 text-muted-foreground'>{message}</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+export default async function MobileUiuxPage() {
+  const flags = getMobileUiuxFlags();
+
+  if (!flags.enabled) {
+    return (
+      <MobileUiuxUnavailablePage
+        title='モバイル UI/UX は現在無効です'
+        message='本番 gate が閉じているため、この環境ではモバイル UI/UX を表示できません。'
+      />
+    );
+  }
+
+  const supabase = await createClient();
+  const user = await getCurrentUser(supabase);
+
+  if (!user) {
+    redirect('/login?redirectTo=/mobile-uiux');
+  }
+
+  const accessContext = await getUserAccessContext(user.id, supabase, { user });
+  const mobileAccess = evaluateMobileUiuxAccess(
+    accessContext.permissions,
+    flags
+  );
+
+  if (mobileAccess.allowed === false) {
+    return (
+      <MobileUiuxUnavailablePage
+        title='モバイル UI/UX へのアクセス権限がありません'
+        message='許可されたロールまたは pilot clinic allowlist に含まれていないため表示できません。'
+      />
+    );
+  }
+
   return (
     <main className='min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8'>
       <div className='mx-auto flex max-w-5xl flex-col gap-6'>
