@@ -47,6 +47,14 @@ export function evaluateMobileUiuxAccess(
     ? (resolveScopedClinicIds(permissions) ?? [])
     : [];
 
+  if (scopedClinicIds.length === 0) {
+    return {
+      allowed: false,
+      status: 403,
+      reason: 'clinic_scope_empty',
+    };
+  }
+
   if (flags.allowedClinicIds.length === 0) {
     if (normalizedRole === 'admin') {
       return {
@@ -60,14 +68,6 @@ export function evaluateMobileUiuxAccess(
       allowed: false,
       status: 403,
       reason: 'clinic_denied',
-    };
-  }
-
-  if (scopedClinicIds.length === 0) {
-    return {
-      allowed: false,
-      status: 403,
-      reason: 'clinic_scope_empty',
     };
   }
 
