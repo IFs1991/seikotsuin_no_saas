@@ -8,6 +8,10 @@ jest.mock('@/lib/security/csp-config', () => ({
       csp: 'default-src self',
       cspReportOnly: null,
     }),
+    getMobileUiuxCSP: jest.fn().mockReturnValue({
+      csp: "default-src 'self'; script-src 'self' 'unsafe-eval' https://unpkg.com",
+      cspReportOnly: null,
+    }),
   },
 }));
 
@@ -16,7 +20,10 @@ jest.mock('@/lib/rate-limiting/middleware', () => ({
   getPathRateLimit: jest.fn().mockReturnValue([]),
 }));
 
-function createMockRequest(pathname: string, cookieHeader?: string): NextRequest {
+function createMockRequest(
+  pathname: string,
+  cookieHeader?: string
+): NextRequest {
   return new NextRequest(new URL(`http://localhost:3000${pathname}`), {
     method: 'GET',
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
@@ -29,6 +36,13 @@ describe('Middleware Boundary: public/app route separation', () => {
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/login');
     expect(res.headers.get('location')).toContain('redirectTo=%2Fdashboard');
+  });
+
+  it('unauthenticated + /mobile-uiux -> redirect to /login?redirectTo=/mobile-uiux', async () => {
+    const res = await middleware(createMockRequest('/mobile-uiux'));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toContain('/login');
+    expect(res.headers.get('location')).toContain('redirectTo=%2Fmobile-uiux');
   });
 
   it('unauthenticated + /admin -> redirect to /admin/login?redirectTo=/admin', async () => {

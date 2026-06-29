@@ -28,6 +28,7 @@ const PROTECTED_ROUTE_PREFIXES = [
   '/onboarding',
   '/multi-store',
   '/master-data',
+  '/mobile-uiux',
 ] as const;
 
 /**
@@ -148,7 +149,9 @@ export async function middleware(request: NextRequest) {
         | 'partial-enforce'
         | 'full-enforce'
         | undefined) ?? 'report-only';
-    const rollout = CSPConfig.getGradualRolloutCSP(phaseEnv, nonce);
+    const rollout = pathname.startsWith('/mobile-uiux')
+      ? CSPConfig.getMobileUiuxCSP()
+      : CSPConfig.getGradualRolloutCSP(phaseEnv, nonce);
     if (rollout.csp) {
       response.headers.set('Content-Security-Policy', rollout.csp);
     }
