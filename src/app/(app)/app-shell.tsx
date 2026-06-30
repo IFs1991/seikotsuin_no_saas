@@ -11,6 +11,7 @@ import { UserProfileProvider } from '@/providers/user-profile-context';
 import { QueryProvider } from '@/providers/query-provider';
 import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
+import { MobileUiuxEntryPrompt } from '@/components/mobile-uiux/mobile-entry-prompt';
 import { canUseAdminNavigation } from '@/lib/navigation/items';
 import {
   canAccessAdminUIWithCompat,
@@ -197,6 +198,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               profileLoading={profileLoading}
               role={profileRole}
             />
+            <MobileUiuxEntryPrompt />
           </div>
         </SelectedClinicProvider>
       </UserProfileProvider>

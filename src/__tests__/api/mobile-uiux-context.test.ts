@@ -178,6 +178,18 @@ describe('GET /api/mobile-uiux/context', () => {
     expect(body.data.displayMode).toBe('system');
   });
 
+  it('does not use display mode as an API authorization condition', async () => {
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(
+      buildRequest('mobile_uiux_display_mode=desktop')
+    );
+
+    expect(response.status).toBe(200);
+    expect(getUserAccessContextMock).toHaveBeenCalledWith('user-1', supabase, {
+      user,
+    });
+  });
+
   it('ignores client supplied role switch values', async () => {
     getUserAccessContextMock.mockResolvedValue({
       permissions: {

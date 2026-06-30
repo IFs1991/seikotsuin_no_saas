@@ -11,6 +11,7 @@ import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
 import { isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import { MobileUiuxEntryPrompt } from '@/components/mobile-uiux/mobile-entry-prompt';
 import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
 
@@ -461,6 +462,7 @@ export const Header = React.memo(function Header({
                   ? '情報を取得中…'
                   : (profile?.email ?? 'ゲスト')}
               </div>
+              <MobileUiuxEntryPrompt variant='menu-item' />
               <LogoutLink
                 href={logoutHref}
                 className={USER_MENU_ITEM_CLASS}
@@ -537,6 +539,7 @@ export const Header = React.memo(function Header({
                 />
               </div>
             )}
+            <MobileUiuxEntryPrompt variant='menu-item' />
             <LogoutLink
               href={logoutHref}
               className={MOBILE_LOGOUT_LINK_CLASS}

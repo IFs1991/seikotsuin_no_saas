@@ -13,6 +13,7 @@ import {
 
 import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { DisplayModeLink } from '@/components/mobile-uiux/display-mode-link';
 import {
   createClient,
   getCurrentUser,
@@ -68,13 +69,14 @@ function MobileUiuxUnavailablePage({
   return (
     <main className='min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8'>
       <div className='mx-auto flex max-w-3xl flex-col gap-6'>
-        <Link
+        <DisplayModeLink
+          mode='desktop'
           href='/dashboard'
           className='inline-flex w-fit items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted'
         >
           <ArrowLeft className='h-4 w-4' aria-hidden='true' />
           PC版ダッシュボードへ戻る
-        </Link>
+        </DisplayModeLink>
         <section className='rounded-md border border-border bg-card p-5 shadow-sm'>
           <div className='space-y-2'>
             <p className='text-sm font-medium text-muted-foreground'>
@@ -129,13 +131,14 @@ export default async function MobileUiuxPage() {
     <main className='min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8'>
       <div className='mx-auto flex max-w-5xl flex-col gap-6'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
-          <Link
+          <DisplayModeLink
+            mode='desktop'
             href='/dashboard'
             className='inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted'
           >
             <ArrowLeft className='h-4 w-4' aria-hidden='true' />
             PC版ダッシュボードへ戻る
-          </Link>
+          </DisplayModeLink>
         </div>
 
         <section className='rounded-md border border-border bg-card p-5 shadow-sm'>
