@@ -9,6 +9,12 @@ import {
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import {
+  buildMobileUiuxBridgeScript,
+  injectMobileUiuxBridgeScript,
+  isMobileUiuxScreenResource,
+  MOBILE_UIUX_SCREEN_MANIFEST,
+} from '@/lib/mobile-uiux/bridge-manifest';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import {
   createClient,
@@ -77,6 +83,11 @@ const SCREEN_DEFINITIONS = {
   },
   'clinic-shared.js': {
     fileName: 'clinic-shared.js',
+    contentType: 'application/javascript; charset=utf-8',
+    allowedRoles: ADMIN_USER_ROLE_VALUES,
+  },
+  'mobile-bridge.js': {
+    fileName: 'mobile-bridge.js',
     contentType: 'application/javascript; charset=utf-8',
     allowedRoles: ADMIN_USER_ROLE_VALUES,
   },
@@ -161,9 +172,19 @@ export async function GET(
   }
 
   const filePath = path.join(ASSET_ROOT, definition.fileName);
-  const content = await readFile(filePath, 'utf-8');
+  const content =
+    resource === 'mobile-bridge.js'
+      ? buildMobileUiuxBridgeScript({
+          realDataEnabled: flags.realDataEnabled,
+          manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+        })
+      : await readFile(filePath, 'utf-8');
+  const responseContent =
+    flags.realDataEnabled && isMobileUiuxScreenResource(resource)
+      ? injectMobileUiuxBridgeScript(content, resource)
+      : content;
 
-  return new NextResponse(content, {
+  return new NextResponse(responseContent, {
     status: 200,
     headers: buildNoStoreHeaders(definition.contentType),
   });
