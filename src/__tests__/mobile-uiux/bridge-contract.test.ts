@@ -77,6 +77,7 @@ type BridgeWindow = {
   MobileUiuxBridge?: {
     createReservation: (payload: unknown) => Promise<boolean>;
     updateReservation: (payload: unknown) => Promise<boolean>;
+    submitDailyReport: (payload: unknown) => Promise<boolean>;
   };
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
 };
@@ -468,6 +469,173 @@ describe('mobile-uiux bridge contract', () => {
         clinic_id: '11111111-1111-4111-8111-111111111111',
       }),
     });
+  });
+
+  it('keeps daily report mutation disabled when server flags disable writes', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const disabledContext = {
+      ...contextPayload,
+      data: {
+        ...contextPayload.data,
+        flags: {
+          ...contextPayload.data.flags,
+          writeEnabled: true,
+          dailyReportWriteEnabled: false,
+        },
+      },
+    };
+    const { window, calls } = buildBridgeWindow('daily-reports', [
+      buildJsonResponse(200, disabledContext),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.submitDailyReport({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      report_date: '2026-06-30',
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'disabled'
+    );
+    expect(calls.some(call => call.method === 'POST')).toBe(false);
+    expect(window.document.body.textContent).toContain(
+      '日報の書き込みは無効です'
+    );
+  });
+
+  it('posts daily report mutations only through the mobile BFF handler and marks success', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      report_date: '2026-06-30',
+      total_patients: 18,
+      new_patients: 3,
+      total_revenue: 120000,
+      insurance_revenue: 40000,
+      private_revenue: 80000,
+    };
+    const { window, calls } = buildBridgeWindow('daily-reports', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            dailyReportWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reportDate: '2026-06-30',
+          report: { id: 'report-1' },
+          dailyReports: { reports: [{ id: 'report-1' }] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const pending = window.MobileUiuxBridge?.submitDailyReport(payload);
+
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'pending'
+    );
+    await expect(pending).resolves.toBe(true);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'succeeded'
+    );
+    expect(window.document.body.textContent).toContain('日報を保存しました');
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/daily-reports',
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  });
+
+  it('marks daily report mutation failure through UI fallback without logging identifiers', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window } = buildBridgeWindow('daily-reports', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            dailyReportWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(400, {
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message:
+            'clinic_id=clinic-secret user_id=user-secret staff_id=staff-secret',
+        },
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.submitDailyReport({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      report_date: '2026-06-30',
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'failed'
+    );
+    expect(window.document.body.textContent).toContain('表示できません');
+    expect(window.console.log).not.toHaveBeenCalled();
+    expect(window.console.error).not.toHaveBeenCalled();
+    expect(window.document.body.textContent).not.toContain('clinic-secret');
+    expect(window.document.body.textContent).not.toContain('user-secret');
+    expect(window.document.body.textContent).not.toContain('staff-secret');
   });
 });
 

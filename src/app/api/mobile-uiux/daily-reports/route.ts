@@ -1,7 +1,18 @@
 import { NextRequest } from 'next/server';
 
 import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
-import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
+import {
+  fetchDailyReportsReadModel,
+  type DailyReportsReadModel,
+} from '@/lib/daily-reports/read-model';
+import {
+  DAILY_REPORT_MUTATION_ROLES,
+  dailyReportPayloadSchema,
+} from '@/lib/daily-reports/schema';
+import {
+  upsertDailyReport,
+  validateDailyReportWriteScope,
+} from '@/lib/daily-reports/write-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxDailyReportsResponse } from '@/lib/mobile-uiux/contracts';
 import {
@@ -14,6 +25,7 @@ import {
   getRequiredClinicId,
   isValidDateKey,
 } from '@/lib/mobile-uiux/route-utils';
+import { processClinicScopedBody } from '@/lib/route-helpers';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 
 export const runtime = 'nodejs';
@@ -21,6 +33,15 @@ export const dynamic = 'force-dynamic';
 
 const PATH = '/api/mobile-uiux/daily-reports';
 const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
+
+type MobileUiuxDailyReportMutationResponse = {
+  clinicId: string;
+  reportDate: string;
+  report: {
+    id: string;
+  };
+  dailyReports: DailyReportsReadModel;
+};
 
 function getOptionalDateKey(value: string | null, field: string) {
   if (value === null) {
@@ -64,6 +85,35 @@ function buildWriteDisabledResponse() {
     403,
     'FORBIDDEN',
     'モバイル UI/UX の日報書き込みは無効です'
+  );
+}
+
+function canUseWriteRoutes(): boolean {
+  const flags = getMobileUiuxFlags();
+  return (
+    flags.enabled &&
+    flags.realDataEnabled &&
+    areMobileUiuxWritesEnabled(flags, 'dailyReport')
+  );
+}
+
+function buildScopedBodyFailure(status: number) {
+  if (status === 400) {
+    return buildMobileUiuxFailure(
+      400,
+      'BAD_REQUEST',
+      '日報データのバリデーションに失敗しました'
+    );
+  }
+
+  if (status === 401) {
+    return buildMobileUiuxFailure(401, 'UNAUTHORIZED', '認証が必要です');
+  }
+
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    '日報を書き込む権限がありません'
   );
 }
 
@@ -128,11 +178,57 @@ export async function GET(request: NextRequest) {
   return buildMobileUiuxSuccess(data);
 }
 
-export async function POST(_request: NextRequest) {
-  const flags = getMobileUiuxFlags();
-  if (!areMobileUiuxWritesEnabled(flags, 'dailyReport')) {
+export async function POST(request: NextRequest) {
+  if (!canUseWriteRoutes()) {
     return buildWriteDisabledResponse();
   }
 
-  return buildWriteDisabledResponse();
+  try {
+    const result = await processClinicScopedBody(
+      request,
+      dailyReportPayloadSchema,
+      {
+        allowedRoles: Array.from(DAILY_REPORT_MUTATION_ROLES),
+      }
+    );
+    if (!result.success) {
+      return buildScopedBodyFailure(result.error.status);
+    }
+
+    const scope = await validateDailyReportWriteScope(
+      result.supabase,
+      result.dto
+    );
+    if (scope.ok === false) {
+      return buildMobileUiuxFailure(
+        scope.status,
+        'FORBIDDEN',
+        '日報を書き込む権限がありません'
+      );
+    }
+
+    const report = await upsertDailyReport(result.supabase, result.dto);
+    const dailyReports = await fetchDailyReportsReadModel({
+      supabase: result.supabase,
+      clinicId: result.dto.clinic_id,
+      startDate: result.dto.report_date,
+      endDate: result.dto.report_date,
+    });
+    const response: MobileUiuxDailyReportMutationResponse = {
+      clinicId: result.dto.clinic_id,
+      reportDate: result.dto.report_date,
+      report: {
+        id: report.id,
+      },
+      dailyReports,
+    };
+
+    return buildMobileUiuxSuccess(response);
+  } catch {
+    return buildMobileUiuxFailure(
+      500,
+      'INTERNAL_SERVER_ERROR',
+      '日報の保存に失敗しました'
+    );
+  }
 }
