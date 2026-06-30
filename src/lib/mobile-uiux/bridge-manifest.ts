@@ -133,8 +133,16 @@ export function buildMobileUiuxBridgeScript(
     unauthorized: "ログインが必要です",
     forbidden: "この画面の実データは閲覧できません",
     invalid: "実データを表示できません",
+    writeDisabled: "予約の書き込みは無効です",
+    dailyReportWriteDisabled: "日報の書き込みは無効です",
+    dailyReportSaved: "日報を保存しました",
+    settingsWriteDisabled: "設定の書き込みは無効です",
+    settingsSaved: "設定を保存しました",
+    reservationSaved: "予約を保存しました",
+    saving: "保存中です",
     unavailable: "実データを一時的に表示できません"
   };
+  let currentContext = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -159,6 +167,17 @@ export function buildMobileUiuxBridgeScript(
     fallback.textContent = message;
     if (document.body) {
       document.body.appendChild(fallback);
+    }
+  }
+
+  function showMutationStatus(status, message) {
+    document.documentElement.dataset.mobileUiuxMutation = status;
+    const indicator = document.createElement("div");
+    indicator.setAttribute("role", "status");
+    indicator.dataset.mobileUiuxMutationStatus = status;
+    indicator.textContent = message;
+    if (document.body) {
+      document.body.appendChild(indicator);
     }
   }
 
@@ -194,6 +213,33 @@ export function buildMobileUiuxBridgeScript(
 
     const payload = await response.json();
     return { kind: "payload", payload };
+  }
+
+  async function mutateJson(url, method, payload) {
+    const response = await fetch(url, {
+      method,
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.status === 401) {
+      return { kind: "unauthorized" };
+    }
+
+    if (response.status === 403) {
+      return { kind: "forbidden" };
+    }
+
+    if (!response.ok) {
+      return { kind: "unavailable" };
+    }
+
+    const responsePayload = await response.json();
+    return { kind: "payload", payload: responsePayload };
   }
 
   function buildReadUrl(entry, contextData) {
@@ -255,6 +301,7 @@ export function buildMobileUiuxBridgeScript(
     document.documentElement.dataset.mobileUiuxCanonicalRole = contextData.role.canonical;
     document.documentElement.dataset.mobileUiuxClinicScope = "server";
     document.documentElement.dataset.mobileUiuxSampleState = "overridden";
+    currentContext = contextData;
     return true;
   }
 
@@ -324,6 +371,104 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
   }
+
+  function canWriteReservations() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.flags) &&
+      currentContext.flags.writeEnabled === true &&
+      currentContext.flags.reservationWriteEnabled === true;
+  }
+
+  function canWriteDailyReports() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.flags) &&
+      currentContext.flags.writeEnabled === true &&
+      currentContext.flags.dailyReportWriteEnabled === true;
+  }
+
+  function canWriteSettings() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.flags) &&
+      currentContext.flags.writeEnabled === true &&
+      currentContext.flags.settingsWriteEnabled === true;
+  }
+
+  async function mutateMobileBff(options) {
+    if (!REAL_DATA_ENABLED || options.canWrite() !== true) {
+      showMutationStatus("disabled", options.disabledMessage);
+      return false;
+    }
+
+    showMutationStatus("pending", STATUS_MESSAGES.saving);
+    const result = await mutateJson(options.url, options.method, options.payload);
+    if (result.kind === "unauthorized") {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+      return false;
+    }
+    if (result.kind === "forbidden") {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("forbidden", STATUS_MESSAGES.forbidden);
+      return false;
+    }
+    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("invalid", STATUS_MESSAGES.invalid);
+      return false;
+    }
+
+    showMutationStatus("succeeded", options.successMessage);
+    return true;
+  }
+
+  function mutateReservation(method, payload) {
+    return mutateMobileBff({
+      url: "/api/mobile-uiux/reservations",
+      method,
+      payload,
+      canWrite: canWriteReservations,
+      disabledMessage: STATUS_MESSAGES.writeDisabled,
+      successMessage: STATUS_MESSAGES.reservationSaved
+    });
+  }
+
+  function mutateDailyReport(payload) {
+    return mutateMobileBff({
+      url: "/api/mobile-uiux/daily-reports",
+      method: "POST",
+      payload,
+      canWrite: canWriteDailyReports,
+      disabledMessage: STATUS_MESSAGES.dailyReportWriteDisabled,
+      successMessage: STATUS_MESSAGES.dailyReportSaved
+    });
+  }
+
+  function mutateSettings(payload) {
+    return mutateMobileBff({
+      url: "/api/mobile-uiux/settings",
+      method: "PUT",
+      payload,
+      canWrite: canWriteSettings,
+      disabledMessage: STATUS_MESSAGES.settingsWriteDisabled,
+      successMessage: STATUS_MESSAGES.settingsSaved
+    });
+  }
+
+  window.MobileUiuxBridge = {
+    createReservation(payload) {
+      return mutateReservation("POST", payload);
+    },
+    updateReservation(payload) {
+      return mutateReservation("PATCH", payload);
+    },
+    submitDailyReport(payload) {
+      return mutateDailyReport(payload);
+    },
+    updateSettings(payload) {
+      return mutateSettings(payload);
+    }
+  };
 
   const ready = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);

@@ -1,15 +1,19 @@
 import { NextRequest } from 'next/server';
 
 import { processApiRequest } from '@/lib/api-helpers';
-import { canReadAdminSettingsCategory } from '@/lib/admin-settings/access';
 import {
-  DEFAULT_SETTINGS,
+  canManageAdminSettingsCategory,
+  canReadAdminSettingsCategory,
+} from '@/lib/admin-settings/access';
+import {
   VALID_CATEGORIES,
   type SettingsCategory,
 } from '@/lib/admin-settings/defaults';
-import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
 import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
-import type { MobileUiuxSettingsResponse } from '@/lib/mobile-uiux/contracts';
+import type {
+  MobileUiuxSettingsResponse,
+  MobileUiuxSettingsWriteResponse,
+} from '@/lib/mobile-uiux/contracts';
 import {
   areMobileUiuxWritesEnabled,
   getMobileUiuxFlags,
@@ -19,43 +23,28 @@ import {
   buildMobileUiuxSuccess,
   getRequiredClinicId,
 } from '@/lib/mobile-uiux/route-utils';
+import {
+  ADMIN_SETTINGS_MUTATION_ROLES,
+  fetchAdminSettingsReadModel,
+  isSettingsCategory,
+  logAdminSettingsMutation,
+  readClinicIdFromAdminSettingsBody,
+  upsertAdminSettings,
+  validateAdminSettingsMutationBody,
+  validateAdminSettingsMutationSettings,
+} from '@/lib/admin-settings/service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
-
-type ClinicSettingsRow = {
-  settings: Record<string, unknown> | null;
-  updated_at: string | null;
-  updated_by: string | null;
-};
-
-function isSettingsCategory(value: string): value is SettingsCategory {
-  return VALID_CATEGORIES.some(category => category === value);
-}
-
-function isMissingRowError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'PGRST116'
-  );
-}
-
-function normalizeSettings(
-  category: SettingsCategory,
-  settings: Record<string, unknown> | null | undefined
-): Record<string, unknown> {
-  if (category === 'communication') {
-    return normalizeCommunicationSettings(
-      settings ?? DEFAULT_SETTINGS.communication
-    );
-  }
-
-  return settings ?? DEFAULT_SETTINGS[category];
-}
+const MOBILE_UIUX_SETTINGS_WRITE_CATEGORIES = [
+  'clinic_hours',
+  'booking_calendar',
+  'communication',
+] as const satisfies readonly SettingsCategory[];
+const MOBILE_UIUX_SETTINGS_WRITE_CATEGORY_SET: ReadonlySet<SettingsCategory> =
+  new Set(MOBILE_UIUX_SETTINGS_WRITE_CATEGORIES);
 
 function buildWriteDisabledResponse() {
   return buildMobileUiuxFailure(
@@ -63,6 +52,25 @@ function buildWriteDisabledResponse() {
     'FORBIDDEN',
     'モバイル UI/UX の設定書き込みは無効です'
   );
+}
+
+function buildAuthFailureResponse(status: number) {
+  return buildMobileUiuxFailure(
+    status,
+    status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
+    '対象クリニックへのアクセス権がありません'
+  );
+}
+
+async function readClinicIdPreview(
+  request: NextRequest
+): Promise<string | null> {
+  try {
+    const previewBody: unknown = await request.clone().json();
+    return readClinicIdFromAdminSettingsBody(previewBody);
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -120,14 +128,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await guard.supabase
-    .from('clinic_settings')
-    .select('settings, updated_at, updated_by')
-    .eq('clinic_id', clinicId)
-    .eq('category', categoryParam)
-    .single();
-
-  if (error && !isMissingRowError(error)) {
+  const readResult = await fetchAdminSettingsReadModel(
+    guard.supabase,
+    clinicId,
+    categoryParam
+  );
+  if (!readResult.success) {
     return buildMobileUiuxFailure(
       500,
       'INTERNAL_SERVER_ERROR',
@@ -135,23 +141,128 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const row = data as ClinicSettingsRow | null;
   const response: MobileUiuxSettingsResponse = {
     clinicId,
     category: categoryParam,
-    settings: normalizeSettings(categoryParam, row?.settings),
-    updatedAt: row?.updated_at ?? null,
-    updatedBy: row?.updated_by ?? null,
+    settings: readResult.data.settings,
+    updatedAt: readResult.data.updated_at,
+    updatedBy: readResult.data.updated_by,
   };
 
   return buildMobileUiuxSuccess(response);
 }
 
-export async function PUT(_request: NextRequest) {
+export async function PUT(request: NextRequest) {
   const flags = getMobileUiuxFlags();
-  if (!areMobileUiuxWritesEnabled(flags, 'settings')) {
+  if (
+    !flags.enabled ||
+    !flags.realDataEnabled ||
+    !areMobileUiuxWritesEnabled(flags, 'settings')
+  ) {
     return buildWriteDisabledResponse();
   }
 
-  return buildWriteDisabledResponse();
+  const clinicIdForAuth = await readClinicIdPreview(request);
+  const guard = await processApiRequest(request, {
+    requireBody: true,
+    allowedRoles: Array.from(ADMIN_SETTINGS_MUTATION_ROLES),
+    clinicId: clinicIdForAuth,
+  });
+
+  if (!guard.success) {
+    return buildAuthFailureResponse(guard.error.status);
+  }
+
+  const envelopeValidation = validateAdminSettingsMutationBody(guard.body);
+  if (envelopeValidation.success === false) {
+    return buildMobileUiuxFailure(
+      envelopeValidation.status,
+      'BAD_REQUEST',
+      envelopeValidation.message
+    );
+  }
+
+  const envelope = envelopeValidation.payload;
+
+  if (
+    !canReadAdminSettingsCategory(guard.permissions.role, envelope.category)
+  ) {
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      'この設定カテゴリへのアクセス権がありません'
+    );
+  }
+
+  if (
+    !canManageAdminSettingsCategory(guard.permissions.role, envelope.category)
+  ) {
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      'この設定カテゴリへのアクセス権がありません'
+    );
+  }
+
+  if (!MOBILE_UIUX_SETTINGS_WRITE_CATEGORY_SET.has(envelope.category)) {
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      'この設定カテゴリはモバイル初回ロールアウトでは更新できません'
+    );
+  }
+
+  const settingsValidation = validateAdminSettingsMutationSettings(envelope);
+  if (settingsValidation.success === false) {
+    return buildMobileUiuxFailure(
+      settingsValidation.status,
+      'BAD_REQUEST',
+      settingsValidation.message
+    );
+  }
+
+  const { payload } = settingsValidation;
+  const writeResult = await upsertAdminSettings(
+    guard.supabase,
+    payload,
+    guard.auth.id
+  );
+  if (writeResult.success === false) {
+    return buildMobileUiuxFailure(
+      500,
+      'INTERNAL_SERVER_ERROR',
+      writeResult.message
+    );
+  }
+
+  logAdminSettingsMutation({
+    userId: guard.auth.id,
+    userEmail: guard.auth.email,
+    role: guard.permissions.role,
+    clinicId: payload.clinic_id,
+    category: payload.category,
+  });
+
+  const readResult = await fetchAdminSettingsReadModel(
+    guard.supabase,
+    payload.clinic_id,
+    payload.category
+  );
+  if (!readResult.success) {
+    return buildMobileUiuxFailure(
+      500,
+      'INTERNAL_SERVER_ERROR',
+      '設定の確認に失敗しました'
+    );
+  }
+
+  const response: MobileUiuxSettingsWriteResponse = {
+    clinicId: payload.clinic_id,
+    category: payload.category,
+    settings: readResult.data.settings,
+    updatedAt: readResult.data.updated_at,
+    message: '設定を保存しました',
+  };
+
+  return buildMobileUiuxSuccess(response);
 }

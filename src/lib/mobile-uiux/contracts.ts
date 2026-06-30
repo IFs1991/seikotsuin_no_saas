@@ -75,6 +75,14 @@ export type MobileUiuxSettingsResponse = {
   updatedBy: string | null;
 };
 
+export type MobileUiuxSettingsWriteResponse = {
+  clinicId: string;
+  category: SettingsCategory;
+  settings: Record<string, unknown>;
+  updatedAt: string | null;
+  message: string;
+};
+
 export type MobileUiuxSettingsDetailResource = {
   id: string;
   name: string;
