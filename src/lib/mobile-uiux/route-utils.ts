@@ -23,13 +23,17 @@ export function buildMobileUiuxFailure(
 }
 
 export function buildMobileUiuxSuccess<T>(
-  data: T
+  data: T,
+  status = 200
 ): NextResponse<MobileUiuxApiSuccess<T>> {
-  return NextResponse.json({
-    success: true,
-    data,
-    generatedAt: new Date().toISOString(),
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      data,
+      generatedAt: new Date().toISOString(),
+    },
+    { status }
+  );
 }
 
 export function isValidDateKey(value: string): boolean {

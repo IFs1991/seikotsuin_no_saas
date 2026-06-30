@@ -34,6 +34,7 @@ type BridgeFetchResponse = {
 type FetchCall = {
   url: string;
   method: string;
+  body?: BodyInit | null;
 };
 
 type BridgeDocument = {
@@ -73,6 +74,10 @@ type BridgeWindow = {
     getItem: jest.Mock<string | null, [string]>;
   };
   CustomEvent: typeof CustomEvent;
+  MobileUiuxBridge?: {
+    createReservation: (payload: unknown) => Promise<boolean>;
+    updateReservation: (payload: unknown) => Promise<boolean>;
+  };
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
 };
 
@@ -137,7 +142,11 @@ function buildBridgeWindow(
   };
   const fetchMock = jest.fn(
     async (url: string, init?: RequestInit): Promise<BridgeFetchResponse> => {
-      calls.push({ url, method: init?.method ?? 'GET' });
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
       return responses.shift() ?? buildJsonResponse(500, {});
     }
   );
@@ -293,15 +302,16 @@ describe('mobile-uiux bridge contract', () => {
     await runBridgeScript(script, window);
 
     expect(calls).toEqual([
-      { url: '/api/mobile-uiux/context', method: 'GET' },
+      { url: '/api/mobile-uiux/context', method: 'GET', body: undefined },
       {
         url: expect.stringMatching(
           /^\/api\/mobile-uiux\/reservations\?clinic_id=/
         ) as string,
         method: 'GET',
+        body: undefined,
       },
     ]);
-    expect(script).not.toMatch(/\bPOST\b|\bPATCH\b|\bPUT\b|\bDELETE\b/);
+    expect(calls.some(call => call.method !== 'GET')).toBe(false);
   });
 
   it('does not treat non-mobile-BFF payloads as business data', async () => {
@@ -361,6 +371,103 @@ describe('mobile-uiux bridge contract', () => {
     expect(
       window.document.documentElement.dataset.mobileUiuxCanonicalRole
     ).toBe('therapist');
+  });
+
+  it('keeps reservation mutation disabled when server flags disable writes', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const disabledContext = {
+      ...contextPayload,
+      data: {
+        ...contextPayload.data,
+        flags: {
+          ...contextPayload.data.flags,
+          writeEnabled: false,
+          reservationWriteEnabled: false,
+        },
+      },
+    };
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, disabledContext),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.createReservation({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+    });
+
+    expect(result).toBe(false);
+    expect(calls.some(call => call.method === 'POST')).toBe(false);
+    expect(window.document.body.textContent).toContain('書き込みは無効です');
+  });
+
+  it('posts reservation mutations only through the mobile BFF handler', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(201, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reservation: {
+            id: 'reservation-1',
+          },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const pending = window.MobileUiuxBridge?.createReservation({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+    });
+
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'pending'
+    );
+    await expect(pending).resolves.toBe(true);
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/reservations',
+      method: 'POST',
+      body: JSON.stringify({
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+      }),
+    });
   });
 });
 

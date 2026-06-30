@@ -133,8 +133,10 @@ export function buildMobileUiuxBridgeScript(
     unauthorized: "ログインが必要です",
     forbidden: "この画面の実データは閲覧できません",
     invalid: "実データを表示できません",
+    writeDisabled: "予約の書き込みは無効です",
     unavailable: "実データを一時的に表示できません"
   };
+  let currentContext = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -196,6 +198,33 @@ export function buildMobileUiuxBridgeScript(
     return { kind: "payload", payload };
   }
 
+  async function mutateJson(url, method, payload) {
+    const response = await fetch(url, {
+      method,
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.status === 401) {
+      return { kind: "unauthorized" };
+    }
+
+    if (response.status === 403) {
+      return { kind: "forbidden" };
+    }
+
+    if (!response.ok) {
+      return { kind: "unavailable" };
+    }
+
+    const responsePayload = await response.json();
+    return { kind: "payload", payload: responsePayload };
+  }
+
   function buildReadUrl(entry, contextData) {
     const params = [];
     if (entry.requiresClinicId) {
@@ -255,6 +284,7 @@ export function buildMobileUiuxBridgeScript(
     document.documentElement.dataset.mobileUiuxCanonicalRole = contextData.role.canonical;
     document.documentElement.dataset.mobileUiuxClinicScope = "server";
     document.documentElement.dataset.mobileUiuxSampleState = "overridden";
+    currentContext = contextData;
     return true;
   }
 
@@ -324,6 +354,51 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
   }
+
+  function canWriteReservations() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.flags) &&
+      currentContext.flags.writeEnabled === true &&
+      currentContext.flags.reservationWriteEnabled === true;
+  }
+
+  async function mutateReservation(method, payload) {
+    if (!REAL_DATA_ENABLED || !canWriteReservations()) {
+      showFallback("write-disabled", STATUS_MESSAGES.writeDisabled);
+      return false;
+    }
+
+    document.documentElement.dataset.mobileUiuxMutation = "pending";
+    const result = await mutateJson("/api/mobile-uiux/reservations", method, payload);
+    if (result.kind === "unauthorized") {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+      return false;
+    }
+    if (result.kind === "forbidden") {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("forbidden", STATUS_MESSAGES.forbidden);
+      return false;
+    }
+    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
+      document.documentElement.dataset.mobileUiuxMutation = "failed";
+      showFallback("invalid", STATUS_MESSAGES.invalid);
+      return false;
+    }
+
+    document.documentElement.dataset.mobileUiuxMutation = "succeeded";
+    return true;
+  }
+
+  window.MobileUiuxBridge = {
+    createReservation(payload) {
+      return mutateReservation("POST", payload);
+    },
+    updateReservation(payload) {
+      return mutateReservation("PATCH", payload);
+    }
+  };
 
   const ready = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);
