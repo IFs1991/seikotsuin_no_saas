@@ -136,6 +136,8 @@ export function buildMobileUiuxBridgeScript(
     writeDisabled: "予約の書き込みは無効です",
     dailyReportWriteDisabled: "日報の書き込みは無効です",
     dailyReportSaved: "日報を保存しました",
+    settingsWriteDisabled: "設定の書き込みは無効です",
+    settingsSaved: "設定を保存しました",
     reservationSaved: "予約を保存しました",
     saving: "保存中です",
     unavailable: "実データを一時的に表示できません"
@@ -384,6 +386,13 @@ export function buildMobileUiuxBridgeScript(
       currentContext.flags.dailyReportWriteEnabled === true;
   }
 
+  function canWriteSettings() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.flags) &&
+      currentContext.flags.writeEnabled === true &&
+      currentContext.flags.settingsWriteEnabled === true;
+  }
+
   async function mutateMobileBff(options) {
     if (!REAL_DATA_ENABLED || options.canWrite() !== true) {
       showMutationStatus("disabled", options.disabledMessage);
@@ -435,6 +444,17 @@ export function buildMobileUiuxBridgeScript(
     });
   }
 
+  function mutateSettings(payload) {
+    return mutateMobileBff({
+      url: "/api/mobile-uiux/settings",
+      method: "PUT",
+      payload,
+      canWrite: canWriteSettings,
+      disabledMessage: STATUS_MESSAGES.settingsWriteDisabled,
+      successMessage: STATUS_MESSAGES.settingsSaved
+    });
+  }
+
   window.MobileUiuxBridge = {
     createReservation(payload) {
       return mutateReservation("POST", payload);
@@ -444,6 +464,9 @@ export function buildMobileUiuxBridgeScript(
     },
     submitDailyReport(payload) {
       return mutateDailyReport(payload);
+    },
+    updateSettings(payload) {
+      return mutateSettings(payload);
     }
   };
 

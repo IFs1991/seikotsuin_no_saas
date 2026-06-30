@@ -78,6 +78,7 @@ type BridgeWindow = {
     createReservation: (payload: unknown) => Promise<boolean>;
     updateReservation: (payload: unknown) => Promise<boolean>;
     submitDailyReport: (payload: unknown) => Promise<boolean>;
+    updateSettings: (payload: unknown) => Promise<boolean>;
   };
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
 };
@@ -636,6 +637,182 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).not.toContain('clinic-secret');
     expect(window.document.body.textContent).not.toContain('user-secret');
     expect(window.document.body.textContent).not.toContain('staff-secret');
+  });
+
+  it('keeps settings mutation disabled when server flags disable writes', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const disabledContext = {
+      ...contextPayload,
+      data: {
+        ...contextPayload.data,
+        flags: {
+          ...contextPayload.data.flags,
+          writeEnabled: true,
+          settingsWriteEnabled: false,
+        },
+      },
+    };
+    const { window, calls } = buildBridgeWindow('settings', [
+      buildJsonResponse(200, disabledContext),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          category: 'clinic_hours',
+          settings: {},
+          updatedAt: null,
+          updatedBy: null,
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.updateSettings({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      category: 'clinic_hours',
+      settings: {},
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'disabled'
+    );
+    expect(calls.some(call => call.method === 'PUT')).toBe(false);
+    expect(window.document.body.textContent).toContain(
+      '設定の書き込みは無効です'
+    );
+  });
+
+  it('puts settings mutations only through the mobile BFF handler and marks success', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      category: 'clinic_hours',
+      settings: {
+        holidays: ['2026-07-20'],
+      },
+    };
+    const { window, calls } = buildBridgeWindow('settings', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            settingsWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          category: 'clinic_hours',
+          settings: {},
+          updatedAt: null,
+          updatedBy: null,
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          category: 'clinic_hours',
+          settings: {
+            holidays: ['2026-07-20'],
+          },
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const pending = window.MobileUiuxBridge?.updateSettings(payload);
+
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'pending'
+    );
+    await expect(pending).resolves.toBe(true);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'succeeded'
+    );
+    expect(window.document.body.textContent).toContain('設定を保存しました');
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/settings',
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  });
+
+  it('marks settings mutation failure without logging or rendering secrets', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window } = buildBridgeWindow('settings', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            settingsWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          category: 'communication',
+          settings: {},
+          updatedAt: null,
+          updatedBy: null,
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }),
+      buildJsonResponse(400, {
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message:
+            'smtp-password-secret api-key-secret webhook-secret token-secret credential-secret',
+        },
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.updateSettings({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      category: 'communication',
+      settings: {},
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'failed'
+    );
+    expect(window.console.log).not.toHaveBeenCalled();
+    expect(window.console.error).not.toHaveBeenCalled();
+    expect(window.document.body.textContent).not.toContain(
+      'smtp-password-secret'
+    );
+    expect(window.document.body.textContent).not.toContain('api-key-secret');
+    expect(window.document.body.textContent).not.toContain('webhook-secret');
+    expect(window.document.body.textContent).not.toContain('token-secret');
+    expect(window.document.body.textContent).not.toContain(
+      'credential-secret'
+    );
   });
 });
 
