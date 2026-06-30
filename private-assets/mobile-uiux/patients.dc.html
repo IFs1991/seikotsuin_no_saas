@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans JP", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .scrl::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes growW { from { width: 0; } }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;">
+
+  <!-- ░░ STAGE CONTROLS ░░ -->
+  <div style="width: 100%; max-width: 720px; background: var(--surface, #fff); border: 1px solid var(--border, #e4e8e6); border-radius: 16px; padding: 16px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.05);">
+    <div style="display: flex; flex-direction: column; gap: 2px; margin-right: auto;">
+      <div style="font-size: 15px; font-weight: 700; color: var(--fg, #1b2421); letter-spacing: .2px;">整骨院 患者分析 — モバイル UI/UX</div>
+      <div style="font-size: 12px; color: var(--fg-2, #5c6864);">単院分析・院別カード比較・フィルタ / 読み取り専用</div>
+    </div>
+    <label style="display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--fg-2);">ロール
+      <select value="{{ roleVal }}" onChange="{{ onRole }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 8px 30px 8px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M1 1l4 4 4-4%22 stroke=%22%238a958f%22 stroke-width=%221.5%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+        <option value="staff">受付・店舗スタッフ</option>
+        <option value="store">店舗管理者</option>
+        <option value="manager">マネージャー</option>
+      </select>
+    </label>
+    <div style="display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--fg-2);">テーマ
+      <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 3px;">
+        <button onClick="{{ setLight }}" style="{{ lightBtn }}">ライト</button>
+        <button onClick="{{ setDark }}" style="{{ darkBtn }}">ダーク</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░░ iPHONE ░░ -->
+  <div style="width: 390px; height: 812px; background-color: #1d201f; border-radius: 56px; padding: 13px; box-sizing: border-box; box-shadow: 0 2px 6px rgba(0,0,0,.4), 0 36px 70px rgba(0,0,0,.32); position: relative; flex: none;">
+    <div data-screen-label="患者分析（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
+
+      <div style="position: absolute; top: 13px; left: 50%; transform: translateX(-50%); width: 108px; height: 30px; background: #000; border-radius: 16px; z-index: 60;"></div>
+
+      <!-- status bar -->
+      <div style="height: 50px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 16px 26px 0; z-index: 8;">
+        <span style="font-size: 14px; font-weight: 700; color: var(--status-fg, #1b2421); letter-spacing: .3px;">9:41</span>
+        <div style="display: flex; align-items: center; gap: 7px;">
+          <div style="display: flex; align-items: flex-end; gap: 2px; height: 11px;">
+            <div style="width: 3px; height: 4px; border-radius: 1px; background: var(--status-fg, #1b2421);"></div>
+            <div style="width: 3px; height: 6px; border-radius: 1px; background: var(--status-fg, #1b2421);"></div>
+            <div style="width: 3px; height: 8px; border-radius: 1px; background: var(--status-fg, #1b2421);"></div>
+            <div style="width: 3px; height: 11px; border-radius: 1px; background: var(--status-fg, #1b2421);"></div>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--status-fg, #1b2421);">5G</span>
+          <div style="width: 22px; height: 11px; border: 1px solid var(--status-fg, #1b2421); border-radius: 3px; padding: 1.5px; opacity: .9;"><div style="width: 80%; height: 100%; background: var(--status-fg, #1b2421); border-radius: 1px;"></div></div>
+        </div>
+      </div>
+
+      <!-- HEADER -->
+      <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px 10px;">
+          <div style="display: flex; flex-direction: column; gap: 1px; margin-right: auto;">
+            <div style="font-size: 19px; font-weight: 700; color: var(--fg);">患者分析</div>
+            <div style="font-size: 11px; color: var(--fg-2); white-space: nowrap;">{{ scopeLabel }}</div>
+          </div>
+          <sc-if value="{{ showSingle }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size: 13px; font-weight: 700; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 9px 14px;">今月</div>
+          </sc-if>
+          <span style="font-size: 10.5px; font-weight: 600; color: var(--fg-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px; white-space: nowrap;">読み取り専用</span>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="scrl" style="flex: 1; overflow-y: auto; position: relative;">
+
+        <!-- ░ SINGLE-CLINIC VIEW ░ -->
+        <sc-if value="{{ showSingle }}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 18px;">
+
+            <!-- summary -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">サマリー ・ 今月</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px;">
+                <sc-for list="{{ scSummary }}" as="k" hint-placeholder-count="6">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 20px; font-weight: 700; color: {{ k.color }}; line-height: 1.1;">{{ k.value }}</div><div style="font-size: 11px; color: var(--fg-2); font-weight: 500; margin-top: 3px;">{{ k.label }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- conversion funnel -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin-bottom: 13px;">新患の再来フロー</div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{ funnel }}" as="f" hint-placeholder-count="3">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 92px; flex: none; font-size: 11.5px; color: var(--fg-2);">{{ f.label }}</div>
+                    <div style="flex: 1; height: 30px; background: var(--surface-2); border-radius: 8px; overflow: hidden;"><div style="height: 100%; width: {{ f.width }}; background: var(--primary); border-radius: 8px; display: flex; align-items: center; padding: 0 10px; animation: growW .6s ease;"><span style="font-size: 12px; font-weight: 700; color: var(--primary-fg);">{{ f.value }}</span></div></div>
+                    <div style="width: 40px; flex: none; text-align: right; font-size: 12px; font-weight: 700; color: var(--fg);">{{ f.pct }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- trend chart -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px;">
+              <div style="display: flex; align-items: center; margin-bottom: 14px;"><div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2);">来院数の推移</div>
+                <div style="margin-left: auto; display: flex; gap: 12px;"><span style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-2);"><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--primary);"></span>再来</span><span style="display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg-2);"><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--primary-soft);"></span>新患</span></div>
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 10px; height: 150px;">
+                <sc-for list="{{ trendBars }}" as="m" hint-placeholder-count="6">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end;">
+                    <div style="width: 70%; display: flex; flex-direction: column; justify-content: flex-end;">
+                      <div style="width: 100%; height: {{ m.newH }}; background: var(--primary-soft); border-radius: 4px 4px 0 0;"></div>
+                      <div style="width: 100%; height: {{ m.repH }}; background: var(--primary); border-radius: 0 0 4px 4px;"></div>
+                    </div>
+                    <span style="font-size: 10px; color: var(--fg-3);">{{ m.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- segments -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">患者セグメント</div>
+              <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px;">
+                <div style="display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 14px;">
+                  <sc-for list="{{ segments }}" as="g" hint-placeholder-count="5">
+                    <div style="width: {{ g.width }}; background: {{ g.color }};"></div>
+                  </sc-for>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
+                  <sc-for list="{{ segments }}" as="g" hint-placeholder-count="5">
+                    <div style="display: flex; align-items: center; gap: 7px;"><span style="width: 9px; height: 9px; border-radius: 2px; background: {{ g.color }}; flex: none;"></span><span style="font-size: 12px; color: var(--fg-2);">{{ g.label }}</span><span style="margin-left: auto; font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ g.value }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- churn risk -->
+            <div>
+              <div style="display: flex; align-items: center; margin: 0 2px 8px;"><div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2);">離脱リスク患者</div><span style="margin-left: auto; font-size: 11px; color: var(--s-ns); font-weight: 700;">高 {{ riskHighCount }}名</span></div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ riskList }}" as="r" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px;">
+                    <div style="width: 38px; height: 38px; border-radius: 11px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;">{{ r.initial }}</div>
+                    <div style="flex: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ r.name }} <span style="font-size: 11px; font-weight: 400; color: var(--fg-3);">様</span></div><div style="font-size: 11px; color: var(--fg-2); margin-top: 1px;">最終来院 {{ r.last }} ・ LTV {{ r.ltv }}</div></div>
+                    <span style="font-size: 11px; font-weight: 700; color: {{ r.c }}; background: {{ r.b }}; padding: 4px 11px; border-radius: 999px; flex: none;">{{ r.level }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- follow-up -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">フォローアップ候補</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ followList }}" as="f" hint-placeholder-count="3">
+                  <div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px;">
+                    <div style="flex: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ f.name }} <span style="font-size: 11px; font-weight: 400; color: var(--fg-3);">様</span></div><div style="font-size: 11px; color: var(--fg-2); margin-top: 1px;">{{ f.reason }} ・ 最終来院 {{ f.last }}</div></div>
+                    <button onClick="{{ f.onContact }}" style="min-height: 44px; padding: 0 14px; border: 1px solid var(--primary); background: var(--primary-soft); color: var(--on-primary-soft); border-radius: 11px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap;">連絡する</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- LTV ranking -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">LTV ランキング</div>
+              <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;">
+                <sc-for list="{{ ltvList }}" as="p" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 12px; padding: 12px 15px; border-bottom: 1px solid var(--border);">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: {{ p.rankBg }}; color: {{ p.rankFg }}; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ p.rank }}</span>
+                    <span style="flex: 1; font-size: 14px; font-weight: 600; color: var(--fg);">{{ p.name }} <span style="font-size: 11px; font-weight: 400; color: var(--fg-3);">様</span></span>
+                    <span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ p.ltv }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="font-size: 10.5px; color: var(--fg-3); line-height: 1.6; padding: 0 4px;">患者本名は院内（認証済み・担当院スコープ内）の閲覧限定です。ログ・外部連携には出力されません。</div>
+          </div>
+        </sc-if>
+
+        <!-- ░ MANAGER VIEW ░ -->
+        <sc-if value="{{ showManager }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 18px;">
+
+            <!-- filter -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--fg-2); margin-bottom: 11px;">対象・期間</div>
+              <label style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 11px;"><span style="font-size: 11px; color: var(--fg-2);">担当院</span>
+                <select value="{{ pClinic }}" onChange="{{ onClinicSel }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 11px 32px 11px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                  <sc-for list="{{ clinicSelOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                </select>
+              </label>
+              <div style="font-size: 11px; color: var(--fg-2); margin-bottom: 6px;">期間</div>
+              <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px; margin-bottom: 11px;">
+                <button onClick="{{ selMonth }}" style="{{ mMonthStyle }}">今月</button>
+                <button onClick="{{ sel30 }}" style="{{ m30Style }}">直近30日</button>
+                <button onClick="{{ selCustom }}" style="{{ mCustomStyle }}">任意</button>
+              </div>
+              <sc-if value="{{ showCustom }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 10px; margin-bottom: 4px;">
+                  <label style="flex: 1; display: flex; flex-direction: column; gap: 5px;"><span style="font-size: 11px; color: var(--fg-2);">開始日</span><input type="date" value="{{ pStart }}" onChange="{{ onStart }}" style="font-family: inherit; font-size: 13px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 11px; outline: none;"/></label>
+                  <label style="flex: 1; display: flex; flex-direction: column; gap: 5px;"><span style="font-size: 11px; color: var(--fg-2);">終了日</span><input type="date" value="{{ pEnd }}" onChange="{{ onEnd }}" style="font-family: inherit; font-size: 13px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 11px; outline: none;"/></label>
+                </div>
+              </sc-if>
+              <sc-if value="{{ filterErrShow }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size: 11.5px; color: var(--s-ns); font-weight: 500; margin: 4px 2px 0;">{{ filterErr }}</div>
+              </sc-if>
+              <div style="display: flex; gap: 9px; margin-top: 12px;">
+                <button onClick="{{ resetFilter }}" style="flex: 1; min-height: 46px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">リセット</button>
+                <button onClick="{{ applyFilter }}" style="flex: 2; min-height: 46px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 12px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">適用</button>
+              </div>
+              <sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size: 11px; color: var(--s-uc); font-weight: 600; margin: 9px 2px 0; text-align: center;">未適用の変更があります</div>
+              </sc-if>
+            </div>
+
+            <!-- KPI -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">KPIサマリー ・ {{ periodLabel }}</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px;">
+                <sc-for list="{{ kpiBoxes }}" as="k" hint-placeholder-count="10">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;"><div style="font-size: 19px; font-weight: 700; color: {{ k.color }}; line-height: 1.1;">{{ k.value }}</div><div style="font-size: 10.5px; color: var(--fg-2); font-weight: 500; margin-top: 3px;">{{ k.label }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- clinic visits chart -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 15px;">
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin-bottom: 14px;">院別 来院患者数</div>
+              <div style="display: flex; flex-direction: column; gap: 11px;">
+                <sc-for list="{{ chartBars }}" as="c" hint-placeholder-count="4">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 52px; flex: none; font-size: 11.5px; color: var(--fg-2);">{{ c.short }}</div>
+                    <div style="flex: 1; height: 22px; background: var(--surface-2); border-radius: 6px; overflow: hidden;"><div style="height: 100%; width: {{ c.width }}; background: var(--primary); border-radius: 6px; animation: growW .6s ease;"></div></div>
+                    <div style="width: 44px; flex: none; text-align: right; font-size: 12px; font-weight: 700; color: var(--fg);">{{ c.value }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- clinic cards -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">担当院別分析</div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{ clinicCards }}" as="c" hint-placeholder-count="4">
+                  <button onClick="{{ c.onTap }}" style="all: unset; cursor: pointer; box-sizing: border-box; display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 11px;"><span style="font-size: 14.5px; font-weight: 700; color: var(--fg);">{{ c.name }}</span><span style="margin-left: auto; border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); opacity: .6;"></span></div>
+                    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                      <div style="flex: 1; background: var(--primary-soft); border-radius: 11px; padding: 10px 12px;"><div style="font-size: 18px; font-weight: 700; color: var(--on-primary-soft); line-height: 1.1;">{{ c.visits }}</div><div style="font-size: 10px; color: var(--on-primary-soft); opacity: .8; margin-top: 2px;">来院患者数</div></div>
+                      <div style="flex: 1; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 10px 12px;"><div style="font-size: 18px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ c.revenue }}</div><div style="font-size: 10px; color: var(--fg-2); margin-top: 2px;">総売上</div></div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 7px 16px;">
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">新患</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ c.newP }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">再来</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ c.repeat }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">新患再来率</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ c.rebook }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">患者単価</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ c.unit }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">延べ来院</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ c.visitCount }}</span></div>
+                      <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-size: 11px; color: var(--fg-2);">離脱リスク高</span><span style="font-size: 11px; font-weight: 700; color: var(--s-ns); background: var(--s-ns-bg); padding: 1px 9px; border-radius: 999px;">{{ c.churn }}</span></div>
+                    </div>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="font-size: 10.5px; color: var(--fg-3); line-height: 1.6; padding: 0 4px;">担当院スコープ内のデータのみ表示。患者本名は院内閲覧限定で外部出力されません。</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- BOTTOM NAV -->
+      <div style="flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 8px 24px; display: flex; z-index: 9;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px;"></div><span style="font-size: 10px; color: var(--fg-3);">ホーム</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px; position: relative;"><div style="position: absolute; inset: 3px 3px auto 3px; height: 2px; background: var(--fg-3);"></div></div><span style="font-size: 10px; color: var(--fg-3);">予約</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;"><div style="width: 16px; height: 16px; border: 2px solid var(--primary); border-radius: 50%; margin-top: 2px;"></div><span style="font-size: 10px; color: var(--primary); font-weight: 700;">患者</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;"><div style="display: flex; align-items: flex-end; gap: 2px; height: 18px;"><div style="width: 4px; height: 8px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 14px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 11px; background: var(--fg-3); border-radius: 1px;"></div></div><span style="font-size: 10px; color: var(--fg-3);">日報</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;"><div style="width: 20px; height: 20px; border: 2px solid var(--fg-3); border-radius: 50%;"></div><span style="font-size: 10px; color: var(--fg-3);">設定</span></div>
+      </div>
+
+      <!-- CLINIC DETAIL SHEET -->
+      <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeDetail }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 88%; display: flex; flex-direction: column;">
+          <div style="padding: 12px 0 4px; display: flex; justify-content: center; flex: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; flex: none;">
+            <div style="display: flex; flex-direction: column; gap: 1px;"><div style="font-size: 17px; font-weight: 700; color: var(--fg);">{{ dName }}</div><div style="font-size: 11.5px; color: var(--fg-2);">担当院ドリルダウン ・ {{ periodLabel }}</div></div>
+            <button onClick="{{ closeDetail }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button>
+          </div>
+          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 26px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 18px;">
+              <sc-for list="{{ dKpi }}" as="k" hint-placeholder-count="4">
+                <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px;"><div style="font-size: 19px; font-weight: 700; color: {{ k.color }}; line-height: 1.1;">{{ k.value }}</div><div style="font-size: 10.5px; color: var(--fg-2); margin-top: 3px;">{{ k.label }}</div></div>
+              </sc-for>
+            </div>
+            <div style="font-size: 12px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">離脱リスク患者</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+              <sc-for list="{{ dRisk }}" as="r" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px;">
+                  <div style="flex: 1; min-width: 0;"><div style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ r.name }} <span style="font-size: 10.5px; font-weight: 400; color: var(--fg-3);">様</span></div><div style="font-size: 11px; color: var(--fg-2); margin-top: 1px;">最終来院 {{ r.last }}</div></div>
+                  <span style="font-size: 11px; font-weight: 700; color: {{ r.c }}; background: {{ r.b }}; padding: 4px 11px; border-radius: 999px; flex: none;">{{ r.level }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size: 12px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">フォローアップ候補</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ dFollow }}" as="f" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px;">
+                  <div style="flex: 1; min-width: 0;"><div style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ f.name }} <span style="font-size: 10.5px; font-weight: 400; color: var(--fg-3);">様</span></div><div style="font-size: 11px; color: var(--fg-2); margin-top: 1px;">{{ f.reason }}</div></div>
+                  <button onClick="{{ f.onContact }}" style="min-height: 44px; padding: 0 14px; border: 1px solid var(--primary); background: var(--primary-soft); color: var(--on-primary-soft); border-radius: 11px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap;">連絡する</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="height: 14px; flex: none;"></div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; bottom: 96px; left: 50%; z-index: 80; background: var(--toast-bg); color: var(--toast-fg); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); animation: fadeIn .25s ease; white-space: nowrap; max-width: 86%; transform: translateX(-50%);">{{ toastMsg }}</div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 720, &quot;height&quot;: 900}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f7d72&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#2f7d72&quot;, &quot;#356a9c&quot;, &quot;#4a6670&quot;, &quot;#7a5a86&quot;]}}">
+class Component extends DCLogic {
+  CLINICS = [
+    { id: 'c1', name: '本町ケア整骨院', short: '本町', visits: 312, revenue: 1840000, newP: 48, repeat: 264, rebook: 62, visitCount: 1180, unit: 5900, churn: 14, ltv: 62000 },
+    { id: 'c2', name: '駅前ケア整骨院', short: '駅前', visits: 268, revenue: 1520000, newP: 41, repeat: 227, rebook: 58, visitCount: 980, unit: 5670, churn: 19, ltv: 58000 },
+    { id: 'c3', name: '緑が丘ケア整骨院', short: '緑が丘', visits: 198, revenue: 1150000, newP: 33, repeat: 165, rebook: 65, visitCount: 720, unit: 5810, churn: 9, ltv: 60000 },
+    { id: 'c4', name: 'みなと総合整骨院', short: 'みなと', visits: 224, revenue: 1330000, newP: 38, repeat: 186, rebook: 60, visitCount: 845, unit: 5940, churn: 12, ltv: 61000 },
+  ];
+  HOME = 'c1';
+  PATIENTS = ['木村 美穂', '井上 健', '斎藤 隆', '松本 陽子', '福田 一樹', '三浦 彩', '高橋 涼介', '大野 真理子', '岡田 七海', '林 大和', '清水 翔', '小林 誠一'];
+
+  state = {
+    theme: 'light', role: 'staff',
+    pClinic: 'all', pPeriod: 'month', pStart: '', pEnd: '',
+    mClinic: 'all', mPeriod: 'month', mStart: '', mEnd: '',
+    filterErr: '', detailClinic: null, toast: '',
+  };
+
+  // テーマ・デザイントークンは clinic-shared.js に集約（全画面共通・キャッシュ共有）。
+  // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
+  setRoot = (el) => { this._root = el; this.applyTheme(); };
+  applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
+  componentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
+  man = (n) => '¥' + (Math.round(n / 1000) / 10).toFixed(1) + '万';
+  initial = (name) => (name || '？').trim().charAt(0);
+
+  toast = (m) => { this.setState({ toast: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2300); };
+  setLight = () => this.setState({ theme: 'light' });
+  setDark = () => this.setState({ theme: 'dark' });
+  onRole = (e) => this.setState({ role: e.target.value, detailClinic: null });
+
+  onClinicSel = (e) => this.setState({ pClinic: e.target.value });
+  selMonth = () => this.setState({ pPeriod: 'month' });
+  sel30 = () => this.setState({ pPeriod: '30d' });
+  selCustom = () => this.setState({ pPeriod: 'custom' });
+  onStart = (e) => this.setState({ pStart: e.target.value });
+  onEnd = (e) => this.setState({ pEnd: e.target.value });
+  validate = () => {
+    const s = this.state;
+    if (s.pPeriod !== 'custom') return '';
+    if (!s.pStart || !s.pEnd) return '開始日と終了日を入力してください';
+    if (s.pStart > s.pEnd) return '終了日は開始日以降にしてください';
+    const days = (new Date(s.pEnd) - new Date(s.pStart)) / 86400000;
+    if (days > 1095) return '期間は最大3年（1095日）までです';
+    return '';
+  };
+  applyFilter = () => {
+    const err = this.validate();
+    if (err) { this.setState({ filterErr: err }); return; }
+    this.setState(s => ({ mClinic: s.pClinic, mPeriod: s.pPeriod, mStart: s.pStart, mEnd: s.pEnd, filterErr: '' }));
+    this.toast('フィルタを適用しました');
+  };
+  resetFilter = () => this.setState({ pClinic: 'all', pPeriod: 'month', pStart: '', pEnd: '', mClinic: 'all', mPeriod: 'month', mStart: '', mEnd: '', filterErr: '' });
+
+  openDetail = (id) => () => this.setState({ detailClinic: id });
+  closeDetail = () => this.setState({ detailClinic: null });
+  contact = (name) => () => this.toast(name + ' 様に連絡（デモ）');
+
+  factor = () => {
+    const s = this.state;
+    if (s.mPeriod === 'month') return 1;
+    if (s.mPeriod === '30d') return 0.92;
+    if (s.mStart && s.mEnd) { const d = (new Date(s.mEnd) - new Date(s.mStart)) / 86400000 + 1; return Math.max(0.3, Math.min(3, d / 30)); }
+    return 1;
+  };
+  genRisk = (c) => {
+    const seed = c.visits; const lv = ['高', '高', '中'];
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const level = lv[(seed + i) % lv.length];
+      out.push({ name: this.PATIENTS[(seed + i * 3) % this.PATIENTS.length], last: (22 + (seed + i * 7) % 28) + '日前', level, c: level === '高' ? 'var(--s-ns)' : 'var(--s-uc)', b: level === '高' ? 'var(--s-ns-bg)' : 'var(--s-uc-bg)' });
+    }
+    return out;
+  };
+  genFollow = (c) => {
+    const seed = c.visits; const rs = ['1ヶ月 未来院', '回数券 残りわずか', '産後ケア 次回案内'];
+    const out = [];
+    for (let i = 0; i < 2; i++) out.push({ name: this.PATIENTS[(seed + i * 5 + 4) % this.PATIENTS.length], reason: rs[(seed + i) % rs.length] });
+    return out;
+  };
+
+  seg = (active) => `all: unset; box-sizing: border-box; text-align: center; flex: 1; min-height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; padding: 0 8px; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500}; box-shadow: ${active ? '0 1px 3px rgba(0,0,0,.12)' : 'none'};`;
+  themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
+
+  renderVals() {
+    const s = this.state;
+    const showManager = s.role === 'manager';
+    const showSingle = !showManager;
+    const home = this.CLINICS.find(c => c.id === this.HOME);
+
+    // ── single-clinic (home) ──
+    const scSummary = [
+      { label: '来院患者数', value: home.visits + '名', color: 'var(--fg)' },
+      { label: '新患数', value: home.newP + '名', color: 'var(--fg)' },
+      { label: '新患再来率', value: home.rebook + '%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.man(home.revenue), color: 'var(--fg)' },
+      { label: '患者単価', value: this.yen(home.unit), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: home.churn + '名', color: 'var(--s-ns)' },
+    ];
+    const second = Math.round(home.newP * 0.65);
+    const retained = Math.round(home.newP * 0.40);
+    const funnel = [
+      { label: '新患', value: home.newP + '名', pct: '100%', width: '100%' },
+      { label: '2回目来院', value: second + '名', pct: '65%', width: '65%' },
+      { label: '定着（5回+）', value: retained + '名', pct: '40%', width: '40%' },
+    ];
+    const trendRaw = [
+      { label: '1月', n: 42, r: 226 }, { label: '2月', n: 45, r: 239 }, { label: '3月', n: 44, r: 252 },
+      { label: '4月', n: 47, r: 258 }, { label: '5月', n: 46, r: 266 }, { label: '6月', n: 48, r: 264 },
+    ];
+    const maxTot = Math.max(...trendRaw.map(m => m.n + m.r));
+    const trendBars = trendRaw.map(m => ({ label: m.label, newH: (m.n / maxTot * 138) + 'px', repH: (m.r / maxTot * 138) + 'px' }));
+    const segRaw = [
+      { label: 'VIP', value: 24, color: 'var(--primary)' },
+      { label: '常連', value: 88, color: 'var(--on-primary-soft)' },
+      { label: '安定', value: 122, color: 'var(--primary-soft)' },
+      { label: '離脱注意', value: 54, color: 'var(--s-uc)' },
+      { label: '休眠', value: 24, color: 'var(--fg-3)' },
+    ];
+    const segTot = segRaw.reduce((a, g) => a + g.value, 0);
+    const segments = segRaw.map(g => ({ label: g.label, value: g.value + '名', color: g.color, width: (g.value / segTot * 100) + '%' }));
+    const riskRaw = [
+      { name: '木村 美穂', last: '45日前', level: '高', ltv: 86000 },
+      { name: '井上 健', last: '42日前', level: '高', ltv: 64000 },
+      { name: '斎藤 隆', last: '38日前', level: '高', ltv: 71000 },
+      { name: '松本 陽子', last: '31日前', level: '中', ltv: 93000 },
+      { name: '福田 一樹', last: '28日前', level: '中', ltv: 58000 },
+    ];
+    const riskList = riskRaw.map(r => ({ name: r.name, initial: this.initial(r.name), last: r.last, ltv: this.man(r.ltv), level: r.level, c: r.level === '高' ? 'var(--s-ns)' : 'var(--s-uc)', b: r.level === '高' ? 'var(--s-ns-bg)' : 'var(--s-uc-bg)' }));
+    const followRaw = [
+      { name: '三浦 彩', reason: '産後ケア 次回案内', last: '18日前' },
+      { name: '高橋 涼介', reason: '回数券 残り1回', last: '12日前' },
+      { name: '大野 真理子', reason: '1ヶ月 未来院', last: '33日前' },
+    ];
+    const followList = followRaw.map(f => ({ name: f.name, reason: f.reason, last: f.last, onContact: this.contact(f.name) }));
+    const ltvRaw = [
+      { name: '渡辺 結衣', ltv: 142000 }, { name: '三浦 彩', ltv: 128000 }, { name: '高橋 涼介', ltv: 119000 },
+      { name: '岡田 七海', ltv: 104000 }, { name: '大野 真理子', ltv: 98000 },
+    ];
+    const ltvList = ltvRaw.map((p, i) => ({ rank: i + 1, name: p.name, ltv: this.man(p.ltv), rankBg: i === 0 ? 'var(--primary)' : 'var(--surface-3)', rankFg: i === 0 ? 'var(--primary-fg)' : 'var(--fg-2)' }));
+
+    // ── manager ──
+    const f = this.factor();
+    const scopeClinics = s.mClinic === 'all' ? this.CLINICS : [this.CLINICS.find(c => c.id === s.mClinic)];
+    const sum = (k) => scopeClinics.reduce((a, c) => a + c[k], 0);
+    const visits = Math.round(sum('visits') * f);
+    const revenue = sum('revenue') * f;
+    const newP = Math.round(sum('newP') * f);
+    const repeat = Math.round(sum('repeat') * f);
+    const visitCount = Math.round(sum('visitCount') * f);
+    const churn = Math.round(sum('churn') * f);
+    const dormant = Math.round(visits * 0.08);
+    const rebook = Math.round(scopeClinics.reduce((a, c) => a + c.rebook * c.visits, 0) / Math.max(1, sum('visits')));
+    const unit = Math.round(sum('revenue') / Math.max(1, sum('visits')));
+    const avgLtv = Math.round(scopeClinics.reduce((a, c) => a + c.ltv * c.visits, 0) / Math.max(1, sum('visits')));
+    const kpiBoxes = [
+      { label: '来院患者数', value: visits + '名', color: 'var(--fg)' },
+      { label: '新患再来率', value: rebook + '%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.man(revenue), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: churn + '名', color: 'var(--s-ns)' },
+      { label: '新患数', value: newP + '名', color: 'var(--fg)' },
+      { label: '再来数', value: repeat + '名', color: 'var(--fg)' },
+      { label: '患者単価', value: this.yen(unit), color: 'var(--fg)' },
+      { label: '延べ来院数', value: visitCount.toLocaleString('ja-JP'), color: 'var(--fg)' },
+      { label: '平均LTV', value: this.man(avgLtv), color: 'var(--fg)' },
+      { label: '休眠患者', value: dormant + '名', color: 'var(--s-uc)' },
+    ];
+    const maxVisits = Math.max(...this.CLINICS.map(c => c.visits)) * f;
+    const chartBars = this.CLINICS.map(c => ({ short: c.short, value: Math.round(c.visits * f), width: (c.visits * f / maxVisits * 100) + '%' }));
+    const clinicCards = this.CLINICS.slice().sort((a, b) => b.visits - a.visits).map(c => ({
+      name: c.name, visits: Math.round(c.visits * f), revenue: this.man(c.revenue * f),
+      newP: Math.round(c.newP * f) + '名', repeat: Math.round(c.repeat * f) + '名', rebook: c.rebook + '%',
+      unit: this.yen(c.unit), visitCount: Math.round(c.visitCount * f).toLocaleString('ja-JP'),
+      churn: Math.round(c.churn * f) + '名', onTap: this.openDetail(c.id),
+    }));
+    const periodLabel = s.mPeriod === 'month' ? '今月' : s.mPeriod === '30d' ? '直近30日' : (s.mStart && s.mEnd ? s.mStart + '〜' + s.mEnd : '任意期間');
+
+    // ── clinic detail ──
+    const dc = s.detailClinic ? this.CLINICS.find(c => c.id === s.detailClinic) : null;
+    let detail = {};
+    if (dc) {
+      detail = {
+        dName: dc.name,
+        dKpi: [
+          { label: '来院患者数', value: Math.round(dc.visits * f) + '名', color: 'var(--fg)' },
+          { label: '総売上', value: this.man(dc.revenue * f), color: 'var(--fg)' },
+          { label: '新患再来率', value: dc.rebook + '%', color: 'var(--on-primary-soft)' },
+          { label: '離脱リスク高', value: Math.round(dc.churn * f) + '名', color: 'var(--s-ns)' },
+        ],
+        dRisk: this.genRisk(dc),
+        dFollow: this.genFollow(dc).map(x => ({ name: x.name, reason: x.reason, onContact: this.contact(x.name) })),
+      };
+    }
+
+    return {
+      setRoot: this.setRoot,
+      roleVal: s.role, onRole: this.onRole,
+      setLight: this.setLight, setDark: this.setDark,
+      lightBtn: this.themeBtn(s.theme === 'light'), darkBtn: this.themeBtn(s.theme === 'dark'),
+      showSingle, showManager,
+      scopeLabel: showManager ? '担当院 4院 ・ マネージャー' : '本町ケア整骨院',
+      scSummary, funnel, trendBars, segments, riskList, followList, ltvList,
+      riskHighCount: riskRaw.filter(r => r.level === '高').length,
+      pClinic: s.pClinic, onClinicSel: this.onClinicSel,
+      clinicSelOpts: [{ v: 'all', l: '全院（担当院すべて）' }].concat(this.CLINICS.map(c => ({ v: c.id, l: c.name }))),
+      selMonth: this.selMonth, sel30: this.sel30, selCustom: this.selCustom,
+      mMonthStyle: this.seg(s.pPeriod === 'month'), m30Style: this.seg(s.pPeriod === '30d'), mCustomStyle: this.seg(s.pPeriod === 'custom'),
+      showCustom: s.pPeriod === 'custom', pStart: s.pStart, pEnd: s.pEnd, onStart: this.onStart, onEnd: this.onEnd,
+      filterErr: s.filterErr, filterErrShow: !!s.filterErr,
+      applyFilter: this.applyFilter, resetFilter: this.resetFilter,
+      dirty: s.pClinic !== s.mClinic || s.pPeriod !== s.mPeriod || s.pStart !== s.mStart || s.pEnd !== s.mEnd,
+      periodLabel, kpiBoxes, chartBars, clinicCards,
+      detailOpen: !!dc, closeDetail: this.closeDetail, ...detail,
+      toastShow: !!s.toast, toastMsg: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

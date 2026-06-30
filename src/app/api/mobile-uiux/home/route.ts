@@ -1,0 +1,102 @@
+import { NextRequest } from 'next/server';
+
+import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
+import {
+  createDashboardSupabaseReadModelClient,
+  fetchDashboardReadModel,
+} from '@/lib/dashboard/read-model';
+import { AppError } from '@/lib/error-handler';
+import type { MobileUiuxHomeResponse } from '@/lib/mobile-uiux/contracts';
+import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import {
+  buildMobileUiuxFailure,
+  buildMobileUiuxSuccess,
+  dateKeyToUtcMidnight,
+  isValidDateKey,
+} from '@/lib/mobile-uiux/route-utils';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { toJstDateKey } from '@/lib/manager-dashboard';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const PATH = '/api/mobile-uiux/home';
+const JST_TIMEZONE = 'Asia/Tokyo' as const;
+const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
+
+function resolveDateKey(value: string | null): string | null {
+  if (value === null) {
+    return toJstDateKey(new Date());
+  }
+
+  return isValidDateKey(value) ? value : null;
+}
+
+export async function GET(request: NextRequest) {
+  const flags = getMobileUiuxFlags();
+  if (!flags.enabled || !flags.realDataEnabled) {
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      'モバイル UI/UX の実データ参照は無効です'
+    );
+  }
+
+  const clinicId = request.nextUrl.searchParams.get('clinic_id');
+  if (!clinicId) {
+    return buildMobileUiuxFailure(400, 'BAD_REQUEST', 'clinic_id は必須です');
+  }
+
+  const date = resolveDateKey(request.nextUrl.searchParams.get('date'));
+  if (!date) {
+    return buildMobileUiuxFailure(
+      400,
+      'BAD_REQUEST',
+      'date は YYYY-MM-DD 形式で指定してください'
+    );
+  }
+
+  let access;
+  try {
+    access = await ensureClinicAccess(request, PATH, clinicId, {
+      allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      const code =
+        error.statusCode === 401
+          ? 'UNAUTHORIZED'
+          : error.statusCode === 400
+            ? 'BAD_REQUEST'
+            : 'FORBIDDEN';
+      return buildMobileUiuxFailure(
+        error.statusCode,
+        code,
+        error.statusCode === 401
+          ? '認証が必要です'
+          : '対象クリニックへのアクセス権がありません'
+      );
+    }
+
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      '対象クリニックへのアクセス権がありません'
+    );
+  }
+
+  const dashboard = await fetchDashboardReadModel({
+    supabase: createDashboardSupabaseReadModelClient(access.supabase),
+    clinicId,
+    now: dateKeyToUtcMidnight(date),
+  });
+
+  const data: MobileUiuxHomeResponse = {
+    clinicId,
+    date,
+    timezone: JST_TIMEZONE,
+    dashboard,
+  };
+
+  return buildMobileUiuxSuccess(data);
+}

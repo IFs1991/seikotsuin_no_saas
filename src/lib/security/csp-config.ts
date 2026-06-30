@@ -152,6 +152,53 @@ export class CSPConfig {
   }
 
   /**
+   * モバイル UI/UX DC ランタイム専用 CSP。
+   * 添付 runtime の new Function / dynamic script / Google Fonts 前提を、
+   * `/mobile-uiux` ルートだけに閉じ込めるために使う。
+   *
+   * @spec docs/stabilization/spec-mobile-uiux-static-integration-v0.2.md
+   */
+  static getMobileUiuxCSP(): {
+    csp: string;
+    cspReportOnly?: string;
+  } {
+    const csp = {
+      'default-src': ["'self'"],
+      'script-src': [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        'https://unpkg.com',
+      ],
+      'style-src': [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+      ],
+      'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
+      'connect-src': [
+        "'self'",
+        'https://*.supabase.co',
+        'https://*.upstash.io',
+      ],
+      'media-src': ["'self'", 'data:', 'blob:'],
+      'object-src': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"],
+      'frame-ancestors': ["'none'"],
+      'frame-src': ["'none'"],
+      'worker-src': ["'self'"],
+      'manifest-src': ["'self'"],
+      'report-uri': ['/api/security/csp-report'],
+    };
+
+    return {
+      csp: this.buildCSPString(csp),
+    };
+  }
+
+  /**
    * 医療機関向け特化CSP
    */
   static getMedicalGradeCSP(nonce?: string): string {
