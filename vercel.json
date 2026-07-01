@@ -5,7 +5,13 @@
   "framework": "nextjs",
   "env": {
     "NODE_ENV": "production",
-    "CSP_ROLLOUT_PHASE": "full-enforce"
+    "CSP_ROLLOUT_PHASE": "full-enforce",
+    "MOBILE_UIUX_ENABLED": "true",
+    "MOBILE_UIUX_REAL_DATA_ENABLED": "true",
+    "MOBILE_UIUX_WRITE_ENABLED": "false",
+    "MOBILE_UIUX_RESERVATION_WRITE_ENABLED": "false",
+    "MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED": "false",
+    "MOBILE_UIUX_SETTINGS_WRITE_ENABLED": "false"
   },
   "functions": {
     "src/app/api/*/route.ts": {
