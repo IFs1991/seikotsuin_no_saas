@@ -26,7 +26,8 @@ type EvaluatedWindow = {
     __mobileUiuxHydrationOwner?: unknown;
   };
   MobileUiuxBridge?: {
-    submitDailyReport: jest.Mock<Promise<boolean>, [unknown]>;
+    submitDailyReport?: jest.Mock<Promise<boolean>, [unknown]>;
+    updateReservation?: jest.Mock<Promise<boolean>, [unknown]>;
   };
 };
 
@@ -701,6 +702,162 @@ describe('patchMobileUiuxDcScript', () => {
     expect(submitDailyReport).toHaveBeenCalledTimes(1);
     expect(component.state.formOpen).toBe(true);
     expect(component.state.toast).toBe('日報は保存されていません');
+  });
+
+  it('wires reservation status updates to the mobile bridge and applies the returned read model', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [];
+  state = {
+    appts: [],
+    detailId: null,
+    toast: ''
+  };
+  openDetail = (id) => () => this.setState({ detailId: id });
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  initial(name) {
+    return (name || '？').trim().charAt(0);
+  }
+  renderVals() {
+    const rows = this.state.appts.map(appt => ({
+      patient: appt.patient,
+      statusLabel: appt.status,
+      onTap: this.openDetail(appt.id)
+    }));
+    return {
+      rows,
+      confirmAppt: this.confirmAppt,
+      arrivalOpts: [{ label: '来院済み', onTap: this.setArrival('arrived') }]
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const updateReservation = jest.fn(async (payload: unknown) => {
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reservation: {
+            id: '22222222-2222-4222-8222-222222222222',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: 'BFF 患者A',
+            menuName: 'BFF メニューA',
+            staffId: '33333333-3333-4333-8333-333333333333',
+            staffName: 'BFF 先生A',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        },
+        generatedAt: '2026-04-27T00:00:00.000Z',
+      });
+      return true;
+    });
+    window.MobileUiuxBridge = { updateReservation };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-27',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: '22222222-2222-4222-8222-222222222222',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: 'BFF 患者A',
+            menuName: 'BFF メニューA',
+            staffId: '33333333-3333-4333-8333-333333333333',
+            staffName: 'BFF 先生A',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'unconfirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    const rows = component.renderVals().rows;
+    if (!Array.isArray(rows)) {
+      throw new Error('Expected reservation rows');
+    }
+    const row = getRecord(rows[0]);
+    const onTap = row.onTap;
+    if (typeof onTap !== 'function') {
+      throw new Error('Expected reservation row onTap');
+    }
+    onTap();
+    const confirmAppt = component.renderVals().confirmAppt;
+    if (typeof confirmAppt !== 'function') {
+      throw new Error('Expected patched confirmAppt');
+    }
+
+    await confirmAppt();
+    const updatedRows = component.renderVals().rows;
+    if (!Array.isArray(updatedRows)) {
+      throw new Error('Expected updated reservation rows');
+    }
+    const updatedRow = getRecord(updatedRows[0]);
+
+    expect(updateReservation).toHaveBeenCalledWith({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      id: '22222222-2222-4222-8222-222222222222',
+      status: 'confirmed',
+    });
+    expect(JSON.stringify(updateReservation.mock.calls)).not.toContain(
+      'BFF 患者A'
+    );
+    expect(updatedRow.statusLabel).toBe('確定');
+    expect(component.state.toast).toBe('予約を確定しました');
+  });
+
+  it('does not call reservation PATCH for pilot-outside reservation statuses', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [];
+  state = {
+    appts: [{
+      id: '22222222-2222-4222-8222-222222222222',
+      patient: '患者名',
+      menu: 'メニュー',
+      status: 'unconfirmed',
+      mobileUiuxClinicId: '11111111-1111-4111-8111-111111111111'
+    }],
+    detailId: '22222222-2222-4222-8222-222222222222',
+    toast: ''
+  };
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  renderVals() {
+    return { arrivalOpts: [{ label: '遅刻', onTap: this.setArrival('late') }] };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const updateReservation = jest.fn(async () => true);
+    window.MobileUiuxBridge = { updateReservation };
+
+    component.componentDidMount();
+    const arrivalOpts = component.renderVals().arrivalOpts;
+    if (!Array.isArray(arrivalOpts)) {
+      throw new Error('Expected arrival options');
+    }
+    const option = getRecord(arrivalOpts[0]);
+    const onTap = option.onTap;
+    if (typeof onTap !== 'function') {
+      throw new Error('Expected arrival option onTap');
+    }
+    await onTap();
+
+    expect(updateReservation).not.toHaveBeenCalled();
+    expect(component.state.toast).toBe('この操作はまだ保存できません');
   });
 
   it('keeps sample values when the payload is invalid', () => {

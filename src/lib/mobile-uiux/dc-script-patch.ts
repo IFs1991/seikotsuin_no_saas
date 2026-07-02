@@ -739,7 +739,9 @@ function buildReservationsHydrationAdapterSource(): string {
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return hydratedVals
+      ? { ...originalVals, confirmAppt: this.__mobileUiuxConfirmReservation, cancelAppt: this.__mobileUiuxCancelReservation, ...hydratedVals }
+      : { ...originalVals, confirmAppt: this.__mobileUiuxConfirmReservation, cancelAppt: this.__mobileUiuxCancelReservation };
   }
 
   componentDidMount() {
@@ -767,7 +769,12 @@ function buildReservationsHydrationAdapterSource(): string {
       if (!hydratedVals) return false;
       component.__mobileUiuxHydratedVals = hydratedVals;
       if (typeof component.setState === 'function') {
-        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
+          statePatch.appts = hydratedVals.__mobileUiuxAppts;
+          statePatch.loading = false;
+        }
+        component.setState(statePatch);
       } else if (typeof component.forceUpdate === 'function') {
         component.forceUpdate();
       }
@@ -792,73 +799,312 @@ function buildReservationsHydrationAdapterSource(): string {
     if (screen !== 'reservations' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
-    const data = payload.data;
+    let data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+
+    if (this.__mobileUiuxIsRecord(data.reservation)) {
+      data = this.__mobileUiuxMergeReservationMutation(data);
+    }
+
     if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !Array.isArray(data.reservations)) {
       return null;
     }
 
-    const rows = data.reservations
-      .map((reservation) => this.__mobileUiuxReservationToRow(reservation))
-      .filter((row) => row !== null);
-    const counts = this.__mobileUiuxCountReservations(data.reservations);
+    this.__mobileUiuxCurrentReservationData = data;
+    this.__mobileUiuxCurrentClinicId = typeof data.clinicId === 'string' ? data.clinicId : this.__mobileUiuxCurrentClinicId;
+
+    const viewModels = this.__mobileUiuxBuildReservationViewModels(data.reservations);
 
     return {
       dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
-      sumTotal: counts.total,
-      sumConf: counts.confirmed,
-      sumUnc: counts.unconfirmed,
-      sumCancel: counts.cancelled,
-      rows,
+      sumTotal: viewModels.counts.total,
+      sumConf: viewModels.counts.confirmed,
+      sumUnc: viewModels.counts.unconfirmed,
+      sumCancel: viewModels.counts.cancelled,
+      rows: viewModels.rows,
       isLoading: false,
-      isEmpty: rows.length === 0,
-      showAgenda: rows.length > 0,
-      showTimeline: false
+      isEmpty: viewModels.rows.length === 0,
+      showAgenda: viewModels.rows.length > 0,
+      showTimeline: false,
+      __mobileUiuxAppts: viewModels.appts
     };
   }
 
-  __mobileUiuxReservationToRow(reservation) {
+  __mobileUiuxBuildReservationViewModels(reservations) {
+    const rows = [];
+    const appts = [];
+    const counts = { total: 0, confirmed: 0, unconfirmed: 0, cancelled: 0 };
+
+    for (const reservation of reservations) {
+      if (!this.__mobileUiuxIsRecord(reservation)) continue;
+      this.__mobileUiuxIncrementReservationCounts(counts, reservation.status);
+      const viewModel = this.__mobileUiuxReservationToViewModel(reservation);
+      if (!viewModel) continue;
+      rows.push(viewModel.row);
+      if (viewModel.appt) {
+        appts.push(viewModel.appt);
+      }
+    }
+
+    return { rows, appts, counts };
+  }
+
+  __mobileUiuxReservationToViewModel(reservation) {
     if (!this.__mobileUiuxIsRecord(reservation)) return null;
+    const times = this.__mobileUiuxReservationTimes(reservation.startTime, reservation.endTime);
+    if (!times) return null;
     const status = this.__mobileUiuxStatusMeta(reservation.status);
     const staffName = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
-    const startTime = this.__mobileUiuxFormatTime(reservation.startTime);
-    const endTime = this.__mobileUiuxFormatTime(reservation.endTime);
-    if (!startTime || !endTime) return null;
+    const resourceId = this.__mobileUiuxEnsureStaffResource(reservation.staffId, staffName);
+    const normalizedStatus = this.__mobileUiuxNormalizeStatus(reservation.status) || 'unconfirmed';
+    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
+    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
 
     return {
-      isAppt: true,
-      isGap: false,
-      startT: startTime,
-      endT: endTime,
-      patient: this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定'),
-      menu: this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定'),
-      ther: staffName,
-      initial: typeof this.initial === 'function' ? this.initial(staffName) : staffName.trim().charAt(0),
-      showTher: true,
-      statusLabel: status.label,
-      c: status.c,
-      b: status.b,
-      dim: status.dim,
-      onTap: () => {}
+      row: {
+        isAppt: true,
+        isGap: false,
+        startT: times.startLabel,
+        endT: times.endLabel,
+        patient,
+        menu,
+        ther: staffName,
+        initial: typeof this.initial === 'function' ? this.initial(staffName) : staffName.trim().charAt(0),
+        showTher: true,
+        statusLabel: status.label,
+        c: status.c,
+        b: status.b,
+        dim: status.dim,
+        onTap: typeof reservation.id === 'string' && typeof this.openDetail === 'function'
+          ? this.openDetail(reservation.id)
+          : () => {}
+      },
+      appt: typeof reservation.id === 'string' ? {
+        id: reservation.id,
+        res: resourceId,
+        start: times.startMinutes,
+        dur: times.endMinutes - times.startMinutes,
+        patient,
+        menu,
+        status: normalizedStatus,
+        clinic: 'c1',
+        mobileUiuxClinicId: typeof reservation.clinicId === 'string' ? reservation.clinicId : this.__mobileUiuxCurrentClinicId,
+        mobileUiuxStaffId: typeof reservation.staffId === 'string' ? reservation.staffId : null,
+        mobileUiuxStartTime: reservation.startTime,
+        mobileUiuxEndTime: reservation.endTime
+      } : null
     };
+  }
+
+  __mobileUiuxMergeReservationMutation(data) {
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (!this.__mobileUiuxIsRecord(current) || typeof current.date !== 'string' || !Array.isArray(current.reservations)) {
+      return null;
+    }
+    const reservation = data.reservation;
+    if (!this.__mobileUiuxIsRecord(reservation) || typeof reservation.id !== 'string') {
+      return null;
+    }
+    let replaced = false;
+    const reservations = current.reservations.map((item) => {
+      if (this.__mobileUiuxIsRecord(item) && item.id === reservation.id) {
+        replaced = true;
+        return reservation;
+      }
+      return item;
+    });
+    if (!replaced) {
+      reservations.push(reservation);
+    }
+    return {
+      ...current,
+      clinicId: typeof data.clinicId === 'string' ? data.clinicId : current.clinicId,
+      reservations
+    };
+  }
+
+  __mobileUiuxEnsureStaffResource(staffId, staffName) {
+    const fallback = 'mobile-uiux-staff';
+    const resourceId = typeof staffId === 'string' && staffId.length > 0 ? staffId : fallback;
+    if (!Array.isArray(this.THER)) return resourceId;
+    const resourceIndex = this.__mobileUiuxStaffResourceIndex();
+    const existing = resourceIndex.get(resourceId);
+    if (existing) {
+      if (!existing.name && staffName) existing.name = staffName;
+      return resourceId;
+    }
+    const nextResource = { id: resourceId, name: staffName, role: '担当', clinic: 'c1' };
+    this.THER = this.THER.concat([nextResource]);
+    this.__mobileUiuxStaffResourceSource = null;
+    this.__mobileUiuxStaffResourceMap = null;
+    return resourceId;
+  }
+
+  __mobileUiuxStaffResourceIndex() {
+    if (this.__mobileUiuxStaffResourceSource === this.THER && this.__mobileUiuxStaffResourceMap instanceof Map) {
+      return this.__mobileUiuxStaffResourceMap;
+    }
+    const map = new Map();
+    if (Array.isArray(this.THER)) {
+      for (const resource of this.THER) {
+        if (this.__mobileUiuxIsRecord(resource) && typeof resource.id === 'string') {
+          map.set(resource.id, resource);
+        }
+      }
+    }
+    this.__mobileUiuxStaffResourceSource = this.THER;
+    this.__mobileUiuxStaffResourceMap = map;
+    return map;
+  }
+
+  __mobileUiuxReservationTimes(startValue, endValue) {
+    const start = this.__mobileUiuxReservationTimeParts(startValue);
+    const end = this.__mobileUiuxReservationTimeParts(endValue);
+    if (!start || !end || end.minutes <= start.minutes) return null;
+    return {
+      startLabel: start.label,
+      endLabel: end.label,
+      startMinutes: start.minutes,
+      endMinutes: end.minutes
+    };
+  }
+
+  __mobileUiuxReservationTimeParts(value) {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const totalMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60;
+      const minutes = ((totalMinutes % 1440) + 1440) % 1440;
+      const hours = Math.floor(minutes / 60);
+      return {
+        label: hours + ':' + String(minutes % 60).padStart(2, '0'),
+        minutes
+      };
+    }
+    const match = /T(\\d{2}):(\\d{2})/.exec(value);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    const totalMinutes = hours * 60 + minutes;
+    return {
+      label: hours + ':' + String(minutes).padStart(2, '0'),
+      minutes: totalMinutes
+    };
+  }
+
+  setArrival = (status) => () => this.__mobileUiuxUpdateReservationStatus(status);
+  confirmAppt = () => this.__mobileUiuxUpdateReservationStatus('confirmed');
+  cancelAppt = () => this.__mobileUiuxUpdateReservationStatus('cancelled');
+  __mobileUiuxConfirmReservation = () => this.__mobileUiuxUpdateReservationStatus('confirmed');
+  __mobileUiuxCancelReservation = () => this.__mobileUiuxUpdateReservationStatus('cancelled');
+
+  async __mobileUiuxUpdateReservationStatus(status) {
+    if (status !== 'confirmed' && status !== 'arrived' && status !== 'cancelled') {
+      this.__mobileUiuxShowReservationToast('この操作はまだ保存できません');
+      return false;
+    }
+
+    if (this.__mobileUiuxReservationSaving === true) {
+      this.__mobileUiuxShowReservationToast('予約を保存中です');
+      return false;
+    }
+
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const reservation = Array.isArray(state.appts)
+      ? state.appts.find((item) => this.__mobileUiuxIsRecord(item) && item.id === state.detailId)
+      : null;
+    if (!this.__mobileUiuxIsRecord(reservation)) {
+      this.__mobileUiuxShowReservationToast('予約を選択してください');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildReservationUpdatePayload(reservation, status);
+    if (!payload) {
+      this.__mobileUiuxShowReservationToast('予約を保存できません');
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.updateReservation !== 'function') {
+      this.__mobileUiuxShowReservationToast('予約保存は現在利用できません');
+      return false;
+    }
+
+    this.__mobileUiuxReservationSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.updateReservation(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxReservationSaving = false;
+    }
+
+    if (ok === true) {
+      this.__mobileUiuxShowReservationToast(this.__mobileUiuxReservationStatusToast(status));
+      return true;
+    }
+
+    this.__mobileUiuxShowReservationToast('予約は保存されていません');
+    return false;
+  }
+
+  __mobileUiuxBuildReservationUpdatePayload(reservation, status) {
+    const clinicId = typeof reservation.mobileUiuxClinicId === 'string' && reservation.mobileUiuxClinicId.length > 0
+      ? reservation.mobileUiuxClinicId
+      : this.__mobileUiuxCurrentClinicId;
+    if (typeof clinicId !== 'string' || clinicId.length === 0 || typeof reservation.id !== 'string') {
+      return null;
+    }
+
+    return {
+      clinic_id: clinicId,
+      id: reservation.id,
+      status
+    };
+  }
+
+  __mobileUiuxReservationStatusToast(status) {
+    if (status === 'confirmed') return '予約を確定しました';
+    if (status === 'arrived') return '来院済みにしました';
+    if (status === 'cancelled') return '予約をキャンセルしました';
+    return '予約を保存しました';
+  }
+
+  __mobileUiuxShowReservationToast(message) {
+    if (typeof this.toast === 'function') {
+      this.toast(message);
+    } else if (typeof this.setState === 'function') {
+      this.setState({ toast: message });
+    }
   }
 
   __mobileUiuxCountReservations(reservations) {
     const counts = { total: 0, confirmed: 0, unconfirmed: 0, cancelled: 0 };
     reservations.forEach((reservation) => {
       if (!this.__mobileUiuxIsRecord(reservation)) return;
-      const status = this.__mobileUiuxNormalizeStatus(reservation.status);
-      if (status === 'cancelled' || status === 'no_show' || status === 'noshow') {
-        counts.cancelled += 1;
-        return;
-      }
-      counts.total += 1;
-      if (status === 'confirmed' || status === 'arrived' || status === 'completed') {
-        counts.confirmed += 1;
-      } else if (status === 'unconfirmed' || status === 'tentative' || status === 'trial') {
-        counts.unconfirmed += 1;
-      }
+      this.__mobileUiuxIncrementReservationCounts(counts, reservation.status);
     });
     return counts;
+  }
+
+  __mobileUiuxIncrementReservationCounts(counts, value) {
+    const status = this.__mobileUiuxNormalizeStatus(value);
+    if (status === 'cancelled' || status === 'no_show' || status === 'noshow') {
+      counts.cancelled += 1;
+      return;
+    }
+    counts.total += 1;
+    if (status === 'confirmed' || status === 'arrived' || status === 'completed') {
+      counts.confirmed += 1;
+    } else if (status === 'unconfirmed' || status === 'tentative' || status === 'trial') {
+      counts.unconfirmed += 1;
+    }
   }
 
   __mobileUiuxStatusMeta(value) {

@@ -3,7 +3,10 @@ import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { createAdminClient, createScopedAdminContext } from '@/lib/supabase';
-import { enqueueReservationCreated } from '@/lib/notifications/email/reservation-enqueue';
+import {
+  enqueueReservationChange,
+  enqueueReservationCreated,
+} from '@/lib/notifications/email/reservation-enqueue';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -40,6 +43,7 @@ const processClinicScopedBodyMock = jest.mocked(processClinicScopedBody);
 const createAdminClientMock = jest.mocked(createAdminClient);
 const createScopedAdminContextMock = jest.mocked(createScopedAdminContext);
 const enqueueReservationCreatedMock = jest.mocked(enqueueReservationCreated);
+const enqueueReservationChangeMock = jest.mocked(enqueueReservationChange);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const reservationId = '123e4567-e89b-12d3-a456-426614174001';
@@ -221,6 +225,79 @@ function buildMutationClient(params?: {
     client,
     conflictQuery,
     reservationsTable,
+    reservationListViewTable,
+  };
+}
+
+function buildPatchMutationClient(params?: { conflictCount?: number }) {
+  const existingRow = {
+    id: reservationId,
+    clinic_id: clinicId,
+    customer_id: customerId,
+    menu_id: menuId,
+    status: 'unconfirmed',
+    staff_id: staffId,
+    start_time: '2026-04-15T10:00:00.000Z',
+    end_time: '2026-04-15T10:30:00.000Z',
+    notes: null,
+    selected_options: [],
+    is_staff_requested: true,
+  };
+  const updatedRow = {
+    ...existingRow,
+    status: 'confirmed',
+    updated_at: '2026-04-14T09:30:00.000Z',
+  };
+  const reservationViewRow = {
+    id: reservationId,
+    customer_id: customerId,
+    customer_name: '山田 太郎',
+    menu_id: menuId,
+    menu_name: '整体',
+    staff_id: staffId,
+    staff_name: '田中先生',
+    start_time: existingRow.start_time,
+    end_time: existingRow.end_time,
+    status: 'confirmed',
+    channel: 'phone',
+    notes: null,
+    selected_options: [],
+    is_staff_requested: true,
+    staff_nomination_fee: 1500,
+  };
+  const existingQuery = createSingleBuilder(existingRow);
+  const conflictQuery = createPendingCountQuery(params?.conflictCount ?? 0);
+  const updateQuery = {
+    eq: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnValue(createSingleBuilder(updatedRow)),
+  };
+  const reservationsTable = {
+    select: jest.fn().mockImplementation(
+      (
+        _columns: string,
+        options?: { count?: 'exact'; head?: boolean }
+      ) => (options?.count === 'exact' ? conflictQuery : existingQuery)
+    ),
+    update: jest.fn().mockReturnValue(updateQuery),
+  };
+  const reservationListViewTable = {
+    select: jest
+      .fn()
+      .mockReturnValue(createMaybeSingleBuilder(reservationViewRow)),
+  };
+  const client = {
+    from: jest.fn().mockImplementation((table: string) => {
+      if (table === 'reservations') return reservationsTable;
+      if (table === 'reservation_list_view') return reservationListViewTable;
+      return {};
+    }),
+  };
+
+  return {
+    client,
+    conflictQuery,
+    reservationsTable,
+    updateQuery,
     reservationListViewTable,
   };
 }
@@ -441,21 +518,29 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
 
   it('returns 403 when the global write flag is off', async () => {
     process.env.MOBILE_UIUX_WRITE_ENABLED = 'false';
-    const { POST } = await import('@/app/api/mobile-uiux/reservations/route');
+    const { PATCH, POST } = await import(
+      '@/app/api/mobile-uiux/reservations/route'
+    );
 
-    const response = await POST(buildMutationRequest('POST'));
+    const postResponse = await POST(buildMutationRequest('POST'));
+    const patchResponse = await PATCH(buildMutationRequest('PATCH'));
 
-    expect(response.status).toBe(403);
+    expect(postResponse.status).toBe(403);
+    expect(patchResponse.status).toBe(403);
     expect(processClinicScopedBodyMock).not.toHaveBeenCalled();
   });
 
   it('returns 403 when the reservation write flag is off', async () => {
     process.env.MOBILE_UIUX_RESERVATION_WRITE_ENABLED = 'false';
-    const { POST } = await import('@/app/api/mobile-uiux/reservations/route');
+    const { PATCH, POST } = await import(
+      '@/app/api/mobile-uiux/reservations/route'
+    );
 
-    const response = await POST(buildMutationRequest('POST'));
+    const postResponse = await POST(buildMutationRequest('POST'));
+    const patchResponse = await PATCH(buildMutationRequest('PATCH'));
 
-    expect(response.status).toBe(403);
+    expect(postResponse.status).toBe(403);
+    expect(patchResponse.status).toBe(403);
     expect(processClinicScopedBodyMock).not.toHaveBeenCalled();
   });
 
@@ -484,6 +569,48 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     );
   });
 
+  it('denies manager reservation updates before DB access', async () => {
+    const managerDeniedResponse = Response.json(
+      { success: false, error: 'マネージャーは予約の変更はできません。' },
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: false,
+      error: managerDeniedResponse,
+    });
+
+    const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
+    const request = buildMutationRequest('PATCH');
+    const response = await PATCH(request);
+
+    expect(response.status).toBe(403);
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      request,
+      expect.anything(),
+      {
+        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは予約の変更はできません。',
+      }
+    );
+  });
+
+  it('returns 403 for PATCH when clinic scope validation fails before DB access', async () => {
+    const scopedDeniedResponse = Response.json(
+      { success: false, error: 'このクリニックへのアクセス権がありません' },
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: false,
+      error: scopedDeniedResponse,
+    });
+
+    const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
+    const response = await PATCH(buildMutationRequest('PATCH'));
+
+    expect(response.status).toBe(403);
+  });
+
   it('returns 409 when the requested reservation slot conflicts', async () => {
     const { client, reservationsTable } = buildMutationClient({
       conflictCount: 1,
@@ -503,6 +630,34 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     expect(response.status).toBe(409);
     expect(payload.success).toBe(false);
     expect(reservationsTable.insert).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 for PATCH when the requested reservation slot conflicts', async () => {
+    const { client, reservationsTable, updateQuery } = buildPatchMutationClient(
+      {
+        conflictCount: 1,
+      }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: reservationId,
+        startTime: '2026-04-15T10:15:00.000Z',
+      },
+      auth,
+      permissions,
+      supabase: client,
+    });
+
+    const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
+    const response = await PATCH(buildMutationRequest('PATCH'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.success).toBe(false);
+    expect(reservationsTable.update).not.toHaveBeenCalled();
+    expect(updateQuery.select).not.toHaveBeenCalled();
   });
 
   it('returns 403 without inserting when references are outside the clinic scope', async () => {
@@ -591,6 +746,69 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
         menu_id: menuId,
         staff_id: staffId,
       })
+    );
+  });
+
+  it('updates a reservation through PATCH using the mobile BFF and returns the read model', async () => {
+    const { client, reservationsTable, reservationListViewTable } =
+      buildPatchMutationClient();
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: reservationId,
+        status: 'confirmed',
+      },
+      auth,
+      permissions,
+      supabase: client,
+    });
+    enqueueReservationChangeMock.mockResolvedValueOnce({ id: 'outbox-2' });
+
+    const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
+    const request = buildMutationRequest('PATCH');
+    const response = await PATCH(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      request,
+      expect.anything(),
+      {
+        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        deniedRoles: ['manager'],
+        deniedRoleMessage: 'マネージャーは予約の変更はできません。',
+      }
+    );
+    expect(reservationsTable.update).toHaveBeenCalledWith({
+      status: 'confirmed',
+    });
+    expect(reservationListViewTable.select).toHaveBeenCalled();
+    expect(payload).toMatchObject({
+      success: true,
+      data: {
+        clinicId,
+        reservation: {
+          id: reservationId,
+          customerId,
+          customerName: '山田 太郎',
+          status: 'confirmed',
+        },
+      },
+    });
+    expect(enqueueReservationChangeMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        id: reservationId,
+        clinic_id: clinicId,
+        status: 'unconfirmed',
+      }),
+      expect.objectContaining({
+        id: reservationId,
+        clinic_id: clinicId,
+        status: 'confirmed',
+      }),
+      '2026-04-14T09:30:00.000Z'
     );
   });
 });

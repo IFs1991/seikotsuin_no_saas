@@ -146,6 +146,7 @@ export function buildMobileUiuxBridgeScript(
     settingsWriteDisabled: "設定の書き込みは無効です",
     settingsSaved: "設定を保存しました",
     reservationSaved: "予約を保存しました",
+    reservationConflict: "同時間帯に既存予約があります。予約時間または担当を確認してください",
     saving: "保存中です",
     unavailable: "実データを一時的に表示できません"
   };
@@ -225,6 +226,10 @@ export function buildMobileUiuxBridgeScript(
       return { kind: "forbidden" };
     }
 
+    if (response.status === 409) {
+      return { kind: "conflict" };
+    }
+
     if (!response.ok) {
       return { kind: "unavailable" };
     }
@@ -250,6 +255,10 @@ export function buildMobileUiuxBridgeScript(
 
     if (response.status === 403) {
       return { kind: "forbidden" };
+    }
+
+    if (response.status === 409) {
+      return { kind: "conflict" };
     }
 
     if (!response.ok) {
@@ -543,6 +552,11 @@ export function buildMobileUiuxBridgeScript(
       showFallback("forbidden", STATUS_MESSAGES.forbidden);
       return false;
     }
+    if (result.kind === "conflict") {
+      showMutationStatus("conflict", STATUS_MESSAGES.reservationConflict);
+      showFallback("conflict", STATUS_MESSAGES.reservationConflict);
+      return false;
+    }
     if (result.kind === "unavailable") {
       showMutationStatus("failed", STATUS_MESSAGES.unavailable);
       showFallback("unavailable", STATUS_MESSAGES.unavailable);
@@ -595,7 +609,8 @@ export function buildMobileUiuxBridgeScript(
       mutationKey: "reservations",
       canWrite: canWriteReservations,
       disabledMessage: STATUS_MESSAGES.writeDisabled,
-      successMessage: STATUS_MESSAGES.reservationSaved
+      successMessage: STATUS_MESSAGES.reservationSaved,
+      applyReadScreen: method === "PATCH" ? "reservations" : null
     });
   }
 

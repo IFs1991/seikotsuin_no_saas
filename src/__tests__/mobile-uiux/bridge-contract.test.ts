@@ -831,6 +831,133 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
+  it('patches reservation updates through the mobile BFF and applies the returned read model', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const mutationPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        reservation: {
+          id: 'reservation-1',
+          status: 'confirmed',
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, {
+          ...contextPayload,
+          data: {
+            ...contextPayload.data,
+            flags: {
+              ...contextPayload.data.flags,
+              writeEnabled: true,
+              reservationWriteEnabled: true,
+            },
+          },
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+        buildJsonResponse(200, mutationPayload),
+      ],
+      applyReadData
+    );
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      id: 'reservation-1',
+      status: 'confirmed',
+    };
+
+    await runBridgeScript(script, window);
+    const pending = window.MobileUiuxBridge?.updateReservation(payload);
+
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'pending'
+    );
+    await expect(pending).resolves.toBe(true);
+    expect(applyReadData).toHaveBeenCalledWith(
+      'reservations',
+      mutationPayload
+    );
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/reservations',
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    expect(window.document.body.textContent).toContain('予約を保存しました');
+  });
+
+  it('shows a reservation conflict message for 409 PATCH responses without rendering details', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(409, {
+        success: false,
+        error: {
+          code: 'CONFLICT',
+          message: 'clinic_id=clinic-secret patient@example.com',
+        },
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.updateReservation({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      id: 'reservation-1',
+      startTime: '2026-06-30T01:00:00.000Z',
+      endTime: '2026-06-30T01:30:00.000Z',
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'conflict'
+    );
+    expect(window.document.body.textContent).toContain(
+      '同時間帯に既存予約があります'
+    );
+    expect(window.document.body.textContent).not.toContain('clinic-secret');
+    expect(window.document.body.textContent).not.toContain(
+      'patient@example.com'
+    );
+  });
+
   it('prevents duplicate in-flight reservation mutations and reuses the status element', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -888,6 +1015,106 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
       'success'
     );
+  });
+
+  it('prevents duplicate in-flight reservation update mutations', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    let resolveMutation: ((value: BridgeFetchResponse) => void) | null = null;
+    const mutationResponse = new Promise<BridgeFetchResponse>(resolve => {
+      resolveMutation = resolve;
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      });
+    });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+    });
+    window.fetch.mockImplementation(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return mutationResponse;
+    });
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      id: 'reservation-1',
+      status: 'arrived',
+    };
+
+    await runBridgeScript(script, window);
+    const firstMutation = window.MobileUiuxBridge?.updateReservation(payload);
+    const secondMutation = window.MobileUiuxBridge?.updateReservation(payload);
+
+    expect(calls.filter(call => call.method === 'PATCH')).toHaveLength(1);
+    resolveMutation?.(
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reservation: { id: 'reservation-1', status: 'arrived' },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      })
+    );
+    await expect(firstMutation).resolves.toBe(true);
+    await expect(secondMutation).resolves.toBe(true);
   });
 
   it('keeps daily report mutation disabled when server flags disable writes', async () => {
