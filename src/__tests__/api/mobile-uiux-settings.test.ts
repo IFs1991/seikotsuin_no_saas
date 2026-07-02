@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { processApiRequest } from '@/lib/api-helpers';
+import { AuditLogger } from '@/lib/audit-logger';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -10,7 +11,14 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
+jest.mock('@/lib/audit-logger', () => ({
+  AuditLogger: {
+    logAdminAction: jest.fn(),
+  },
+}));
+
 const processApiRequestMock = jest.mocked(processApiRequest);
+const logAdminActionMock = jest.mocked(AuditLogger.logAdminAction);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const menuId = '123e4567-e89b-12d3-a456-426614174001';
@@ -27,6 +35,30 @@ function createSettingsClient(result: QueryResult) {
 
   return {
     client: { from: jest.fn().mockReturnValue(query) },
+    query,
+  };
+}
+
+function createSettingsWriteClient(readSettings: Record<string, unknown>) {
+  const query = {
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({
+      data: {
+        settings: readSettings,
+        updated_at: '2026-07-01T09:00:00.000Z',
+        updated_by: 'user-1',
+      },
+      error: null,
+    }),
+  };
+  const table = {
+    upsert: jest.fn().mockResolvedValue({ error: null }),
+    select: jest.fn().mockReturnValue(query),
+  };
+
+  return {
+    client: { from: jest.fn().mockReturnValue(table) },
+    table,
     query,
   };
 }
@@ -214,6 +246,165 @@ describe('GET /api/mobile-uiux/settings', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it('updates an allowed settings category and logs through the shared audit logger without secrets', async () => {
+    process.env.MOBILE_UIUX_WRITE_ENABLED = 'true';
+    process.env.MOBILE_UIUX_SETTINGS_WRITE_ENABLED = 'true';
+    const requestBody = {
+      clinic_id: clinicId,
+      category: 'communication',
+      settings: {
+        channels: { emailEnabled: true },
+        smtpSettings: {
+          host: 'smtp.example.com',
+          port: 587,
+          username: 'mail-user',
+          password: 'smtp-password-secret',
+          token: 'token-secret',
+        },
+        templates: [],
+      },
+    };
+    const readSettings = {
+      channels: {
+        emailEnabled: true,
+        smsEnabled: false,
+        lineEnabled: false,
+        pushEnabled: false,
+      },
+      smtpSettings: {
+        host: 'smtp.example.com',
+        port: 587,
+        username: 'mail-user',
+        secure: true,
+      },
+      templates: [],
+    };
+    const { client, table, query } = createSettingsWriteClient(readSettings);
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: client,
+      body: requestBody,
+    });
+    const { PUT } = await import('@/app/api/mobile-uiux/settings/route');
+
+    const response = await PUT(
+      new NextRequest('http://localhost/api/mobile-uiux/settings', {
+        method: 'PUT',
+        body: JSON.stringify(requestBody),
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+    const payload = await response.json();
+    const responseText = JSON.stringify(payload);
+    const upsertText = JSON.stringify(table.upsert.mock.calls);
+    const auditText = JSON.stringify(logAdminActionMock.mock.calls);
+
+    expect(response.status).toBe(200);
+    expect(table.upsert).toHaveBeenCalledWith(
+      {
+        clinic_id: clinicId,
+        category: 'communication',
+        settings: readSettings,
+        updated_by: 'user-1',
+      },
+      { onConflict: 'clinic_id,category' }
+    );
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', clinicId);
+    expect(query.eq).toHaveBeenCalledWith('category', 'communication');
+    expect(logAdminActionMock).toHaveBeenCalledWith(
+      'user-1',
+      'manager@example.com',
+      'manager_settings_update',
+      undefined,
+      {
+        actor_role: 'manager',
+        category: 'communication',
+        clinic_id: clinicId,
+        settingsUpdated: true,
+      }
+    );
+    expect(payload).toMatchObject({
+      success: true,
+      data: {
+        clinicId,
+        category: 'communication',
+        settings: readSettings,
+      },
+    });
+    expect(responseText).not.toContain('smtp-password-secret');
+    expect(responseText).not.toContain('token-secret');
+    expect(upsertText).not.toContain('smtp-password-secret');
+    expect(upsertText).not.toContain('token-secret');
+    expect(auditText).not.toContain('smtp-password-secret');
+    expect(auditText).not.toContain('token-secret');
+  });
+
+  it('returns 403 for disallowed settings categories in the mobile rollout', async () => {
+    process.env.MOBILE_UIUX_WRITE_ENABLED = 'true';
+    process.env.MOBILE_UIUX_SETTINGS_WRITE_ENABLED = 'true';
+    const requestBody = {
+      clinic_id: clinicId,
+      category: 'services_pricing',
+      settings: { menus: [] },
+    };
+    const { client, table } = createSettingsWriteClient({});
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: client,
+      body: requestBody,
+    });
+    const { PUT } = await import('@/app/api/mobile-uiux/settings/route');
+
+    const response = await PUT(
+      new NextRequest('http://localhost/api/mobile-uiux/settings', {
+        method: 'PUT',
+        body: JSON.stringify(requestBody),
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(table.upsert).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when the requested clinic is outside the authenticated scope', async () => {
+    process.env.MOBILE_UIUX_WRITE_ENABLED = 'true';
+    process.env.MOBILE_UIUX_SETTINGS_WRITE_ENABLED = 'true';
+    const requestBody = {
+      clinic_id: '123e4567-e89b-12d3-a456-426614174999',
+      category: 'clinic_hours',
+      settings: { holidays: [] },
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: false,
+      error: { status: 403 },
+    });
+    const { PUT } = await import('@/app/api/mobile-uiux/settings/route');
+
+    const response = await PUT(
+      new NextRequest('http://localhost/api/mobile-uiux/settings', {
+        method: 'PUT',
+        body: JSON.stringify(requestBody),
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 });
 

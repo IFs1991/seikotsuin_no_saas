@@ -28,6 +28,7 @@ type EvaluatedWindow = {
   MobileUiuxBridge?: {
     submitDailyReport?: jest.Mock<Promise<boolean>, [unknown]>;
     updateReservation?: jest.Mock<Promise<boolean>, [unknown]>;
+    updateSettings?: jest.Mock<Promise<boolean>, [unknown]>;
   };
 };
 
@@ -504,6 +505,154 @@ describe('patchMobileUiuxDcScript', () => {
       'raw notes should not be rendered'
     );
     expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
+  });
+
+  it('builds clinic_hours settings payloads from the settings-detail save bar', async () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  state = {
+    nav: [{ scr: 'clinic' }],
+    clinicTab: 'hours',
+    saving: false,
+    hours: [
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '10:00', end: '18:00' }] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] }
+    ],
+    special: [
+      { date: '2026-07-20', type: '休診', label: '海の日' },
+      { date: '2026-08-13', type: '短縮営業', label: '夏季短縮' }
+    ],
+    toast: ''
+  };
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  renderVals() {
+    return {
+      onSave: () => false,
+      saveLabel: 'sample'
+    };
+  }
+}`),
+      {
+        screen: 'settings-detail',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    const updateSettings = jest.fn<Promise<boolean>, [unknown]>(
+      async () => true
+    );
+    window.MobileUiuxBridge = { updateSettings };
+
+    component.componentDidMount();
+    const vals = component.renderVals();
+    const onSave = vals.onSave;
+    if (typeof onSave !== 'function') {
+      throw new Error('Expected settings-detail onSave to be a function');
+    }
+    await expect(onSave()).resolves.toBe(true);
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      category: 'clinic_hours',
+      settings: {
+        hoursByDay: {
+          monday: { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+          tuesday: { open: true, slots: [{ start: '10:00', end: '18:00' }] },
+          wednesday: { open: false, slots: [] },
+          thursday: { open: false, slots: [] },
+          friday: { open: false, slots: [] },
+          saturday: { open: false, slots: [] },
+          sunday: { open: false, slots: [] },
+        },
+        holidays: ['2026-07-20'],
+        specialClosures: [
+          { date: '2026-07-20', type: '休診', label: '海の日' },
+          { date: '2026-08-13', type: '短縮営業', label: '夏季短縮' },
+        ],
+      },
+    });
+    expect(component.state.toast).toBe('設定を保存しました');
+  });
+
+  it('applies returned clinic_hours read models to the settings-detail UI state', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  state = {
+    nav: [{ scr: 'clinic' }],
+    clinicTab: 'hours',
+    hours: [
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] },
+      { open: true, slots: [{ start: '09:00', end: '13:00' }] }
+    ],
+    special: []
+  };
+  renderVals() {
+    return { onSave: () => false };
+  }
+}`),
+      {
+        screen: 'settings-detail',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'settings-detail',
+      {
+        success: true,
+        data: {
+          category: 'clinic_hours',
+          settings: {
+            hoursByDay: {
+              monday: { open: false, slots: [] },
+              tuesday: {
+                open: true,
+                slots: [{ start: '11:00', end: '19:00' }],
+              },
+            },
+            holidays: ['2026-09-21'],
+          },
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }
+    );
+    const hours = Array.isArray(component.state.hours)
+      ? component.state.hours
+      : [];
+    const monday = getRecord(hours[0]);
+    const tuesday = getRecord(hours[1]);
+    const tuesdaySlots = Array.isArray(tuesday.slots) ? tuesday.slots : [];
+    const special = Array.isArray(component.state.special)
+      ? component.state.special
+      : [];
+    const firstSpecial = getRecord(special[0]);
+
+    expect(applied).toBe(true);
+    expect(monday.open).toBe(false);
+    expect(tuesday.open).toBe(true);
+    expect(tuesdaySlots).toEqual([{ start: '11:00', end: '19:00' }]);
+    expect(firstSpecial).toEqual({
+      date: '2026-09-21',
+      type: '休診',
+      label: '',
+    });
   });
 
   it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {

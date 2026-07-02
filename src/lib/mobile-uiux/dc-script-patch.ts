@@ -3,7 +3,7 @@ import type { MobileUiuxScreenResource } from './bridge-manifest';
 type DcScriptPatchOptions = {
   screen: Extract<
     MobileUiuxScreenResource,
-    'home' | 'reservations' | 'daily-reports'
+    'home' | 'reservations' | 'daily-reports' | 'settings' | 'settings-detail'
   >;
 };
 
@@ -436,6 +436,14 @@ function buildHydrationAdapterSource(
 
   if (screen === 'daily-reports') {
     return buildDailyReportsHydrationAdapterSource();
+  }
+
+  if (screen === 'settings') {
+    return buildSettingsHydrationAdapterSource();
+  }
+
+  if (screen === 'settings-detail') {
+    return buildSettingsDetailHydrationAdapterSource();
   }
 
   throw new Error(`Unsupported Mobile UIUX hydration screen: ${screen}`);
@@ -1148,6 +1156,378 @@ function buildReservationsHydrationAdapterSource(): string {
     }
     const timeMatch = /T(\\d{2}):(\\d{2})/.exec(value);
     return timeMatch ? Number(timeMatch[1]) + ':' + timeMatch[2] : '';
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+`;
+}
+
+function buildSettingsHydrationAdapterSource(): string {
+  return `
+
+  renderVals() {
+    const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
+      ? this.${ORIGINAL_RENDER_VALS_METHOD}()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+    return {
+      __mobileUiuxSettingsCategory: typeof data.category === 'string' ? data.category : 'settings'
+    };
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+`;
+}
+
+function buildSettingsDetailHydrationAdapterSource(): string {
+  return `
+
+  renderVals() {
+    const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
+      ? this.${ORIGINAL_RENDER_VALS_METHOD}()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    return {
+      ...originalVals,
+      onSave: this.__mobileUiuxSaveSettings,
+      saveLabel: this.state && this.state.saving ? '保存中…' : '保存'
+    };
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const statePatch = component.__mobileUiuxBuildSettingsStatePatch(screen, payload);
+      if (statePatch === false) return false;
+      if (typeof component.setState === 'function') {
+        const nextState = { __mobileUiuxHydratedAt: Date.now() };
+        if (component.__mobileUiuxIsRecord(statePatch)) {
+          Object.assign(nextState, statePatch);
+        }
+        component.setState(nextState);
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildSettingsStatePatch(screen, payload) {
+    if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return false;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return false;
+    }
+
+    if (data.category === 'clinic_hours' && this.__mobileUiuxIsRecord(data.settings)) {
+      return this.__mobileUiuxBuildClinicHoursStatePatch(data.settings);
+    }
+
+    if (typeof data.category === 'string' && this.__mobileUiuxIsRecord(data.settings)) {
+      return {};
+    }
+
+    if (Array.isArray(data.menus) || Array.isArray(data.resources)) {
+      return {};
+    }
+
+    return false;
+  }
+
+  __mobileUiuxSaveSettings = async () => {
+    if (this.state && this.state.saving) {
+      this.__mobileUiuxShowSettingsToast('設定を保存中です');
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.updateSettings !== 'function') {
+      this.__mobileUiuxShowSettingsToast('設定保存は現在利用できません');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildSettingsPayload();
+    if (!payload) {
+      this.__mobileUiuxShowSettingsToast('この設定カテゴリはモバイル保存の対象外です');
+      return false;
+    }
+
+    if (typeof this.setState === 'function') {
+      this.setState({ saving: true });
+    }
+
+    let ok = false;
+    try {
+      ok = await bridge.updateSettings(payload);
+    } catch {
+      ok = false;
+    } finally {
+      if (typeof this.setState === 'function') {
+        this.setState({ saving: false });
+      }
+    }
+
+    if (ok === true) {
+      this.__mobileUiuxShowSettingsToast('設定を保存しました');
+      return true;
+    }
+
+    this.__mobileUiuxShowSettingsToast('設定は保存されていません');
+    return false;
+  }
+
+  __mobileUiuxBuildSettingsPayload() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const nav = Array.isArray(state.nav) ? state.nav : [];
+    const current = nav.length > 0 ? nav[nav.length - 1] : null;
+    if (!this.__mobileUiuxIsRecord(current) || current.scr !== 'clinic' || state.clinicTab !== 'hours') {
+      return null;
+    }
+
+    return {
+      category: 'clinic_hours',
+      settings: this.__mobileUiuxBuildClinicHoursSettings()
+    };
+  }
+
+  __mobileUiuxBuildClinicHoursSettings() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const hoursByDay = {};
+    const dayKeys = this.__mobileUiuxClinicHoursDayKeys();
+    const hours = Array.isArray(state.hours) ? state.hours : [];
+    for (let index = 0; index < dayKeys.length; index += 1) {
+      const key = dayKeys[index];
+      const day = this.__mobileUiuxIsRecord(hours[index]) ? hours[index] : {};
+      const slots = [];
+      if (Array.isArray(day.slots)) {
+        for (let slotIndex = 0; slotIndex < day.slots.length; slotIndex += 1) {
+          const slot = day.slots[slotIndex];
+          if (!this.__mobileUiuxIsRecord(slot)) continue;
+          const start = typeof slot.start === 'string' ? slot.start : '';
+          const end = typeof slot.end === 'string' ? slot.end : '';
+          if (this.__mobileUiuxIsTime(start) && this.__mobileUiuxIsTime(end)) {
+            slots.push({ start, end });
+          }
+        }
+      }
+      hoursByDay[key] = {
+        open: day.open === true,
+        slots
+      };
+    }
+
+    const special = Array.isArray(state.special) ? state.special : [];
+    const holidays = [];
+    const specialClosures = [];
+    for (let index = 0; index < special.length; index += 1) {
+      const item = special[index];
+      if (!this.__mobileUiuxIsRecord(item) || typeof item.date !== 'string' || item.date.length === 0) continue;
+      const type = typeof item.type === 'string' && item.type.length > 0 ? item.type : '休診';
+      const label = typeof item.label === 'string' ? item.label : '';
+      if (type === '休診') {
+        holidays.push(item.date);
+      }
+      specialClosures.push({
+        date: item.date,
+        type,
+        label
+      });
+    }
+
+    return {
+      hoursByDay,
+      holidays,
+      specialClosures
+    };
+  }
+
+  __mobileUiuxBuildClinicHoursStatePatch(settings) {
+    const dayKeys = this.__mobileUiuxClinicHoursDayKeys();
+    const hoursByDay = this.__mobileUiuxIsRecord(settings.hoursByDay) ? settings.hoursByDay : {};
+    const currentHours = this.state && Array.isArray(this.state.hours) ? this.state.hours : [];
+    const hours = [];
+    for (let index = 0; index < dayKeys.length; index += 1) {
+      const key = dayKeys[index];
+      hours.push(this.__mobileUiuxNormalizeHourDay(hoursByDay[key], currentHours[index]));
+    }
+    const special = this.__mobileUiuxNormalizeSpecialClosures(settings);
+    return {
+      hours,
+      special
+    };
+  }
+
+  __mobileUiuxNormalizeHourDay(day, fallback) {
+    const source = this.__mobileUiuxIsRecord(day) ? day : fallback;
+    const record = this.__mobileUiuxIsRecord(source) ? source : {};
+    const slots = [];
+    if (Array.isArray(record.slots)) {
+      for (let index = 0; index < record.slots.length; index += 1) {
+        const slot = record.slots[index];
+        if (!this.__mobileUiuxIsRecord(slot)) continue;
+        const start = typeof slot.start === 'string' ? slot.start : '';
+        const end = typeof slot.end === 'string' ? slot.end : '';
+        if (this.__mobileUiuxIsTime(start) && this.__mobileUiuxIsTime(end)) {
+          slots.push({ start, end });
+        }
+      }
+    }
+    return {
+      open: record.open === true,
+      slots
+    };
+  }
+
+  __mobileUiuxNormalizeSpecialClosures(settings) {
+    const rows = [];
+    if (Array.isArray(settings.specialClosures)) {
+      for (let index = 0; index < settings.specialClosures.length; index += 1) {
+        const item = settings.specialClosures[index];
+        if (!this.__mobileUiuxIsRecord(item) || typeof item.date !== 'string' || item.date.length === 0) continue;
+        rows.push({
+          date: item.date,
+          type: this.__mobileUiuxNormalizeSpecialType(item.type),
+          label: typeof item.label === 'string' ? item.label : ''
+        });
+      }
+    }
+    if (rows.length > 0) {
+      return rows;
+    }
+    if (Array.isArray(settings.holidays)) {
+      for (let index = 0; index < settings.holidays.length; index += 1) {
+        const date = settings.holidays[index];
+        if (typeof date === 'string' && date.length > 0) {
+          rows.push({ date, type: '休診', label: '' });
+        }
+      }
+    }
+    return rows;
+  }
+
+  __mobileUiuxNormalizeSpecialType(value) {
+    if (value === '休診' || value === '短縮営業' || value === '臨時営業') {
+      return value;
+    }
+    return '休診';
+  }
+
+  __mobileUiuxClinicHoursDayKeys() {
+    if (!this.__mobileUiuxClinicHoursDayKeyList) {
+      this.__mobileUiuxClinicHoursDayKeyList = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    }
+    return this.__mobileUiuxClinicHoursDayKeyList;
+  }
+
+  __mobileUiuxIsTime(value) {
+    return /^\\d{2}:\\d{2}$/.test(value);
+  }
+
+  __mobileUiuxShowSettingsToast(message) {
+    if (typeof this.toast === 'function') {
+      this.toast(message);
+    } else if (typeof this.setState === 'function') {
+      this.setState({ toast: message });
+    }
   }
 
   __mobileUiuxIsRecord(value) {

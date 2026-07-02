@@ -1663,6 +1663,81 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
+  it('adds default clinic scope and applies settings write responses back to settings-detail', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const mutationPayload = {
+      category: 'clinic_hours',
+      settings: {
+        holidays: ['2026-07-20'],
+      },
+    };
+    const responsePayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        category: 'clinic_hours',
+        settings: {
+          holidays: ['2026-07-20'],
+        },
+        updatedAt: '2026-07-01T00:00:00.000Z',
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'settings-detail',
+      [
+        buildJsonResponse(200, {
+          ...contextPayload,
+          data: {
+            ...contextPayload.data,
+            flags: {
+              ...contextPayload.data.flags,
+              writeEnabled: true,
+              settingsWriteEnabled: true,
+            },
+          },
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            clinic: null,
+            menus: [],
+            resources: [],
+          },
+          generatedAt: '2026-07-01T00:00:00.000Z',
+        }),
+        buildJsonResponse(200, responsePayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    await expect(
+      window.MobileUiuxBridge?.updateSettings(mutationPayload)
+    ).resolves.toBe(true);
+
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/settings',
+      method: 'PUT',
+      body: JSON.stringify({
+        ...mutationPayload,
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+      }),
+    });
+    expect(applyReadData).toHaveBeenCalledWith(
+      'settings-detail',
+      responsePayload
+    );
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'success'
+    );
+  });
+
   it('marks settings mutation failure without logging or rendering secrets', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,

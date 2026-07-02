@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./support.js"></script>
+
+<style data-mobile-uiux-production-shell>
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body[data-mobile-uiux-shell="production"] {
+  width: 100%;
+  min-height: 100svh;
+  background: var(--screen-bg, #f3f5f4);
+  overflow: hidden;
+}
+[data-mobile-uiux-production-root] {
+  width: 100% !important;
+  min-height: 100svh !important;
+  height: 100svh !important;
+  overflow: hidden !important;
+  background: var(--screen-bg, #f3f5f4) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+[data-screen-label] {
+  width: 100% !important;
+  height: 100svh !important;
+  min-height: 100svh !important;
+  border-radius: 0 !important;
+}
+.scrl { -webkit-overflow-scrolling: touch; }
+</style></head>
+<body data-mobile-uiux-shell="production">
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans JP", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .scrl::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes drillIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="設定ハブ（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
+
+      
+
+      <!-- status bar -->
+      
+
+      <!-- HEADER -->
+      <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
+        <div style="display: flex; align-items: center; gap: 6px; padding: 6px 12px 10px; min-height: 44px;">
+          <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onBack }}" aria-label="戻る" style="all: unset; box-sizing: border-box; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--fg); flex: none;">{{ backChev }}</button>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 1px; margin-right: auto; padding-left: {{ titlePad }};">
+            <div style="font-size: 19px; font-weight: 700; color: var(--fg);">{{ headerTitle }}</div>
+            <sc-if value="{{ showSub }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size: 11px; color: var(--fg-2); white-space: nowrap;">{{ headerSub }}</div>
+            </sc-if>
+          </div>
+          <span style="font-size: 11px; font-weight: 700; color: var(--on-primary-soft); background: var(--primary-soft); padding: 6px 11px; border-radius: 999px; white-space: nowrap;">{{ roleLabel }}</span>
+        </div>
+      </div>
+
+      <!-- CONTENT -->
+      <div class="scrl" style="flex: 1; overflow-y: auto; position: relative;">
+
+        <!-- ░ TOP : CATEGORY LIST ░ -->
+        <sc-if value="{{ isTop }}" hint-placeholder-val="{{ true }}">
+          <div style="animation: drillIn .22s ease;">
+            <div style="position: sticky; top: 0; z-index: 5; background: var(--screen-bg); padding: 12px 16px 10px;">
+              <div style="display: flex; align-items: center; gap: 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0 13px; min-height: 44px;">
+                {{ searchIcon }}
+                <input value="{{ searchVal }}" onChange="{{ onSearch }}" placeholder="設定を検索" style="flex: 1; border: none; outline: none; background: transparent; font-family: inherit; font-size: 14.5px; color: var(--fg); min-width: 0;">
+              </div>
+            </div>
+            <div style="padding: 2px 16px 110px; display: flex; flex-direction: column; gap: 16px;">
+              <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+                <div>
+                  <div style="font-size: 11.5px; font-weight: 700; color: var(--fg-3); letter-spacing: .4px; margin: 0 4px 8px; text-transform: uppercase;">{{ g.title }}</div>
+                  <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <sc-for list="{{ g.rows }}" as="cat" hint-placeholder-count="3">
+                      <button onClick="{{ cat.onOpen }}" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 13px; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 13px; min-height: 44px;">
+                        <div style="width: 38px; height: 38px; border-radius: 11px; background: var(--primary-soft); color: var(--on-primary-soft); display: flex; align-items: center; justify-content: center; flex: none;">{{ cat.iconEl }}</div>
+                        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
+                          <div style="font-size: 14.5px; font-weight: 700; color: var(--fg); text-align: left;">{{ cat.title }}</div>
+                          <div style="font-size: 11.5px; color: var(--fg-2); text-align: left;">{{ cat.sub }}</div>
+                        </div>
+                        <sc-if value="{{ cat.hasBadge }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size: 10.5px; font-weight: 700; color: {{ cat.badgeC }}; background: {{ cat.badgeB }}; padding: 3px 9px; border-radius: 999px; white-space: nowrap; flex: none;">{{ cat.badge }}</span>
+                        </sc-if>
+                        <span style="color: var(--fg-3); flex: none; display: flex;">{{ chevR }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="font-size: 11px; color: var(--fg-3); text-align: center; padding: 4px 12px; line-height: 1.6;">表示中のセクションはサーバ側で解決した権限に基づきます ・ 操作可否はサーバが最終判定します</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ░ ACCOUNT ░ -->
+        <sc-if value="{{ isAccount }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 16px; animation: drillIn .22s ease;">
+            <div style="display: flex; align-items: center; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px;">
+              <div style="width: 54px; height: 54px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; flex: none;">{{ acctInitial }}</div>
+              <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+                <div style="font-size: 17px; font-weight: 700; color: var(--fg);">{{ acctName }}</div>
+                <div style="font-size: 12px; color: var(--fg-2);">{{ acctRoleLabel }} ・ {{ acctClinic }}</div>
+                <div style="font-size: 11.5px; color: var(--fg-3);">{{ acctEmail }}</div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ acctRows }}" as="r" hint-placeholder-count="5">
+                <button onClick="{{ r.onTap }}" style="{{ r.rowStyle }}">
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
+                    <div style="font-size: 14px; font-weight: 600; color: {{ r.titleColor }}; text-align: left;">{{ r.t }}</div>
+                    <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ true }}"><div style="font-size: 11px; color: var(--fg-2); text-align: left;">{{ r.s }}</div></sc-if>
+                  </div>
+                  <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ r.trackStyle }}"><div style="{{ r.knobStyle }}"></div></div>
+                  </sc-if>
+                  <sc-if value="{{ r.isNav }}" hint-placeholder-val="{{ true }}">
+                    <span style="color: var(--fg-3); flex: none; display: flex;">{{ chevR }}</span>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ░ SETTINGS DETAIL (generic) ░ -->
+        <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 14px; animation: drillIn .22s ease;">
+            <sc-if value="{{ subsetBanner }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; background: var(--s-uc-bg); border: 1px solid var(--s-uc); border-radius: 13px; color: var(--s-uc);">
+                <span style="width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--s-uc); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex: none; margin-top: 1px;">i</span>
+                <span style="font-size: 11.5px; font-weight: 500; line-height: 1.5;">{{ subsetText }}</span>
+              </div>
+            </sc-if>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ detailRows }}" as="r" hint-placeholder-count="4">
+                <button onClick="{{ r.onTap }}" style="{{ r.rowStyle }}">
+                  <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
+                    <div style="font-size: 14px; font-weight: 600; color: {{ r.titleColor }}; text-align: left;">{{ r.t }}</div>
+                    <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ true }}"><div style="font-size: 11px; color: var(--fg-2); text-align: left;">{{ r.s }}</div></sc-if>
+                  </div>
+                  <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}">
+                    <div style="{{ r.trackStyle }}"><div style="{{ r.knobStyle }}"></div></div>
+                  </sc-if>
+                  <sc-if value="{{ r.isNav }}" hint-placeholder-val="{{ true }}">
+                    <span style="color: var(--fg-3); flex: none; display: flex;">{{ chevR }}</span>
+                  </sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ░ SHIFT WORKFLOW ░ -->
+        <sc-if value="{{ isShift }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 14px; animation: drillIn .22s ease;">
+
+            <div style="display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px;">
+              <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+                <div style="font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ shiftClinic }}</div>
+                <div style="font-size: 11px; color: var(--fg-2);">対象期間 {{ shiftPeriod }} ・ JST</div>
+              </div>
+              <span style="font-size: 10.5px; font-weight: 700; color: var(--on-primary-soft); background: var(--primary-soft); padding: 4px 10px; border-radius: 999px;">{{ shiftModeLabel }}</span>
+            </div>
+
+            <!-- SELF -->
+            <sc-if value="{{ isSelf }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <sc-for list="{{ selfCards }}" as="c" hint-placeholder-count="3">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; display: flex; flex-direction: column; gap: 9px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 11px; font-weight: 700; color: {{ c.typeC }}; background: {{ c.typeB }}; padding: 3px 10px; border-radius: 8px;">{{ c.typeLabel }}</span>
+                      <span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ c.dateLabel }}</span>
+                      <span style="font-size: 10.5px; font-weight: 700; color: {{ c.stC }}; background: {{ c.stB }}; padding: 3px 9px; border-radius: 999px; margin-left: auto;">{{ c.stLabel }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                      <div style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 11px; color: var(--fg-2);">時間</span><span style="font-size: 12.5px; font-weight: 600; color: var(--fg);">{{ c.time }}</span></div>
+                      <div style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 11px; color: var(--fg-2);">優先度</span><span style="font-size: 12.5px; font-weight: 600; color: var(--fg);">{{ c.priority }}</span></div>
+                    </div>
+                    <sc-if value="{{ c.hasNote }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 11.5px; color: var(--fg-2); background: var(--surface-2); border-radius: 9px; padding: 8px 10px;">{{ c.note }}</div>
+                    </sc-if>
+                    <sc-if value="{{ c.isDraft }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ c.onSubmit }}" style="min-height: 44px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">この希望を提出</button>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <!-- REVIEW / MANAGER -->
+            <sc-if value="{{ isManage }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <sc-for list="{{ subCards }}" as="c" hint-placeholder-count="4">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; position: relative; display: flex; flex-direction: column; gap: 9px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ c.name }}</span>
+                      <span style="font-size: 10.5px; font-weight: 700; color: {{ c.stC }}; background: {{ c.stB }}; padding: 3px 9px; border-radius: 999px; margin-left: auto;">{{ c.stLabel }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <span style="font-size: 11px; font-weight: 700; color: {{ c.typeC }}; background: {{ c.typeB }}; padding: 3px 10px; border-radius: 8px;">{{ c.typeLabel }}</span>
+                      <span style="font-size: 13px; font-weight: 600; color: var(--fg);">{{ c.dateLabel }}</span>
+                      <span style="font-size: 12px; color: var(--fg-2);">{{ c.time }} ・ 優先度 {{ c.priority }}</span>
+                    </div>
+                    <sc-if value="{{ c.hasNote }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size: 11.5px; color: var(--fg-2); background: var(--surface-2); border-radius: 9px; padding: 8px 10px;">{{ c.note }}</div>
+                    </sc-if>
+                    <sc-if value="{{ c.canAct }}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; gap: 8px; padding-top: 2px;">
+                        <button onClick="{{ c.onReject }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--s-ns); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">差戻し</button>
+                        <button onClick="{{ c.onApprove }}" style="flex: 1; min-height: 44px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">承認</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ c.confirming }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; inset: 0; background: var(--surface); border-radius: 14px; display: flex; flex-direction: column; justify-content: center; gap: 13px; padding: 16px; z-index: 3;">
+                        <div style="font-size: 13.5px; font-weight: 700; color: var(--fg); text-align: center;">{{ c.confirmText }}</div>
+                        <div style="display: flex; gap: 10px;">
+                          <button onClick="{{ c.onCancel }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 11px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">キャンセル</button>
+                          <button onClick="{{ c.onConfirm }}" style="flex: 1; min-height: 44px; border: none; background: {{ c.confirmColor }}; color: #fff; border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">{{ c.confirmBtn }}</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ░ ATTENDANCE WORKFLOW (出勤申請) ░ -->
+        <sc-if value="{{ isAttendance }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 132px; display: flex; flex-direction: column; gap: 14px; animation: drillIn .22s ease;">
+            <div style="display: flex; align-items: flex-start; gap: 9px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px;">
+              <span style="width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--fg-3); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex: none; margin-top: 1px; color: var(--fg-3);">i</span>
+              <span style="font-size: 11.5px; font-weight: 500; line-height: 1.5; color: var(--fg-2);">出退勤・残業・打刻修正の申請を提出します ・ 承認は院長/管理者がJST基準で行います。</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 9px;">
+              <sc-for list="{{ attCards }}" as="c" hint-placeholder-count="3">
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; position: relative; display: flex; flex-direction: column; gap: 9px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 11px; font-weight: 700; color: {{ c.typeC }}; background: {{ c.typeB }}; padding: 3px 10px; border-radius: 8px;">{{ c.typeLabel }}</span>
+                    <span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ c.dateLabel }}</span>
+                    <span style="font-size: 10.5px; font-weight: 700; color: {{ c.stC }}; background: {{ c.stB }}; padding: 3px 9px; border-radius: 999px; margin-left: auto;">{{ c.stLabel }}</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 11px; color: var(--fg-2);">出退勤</span><span style="font-size: 12.5px; font-weight: 600; color: var(--fg); font-variant-numeric: tabular-nums;">{{ c.span }}</span></div>
+                    <div style="display: flex; align-items: center; gap: 5px;"><span style="font-size: 12.5px; font-weight: 600; color: var(--fg);">{{ c.brk }}</span></div>
+                  </div>
+                  <sc-if value="{{ c.hasHelp }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--on-primary-soft); background: var(--primary-soft); border-radius: 9px; padding: 7px 10px;"><span style="font-size: 10px; font-weight: 700; opacity: .75;">HELP</span>{{ c.helpText }}</div>
+                  </sc-if>
+                  <sc-if value="{{ c.hasNote }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size: 11.5px; color: var(--fg-2); background: var(--surface-2); border-radius: 9px; padding: 8px 10px;">{{ c.note }}</div>
+                  </sc-if>
+                  <sc-if value="{{ c.editable }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; gap: 8px; padding-top: 2px;">
+                      <button onClick="{{ c.onDel }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--s-ns); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">削除</button>
+                      <button onClick="{{ c.onEdit }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">修正</button>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ c.confirming }}" hint-placeholder-val="{{ false }}">
+                    <div style="position: absolute; inset: 0; background: var(--surface); border-radius: 14px; display: flex; flex-direction: column; justify-content: center; gap: 13px; padding: 16px; z-index: 3;">
+                      <div style="font-size: 13.5px; font-weight: 700; color: var(--fg); text-align: center;">この出勤申請を削除しますか？</div>
+                      <div style="display: flex; gap: 10px;">
+                        <button onClick="{{ c.onCancelDel }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 11px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">キャンセル</button>
+                        <button onClick="{{ c.onConfirmDel }}" style="flex: 1; min-height: 44px; border: none; background: var(--s-ns); color: #fff; border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">削除する</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- ATTENDANCE submit bar -->
+      <sc-if value="{{ showAttBar }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; padding: 10px 16px 22px; border-top: 1px solid var(--border); background: var(--surface); z-index: 9;">
+          <button onClick="{{ openAttSheet }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 14.5px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;"><span style="font-size: 18px; line-height: 1;">＋</span>出勤を申請</button>
+        </div>
+      </sc-if>
+
+      <!-- SELF submit bar -->
+      <sc-if value="{{ showSubmitBar }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; padding: 10px 16px 22px; border-top: 1px solid var(--border); background: var(--surface); z-index: 9;">
+          <button onClick="{{ openSheet }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 14.5px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;"><span style="font-size: 18px; line-height: 1;">＋</span>希望シフトを追加</button>
+        </div>
+      </sc-if>
+
+      <!-- BOTTOM NAV -->
+      <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+        <div style="flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 8px 24px; display: flex; z-index: 9;">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="home" role="button" tabindex="0" aria-label="ホームへ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px;"></div><span style="font-size: 10px; color: var(--fg-3);">ホーム</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="reservations" role="button" tabindex="0" aria-label="予約へ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px; position: relative;"><div style="position: absolute; inset: 3px 3px auto 3px; height: 2px; background: var(--fg-3);"></div></div><span style="font-size: 10px; color: var(--fg-3);">予約</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="patients" role="button" tabindex="0" aria-label="患者へ移動"><div style="width: 14px; height: 14px; border: 2px solid var(--fg-3); border-radius: 50%; margin-top: 2px;"></div><span style="font-size: 10px; color: var(--fg-3);">患者</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="daily-reports" role="button" tabindex="0" aria-label="日報へ移動"><div style="display: flex; align-items: flex-end; gap: 2px; height: 18px;"><div style="width: 4px; height: 8px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 14px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 11px; background: var(--fg-3); border-radius: 1px;"></div></div><span style="font-size: 10px; color: var(--fg-3);">日報</span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="settings" role="button" tabindex="0" aria-label="設定へ移動"><div style="width: 20px; height: 20px; border: 2.4px solid var(--primary); border-radius: 50%; position: relative;"><div style="position: absolute; inset: 5px; background: var(--primary); border-radius: 50%;"></div></div><span style="font-size: 10px; color: var(--primary); font-weight: 700;">設定</span></div>
+        </div>
+      </sc-if>
+
+      <!-- ░░ SHIFT SUBMIT SHEET ░░ -->
+      <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeSheet }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--screen-bg); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); display: flex; flex-direction: column; max-height: 90%;">
+          <div style="padding: 10px 0 2px; display: flex; justify-content: center; flex: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; flex: none; border-bottom: 1px solid var(--border);">
+            <div style="font-size: 18px; font-weight: 700; color: var(--fg);">希望シフトを追加</div>
+            <button onClick="{{ closeSheet }}" aria-label="閉じる" style="margin-left: auto; width: 44px; height: 44px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 17px; display: flex; align-items: center; justify-content: center;">✕</button>
+          </div>
+          <div class="scrl" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 15px;">
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">種別</span>
+              <select value="{{ formType }}" onChange="{{ onFormType }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                <sc-for list="{{ typeOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+              </select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">希望日（JST）</span><input type="date" value="{{ formDate }}" onChange="{{ onFormDate }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+            <sc-if value="{{ showTimeRow }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 12px;">
+                <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">開始</span><input type="time" value="{{ formStart }}" onChange="{{ onFormStart }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+                <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">終了</span><input type="time" value="{{ formEnd }}" onChange="{{ onFormEnd }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+              </div>
+            </sc-if>
+            <div style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">優先度</span>
+              <div style="display: flex; gap: 6px;">
+                <sc-for list="{{ priBtns }}" as="p" hint-placeholder-count="3"><button onClick="{{ p.onTap }}" style="{{ p.style }}">{{ p.label }}</button></sc-for>
+              </div>
+            </div>
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">メモ（任意）</span><textarea value="{{ formNote }}" onChange="{{ onFormNote }}" placeholder="補足があれば入力" rows="2" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 11px 12px; outline: none; resize: none;"></textarea></label>
+          </div>
+          <div style="flex: none; padding: 12px 16px 30px; border-top: 1px solid var(--border); background: var(--surface);">
+            <button onClick="{{ submitShift }}" style="width: 100%; min-height: 52px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;">希望を提出する</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ░░ ATTENDANCE SUBMIT SHEET ░░ -->
+      <sc-if value="{{ attSheetOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeAttSheet }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--screen-bg); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); display: flex; flex-direction: column; max-height: 90%;">
+          <div style="padding: 10px 0 2px; display: flex; justify-content: center; flex: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; flex: none; border-bottom: 1px solid var(--border);">
+            <div style="font-size: 18px; font-weight: 700; color: var(--fg);">{{ attSheetTitle }}</div>
+            <button onClick="{{ closeAttSheet }}" aria-label="閉じる" style="margin-left: auto; width: 44px; height: 44px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 17px; display: flex; align-items: center; justify-content: center;">✕</button>
+          </div>
+          <div class="scrl" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 15px;">
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">区分</span>
+              <select value="{{ attType }}" onChange="{{ onAttType }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                <sc-for list="{{ attTypeOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+              </select>
+            </label>
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">対象日（JST）</span><input type="date" value="{{ attDate }}" onChange="{{ onAttDate }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+            <div style="display: flex; gap: 12px;">
+              <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">出勤時刻</span><input type="time" value="{{ attIn }}" onChange="{{ onAttIn }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+              <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">退勤時刻</span><input type="time" value="{{ attOut }}" onChange="{{ onAttOut }}" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+            </div>
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">休憩</span>
+              <select value="{{ attBrk }}" onChange="{{ onAttBrk }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                <sc-for list="{{ attBrkOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+              </select>
+            </label>
+            <div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 11px 13px;">
+              <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;">
+                <span style="font-size: 14px; font-weight: 600; color: var(--fg);">他院へのヘルプ勤務</span>
+                <span style="font-size: 11px; color: var(--fg-2);">ヘルプ先と稼働時間を記録</span>
+              </div>
+              <button onClick="{{ toggleAttHelp }}" aria-label="ヘルプ勤務を切替" style="all: unset; box-sizing: border-box; cursor: pointer; {{ attHelpTrack }}"><div style="{{ attHelpKnob }}"></div></button>
+            </div>
+            <sc-if value="{{ attHelp }}" hint-placeholder-val="{{ false }}">
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">ヘルプ先</span>
+                <select value="{{ attHelpClinic }}" onChange="{{ onAttHelpClinic }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                  <sc-for list="{{ attHelpClinicOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                </select>
+              </label>
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">そこでの稼働時間</span>
+                <select value="{{ attHelpHours }}" onChange="{{ onAttHelpHours }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                  <sc-for list="{{ attHelpHoursOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                </select>
+              </label>
+            </sc-if>
+            <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">メモ（任意）</span><textarea value="{{ attNote }}" onChange="{{ onAttNote }}" placeholder="残業理由・打刻修正の事由など" rows="2" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 11px 12px; outline: none; resize: none;"></textarea></label>
+          </div>
+          <div style="flex: none; padding: 12px 16px 30px; border-top: 1px solid var(--border); background: var(--surface);">
+            <button onClick="{{ submitAtt }}" style="width: 100%; min-height: 52px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;">{{ attSubmitLabel }}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; bottom: 96px; left: 50%; z-index: 80; background: var(--toast-bg); color: var(--toast-fg); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); animation: toastIn .25s ease; white-space: nowrap; max-width: 86%;">{{ toastMsg }}</div>
+      </sc-if>
+
+    </div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 720, &quot;height&quot;: 900}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f7d72&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#2f7d72&quot;, &quot;#356a9c&quot;, &quot;#4a6670&quot;, &quot;#7a5a86&quot;]}}">
+class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト', staff: '受付スタッフ', clinic_admin: '院長', manager: 'エリアM', admin: '管理者' };
+  USER = {
+    therapist: { name: '佐藤 美咲', initial: '美', clinic: '本町ケア整骨院', email: 'misaki.s@example.jp' },
+    staff:     { name: '高橋 涼介', initial: '涼', clinic: '本町ケア整骨院', email: 'ryosuke.t@example.jp' },
+    clinic_admin: { name: '井上 健', initial: '健', clinic: '本町ケア整骨院', email: 'ken.i@example.jp' },
+    manager:   { name: '松本 陽子', initial: '陽', clinic: '東エリア（3院）', email: 'yoko.m@example.jp' },
+    admin:     { name: 'システム管理者', initial: 'A', clinic: '全院', email: 'admin@example.jp' },
+  };
+
+  CATS = [
+    { id: 'account',      g: 'アカウント', t: 'アカウント',     s: 'プロフィール・パスワード・2FA', icon: 'person',   roles: 'all' },
+    { id: 'shift_self',   g: 'シフト',     t: 'シフト申請',     s: '希望シフトの提出',             icon: 'calendar', roles: ['therapist', 'staff'] },
+    { id: 'attendance',   g: 'シフト',     t: '出勤申請',       s: '出退勤・残業・打刻修正の申請', icon: 'clock',    roles: ['therapist', 'staff'] },
+    { id: 'shift_review', g: 'シフト',     t: 'シフト確認',     s: 'スタッフの希望を承認・差戻し', icon: 'check',    roles: ['clinic_admin'] },
+    { id: 'shift_manage', g: 'シフト',     t: 'シフト管理',     s: '担当院の希望を承認・確定',     icon: 'check',    roles: ['manager', 'admin'] },
+    { id: 'clinic',       g: '院・サービス', t: '院・サービス設定', s: '院情報・施術メニュー・保険',  icon: 'building', roles: ['manager', 'admin'] },
+    { id: 'reservation',  g: '院・サービス', t: '予約・通知設定',  s: '予約ルール・リマインド通知',   icon: 'bell',     roles: ['manager', 'admin'] },
+    { id: 'data',         g: 'システム',   t: 'データ管理',     s: 'エクスポート・バックアップ',   icon: 'data',     roles: ['admin'] },
+    { id: 'system',       g: 'システム',   t: 'システム',       s: '基本・セキュリティ・バックアップ', icon: 'system', roles: ['admin'] },
+  ];
+
+  ACCOUNT_ROWS = [
+    { kind: 'nav', t: 'プロフィール編集', s: '氏名・連絡先' },
+    { kind: 'nav', t: 'パスワード変更', s: '最終変更 30日前' },
+    { kind: 'toggle', t: '二段階認証 (2FA)', s: 'ログイン時に確認', key: 'my2fa', on: true },
+    { kind: 'nav', t: '通知設定', s: 'プッシュ・メール' },
+    { kind: 'nav', t: 'ログアウト', danger: true },
+  ];
+  DETAIL = {
+    clinic: [
+      { kind: 'nav', t: '院情報', s: '名称・住所・診療時間' },
+      { kind: 'nav', t: '施術メニュー', s: 'メニュー・料金' },
+      { kind: 'nav', t: '保険設定', s: '保険区分・負担割合' },
+    ],
+    reservation: [
+      { kind: 'toggle', t: '予約リマインド', s: '前日にSMSを自動送信', key: 'remind', on: true },
+      { kind: 'toggle', t: 'Web予約受付', s: 'オンライン受付を許可', key: 'webres', on: true },
+      { kind: 'toggle', t: '通知メール', s: '新規予約を管理者へ通知', key: 'mail', on: false },
+      { kind: 'nav', t: '予約ルール', s: '受付間隔・同時予約数' },
+    ],
+    data: [
+      { kind: 'nav', t: 'データエクスポート', s: 'CSV / Excel 出力' },
+      { kind: 'nav', t: '自動バックアップ', s: '毎日 03:00 JST' },
+      { kind: 'nav', t: 'インポート', s: '患者データ取込' },
+    ],
+    system: [
+      { kind: 'toggle', t: '2要素認証を必須化', s: '全スタッフに適用', key: 'force2fa', on: false },
+      { kind: 'nav', t: '基本設定', s: 'タイムゾーン・言語' },
+      { kind: 'nav', t: 'セキュリティ', s: 'IP制限・監査ログ' },
+      { kind: 'nav', t: 'バックアップ', s: '復元ポイント' },
+    ],
+  };
+  DETAIL_TITLE = { clinic: '院・サービス設定', reservation: '予約・通知設定', data: 'データ管理', system: 'システム' };
+
+  SHIFT_TYPE = {
+    '希望出勤': { c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    '休み希望': { c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    '有給希望': { c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' },
+    '半休':     { c: 'var(--fg-2)', b: 'var(--s-cn-bg)' },
+  };
+  SHIFT_STATUS = {
+    draft:     { label: '下書き', c: 'var(--fg-2)', b: 'var(--s-cn-bg)' },
+    submitted: { label: '提出済み', c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' },
+    approved:  { label: '承認済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    rejected:  { label: '差戻し', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' },
+  };
+
+  // 出勤申請（出退勤・残業・打刻修正）の区分。ステータスは SHIFT_STATUS を流用。
+  ATT_TYPE = {
+    '通常出勤': { c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    '残業申請': { c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    '休日出勤': { c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' },
+    '打刻修正': { c: 'var(--fg-2)', b: 'var(--s-cn-bg)' },
+  };
+  BRK_OPTS = [0, 45, 60, 90];
+  HELP_CLINICS = ['駅前ケア整骨院', '港南ケア整骨院', 'みなと整骨院', '東口ケア整骨院'];
+  HELP_HOURS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8];
+
+  state = {
+    theme: 'light', role: 'therapist',
+    nav: [{ scr: 'top' }],
+    search: '', toggles: {}, toast: '',
+    sheetOpen: false,
+    formType: '希望出勤', formDate: '2026-06-25', formStart: '10:00', formEnd: '19:00', formPriority: '中', formNote: '',
+    confirmShift: null, shiftSeq: 500,
+    attSheetOpen: false, attSeq: 600, attEditId: null, attConfirmDel: null,
+    attType: '通常出勤', attDate: '2026-06-29', attIn: '09:55', attOut: '19:05', attBrk: 60, attNote: '',
+    attHelp: false, attHelpClinic: '駅前ケア整骨院', attHelpHours: 4,
+    attReqs: [
+      { id: 601, type: '残業申請', iso: '2026-06-27', clockIn: '10:00', clockOut: '21:30', brk: 60, status: 'submitted', note: '夕方の予約が混雑したため残業しました', help: null },
+      { id: 602, type: '休日出勤', iso: '2026-06-26', clockIn: '09:00', clockOut: '14:00', brk: 0, status: 'submitted', note: '人員不足のヘルプ対応', help: { clinic: '駅前ケア整骨院', hours: 5 } },
+      { id: 603, type: '通常出勤', iso: '2026-06-25', clockIn: '09:55', clockOut: '19:05', brk: 60, status: 'approved', note: '', help: null },
+      { id: 604, type: '打刻修正', iso: '2026-06-23', clockIn: '09:00', clockOut: '18:00', brk: 45, status: 'rejected', note: '退勤打刻を忘れたため修正を申請', help: null },
+    ],
+    shiftReqs: [
+      { id: 1, type: '希望出勤', iso: '2026-06-25', time: '10:00–19:00', priority: '高', status: 'submitted', note: '' },
+      { id: 2, type: '休み希望', iso: '2026-06-27', time: '終日', priority: '中', status: 'draft', note: '通院のため終日休み希望です' },
+      { id: 3, type: '希望出勤', iso: '2026-06-28', time: '09:00–14:00', priority: '低', status: 'approved', note: '' },
+    ],
+    shiftSubs: [
+      { id: 11, name: '佐藤 美咲', type: '希望出勤', iso: '2026-06-25', time: '10:00–19:00', priority: '高', status: 'submitted', note: '' },
+      { id: 12, name: '鈴木 大輔', type: '休み希望', iso: '2026-06-27', time: '終日', priority: '中', status: 'submitted', note: '私用のため' },
+      { id: 13, name: '山本 由香', type: '有給希望', iso: '2026-06-30', time: '終日', priority: '高', status: 'submitted', note: '' },
+      { id: 14, name: '田中 健太', type: '希望出勤', iso: '2026-07-01', time: '13:00–20:00', priority: '低', status: 'approved', note: '' },
+      { id: 15, name: '木村 美穂', type: '半休', iso: '2026-07-02', time: '午後休', priority: '中', status: 'submitted', note: '' },
+    ],
+  };
+
+  // テーマ・デザイントークンは clinic-shared.js に集約（全画面共通・キャッシュ共有）。
+  // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
+  setRoot = (el) => { this._root = el; this.applyTheme(); };
+  applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
+  __mobileUiuxOriginalComponentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  // ── icons（名前ごとに1度だけ生成してキャッシュ：毎描画の再生成を回避） ──
+  ic = (name) => { if (!this._icc) this._icc = {}; return this._icc[name] || (this._icc[name] = this._icBuild(name)); };
+  _icBuild = (name) => {
+    const h = React.createElement;
+    const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' };
+    const svg = (...kids) => h('svg', { width: 21, height: 21, viewBox: '0 0 24 24', ...P }, ...kids);
+    switch (name) {
+      case 'person': return svg(h('circle', { cx: 12, cy: 9, r: 3.2, key: 1 }), h('path', { d: 'M5.5 19c0-3.4 2.9-5.6 6.5-5.6s6.5 2.2 6.5 5.6', key: 2 }));
+      case 'calendar': return svg(h('rect', { x: 3.8, y: 5.2, width: 16.4, height: 15, rx: 2.4, key: 1 }), h('path', { d: 'M3.8 9.6h16.4', key: 2 }), h('path', { d: 'M8.5 3.4v3.4', key: 3 }), h('path', { d: 'M15.5 3.4v3.4', key: 4 }));
+      case 'clock': return svg(h('circle', { cx: 12, cy: 12, r: 8, key: 1 }), h('path', { d: 'M12 7.6V12l3 1.8', key: 2 }));
+      case 'check': return svg(h('rect', { x: 4.4, y: 4.2, width: 15.2, height: 16.6, rx: 2.4, key: 1 }), h('path', { d: 'M8.4 12.3l2.6 2.6 4.6-5', key: 2 }));
+      case 'building': return svg(h('rect', { x: 5, y: 3.6, width: 14, height: 16.8, rx: 1.6, key: 1 }), h('path', { d: 'M9 8h2.2M13 8h2M9 12h2.2M13 12h2M9 16h2.2M13 16h2', key: 2 }));
+      case 'bell': return svg(h('path', { d: 'M12 4.2a4.8 4.8 0 0 0-4.8 4.8c0 4.8-2 6-2 6h13.6s-2-1.2-2-6A4.8 4.8 0 0 0 12 4.2z', key: 1 }), h('path', { d: 'M10.3 19.4a1.8 1.8 0 0 0 3.4 0', key: 2 }));
+      case 'data': return svg(h('ellipse', { cx: 12, cy: 6, rx: 6.4, ry: 2.6, key: 1 }), h('path', { d: 'M5.6 6v6c0 1.45 2.87 2.6 6.4 2.6s6.4-1.15 6.4-2.6V6', key: 2 }), h('path', { d: 'M5.6 12v6c0 1.45 2.87 2.6 6.4 2.6s6.4-1.15 6.4-2.6v-6', key: 3 }));
+      case 'system': return svg(h('path', { d: 'M4 8.5h16', key: 1 }), h('circle', { cx: 9, cy: 8.5, r: 2.4, fill: 'currentColor', stroke: 'none', key: 2 }), h('path', { d: 'M4 15.5h16', key: 3 }), h('circle', { cx: 15, cy: 15.5, r: 2.4, fill: 'currentColor', stroke: 'none', key: 4 }));
+      default: return svg();
+    }
+  };
+  chev = () => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d: 'M9 6l6 6-6 6' }));
+  backChevEl = () => React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('path', { d: 'M15 6l-6 6 6 6' }));
+  searchEl = () => React.createElement('svg', { width: 17, height: 17, viewBox: '0 0 24 24', fill: 'none', stroke: 'var(--fg-3)', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }, React.createElement('circle', { cx: 11, cy: 11, r: 7 }), React.createElement('path', { d: 'M20 20l-3.2-3.2' }));
+
+  // ── JST date label ──
+  fmtJ = (iso) => {
+    try {
+      const d = new Date(iso + 'T12:00:00+09:00');
+      const p = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short' }).formatToParts(d);
+      const get = (t) => { const x = p.find(z => z.type === t); return x ? x.value : ''; };
+      return get('month') + '/' + get('day') + '（' + get('weekday') + '）';
+    } catch (e) { return iso; }
+  };
+
+  // ── theme / role ──
+  setLight = () => this.setState({ theme: 'light' });
+  setDark = () => this.setState({ theme: 'dark' });
+  onRole = (e) => this.setState({ role: e.target.value, nav: [{ scr: 'top' }], sheetOpen: false, attSheetOpen: false, attEditId: null, attConfirmDel: null, confirmShift: null });
+  onSearch = (e) => this.setState({ search: e.target.value });
+
+  // ── nav ──
+  push = (obj) => this.setState(s => ({ nav: [...s.nav, obj] }));
+  onBack = () => this.setState(s => ({ nav: s.nav.slice(0, -1), confirmShift: null }));
+  openCat = (cat) => () => {
+    if (cat.id === 'account') this.push({ scr: 'account' });
+    else if (cat.id === 'attendance') this.push({ scr: 'attendance' });
+    else if (cat.id === 'shift_self') this.push({ scr: 'shift', mode: 'self' });
+    else if (cat.id === 'shift_review') this.push({ scr: 'shift', mode: 'review' });
+    else if (cat.id === 'shift_manage') this.push({ scr: 'shift', mode: 'manager' });
+    else this.push({ scr: 'detail', cat: cat.id });
+  };
+  noop = () => {};
+  navToast = (m) => () => this.toast(m);
+
+  // ── toggles ──
+  toggleVal = (item) => (this.state.toggles[item.key] !== undefined ? this.state.toggles[item.key] : item.on);
+  onToggle = (item) => () => this.setState(s => ({ toggles: { ...s.toggles, [item.key]: !(s.toggles[item.key] !== undefined ? s.toggles[item.key] : item.on) } }));
+
+  // ── shift self ──
+  submitDraft = (id) => () => { this.setState(s => ({ shiftReqs: s.shiftReqs.map(r => r.id === id ? { ...r, status: 'submitted' } : r) })); this.toast('希望シフトを提出しました'); };
+  openSheet = () => this.setState({ sheetOpen: true, formType: '希望出勤', formDate: '2026-06-25', formStart: '10:00', formEnd: '19:00', formPriority: '中', formNote: '' });
+  closeSheet = () => this.setState({ sheetOpen: false });
+  onFormType = (e) => this.setState({ formType: e.target.value });
+  onFormDate = (e) => this.setState({ formDate: e.target.value });
+  onFormStart = (e) => this.setState({ formStart: e.target.value });
+  onFormEnd = (e) => this.setState({ formEnd: e.target.value });
+  onFormNote = (e) => this.setState({ formNote: e.target.value });
+  setPriority = (p) => () => this.setState({ formPriority: p });
+  submitShift = () => {
+    const s = this.state;
+    const allDay = s.formType === '休み希望' || s.formType === '有給希望';
+    const time = allDay ? '終日' : (s.formType === '半休' ? '午後休' : s.formStart + '–' + s.formEnd);
+    const req = { id: s.shiftSeq, type: s.formType, iso: s.formDate, time, priority: s.formPriority, status: 'submitted', note: s.formNote };
+    this.setState(st => ({ shiftReqs: [req, ...st.shiftReqs], shiftSeq: st.shiftSeq + 1, sheetOpen: false }));
+    this.toast('希望シフトを提出しました');
+  };
+
+  // ── attendance (出勤申請) ──
+  openAttSheet = () => this.setState({ attSheetOpen: true, attEditId: null, attConfirmDel: null, attType: '通常出勤', attDate: '2026-06-29', attIn: '09:55', attOut: '19:05', attBrk: 60, attNote: '', attHelp: false, attHelpClinic: '駅前ケア整骨院', attHelpHours: 4 });
+  openAttEdit = (id) => () => {
+    const r = this.state.attReqs.find(x => x.id === id);
+    if (!r) return;
+    this.setState({ attSheetOpen: true, attEditId: id, attConfirmDel: null, attType: r.type, attDate: r.iso, attIn: r.clockIn, attOut: r.clockOut, attBrk: r.brk, attNote: r.note || '', attHelp: !!r.help, attHelpClinic: r.help ? r.help.clinic : '駅前ケア整骨院', attHelpHours: r.help ? r.help.hours : 4 });
+  };
+  closeAttSheet = () => this.setState({ attSheetOpen: false, attEditId: null });
+  onAttType = (e) => this.setState({ attType: e.target.value });
+  onAttDate = (e) => this.setState({ attDate: e.target.value });
+  onAttIn = (e) => this.setState({ attIn: e.target.value });
+  onAttOut = (e) => this.setState({ attOut: e.target.value });
+  onAttBrk = (e) => this.setState({ attBrk: Number(e.target.value) });
+  onAttNote = (e) => this.setState({ attNote: e.target.value });
+  toggleAttHelp = () => this.setState(s => ({ attHelp: !s.attHelp }));
+  onAttHelpClinic = (e) => this.setState({ attHelpClinic: e.target.value });
+  onAttHelpHours = (e) => this.setState({ attHelpHours: Number(e.target.value) });
+  submitAtt = () => {
+    const s = this.state;
+    const help = s.attHelp ? { clinic: s.attHelpClinic, hours: s.attHelpHours } : null;
+    const base = { type: s.attType, iso: s.attDate, clockIn: s.attIn, clockOut: s.attOut, brk: s.attBrk, note: s.attNote, help };
+    if (s.attEditId != null) {
+      this.setState(st => ({ attReqs: st.attReqs.map(r => r.id === s.attEditId ? { ...r, ...base, status: 'submitted' } : r), attSheetOpen: false, attEditId: null }));
+      this.toast('出勤申請を更新しました');
+    } else {
+      const req = { id: s.attSeq, ...base, status: 'submitted' };
+      this.setState(st => ({ attReqs: [req, ...st.attReqs], attSeq: st.attSeq + 1, attSheetOpen: false }));
+      this.toast('出勤申請を提出しました');
+    }
+  };
+  askAttDel = (id) => () => this.setState({ attConfirmDel: id });
+  cancelAttDel = () => this.setState({ attConfirmDel: null });
+  doAttDel = () => {
+    const id = this.state.attConfirmDel;
+    if (id == null) return;
+    this.setState(s => ({ attReqs: s.attReqs.filter(r => r.id !== id), attConfirmDel: null }));
+    this.toast('出勤申請を削除しました');
+  };
+
+  // ── shift manage ──
+  askAct = (id, act) => () => this.setState({ confirmShift: { id, act } });
+  cancelAct = () => this.setState({ confirmShift: null });
+  doAct = () => {
+    const cs = this.state.confirmShift;
+    if (!cs) return;
+    const st = cs.act === 'approve' ? 'approved' : 'rejected';
+    this.setState(s => ({ shiftSubs: s.shiftSubs.map(r => r.id === cs.id ? { ...r, status: st } : r), confirmShift: null }));
+    this.toast(cs.act === 'approve' ? '申請を承認しました' : '申請を差し戻しました');
+  };
+
+  toast = (m) => { this.setState({ toast: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2300); };
+
+  // ── styles ──
+  themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
+  seg3 = (active) => `all: unset; box-sizing: border-box; flex: 1; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; background: ${active ? 'var(--primary)' : 'var(--surface)'}; color: ${active ? 'var(--primary-fg)' : 'var(--fg-2)'}; border: 1px solid ${active ? 'var(--primary)' : 'var(--border)'};`;
+  rowBtn = (danger) => `all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; min-height: 48px;`;
+  track = (on) => `width: 48px; height: 28px; border-radius: 999px; background: ${on ? 'var(--primary)' : 'var(--border-strong)'}; display: flex; align-items: center; padding: 3px; flex: none; justify-content: ${on ? 'flex-end' : 'flex-start'}; transition: background .15s;`;
+  knob = () => `width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3);`;
+
+  rowVals = (item) => {
+    const isToggle = item.kind === 'toggle';
+    const on = isToggle ? this.toggleVal(item) : false;
+    return {
+      t: item.t, s: item.s || '', hasSub: !!item.s,
+      titleColor: item.danger ? 'var(--s-ns)' : 'var(--fg)',
+      isToggle, isNav: !isToggle,
+      trackStyle: this.track(on), knobStyle: this.knob(),
+      rowStyle: this.rowBtn(item.danger),
+      onTap: isToggle ? this.onToggle(item) : this.navToast(item.danger ? 'ログアウトは本番環境で有効です' : item.t + 'は本番環境で開きます'),
+    };
+  };
+
+  __mobileUiuxOriginalRenderVals() {
+    const s = this.state;
+    const role = s.role;
+    const cur = s.nav[s.nav.length - 1];
+    const depth = s.nav.length - 1;
+    const u = this.USER[role];
+
+    // visible cats
+    const visible = this.CATS.filter(c => c.roles === 'all' || c.roles.indexOf(role) !== -1);
+    const q = s.search.trim();
+    const filtered = q ? visible.filter(c => (c.t + c.s).indexOf(q) !== -1) : visible;
+    // shift badges
+    const draftN = s.shiftReqs.filter(r => r.status === 'draft').length;
+    const pendN = s.shiftSubs.filter(r => r.status === 'submitted').length;
+    const attPendN = s.attReqs.filter(r => r.status === 'submitted').length;
+    const badgeFor = (c) => {
+      if (c.id === 'shift_self' && draftN) return { badge: draftN + '件 下書き', badgeC: 'var(--s-uc)', badgeB: 'var(--s-uc-bg)' };
+      if (c.id === 'attendance' && attPendN) return { badge: attPendN + '件 申請中', badgeC: 'var(--on-primary-soft)', badgeB: 'var(--primary-soft)' };
+      if ((c.id === 'shift_review' || c.id === 'shift_manage') && pendN) return { badge: pendN + '件 未確認', badgeC: 'var(--on-primary-soft)', badgeB: 'var(--primary-soft)' };
+      return null;
+    };
+    // group rows
+    const order = ['アカウント', 'シフト', '院・サービス', 'システム'];
+    const groups = order.map(gt => ({
+      title: gt,
+      rows: filtered.filter(c => c.g === gt).map(c => {
+        const b = badgeFor(c);
+        return { title: c.t, sub: c.s, iconEl: this.ic(c.icon), onOpen: this.openCat(c), chevR: this.chev(), hasBadge: !!b, badge: b ? b.badge : '', badgeC: b ? b.badgeC : '', badgeB: b ? b.badgeB : '' };
+      }),
+    })).filter(g => g.rows.length);
+
+    // header
+    let headerTitle = '設定', headerSub = u.clinic + ' ・ JST', showSub = true;
+    if (cur.scr === 'account') { headerTitle = 'アカウント'; showSub = false; }
+    else if (cur.scr === 'attendance') { headerTitle = '出勤申請'; showSub = false; }
+    else if (cur.scr === 'detail') { headerTitle = this.DETAIL_TITLE[cur.cat]; showSub = false; }
+    else if (cur.scr === 'shift') { headerTitle = cur.mode === 'self' ? 'シフト申請' : cur.mode === 'review' ? 'シフト確認' : 'シフト管理'; showSub = false; }
+
+    // account
+    const acctRows = this.ACCOUNT_ROWS.map(this.rowVals);
+
+    // detail
+    const isDetail = cur.scr === 'detail';
+    const detailRows = isDetail ? (this.DETAIL[cur.cat] || []).map(this.rowVals) : [];
+    const subsetBanner = isDetail && role === 'manager' && (cur.cat === 'clinic' || cur.cat === 'reservation');
+    const subsetText = 'エリアマネージャーは担当院のサブセット設定のみ編集できます ・ 対象院を選択してください（テンプレート編集は管理者）。';
+
+    // shift
+    const isShift = cur.scr === 'shift';
+    const mode = cur.mode;
+    const isSelf = isShift && mode === 'self';
+    const isManage = isShift && (mode === 'review' || mode === 'manager');
+    const shiftModeLabel = mode === 'self' ? '本人申請' : mode === 'review' ? '院長確認' : '担当院管理';
+    const selfCards = isSelf ? s.shiftReqs.map(r => {
+      const tp = this.SHIFT_TYPE[r.type], st = this.SHIFT_STATUS[r.status];
+      return { typeLabel: r.type, typeC: tp.c, typeB: tp.b, dateLabel: this.fmtJ(r.iso), time: r.time, priority: r.priority, stLabel: st.label, stC: st.c, stB: st.b, hasNote: !!r.note, note: r.note, isDraft: r.status === 'draft', onSubmit: this.submitDraft(r.id) };
+    }) : [];
+    const cs = s.confirmShift;
+    const subCards = isManage ? s.shiftSubs.map(r => {
+      const tp = this.SHIFT_TYPE[r.type], st = this.SHIFT_STATUS[r.status];
+      const confirming = cs && cs.id === r.id;
+      const isApprove = confirming && cs.act === 'approve';
+      return {
+        name: r.name, typeLabel: r.type, typeC: tp.c, typeB: tp.b, dateLabel: this.fmtJ(r.iso), time: r.time, priority: r.priority,
+        stLabel: st.label, stC: st.c, stB: st.b, hasNote: !!r.note, note: r.note,
+        canAct: r.status === 'submitted', onApprove: this.askAct(r.id, 'approve'), onReject: this.askAct(r.id, 'reject'),
+        confirming, confirmText: isApprove ? 'この申請を承認しますか？' : 'この申請を差し戻しますか？',
+        confirmBtn: isApprove ? '承認する' : '差し戻す', confirmColor: isApprove ? 'var(--primary)' : 'var(--s-ns)',
+        onConfirm: this.doAct, onCancel: this.cancelAct,
+      };
+    }) : [];
+
+    // attendance (出勤申請)
+    const isAttendance = cur.scr === 'attendance';
+    const attCards = isAttendance ? s.attReqs.map(r => {
+      const tp = this.ATT_TYPE[r.type], st = this.SHIFT_STATUS[r.status];
+      const editable = r.status === 'submitted' || r.status === 'rejected';
+      return {
+        typeLabel: r.type, typeC: tp.c, typeB: tp.b, dateLabel: this.fmtJ(r.iso), span: r.clockIn + '–' + r.clockOut, brk: '休憩 ' + r.brk + '分',
+        stLabel: st.label, stC: st.c, stB: st.b, hasNote: !!r.note, note: r.note,
+        hasHelp: !!r.help, helpText: r.help ? ('ヘルプ先 ' + r.help.clinic + ' ・ 稼働 ' + r.help.hours + '時間') : '',
+        editable, onEdit: this.openAttEdit(r.id), onDel: this.askAttDel(r.id),
+        confirming: s.attConfirmDel === r.id, onCancelDel: this.cancelAttDel, onConfirmDel: this.doAttDel,
+      };
+    }) : [];
+    const attTypeOpts = ['通常出勤', '残業申請', '休日出勤', '打刻修正'].map(v => ({ v, l: v }));
+    const attBrkOpts = this.BRK_OPTS.map(v => ({ v: String(v), l: v + '分' }));
+    const attHelpClinicOpts = this.HELP_CLINICS.map(v => ({ v, l: v }));
+    const attHelpHoursOpts = this.HELP_HOURS.map(v => ({ v: String(v), l: v + '時間' }));
+
+    const typeOpts = ['希望出勤', '休み希望', '有給希望', '半休'].map(v => ({ v, l: v }));
+    const priBtns = ['高', '中', '低'].map(p => ({ label: p, onTap: this.setPriority(p), style: this.seg3(s.formPriority === p) }));
+    const showTimeRow = s.formType === '希望出勤';
+
+    return {
+      setRoot: this.setRoot,
+      roleVal: role, onRole: this.onRole, roleLabel: this.ROLE_LABEL[role],
+      setLight: this.setLight, setDark: this.setDark,
+      lightBtn: this.themeBtn(s.theme === 'light'), darkBtn: this.themeBtn(s.theme === 'dark'),
+
+      showBack: depth > 0, onBack: this.onBack, backChev: this.backChevEl(),
+      titlePad: depth > 0 ? '2px' : '6px',
+      headerTitle, headerSub, showSub,
+
+      isTop: cur.scr === 'top', isAccount: cur.scr === 'account', isDetail, isShift, isAttendance,
+      searchVal: s.search, onSearch: this.onSearch, searchIcon: this.searchEl(),
+      groups, chevR: this.chev(),
+
+      acctInitial: u.initial, acctName: u.name, acctRoleLabel: this.ROLE_LABEL[role], acctClinic: u.clinic, acctEmail: u.email,
+      acctRows,
+      detailRows, subsetBanner, subsetText,
+
+      isSelf, isManage, shiftModeLabel,
+      shiftClinic: u.clinic, shiftPeriod: '6/23 – 6/29',
+      selfCards, subCards,
+      showSubmitBar: isSelf && !s.sheetOpen,
+      showAttBar: isAttendance && !s.attSheetOpen,
+      showNav: !s.sheetOpen && !s.attSheetOpen,
+
+      attCards,
+      attSheetOpen: s.attSheetOpen, openAttSheet: this.openAttSheet, closeAttSheet: this.closeAttSheet,
+      attSheetTitle: s.attEditId != null ? '出勤申請を修正' : '出勤を申請',
+      attSubmitLabel: s.attEditId != null ? '申請を更新する' : '出勤申請を提出する',
+      attType: s.attType, onAttType: this.onAttType, attTypeOpts,
+      attDate: s.attDate, onAttDate: this.onAttDate,
+      attIn: s.attIn, onAttIn: this.onAttIn, attOut: s.attOut, onAttOut: this.onAttOut,
+      attBrk: String(s.attBrk), onAttBrk: this.onAttBrk, attBrkOpts,
+      attHelp: s.attHelp, toggleAttHelp: this.toggleAttHelp, attHelpTrack: this.track(s.attHelp), attHelpKnob: this.knob(),
+      attHelpClinic: s.attHelpClinic, onAttHelpClinic: this.onAttHelpClinic, attHelpClinicOpts,
+      attHelpHours: String(s.attHelpHours), onAttHelpHours: this.onAttHelpHours, attHelpHoursOpts,
+      attNote: s.attNote, onAttNote: this.onAttNote, submitAtt: this.submitAtt,
+
+      sheetOpen: s.sheetOpen, openSheet: this.openSheet, closeSheet: this.closeSheet,
+      formType: s.formType, onFormType: this.onFormType, typeOpts,
+      formDate: s.formDate, onFormDate: this.onFormDate,
+      showTimeRow, formStart: s.formStart, onFormStart: this.onFormStart, formEnd: s.formEnd, onFormEnd: this.onFormEnd,
+      priBtns, formNote: s.formNote, onFormNote: this.onFormNote, submitShift: this.submitShift,
+
+      toastShow: !!s.toast, toastMsg: s.toast,
+    };
+  }
+
+
+  renderVals() {
+    const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
+      ? this.__mobileUiuxOriginalRenderVals()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
+      return this.__mobileUiuxOriginalComponentDidMount();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
+      return this.__mobileUiuxOriginalComponentWillUnmount();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+    return {
+      __mobileUiuxSettingsCategory: typeof data.category === 'string' ? data.category : 'settings'
+    };
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+}
+</script>
+</body>
+</html>

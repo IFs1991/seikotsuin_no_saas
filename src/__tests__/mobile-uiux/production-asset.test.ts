@@ -56,6 +56,8 @@ describe('mobile-uiux production assets', () => {
       'home',
       'reservations',
       'daily-reports',
+      'settings',
+      'settings-detail',
     ]);
   });
 

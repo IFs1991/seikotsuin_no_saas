@@ -7,13 +7,15 @@ import { transformMobileUiuxHtml } from './html-transform';
 
 export type MobileUiuxProductionAssetResource = Extract<
   MobileUiuxScreenResource,
-  'home' | 'reservations' | 'daily-reports'
+  'home' | 'reservations' | 'daily-reports' | 'settings' | 'settings-detail'
 >;
 
 export const MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES = [
   'home',
   'reservations',
   'daily-reports',
+  'settings',
+  'settings-detail',
 ] as const satisfies readonly MobileUiuxProductionAssetResource[];
 
 const SOURCE_ASSET_ROOT = path.join(

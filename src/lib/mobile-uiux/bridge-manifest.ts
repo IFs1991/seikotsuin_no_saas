@@ -151,6 +151,7 @@ export function buildMobileUiuxBridgeScript(
     unavailable: "実データを一時的に表示できません"
   };
   let currentContext = null;
+  let currentScreen = null;
   const inFlightMutations = new Map();
   let fallbackStatusElement = null;
   let mutationStatusElement = null;
@@ -201,13 +202,18 @@ export function buildMobileUiuxBridgeScript(
   }
 
   function getScreen() {
+    if (currentScreen) {
+      return currentScreen;
+    }
+
     const script = document.currentScript;
     const fromDataset = script && script.dataset ? script.dataset.screen : "";
     const fromAttribute = script && script.getAttribute ? script.getAttribute("data-screen") : "";
     const screen = fromDataset || fromAttribute || location.pathname.split("/").filter(Boolean).pop() || "";
-    return Object.prototype.hasOwnProperty.call(MOBILE_UIUX_SCREEN_MANIFEST, screen)
+    currentScreen = Object.prototype.hasOwnProperty.call(MOBILE_UIUX_SCREEN_MANIFEST, screen)
       ? screen
       : null;
+    return currentScreen;
   }
 
   async function fetchJson(url) {
@@ -538,6 +544,31 @@ export function buildMobileUiuxBridgeScript(
     };
   }
 
+  function normalizeSettingsPayload(payload) {
+    if (!isRecord(payload)) {
+      return payload;
+    }
+
+    if (typeof payload.clinic_id === "string" && payload.clinic_id.length > 0) {
+      return payload;
+    }
+
+    const clinicId = getDefaultClinicId();
+    if (!clinicId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      clinic_id: clinicId
+    };
+  }
+
+  function getSettingsApplyReadScreen() {
+    const screen = getScreen();
+    return screen === "settings" || screen === "settings-detail" ? screen : null;
+  }
+
   async function runMobileBffMutation(options) {
     showMutationStatus("pending", STATUS_MESSAGES.saving);
     const result = await mutateJson(options.url, options.method, options.payload);
@@ -631,11 +662,12 @@ export function buildMobileUiuxBridgeScript(
     return mutateMobileBff({
       url: "/api/mobile-uiux/settings",
       method: "PUT",
-      payload,
+      payload: normalizeSettingsPayload(payload),
       mutationKey: "settings",
       canWrite: canWriteSettings,
       disabledMessage: STATUS_MESSAGES.settingsWriteDisabled,
-      successMessage: STATUS_MESSAGES.settingsSaved
+      successMessage: STATUS_MESSAGES.settingsSaved,
+      applyReadScreen: getSettingsApplyReadScreen()
     });
   }
 
