@@ -44,7 +44,8 @@ export const MOBILE_UIUX_PRODUCTION_ASSET_NOTES = {
     'production shell only; patient read hydration is intentionally deferred to a separate scoped PR',
   'daily-reports': 'production shell + generated read/write bridge adapter',
   settings: 'production shell + generated settings bridge adapter',
-  'settings-detail': 'production shell + generated settings-detail bridge adapter',
+  'settings-detail':
+    'production shell + generated settings-detail bridge adapter',
 } as const satisfies Record<MobileUiuxProductionAssetResource, string>;
 
 const SOURCE_ASSET_ROOT = path.join(
@@ -120,10 +121,7 @@ export function validateMobileUiuxProductionAsset(
   resource: MobileUiuxProductionAssetResource,
   html: string
 ): void {
-  const violations = collectMobileUiuxProductionAssetViolations(
-    resource,
-    html
-  );
+  const violations = collectMobileUiuxProductionAssetViolations(resource, html);
   if (violations.length > 0) {
     throw new Error(
       `Invalid Mobile UIUX production asset for ${resource}:\n${violations
@@ -145,12 +143,15 @@ function collectMobileUiuxProductionAssetViolations(
   const productionStyleCount =
     html.match(/<style\b(?=[^>]*\bdata-mobile-uiux-production-shell\b)/gi)
       ?.length ?? 0;
-  const navTargetCount = html.match(/data-mobile-uiux-nav-target=/g)?.length ?? 0;
+  const navTargetCount =
+    html.match(/data-mobile-uiux-nav-target=/g)?.length ?? 0;
 
   if (!html.includes('<x-dc')) violations.push('missing <x-dc>');
   if (!html.includes('<helmet')) violations.push('missing <helmet>');
   if (dcScriptCount !== 1) {
-    violations.push(`expected one script[data-dc-script], found ${dcScriptCount}`);
+    violations.push(
+      `expected one script[data-dc-script], found ${dcScriptCount}`
+    );
   }
   if (!html.includes('class Component extends DCLogic')) {
     violations.push('missing Component DCLogic class');
@@ -170,7 +171,9 @@ function collectMobileUiuxProductionAssetViolations(
     );
   }
   if (navTargetCount !== 5) {
-    violations.push(`expected five Bottom Nav targets, found ${navTargetCount}`);
+    violations.push(
+      `expected five Bottom Nav targets, found ${navTargetCount}`
+    );
   }
   for (const target of [
     'home',
