@@ -345,7 +345,7 @@ class Component extends DCLogic {
   // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
   setRoot = (el) => { this._root = el; this.applyTheme(); };
   applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
-  componentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
+  __mobileUiuxOriginalComponentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
   componentDidUpdate() { this.applyTheme(); }
 
   yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
@@ -410,7 +410,7 @@ class Component extends DCLogic {
   seg = (active) => `all: unset; box-sizing: border-box; text-align: center; flex: 1; min-height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; padding: 0 8px; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500}; box-shadow: ${active ? '0 1px 3px rgba(0,0,0,.12)' : 'none'};`;
   themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
 
-  renderVals() {
+  __mobileUiuxOriginalRenderVals() {
     const s = this.state;
     const showManager = s.role === 'manager';
     const showSingle = !showManager;
@@ -541,6 +541,534 @@ class Component extends DCLogic {
       detailOpen: !!dc, closeDetail: this.closeDetail, ...detail,
       toastShow: !!s.toast, toastMsg: s.toast,
     };
+  }
+
+
+  renderVals() {
+    const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
+      ? this.__mobileUiuxOriginalRenderVals()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const readModel = this.__mobileUiuxPatientReadModel && typeof this.__mobileUiuxPatientReadModel === 'object'
+      ? this.__mobileUiuxPatientReadModel
+      : null;
+    const hydratedVals = readModel
+      ? this.__mobileUiuxBuildPatientRenderVals(readModel, originalVals)
+      : this.__mobileUiuxBuildPatientEmptyVals();
+    return { ...originalVals, ...hydratedVals };
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
+      return this.__mobileUiuxOriginalComponentDidMount();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
+      return this.__mobileUiuxOriginalComponentWillUnmount();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const readModel = component.__mobileUiuxBuildPatientReadModel(screen, payload);
+      if (!readModel) return false;
+      component.__mobileUiuxPatientReadModel = readModel;
+      component.CLINICS = [readModel.clinic];
+      component.HOME = readModel.clinic.id;
+      component.PATIENTS = readModel.rows.map((row) => row.name);
+      if (typeof component.setState === 'function') {
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const state = component.state && typeof component.state === 'object' ? component.state : {};
+        if (state.pClinic !== 'all' && state.pClinic !== readModel.clinic.id) {
+          statePatch.pClinic = 'all';
+        }
+        if (state.mClinic !== 'all' && state.mClinic !== readModel.clinic.id) {
+          statePatch.mClinic = 'all';
+        }
+        if (state.detailClinic && state.detailClinic !== readModel.clinic.id) {
+          statePatch.detailClinic = null;
+        }
+        component.setState(statePatch);
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildPatientReadModel(screen, payload) {
+    if (screen !== 'patients' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data) || typeof data.clinicId !== 'string' || !this.__mobileUiuxIsRecord(data.analysis)) {
+      return null;
+    }
+
+    const analysis = data.analysis;
+    const rows = this.__mobileUiuxBuildPatientRows(data.rows, analysis, payload.generatedAt);
+    const totalPatients = this.__mobileUiuxNonNegativeNumber(analysis.totalPatients);
+    const activePatients = this.__mobileUiuxNonNegativeNumber(analysis.activePatients);
+    const conversion = this.__mobileUiuxIsRecord(analysis.conversionData) ? analysis.conversionData : {};
+    const newPatients = this.__mobileUiuxNonNegativeNumber(conversion.newPatients);
+    const returnPatients = this.__mobileUiuxNonNegativeNumber(conversion.returnPatients);
+    const conversionRate = this.__mobileUiuxNonNegativeNumber(conversion.conversionRate);
+    const totalRevenue = rows.reduce((sum, row) => sum + row.totalRevenue, 0);
+    const totalVisitCount = rows.reduce((sum, row) => sum + row.visitCount, 0);
+    const highRiskCount = rows.filter((row) => row.riskCategory === 'high').length;
+    const averageLtv = rows.length > 0
+      ? Math.round(rows.reduce((sum, row) => sum + row.ltv, 0) / rows.length)
+      : 0;
+    const unit = totalPatients > 0 ? Math.round(totalRevenue / totalPatients) : 0;
+    const clinicName = this.__mobileUiuxDisplayText(data.scopeName || data.clinicName, '対象院');
+    const clinic = {
+      id: data.clinicId,
+      name: clinicName,
+      short: clinicName.length > 4 ? clinicName.slice(0, 4) : clinicName,
+      visits: totalPatients,
+      revenue: totalRevenue,
+      newP: newPatients,
+      repeat: returnPatients,
+      rebook: conversionRate,
+      visitCount: totalVisitCount,
+      unit,
+      churn: highRiskCount,
+      ltv: averageLtv
+    };
+
+    return {
+      clinic,
+      rows,
+      analysis,
+      totalPatients,
+      activePatients,
+      newPatients,
+      returnPatients,
+      conversionRate,
+      totalRevenue,
+      totalVisitCount,
+      highRiskCount,
+      averageLtv,
+      unit
+    };
+  }
+
+  __mobileUiuxBuildPatientRows(value, analysis, generatedAt) {
+    const rows = [];
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const row = this.__mobileUiuxPatientRowFromPayload(item, generatedAt);
+        if (row) rows.push(row);
+      }
+    }
+    if (rows.length > 0) return rows;
+
+    const riskRows = Array.isArray(analysis.riskScores) ? analysis.riskScores : [];
+    const ltvRows = Array.isArray(analysis.ltvRanking) ? analysis.ltvRanking : [];
+    const ltvById = new Map();
+    for (const item of ltvRows) {
+      if (this.__mobileUiuxIsRecord(item) && typeof item.patient_id === 'string') {
+        ltvById.set(item.patient_id, item);
+      }
+    }
+    const patientIds = [];
+    for (const item of riskRows) {
+      if (this.__mobileUiuxIsRecord(item) && typeof item.patient_id === 'string' && !patientIds.includes(item.patient_id)) {
+        patientIds.push(item.patient_id);
+      }
+    }
+    for (const item of ltvRows) {
+      if (this.__mobileUiuxIsRecord(item) && typeof item.patient_id === 'string' && !patientIds.includes(item.patient_id)) {
+        patientIds.push(item.patient_id);
+      }
+    }
+
+    for (const patientId of patientIds.slice(0, 20)) {
+      const risk = riskRows.find((item) => this.__mobileUiuxIsRecord(item) && item.patient_id === patientId);
+      const ltv = ltvById.get(patientId);
+      const name = this.__mobileUiuxDisplayText(
+        this.__mobileUiuxIsRecord(risk) ? risk.name : this.__mobileUiuxIsRecord(ltv) ? ltv.name : '',
+        '患者名未設定'
+      );
+      rows.push({
+        name,
+        lastVisit: this.__mobileUiuxIsRecord(risk) && typeof risk.lastVisit === 'string' ? risk.lastVisit : null,
+        lastLabel: this.__mobileUiuxFormatPatientLastVisit(this.__mobileUiuxIsRecord(risk) ? risk.lastVisit : null, generatedAt),
+        visitCount: this.__mobileUiuxNonNegativeNumber(this.__mobileUiuxIsRecord(ltv) ? ltv.visit_count : 0),
+        totalRevenue: this.__mobileUiuxNonNegativeNumber(this.__mobileUiuxIsRecord(ltv) ? ltv.total_revenue : 0),
+        ltv: this.__mobileUiuxNonNegativeNumber(this.__mobileUiuxIsRecord(ltv) ? ltv.ltv : 0),
+        riskScore: this.__mobileUiuxNonNegativeNumber(this.__mobileUiuxIsRecord(risk) ? risk.riskScore : 0),
+        riskCategory: this.__mobileUiuxRiskCategory(this.__mobileUiuxIsRecord(risk) ? risk.category : '')
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxPatientRowFromPayload(item, generatedAt) {
+    if (!this.__mobileUiuxIsRecord(item)) return null;
+    const name = this.__mobileUiuxDisplayText(item.name, '');
+    if (!name) return null;
+    const lastVisit = typeof item.lastVisit === 'string' ? item.lastVisit : null;
+    return {
+      name,
+      lastVisit,
+      lastLabel: this.__mobileUiuxFormatPatientLastVisit(lastVisit, generatedAt),
+      visitCount: this.__mobileUiuxNonNegativeNumber(item.visitCount),
+      totalRevenue: this.__mobileUiuxNonNegativeNumber(item.totalRevenue),
+      ltv: this.__mobileUiuxNonNegativeNumber(item.ltv),
+      riskScore: this.__mobileUiuxNonNegativeNumber(item.riskScore),
+      riskCategory: this.__mobileUiuxRiskCategory(item.riskCategory)
+    };
+  }
+
+  __mobileUiuxBuildPatientRenderVals(model, originalVals) {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const periodLabel = this.__mobileUiuxPatientPeriodLabel(state);
+    const riskRows = this.__mobileUiuxBuildPatientRiskList(model.rows);
+    const followRows = this.__mobileUiuxBuildPatientFollowList(model);
+    const ltvRows = this.__mobileUiuxBuildPatientLtvList(model.rows);
+    const detailOpen = state.detailClinic === model.clinic.id;
+    const detailVals = detailOpen ? this.__mobileUiuxBuildPatientDetailVals(model) : {};
+
+    return {
+      scopeLabel: model.clinic.name,
+      scSummary: this.__mobileUiuxBuildPatientSingleSummary(model),
+      funnel: this.__mobileUiuxBuildPatientFunnel(model.analysis),
+      trendBars: this.__mobileUiuxBuildPatientTrendBars(model.analysis),
+      segments: this.__mobileUiuxBuildPatientSegments(model.analysis),
+      riskList: riskRows,
+      followList: followRows,
+      ltvList: ltvRows,
+      riskHighCount: model.highRiskCount,
+      pClinic: state.pClinic === model.clinic.id ? model.clinic.id : 'all',
+      clinicSelOpts: [{ v: 'all', l: model.clinic.name }],
+      periodLabel,
+      kpiBoxes: this.__mobileUiuxBuildPatientKpiBoxes(model),
+      chartBars: [{ short: model.clinic.short, value: model.totalPatients, width: model.totalPatients > 0 ? '100%' : '0%' }],
+      clinicCards: [this.__mobileUiuxBuildPatientClinicCard(model)],
+      detailOpen,
+      dName: '',
+      dKpi: [],
+      dRisk: [],
+      dFollow: [],
+      ...detailVals
+    };
+  }
+
+  __mobileUiuxBuildPatientEmptyVals() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    return {
+      scopeLabel: '実データ読み込み中',
+      scSummary: this.__mobileUiuxBuildPatientEmptySummary(),
+      funnel: [],
+      trendBars: [],
+      segments: [],
+      riskList: [],
+      followList: [],
+      ltvList: [],
+      riskHighCount: 0,
+      pClinic: 'all',
+      clinicSelOpts: [{ v: 'all', l: '実データ読み込み中' }],
+      periodLabel: this.__mobileUiuxPatientPeriodLabel(state),
+      kpiBoxes: this.__mobileUiuxBuildPatientEmptyKpiBoxes(),
+      chartBars: [],
+      clinicCards: [],
+      detailOpen: false,
+      dName: '',
+      dKpi: [],
+      dRisk: [],
+      dFollow: []
+    };
+  }
+
+  __mobileUiuxBuildPatientEmptySummary() {
+    return [
+      { label: '来院患者数', value: '0名', color: 'var(--fg)' },
+      { label: '新患数', value: '0名', color: 'var(--fg)' },
+      { label: '新患再来率', value: '0%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.__mobileUiuxMan(0), color: 'var(--fg)' },
+      { label: '患者単価', value: this.__mobileUiuxYen(0), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: '0名', color: 'var(--s-ns)' }
+    ];
+  }
+
+  __mobileUiuxBuildPatientEmptyKpiBoxes() {
+    return [
+      { label: '来院患者数', value: '0名', color: 'var(--fg)' },
+      { label: '新患再来率', value: '0%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.__mobileUiuxMan(0), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: '0名', color: 'var(--s-ns)' },
+      { label: '新患数', value: '0名', color: 'var(--fg)' },
+      { label: '再来数', value: '0名', color: 'var(--fg)' },
+      { label: '患者単価', value: this.__mobileUiuxYen(0), color: 'var(--fg)' },
+      { label: '延べ来院数', value: '0', color: 'var(--fg)' },
+      { label: '平均LTV', value: this.__mobileUiuxMan(0), color: 'var(--fg)' },
+      { label: '休眠患者', value: '0名', color: 'var(--s-uc)' }
+    ];
+  }
+
+  __mobileUiuxBuildPatientSingleSummary(model) {
+    return [
+      { label: '来院患者数', value: model.totalPatients + '名', color: 'var(--fg)' },
+      { label: '新患数', value: model.newPatients + '名', color: 'var(--fg)' },
+      { label: '新患再来率', value: model.conversionRate + '%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.__mobileUiuxMan(model.totalRevenue), color: 'var(--fg)' },
+      { label: '患者単価', value: this.__mobileUiuxYen(model.unit), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: model.highRiskCount + '名', color: 'var(--s-ns)' }
+    ];
+  }
+
+  __mobileUiuxBuildPatientFunnel(analysis) {
+    const conversion = this.__mobileUiuxIsRecord(analysis.conversionData) ? analysis.conversionData : {};
+    const stages = Array.isArray(conversion.stages) ? conversion.stages : [];
+    const maxValue = Math.max(1, ...stages.map((stage) => this.__mobileUiuxNonNegativeNumber(stage && stage.value)));
+    return stages.map((stage) => {
+      const value = this.__mobileUiuxNonNegativeNumber(stage && stage.value);
+      const label = this.__mobileUiuxDisplayText(stage && stage.name, '未分類');
+      const width = Math.round((value / maxValue) * 100);
+      return {
+        label,
+        value: value + '名',
+        pct: width + '%',
+        width: width + '%'
+      };
+    });
+  }
+
+  __mobileUiuxBuildPatientTrendBars(analysis) {
+    const conversion = this.__mobileUiuxIsRecord(analysis.conversionData) ? analysis.conversionData : {};
+    const stages = Array.isArray(conversion.stages) ? conversion.stages : [];
+    const maxValue = Math.max(1, ...stages.map((stage) => this.__mobileUiuxNonNegativeNumber(stage && stage.value)));
+    return stages.map((stage, index) => {
+      const value = this.__mobileUiuxNonNegativeNumber(stage && stage.value);
+      const height = value / maxValue * 138;
+      return {
+        label: this.__mobileUiuxDisplayText(stage && stage.name, '未分類'),
+        newH: index === 0 ? height + 'px' : '0px',
+        repH: index === 0 ? '0px' : height + 'px'
+      };
+    });
+  }
+
+  __mobileUiuxBuildPatientSegments(analysis) {
+    const segmentData = this.__mobileUiuxIsRecord(analysis.segmentData) ? analysis.segmentData : {};
+    const rows = Array.isArray(segmentData.visit) ? segmentData.visit : [];
+    const colors = ['var(--primary)', 'var(--on-primary-soft)', 'var(--primary-soft)', 'var(--s-uc)', 'var(--fg-3)'];
+    const total = Math.max(1, rows.reduce((sum, row) => sum + this.__mobileUiuxNonNegativeNumber(row && row.value), 0));
+    return rows.map((row, index) => {
+      const value = this.__mobileUiuxNonNegativeNumber(row && row.value);
+      return {
+        label: this.__mobileUiuxDisplayText(row && row.label, '未分類'),
+        value: value + '名',
+        color: colors[index % colors.length],
+        width: value / total * 100 + '%'
+      };
+    });
+  }
+
+  __mobileUiuxBuildPatientRiskList(rows) {
+    return rows
+      .slice()
+      .sort((left, right) => right.riskScore - left.riskScore)
+      .slice(0, 5)
+      .map((row) => {
+        const meta = this.__mobileUiuxRiskMeta(row.riskCategory);
+        return {
+          name: row.name,
+          initial: typeof this.initial === 'function' ? this.initial(row.name) : row.name.trim().charAt(0),
+          last: row.lastLabel,
+          ltv: this.__mobileUiuxMan(row.ltv),
+          level: meta.label,
+          c: meta.c,
+          b: meta.b
+        };
+      });
+  }
+
+  __mobileUiuxBuildPatientFollowList(model) {
+    const analysis = model.analysis;
+    const followRows = Array.isArray(analysis.followUpList) ? analysis.followUpList : [];
+    const byName = new Map(model.rows.map((row) => [row.name, row]));
+    const rows = [];
+    for (const item of followRows.slice(0, 3)) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name) continue;
+      const patient = byName.get(name);
+      const lastVisit = typeof item.lastVisit === 'string' ? item.lastVisit : patient ? patient.lastVisit : null;
+      rows.push({
+        name,
+        reason: this.__mobileUiuxDisplayText(item.reason || item.action, 'フォロー推奨'),
+        last: this.__mobileUiuxFormatPatientLastVisit(lastVisit, null),
+        onContact: this.__mobileUiuxContactPatient(name)
+      });
+    }
+    if (rows.length > 0) return rows;
+    return model.rows
+      .filter((row) => row.riskCategory === 'high')
+      .slice(0, 3)
+      .map((row) => ({
+        name: row.name,
+        reason: row.riskScore + '%の離脱リスク',
+        last: row.lastLabel,
+        onContact: this.__mobileUiuxContactPatient(row.name)
+      }));
+  }
+
+  __mobileUiuxBuildPatientLtvList(rows) {
+    return rows
+      .slice()
+      .sort((left, right) => right.ltv - left.ltv)
+      .slice(0, 5)
+      .map((row, index) => ({
+        rank: index + 1,
+        name: row.name,
+        ltv: this.__mobileUiuxMan(row.ltv),
+        rankBg: index === 0 ? 'var(--primary)' : 'var(--surface-3)',
+        rankFg: index === 0 ? 'var(--primary-fg)' : 'var(--fg-2)'
+      }));
+  }
+
+  __mobileUiuxBuildPatientKpiBoxes(model) {
+    const dormant = Math.max(0, model.totalPatients - model.activePatients);
+    return [
+      { label: '来院患者数', value: model.totalPatients + '名', color: 'var(--fg)' },
+      { label: '新患再来率', value: model.conversionRate + '%', color: 'var(--on-primary-soft)' },
+      { label: '総売上', value: this.__mobileUiuxMan(model.totalRevenue), color: 'var(--fg)' },
+      { label: '離脱リスク高', value: model.highRiskCount + '名', color: 'var(--s-ns)' },
+      { label: '新患数', value: model.newPatients + '名', color: 'var(--fg)' },
+      { label: '再来数', value: model.returnPatients + '名', color: 'var(--fg)' },
+      { label: '患者単価', value: this.__mobileUiuxYen(model.unit), color: 'var(--fg)' },
+      { label: '延べ来院数', value: model.totalVisitCount.toLocaleString('ja-JP'), color: 'var(--fg)' },
+      { label: '平均LTV', value: this.__mobileUiuxMan(model.averageLtv), color: 'var(--fg)' },
+      { label: '休眠患者', value: dormant + '名', color: 'var(--s-uc)' }
+    ];
+  }
+
+  __mobileUiuxBuildPatientClinicCard(model) {
+    return {
+      name: model.clinic.name,
+      visits: model.totalPatients,
+      revenue: this.__mobileUiuxMan(model.totalRevenue),
+      newP: model.newPatients + '名',
+      repeat: model.returnPatients + '名',
+      rebook: model.conversionRate + '%',
+      unit: this.__mobileUiuxYen(model.unit),
+      visitCount: model.totalVisitCount.toLocaleString('ja-JP'),
+      churn: model.highRiskCount + '名',
+      onTap: this.__mobileUiuxOpenPatientDetail(model.clinic.id)
+    };
+  }
+
+  __mobileUiuxBuildPatientDetailVals(model) {
+    return {
+      dName: model.clinic.name,
+      dKpi: [
+        { label: '来院患者数', value: model.totalPatients + '名', color: 'var(--fg)' },
+        { label: '総売上', value: this.__mobileUiuxMan(model.totalRevenue), color: 'var(--fg)' },
+        { label: '新患再来率', value: model.conversionRate + '%', color: 'var(--on-primary-soft)' },
+        { label: '離脱リスク高', value: model.highRiskCount + '名', color: 'var(--s-ns)' }
+      ],
+      dRisk: this.__mobileUiuxBuildPatientRiskList(model.rows).slice(0, 3),
+      dFollow: this.__mobileUiuxBuildPatientFollowList(model).slice(0, 2)
+    };
+  }
+
+  __mobileUiuxOpenPatientDetail(clinicId) {
+    return () => {
+      if (typeof this.openDetail === 'function') {
+        return this.openDetail(clinicId)();
+      }
+      if (typeof this.setState === 'function') {
+        this.setState({ detailClinic: clinicId });
+      }
+    };
+  }
+
+  __mobileUiuxContactPatient(name) {
+    return () => {
+      if (typeof this.toast === 'function') {
+        this.toast(name + ' 様のフォローを確認してください');
+      } else if (typeof this.setState === 'function') {
+        this.setState({ toast: name + ' 様のフォローを確認してください' });
+      }
+    };
+  }
+
+  __mobileUiuxPatientPeriodLabel(state) {
+    if (state && state.mPeriod === 'month') return '今月';
+    if (state && state.mPeriod === '30d') return '直近30日';
+    if (state && state.mStart && state.mEnd) return state.mStart + '〜' + state.mEnd;
+    return '任意期間';
+  }
+
+  __mobileUiuxFormatPatientLastVisit(value, generatedAt) {
+    if (typeof value !== 'string' || value.length === 0) return '来院記録なし';
+    const visitDate = new Date(value);
+    const baseDate = typeof generatedAt === 'string' ? new Date(generatedAt) : new Date();
+    if (Number.isNaN(visitDate.getTime()) || Number.isNaN(baseDate.getTime())) {
+      return value;
+    }
+    const days = Math.max(0, Math.floor((baseDate.getTime() - visitDate.getTime()) / 86400000));
+    return days + '日前';
+  }
+
+  __mobileUiuxRiskCategory(value) {
+    if (value === 'high' || value === 'medium' || value === 'low') return value;
+    return 'low';
+  }
+
+  __mobileUiuxRiskMeta(value) {
+    const category = this.__mobileUiuxRiskCategory(value);
+    if (category === 'high') return { label: '高', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+    if (category === 'medium') return { label: '中', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    return { label: '低', c: 'var(--fg-3)', b: 'var(--surface-2)' };
+  }
+
+  __mobileUiuxYen(value) {
+    const amount = this.__mobileUiuxNonNegativeNumber(value);
+    if (typeof this.yen === 'function') return this.yen(amount);
+    return '¥' + Math.round(amount).toLocaleString('ja-JP');
+  }
+
+  __mobileUiuxMan(value) {
+    const amount = this.__mobileUiuxNonNegativeNumber(value);
+    if (typeof this.man === 'function') return this.man(amount);
+    return '¥' + (Math.round(amount / 1000) / 10).toFixed(1) + '万';
+  }
+
+  __mobileUiuxNonNegativeNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 }
 </script>

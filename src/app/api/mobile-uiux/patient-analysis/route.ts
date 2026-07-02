@@ -3,7 +3,10 @@ import { NextRequest } from 'next/server';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
 import { AppError } from '@/lib/error-handler';
-import type { MobileUiuxPatientAnalysisResponse } from '@/lib/mobile-uiux/contracts';
+import type {
+  MobileUiuxPatientAnalysisResponse,
+  MobileUiuxPatientAnalysisRow,
+} from '@/lib/mobile-uiux/contracts';
 import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import {
   areMobileUiuxRealDataReadsEnabled,
@@ -52,6 +55,39 @@ function buildRealDataDisabledResponse() {
     'FORBIDDEN',
     'モバイル UI/UX の実データ参照は無効です'
   );
+}
+
+function buildMobileUiuxPatientRows(
+  analysis: MobileUiuxPatientAnalysisResponse['analysis']
+): MobileUiuxPatientAnalysisRow[] {
+  const ltvByPatientId = new Map(
+    analysis.ltvRanking.map(patient => [patient.patient_id, patient])
+  );
+  const patientIds = new Set<string>();
+  for (const patient of analysis.riskScores) {
+    patientIds.add(patient.patient_id);
+  }
+  for (const patient of analysis.ltvRanking) {
+    patientIds.add(patient.patient_id);
+  }
+
+  return [...patientIds].slice(0, 20).map(patientId => {
+    const risk = analysis.riskScores.find(
+      patient => patient.patient_id === patientId
+    );
+    const ltv = ltvByPatientId.get(patientId);
+    const ltvValue = ltv?.ltv ?? ltv?.total_revenue ?? 0;
+
+    return {
+      name: risk?.name ?? ltv?.name ?? '患者名未設定',
+      lastVisit: risk?.lastVisit ?? null,
+      visitCount: ltv?.visit_count ?? 0,
+      totalRevenue: ltv?.total_revenue ?? ltvValue,
+      ltv: ltvValue,
+      riskScore: risk?.riskScore ?? 0,
+      riskCategory: risk?.category ?? 'low',
+    };
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -112,9 +148,11 @@ export async function GET(request: NextRequest) {
     }
   );
 
+  const analysisData = await generatePatientAnalysis(access.supabase, clinicId);
   const data: MobileUiuxPatientAnalysisResponse = {
     clinicId,
-    analysis: await generatePatientAnalysis(access.supabase, clinicId),
+    analysis: analysisData,
+    rows: buildMobileUiuxPatientRows(analysisData),
   };
 
   return buildMobileUiuxSuccess(data);

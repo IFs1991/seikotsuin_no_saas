@@ -17,7 +17,12 @@ export type MobileUiuxProductionAssetResource = Extract<
 
 export type MobileUiuxHydratedProductionAssetResource = Extract<
   MobileUiuxProductionAssetResource,
-  'home' | 'reservations' | 'daily-reports' | 'settings' | 'settings-detail'
+  | 'home'
+  | 'reservations'
+  | 'patients'
+  | 'daily-reports'
+  | 'settings'
+  | 'settings-detail'
 >;
 
 export const MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES = [
@@ -32,6 +37,7 @@ export const MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES = [
 export const MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES = [
   'home',
   'reservations',
+  'patients',
   'daily-reports',
   'settings',
   'settings-detail',
@@ -40,8 +46,7 @@ export const MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES = [
 export const MOBILE_UIUX_PRODUCTION_ASSET_NOTES = {
   home: 'production shell + generated read hydration adapter',
   reservations: 'production shell + generated read/write bridge adapter',
-  patients:
-    'production shell only; patient read hydration is intentionally deferred to a separate scoped PR',
+  patients: 'production shell + generated patient analysis hydration adapter',
   'daily-reports': 'production shell + generated read/write bridge adapter',
   settings: 'production shell + generated settings bridge adapter',
   'settings-detail':

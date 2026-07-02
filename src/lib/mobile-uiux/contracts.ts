@@ -74,6 +74,17 @@ export type MobileUiuxReservationsResponse = {
 export type MobileUiuxPatientAnalysisResponse = {
   clinicId: string;
   analysis: PatientAnalysisData;
+  rows: MobileUiuxPatientAnalysisRow[];
+};
+
+export type MobileUiuxPatientAnalysisRow = {
+  name: string;
+  lastVisit: string | null;
+  visitCount: number;
+  totalRevenue: number;
+  ltv: number;
+  riskScore: number;
+  riskCategory: 'high' | 'medium' | 'low';
 };
 
 export type MobileUiuxDailyReportsResponse = {

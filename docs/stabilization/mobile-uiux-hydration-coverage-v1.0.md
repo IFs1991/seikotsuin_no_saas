@@ -33,8 +33,9 @@ Write-open screens are `reservations`, `daily-reports`, and `settings-detail`. T
 
 | Classification | Decision | Key(s) | Notes |
 | --- | --- | --- | --- |
-| sample | (c) sample label/defer | `scopeLabel`, `scSummary`, `funnel`, `trendBars`, `segments`, `riskList`, `followList`, `ltvList`, `riskHighCount`, `pClinic`, `clinicSelOpts`, `periodLabel`, `kpiBoxes`, `chartBars`, `clinicCards`, `detailOpen`, `dName`, `dKpi`, `dRisk`, `dFollow` | GAP-1/PR-3 will connect `/api/mobile-uiux/patient-analysis`; this PR records the current residual sample coverage. |
-| static | n/a | `setRoot`, `roleVal`, `onRole`, `setLight`, `setDark`, `lightBtn`, `darkBtn`, `showSingle`, `showManager`, `onClinicSel`, `selMonth`, `sel30`, `selCustom`, `mMonthStyle`, `m30Style`, `mCustomStyle`, `showCustom`, `pStart`, `pEnd`, `onStart`, `onEnd`, `filterErr`, `filterErrShow`, `applyFilter`, `resetFilter`, `dirty`, `closeDetail`, `toastShow`, `toastMsg` | UI controls, filter state, visibility, and toast state. |
+| hydrated | n/a | `scopeLabel`, `scSummary`, `funnel`, `trendBars`, `segments`, `riskList`, `followList`, `ltvList`, `riskHighCount`, `kpiBoxes`, `chartBars`, `clinicCards`, `detailOpen`, `dName`, `dKpi`, `dRisk`, `dFollow` | From `/api/mobile-uiux/patient-analysis` `analysis` plus minimal `rows`; production adapter replaces sample patient names, KPI values, risk/follow/LTV lists, clinic cards, and detail sheet values. |
+| sample | (a) hydrate/fail-closed | `clinicSelOpts`, `pClinic` | Sample clinic options are replaced by the BFF-scoped clinic label; invalid pre-hydration sample clinic selections are reset to `all`. |
+| static | n/a | `setRoot`, `roleVal`, `onRole`, `setLight`, `setDark`, `lightBtn`, `darkBtn`, `showSingle`, `showManager`, `onClinicSel`, `selMonth`, `sel30`, `selCustom`, `mMonthStyle`, `m30Style`, `mCustomStyle`, `showCustom`, `pStart`, `pEnd`, `onStart`, `onEnd`, `filterErr`, `filterErrShow`, `applyFilter`, `resetFilter`, `dirty`, `periodLabel`, `closeDetail`, `toastShow`, `toastMsg` | UI controls, filter state, visibility, period labels, and toast state. |
 
 ## daily-reports
 
@@ -66,4 +67,3 @@ Write-open screens are `reservations`, `daily-reports`, and `settings-detail`. T
 - `reservations`: sample appointment/menu/staff/clinic sources are cleared before hydration. Reservations payload supplies appointment-derived rows/detail/timeline; settings-detail supplies menu/resource/clinic labels. Synthetic history rows are disabled.
 - `daily-reports`: sample form line items and sample menu/therapist options are cleared before hydration. Daily report payload supplies summary/list cards; settings-detail supplies menu/resource options.
 - `settings-detail`: sample clinic/menu values are replaced by settings-detail payloads or blank fail-closed values. Unsupported menu template UI is removed from production assets.
-

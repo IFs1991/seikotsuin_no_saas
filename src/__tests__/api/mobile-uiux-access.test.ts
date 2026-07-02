@@ -416,7 +416,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(body).not.toContain('width: 390px; height: 812px');
   });
 
-  it('prefers the generated patients production shell asset without requiring a hydration adapter', async () => {
+  it('prefers the generated patients production asset with the hydration adapter', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
     process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
@@ -432,7 +432,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
 <html>
 <body data-mobile-uiux-shell="production">
 <x-dc><helmet></helmet><div ref="{{ setRoot }}" data-mobile-uiux-production-root><div data-screen-label="患者">PATIENTS_PRODUCTION_ASSET_ONLY</div></div></x-dc>
-<script type="text/x-dc" data-dc-script>class Component extends DCLogic { renderVals() { return {}; } }</script>
+<script type="text/x-dc" data-dc-script>class Component extends DCLogic { __mobileUiuxOriginalRenderVals() { return {}; } renderVals() { return this.__mobileUiuxOriginalRenderVals(); } __mobileUiuxRegisterReadHydration() { window.__MOBILE_UIUX_APPLY_READ_DATA__ = () => true; } }</script>
 </body>
 </html>`;
     readFileMock.mockImplementation(async filePath => {
@@ -451,7 +451,8 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(response.status).toBe(200);
     expect(body).toContain('PATIENTS_PRODUCTION_ASSET_ONLY');
     expect(body).toContain('mobile-bridge.js');
-    expect(body).not.toContain('__mobileUiuxOriginalRenderVals');
+    expect(body).toContain('__mobileUiuxOriginalRenderVals');
+    expect(body).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
     expect(body).not.toContain('PATIENTS_SOURCE_ONLY');
     expect(body).not.toContain('width: 390px; height: 812px');
   });

@@ -72,6 +72,12 @@ function buildRequest(search: string) {
   );
 }
 
+function assertRecord(value: unknown): asserts value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new Error('Expected record value');
+  }
+}
+
 describe('GET /api/mobile-uiux/patient-analysis', () => {
   const originalEnv = process.env;
 
@@ -110,7 +116,12 @@ describe('GET /api/mobile-uiux/patient-analysis', () => {
     const request = buildRequest(`?clinic_id=${clinicId}&analysis=churn`);
 
     const response = await GET(request);
-    const payload = await response.json();
+    const payload: unknown = await response.json();
+    assertRecord(payload);
+    assertRecord(payload.data);
+    const rows = Array.isArray(payload.data.rows) ? payload.data.rows : [];
+    const firstRow = rows[0];
+    assertRecord(firstRow);
 
     expect(response.status).toBe(200);
     expect(ensureClinicAccessMock).toHaveBeenCalledWith(
@@ -142,8 +153,23 @@ describe('GET /api/mobile-uiux/patient-analysis', () => {
       data: {
         clinicId,
         analysis: analysisData,
+        rows: [
+          {
+            name: '山田 太郎',
+            lastVisit: '2026-06-01',
+            visitCount: 3,
+            totalRevenue: 30000,
+            ltv: 30000,
+            riskScore: 80,
+            riskCategory: 'high',
+          },
+        ],
       },
     });
+    expect(firstRow).not.toHaveProperty('patient_id');
+    expect(firstRow).not.toHaveProperty('phone');
+    expect(firstRow).not.toHaveProperty('email');
+    expect(firstRow).not.toHaveProperty('address');
   });
 
   it('does not use deprecated /api/patients data sources', async () => {
@@ -163,7 +189,7 @@ describe('GET /api/mobile-uiux/patient-analysis', () => {
       '@/app/api/mobile-uiux/patient-analysis/route'
     );
     const response = await GET(buildRequest(`?clinic_id=${clinicId}`));
-    const payload = await response.json();
+    const payload: unknown = await response.json();
 
     expect(response.status).toBe(403);
     expect(payload).toMatchObject({
