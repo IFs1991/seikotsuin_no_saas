@@ -128,6 +128,13 @@ export function buildMobileUiuxBridgeScript(
 
   const MOBILE_UIUX_SCREEN_MANIFEST = ${manifestJson};
   const REAL_DATA_ENABLED = ${realDataEnabled};
+  const NAV_PATH_BY_TARGET = {
+    home: "/mobile-uiux/screens/home",
+    reservations: "/mobile-uiux/screens/reservations",
+    patients: "/mobile-uiux/screens/patients",
+    "daily-reports": "/mobile-uiux/screens/daily-reports",
+    settings: "/mobile-uiux/screens/settings"
+  };
   const STATUS_MESSAGES = {
     disabled: "実データ参照は無効です",
     unauthorized: "ログインが必要です",
@@ -322,6 +329,71 @@ export function buildMobileUiuxBridgeScript(
     return true;
   }
 
+  function getNormalizedPathname() {
+    const normalized = location.pathname.replace(/\\/+$/, "");
+    return normalized.length > 0 ? normalized : "/";
+  }
+
+  function getNavigationTarget(event) {
+    const eventTarget = event && event.target;
+    if (!eventTarget || typeof eventTarget.closest !== "function") {
+      return null;
+    }
+
+    const navElement = eventTarget.closest("[data-mobile-uiux-nav-target]");
+    if (!navElement || !navElement.dataset) {
+      return null;
+    }
+
+    const target = navElement.dataset.mobileUiuxNavTarget ||
+      (typeof navElement.getAttribute === "function"
+        ? navElement.getAttribute("data-mobile-uiux-nav-target")
+        : "");
+
+    return Object.prototype.hasOwnProperty.call(NAV_PATH_BY_TARGET, target)
+      ? target
+      : null;
+  }
+
+  function navigateToTarget(target) {
+    const nextPath = NAV_PATH_BY_TARGET[target];
+    if (!nextPath || getNormalizedPathname() === nextPath) {
+      return;
+    }
+
+    location.assign(nextPath);
+  }
+
+  function bindBottomNavNavigation() {
+    if (!document || typeof document.addEventListener !== "function") {
+      return;
+    }
+
+    document.addEventListener("click", event => {
+      const target = getNavigationTarget(event);
+      if (target) {
+        navigateToTarget(target);
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      const key = event && event.key;
+      if (key !== "Enter" && key !== " " && key !== "Spacebar") {
+        return;
+      }
+
+      const target = getNavigationTarget(event);
+      if (!target) {
+        return;
+      }
+
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      navigateToTarget(target);
+    });
+  }
+
   async function boot() {
     if (!REAL_DATA_ENABLED) {
       setStatus("disabled");
@@ -469,6 +541,8 @@ export function buildMobileUiuxBridgeScript(
       return mutateSettings(payload);
     }
   };
+
+  bindBottomNavNavigation();
 
   const ready = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);

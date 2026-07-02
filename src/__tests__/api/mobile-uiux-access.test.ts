@@ -39,6 +39,50 @@ async function callMobileScreen(resource: string) {
   });
 }
 
+async function callMobilePreviewScreen(resource: string) {
+  const { GET } =
+    await import('@/app/(app)/mobile-uiux/preview/screens/[resource]/route');
+  return GET(buildRequest(`/mobile-uiux/preview/screens/${resource}`), {
+    params: Promise.resolve({ resource }),
+  });
+}
+
+function buildMobileUiuxDcHtml(): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet></helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;">
+  <!-- STAGE CONTROLS -->
+  <div>ロール</div>
+  <!-- iPHONE -->
+  <div style="width: 390px; height: 812px; border-radius: 56px;">
+    <div data-screen-label="予約" style="height: 100%;">
+      <div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div>
+      <div style="height: 50px; flex: none; justify-content: space-between;"></div>
+      <div>予約</div>
+      <div style="display: flex;">
+        <div><span>ホーム</span></div>
+        <div><span>予約</span></div>
+        <div><span>患者</span></div>
+        <div><span>レポート</span></div>
+        <div><span>設定</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script>
+</body>
+</html>`;
+}
+
 describe('GET /mobile-uiux/screens/[resource] production gate', () => {
   const originalEnv = process.env;
 
@@ -49,7 +93,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     delete process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS;
     delete process.env.MOBILE_UIUX_ALLOWED_ROLES;
 
-    readFileMock.mockResolvedValue('<!doctype html><html></html>');
+    readFileMock.mockResolvedValue(buildMobileUiuxDcHtml());
     createClientMock.mockResolvedValue(supabase);
     getCurrentUserMock.mockResolvedValue(user);
     getUserAccessContextMock.mockResolvedValue({
@@ -143,5 +187,40 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
       'text/html; charset=utf-8'
     );
     expect(readFileMock).toHaveBeenCalled();
+  });
+
+  it('returns a production shell for screen HTML with production-equivalent flags', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
+    process.env.MOBILE_UIUX_WRITE_ENABLED = 'false';
+    process.env.MOBILE_UIUX_RESERVATION_WRITE_ENABLED = 'false';
+    process.env.MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED = 'false';
+    process.env.MOBILE_UIUX_SETTINGS_WRITE_ENABLED = 'false';
+
+    const response = await callMobileScreen('reservations');
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('data-mobile-uiux-production-root');
+    expect(body).toContain('data-mobile-uiux-shell="production"');
+    expect(body).toContain('mobile-bridge.js');
+    expect(body).toContain('data-mobile-uiux-nav-target="reservations"');
+    expect(body).not.toContain('STAGE CONTROLS');
+    expect(body).not.toContain('width: 390px; height: 812px');
+    expect(body).not.toContain('width: 108px; height: 30px');
+  });
+
+  it('returns the mock frame through the preview route', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+
+    const response = await callMobilePreviewScreen('reservations');
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('STAGE CONTROLS');
+    expect(body).toContain('width: 390px; height: 812px');
+    expect(body).not.toContain('data-mobile-uiux-production-root');
   });
 });

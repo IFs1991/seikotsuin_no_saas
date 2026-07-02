@@ -50,8 +50,23 @@ type BridgeDocument = {
     textContent: string;
   };
   createElement: (tagName: string) => BridgeElement;
-  addEventListener: (eventName: string, callback: () => void) => void;
+  addEventListener: (
+    eventName: string,
+    callback: (event: BridgeEvent) => void
+  ) => void;
   readyState: string;
+};
+
+type BridgeNavElement = {
+  dataset: Record<string, string>;
+  getAttribute: (name: string) => string | null;
+  closest: (selector: string) => BridgeNavElement | null;
+};
+
+type BridgeEvent = {
+  target?: BridgeNavElement;
+  key?: string;
+  preventDefault?: jest.Mock<void, []>;
 };
 
 type BridgeElement = {
@@ -117,9 +132,14 @@ function buildElement(tagName: string): BridgeElement {
 function buildBridgeWindow(
   screen: string,
   responses: BridgeFetchResponse[]
-): { window: BridgeWindow; calls: FetchCall[] } {
+): {
+  window: BridgeWindow;
+  calls: FetchCall[];
+  listeners: Record<string, Array<(event: BridgeEvent) => void>>;
+} {
   const calls: FetchCall[] = [];
   const bodyNodes: BridgeElement[] = [];
+  const listeners: Record<string, Array<(event: BridgeEvent) => void>> = {};
   const document: BridgeDocument = {
     currentScript: {
       dataset: { screen },
@@ -137,8 +157,9 @@ function buildBridgeWindow(
       textContent: '',
     },
     createElement: buildElement,
-    addEventListener(_eventName, callback) {
-      callback();
+    addEventListener(eventName, callback) {
+      listeners[eventName] = listeners[eventName] ?? [];
+      listeners[eventName].push(callback);
     },
     readyState: 'complete',
   };
@@ -170,7 +191,32 @@ function buildBridgeWindow(
     },
     CustomEvent,
   };
-  return { window, calls };
+  return { window, calls, listeners };
+}
+
+function buildNavElement(target: string): BridgeNavElement {
+  const element: BridgeNavElement = {
+    dataset: {
+      mobileUiuxNavTarget: target,
+    },
+    getAttribute(name) {
+      return name === 'data-mobile-uiux-nav-target' ? target : null;
+    },
+    closest(selector) {
+      return selector === '[data-mobile-uiux-nav-target]' ? element : null;
+    },
+  };
+  return element;
+}
+
+function dispatchBridgeEvent(
+  listeners: Record<string, Array<(event: BridgeEvent) => void>>,
+  eventName: string,
+  event: BridgeEvent
+): void {
+  for (const listener of listeners[eventName] ?? []) {
+    listener(event);
+  }
 }
 
 async function runBridgeScript(
@@ -225,6 +271,87 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
       'disabled'
     );
+  });
+
+  it('navigates Bottom Nav by click even when MOBILE_UIUX_REAL_DATA_ENABLED=false', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: false,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls, listeners } = buildBridgeWindow('reservations', []);
+
+    await runBridgeScript(script, window);
+    dispatchBridgeEvent(listeners, 'click', {
+      target: buildNavElement('home'),
+    });
+
+    expect(calls).toEqual([]);
+    expect(window.location.assign).toHaveBeenCalledWith(
+      '/mobile-uiux/screens/home'
+    );
+  });
+
+  it('navigates Bottom Nav by Enter and Space keys', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: false,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, listeners } = buildBridgeWindow('home', []);
+    const enterPreventDefault = jest.fn();
+    const spacePreventDefault = jest.fn();
+
+    await runBridgeScript(script, window);
+    dispatchBridgeEvent(listeners, 'keydown', {
+      key: 'Enter',
+      target: buildNavElement('patients'),
+      preventDefault: enterPreventDefault,
+    });
+    dispatchBridgeEvent(listeners, 'keydown', {
+      key: ' ',
+      target: buildNavElement('settings'),
+      preventDefault: spacePreventDefault,
+    });
+
+    expect(window.location.assign).toHaveBeenNthCalledWith(
+      1,
+      '/mobile-uiux/screens/patients'
+    );
+    expect(window.location.assign).toHaveBeenNthCalledWith(
+      2,
+      '/mobile-uiux/screens/settings'
+    );
+    expect(enterPreventDefault).toHaveBeenCalled();
+    expect(spacePreventDefault).toHaveBeenCalled();
+  });
+
+  it('does not reload the current Bottom Nav path', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: false,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, listeners } = buildBridgeWindow('settings', []);
+
+    await runBridgeScript(script, window);
+    dispatchBridgeEvent(listeners, 'click', {
+      target: buildNavElement('settings'),
+    });
+
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('ignores unknown Bottom Nav targets', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: false,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, listeners } = buildBridgeWindow('home', []);
+
+    await runBridgeScript(script, window);
+    dispatchBridgeEvent(listeners, 'click', {
+      target: buildNavElement('unknown'),
+    });
+
+    expect(window.location.assign).not.toHaveBeenCalled();
   });
 
   it('uses UI fallback for 401 and redirects to login without logging PII', async () => {
@@ -810,9 +937,7 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).not.toContain('api-key-secret');
     expect(window.document.body.textContent).not.toContain('webhook-secret');
     expect(window.document.body.textContent).not.toContain('token-secret');
-    expect(window.document.body.textContent).not.toContain(
-      'credential-secret'
-    );
+    expect(window.document.body.textContent).not.toContain('credential-secret');
   });
 });
 
@@ -874,8 +999,13 @@ describe('mobile-uiux bridge route and response-time injection', () => {
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
-  it('does not inject the bridge when MOBILE_UIUX_REAL_DATA_ENABLED=false', async () => {
+  it('injects the bridge when MOBILE_UIUX_REAL_DATA_ENABLED=false for Bottom Nav navigation', async () => {
     process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'false';
+    readFileMock.mockResolvedValue(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="./support.js"></script></head>
+<body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
+</html>`);
     const { GET } =
       await import('@/app/(app)/mobile-uiux/screens/[resource]/route');
     const response = await GET(
@@ -887,6 +1017,7 @@ describe('mobile-uiux bridge route and response-time injection', () => {
     const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(body).not.toContain('mobile-bridge.js');
+    expect(body).toContain('mobile-bridge.js');
+    expect(body).toContain('data-mobile-uiux-nav-target="reservations"');
   });
 });
