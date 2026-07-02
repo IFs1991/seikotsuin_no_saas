@@ -502,6 +502,67 @@ describe('mobile-uiux bridge contract', () => {
     );
   });
 
+  it('calls the daily-reports read hydration adapter after BFF success and marks hydrated when applied', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [
+            {
+              id: 'report-1',
+              reportDate: '2026-06-30',
+              staffName: 'BFF 先生',
+              totalPatients: 18,
+              newPatients: 3,
+              totalRevenue: 120000,
+              insuranceRevenue: 40000,
+              privateRevenue: 80000,
+              reportText: 'free text should stay inside payload',
+              createdAt: '2026-06-30T10:00:00.000Z',
+            },
+          ],
+          summary: {
+            totalReports: 1,
+            averagePatients: 18,
+            averageRevenue: 120000,
+            totalRevenue: 120000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'daily-reports',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('daily-reports', readPayload);
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+    expect(window.document.body.textContent).toContain(
+      '日報データを読み込みました（1件）'
+    );
+    expect(window.document.body.textContent).not.toContain(
+      'free text should stay inside payload'
+    );
+  });
+
   it('does not mark hydrated when only the fallback status element is added', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,

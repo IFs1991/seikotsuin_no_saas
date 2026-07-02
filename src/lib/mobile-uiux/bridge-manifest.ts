@@ -286,6 +286,10 @@ export function buildMobileUiuxBridgeScript(
       return "予約データを読み込みました（" + data.reservations.length + "件）";
     }
 
+    if (screen === "daily-reports" && isRecord(data.dailyReports) && Array.isArray(data.dailyReports.reports)) {
+      return "日報データを読み込みました（" + data.dailyReports.reports.length + "件）";
+    }
+
     if (screen === "settings-detail") {
       const menuCount = Array.isArray(data.menus) ? data.menus.length : 0;
       const resourceCount = Array.isArray(data.resources) ? data.resources.length : 0;

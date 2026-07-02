@@ -1,13 +1,11 @@
 import type { MobileUiuxScreenResource } from './bridge-manifest';
 
 type DcScriptPatchOptions = {
-  screen: Extract<MobileUiuxScreenResource, 'reservations'>;
+  screen: Extract<MobileUiuxScreenResource, 'reservations' | 'daily-reports'>;
 };
 
 type ScriptBlock = {
-  block: string;
   content: string;
-  start: number;
   contentStart: number;
   contentEnd: number;
 };
@@ -147,9 +145,7 @@ function extractSingleDcScript(html: string): ScriptBlock {
   const contentEnd = start + block.length - '</script>'.length;
 
   return {
-    block,
     content: html.slice(contentStart, contentEnd),
-    start,
     contentStart,
     contentEnd,
   };
@@ -427,10 +423,18 @@ function applyReplacements(
 function buildHydrationAdapterSource(
   screen: DcScriptPatchOptions['screen']
 ): string {
-  if (screen !== 'reservations') {
-    throw new Error(`Unsupported Mobile UIUX hydration screen: ${screen}`);
+  if (screen === 'reservations') {
+    return buildReservationsHydrationAdapterSource();
   }
 
+  if (screen === 'daily-reports') {
+    return buildDailyReportsHydrationAdapterSource();
+  }
+
+  throw new Error(`Unsupported Mobile UIUX hydration screen: ${screen}`);
+}
+
+function buildReservationsHydrationAdapterSource(): string {
   return `
 
   renderVals() {
@@ -604,6 +608,294 @@ function buildHydrationAdapterSource(
     }
     const timeMatch = /T(\\d{2}):(\\d{2})/.exec(value);
     return timeMatch ? Number(timeMatch[1]) + ':' + timeMatch[2] : '';
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+`;
+}
+
+function buildDailyReportsHydrationAdapterSource(): string {
+  return `
+
+  renderVals() {
+    const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
+      ? this.${ORIGINAL_RENDER_VALS_METHOD}()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'daily-reports' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data) || !this.__mobileUiuxIsRecord(data.dailyReports) || !Array.isArray(data.dailyReports.reports)) {
+      return null;
+    }
+
+    const reports = [];
+    for (const report of data.dailyReports.reports) {
+      const mappedReport = this.__mobileUiuxReportToRecord(report);
+      if (mappedReport === null) return null;
+      reports.push(mappedReport);
+    }
+    const reportDate = this.__mobileUiuxResolveReportDate(data, reports, payload.generatedAt);
+    if (!reportDate) {
+      return null;
+    }
+
+    const todayReport = reports.length > 0 ? reports[0] : null;
+    const todaySubmitted = todayReport !== null;
+    const todayRevenue = todayReport ? todayReport.revenue : 0;
+    const todayHoken = todayReport ? todayReport.hoken : 0;
+    const todayJihi = todayReport ? todayReport.jihi : 0;
+    const todayPatients = todayReport ? todayReport.patients : 0;
+    const viewRows = this.__mobileUiuxBuildDailyReportViewRows(reports);
+    const summary = this.__mobileUiuxBuildDailyReportSummary(data.dailyReports.summary, viewRows);
+
+    return {
+      todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
+      todayUnsubmitted: !todaySubmitted,
+      todaySubmittedFlag: todaySubmitted,
+      todayCount: todayPatients,
+      sumRevenue: this.yen(todayRevenue),
+      sumPatients: todayPatients + '名',
+      sumHoken: this.yen(todayHoken),
+      sumJihi: this.yen(todayJihi),
+      listRows: viewRows.listRows,
+      kpiBoxes: this.__mobileUiuxBuildDailyReportKpiBoxes(summary, viewRows),
+      trendCards: viewRows.trendCards,
+      statusRows: viewRows.statusRows
+    };
+  }
+
+  __mobileUiuxReportToRecord(report) {
+    if (!this.__mobileUiuxIsRecord(report) || typeof report.reportDate !== 'string') return null;
+    const dateParts = this.__mobileUiuxDateParts(report.reportDate);
+    if (!dateParts) return null;
+    const totalRevenue = this.__mobileUiuxNumber(report.totalRevenue);
+    const insuranceRevenue = this.__mobileUiuxNumber(report.insuranceRevenue);
+    const privateRevenue = this.__mobileUiuxNumber(report.privateRevenue);
+    const patients = this.__mobileUiuxNumber(report.totalPatients);
+    const status = typeof report.status === 'string' ? report.status : 'submitted';
+    return {
+      key: typeof report.id === 'string' && report.id.length > 0 ? report.id : report.reportDate,
+      dateKey: report.reportDate,
+      date: dateParts.month + '/' + dateParts.day,
+      wd: dateParts.weekday,
+      revenue: totalRevenue,
+      hoken: insuranceRevenue,
+      jihi: privateRevenue,
+      patients,
+      status: this.__mobileUiuxNormalizeDailyReportStatus(status)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportViewRows(reports) {
+    const listRows = [];
+    const trendCards = [];
+    const statusRows = [];
+    let needs = 0;
+    let totalRevenue = 0;
+    let totalPatients = 0;
+
+    for (const report of reports) {
+      if (report.status === 'needscheck') needs += 1;
+      totalRevenue += report.revenue;
+      totalPatients += report.patients;
+      listRows.push(this.__mobileUiuxBuildDailyReportListRow(report));
+      trendCards.push(this.__mobileUiuxBuildDailyReportTrendCard(report));
+      statusRows.push(this.__mobileUiuxBuildDailyReportStatusRow(report));
+    }
+
+    return { listRows, trendCards, statusRows, needs, totalRevenue, totalPatients };
+  }
+
+  __mobileUiuxBuildDailyReportListRow(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      patients: report.patients + '名',
+      revenue: this.yen(report.revenue),
+      onEdit: () => {},
+      editLabel: '編集'
+    };
+  }
+
+  __mobileUiuxBuildDailyReportTrendCard(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      revenue: this.yen(report.revenue),
+      hoken: this.yen(report.hoken),
+      jihi: this.yen(report.jihi),
+      patients: report.patients + '名',
+      unit: this.yen(report.patients ? Math.round(report.revenue / report.patients) : 0)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportStatusRow(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      sub: report.patients + '名 ・ ' + this.yen(report.revenue)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportSummary(summary, viewRows) {
+    if (this.__mobileUiuxIsRecord(summary)) {
+      return {
+        totalRevenue: this.__mobileUiuxNumber(summary.totalRevenue),
+        averageRevenue: this.__mobileUiuxNumber(summary.averageRevenue),
+        totalPatients: viewRows.totalPatients,
+        averagePatients: this.__mobileUiuxNumber(summary.averagePatients),
+        totalReports: this.__mobileUiuxNumber(summary.totalReports)
+      };
+    }
+    const reportCount = viewRows.listRows.length;
+    return {
+      totalRevenue: viewRows.totalRevenue,
+      averageRevenue: reportCount ? Math.round(viewRows.totalRevenue / reportCount) : 0,
+      totalPatients: viewRows.totalPatients,
+      averagePatients: reportCount ? Math.round(viewRows.totalPatients / reportCount) : 0,
+      totalReports: reportCount
+    };
+  }
+
+  __mobileUiuxBuildDailyReportKpiBoxes(summary, viewRows) {
+    const totalRevenue = summary.totalRevenue;
+    const averageRevenue = summary.averageRevenue;
+    const totalPatients = summary.totalPatients;
+    const unit = totalPatients ? Math.round(totalRevenue / totalPatients) : 0;
+    const missing = viewRows.listRows.length === 0 ? 1 : 0;
+    const needs = viewRows.needs;
+    return [
+      { label: '累計売上', value: this.yen(totalRevenue), color: 'var(--fg)' },
+      { label: '平均売上 / 日', value: this.yen(averageRevenue), color: 'var(--fg)' },
+      { label: '患者数', value: totalPatients + '名', color: 'var(--fg)' },
+      { label: '客単価', value: this.yen(unit), color: 'var(--fg)' },
+      { label: '未提出日', value: missing + '日', color: 'var(--s-uc)' },
+      { label: '要確認日', value: needs + '日', color: 'var(--s-ns)' }
+    ];
+  }
+
+  __mobileUiuxResolveReportDate(data, reports, generatedAt) {
+    if (reports.length > 0) return reports[0].dateKey;
+    if (typeof data.endDate === 'string') return data.endDate;
+    if (typeof data.startDate === 'string') return data.startDate;
+    if (typeof generatedAt === 'string') return this.__mobileUiuxIsoToJstDateKey(generatedAt);
+    return '';
+  }
+
+  __mobileUiuxNormalizeDailyReportStatus(value) {
+    if (value === 'confirmed') return 'confirmed';
+    if (value === 'needscheck' || value === 'needs_check') return 'needscheck';
+    if (value === 'unsubmitted' || value === 'missing') return 'unsubmitted';
+    return 'submitted';
+  }
+
+  __mobileUiuxDailyReportStatusMeta(value) {
+    const status = this.__mobileUiuxNormalizeDailyReportStatus(value);
+    if (this.STATUS_DR && this.STATUS_DR[status]) return this.STATUS_DR[status];
+    if (status === 'confirmed') return { label: '確認済み', c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' };
+    if (status === 'unsubmitted') return { label: '未提出', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    if (status === 'needscheck') return { label: '要確認', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+    return { label: '提出済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+  }
+
+  __mobileUiuxNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  __mobileUiuxFormatDateLabel(value) {
+    const parts = this.__mobileUiuxDateParts(value);
+    if (!parts) return value;
+    return parts.month + '/' + parts.day + '（' + parts.weekday + '）';
+  }
+
+  __mobileUiuxDateParts(value) {
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return null;
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return { month, day, weekday: weekdays[date.getUTCDay()] };
+  }
+
+  __mobileUiuxIsoToJstDateKey(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const totalMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60;
+    const dayOffset = Math.floor(totalMinutes / 1440);
+    const jstDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + dayOffset));
+    const year = jstDate.getUTCFullYear();
+    const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(jstDate.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
   }
 
   __mobileUiuxIsRecord(value) {

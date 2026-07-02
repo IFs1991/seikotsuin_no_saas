@@ -25,60 +25,74 @@ function getRecord(value: unknown): Record<string, unknown> {
 }
 
 describe('mobile-uiux production assets', () => {
-  it('builds the reservations production asset with shell and hydration patch applied', async () => {
-    const sourceHtml = await readFile(
-      getMobileUiuxSourceAssetPath('reservations'),
-      'utf-8'
-    );
-    const productionHtml = buildMobileUiuxProductionAsset(
+  it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
+    'builds the %s production asset with shell and hydration patch applied',
+    async resource => {
+      const sourceHtml = await readFile(
+        getMobileUiuxSourceAssetPath(resource),
+        'utf-8'
+      );
+      const productionHtml = buildMobileUiuxProductionAsset(
+        resource,
+        sourceHtml
+      );
+
+      expect(productionHtml).toContain('data-mobile-uiux-production-root');
+      expect(productionHtml).toContain('ref="{{ setRoot }}"');
+      expect(countDcScripts(productionHtml)).toBe(1);
+      expect(productionHtml).toContain('class Component extends DCLogic');
+      expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
+      expect(productionHtml).toContain(
+        'window.__MOBILE_UIUX_APPLY_READ_DATA__'
+      );
+      expect(productionHtml).not.toContain('STAGE CONTROLS');
+      expect(productionHtml).not.toContain('width: 390px; height: 812px');
+      expect(productionHtml).not.toContain('data-mobile-uiux-bridge');
+    }
+  );
+
+  it('keeps the generated assets in the production asset manifest', () => {
+    expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toEqual([
       'reservations',
-      sourceHtml
-    );
-
-    expect(productionHtml).toContain('data-mobile-uiux-production-root');
-    expect(productionHtml).toContain('ref="{{ setRoot }}"');
-    expect(countDcScripts(productionHtml)).toBe(1);
-    expect(productionHtml).toContain('class Component extends DCLogic');
-    expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
-    expect(productionHtml).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
-    expect(productionHtml).not.toContain('STAGE CONTROLS');
-    expect(productionHtml).not.toContain('width: 390px; height: 812px');
-    expect(productionHtml).not.toContain('data-mobile-uiux-bridge');
+      'daily-reports',
+    ]);
   });
 
-  it('keeps the generated reservations asset in the production asset manifest', () => {
-    expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toEqual(['reservations']);
-  });
+  it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
+    'reads the generated %s asset from private-assets/mobile-uiux-production',
+    async resource => {
+      const actual = await readMobileUiuxProductionAsset(resource);
 
-  it('reads the generated reservations asset from private-assets/mobile-uiux-production', async () => {
-    const actual = await readMobileUiuxProductionAsset('reservations');
+      expect(actual).not.toBeNull();
+      expect(actual).toContain('data-mobile-uiux-production-root');
+      expect(actual).toContain('__mobileUiuxOriginalRenderVals');
+      expect(actual).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
+    }
+  );
 
-    expect(actual).not.toBeNull();
-    expect(actual).toContain('data-mobile-uiux-production-root');
-    expect(actual).toContain('__mobileUiuxOriginalRenderVals');
-    expect(actual).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
-  });
-
-  it('returns null for screens outside the PR-B1 generated asset scope', async () => {
+  it('returns null for screens outside the generated asset scope', async () => {
     await expect(readMobileUiuxProductionAsset('home')).resolves.toBeNull();
   });
 
-  it('has an up-to-date generated reservations file on disk', async () => {
-    const sourceHtml = await readFile(
-      getMobileUiuxSourceAssetPath('reservations'),
-      'utf-8'
-    );
-    const expected = buildMobileUiuxProductionAsset('reservations', sourceHtml);
-    const actual = await readFile(
-      getMobileUiuxProductionAssetPath('reservations'),
-      'utf-8'
-    );
+  it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
+    'has an up-to-date generated %s file on disk',
+    async resource => {
+      const sourceHtml = await readFile(
+        getMobileUiuxSourceAssetPath(resource),
+        'utf-8'
+      );
+      const expected = buildMobileUiuxProductionAsset(resource, sourceHtml);
+      const actual = await readFile(
+        getMobileUiuxProductionAssetPath(resource),
+        'utf-8'
+      );
 
-    expect(
-      path.basename(getMobileUiuxProductionAssetPath('reservations'))
-    ).toBe('reservations.dc.html');
-    expect(actual).toBe(expected);
-  });
+      expect(path.basename(getMobileUiuxProductionAssetPath(resource))).toBe(
+        `${resource}.dc.html`
+      );
+      expect(actual).toBe(expected);
+    }
+  );
 
   it('detects generated asset drift in --check mode', async () => {
     const outputPath = getMobileUiuxProductionAssetPath('reservations');

@@ -270,6 +270,154 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.rows).not.toEqual([{ patient: 'sample-patient' }]);
   });
 
+  it('merges daily-reports hydration overrides after the original renderVals result', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      todayLabel: 'sample-date',
+      todayUnsubmitted: true,
+      todaySubmittedFlag: false,
+      todayCount: 0,
+      sumRevenue: '¥0',
+      sumPatients: '0名',
+      sumHoken: '¥0',
+      sumJihi: '¥0',
+      listRows: [{ date: 'sample-row' }],
+      kpiBoxes: [{ label: 'sample-kpi', value: 'sample' }],
+      trendCards: [{ date: 'sample-trend' }],
+      statusRows: [{ date: 'sample-status' }]
+    };
+  }
+}`),
+      {
+        screen: 'daily-reports',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [
+            {
+              id: 'report-1',
+              reportDate: '2026-06-30',
+              staffName: 'BFF 先生A',
+              totalPatients: 18,
+              newPatients: 3,
+              totalRevenue: 120000,
+              insuranceRevenue: 40000,
+              privateRevenue: 80000,
+              reportText: 'free text should not be rendered',
+              createdAt: '2026-06-30T10:00:00.000Z',
+            },
+          ],
+          summary: {
+            totalReports: 1,
+            averagePatients: 18,
+            averageRevenue: 120000,
+            totalRevenue: 120000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const listRows = Array.isArray(vals.listRows) ? vals.listRows : [];
+    const firstRow = getRecord(listRows[0]);
+    const kpiBoxes = Array.isArray(vals.kpiBoxes) ? vals.kpiBoxes : [];
+    const firstKpi = getRecord(kpiBoxes[0]);
+
+    expect(applied).toBe(true);
+    expect(vals.todayLabel).toBe('6/30（火）');
+    expect(vals.todayUnsubmitted).toBe(false);
+    expect(vals.todaySubmittedFlag).toBe(true);
+    expect(vals.todayCount).toBe(18);
+    expect(vals.sumRevenue).toBe('¥120,000');
+    expect(vals.sumPatients).toBe('18名');
+    expect(vals.sumHoken).toBe('¥40,000');
+    expect(vals.sumJihi).toBe('¥80,000');
+    expect(firstRow.date).toBe('6/30（火）');
+    expect(firstRow.statusLabel).toBe('提出済み');
+    expect(firstRow.patients).toBe('18名');
+    expect(firstRow.revenue).toBe('¥120,000');
+    expect(firstKpi.label).toBe('累計売上');
+    expect(firstKpi.value).toBe('¥120,000');
+    expect(JSON.stringify(vals)).not.toContain(
+      'free text should not be rendered'
+    );
+    expect(vals.listRows).not.toEqual([{ date: 'sample-row' }]);
+  });
+
+  it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return { todayLabel: 'sample-date', todayUnsubmitted: false, listRows: [{ date: 'sample-row' }] };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-07-01',
+        endDate: '2026-07-01',
+        dailyReports: {
+          reports: [],
+          summary: {
+            totalReports: 0,
+            averagePatients: 0,
+            averageRevenue: 0,
+            totalRevenue: 0,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.todayLabel).toBe('7/1（水）');
+    expect(vals.todayUnsubmitted).toBe(true);
+    expect(vals.todaySubmittedFlag).toBe(false);
+    expect(vals.sumRevenue).toBe('¥0');
+    expect(vals.sumPatients).toBe('0名');
+    expect(vals.listRows).toEqual([]);
+  });
+
   it('keeps sample values when the payload is invalid', () => {
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
@@ -293,5 +441,68 @@ describe('patchMobileUiuxDcScript', () => {
     expect(applied).toBe(false);
     expect(vals.dateLabel).toBe('sample-date');
     expect(vals.rows).toEqual([{ patient: 'sample-patient' }]);
+  });
+
+  it('keeps daily-reports sample values when the payload is invalid', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [{ date: 'sample-row' }] };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        dailyReports: {
+          reports: 'invalid',
+        },
+      },
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(false);
+    expect(vals.todayLabel).toBe('sample-date');
+    expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
+  });
+
+  it('keeps daily-reports sample values when a report row is invalid', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [{ date: 'sample-row' }] };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        startDate: '2026-07-01',
+        endDate: '2026-07-01',
+        dailyReports: {
+          reports: [{ totalRevenue: 1000 }],
+        },
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(false);
+    expect(vals.todayLabel).toBe('sample-date');
+    expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
   });
 });
