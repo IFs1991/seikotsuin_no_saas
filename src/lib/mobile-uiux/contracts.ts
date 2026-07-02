@@ -46,6 +46,20 @@ export type MobileUiuxHomeResponse = {
   date: string;
   timezone: 'Asia/Tokyo';
   dashboard: DashboardData;
+  reservationSummary: {
+    total: number;
+    unconfirmed: number;
+    cancelled: number;
+  };
+  dailyReportStatus: {
+    done: number;
+    review: number;
+    missing: number;
+    rows: Array<{
+      name: string;
+      status: 'submitted' | 'missing';
+    }>;
+  };
 };
 
 export type MobileUiuxReservationsResponse = {

@@ -5,6 +5,7 @@ import {
   createDashboardSupabaseReadModelClient,
   fetchDashboardReadModel,
 } from '@/lib/dashboard/read-model';
+import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
@@ -15,14 +16,36 @@ jest.mock('@/lib/dashboard/read-model', () => ({
   fetchDashboardReadModel: jest.fn(),
 }));
 
+jest.mock('@/lib/daily-reports/read-model', () => ({
+  fetchDailyReportsReadModel: jest.fn(),
+}));
+
 const ensureClinicAccessMock = jest.mocked(ensureClinicAccess);
 const createDashboardSupabaseReadModelClientMock = jest.mocked(
   createDashboardSupabaseReadModelClient
 );
 const fetchDashboardReadModelMock = jest.mocked(fetchDashboardReadModel);
+const fetchDailyReportsReadModelMock = jest.mocked(fetchDailyReportsReadModel);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
-const scopedSupabase = { name: 'scoped-supabase' };
+const reservationRows = [
+  { status: 'confirmed' },
+  { status: 'unconfirmed' },
+  { status: 'tentative' },
+  { status: 'cancelled' },
+  { status: 'no_show' },
+];
+const reservationQuery = {
+  select: jest.fn(() => reservationQuery),
+  eq: jest.fn(() => reservationQuery),
+  gte: jest.fn(() => reservationQuery),
+  lt: jest.fn(() => reservationQuery),
+  returns: jest.fn(),
+};
+const scopedSupabase = {
+  name: 'scoped-supabase',
+  from: jest.fn(() => reservationQuery),
+};
 const dashboardReadModelClient = { name: 'dashboard-read-model-client' };
 const dashboardData = {
   dailyData: {
@@ -72,6 +95,33 @@ describe('GET /api/mobile-uiux/home', () => {
       dashboardReadModelClient
     );
     fetchDashboardReadModelMock.mockResolvedValue(dashboardData);
+    reservationQuery.returns.mockResolvedValue({
+      data: reservationRows,
+      error: null,
+    });
+    fetchDailyReportsReadModelMock.mockResolvedValue({
+      reports: [
+        {
+          id: 'report-1',
+          reportDate: '2026-06-12',
+          staffName: 'BFF 先生',
+          totalPatients: 18,
+          newPatients: 3,
+          totalRevenue: 120000,
+          insuranceRevenue: 40000,
+          privateRevenue: 80000,
+          reportText: 'free text should not be returned by home status',
+          createdAt: '2026-06-12T10:00:00.000Z',
+        },
+      ],
+      summary: {
+        totalReports: 1,
+        averagePatients: 18,
+        averageRevenue: 120000,
+        totalRevenue: 120000,
+      },
+      monthlyTrends: [],
+    });
   });
 
   afterAll(() => {
@@ -91,7 +141,13 @@ describe('GET /api/mobile-uiux/home', () => {
       '/api/mobile-uiux/home',
       clinicId,
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
       }
     );
     expect(createDashboardSupabaseReadModelClientMock).toHaveBeenCalledWith(
@@ -102,6 +158,15 @@ describe('GET /api/mobile-uiux/home', () => {
       clinicId,
       now: new Date('2026-06-12T00:00:00.000Z'),
     });
+    expect(scopedSupabase.from).toHaveBeenCalledWith('reservation_list_view');
+    expect(reservationQuery.select).toHaveBeenCalledWith('status');
+    expect(reservationQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
+    expect(fetchDailyReportsReadModelMock).toHaveBeenCalledWith({
+      supabase: scopedSupabase,
+      clinicId,
+      startDate: '2026-06-12',
+      endDate: '2026-06-12',
+    });
     expect(payload).toEqual({
       success: true,
       data: {
@@ -109,11 +174,30 @@ describe('GET /api/mobile-uiux/home', () => {
         date: '2026-06-12',
         timezone: 'Asia/Tokyo',
         dashboard: dashboardData,
+        reservationSummary: {
+          total: 3,
+          unconfirmed: 2,
+          cancelled: 2,
+        },
+        dailyReportStatus: {
+          done: 1,
+          review: 0,
+          missing: 0,
+          rows: [
+            {
+              name: '本日の日報',
+              status: 'submitted',
+            },
+          ],
+        },
       },
       generatedAt: expect.stringMatching(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
       ),
     });
+    expect(JSON.stringify(payload)).not.toContain(
+      'free text should not be returned by home status'
+    );
   });
 
   it('returns 403 for clinic scope violations from the PC dashboard guard', async () => {

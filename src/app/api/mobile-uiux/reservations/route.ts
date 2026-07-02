@@ -239,23 +239,23 @@ async function getScopedReservationReferences(
     staffId: string;
   }
 ): Promise<ScopedReferenceResult> {
-  const customerResult = params.customerId
-    ? await supabase
+  const customerPromise = params.customerId
+    ? supabase
         .from('customers')
         .select('id')
         .eq('clinic_id', params.clinicId)
         .eq('id', params.customerId)
         .eq('is_deleted', false)
         .maybeSingle()
-    : { data: { id: '' }, error: null };
-  const menuResult = await supabase
+    : Promise.resolve({ data: { id: '' }, error: null });
+  const menuPromise = supabase
     .from('menus')
     .select('id, price')
     .eq('clinic_id', params.clinicId)
     .eq('id', params.menuId)
     .eq('is_deleted', false)
     .maybeSingle();
-  const staffResult = await supabase
+  const staffPromise = supabase
     .from('resources')
     .select('id, type, is_deleted, is_active, is_bookable, nomination_fee')
     .eq('clinic_id', params.clinicId)
@@ -265,6 +265,11 @@ async function getScopedReservationReferences(
     .eq('is_active', true)
     .eq('is_bookable', true)
     .maybeSingle();
+  const [customerResult, menuResult, staffResult] = await Promise.all([
+    customerPromise,
+    menuPromise,
+    staffPromise,
+  ]);
 
   if (customerResult.error || menuResult.error || staffResult.error) {
     return {

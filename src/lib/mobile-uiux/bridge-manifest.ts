@@ -128,6 +128,13 @@ export function buildMobileUiuxBridgeScript(
 
   const MOBILE_UIUX_SCREEN_MANIFEST = ${manifestJson};
   const REAL_DATA_ENABLED = ${realDataEnabled};
+  const NAV_PATH_BY_TARGET = {
+    home: "/mobile-uiux/screens/home",
+    reservations: "/mobile-uiux/screens/reservations",
+    patients: "/mobile-uiux/screens/patients",
+    "daily-reports": "/mobile-uiux/screens/daily-reports",
+    settings: "/mobile-uiux/screens/settings"
+  };
   const STATUS_MESSAGES = {
     disabled: "実データ参照は無効です",
     unauthorized: "ログインが必要です",
@@ -139,10 +146,15 @@ export function buildMobileUiuxBridgeScript(
     settingsWriteDisabled: "設定の書き込みは無効です",
     settingsSaved: "設定を保存しました",
     reservationSaved: "予約を保存しました",
+    reservationConflict: "同時間帯に既存予約があります。予約時間または担当を確認してください",
     saving: "保存中です",
     unavailable: "実データを一時的に表示できません"
   };
   let currentContext = null;
+  let currentScreen = null;
+  const inFlightMutations = new Map();
+  let fallbackStatusElement = null;
+  let mutationStatusElement = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -161,34 +173,47 @@ export function buildMobileUiuxBridgeScript(
 
   function showFallback(status, message) {
     setStatus("fallback");
-    const fallback = document.createElement("div");
-    fallback.setAttribute("role", "status");
+    const fallback = fallbackStatusElement || document.createElement("div");
+    if (!fallbackStatusElement) {
+      fallback.setAttribute("role", "status");
+      fallbackStatusElement = fallback;
+    }
     fallback.dataset.mobileUiuxBridgeFallback = status;
     fallback.textContent = message;
-    if (document.body) {
+    if (document.body && !fallback.dataset.mobileUiuxFallbackAttached) {
+      fallback.dataset.mobileUiuxFallbackAttached = "true";
       document.body.appendChild(fallback);
     }
   }
 
   function showMutationStatus(status, message) {
     document.documentElement.dataset.mobileUiuxMutation = status;
-    const indicator = document.createElement("div");
-    indicator.setAttribute("role", "status");
+    const indicator = mutationStatusElement || document.createElement("div");
+    if (!mutationStatusElement) {
+      indicator.setAttribute("role", "status");
+      mutationStatusElement = indicator;
+    }
     indicator.dataset.mobileUiuxMutationStatus = status;
     indicator.textContent = message;
-    if (document.body) {
+    if (document.body && !indicator.dataset.mobileUiuxMutationAttached) {
+      indicator.dataset.mobileUiuxMutationAttached = "true";
       document.body.appendChild(indicator);
     }
   }
 
   function getScreen() {
+    if (currentScreen) {
+      return currentScreen;
+    }
+
     const script = document.currentScript;
     const fromDataset = script && script.dataset ? script.dataset.screen : "";
     const fromAttribute = script && script.getAttribute ? script.getAttribute("data-screen") : "";
     const screen = fromDataset || fromAttribute || location.pathname.split("/").filter(Boolean).pop() || "";
-    return Object.prototype.hasOwnProperty.call(MOBILE_UIUX_SCREEN_MANIFEST, screen)
+    currentScreen = Object.prototype.hasOwnProperty.call(MOBILE_UIUX_SCREEN_MANIFEST, screen)
       ? screen
       : null;
+    return currentScreen;
   }
 
   async function fetchJson(url) {
@@ -205,6 +230,10 @@ export function buildMobileUiuxBridgeScript(
 
     if (response.status === 403) {
       return { kind: "forbidden" };
+    }
+
+    if (response.status === 409) {
+      return { kind: "conflict" };
     }
 
     if (!response.ok) {
@@ -232,6 +261,10 @@ export function buildMobileUiuxBridgeScript(
 
     if (response.status === 403) {
       return { kind: "forbidden" };
+    }
+
+    if (response.status === 409) {
+      return { kind: "conflict" };
     }
 
     if (!response.ok) {
@@ -279,6 +312,14 @@ export function buildMobileUiuxBridgeScript(
       return "予約データを読み込みました（" + data.reservations.length + "件）";
     }
 
+    if (screen === "home" && isRecord(data.dashboard) && isRecord(data.dashboard.dailyData)) {
+      return "ホームデータを読み込みました";
+    }
+
+    if (screen === "daily-reports" && isRecord(data.dailyReports) && Array.isArray(data.dailyReports.reports)) {
+      return "日報データを読み込みました（" + data.dailyReports.reports.length + "件）";
+    }
+
     if (screen === "settings-detail") {
       const menuCount = Array.isArray(data.menus) ? data.menus.length : 0;
       const resourceCount = Array.isArray(data.resources) ? data.resources.length : 0;
@@ -305,12 +346,7 @@ export function buildMobileUiuxBridgeScript(
     return true;
   }
 
-  function hydrateReadOnlyData(screen, payload) {
-    const summary = summarizePayload(screen, payload);
-    if (!summary) {
-      return false;
-    }
-
+  function appendReadStatus(screen, summary) {
     const status = document.createElement("div");
     status.setAttribute("role", "status");
     status.dataset.mobileUiuxHydrated = screen;
@@ -318,8 +354,93 @@ export function buildMobileUiuxBridgeScript(
     if (document.body) {
       document.body.appendChild(status);
     }
-    setStatus("hydrated");
+  }
+
+  function applyReadData(screen, payload) {
+    const apply = window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    return typeof apply === "function" && apply(screen, payload) === true;
+  }
+
+  function hydrateReadOnlyData(screen, payload) {
+    const summary = summarizePayload(screen, payload);
+    if (!summary) {
+      return false;
+    }
+
+    const applied = applyReadData(screen, payload);
+    appendReadStatus(screen, summary);
+    if (applied === true) {
+      setStatus("hydrated");
+      return true;
+    }
+
+    setStatus("fallback");
     return true;
+  }
+
+  function getNormalizedPathname() {
+    const normalized = location.pathname.replace(/\\/+$/, "");
+    return normalized.length > 0 ? normalized : "/";
+  }
+
+  function getNavigationTarget(event) {
+    const eventTarget = event && event.target;
+    if (!eventTarget || typeof eventTarget.closest !== "function") {
+      return null;
+    }
+
+    const navElement = eventTarget.closest("[data-mobile-uiux-nav-target]");
+    if (!navElement || !navElement.dataset) {
+      return null;
+    }
+
+    const target = navElement.dataset.mobileUiuxNavTarget ||
+      (typeof navElement.getAttribute === "function"
+        ? navElement.getAttribute("data-mobile-uiux-nav-target")
+        : "");
+
+    return Object.prototype.hasOwnProperty.call(NAV_PATH_BY_TARGET, target)
+      ? target
+      : null;
+  }
+
+  function navigateToTarget(target) {
+    const nextPath = NAV_PATH_BY_TARGET[target];
+    if (!nextPath || getNormalizedPathname() === nextPath) {
+      return;
+    }
+
+    location.assign(nextPath);
+  }
+
+  function bindBottomNavNavigation() {
+    if (!document || typeof document.addEventListener !== "function") {
+      return;
+    }
+
+    document.addEventListener("click", event => {
+      const target = getNavigationTarget(event);
+      if (target) {
+        navigateToTarget(target);
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      const key = event && event.key;
+      if (key !== "Enter" && key !== " " && key !== "Spacebar") {
+        return;
+      }
+
+      const target = getNavigationTarget(event);
+      if (!target) {
+        return;
+      }
+
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      navigateToTarget(target);
+    });
   }
 
   async function boot() {
@@ -393,33 +514,122 @@ export function buildMobileUiuxBridgeScript(
       currentContext.flags.settingsWriteEnabled === true;
   }
 
+  function getMutationInFlightKey(options) {
+    return options.mutationKey + ":" + options.method + ":" + options.url;
+  }
+
+  function getDefaultClinicId() {
+    return isRecord(currentContext) && typeof currentContext.defaultClinicId === "string"
+      ? currentContext.defaultClinicId
+      : "";
+  }
+
+  function normalizeDailyReportPayload(payload) {
+    if (!isRecord(payload)) {
+      return payload;
+    }
+
+    if (typeof payload.clinic_id === "string" && payload.clinic_id.length > 0) {
+      return payload;
+    }
+
+    const clinicId = getDefaultClinicId();
+    if (!clinicId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      clinic_id: clinicId
+    };
+  }
+
+  function normalizeSettingsPayload(payload) {
+    if (!isRecord(payload)) {
+      return payload;
+    }
+
+    if (typeof payload.clinic_id === "string" && payload.clinic_id.length > 0) {
+      return payload;
+    }
+
+    const clinicId = getDefaultClinicId();
+    if (!clinicId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      clinic_id: clinicId
+    };
+  }
+
+  function getSettingsApplyReadScreen() {
+    const screen = getScreen();
+    return screen === "settings" || screen === "settings-detail" ? screen : null;
+  }
+
+  async function runMobileBffMutation(options) {
+    showMutationStatus("pending", STATUS_MESSAGES.saving);
+    const result = await mutateJson(options.url, options.method, options.payload);
+    if (result.kind === "unauthorized") {
+      showMutationStatus("failed", STATUS_MESSAGES.unauthorized);
+      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+      return false;
+    }
+    if (result.kind === "forbidden") {
+      showMutationStatus("failed", STATUS_MESSAGES.forbidden);
+      showFallback("forbidden", STATUS_MESSAGES.forbidden);
+      return false;
+    }
+    if (result.kind === "conflict") {
+      showMutationStatus("conflict", STATUS_MESSAGES.reservationConflict);
+      showFallback("conflict", STATUS_MESSAGES.reservationConflict);
+      return false;
+    }
+    if (result.kind === "unavailable") {
+      showMutationStatus("failed", STATUS_MESSAGES.unavailable);
+      showFallback("unavailable", STATUS_MESSAGES.unavailable);
+      return false;
+    }
+    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
+      showMutationStatus("failed", STATUS_MESSAGES.invalid);
+      showFallback("invalid", STATUS_MESSAGES.invalid);
+      return false;
+    }
+
+    if (options.applyReadScreen && typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
+      const applied = applyReadData(options.applyReadScreen, result.payload);
+      if (applied !== true) {
+        showMutationStatus("failed", STATUS_MESSAGES.invalid);
+        showFallback("invalid", STATUS_MESSAGES.invalid);
+        return false;
+      }
+    }
+
+    showMutationStatus("success", options.successMessage);
+    return true;
+  }
+
   async function mutateMobileBff(options) {
     if (!REAL_DATA_ENABLED || options.canWrite() !== true) {
       showMutationStatus("disabled", options.disabledMessage);
       return false;
     }
 
-    showMutationStatus("pending", STATUS_MESSAGES.saving);
-    const result = await mutateJson(options.url, options.method, options.payload);
-    if (result.kind === "unauthorized") {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
-      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
-      return false;
-    }
-    if (result.kind === "forbidden") {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("forbidden", STATUS_MESSAGES.forbidden);
-      return false;
-    }
-    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("invalid", STATUS_MESSAGES.invalid);
-      return false;
+    const inFlightKey = getMutationInFlightKey(options);
+    const existingMutation = inFlightMutations.get(inFlightKey);
+    if (existingMutation) {
+      showMutationStatus("pending", STATUS_MESSAGES.saving);
+      return existingMutation;
     }
 
-    showMutationStatus("succeeded", options.successMessage);
-    return true;
+    const mutation = runMobileBffMutation(options).finally(() => {
+      inFlightMutations.delete(inFlightKey);
+    });
+    inFlightMutations.set(inFlightKey, mutation);
+    return mutation;
   }
 
   function mutateReservation(method, payload) {
@@ -427,9 +637,11 @@ export function buildMobileUiuxBridgeScript(
       url: "/api/mobile-uiux/reservations",
       method,
       payload,
+      mutationKey: "reservations",
       canWrite: canWriteReservations,
       disabledMessage: STATUS_MESSAGES.writeDisabled,
-      successMessage: STATUS_MESSAGES.reservationSaved
+      successMessage: STATUS_MESSAGES.reservationSaved,
+      applyReadScreen: method === "PATCH" ? "reservations" : null
     });
   }
 
@@ -437,10 +649,12 @@ export function buildMobileUiuxBridgeScript(
     return mutateMobileBff({
       url: "/api/mobile-uiux/daily-reports",
       method: "POST",
-      payload,
+      payload: normalizeDailyReportPayload(payload),
+      mutationKey: "daily-reports",
       canWrite: canWriteDailyReports,
       disabledMessage: STATUS_MESSAGES.dailyReportWriteDisabled,
-      successMessage: STATUS_MESSAGES.dailyReportSaved
+      successMessage: STATUS_MESSAGES.dailyReportSaved,
+      applyReadScreen: "daily-reports"
     });
   }
 
@@ -448,10 +662,12 @@ export function buildMobileUiuxBridgeScript(
     return mutateMobileBff({
       url: "/api/mobile-uiux/settings",
       method: "PUT",
-      payload,
+      payload: normalizeSettingsPayload(payload),
+      mutationKey: "settings",
       canWrite: canWriteSettings,
       disabledMessage: STATUS_MESSAGES.settingsWriteDisabled,
-      successMessage: STATUS_MESSAGES.settingsSaved
+      successMessage: STATUS_MESSAGES.settingsSaved,
+      applyReadScreen: getSettingsApplyReadScreen()
     });
   }
 
@@ -469,6 +685,8 @@ export function buildMobileUiuxBridgeScript(
       return mutateSettings(payload);
     }
   };
+
+  bindBottomNavNavigation();
 
   const ready = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);

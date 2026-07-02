@@ -9,5 +9,5 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ resource: string }> }
 ) {
-  return handleMobileUiuxScreenRequest(request, context, 'production');
+  return handleMobileUiuxScreenRequest(request, context, 'preview');
 }

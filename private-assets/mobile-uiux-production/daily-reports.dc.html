@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./support.js"></script>
+
+<style data-mobile-uiux-production-shell>
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body[data-mobile-uiux-shell="production"] {
+  width: 100%;
+  min-height: 100svh;
+  background: var(--screen-bg, #f3f5f4);
+  overflow: hidden;
+}
+[data-mobile-uiux-production-root] {
+  width: 100% !important;
+  min-height: 100svh !important;
+  height: 100svh !important;
+  overflow: hidden !important;
+  background: var(--screen-bg, #f3f5f4) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+[data-screen-label] {
+  width: 100% !important;
+  height: 100svh !important;
+  min-height: 100svh !important;
+  border-radius: 0 !important;
+}
+.scrl { -webkit-overflow-scrolling: touch; }
+</style></head>
+<body data-mobile-uiux-shell="production">
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans JP", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .scrl::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="日報（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
+
+      
+
+      <!-- status bar -->
+      
+
+      <!-- HEADER -->
+      <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px 10px;">
+          <div style="display: flex; flex-direction: column; gap: 1px; margin-right: auto;">
+            <div style="font-size: 19px; font-weight: 700; color: var(--fg);">日報</div>
+            <div style="font-size: 11px; color: var(--fg-2); white-space: nowrap;">本町ケア整骨院 ・ JST</div>
+          </div>
+          <sc-if value="{{ showStandard }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size: 13px; font-weight: 700; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 9px 14px;">{{ todayLabel }}</div>
+          </sc-if>
+          <sc-if value="{{ showManager }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px;">
+              <button onClick="{{ pToday }}" style="{{ pTodayStyle }}">今日</button>
+              <button onClick="{{ p7 }}" style="{{ p7Style }}">直近7日</button>
+              <button onClick="{{ pMonth }}" style="{{ pMonthStyle }}">今月</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <!-- read-only banner -->
+      <sc-if value="{{ isReadOnly }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--s-uc-bg); color: var(--s-uc); font-size: 11.5px; font-weight: 500; border-bottom: 1px solid var(--border);">
+          <span style="width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--s-uc); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700;">i</span>
+          マネージャーは閲覧専用です — 日報の入力・編集はできません
+        </div>
+      </sc-if>
+
+      <!-- CONTENT -->
+      <div class="scrl" style="flex: 1; overflow-y: auto; position: relative;">
+
+        <!-- ░ STANDARD VIEW ░ -->
+        <sc-if value="{{ showStandard }}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 16px;">
+
+            <!-- today status banner -->
+            <sc-if value="{{ todayUnsubmitted }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 14px 15px; background: var(--s-uc-bg); border: 1px solid var(--s-uc); border-radius: 14px;">
+                <div style="flex: 1;"><div style="font-size: 13.5px; font-weight: 700; color: var(--s-uc);">本日の日報は未提出です</div><div style="font-size: 11.5px; color: var(--fg-2); margin-top: 2px;">{{ todayLabel }} ・ 入力中 {{ todayCount }} 件</div></div>
+                <button onClick="{{ inputToday }}" style="min-height: 44px; padding: 0 16px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap;">入力する</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ todaySubmittedFlag }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 10px; padding: 14px 15px; background: var(--s-cf-bg); border: 1px solid var(--s-cf); border-radius: 14px;">
+                <span style="width: 18px; height: 18px; border-radius: 50%; background: var(--s-cf); color: var(--primary-fg); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">✓</span>
+                <div style="flex: 1;"><div style="font-size: 13.5px; font-weight: 700; color: var(--s-cf);">本日の日報は提出済みです</div><div style="font-size: 11.5px; color: var(--fg-2); margin-top: 2px;">{{ todayLabel }} ・ {{ todayCount }} 件</div></div>
+                <button onClick="{{ inputToday }}" style="min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 11px; font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;">編集</button>
+              </div>
+            </sc-if>
+
+            <!-- today summary -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">当日サマリー</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px;">
+                <div style="background: var(--primary-soft); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 22px; font-weight: 700; color: var(--on-primary-soft); line-height: 1.1;">{{ sumRevenue }}</div><div style="font-size: 11px; color: var(--on-primary-soft); opacity: .85; font-weight: 500; margin-top: 2px;">本日の売上</div></div>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 22px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ sumPatients }}</div><div style="font-size: 11px; color: var(--fg-2); font-weight: 500; margin-top: 2px;">患者数</div></div>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 18px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ sumHoken }}</div><div style="font-size: 11px; color: var(--fg-2); font-weight: 500; margin-top: 2px;">保険</div></div>
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 18px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ sumJihi }}</div><div style="font-size: 11px; color: var(--fg-2); font-weight: 500; margin-top: 2px;">自費・自賠責</div></div>
+              </div>
+            </div>
+
+            <!-- report list -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">日報一覧（直近）</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ listRows }}" as="row" hint-placeholder-count="5">
+                  <div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px;">
+                    <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;">
+                      <div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ row.date }}</span><span style="font-size: 10.5px; font-weight: 700; color: {{ row.c }}; background: {{ row.b }}; padding: 2px 8px; border-radius: 999px;">{{ row.statusLabel }}</span></div>
+                      <div style="font-size: 11.5px; color: var(--fg-2);">{{ row.patients }} ・ {{ row.revenue }}</div>
+                    </div>
+                    <button onClick="{{ row.onEdit }}" style="min-height: 44px; min-width: 56px; padding: 0 14px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 11px; font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer;">{{ row.editLabel }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ░ MANAGER VIEW ░ -->
+        <sc-if value="{{ showManager }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 110px; display: flex; flex-direction: column; gap: 18px;">
+            <!-- KPI -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">KPIサマリー ・ {{ periodLabel }}</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 9px;">
+                <sc-for list="{{ kpiBoxes }}" as="k" hint-placeholder-count="6">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;"><div style="font-size: 20px; font-weight: 700; color: {{ k.color }}; line-height: 1.1;">{{ k.value }}</div><div style="font-size: 11px; color: var(--fg-2); font-weight: 500; margin-top: 3px;">{{ k.label }}</div></div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- revenue trend cards -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">売上推移（日別）</div>
+              <div style="display: flex; flex-direction: column; gap: 9px;">
+                <sc-for list="{{ trendCards }}" as="t" hint-placeholder-count="6">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 15px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;"><span style="font-size: 14px; font-weight: 700; color: var(--fg);">{{ t.date }}</span><span style="font-size: 10.5px; font-weight: 700; color: {{ t.c }}; background: {{ t.b }}; padding: 2px 8px; border-radius: 999px;">{{ t.statusLabel }}</span><span style="font-size: 19px; font-weight: 700; color: var(--fg); margin-left: auto;">{{ t.revenue }}</span></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; padding-top: 10px; border-top: 1px solid var(--border);">
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">保険</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ t.hoken }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">自費</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ t.jihi }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">患者数</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ t.patients }}</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span style="font-size: 11px; color: var(--fg-2);">客単価</span><span style="font-size: 12px; font-weight: 600; color: var(--fg);">{{ t.unit }}</span></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- status list -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--fg-2); margin: 0 2px 8px;">提出ステータス</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ statusRows }}" as="r" hint-placeholder-count="6">
+                  <div style="display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 12px 14px;">
+                    <span style="font-size: 14px; font-weight: 700; color: var(--fg); min-width: 78px;">{{ r.date }}</span>
+                    <span style="font-size: 11px; color: var(--fg-2); margin-left: auto;">{{ r.sub }}</span>
+                    <span style="font-size: 10.5px; font-weight: 700; color: {{ r.c }}; background: {{ r.b }}; padding: 3px 10px; border-radius: 999px;">{{ r.statusLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- BOTTOM NAV -->
+      <div style="flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 8px 24px; display: flex; z-index: 9;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="home" role="button" tabindex="0" aria-label="ホームへ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px;"></div><span style="font-size: 10px; color: var(--fg-3);">ホーム</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="reservations" role="button" tabindex="0" aria-label="予約へ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px; position: relative;"><div style="position: absolute; inset: 3px 3px auto 3px; height: 2px; background: var(--fg-3);"></div></div><span style="font-size: 10px; color: var(--fg-3);">予約</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="patients" role="button" tabindex="0" aria-label="患者へ移動"><div style="width: 14px; height: 14px; border: 2px solid var(--fg-3); border-radius: 50%; margin-top: 2px;"></div><span style="font-size: 10px; color: var(--fg-3);">患者</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="daily-reports" role="button" tabindex="0" aria-label="日報へ移動"><div style="display: flex; align-items: flex-end; gap: 2px; height: 18px;"><div style="width: 4px; height: 8px; background: var(--primary); border-radius: 1px;"></div><div style="width: 4px; height: 14px; background: var(--primary); border-radius: 1px;"></div><div style="width: 4px; height: 11px; background: var(--primary); border-radius: 1px;"></div></div><span style="font-size: 10px; color: var(--primary); font-weight: 700;">日報</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="settings" role="button" tabindex="0" aria-label="設定へ移動"><div style="width: 20px; height: 20px; border: 2px solid var(--fg-3); border-radius: 50%;"></div><span style="font-size: 10px; color: var(--fg-3);">設定</span></div>
+      </div>
+
+      <!-- ░░ INPUT FORM ░░ -->
+      <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeForm }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 56px; z-index: 51; background: var(--screen-bg); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); display: flex; flex-direction: column;">
+          <div style="padding: 10px 0 2px; display: flex; justify-content: center; flex: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; flex: none; background: var(--surface); border-bottom: 1px solid var(--border);">
+            <div style="display: flex; flex-direction: column; gap: 1px;"><div style="font-size: 18px; font-weight: 700; color: var(--fg);">日報入力</div><div style="font-size: 11.5px; color: var(--fg-2);">{{ formDate }}</div></div>
+            <button onClick="{{ closeForm }}" aria-label="閉じる" style="margin-left: auto; width: 44px; height: 44px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 17px; display: flex; align-items: center; justify-content: center;">✕</button>
+          </div>
+
+          <div class="scrl" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+            <!-- basic info -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px;">
+              <div style="font-size: 12px; font-weight: 700; color: var(--fg-2); margin-bottom: 12px;">基本情報</div>
+              <div style="display: flex; gap: 12px;">
+                <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">日付</span><input type="date" value="2026-06-20" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 13px 12px; outline: none;"></label>
+                <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 11.5px; color: var(--fg-2);">記入者</span>
+                  <select value="{{ formTher }}" onChange="{{ onFormTher }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                    <sc-for list="{{ therOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <!-- line items -->
+            <div>
+              <div style="display: flex; align-items: center; margin: 0 2px 8px;"><div style="font-size: 12px; font-weight: 700; color: var(--fg-2);">患者明細</div><div style="font-size: 11px; color: var(--fg-3); margin-left: auto;">{{ totalCount }} 件</div></div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{ itemRows }}" as="it" hint-placeholder-count="3">
+                  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; position: relative;">
+                    <button onClick="{{ it.onAskDelete }}" aria-label="明細を削除" style="position: absolute; top: 7px; right: 7px; width: 44px; height: 44px; border: none; background: transparent; border-radius: 10px; cursor: pointer; color: var(--fg-3); font-size: 16px; display: flex; align-items: center; justify-content: center;">✕</button>
+                    <label style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 11px; margin-right: 42px;"><span style="font-size: 11px; color: var(--fg-2);">患者名（フルネーム）</span><input value="{{ it.patient }}" onChange="{{ it.onPatient }}" placeholder="例：山田 花子" style="font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 12px; outline: none;"></label>
+                    <label style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 11px;"><span style="font-size: 11px; color: var(--fg-2);">メニュー</span>
+                      <select value="{{ it.menuVal }}" onChange="{{ it.onMenu }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                        <sc-for list="{{ menuOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                      </select>
+                    </label>
+                    <div style="display: flex; gap: 6px; margin-bottom: 11px;">
+                      <sc-for list="{{ it.typeBtns }}" as="tb" hint-placeholder-count="3">
+                        <button onClick="{{ tb.onTap }}" style="{{ tb.style }}">{{ tb.label }}</button>
+                      </sc-for>
+                    </div>
+                    <div style="display: flex; align-items: flex-end; gap: 12px;">
+                      <sc-if value="{{ it.showRatio }}" hint-placeholder-val="{{ true }}">
+                        <label style="flex: 1; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 11px; color: var(--fg-2);">負担割合</span>
+                          <select value="{{ it.ratioVal }}" onChange="{{ it.onRatio }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 14px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 13px 32px 13px 12px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 11px center;">
+                            <sc-for list="{{ ratioOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                          </select>
+                        </label>
+                      </sc-if>
+                      <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;"><span style="font-size: 11px; color: var(--fg-2);">金額</span><span style="font-size: 18px; font-weight: 700; color: var(--fg);">{{ it.amountYen }}</span></div>
+                    </div>
+                    <sc-if value="{{ it.confirming }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; inset: 0; background: var(--surface); border-radius: 14px; display: flex; flex-direction: column; justify-content: center; gap: 13px; padding: 16px; z-index: 3;">
+                        <div style="font-size: 13.5px; font-weight: 700; color: var(--fg); text-align: center;">この明細を削除しますか？</div>
+                        <div style="display: flex; gap: 10px;">
+                          <button onClick="{{ it.onCancelDelete }}" style="flex: 1; min-height: 44px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 11px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">キャンセル</button>
+                          <button onClick="{{ it.onConfirmDelete }}" style="flex: 1; min-height: 44px; border: none; background: var(--s-ns); color: #fff; border-radius: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">削除する</button>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <button onClick="{{ addItem }}" style="min-height: 48px; border: 1.5px dashed var(--border-strong); border-radius: 13px; background: transparent; color: var(--primary); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;"><span style="font-size: 17px; line-height: 1;">＋</span>明細を追加</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- fixed save bar -->
+          <div style="flex: none; padding: 12px 16px 30px; border-top: 1px solid var(--border); background: var(--surface); display: flex; align-items: center; gap: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 1px;"><span style="font-size: 11px; color: var(--fg-2);">合計（{{ totalCount }}件）</span><span style="font-size: 20px; font-weight: 700; color: var(--fg);">{{ totalYen }}</span></div>
+            <button onClick="{{ saveReport }}" style="flex: 1; min-height: 52px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;">日報を保存</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; bottom: 96px; left: 50%; z-index: 80; background: var(--toast-bg); color: var(--toast-fg); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); animation: toastIn .25s ease; white-space: nowrap; max-width: 86%;">{{ toastMsg }}</div>
+      </sc-if>
+
+    </div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 720, &quot;height&quot;: 900}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f7d72&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#2f7d72&quot;, &quot;#356a9c&quot;, &quot;#4a6670&quot;, &quot;#7a5a86&quot;]}}">
+class Component extends DCLogic {
+  THER = [
+    { id: 't1', name: '田中 健太' }, { id: 't2', name: '佐藤 美咲' },
+    { id: 't3', name: '鈴木 大輔' }, { id: 't4', name: '山本 由香' },
+  ];
+  PATIENTS = ['渡辺 結衣', '小林 誠一', '加藤 さくら', '中村 拓海', '伊藤 春香', '高橋 涼介', '松本 陽子', '井上 健', '木村 美穂', '斎藤 隆'];
+  MENUS_DR = [
+    { name: '保険施術（健康保険）', price: 1200, type: '保険' },
+    { name: 'スポーツ外傷ケア', price: 1000, type: '保険' },
+    { name: '自費骨盤矯正', price: 3300, type: '自費' },
+    { name: '産後骨盤矯正', price: 4400, type: '自費' },
+    { name: '鍼灸施術', price: 3850, type: '自費' },
+    { name: '美容鍼', price: 5500, type: '自費' },
+    { name: '交通事故施術（自賠責）', price: 4200, type: '自賠責' },
+    { name: 'EMS（楽トレ）', price: 1100, type: '自費' },
+    { name: '猫背・姿勢矯正', price: 2200, type: '自費' },
+    { name: '全身もみほぐし', price: 3300, type: '自費' },
+  ];
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    confirmed: { label: '確認済み', c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' },
+    unsubmitted: { label: '未提出', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    needscheck: { label: '要確認', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' },
+  };
+
+  state = {
+    theme: 'light', role: 'therapist', period: '7d',
+    formOpen: false, editKey: null, formDate: '', formTher: 't1',
+    items: [], itemSeq: 100, toast: '', confirmDel: null,
+    todaySubmitted: false,
+    todayItems: [
+      { id: 1, patient: '渡辺 結衣', menu: '産後骨盤矯正', type: '自費', ratio: 3 },
+      { id: 2, patient: '小林 誠一', menu: '保険施術（健康保険）', type: '保険', ratio: 3 },
+      { id: 3, patient: '中村 拓海', menu: '交通事故施術（自賠責）', type: '自賠責', ratio: 3 },
+    ],
+    reports: [
+      { key: 'd1', date: '6/19', wd: '木', revenue: 52800, hoken: 14200, jihi: 38600, patients: 21, status: 'confirmed' },
+      { key: 'd2', date: '6/18', wd: '水', revenue: 47300, hoken: 12900, jihi: 34400, patients: 19, status: 'submitted' },
+      { key: 'd3', date: '6/17', wd: '火', revenue: 39600, hoken: 10100, jihi: 29500, patients: 16, status: 'needscheck' },
+      { key: 'd4', date: '6/16', wd: '月', revenue: 58100, hoken: 15500, jihi: 42600, patients: 24, status: 'confirmed' },
+      { key: 'd5', date: '6/13', wd: '金', revenue: 44900, hoken: 11800, jihi: 33100, patients: 18, status: 'submitted' },
+      { key: 'd6', date: '6/12', wd: '木', revenue: 41200, hoken: 9900, jihi: 31300, patients: 17, status: 'submitted' },
+    ],
+  };
+
+  // テーマ・デザイントークンは clinic-shared.js に集約（全画面共通・キャッシュ共有）。
+  // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
+  setRoot = (el) => { this._root = el; this.applyTheme(); };
+  applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
+  __mobileUiuxOriginalComponentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
+  amt = (it) => { const m = this.MENUS_DR.find(x => x.name === it.menu) || { price: 0 }; return it.type === '保険' ? Math.round(m.price * it.ratio / 10) : m.price; };
+  tName = (id) => { const t = this.THER.find(x => x.id === id); return t ? t.name : ''; };
+
+  toast = (m) => { this.setState({ toast: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2300); };
+  setLight = () => this.setState({ theme: 'light' });
+  setDark = () => this.setState({ theme: 'dark' });
+  onRole = (e) => this.setState({ role: e.target.value, formOpen: false });
+  pToday = () => this.setState({ period: 'today' });
+  p7 = () => this.setState({ period: '7d' });
+  pMonth = () => this.setState({ period: 'month' });
+
+  genItems = (r) => {
+    const n = Math.min(4, Math.max(2, Math.round(r.patients / 5)));
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const m = this.MENUS_DR[(r.patients + i * 2) % this.MENUS_DR.length];
+      out.push({ id: 1000 + i, patient: this.PATIENTS[(r.patients + i) % this.PATIENTS.length], menu: m.name, type: m.type, ratio: 3 });
+    }
+    return out;
+  };
+  openInput = (key) => () => {
+    let items, dlabel;
+    if (key === 'd0') { items = this.state.todayItems.map(x => ({ ...x })); dlabel = '6/20（金）'; }
+    else { const r = this.state.reports.find(x => x.key === key); items = this.genItems(r); dlabel = r.date + '（' + r.wd + '）'; }
+    this.setState({ formOpen: true, editKey: key, formDate: dlabel, items });
+  };
+  inputToday = this.openInput('d0');
+  closeForm = () => this.setState({ formOpen: false, confirmDel: null });
+
+  setItem = (id, patch) => this.setState(s => ({ items: s.items.map(x => x.id === id ? { ...x, ...patch } : x) }));
+  setItemPatient = (id) => (e) => this.setItem(id, { patient: e.target.value });
+  setItemMenu = (id) => (e) => { const m = this.MENUS_DR.find(x => x.name === e.target.value); this.setItem(id, { menu: e.target.value, type: m ? m.type : '自費' }); };
+  setItemType = (id, t) => () => this.setItem(id, { type: t });
+  setItemRatio = (id) => (e) => this.setItem(id, { ratio: parseInt(e.target.value, 10) });
+  addItem = () => this.setState(s => { const m = this.MENUS_DR[0]; return { items: [...s.items, { id: s.itemSeq, patient: '', menu: m.name, type: m.type, ratio: 3 }], itemSeq: s.itemSeq + 1 }; });
+  removeItem = (id) => () => this.setState(s => ({ items: s.items.filter(x => x.id !== id), confirmDel: null }));
+  askDelete = (id) => () => this.setState({ confirmDel: id });
+  cancelDelete = () => this.setState({ confirmDel: null });
+  onFormTher = (e) => this.setState({ formTher: e.target.value });
+  saveReport = () => {
+    const k = this.state.editKey;
+    if (k === 'd0') this.setState({ todayItems: this.state.items.map(x => ({ ...x })), todaySubmitted: true, formOpen: false });
+    else this.setState(s => ({ reports: s.reports.map(r => r.key === k ? { ...r, status: 'submitted' } : r), formOpen: false }));
+    this.toast('日報を保存しました');
+  };
+
+  seg = (active) => `all: unset; box-sizing: border-box; text-align: center; flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12px; font-family: inherit; cursor: pointer; padding: 0 10px; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500}; box-shadow: ${active ? '0 1px 3px rgba(0,0,0,.12)' : 'none'};`;
+  seg3 = (active) => `all: unset; box-sizing: border-box; flex: 1; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 9px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; background: ${active ? 'var(--primary)' : 'var(--surface-2)'}; color: ${active ? 'var(--primary-fg)' : 'var(--fg-2)'}; border: 1px solid ${active ? 'var(--primary)' : 'var(--border)'};`;
+  themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
+
+  __mobileUiuxOriginalRenderVals() {
+    const s = this.state;
+    const canWrite = s.role !== 'manager';
+    const showManager = s.role === 'manager';
+    const showStandard = !showManager;
+
+    // today aggregates
+    const ti = s.todayItems;
+    const tRevenue = ti.reduce((a, it) => a + this.amt(it), 0);
+    const tHoken = ti.filter(it => it.type === '保険').reduce((a, it) => a + this.amt(it), 0);
+    const tJihi = tRevenue - tHoken;
+    const todayObj = { key: 'd0', date: '6/20', wd: '金', revenue: tRevenue, hoken: tHoken, jihi: tJihi, patients: ti.length, status: s.todaySubmitted ? 'submitted' : 'unsubmitted' };
+    const reportsAll = [todayObj].concat(s.reports);
+
+    // standard list
+    const listRows = reportsAll.map(r => {
+      const st = this.STATUS_DR[r.status];
+      return { date: r.date + '（' + r.wd + '）', statusLabel: st.label, c: st.c, b: st.b, patients: r.patients + '名', revenue: this.yen(r.revenue), onEdit: this.openInput(r.key), editLabel: r.key === 'd0' ? '入力' : '編集' };
+    });
+
+    // manager period filter
+    const fr = s.period === 'today' ? [todayObj] : reportsAll;
+    const submitted = fr.filter(r => r.status === 'submitted' || r.status === 'confirmed');
+    const totalRev = submitted.reduce((a, r) => a + r.revenue, 0);
+    const avg = submitted.length ? Math.round(totalRev / submitted.length) : 0;
+    const totPat = submitted.reduce((a, r) => a + r.patients, 0);
+    const unit = totPat ? Math.round(totalRev / totPat) : 0;
+    const unsub = fr.filter(r => r.status === 'unsubmitted').length;
+    const needs = fr.filter(r => r.status === 'needscheck').length;
+    const kpiBoxes = [
+      { label: '累計売上', value: this.yen(totalRev), color: 'var(--fg)' },
+      { label: '平均売上 / 日', value: this.yen(avg), color: 'var(--fg)' },
+      { label: '患者数', value: totPat + '名', color: 'var(--fg)' },
+      { label: '客単価', value: this.yen(unit), color: 'var(--fg)' },
+      { label: '未提出日', value: unsub + '日', color: 'var(--s-uc)' },
+      { label: '要確認日', value: needs + '日', color: 'var(--s-ns)' },
+    ];
+    const trendCards = fr.map(r => {
+      const st = this.STATUS_DR[r.status];
+      return { date: r.date + '（' + r.wd + '）', statusLabel: st.label, c: st.c, b: st.b, revenue: this.yen(r.revenue), hoken: this.yen(r.hoken), jihi: this.yen(r.jihi), patients: r.patients + '名', unit: this.yen(r.patients ? Math.round(r.revenue / r.patients) : 0) };
+    });
+    const statusRows = fr.map(r => {
+      const st = this.STATUS_DR[r.status];
+      return { date: r.date + '（' + r.wd + '）', statusLabel: st.label, c: st.c, b: st.b, sub: r.patients + '名 ・ ' + this.yen(r.revenue) };
+    });
+
+    // form items
+    const ratioOpts = [{ v: '1', l: '1割' }, { v: '2', l: '2割' }, { v: '3', l: '3割' }];
+    const menuOpts = this.MENUS_DR.map(m => ({ v: m.name, l: m.name }));
+    const therOpts = this.THER.map(t => ({ v: t.id, l: t.name }));
+    const itemRows = s.items.map(it => ({
+      id: it.id, patient: it.patient, onPatient: this.setItemPatient(it.id),
+      menuVal: it.menu, onMenu: this.setItemMenu(it.id),
+      typeBtns: ['保険', '自費', '自賠責'].map(t => ({ label: t, onTap: this.setItemType(it.id, t), style: this.seg3(it.type === t) })),
+      showRatio: it.type === '保険', ratioVal: String(it.ratio), onRatio: this.setItemRatio(it.id),
+      amountYen: this.yen(this.amt(it)),
+      onAskDelete: this.askDelete(it.id), onCancelDelete: this.cancelDelete, onConfirmDelete: this.removeItem(it.id),
+      confirming: it.id === s.confirmDel,
+    }));
+    const totalCount = s.items.length;
+    const totalYen = this.yen(s.items.reduce((a, it) => a + this.amt(it), 0));
+
+    return {
+      setRoot: this.setRoot,
+      roleVal: s.role, onRole: this.onRole,
+      setLight: this.setLight, setDark: this.setDark,
+      lightBtn: this.themeBtn(s.theme === 'light'), darkBtn: this.themeBtn(s.theme === 'dark'),
+      todayLabel: '6/20（金）',
+      showStandard, showManager, isReadOnly: !canWrite, canWrite,
+      pToday: this.pToday, p7: this.p7, pMonth: this.pMonth,
+      pTodayStyle: this.seg(s.period === 'today'), p7Style: this.seg(s.period === '7d'), pMonthStyle: this.seg(s.period === 'month'),
+      periodLabel: s.period === 'today' ? '今日' : s.period === 'month' ? '今月' : '直近7日',
+      todayUnsubmitted: showStandard && !s.todaySubmitted,
+      todaySubmittedFlag: showStandard && s.todaySubmitted,
+      todayCount: ti.length,
+      inputToday: this.inputToday,
+      sumRevenue: this.yen(tRevenue), sumPatients: ti.length + '名', sumHoken: this.yen(tHoken), sumJihi: this.yen(tJihi),
+      listRows, kpiBoxes, trendCards, statusRows,
+      formOpen: s.formOpen, closeForm: this.closeForm, formDate: s.formDate,
+      formTher: s.formTher, onFormTher: this.onFormTher, therOpts,
+      itemRows, menuOpts, ratioOpts, addItem: this.addItem,
+      totalCount, totalYen, saveReport: this.saveReport,
+      toastShow: !!s.toast, toastMsg: s.toast,
+    };
+  }
+
+
+  renderVals() {
+    const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
+      ? this.__mobileUiuxOriginalRenderVals()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals
+      ? { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport, ...hydratedVals }
+      : { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport };
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
+      return this.__mobileUiuxOriginalComponentDidMount();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
+      return this.__mobileUiuxOriginalComponentWillUnmount();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'daily-reports' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data) || !this.__mobileUiuxIsRecord(data.dailyReports) || !Array.isArray(data.dailyReports.reports)) {
+      return null;
+    }
+
+    const reports = [];
+    for (const report of data.dailyReports.reports) {
+      const mappedReport = this.__mobileUiuxReportToRecord(report);
+      if (mappedReport === null) return null;
+      reports.push(mappedReport);
+    }
+    const reportDate = this.__mobileUiuxResolveReportDate(data, reports, payload.generatedAt);
+    if (!reportDate) {
+      return null;
+    }
+    this.__mobileUiuxCurrentReportDateKey = reportDate;
+
+    const todayReport = reports.length > 0 ? reports[0] : null;
+    const todaySubmitted = todayReport !== null;
+    const todayRevenue = todayReport ? todayReport.revenue : 0;
+    const todayHoken = todayReport ? todayReport.hoken : 0;
+    const todayJihi = todayReport ? todayReport.jihi : 0;
+    const todayPatients = todayReport ? todayReport.patients : 0;
+    const viewRows = this.__mobileUiuxBuildDailyReportViewRows(reports);
+    const summary = this.__mobileUiuxBuildDailyReportSummary(data.dailyReports.summary, viewRows);
+
+    return {
+      todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
+      todayUnsubmitted: !todaySubmitted,
+      todaySubmittedFlag: todaySubmitted,
+      todayCount: todayPatients,
+      sumRevenue: this.yen(todayRevenue),
+      sumPatients: todayPatients + '名',
+      sumHoken: this.yen(todayHoken),
+      sumJihi: this.yen(todayJihi),
+      listRows: viewRows.listRows,
+      kpiBoxes: this.__mobileUiuxBuildDailyReportKpiBoxes(summary, viewRows),
+      trendCards: viewRows.trendCards,
+      statusRows: viewRows.statusRows
+    };
+  }
+
+  __mobileUiuxSubmitDailyReport = async () => {
+    if (this.__mobileUiuxDailyReportSaving === true) {
+      this.__mobileUiuxShowWriteToast('日報を保存中です');
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.submitDailyReport !== 'function') {
+      this.__mobileUiuxShowWriteToast('日報保存は現在利用できません');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildDailyReportPayload();
+    if (!payload) {
+      this.__mobileUiuxShowWriteToast('日報を保存できません。入力内容を確認してください');
+      return false;
+    }
+
+    this.__mobileUiuxDailyReportSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.submitDailyReport(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxDailyReportSaving = false;
+    }
+
+    if (ok === true) {
+      if (typeof this.setState === 'function') {
+        this.setState({ formOpen: false, confirmDel: null });
+      }
+      this.__mobileUiuxShowWriteToast('日報を保存しました');
+      return true;
+    }
+
+    this.__mobileUiuxShowWriteToast('日報は保存されていません');
+    return false;
+  }
+
+  __mobileUiuxBuildDailyReportPayload() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (state.role === 'manager' || state.editKey !== 'd0' || !Array.isArray(state.items)) {
+      return null;
+    }
+
+    const reportDate = typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
+      ? this.__mobileUiuxCurrentReportDateKey
+      : this.__mobileUiuxTodayJstDateKey();
+    if (!reportDate) return null;
+
+    let totalRevenue = 0;
+    let insuranceRevenue = 0;
+    const menuAmountByName = this.__mobileUiuxBuildDailyReportMenuAmountMap();
+    for (const item of state.items) {
+      const amount = this.__mobileUiuxDailyReportItemAmount(item, menuAmountByName);
+      if (amount === null) return null;
+      totalRevenue += amount;
+      if (this.__mobileUiuxIsRecord(item) && item.type === '保険') {
+        insuranceRevenue += amount;
+      }
+    }
+
+    return {
+      report_date: reportDate,
+      total_patients: state.items.length,
+      new_patients: 0,
+      total_revenue: Math.round(totalRevenue),
+      insurance_revenue: Math.round(insuranceRevenue),
+      private_revenue: Math.round(totalRevenue - insuranceRevenue),
+      report_text: null
+    };
+  }
+
+  __mobileUiuxBuildDailyReportMenuAmountMap() {
+    const source = Array.isArray(this.MENUS_DR) ? this.MENUS_DR : [];
+    if (this.__mobileUiuxDailyReportMenuSource === source && this.__mobileUiuxDailyReportMenuAmountMap) {
+      return this.__mobileUiuxDailyReportMenuAmountMap;
+    }
+
+    const amountByName = new Map();
+    for (const menu of source) {
+      if (!this.__mobileUiuxIsRecord(menu) || typeof menu.name !== 'string') continue;
+      amountByName.set(menu.name, this.__mobileUiuxNumber(menu.price));
+    }
+
+    this.__mobileUiuxDailyReportMenuSource = source;
+    this.__mobileUiuxDailyReportMenuAmountMap = amountByName;
+    return amountByName;
+  }
+
+  __mobileUiuxDailyReportItemAmount(item, menuAmountByName) {
+    if (!this.__mobileUiuxIsRecord(item)) return null;
+    const baseAmount = typeof item.menu === 'string'
+      ? menuAmountByName.get(item.menu) || 0
+      : 0;
+    const ratio = Number(item.ratio);
+    const amount = item.type === '保険'
+      ? Math.round(baseAmount * (Number.isFinite(ratio) ? ratio : 0) / 10)
+      : baseAmount;
+    return Number.isFinite(amount) && amount >= 0 ? amount : null;
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
+  }
+
+  __mobileUiuxShowWriteToast(message) {
+    if (typeof this.toast === 'function') {
+      this.toast(message);
+    } else if (typeof this.setState === 'function') {
+      this.setState({ toast: message });
+    }
+  }
+
+  __mobileUiuxReportToRecord(report) {
+    if (!this.__mobileUiuxIsRecord(report) || typeof report.reportDate !== 'string') return null;
+    const dateParts = this.__mobileUiuxDateParts(report.reportDate);
+    if (!dateParts) return null;
+    const totalRevenue = this.__mobileUiuxNumber(report.totalRevenue);
+    const insuranceRevenue = this.__mobileUiuxNumber(report.insuranceRevenue);
+    const privateRevenue = this.__mobileUiuxNumber(report.privateRevenue);
+    const patients = this.__mobileUiuxNumber(report.totalPatients);
+    const status = typeof report.status === 'string' ? report.status : 'submitted';
+    return {
+      key: typeof report.id === 'string' && report.id.length > 0 ? report.id : report.reportDate,
+      dateKey: report.reportDate,
+      date: dateParts.month + '/' + dateParts.day,
+      wd: dateParts.weekday,
+      revenue: totalRevenue,
+      hoken: insuranceRevenue,
+      jihi: privateRevenue,
+      patients,
+      status: this.__mobileUiuxNormalizeDailyReportStatus(status)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportViewRows(reports) {
+    const listRows = [];
+    const trendCards = [];
+    const statusRows = [];
+    let needs = 0;
+    let totalRevenue = 0;
+    let totalPatients = 0;
+
+    for (const report of reports) {
+      if (report.status === 'needscheck') needs += 1;
+      totalRevenue += report.revenue;
+      totalPatients += report.patients;
+      listRows.push(this.__mobileUiuxBuildDailyReportListRow(report));
+      trendCards.push(this.__mobileUiuxBuildDailyReportTrendCard(report));
+      statusRows.push(this.__mobileUiuxBuildDailyReportStatusRow(report));
+    }
+
+    return { listRows, trendCards, statusRows, needs, totalRevenue, totalPatients };
+  }
+
+  __mobileUiuxBuildDailyReportListRow(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      patients: report.patients + '名',
+      revenue: this.yen(report.revenue),
+      onEdit: () => {},
+      editLabel: '編集'
+    };
+  }
+
+  __mobileUiuxBuildDailyReportTrendCard(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      revenue: this.yen(report.revenue),
+      hoken: this.yen(report.hoken),
+      jihi: this.yen(report.jihi),
+      patients: report.patients + '名',
+      unit: this.yen(report.patients ? Math.round(report.revenue / report.patients) : 0)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportStatusRow(report) {
+    const st = this.__mobileUiuxDailyReportStatusMeta(report.status);
+    return {
+      date: report.date + '（' + report.wd + '）',
+      statusLabel: st.label,
+      c: st.c,
+      b: st.b,
+      sub: report.patients + '名 ・ ' + this.yen(report.revenue)
+    };
+  }
+
+  __mobileUiuxBuildDailyReportSummary(summary, viewRows) {
+    if (this.__mobileUiuxIsRecord(summary)) {
+      return {
+        totalRevenue: this.__mobileUiuxNumber(summary.totalRevenue),
+        averageRevenue: this.__mobileUiuxNumber(summary.averageRevenue),
+        totalPatients: viewRows.totalPatients,
+        averagePatients: this.__mobileUiuxNumber(summary.averagePatients),
+        totalReports: this.__mobileUiuxNumber(summary.totalReports)
+      };
+    }
+    const reportCount = viewRows.listRows.length;
+    return {
+      totalRevenue: viewRows.totalRevenue,
+      averageRevenue: reportCount ? Math.round(viewRows.totalRevenue / reportCount) : 0,
+      totalPatients: viewRows.totalPatients,
+      averagePatients: reportCount ? Math.round(viewRows.totalPatients / reportCount) : 0,
+      totalReports: reportCount
+    };
+  }
+
+  __mobileUiuxBuildDailyReportKpiBoxes(summary, viewRows) {
+    const totalRevenue = summary.totalRevenue;
+    const averageRevenue = summary.averageRevenue;
+    const totalPatients = summary.totalPatients;
+    const unit = totalPatients ? Math.round(totalRevenue / totalPatients) : 0;
+    const missing = viewRows.listRows.length === 0 ? 1 : 0;
+    const needs = viewRows.needs;
+    return [
+      { label: '累計売上', value: this.yen(totalRevenue), color: 'var(--fg)' },
+      { label: '平均売上 / 日', value: this.yen(averageRevenue), color: 'var(--fg)' },
+      { label: '患者数', value: totalPatients + '名', color: 'var(--fg)' },
+      { label: '客単価', value: this.yen(unit), color: 'var(--fg)' },
+      { label: '未提出日', value: missing + '日', color: 'var(--s-uc)' },
+      { label: '要確認日', value: needs + '日', color: 'var(--s-ns)' }
+    ];
+  }
+
+  __mobileUiuxResolveReportDate(data, reports, generatedAt) {
+    if (reports.length > 0) return reports[0].dateKey;
+    if (typeof data.endDate === 'string') return data.endDate;
+    if (typeof data.startDate === 'string') return data.startDate;
+    if (typeof generatedAt === 'string') return this.__mobileUiuxIsoToJstDateKey(generatedAt);
+    return '';
+  }
+
+  __mobileUiuxNormalizeDailyReportStatus(value) {
+    if (value === 'confirmed') return 'confirmed';
+    if (value === 'needscheck' || value === 'needs_check') return 'needscheck';
+    if (value === 'unsubmitted' || value === 'missing') return 'unsubmitted';
+    return 'submitted';
+  }
+
+  __mobileUiuxDailyReportStatusMeta(value) {
+    const status = this.__mobileUiuxNormalizeDailyReportStatus(value);
+    if (this.STATUS_DR && this.STATUS_DR[status]) return this.STATUS_DR[status];
+    if (status === 'confirmed') return { label: '確認済み', c: 'var(--on-primary-soft)', b: 'var(--primary-soft)' };
+    if (status === 'unsubmitted') return { label: '未提出', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    if (status === 'needscheck') return { label: '要確認', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+    return { label: '提出済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+  }
+
+  __mobileUiuxNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  __mobileUiuxFormatDateLabel(value) {
+    const parts = this.__mobileUiuxDateParts(value);
+    if (!parts) return value;
+    return parts.month + '/' + parts.day + '（' + parts.weekday + '）';
+  }
+
+  __mobileUiuxDateParts(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return null;
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return { month, day, weekday: weekdays[date.getUTCDay()] };
+  }
+
+  __mobileUiuxIsoToJstDateKey(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const totalMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60;
+    const dayOffset = Math.floor(totalMinutes / 1440);
+    const jstDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + dayOffset));
+    const year = jstDate.getUTCFullYear();
+    const month = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(jstDate.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+}
+</script>
+</body>
+</html>

@@ -29,9 +29,11 @@ function buildRequest(cookieHeader?: string, search = '') {
 
 describe('GET /api/mobile-uiux/context', () => {
   const originalEnv = process.env;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     process.env = {
       ...originalEnv,
       MOBILE_UIUX_ENABLED: 'true',
@@ -64,6 +66,10 @@ describe('GET /api/mobile-uiux/context', () => {
     process.env = originalEnv;
   });
 
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
   it('returns 401 when unauthenticated', async () => {
     getCurrentUserMock.mockResolvedValue(null);
 
@@ -72,6 +78,9 @@ describe('GET /api/mobile-uiux/context', () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
+    expect(response.headers.get('content-type')).toBe(
+      'application/json; charset=utf-8'
+    );
     expect(body).toEqual({
       success: false,
       error: {
@@ -102,6 +111,21 @@ describe('GET /api/mobile-uiux/context', () => {
 
     expect(response.status).toBe(403);
     expect(body.success).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'role_denied',
+        role: 'customer',
+        allowedClinicCount: 2,
+        scopedClinicCount: 1,
+        writeTarget: 'context',
+        featureFlagEnabled: true,
+      })
+    );
+    const logText = JSON.stringify(warnSpy.mock.calls);
+    expect(logText).not.toContain('patient@example.com');
+    expect(logText).not.toContain('user-1');
+    expect(logText).not.toContain('clinic-1');
   });
 
   it('returns 403 when clinic scope is empty', async () => {
@@ -127,6 +151,17 @@ describe('GET /api/mobile-uiux/context', () => {
       success: false,
       error: { code: 'FORBIDDEN' },
     });
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'clinic_scope_empty',
+        role: 'clinic_admin',
+        allowedClinicCount: 2,
+        scopedClinicCount: 0,
+        writeTarget: 'context',
+        featureFlagEnabled: true,
+      })
+    );
   });
 
   it('returns canonical context from getUserAccessContext without user PII', async () => {
@@ -139,6 +174,9 @@ describe('GET /api/mobile-uiux/context', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe(
+      'application/json; charset=utf-8'
+    );
     expect(getUserAccessContextMock).toHaveBeenCalledWith('user-1', supabase, {
       user,
     });
