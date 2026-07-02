@@ -53,6 +53,7 @@ describe('mobile-uiux production assets', () => {
 
   it('keeps the generated assets in the production asset manifest', () => {
     expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toEqual([
+      'home',
       'reservations',
       'daily-reports',
     ]);
@@ -71,7 +72,7 @@ describe('mobile-uiux production assets', () => {
   );
 
   it('returns null for screens outside the generated asset scope', async () => {
-    await expect(readMobileUiuxProductionAsset('home')).resolves.toBeNull();
+    await expect(readMobileUiuxProductionAsset('patients')).resolves.toBeNull();
   });
 
   it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
@@ -130,6 +131,7 @@ describe('mobile-uiux production assets', () => {
     ]);
 
     expect(stdout).toContain('up to date');
+    expect(stdout).toContain('home.dc.html');
     expect(stdout).toContain('reservations.dc.html');
   });
 });

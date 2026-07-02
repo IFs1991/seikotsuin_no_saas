@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
-import { ROLE_LABELS } from '@/lib/constants/roles';
+import { ROLE_LABELS, normalizeRole } from '@/lib/constants/roles';
 import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
 import {
-  type MobileUiuxApiFailure,
-  type MobileUiuxApiSuccess,
   type MobileUiuxContextResponse,
   type MobileUiuxDisplayMode,
   type MobileUiuxPublicFlags,
@@ -14,40 +12,21 @@ import {
   type MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
 import {
+  buildMobileUiuxFailure,
+  buildMobileUiuxSuccess,
+  logMobileUiuxDeniedAccess,
+} from '@/lib/mobile-uiux/route-utils';
+import {
   createClient,
   getCurrentUser,
   getUserAccessContext,
+  resolveScopedClinicIds,
 } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const DISPLAY_MODE_COOKIE = 'mobile_uiux_display_mode';
-
-function buildFailure(
-  status: number,
-  code: string,
-  message: string
-): NextResponse<MobileUiuxApiFailure> {
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code,
-        message,
-      },
-    },
-    { status }
-  );
-}
-
-function buildSuccess<T>(data: T): NextResponse<MobileUiuxApiSuccess<T>> {
-  return NextResponse.json({
-    success: true,
-    data,
-    generatedAt: new Date().toISOString(),
-  });
-}
 
 function toPublicFlags(flags: MobileUiuxFlags): MobileUiuxPublicFlags {
   return {
@@ -73,14 +52,26 @@ function resolveDisplayMode(request: NextRequest): MobileUiuxDisplayMode {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled) {
-    return buildFailure(403, 'FORBIDDEN', 'モバイル UI/UX は無効です');
+    logMobileUiuxDeniedAccess({
+      reasonCode: 'feature_disabled',
+      role: null,
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount: 0,
+      writeTarget: 'context',
+      featureFlagEnabled: false,
+    });
+    return buildMobileUiuxFailure(
+      403,
+      'FORBIDDEN',
+      'モバイル UI/UX は無効です'
+    );
   }
 
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
 
   if (!user) {
-    return buildFailure(401, 'UNAUTHORIZED', '認証が必要です');
+    return buildMobileUiuxFailure(401, 'UNAUTHORIZED', '認証が必要です');
   }
 
   const accessContext = await getUserAccessContext(user.id, supabase, {
@@ -92,7 +83,16 @@ export async function GET(request: NextRequest) {
   );
 
   if (accessDecision.allowed === false) {
-    return buildFailure(
+    logMobileUiuxDeniedAccess({
+      reasonCode: accessDecision.reason,
+      role: normalizeRole(accessContext.permissions?.role),
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount:
+        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      writeTarget: 'context',
+      featureFlagEnabled: flags.enabled,
+    });
+    return buildMobileUiuxFailure(
       accessDecision.status,
       'FORBIDDEN',
       'このモバイル UI/UX へのアクセス権限がありません'
@@ -110,5 +110,5 @@ export async function GET(request: NextRequest) {
     flags: toPublicFlags(flags),
   };
 
-  return buildSuccess(data);
+  return buildMobileUiuxSuccess(data);
 }

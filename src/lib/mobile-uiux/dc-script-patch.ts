@@ -1,7 +1,10 @@
 import type { MobileUiuxScreenResource } from './bridge-manifest';
 
 type DcScriptPatchOptions = {
-  screen: Extract<MobileUiuxScreenResource, 'reservations' | 'daily-reports'>;
+  screen: Extract<
+    MobileUiuxScreenResource,
+    'home' | 'reservations' | 'daily-reports'
+  >;
 };
 
 type ScriptBlock = {
@@ -423,6 +426,10 @@ function applyReplacements(
 function buildHydrationAdapterSource(
   screen: DcScriptPatchOptions['screen']
 ): string {
+  if (screen === 'home') {
+    return buildHomeHydrationAdapterSource();
+  }
+
   if (screen === 'reservations') {
     return buildReservationsHydrationAdapterSource();
   }
@@ -432,6 +439,293 @@ function buildHydrationAdapterSource(
   }
 
   throw new Error(`Unsupported Mobile UIUX hydration screen: ${screen}`);
+}
+
+function buildHomeHydrationAdapterSource(): string {
+  return `
+
+  renderVals() {
+    const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
+      ? this.${ORIGINAL_RENDER_VALS_METHOD}()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
+      return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'home' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
+      return null;
+    }
+    const dashboard = data.dashboard;
+    if (!this.__mobileUiuxIsRecord(dashboard.dailyData)) {
+      return null;
+    }
+    const dailyData = {
+      revenue: this.__mobileUiuxNumber(dashboard.dailyData.revenue),
+      patients: this.__mobileUiuxNumber(dashboard.dailyData.patients),
+      insuranceRevenue: this.__mobileUiuxNumber(dashboard.dailyData.insuranceRevenue),
+      privateRevenue: this.__mobileUiuxNumber(dashboard.dailyData.privateRevenue)
+    };
+    const reservationSummary = this.__mobileUiuxReservationSummary(data.reservationSummary);
+    const reportStatus = this.__mobileUiuxDailyReportStatus(data.dailyReportStatus);
+    const attentions = this.__mobileUiuxBuildHomeAttentions(data.attentions, dashboard.alerts);
+    const role = this.state && typeof this.state.role === 'string' ? this.state.role : 'store';
+    const overrides = {
+      dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
+      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : '本日の数値',
+      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role),
+      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role),
+      showAttention: role !== 'admin',
+      attTitle: role === 'manager' ? '今日の要確認' : '今日の要対応',
+      attCount: attentions.length + '件',
+      attentions
+    };
+
+    if (reservationSummary) {
+      overrides.agTotal = reservationSummary.total;
+      overrides.agUnc = reservationSummary.unconfirmed;
+      overrides.agCancel = reservationSummary.cancelled;
+    }
+
+    if (reportStatus) {
+      overrides.drDone = reportStatus.done;
+      overrides.drReview = reportStatus.review;
+      overrides.drMissing = reportStatus.missing;
+      overrides.reportRows = reportStatus.rows;
+    }
+
+    return overrides;
+  }
+
+  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
+    const up = 'var(--s-cf)';
+    const down = 'var(--s-ns)';
+    const flat = 'var(--fg-3)';
+    const dot = (color) => 'width:6px;height:6px;border-radius:50%;background:' + color + ';flex:none;';
+    const reservationTotal = reservationSummary ? reservationSummary.total : 0;
+    const unconfirmed = reservationSummary ? reservationSummary.unconfirmed : 0;
+    const reportDone = reportStatus ? reportStatus.done : 0;
+    const reportTotal = reportStatus ? reportStatus.done + reportStatus.review + reportStatus.missing : 0;
+    const reportMissing = reportStatus ? reportStatus.missing : 0;
+
+    if (role === 'manager') {
+      return [
+        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
+        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+      ];
+    }
+
+    if (role === 'admin') {
+      return [
+        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
+        { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+      ];
+    }
+
+    return [
+      { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+      { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+      { label: '本日の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
+    ];
+  }
+
+  __mobileUiuxBuildHomeKpiSub(data, role) {
+    const scopeName = this.__mobileUiuxDisplayText(data.scopeName || data.clinicName, '');
+    const suffix = role === 'admin' ? '本日' : 'リアルタイム';
+    return scopeName ? scopeName + ' · ' + suffix : suffix;
+  }
+
+  __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
+    const rows = [];
+    if (Array.isArray(attentionPayload)) {
+      for (const item of attentionPayload) {
+        const row = this.__mobileUiuxAttentionRow(item);
+        if (row) rows.push(row);
+      }
+    } else if (Array.isArray(alerts)) {
+      alerts.forEach((alert, index) => {
+        if (typeof alert !== 'string' || alert.trim().length === 0) return;
+        const sev = index === 0 ? 'warning' : 'info';
+        rows.push(this.__mobileUiuxBuildAttentionRow(sev, alert.trim(), 'PC dashboard read model のアラートです。'));
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxAttentionRow(item) {
+    if (!this.__mobileUiuxIsRecord(item)) return null;
+    const severity = this.__mobileUiuxNormalizeSeverity(item.severity || item.sev);
+    const title = this.__mobileUiuxDisplayText(item.title, '');
+    if (!title) return null;
+    const body = this.__mobileUiuxDisplayText(item.body || item.message, '');
+    return this.__mobileUiuxBuildAttentionRow(severity, title, body);
+  }
+
+  __mobileUiuxBuildAttentionRow(severity, title, body) {
+    const meta = this.__mobileUiuxSeverityMeta(severity);
+    return {
+      icon: severity === 'critical' ? '!' : severity === 'warning' ? '?' : 'i',
+      sev: severity,
+      sevLabel: meta.label,
+      title,
+      body,
+      c: meta.c,
+      b: meta.b,
+      onTap: typeof this.link === 'function' ? this.link(title) : () => {}
+    };
+  }
+
+  __mobileUiuxReservationSummary(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    return {
+      total: this.__mobileUiuxNumber(value.total),
+      unconfirmed: this.__mobileUiuxNumber(value.unconfirmed),
+      cancelled: this.__mobileUiuxNumber(value.cancelled)
+    };
+  }
+
+  __mobileUiuxDailyReportStatus(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    const done = this.__mobileUiuxNumber(value.done);
+    const review = this.__mobileUiuxNumber(value.review);
+    const missing = this.__mobileUiuxNumber(value.missing);
+    const rows = [];
+    if (Array.isArray(value.rows)) {
+      for (const row of value.rows) {
+        const mapped = this.__mobileUiuxDailyReportStatusRow(row);
+        if (mapped) rows.push(mapped);
+      }
+    }
+    return { done, review, missing, rows };
+  }
+
+  __mobileUiuxDailyReportStatusRow(row) {
+    if (!this.__mobileUiuxIsRecord(row)) return null;
+    const name = this.__mobileUiuxDisplayText(row.name || row.clinicName, '');
+    if (!name) return null;
+    const status = this.__mobileUiuxNormalizeReportStatus(row.status);
+    const meta = this.__mobileUiuxReportStatusMeta(status);
+    return {
+      name,
+      statusLabel: meta.label,
+      c: meta.c,
+      b: meta.b,
+      onTap: typeof this.link === 'function' ? this.link(name + 'の日報を開きます') : () => {}
+    };
+  }
+
+  __mobileUiuxNormalizeReportStatus(value) {
+    if (value === 'done' || value === 'submitted' || value === 'confirmed') return 'done';
+    if (value === 'review' || value === 'needscheck' || value === 'needs_check') return 'review';
+    return 'missing';
+  }
+
+  __mobileUiuxReportStatusMeta(value) {
+    if (value === 'done') return { label: '提出済', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (value === 'review') return { label: '要確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    return { label: '未提出', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+  }
+
+  __mobileUiuxNormalizeSeverity(value) {
+    if (value === 'critical' || value === 'error') return 'critical';
+    if (value === 'warning' || value === 'warn') return 'warning';
+    return 'info';
+  }
+
+  __mobileUiuxSeverityMeta(value) {
+    const severity = this.__mobileUiuxNormalizeSeverity(value);
+    if (this.SEV && this.SEV[severity]) return this.SEV[severity];
+    if (severity === 'critical') return { label: '要対応', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+    if (severity === 'warning') return { label: '注意', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    return { label: '情報', c: 'var(--fg-2)', b: 'var(--surface-3)' };
+  }
+
+  __mobileUiuxNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  __mobileUiuxYen(value) {
+    return '¥' + Math.round(this.__mobileUiuxNumber(value)).toLocaleString('ja-JP');
+  }
+
+  __mobileUiuxFormatDateLabel(value) {
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(value);
+    if (!match) return value;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return value;
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return month + '/' + day + '（' + weekdays[date.getUTCDay()] + '）';
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+`;
 }
 
 function buildReservationsHydrationAdapterSource(): string {

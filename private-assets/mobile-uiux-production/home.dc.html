@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./support.js"></script>
+
+<style data-mobile-uiux-production-shell>
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body[data-mobile-uiux-shell="production"] {
+  width: 100%;
+  min-height: 100svh;
+  background: var(--screen-bg, #f3f5f4);
+  overflow: hidden;
+}
+[data-mobile-uiux-production-root] {
+  width: 100% !important;
+  min-height: 100svh !important;
+  height: 100svh !important;
+  overflow: hidden !important;
+  background: var(--screen-bg, #f3f5f4) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+[data-screen-label] {
+  width: 100% !important;
+  height: 100svh !important;
+  min-height: 100svh !important;
+  border-radius: 0 !important;
+}
+.scrl { -webkit-overflow-scrolling: touch; }
+</style></head>
+<body data-mobile-uiux-shell="production">
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans JP", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .scrl::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @keyframes nowpulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .5; } }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="ホーム／ダッシュボード（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
+
+      <!-- dynamic island -->
+      
+
+      <!-- status bar -->
+      
+
+      <!-- ░ APP HEADER ░ -->
+      <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px 12px;">
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-right: auto; min-width: 0;">
+            <div style="font-size: 13px; color: var(--fg-2); font-weight: 500;">{{ greeting }}</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 20px; font-weight: 700; color: var(--fg); line-height: 1;">ダッシュボード</div>
+              <span style="font-size: 10px; font-weight: 700; color: var(--on-primary-soft); background: var(--primary-soft); padding: 2px 8px; border-radius: 999px;">{{ scopeTag }}</span>
+            </div>
+            <button onClick="{{ openScope }}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; max-width: 220px; margin-top: 1px;">
+              <span style="font-size: 11px; font-weight: 600; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ scopeName }}</span>
+              <span style="border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--fg-3); flex: none;"></span>
+            </button>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--fg);">{{ dateLabel }}</div>
+            <div style="display: flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--s-cf); animation: nowpulse 2.4s infinite ease-in-out;"></span>
+              <span style="font-size: 10.5px; color: var(--fg-2); font-weight: 500;">更新 {{ nowClock }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ░ CONTENT ░ -->
+      <div class="scrl" style="flex: 1; overflow-y: auto; position: relative;">
+
+        <!-- skeleton -->
+        <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+              <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+              <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+              <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+            </div>
+            <div style="height: 120px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showBody }}" hint-placeholder-val="{{ true }}">
+        <div style="padding: 14px 16px 112px; display: flex; flex-direction: column; gap: 16px;">
+
+          <!-- ════════ KPI GRID (all roles) ════════ -->
+          <section>
+            <div style="display: flex; align-items: baseline; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">{{ kpiTitle }}</h2>
+              <span style="font-size: 11px; color: var(--fg-3);">{{ kpiSub }}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 15px; padding: 13px 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); display: flex; flex-direction: column; gap: 5px; min-height: 84px;">
+                  <div style="font-size: 11px; color: var(--fg-2); font-weight: 500;">{{ k.label }}</div>
+                  <div style="font-size: 23px; font-weight: 700; color: var(--fg); line-height: 1.05; letter-spacing: -.5px;">{{ k.value }}<span style="font-size: 12px; font-weight: 600; color: var(--fg-3); letter-spacing: 0;"> {{ k.unit }}</span></div>
+                  <div style="display: flex; align-items: center; gap: 5px; margin-top: auto;">
+                    <span style="{{ k.deltaDot }}"></span>
+                    <span style="font-size: 11px; font-weight: 600; color: {{ k.deltaColor }};">{{ k.delta }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <!-- ════════ ATTENTION (store + manager + admin) ════════ -->
+          <sc-if value="{{ showAttention }}" hint-placeholder-val="{{ true }}">
+          <section>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">{{ attTitle }}</h2>
+              <span style="font-size: 10.5px; font-weight: 700; color: var(--s-ns); background: var(--s-ns-bg); padding: 1px 8px; border-radius: 999px;">{{ attCount }}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ attentions }}" as="a" hint-placeholder-count="3">
+                <button onClick="{{ a.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                  <span style="width: 28px; height: 28px; border-radius: 9px; background: {{ a.b }}; color: {{ a.c }}; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ a.icon }}</span>
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span style="display: flex; align-items: center; gap: 7px;"><span style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ a.title }}</span><span style="font-size: 9.5px; font-weight: 700; color: {{ a.c }}; background: {{ a.b }}; padding: 1px 7px; border-radius: 999px; flex: none;">{{ a.sevLabel }}</span></span>
+                    <span style="font-size: 11.5px; color: var(--fg-2); line-height: 1.5;">{{ a.body }}</span>
+                  </span>
+                  <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-top: 8px; opacity: .55; flex: none;"></span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ STORE: 本日の予約アジェンダ (CORE §3.4) ════════ -->
+          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <section>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">本日の予約</h2>
+              <span style="font-size: 11px; color: var(--fg-3); margin-right: auto;">時系列・閲覧</span>
+              <button onClick="{{ goReservations }}" style="all: unset; cursor: pointer; font-size: 11.5px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 3px;">予約画面へ<span style="border-right: 2px solid var(--primary); border-top: 2px solid var(--primary); width: 6px; height: 6px; transform: rotate(45deg);"></span></button>
+            </div>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow: hidden;">
+              <!-- count chips -->
+              <div style="display: flex; gap: 8px; padding: 12px 13px; border-bottom: 1px solid var(--border);">
+                <div style="flex: 1; background: var(--primary-soft); border-radius: 11px; padding: 8px 10px;"><div style="font-size: 19px; font-weight: 700; color: var(--on-primary-soft); line-height: 1;">{{ agTotal }}</div><div style="font-size: 10px; color: var(--on-primary-soft); opacity: .85; font-weight: 500; margin-top: 3px;">本日予約</div></div>
+                <button onClick="{{ goReservations }}" style="all: unset; cursor: pointer; flex: 1; background: var(--s-uc-bg); border-radius: 11px; padding: 8px 10px;"><div style="font-size: 19px; font-weight: 700; color: var(--s-uc); line-height: 1;">{{ agUnc }}</div><div style="font-size: 10px; color: var(--s-uc); opacity: .9; font-weight: 600; margin-top: 3px;">未確定 ›</div></button>
+                <div style="flex: 1; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 8px 10px;"><div style="font-size: 19px; font-weight: 700; color: var(--fg-3); line-height: 1;">{{ agCancel }}</div><div style="font-size: 10px; color: var(--fg-2); font-weight: 500; margin-top: 3px;">取消/不在</div></div>
+              </div>
+              <!-- past toggle -->
+              <sc-if value="{{ agPastCount }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ togglePast }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 10px; font-size: 11.5px; font-weight: 600; color: var(--fg-2); border-bottom: 1px solid var(--border);">
+                  {{ pastLabel }}<span style="{{ pastChevron }}"></span>
+                </button>
+              </sc-if>
+              <!-- rows -->
+              <div style="display: flex; flex-direction: column;">
+                <sc-for list="{{ agendaRows }}" as="r" hint-placeholder-count="5">
+                  <sc-if value="{{ r.isDivider }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; background: var(--screen-bg);">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--now); animation: nowpulse 2s infinite ease-in-out;"></span>
+                      <span style="font-size: 11px; font-weight: 700; color: var(--now);">現在 {{ nowClock }}</span>
+                      <div style="flex: 1; height: 1.5px; background: var(--now); opacity: .4;"></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.isAppt }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ r.onTap }}" style="all: unset; cursor: pointer; display: flex; gap: 12px; padding: 12px 14px; align-items: stretch; border-top: 1px solid var(--border); opacity: {{ r.dim }}; background: {{ r.rowBg }};">
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 3px; padding-right: 11px; border-right: 1px solid var(--border); min-width: 46px;">
+                        <div style="font-size: 14px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ r.startT }}</div>
+                        <div style="width: 1px; flex: 1; min-height: 5px; background: var(--border);"></div>
+                        <div style="font-size: 10.5px; color: var(--fg-3);">{{ r.endT }}</div>
+                      </div>
+                      <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 7px;">
+                          <span style="font-size: 14.5px; font-weight: 700; color: var(--fg); line-height: 1.2;">{{ r.patient }} <span style="font-size: 10px; font-weight: 400; color: var(--fg-3);">様</span></span>
+                          <sc-if value="{{ r.flagShow }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9.5px; font-weight: 700; color: {{ r.flagC }}; background: {{ r.flagB }}; padding: 1px 7px; border-radius: 999px; flex: none;">{{ r.flag }}</span></sc-if>
+                        </div>
+                        <div style="font-size: 11.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.menu }}</div>
+                        <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;"><span style="width: 15px; height: 15px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 8.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ r.initial }}</span><span style="font-size: 10.5px; color: var(--fg-2);">{{ r.ther }}</span></div>
+                      </div>
+                      <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between;">
+                        <span style="font-size: 10.5px; font-weight: 700; color: {{ r.c }}; background: {{ r.b }}; padding: 3px 9px; border-radius: 999px; white-space: nowrap;">{{ r.statusLabel }}</span>
+                        <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-bottom: 4px; opacity: .55;"></span>
+                      </div>
+                    </button>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ STORE: AI コメント ════════ -->
+          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <section>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
+                <span style="width: 28px; height: 28px; border-radius: 9px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">AI</span>
+                <div style="font-size: 13px; font-weight: 700; color: var(--fg);">本日の分析コメント</div>
+                <span style="margin-left: auto; font-size: 10px; color: var(--fg-3);">自動生成</span>
+              </div>
+              <p style="margin: 0 0 10px; font-size: 12.5px; color: var(--fg-2); line-height: 1.7; text-wrap: pretty;">{{ aiSummary }}</p>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <sc-for list="{{ aiPoints }}" as="p" hint-placeholder-count="2">
+                  <div style="display: flex; align-items: flex-start; gap: 8px;"><span style="width: 5px; height: 5px; border-radius: 50%; background: var(--primary); margin-top: 7px; flex: none;"></span><span style="font-size: 12px; color: var(--fg); line-height: 1.6;">{{ p }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ STORE: 収益推移 + 時間帯混雑 ════════ -->
+          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <section style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- revenue -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px;">
+                <div style="font-size: 13px; font-weight: 700; color: var(--fg);">収益推移</div>
+                <span style="font-size: 11px; color: var(--fg-3); margin-right: auto;">直近7日</span>
+                <span style="font-size: 11px; font-weight: 600; color: var(--s-cf);">{{ revDelta }}</span>
+              </div>
+              <div style="display: flex; align-items: flex-end; gap: 9px; height: 96px;">
+                <sc-for list="{{ revBars }}" as="bar" hint-placeholder-count="7">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end;">
+                    <div style="width: 100%; max-width: 26px; height: {{ bar.h }}; background: {{ bar.fill }}; border-radius: 5px 5px 2px 2px;"></div>
+                    <span style="font-size: 9.5px; color: {{ bar.labelC }}; font-weight: {{ bar.labelW }};">{{ bar.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- heatmap -->
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;">
+                <div style="font-size: 13px; font-weight: 700; color: var(--fg);">時間帯別の混雑</div>
+                <span style="font-size: 11px; color: var(--fg-3); margin-right: auto;">来院×予約</span>
+                <div style="display: flex; align-items: center; gap: 4px;"><span style="font-size: 9.5px; color: var(--fg-3);">空き</span><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--surface-3);"></span><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--primary-soft);"></span><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--primary); opacity: .65;"></span><span style="width: 9px; height: 9px; border-radius: 2px; background: var(--primary);"></span><span style="font-size: 9.5px; color: var(--fg-3);">混雑</span></div>
+              </div>
+              <div style="display: flex; gap: 4px;">
+                <sc-for list="{{ heatCells }}" as="hc" hint-placeholder-count="10">
+                  <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                    <div style="width: 100%; height: 30px; border-radius: 5px; background: {{ hc.bg }};"></div>
+                    <span style="font-size: 9px; color: var(--fg-3);">{{ hc.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ STORE: クイックアクション ════════ -->
+          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">クイックアクション</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <sc-for list="{{ quickActions }}" as="q" hint-placeholder-count="3">
+                <button onClick="{{ q.onTap }}" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 15px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-height: 44px;">
+                  <span style="width: 38px; height: 38px; border-radius: 12px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 17px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ q.icon }}</span>
+                  <span style="font-size: 11.5px; font-weight: 600; color: var(--fg); text-align: center;">{{ q.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ MANAGER: 日報提出状況 ════════ -->
+          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">日報提出状況</h2>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <div style="flex: 1; text-align: center; background: var(--s-cf-bg); border-radius: 11px; padding: 9px 4px;"><div style="font-size: 20px; font-weight: 700; color: var(--s-cf); line-height: 1;">{{ drDone }}</div><div style="font-size: 10px; color: var(--s-cf); font-weight: 600; margin-top: 3px;">提出済</div></div>
+                <div style="flex: 1; text-align: center; background: var(--s-uc-bg); border-radius: 11px; padding: 9px 4px;"><div style="font-size: 20px; font-weight: 700; color: var(--s-uc); line-height: 1;">{{ drReview }}</div><div style="font-size: 10px; color: var(--s-uc); font-weight: 600; margin-top: 3px;">要確認</div></div>
+                <div style="flex: 1; text-align: center; background: var(--s-ns-bg); border-radius: 11px; padding: 9px 4px;"><div style="font-size: 20px; font-weight: 700; color: var(--s-ns); line-height: 1;">{{ drMissing }}</div><div style="font-size: 10px; color: var(--s-ns); font-weight: 600; margin-top: 3px;">未提出</div></div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 1px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                <sc-for list="{{ reportRows }}" as="rr" hint-placeholder-count="3">
+                  <button onClick="{{ rr.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 11px 13px; background: var(--surface);">
+                    <span style="font-size: 13px; font-weight: 600; color: var(--fg); margin-right: auto;">{{ rr.name }}</span>
+                    <span style="font-size: 10.5px; font-weight: 700; color: {{ rr.c }}; background: {{ rr.b }}; padding: 2px 9px; border-radius: 999px;">{{ rr.statusLabel }}</span>
+                    <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 6px; height: 6px; transform: rotate(45deg); opacity: .55;"></span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ MANAGER: 担当院カード ════════ -->
+          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">担当院</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ clinicCards }}" as="c" hint-placeholder-count="3">
+                <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 13px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                  <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 11px;">
+                    <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ c.initial }}</span>
+                    <div style="font-size: 14px; font-weight: 700; color: var(--fg); margin-right: auto;">{{ c.name }}</div>
+                    <sc-if value="{{ c.alertShow }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9.5px; font-weight: 700; color: var(--s-ns); background: var(--s-ns-bg); padding: 2px 8px; border-radius: 999px;">{{ c.alert }}</span></sc-if>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; margin-bottom: 11px;">
+                    <div><div style="font-size: 17px; font-weight: 700; color: var(--fg); line-height: 1;">{{ c.revenue }}</div><div style="font-size: 10px; color: var(--fg-2); margin-top: 3px;">売上</div><div style="font-size: 10px; font-weight: 600; color: {{ c.revC }}; margin-top: 1px;">{{ c.revDelta }}</div></div>
+                    <div><div style="font-size: 17px; font-weight: 700; color: var(--fg); line-height: 1;">{{ c.visits }}</div><div style="font-size: 10px; color: var(--fg-2); margin-top: 3px;">来院</div><div style="font-size: 10px; font-weight: 600; color: {{ c.visC }}; margin-top: 1px;">{{ c.visDelta }}</div></div>
+                    <div><div style="font-size: 17px; font-weight: 700; color: var(--fg); line-height: 1;">{{ c.cancelRate }}</div><div style="font-size: 10px; color: var(--fg-2); margin-top: 3px;">キャンセル率</div><div style="font-size: 10px; font-weight: 600; color: {{ c.cancC }}; margin-top: 1px;">{{ c.cancNote }}</div></div>
+                  </div>
+                  <div style="display: flex; gap: 7px; border-top: 1px solid var(--border); padding-top: 10px;">
+                    <sc-for list="{{ c.links }}" as="l" hint-placeholder-count="4">
+                      <button onClick="{{ l.onTap }}" style="all: unset; cursor: pointer; flex: 1; text-align: center; font-size: 11px; font-weight: 600; color: var(--fg-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 8px 4px; min-height: 36px; box-sizing: border-box;">{{ l.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ MANAGER: 業務イベントタイムライン ════════ -->
+          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">タイムライン</h2>
+              <span style="font-size: 11px; color: var(--fg-3); margin-right: auto;">業務イベント</span>
+            </div>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 6px 15px 6px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <sc-for list="{{ events }}" as="e" hint-placeholder-count="5">
+                <div style="display: flex; gap: 12px; padding: 11px 0;">
+                  <div style="display: flex; flex-direction: column; align-items: center; flex: none;">
+                    <span style="width: 11px; height: 11px; border-radius: 50%; border: 2.5px solid {{ e.c }}; background: var(--surface); margin-top: 3px;"></span>
+                    <sc-if value="{{ e.line }}" hint-placeholder-val="{{ true }}"><span style="width: 2px; flex: 1; background: var(--border); margin-top: 2px;"></span></sc-if>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-bottom: 4px;">
+                    <div style="display: flex; align-items: center; gap: 7px;"><span style="font-size: 11px; font-weight: 700; color: var(--fg-3); font-variant-numeric: tabular-nums;">{{ e.time }}</span><span style="font-size: 11px; font-weight: 600; color: {{ e.c }};">{{ e.clinic }}</span></div>
+                    <div style="font-size: 12.5px; color: var(--fg); line-height: 1.5;">{{ e.text }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ MANAGER + ADMIN: ショートカット / 管理アクション ════════ -->
+          <sc-if value="{{ showShortcuts }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">{{ shortcutsTitle }}</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <sc-for list="{{ shortcuts }}" as="sc" hint-placeholder-count="6">
+                <button onClick="{{ sc.onTap }}" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-height: 44px;">
+                  <span style="width: 34px; height: 34px; border-radius: 11px; background: var(--surface-2); color: var(--fg-2); font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ sc.icon }}</span>
+                  <span style="font-size: 11px; font-weight: 600; color: var(--fg); text-align: center; line-height: 1.3;">{{ sc.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ ADMIN: 経営シグナル ════════ -->
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">経営シグナル</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <sc-for list="{{ signals }}" as="sg" hint-placeholder-count="4">
+                <div style="background: var(--surface); border: 1px solid var(--border); border-top: 3px solid {{ sg.c }}; border-radius: 14px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 7px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: {{ sg.c }};"></span><span style="font-size: 11px; color: var(--fg-2); font-weight: 500;">{{ sg.label }}</span></div>
+                  <div style="font-size: 19px; font-weight: 700; color: var(--fg); line-height: 1; letter-spacing: -.3px;">{{ sg.value }}</div>
+                  <div style="font-size: 11px; color: {{ sg.c }}; font-weight: 600; margin-top: 5px;">{{ sg.note }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ ADMIN: 要注意院 ════════ -->
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">{{ attTitle }}</h2>
+              <span style="font-size: 10.5px; font-weight: 700; color: var(--s-ns); background: var(--s-ns-bg); padding: 1px 8px; border-radius: 999px;">{{ attCount }}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <sc-for list="{{ attentions }}" as="a" hint-placeholder-count="2">
+                <button onClick="{{ a.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: flex-start; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ a.c }}; border-radius: 13px; padding: 12px 13px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+                  <span style="width: 28px; height: 28px; border-radius: 9px; background: {{ a.b }}; color: {{ a.c }}; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ a.icon }}</span>
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span style="display: flex; align-items: center; gap: 7px;"><span style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ a.title }}</span><span style="font-size: 9.5px; font-weight: 700; color: {{ a.c }}; background: {{ a.b }}; padding: 1px 7px; border-radius: 999px; flex: none;">{{ a.sevLabel }}</span></span>
+                    <span style="font-size: 11.5px; color: var(--fg-2); line-height: 1.5;">{{ a.body }}</span>
+                  </span>
+                  <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-top: 8px; opacity: .55; flex: none;"></span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ ADMIN: 院別パフォーマンス ════════ -->
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
+              <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">院別パフォーマンス</h2>
+              <span style="font-size: 11px; color: var(--fg-3); margin-right: auto;">スコア / 5.0</span>
+              <button onClick="{{ goCompare }}" style="all: unset; cursor: pointer; font-size: 11.5px; font-weight: 600; color: var(--primary);">店舗比較 ›</button>
+            </div>
+            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 6px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
+              <sc-for list="{{ perfRows }}" as="p" hint-placeholder-count="5">
+                <button onClick="{{ p.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid {{ p.border }};">
+                  <span style="font-size: 13px; font-weight: 700; color: var(--fg-3); width: 16px; flex: none;">{{ p.rank }}</span>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 13px; font-weight: 600; color: var(--fg); margin-bottom: 5px;">{{ p.name }}</div>
+                    <div style="height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden;"><div style="width: {{ p.barW }}; height: 100%; border-radius: 999px; background: {{ p.barC }};"></div></div>
+                  </div>
+                  <span style="font-size: 16px; font-weight: 700; color: var(--fg); flex: none; font-variant-numeric: tabular-nums;">{{ p.score }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <!-- ════════ ADMIN: 管理アクション ════════ -->
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <section>
+            <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">{{ shortcutsTitle }}</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <sc-for list="{{ shortcuts }}" as="sc" hint-placeholder-count="6">
+                <button onClick="{{ sc.onTap }}" style="all: unset; cursor: pointer; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 14px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04); min-height: 44px;">
+                  <span style="width: 34px; height: 34px; border-radius: 11px; background: var(--surface-2); color: var(--fg-2); font-size: 15px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ sc.icon }}</span>
+                  <span style="font-size: 11px; font-weight: 600; color: var(--fg); text-align: center; line-height: 1.3;">{{ sc.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          </sc-if>
+
+          <div style="height: 4px;"></div>
+        </div>
+        </sc-if>
+      </div>
+
+      <!-- ░ BOTTOM NAV ░ -->
+      <div style="flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 8px 24px; display: flex; z-index: 9;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="home" role="button" tabindex="0" aria-label="ホームへ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--primary); border-radius: 5px;"></div><span style="font-size: 10px; color: var(--primary); font-weight: 700;">ホーム</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="reservations" role="button" tabindex="0" aria-label="予約へ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px; position: relative;"><div style="position: absolute; inset: 3px 3px auto 3px; height: 2px; background: var(--fg-3);"></div></div><span style="font-size: 10px; color: var(--fg-3);">予約</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="patients" role="button" tabindex="0" aria-label="患者へ移動"><div style="width: 14px; height: 14px; border: 2px solid var(--fg-3); border-radius: 50%; margin-top: 2px;"></div><span style="font-size: 10px; color: var(--fg-3);">患者</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="daily-reports" role="button" tabindex="0" aria-label="レポートへ移動"><div style="display: flex; align-items: flex-end; gap: 2px; height: 18px;"><div style="width: 4px; height: 8px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 14px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 11px; background: var(--fg-3); border-radius: 1px;"></div></div><span style="font-size: 10px; color: var(--fg-3);">レポート</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="settings" role="button" tabindex="0" aria-label="設定へ移動"><div style="width: 20px; height: 20px; border: 2px solid var(--fg-3); border-radius: 50%;"></div><span style="font-size: 10px; color: var(--fg-3);">設定</span></div>
+      </div>
+
+      <!-- ░░ OVERLAYS ░░ -->
+      <!-- AGENDA DETAIL (read-only) -->
+      <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeDetail }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 40; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.2); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 88%; display: flex; flex-direction: column;">
+          <div style="padding: 10px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div class="scrl" style="overflow-y: auto; padding: 8px 20px 0;">
+            <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+              <div style="width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;">{{ dInitial }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 19px; font-weight: 700; color: var(--fg);">{{ dPatient }} <span style="font-size: 12px; font-weight: 400; color: var(--fg-3);">様</span></div>
+                <div style="font-size: 12.5px; color: var(--fg-2); margin-top: 2px;">{{ dMenu }}</div>
+              </div>
+              <span style="font-size: 12px; font-weight: 700; color: {{ dC }}; background: {{ dB }}; padding: 5px 12px; border-radius: 999px; flex: none;">{{ dStatusLabel }}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px;"><span style="font-size: 12px; color: var(--fg-2); width: 56px; flex: none;">時間</span><span style="font-size: 14px; font-weight: 600; color: var(--fg);">{{ dTime }}</span><span style="font-size: 12px; color: var(--fg-3); margin-left: auto;">{{ dDur }}</span></div>
+              <div style="height: 1px; background: var(--border);"></div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px;"><span style="font-size: 12px; color: var(--fg-2); width: 56px; flex: none;">担当</span><span style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ dInitial }}</span><span style="font-size: 14px; font-weight: 600; color: var(--fg);">{{ dTher }}</span><span style="font-size: 11px; color: var(--fg-3); margin-left: auto;">{{ dTherRole }}</span></div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: var(--surface-2); color: var(--fg-2); font-size: 11.5px; line-height: 1.5; border-radius: 12px; margin-bottom: 12px;"><span style="width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--fg-3); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex: none;">i</span>ダッシュボードは閲覧専用です。変更・確定は予約画面で行えます。</div>
+            <button onClick="{{ goReservations }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 9px;">予約画面で開く</button>
+            <button onClick="{{ closeDetail }}" style="width: 100%; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">閉じる</button>
+          </div>
+          <div style="height: 22px; flex: none;"></div>
+        </div>
+      </sc-if>
+
+      <!-- SCOPE SWITCHER -->
+      <sc-if value="{{ scopeSheetOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeScope }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 80%; display: flex; flex-direction: column;">
+          <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center;"><div style="font-size: 16px; font-weight: 700; color: var(--fg);">{{ scopeSheetTitle }}</div><button onClick="{{ closeScope }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button></div>
+          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 8px;">
+            <sc-for list="{{ scopeOpts }}" as="o" hint-placeholder-count="3">
+              <button onClick="{{ o.onTap }}" style="{{ o.style }}">
+                <span style="width: 34px; height: 34px; border-radius: 10px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ o.initial }}</span>
+                <span style="font-size: 14px; font-weight: 600; color: var(--fg); margin-right: auto;">{{ o.name }}</span>
+                <span style="{{ o.tagStyle }}">{{ o.tag }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; bottom: 96px; left: 50%; z-index: 80; background: var(--toast-bg); color: var(--toast-fg); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); animation: toastIn .25s ease; white-space: nowrap; max-width: 86%;">{{ toastMsg }}</div>
+      </sc-if>
+
+    </div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 720, &quot;height&quot;: 900}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f7d72&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#2f7d72&quot;, &quot;#356a9c&quot;, &quot;#4a6670&quot;, &quot;#7a5a86&quot;]}, &quot;defaultRole&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;store&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;store&quot;, &quot;manager&quot;, &quot;admin&quot;]}}">
+class Component extends DCLogic {
+  NOW = 800; // 13:20 JST
+  DS = 540; DE = 1140;
+  CLINICS = [
+    { id: 'c1', name: '本町ケア整骨院' },
+    { id: 'c2', name: '駅前ケア整骨院' },
+    { id: 'c3', name: '緑が丘ケア整骨院' },
+  ];
+  HOME = 'c1';
+  THER = {
+    t1: { name: '田中 健太', role: '柔道整復師' },
+    t2: { name: '佐藤 美咲', role: '鍼灸師' },
+    t3: { name: '鈴木 大輔', role: '柔道整復師' },
+    t4: { name: '山本 由香', role: '柔整 / 産後ケア' },
+  };
+  STATUS = {
+    unconfirmed: { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    confirmed: { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    arrived: { label: '来院済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    cancelled: { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' },
+    noshow: { label: '来院なし', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' },
+  };
+  SEV = {
+    critical: { label: '要対応', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' },
+    warning: { label: '注意', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    info: { label: '情報', c: 'var(--fg-2)', b: 'var(--surface-3)' },
+  };
+  // today's c1 appointments (店舗管理者 agenda)
+  APPTS = [
+    { id: 'a1', res: 't1', start: 540, dur: 60, patient: '渡辺 結衣', menu: '産後骨盤矯正', status: 'arrived' },
+    { id: 'a8', res: 't2', start: 570, dur: 40, patient: '伊藤 春香', menu: '鍼灸施術', status: 'arrived' },
+    { id: 'a12', res: 't3', start: 570, dur: 30, patient: '高橋 涼介', menu: 'スポーツ外傷ケア', status: 'arrived' },
+    { id: 'a15', res: 't4', start: 600, dur: 45, patient: '三浦 彩', menu: '産後骨盤矯正', status: 'arrived' },
+    { id: 'a2', res: 't1', start: 615, dur: 30, patient: '小林 誠一', menu: '保険施術（健康保険）', status: 'arrived' },
+    { id: 'a9', res: 't2', start: 630, dur: 60, patient: '松本 陽子', menu: '美容鍼', status: 'arrived' },
+    { id: 'a3', res: 't1', start: 660, dur: 40, patient: '加藤 さくら', menu: '自費骨盤矯正', status: 'confirmed' },
+    { id: 'a13', res: 't3', start: 690, dur: 30, patient: '井上 健', menu: '保険施術（健康保険）', status: 'noshow' },
+    { id: 'a10', res: 't2', start: 780, dur: 40, patient: '大野 真理子', menu: '鍼灸施術', status: 'arrived' },
+    { id: 'a4', res: 't1', start: 810, dur: 30, patient: '中村 拓海', menu: '交通事故施術（自賠責）', status: 'confirmed' },
+    { id: 'a14', res: 't3', start: 840, dur: 20, patient: '清水 翔', menu: 'EMS（楽トレ）', status: 'confirmed' },
+    { id: 'a16', res: 't4', start: 870, dur: 30, patient: '林 大和', menu: '猫背・姿勢矯正', status: 'unconfirmed' },
+    { id: 'a5', res: 't1', start: 900, dur: 60, patient: '木村 美穂', menu: '全身もみほぐし', status: 'unconfirmed' },
+    { id: 'a11', res: 't2', start: 960, dur: 60, patient: '岡田 七海', menu: '美容鍼', status: 'confirmed' },
+    { id: 'a6', res: 't1', start: 990, dur: 30, patient: '斎藤 隆', menu: '保険施術（健康保険）', status: 'cancelled' },
+    { id: 'a7', res: 't1', start: 1050, dur: 40, patient: '福田 一樹', menu: '自費骨盤矯正', status: 'unconfirmed' },
+  ];
+
+  state = { theme: 'light', role: 'store', loading: false, pastOpen: false, detailId: null, scopeSheet: false, toast: '' };
+
+  // テーマ・デザイントークンは clinic-shared.js に集約（全画面共通・キャッシュ共有）。
+  // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
+  setRoot = (el) => { this._root = el; this.applyTheme(); };
+  applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
+  __mobileUiuxOriginalComponentDidMount() {
+    if (this.props.defaultRole) this.setState({ role: this.props.defaultRole });
+    import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); });
+  }
+  componentDidUpdate() { this.applyTheme(); }
+
+  fmt = (m) => { const h = Math.floor(m / 60), mm = m % 60; return h + ':' + String(mm).padStart(2, '0'); };
+  initial = (name) => (name || '？').trim().charAt(0);
+  tName = (id) => (this.THER[id] || {}).name || '';
+  tRole = (id) => (this.THER[id] || {}).role || '';
+
+  toast = (m) => { this.setState({ toast: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2300); };
+  setLight = () => this.setState({ theme: 'light' });
+  setDark = () => this.setState({ theme: 'dark' });
+  onRole = (e) => {
+    this.setState({ role: e.target.value, loading: true, detailId: null, scopeSheet: false, pastOpen: false });
+    clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ loading: false }), 480);
+  };
+  togglePast = () => this.setState(s => ({ pastOpen: !s.pastOpen }));
+  openDetail = (id) => () => this.setState({ detailId: id });
+  closeDetail = () => this.setState({ detailId: null });
+  openScope = () => this.setState({ scopeSheet: true });
+  closeScope = () => this.setState({ scopeSheet: false });
+  goReservations = () => { this.setState({ detailId: null }); this.toast('予約画面へ移動します'); };
+  goCompare = () => this.toast('店舗比較を開きます');
+  link = (m) => () => this.toast(m);
+
+  __mobileUiuxOriginalRenderVals() {
+    const s = this.state;
+    const isStore = s.role === 'store', isManager = s.role === 'manager', isAdmin = s.role === 'admin';
+
+    // ── KPI per role ──
+    const up = 'var(--s-cf)', down = 'var(--s-ns)', flat = 'var(--fg-3)';
+    const dot = (c) => `width:6px;height:6px;border-radius:50%;background:${c};flex:none;`;
+    let kpis = [], kpiTitle = '', kpiSub = '';
+    if (isStore) {
+      kpiTitle = '本日の数値'; kpiSub = '本町ケア整骨院 · リアルタイム';
+      kpis = [
+        { label: '本日の売上', value: '¥184,200', unit: '', delta: '前日比 +8.2%', deltaColor: up, deltaDot: dot(up) },
+        { label: '来院数', value: '23', unit: '名', delta: '予約 31 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '本日の予約', value: '31', unit: '件', delta: '前週比 +4', deltaColor: up, deltaDot: dot(up) },
+        { label: '未確定予約', value: '4', unit: '件', delta: '要確認', deltaColor: down, deltaDot: dot(down) },
+      ];
+    } else if (isManager) {
+      kpiTitle = 'エリアサマリ'; kpiSub = '担当3院 · 本日';
+      kpis = [
+        { label: '本日の売上', value: '¥512,400', unit: '', delta: '前日比 +5.1%', deltaColor: up, deltaDot: dot(up) },
+        { label: '本日の来院', value: '68', unit: '名', delta: '予約 84 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '日報提出', value: '1 / 3', unit: '院', delta: '未提出 1院', deltaColor: down, deltaDot: dot(down) },
+        { label: '要確認', value: '4', unit: '件', delta: 'うち要対応 1', deltaColor: down, deltaDot: dot(down) },
+      ];
+    } else {
+      kpiTitle = '全社サマリ'; kpiSub = '全12店舗 · 本日';
+      kpis = [
+        { label: '本日の売上', value: '¥2.84M', unit: '', delta: '前日比 +6.4%', deltaColor: up, deltaDot: dot(up) },
+        { label: '本日の来院', value: '312', unit: '名', delta: '稼働率 78%', deltaColor: up, deltaDot: dot(up) },
+        { label: '日報提出', value: '9 / 12', unit: '院', delta: '未提出 3院', deltaColor: down, deltaDot: dot(down) },
+        { label: '要注意院', value: '2', unit: '院', delta: '前週 3院', deltaColor: up, deltaDot: dot(up) },
+      ];
+    }
+
+    // ── Attention ──
+    let attentions = [], attTitle = '今日の要対応', attCount = '';
+    if (isStore) {
+      attentions = [
+        { icon: '!', sev: 'critical', title: 'キャンセル率が上昇', body: '本日 12.9% / 前週同曜日比 +5.4pt。連絡未済の取消が2件あります。', onTap: this.link('キャンセル詳細を開きます') },
+        { icon: '?', sev: 'warning', title: '未確定の予約 4件', body: '14:30 林様ほか。前日リマインド未送信の予約があります。', onTap: this.goReservations },
+        { icon: 'i', sev: 'info', title: '保険請求の入力待ち 3件', body: '本日来院分のうち負担割合が未入力です。', onTap: this.link('保険請求一覧を開きます') },
+      ];
+    } else if (isManager) {
+      attTitle = '今日の要確認';
+      attentions = [
+        { icon: '!', sev: 'critical', title: '駅前ケア — 売上が大幅減', body: '前週同曜日比 −18%。午前の来院キャンセルが集中しています。', onTap: this.link('駅前ケア整骨院を開きます') },
+        { icon: '?', sev: 'warning', title: '緑が丘ケア — 日報が要確認', body: '自費売上の内訳に不整合。差し戻し前に内容を確認してください。', onTap: this.link('日報を確認します') },
+        { icon: '?', sev: 'warning', title: '駅前ケア — 日報が未提出', body: '提出期限 18:00。リマインドを送信できます。', onTap: this.link('リマインドを送信しました') },
+      ];
+    } else {
+      attTitle = '要注意院';
+      attentions = [
+        { icon: '!', sev: 'critical', title: '梅田中央院 — KPIスコア 2.8', body: '客単価・リピート率が基準値を下回り、3週連続で低下傾向です。', onTap: this.link('梅田中央院を開きます') },
+        { icon: '?', sev: 'warning', title: '天王寺院 — 人時生産性が低下', body: 'スタッフ稼働に対し売上が伸び悩み。シフト見直しを推奨。', onTap: this.link('天王寺院を開きます') },
+      ];
+    }
+    attentions = attentions.map(a => ({ ...a, sevLabel: this.SEV[a.sev].label, c: this.SEV[a.sev].c, b: this.SEV[a.sev].b }));
+    attCount = attentions.length + '件';
+
+    // ── STORE agenda (CORE) ──
+    let agendaRows = [], agTotal = 0, agUnc = 0, agCancel = 0, agPastCount = 0;
+    if (isStore) {
+      const sorted = [...this.APPTS].sort((a, b) => a.start - b.start);
+      const active = sorted.filter(a => a.status !== 'cancelled' && a.status !== 'noshow');
+      agTotal = active.length;
+      agUnc = sorted.filter(a => a.status === 'unconfirmed').length;
+      agCancel = sorted.filter(a => a.status === 'cancelled' || a.status === 'noshow').length;
+      const past = active.filter(a => a.start + a.dur <= this.NOW);
+      const upcoming = active.filter(a => a.start + a.dur > this.NOW);
+      agPastCount = past.length;
+      const mk = (a, isPast) => {
+        const st = this.STATUS[a.status];
+        const inProg = a.start <= this.NOW && this.NOW < a.start + a.dur;
+        const next = !isPast && !inProg && a === upcoming.find(x => x.start + x.dur > this.NOW && !(x.start <= this.NOW));
+        let flag = '', flagShow = false, flagC = '', flagB = '';
+        if (inProg) { flag = '進行中'; flagShow = true; flagC = 'var(--primary-fg)'; flagB = 'var(--primary)'; }
+        return {
+          isAppt: true, isDivider: false, startT: this.fmt(a.start), endT: this.fmt(a.start + a.dur),
+          patient: a.patient, menu: a.menu, ther: this.tName(a.res), initial: this.initial(this.tName(a.res)),
+          statusLabel: st.label, c: st.c, b: st.b, dim: isPast ? '0.6' : '1',
+          rowBg: inProg ? 'var(--primary-soft)' : 'transparent',
+          flag, flagShow, flagC, flagB, onTap: this.openDetail(a.id),
+        };
+      };
+      if (s.pastOpen) past.forEach(a => agendaRows.push(mk(a, true)));
+      agendaRows.push({ isDivider: true, isAppt: false });
+      // tag first upcoming (not in-progress) as 次の予約
+      const firstNextIdx = upcoming.findIndex(a => !(a.start <= this.NOW && this.NOW < a.start + a.dur));
+      upcoming.forEach((a, i) => {
+        const row = mk(a, false);
+        if (i === firstNextIdx && !row.flagShow) { row.flag = '次の予約'; row.flagShow = true; row.flagC = 'var(--on-primary-soft)'; row.flagB = 'var(--primary-soft)'; }
+        agendaRows.push(row);
+      });
+    }
+    const pastLabel = s.pastOpen ? '完了した予約を隠す' : '完了した予約 ' + agPastCount + '件を表示';
+    const pastChevron = `border-right:2px solid var(--fg-2);border-bottom:2px solid var(--fg-2);width:6px;height:6px;transform:rotate(${s.pastOpen ? '-135deg' : '45deg'});margin-bottom:${s.pastOpen ? '-2px' : '2px'};`;
+
+    // ── STORE: AI / revenue / heatmap / quick ──
+    const aiSummary = '午前の来院は順調で、保険施術の回転が安定しています。一方で午後は未確定予約が4件残っており、リマインド送信でキャンセル率の抑制が見込めます。自費メニュー（骨盤矯正・美容鍼）の比率が前週より上昇しています。';
+    const aiPoints = [
+      '14:00〜16:00 が本日のピーク帯。受付の応援を1名確保すると待ち時間を短縮できます。',
+      '未確定の4件へ前日リマインドを送ると、想定キャンセルを約2件抑制できます。',
+    ];
+    const revVals = [128, 142, 119, 156, 168, 151, 184];
+    const revLabels = ['月', '火', '水', '木', '金', '土', '日'];
+    const revMax = Math.max(...revVals);
+    const revBars = revVals.map((v, i) => {
+      const today = i === revVals.length - 1;
+      return { h: Math.round(v / revMax * 100) + '%', fill: today ? 'var(--primary)' : 'var(--primary-soft)', label: revLabels[i], labelC: today ? 'var(--fg)' : 'var(--fg-3)', labelW: today ? '700' : '500' };
+    });
+    const revDelta = '今週 +9.4%';
+    const heatLevels = [1, 1, 2, 2, 1, 3, 3, 2, 1, 1];
+    const heatLabels = ['10', '11', '12', '13', '14', '15', '16', '17', '18', '19'];
+    const heatBg = ['var(--surface-3)', 'var(--primary-soft)', 'color-mix(in srgb, var(--primary) 65%, transparent)', 'var(--primary)'];
+    const heatCells = heatLevels.map((lv, i) => ({ bg: heatBg[lv], label: heatLabels[i] }));
+    const quickActions = [
+      { icon: '✎', label: '日報を入力', onTap: this.link('日報入力を開きます') },
+      { icon: '＋', label: '予約を登録', onTap: this.goReservations },
+      { icon: '◎', label: 'AIチャット', onTap: this.link('AIチャットを開きます') },
+    ];
+
+    // ── MANAGER: daily report / clinic cards / events ──
+    const drDone = 1, drReview = 1, drMissing = 1;
+    const reportRows = [
+      { name: '本町ケア整骨院', status: 'done', onTap: this.link('本町ケアの日報を開きます') },
+      { name: '緑が丘ケア整骨院', status: 'review', onTap: this.link('緑が丘ケアの日報を確認します') },
+      { name: '駅前ケア整骨院', status: 'missing', onTap: this.link('駅前ケアにリマインドを送信しました') },
+    ].map(r => {
+      const m = { done: { label: '提出済', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' }, review: { label: '要確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' }, missing: { label: '未提出', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' } }[r.status];
+      return { name: r.name, statusLabel: m.label, c: m.c, b: m.b, onTap: r.onTap };
+    });
+    const cardDefs = [
+      { id: 'c1', name: '本町ケア整骨院', revenue: '¥184K', revDelta: '前日 +8%', revUp: true, visits: '23', visDelta: '前週 +3', visUp: true, cancelRate: '12.9%', cancNote: '+5pt', cancUp: false, alert: '' },
+      { id: 'c2', name: '駅前ケア整骨院', revenue: '¥146K', revDelta: '前日 −18%', revUp: false, visits: '17', visDelta: '前週 −6', visUp: false, cancelRate: '21.4%', cancNote: '+9pt', cancUp: false, alert: '要確認' },
+      { id: 'c3', name: '緑が丘ケア整骨院', revenue: '¥182K', revDelta: '前日 +3%', revUp: true, visits: '28', visDelta: '前週 +1', visUp: true, cancelRate: '8.2%', cancNote: '−2pt', cancUp: true, alert: '' },
+    ];
+    const clinicCards = cardDefs.map(c => ({
+      initial: c.name.charAt(0), name: c.name, alert: c.alert, alertShow: !!c.alert,
+      revenue: c.revenue, revDelta: c.revDelta, revC: c.revUp ? up : down,
+      visits: c.visits, visDelta: c.visDelta, visC: c.visUp ? up : down,
+      cancelRate: c.cancelRate, cancNote: c.cancNote, cancC: c.cancUp ? up : down,
+      links: [
+        { label: '日報', onTap: this.link(c.name + ' の日報を開きます') },
+        { label: '予約', onTap: this.link(c.name + ' の予約を開きます') },
+        { label: '患者', onTap: this.link(c.name + ' の患者分析を開きます') },
+        { label: '収益', onTap: this.link(c.name + ' の収益分析を開きます') },
+      ],
+    }));
+    const events = [
+      { time: '13:05', clinic: '緑が丘ケア', sev: 'warning', text: '日報が「要確認」で提出されました（自費売上の内訳に不整合）。' },
+      { time: '12:40', clinic: '駅前ケア', sev: 'critical', text: '午前来院のキャンセルが3件連続。要因を確認してください。' },
+      { time: '11:20', clinic: '本町ケア', sev: 'info', text: '本日の予約が前週比 +4件。自費比率が上昇しています。' },
+      { time: '10:00', clinic: '本町ケア', sev: 'info', text: '日報が提出されました。' },
+      { time: '09:30', clinic: 'エリア全体', sev: 'info', text: '本日の担当院サマリを更新しました。' },
+    ].map((e, i, arr) => ({ time: e.time, clinic: e.clinic, text: e.text, c: this.SEV[e.sev].c, line: i < arr.length - 1 }));
+
+    // ── ADMIN: signals / performance ──
+    const signals = [
+      { label: '全社売上 前週比', value: '+6.4%', tone: 'success' },
+      { label: '平均客単価', value: '¥7,980', tone: 'success', note: '前週 +¥210' },
+      { label: '全社キャンセル率', value: '11.2%', tone: 'warning', note: '前週 +1.3pt' },
+      { label: '新患数', value: '186', tone: 'neutral', note: '前週 横ばい' },
+    ].map(g => {
+      const c = { success: 'var(--s-cf)', warning: 'var(--s-uc)', neutral: 'var(--fg-3)' }[g.tone];
+      return { label: g.label, value: g.value, c, note: g.note || (g.tone === 'success' ? '良好' : g.tone === 'warning' ? '注視' : '横ばい') };
+    });
+    const perfDefs = [
+      { name: '本町ケア整骨院', score: 4.6 }, { name: '緑が丘ケア整骨院', score: 4.3 },
+      { name: 'なんば院', score: 3.9 }, { name: '天王寺院', score: 3.2 }, { name: '梅田中央院', score: 2.8 },
+    ];
+    const perfRows = perfDefs.map((p, i) => ({
+      rank: String(i + 1), name: p.name, score: p.score.toFixed(1), barW: Math.round(p.score / 5 * 100) + '%',
+      barC: p.score >= 4 ? 'var(--s-cf)' : p.score >= 3.5 ? 'var(--primary)' : p.score >= 3 ? 'var(--s-uc)' : 'var(--s-ns)',
+      border: i === 0 ? 'transparent' : 'var(--border)', onTap: this.link(p.name + ' を開きます'),
+    }));
+
+    // ── shortcuts (manager + admin) ──
+    let shortcuts = [], shortcutsTitle = '';
+    if (isManager) {
+      shortcutsTitle = 'ショートカット';
+      shortcuts = [
+        { icon: '帳', label: '日報管理', onTap: this.link('日報管理を開きます') },
+        { icon: '予', label: '予約タイムライン', onTap: this.link('予約タイムライン（閲覧）を開きます') },
+        { icon: '患', label: '患者分析', onTap: this.link('患者分析を開きます') },
+        { icon: '収', label: '収益分析', onTap: this.link('収益分析を開きます') },
+        { icon: '比', label: '店舗比較', onTap: this.goCompare },
+        { icon: '人', label: '担当院スタッフ', onTap: this.link('スタッフ一覧を開きます') },
+      ];
+    } else if (isAdmin) {
+      shortcutsTitle = '管理アクション';
+      shortcuts = [
+        { icon: '社', label: 'テナント管理', onTap: this.link('テナント管理を開きます') },
+        { icon: '人', label: 'ユーザー管理', onTap: this.link('ユーザー管理を開きます') },
+        { icon: '店', label: '店舗設定', onTap: this.link('店舗設定を開きます') },
+        { icon: '権', label: '権限・ロール', onTap: this.link('権限設定を開きます') },
+        { icon: '監', label: '監査ログ', onTap: this.link('監査ログを開きます') },
+        { icon: '請', label: '請求・契約', onTap: this.link('請求・契約を開きます') },
+      ];
+    }
+
+    // ── header scope ──
+    let greeting = 'おはようございます、田中さん', scopeTag = '自院', scopeName = '本町ケア整骨院';
+    if (isManager) { greeting = 'おはようございます、佐藤さん'; scopeTag = '担当エリア'; scopeName = '担当3院 · 関西エリア'; }
+    if (isAdmin) { greeting = 'おはようございます、管理者さん'; scopeTag = '全社'; scopeName = '全12店舗 · 本部'; }
+    if (this.NOW >= 720) greeting = greeting.replace('おはようございます', 'こんにちは');
+
+    // scope switcher options
+    let scopeSheetTitle = '店舗を切り替え', scopeOpts = [];
+    if (isStore) {
+      scopeOpts = this.CLINICS.map(c => {
+        const cur = c.id === this.HOME;
+        return { initial: c.name.charAt(0), name: c.name, tag: cur ? '✓ 自院' : '閲覧のみ', onTap: cur ? (() => {}) : this.link(c.name + 'は閲覧のみ可能です'),
+          style: `all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:${cur ? 'default' : 'pointer'};background:${cur ? 'var(--primary-soft)' : 'var(--surface-2)'};border:1px solid ${cur ? 'var(--primary)' : 'var(--border)'};`,
+          tagStyle: `flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:${cur ? 'var(--on-primary-soft)' : 'var(--fg-3)'};background:${cur ? 'transparent' : 'var(--surface-3)'};` };
+      });
+    } else {
+      scopeSheetTitle = isManager ? 'エリアを切り替え' : '集計範囲';
+      const opts = isManager ? [{ n: '担当3院 · 関西エリア', cur: true }, { n: '本町ケア整骨院（単院）', cur: false }, { n: '駅前ケア整骨院（単院）', cur: false }]
+        : [{ n: '全12店舗 · 本部', cur: true }, { n: '関西エリア（6院）', cur: false }, { n: '関東エリア（6院）', cur: false }];
+      scopeOpts = opts.map(o => ({ initial: o.n.charAt(0), name: o.n, tag: o.cur ? '✓ 表示中' : '切替', onTap: o.cur ? (() => {}) : this.link(o.n + ' に切り替えます'),
+        style: `all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:${o.cur ? 'default' : 'pointer'};background:${o.cur ? 'var(--primary-soft)' : 'var(--surface-2)'};border:1px solid ${o.cur ? 'var(--primary)' : 'var(--border)'};`,
+        tagStyle: `flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:${o.cur ? 'var(--on-primary-soft)' : 'var(--fg-3)'};background:${o.cur ? 'transparent' : 'var(--surface-3)'};` }));
+    }
+
+    // ── detail ──
+    const da = s.detailId ? this.APPTS.find(a => a.id === s.detailId) : null;
+    let detail = {};
+    if (da) {
+      const st = this.STATUS[da.status];
+      detail = { dPatient: da.patient, dMenu: da.menu, dInitial: this.initial(this.tName(da.res)),
+        dTime: this.fmt(da.start) + ' – ' + this.fmt(da.start + da.dur), dDur: da.dur + '分',
+        dTher: this.tName(da.res), dTherRole: this.tRole(da.res), dStatusLabel: st.label, dC: st.c, dB: st.b };
+    }
+
+    return {
+      setRoot: this.setRoot,
+      roleVal: s.role, onRole: this.onRole,
+      setLight: this.setLight, setDark: this.setDark,
+      lightBtn: this.themeBtn(s.theme === 'light'), darkBtn: this.themeBtn(s.theme === 'dark'),
+      nowClock: this.fmt(this.NOW),
+      greeting, scopeTag, scopeName, dateLabel: '6/24（水）',
+      openScope: this.openScope, closeScope: this.closeScope, scopeSheetOpen: s.scopeSheet, scopeSheetTitle, scopeOpts,
+      isLoading: s.loading, showBody: !s.loading,
+      isStore, isManager, isAdmin,
+      kpiTitle, kpiSub, kpis,
+      showAttention: isStore || isManager, attTitle, attCount, attentions,
+      agendaRows, agTotal, agUnc, agCancel, agPastCount,
+      togglePast: this.togglePast, pastLabel, pastChevron,
+      goReservations: this.goReservations,
+      aiSummary, aiPoints,
+      revBars, revDelta, heatCells,
+      quickActions,
+      drDone, drReview, drMissing, reportRows,
+      clinicCards, events,
+      showShortcuts: isManager, shortcutsTitle, shortcuts,
+      signals, perfRows, goCompare: this.goCompare,
+      detailOpen: !!da, closeDetail: this.closeDetail, ...detail,
+      toastShow: !!s.toast, toastMsg: s.toast,
+    };
+  }
+
+  themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
+
+
+  renderVals() {
+    const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
+      ? this.__mobileUiuxOriginalRenderVals()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
+      return this.__mobileUiuxOriginalComponentDidMount();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
+      return this.__mobileUiuxOriginalComponentWillUnmount();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      component.__mobileUiuxHydratedVals = hydratedVals;
+      if (typeof component.setState === 'function') {
+        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen !== 'home' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    const data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
+      return null;
+    }
+    const dashboard = data.dashboard;
+    if (!this.__mobileUiuxIsRecord(dashboard.dailyData)) {
+      return null;
+    }
+    const dailyData = {
+      revenue: this.__mobileUiuxNumber(dashboard.dailyData.revenue),
+      patients: this.__mobileUiuxNumber(dashboard.dailyData.patients),
+      insuranceRevenue: this.__mobileUiuxNumber(dashboard.dailyData.insuranceRevenue),
+      privateRevenue: this.__mobileUiuxNumber(dashboard.dailyData.privateRevenue)
+    };
+    const reservationSummary = this.__mobileUiuxReservationSummary(data.reservationSummary);
+    const reportStatus = this.__mobileUiuxDailyReportStatus(data.dailyReportStatus);
+    const attentions = this.__mobileUiuxBuildHomeAttentions(data.attentions, dashboard.alerts);
+    const role = this.state && typeof this.state.role === 'string' ? this.state.role : 'store';
+    const overrides = {
+      dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
+      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : '本日の数値',
+      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role),
+      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role),
+      showAttention: role !== 'admin',
+      attTitle: role === 'manager' ? '今日の要確認' : '今日の要対応',
+      attCount: attentions.length + '件',
+      attentions
+    };
+
+    if (reservationSummary) {
+      overrides.agTotal = reservationSummary.total;
+      overrides.agUnc = reservationSummary.unconfirmed;
+      overrides.agCancel = reservationSummary.cancelled;
+    }
+
+    if (reportStatus) {
+      overrides.drDone = reportStatus.done;
+      overrides.drReview = reportStatus.review;
+      overrides.drMissing = reportStatus.missing;
+      overrides.reportRows = reportStatus.rows;
+    }
+
+    return overrides;
+  }
+
+  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
+    const up = 'var(--s-cf)';
+    const down = 'var(--s-ns)';
+    const flat = 'var(--fg-3)';
+    const dot = (color) => 'width:6px;height:6px;border-radius:50%;background:' + color + ';flex:none;';
+    const reservationTotal = reservationSummary ? reservationSummary.total : 0;
+    const unconfirmed = reservationSummary ? reservationSummary.unconfirmed : 0;
+    const reportDone = reportStatus ? reportStatus.done : 0;
+    const reportTotal = reportStatus ? reportStatus.done + reportStatus.review + reportStatus.missing : 0;
+    const reportMissing = reportStatus ? reportStatus.missing : 0;
+
+    if (role === 'manager') {
+      return [
+        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
+        { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+      ];
+    }
+
+    if (role === 'admin') {
+      return [
+        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
+        { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
+      ];
+    }
+
+    return [
+      { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+      { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+      { label: '本日の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
+    ];
+  }
+
+  __mobileUiuxBuildHomeKpiSub(data, role) {
+    const scopeName = this.__mobileUiuxDisplayText(data.scopeName || data.clinicName, '');
+    const suffix = role === 'admin' ? '本日' : 'リアルタイム';
+    return scopeName ? scopeName + ' · ' + suffix : suffix;
+  }
+
+  __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
+    const rows = [];
+    if (Array.isArray(attentionPayload)) {
+      for (const item of attentionPayload) {
+        const row = this.__mobileUiuxAttentionRow(item);
+        if (row) rows.push(row);
+      }
+    } else if (Array.isArray(alerts)) {
+      alerts.forEach((alert, index) => {
+        if (typeof alert !== 'string' || alert.trim().length === 0) return;
+        const sev = index === 0 ? 'warning' : 'info';
+        rows.push(this.__mobileUiuxBuildAttentionRow(sev, alert.trim(), 'PC dashboard read model のアラートです。'));
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxAttentionRow(item) {
+    if (!this.__mobileUiuxIsRecord(item)) return null;
+    const severity = this.__mobileUiuxNormalizeSeverity(item.severity || item.sev);
+    const title = this.__mobileUiuxDisplayText(item.title, '');
+    if (!title) return null;
+    const body = this.__mobileUiuxDisplayText(item.body || item.message, '');
+    return this.__mobileUiuxBuildAttentionRow(severity, title, body);
+  }
+
+  __mobileUiuxBuildAttentionRow(severity, title, body) {
+    const meta = this.__mobileUiuxSeverityMeta(severity);
+    return {
+      icon: severity === 'critical' ? '!' : severity === 'warning' ? '?' : 'i',
+      sev: severity,
+      sevLabel: meta.label,
+      title,
+      body,
+      c: meta.c,
+      b: meta.b,
+      onTap: typeof this.link === 'function' ? this.link(title) : () => {}
+    };
+  }
+
+  __mobileUiuxReservationSummary(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    return {
+      total: this.__mobileUiuxNumber(value.total),
+      unconfirmed: this.__mobileUiuxNumber(value.unconfirmed),
+      cancelled: this.__mobileUiuxNumber(value.cancelled)
+    };
+  }
+
+  __mobileUiuxDailyReportStatus(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    const done = this.__mobileUiuxNumber(value.done);
+    const review = this.__mobileUiuxNumber(value.review);
+    const missing = this.__mobileUiuxNumber(value.missing);
+    const rows = [];
+    if (Array.isArray(value.rows)) {
+      for (const row of value.rows) {
+        const mapped = this.__mobileUiuxDailyReportStatusRow(row);
+        if (mapped) rows.push(mapped);
+      }
+    }
+    return { done, review, missing, rows };
+  }
+
+  __mobileUiuxDailyReportStatusRow(row) {
+    if (!this.__mobileUiuxIsRecord(row)) return null;
+    const name = this.__mobileUiuxDisplayText(row.name || row.clinicName, '');
+    if (!name) return null;
+    const status = this.__mobileUiuxNormalizeReportStatus(row.status);
+    const meta = this.__mobileUiuxReportStatusMeta(status);
+    return {
+      name,
+      statusLabel: meta.label,
+      c: meta.c,
+      b: meta.b,
+      onTap: typeof this.link === 'function' ? this.link(name + 'の日報を開きます') : () => {}
+    };
+  }
+
+  __mobileUiuxNormalizeReportStatus(value) {
+    if (value === 'done' || value === 'submitted' || value === 'confirmed') return 'done';
+    if (value === 'review' || value === 'needscheck' || value === 'needs_check') return 'review';
+    return 'missing';
+  }
+
+  __mobileUiuxReportStatusMeta(value) {
+    if (value === 'done') return { label: '提出済', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (value === 'review') return { label: '要確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    return { label: '未提出', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+  }
+
+  __mobileUiuxNormalizeSeverity(value) {
+    if (value === 'critical' || value === 'error') return 'critical';
+    if (value === 'warning' || value === 'warn') return 'warning';
+    return 'info';
+  }
+
+  __mobileUiuxSeverityMeta(value) {
+    const severity = this.__mobileUiuxNormalizeSeverity(value);
+    if (this.SEV && this.SEV[severity]) return this.SEV[severity];
+    if (severity === 'critical') return { label: '要対応', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' };
+    if (severity === 'warning') return { label: '注意', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+    return { label: '情報', c: 'var(--fg-2)', b: 'var(--surface-3)' };
+  }
+
+  __mobileUiuxNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  __mobileUiuxYen(value) {
+    return '¥' + Math.round(this.__mobileUiuxNumber(value)).toLocaleString('ja-JP');
+  }
+
+  __mobileUiuxFormatDateLabel(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return value;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return value;
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return month + '/' + day + '（' + weekdays[date.getUTCDay()] + '）';
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+}
+</script>
+</body>
+</html>

@@ -368,6 +368,133 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.listRows).not.toEqual([{ date: 'sample-row' }]);
   });
 
+  it('merges home hydration overrides after the original renderVals result', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      attentions: [{ title: 'sample-attention' }],
+      attCount: '1件',
+      agTotal: 99,
+      agUnc: 99,
+      agCancel: 99,
+      drDone: 0,
+      drReview: 0,
+      drMissing: 0,
+      reportRows: [{ name: 'sample-report' }]
+    };
+  }
+}`),
+      {
+        screen: 'home',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        clinicName: 'BFF 本町院',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          alerts: ['fallback alert should not win'],
+        },
+        reservationSummary: {
+          total: 41,
+          unconfirmed: 7,
+          cancelled: 3,
+        },
+        dailyReportStatus: {
+          done: 2,
+          review: 1,
+          missing: 4,
+          rows: [
+            {
+              name: 'BFF 本町院',
+              status: 'submitted',
+              reportText: 'free text should not be rendered',
+            },
+            {
+              name: 'BFF 緑が丘院',
+              status: 'needs_check',
+              notes: 'raw notes should not be rendered',
+            },
+            { name: 'BFF 駅前院', status: 'missing' },
+          ],
+        },
+        attentions: [
+          {
+            severity: 'critical',
+            title: 'BFF 未確定予約 7件',
+            body: 'BFF summary only',
+          },
+          {
+            severity: 'warning',
+            title: 'BFF 日報要確認 1院',
+            body: 'BFF status summary',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const kpis = Array.isArray(vals.kpis) ? vals.kpis : [];
+    const firstKpi = getRecord(kpis[0]);
+    const reservationKpi = getRecord(kpis[2]);
+    const unconfirmedKpi = getRecord(kpis[3]);
+    const attentions = Array.isArray(vals.attentions) ? vals.attentions : [];
+    const firstAttention = getRecord(attentions[0]);
+    const reportRows = Array.isArray(vals.reportRows) ? vals.reportRows : [];
+    const reviewReport = getRecord(reportRows[1]);
+
+    expect(applied).toBe(true);
+    expect(vals.dateLabel).toBe('6/30（火）');
+    expect(firstKpi.label).toBe('本日の売上');
+    expect(firstKpi.value).toBe('¥245,600');
+    expect(reservationKpi.value).toBe('41');
+    expect(unconfirmedKpi.value).toBe('7');
+    expect(vals.agTotal).toBe(41);
+    expect(vals.agUnc).toBe(7);
+    expect(vals.agCancel).toBe(3);
+    expect(vals.attCount).toBe('2件');
+    expect(firstAttention.title).toBe('BFF 未確定予約 7件');
+    expect(firstAttention.sevLabel).toBe('要対応');
+    expect(vals.drDone).toBe(2);
+    expect(vals.drReview).toBe(1);
+    expect(vals.drMissing).toBe(4);
+    expect(reviewReport.name).toBe('BFF 緑が丘院');
+    expect(reviewReport.statusLabel).toBe('要確認');
+    expect(JSON.stringify(vals)).not.toContain(
+      'free text should not be rendered'
+    );
+    expect(JSON.stringify(vals)).not.toContain(
+      'raw notes should not be rendered'
+    );
+    expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
+  });
+
   it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
@@ -471,6 +598,33 @@ describe('patchMobileUiuxDcScript', () => {
     expect(applied).toBe(false);
     expect(vals.todayLabel).toBe('sample-date');
     expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
+  });
+
+  it('keeps home sample values when the payload is invalid', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  renderVals() {
+    return { kpis: [{ label: 'sample-kpi', value: 'sample' }], agTotal: 99 };
+  }
+}`,
+      { screen: 'home' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        dashboard: {
+          alerts: [],
+        },
+      },
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(false);
+    expect(vals.kpis).toEqual([{ label: 'sample-kpi', value: 'sample' }]);
+    expect(vals.agTotal).toBe(99);
   });
 
   it('keeps daily-reports sample values when a report row is invalid', () => {

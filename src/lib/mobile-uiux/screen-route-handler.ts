@@ -20,10 +20,12 @@ import {
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { transformMobileUiuxHtml } from '@/lib/mobile-uiux/html-transform';
 import { readMobileUiuxProductionAsset } from '@/lib/mobile-uiux/production-asset';
+import { logMobileUiuxDeniedAccess } from '@/lib/mobile-uiux/route-utils';
 import {
   createClient,
   getCurrentUser,
   getUserAccessContext,
+  resolveScopedClinicIds,
 } from '@/lib/supabase';
 
 const ASSET_ROOT = path.join(process.cwd(), 'private-assets', 'mobile-uiux');
@@ -213,6 +215,15 @@ export async function handleMobileUiuxScreenRequest(
   );
 
   if (mobileAccess.allowed === false) {
+    logMobileUiuxDeniedAccess({
+      reasonCode: mobileAccess.reason,
+      role: normalizedRole,
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount:
+        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      writeTarget: `screen:${resource}`,
+      featureFlagEnabled: flags.enabled,
+    });
     return createErrorResponse(
       'このモバイル UI/UX へのアクセス権限がありません',
       mobileAccess.status
@@ -220,6 +231,15 @@ export async function handleMobileUiuxScreenRequest(
   }
 
   if (!isAllowedRole(normalizedRole, definition.allowedRoles)) {
+    logMobileUiuxDeniedAccess({
+      reasonCode: 'screen_role_denied',
+      role: normalizedRole,
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount:
+        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      writeTarget: `screen:${resource}`,
+      featureFlagEnabled: flags.enabled,
+    });
     return createErrorResponse(
       'このモバイル画面へのアクセス権限がありません',
       403

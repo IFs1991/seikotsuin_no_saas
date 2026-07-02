@@ -5,6 +5,23 @@ import type {
   MobileUiuxApiSuccess,
 } from '@/lib/mobile-uiux/contracts';
 
+const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+
+export type MobileUiuxDeniedAccessLogDetails = {
+  reasonCode: string;
+  role: string | null;
+  allowedClinicCount: number;
+  scopedClinicCount: number;
+  writeTarget: string;
+  featureFlagEnabled: boolean;
+};
+
+export function logMobileUiuxDeniedAccess(
+  details: MobileUiuxDeniedAccessLogDetails
+): void {
+  console.warn('[mobile-uiux] access denied', details);
+}
+
 export function buildMobileUiuxFailure(
   status: number,
   code: string,
@@ -18,7 +35,12 @@ export function buildMobileUiuxFailure(
         message,
       },
     },
-    { status }
+    {
+      status,
+      headers: {
+        'Content-Type': JSON_CONTENT_TYPE,
+      },
+    }
   );
 }
 
@@ -32,7 +54,12 @@ export function buildMobileUiuxSuccess<T>(
       data,
       generatedAt: new Date().toISOString(),
     },
-    { status }
+    {
+      status,
+      headers: {
+        'Content-Type': JSON_CONTENT_TYPE,
+      },
+    }
   );
 }
 

@@ -127,12 +127,22 @@ function buildNodeFileNotFoundError(): Error & { code: string } {
   return error;
 }
 
-function buildElement(tagName: string): BridgeElement {
+function buildElementWithTextChange(
+  tagName: string,
+  onTextChange?: () => void
+): BridgeElement {
   const attributes: Record<string, string> = {};
+  let textContent = '';
   return {
     tagName,
     dataset: {},
-    textContent: '',
+    get textContent() {
+      return textContent;
+    },
+    set textContent(value: string) {
+      textContent = value;
+      onTextChange?.();
+    },
     setAttribute(name: string, value: string) {
       attributes[name] = value;
     },
@@ -146,11 +156,17 @@ function buildBridgeWindow(
 ): {
   window: BridgeWindow;
   calls: FetchCall[];
+  bodyNodes: BridgeElement[];
   listeners: Record<string, Array<(event: BridgeEvent) => void>>;
 } {
   const calls: FetchCall[] = [];
   const bodyNodes: BridgeElement[] = [];
   const listeners: Record<string, Array<(event: BridgeEvent) => void>> = {};
+  function refreshBodyText(): void {
+    document.body.textContent = bodyNodes
+      .map(item => item.textContent)
+      .join('\n');
+  }
   const document: BridgeDocument = {
     currentScript: {
       dataset: { screen },
@@ -162,12 +178,13 @@ function buildBridgeWindow(
     body: {
       appendChild(node) {
         bodyNodes.push(node);
-        this.textContent = bodyNodes.map(item => item.textContent).join('\n');
+        refreshBodyText();
         return node;
       },
       textContent: '',
     },
-    createElement: buildElement,
+    createElement: tagName =>
+      buildElementWithTextChange(tagName, refreshBodyText),
     addEventListener(eventName, callback) {
       listeners[eventName] = listeners[eventName] ?? [];
       listeners[eventName].push(callback);
@@ -205,7 +222,7 @@ function buildBridgeWindow(
   if (applyReadData) {
     window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
   }
-  return { window, calls, listeners };
+  return { window, calls, bodyNodes, listeners };
 }
 
 function buildNavElement(target: string): BridgeNavElement {
@@ -502,6 +519,64 @@ describe('mobile-uiux bridge contract', () => {
     );
   });
 
+  it('calls the home read hydration adapter after BFF success and marks hydrated when applied', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          aiComment: null,
+          revenueChartData: [],
+          heatmapData: [],
+          alerts: ['BFF alert'],
+        },
+        reservationSummary: {
+          total: 41,
+          unconfirmed: 7,
+          cancelled: 3,
+        },
+        dailyReportStatus: {
+          done: 2,
+          review: 1,
+          missing: 4,
+          rows: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'home',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('home', readPayload);
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+    expect(window.document.body.textContent).toContain(
+      'ホームデータを読み込みました'
+    );
+  });
+
   it('calls the daily-reports read hydration adapter after BFF success and marks hydrated when applied', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -755,6 +830,65 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
+  it('prevents duplicate in-flight reservation mutations and reuses the status element', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls, bodyNodes } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(201, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reservation: {
+            id: 'reservation-1',
+          },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+    };
+
+    await runBridgeScript(script, window);
+    const firstMutation = window.MobileUiuxBridge?.createReservation(payload);
+    const secondMutation = window.MobileUiuxBridge?.createReservation(payload);
+
+    await expect(firstMutation).resolves.toBe(true);
+    await expect(secondMutation).resolves.toBe(true);
+    expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
+    expect(
+      bodyNodes.filter(
+        node => node.dataset.mobileUiuxMutationStatus !== undefined
+      )
+    ).toHaveLength(1);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'success'
+    );
+  });
+
   it('keeps daily report mutation disabled when server flags disable writes', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -857,7 +991,7 @@ describe('mobile-uiux bridge contract', () => {
     );
     await expect(pending).resolves.toBe(true);
     expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
-      'succeeded'
+      'success'
     );
     expect(window.document.body.textContent).toContain('日報を保存しました');
     expect(calls).toContainEqual({
@@ -867,7 +1001,7 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
-  it('marks daily report mutation failure through UI fallback without logging identifiers', async () => {
+  it('marks daily report server errors as failed without logging identifiers', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
       manifest: MOBILE_UIUX_SCREEN_MANIFEST,
@@ -894,7 +1028,7 @@ describe('mobile-uiux bridge contract', () => {
         },
         generatedAt: '2026-06-30T00:00:00.000Z',
       }),
-      buildJsonResponse(400, {
+      buildJsonResponse(500, {
         success: false,
         error: {
           code: 'BAD_REQUEST',
@@ -914,7 +1048,9 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
       'failed'
     );
-    expect(window.document.body.textContent).toContain('表示できません');
+    expect(window.document.body.textContent).toContain(
+      '実データを一時的に表示できません'
+    );
     expect(window.console.log).not.toHaveBeenCalled();
     expect(window.console.error).not.toHaveBeenCalled();
     expect(window.document.body.textContent).not.toContain('clinic-secret');
@@ -1026,7 +1162,7 @@ describe('mobile-uiux bridge contract', () => {
     );
     await expect(pending).resolves.toBe(true);
     expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
-      'succeeded'
+      'success'
     );
     expect(window.document.body.textContent).toContain('設定を保存しました');
     expect(calls).toContainEqual({

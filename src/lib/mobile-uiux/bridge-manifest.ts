@@ -150,6 +150,8 @@ export function buildMobileUiuxBridgeScript(
     unavailable: "実データを一時的に表示できません"
   };
   let currentContext = null;
+  const inFlightMutations = new Map();
+  let mutationStatusElement = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -179,11 +181,15 @@ export function buildMobileUiuxBridgeScript(
 
   function showMutationStatus(status, message) {
     document.documentElement.dataset.mobileUiuxMutation = status;
-    const indicator = document.createElement("div");
-    indicator.setAttribute("role", "status");
+    const indicator = mutationStatusElement || document.createElement("div");
+    if (!mutationStatusElement) {
+      indicator.setAttribute("role", "status");
+      mutationStatusElement = indicator;
+    }
     indicator.dataset.mobileUiuxMutationStatus = status;
     indicator.textContent = message;
-    if (document.body) {
+    if (document.body && !indicator.dataset.mobileUiuxMutationAttached) {
+      indicator.dataset.mobileUiuxMutationAttached = "true";
       document.body.appendChild(indicator);
     }
   }
@@ -284,6 +290,10 @@ export function buildMobileUiuxBridgeScript(
     const data = payload.data;
     if (screen === "reservations" && Array.isArray(data.reservations)) {
       return "予約データを読み込みました（" + data.reservations.length + "件）";
+    }
+
+    if (screen === "home" && isRecord(data.dashboard) && isRecord(data.dashboard.dailyData)) {
+      return "ホームデータを読み込みました";
     }
 
     if (screen === "daily-reports" && isRecord(data.dailyReports) && Array.isArray(data.dailyReports.reports)) {
@@ -484,33 +494,57 @@ export function buildMobileUiuxBridgeScript(
       currentContext.flags.settingsWriteEnabled === true;
   }
 
+  function getMutationInFlightKey(options) {
+    return options.mutationKey + ":" + options.method + ":" + options.url;
+  }
+
+  async function runMobileBffMutation(options) {
+    showMutationStatus("pending", STATUS_MESSAGES.saving);
+    const result = await mutateJson(options.url, options.method, options.payload);
+    if (result.kind === "unauthorized") {
+      showMutationStatus("failed", STATUS_MESSAGES.unauthorized);
+      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+      return false;
+    }
+    if (result.kind === "forbidden") {
+      showMutationStatus("failed", STATUS_MESSAGES.forbidden);
+      showFallback("forbidden", STATUS_MESSAGES.forbidden);
+      return false;
+    }
+    if (result.kind === "unavailable") {
+      showMutationStatus("failed", STATUS_MESSAGES.unavailable);
+      showFallback("unavailable", STATUS_MESSAGES.unavailable);
+      return false;
+    }
+    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
+      showMutationStatus("failed", STATUS_MESSAGES.invalid);
+      showFallback("invalid", STATUS_MESSAGES.invalid);
+      return false;
+    }
+
+    showMutationStatus("success", options.successMessage);
+    return true;
+  }
+
   async function mutateMobileBff(options) {
     if (!REAL_DATA_ENABLED || options.canWrite() !== true) {
       showMutationStatus("disabled", options.disabledMessage);
       return false;
     }
 
-    showMutationStatus("pending", STATUS_MESSAGES.saving);
-    const result = await mutateJson(options.url, options.method, options.payload);
-    if (result.kind === "unauthorized") {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
-      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
-      return false;
-    }
-    if (result.kind === "forbidden") {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("forbidden", STATUS_MESSAGES.forbidden);
-      return false;
-    }
-    if (result.kind !== "payload" || !isSuccessPayload(result.payload)) {
-      document.documentElement.dataset.mobileUiuxMutation = "failed";
-      showFallback("invalid", STATUS_MESSAGES.invalid);
-      return false;
+    const inFlightKey = getMutationInFlightKey(options);
+    const existingMutation = inFlightMutations.get(inFlightKey);
+    if (existingMutation) {
+      showMutationStatus("pending", STATUS_MESSAGES.saving);
+      return existingMutation;
     }
 
-    showMutationStatus("succeeded", options.successMessage);
-    return true;
+    const mutation = runMobileBffMutation(options).finally(() => {
+      inFlightMutations.delete(inFlightKey);
+    });
+    inFlightMutations.set(inFlightKey, mutation);
+    return mutation;
   }
 
   function mutateReservation(method, payload) {
@@ -518,6 +552,7 @@ export function buildMobileUiuxBridgeScript(
       url: "/api/mobile-uiux/reservations",
       method,
       payload,
+      mutationKey: "reservations",
       canWrite: canWriteReservations,
       disabledMessage: STATUS_MESSAGES.writeDisabled,
       successMessage: STATUS_MESSAGES.reservationSaved
@@ -529,6 +564,7 @@ export function buildMobileUiuxBridgeScript(
       url: "/api/mobile-uiux/daily-reports",
       method: "POST",
       payload,
+      mutationKey: "daily-reports",
       canWrite: canWriteDailyReports,
       disabledMessage: STATUS_MESSAGES.dailyReportWriteDisabled,
       successMessage: STATUS_MESSAGES.dailyReportSaved
@@ -540,6 +576,7 @@ export function buildMobileUiuxBridgeScript(
       url: "/api/mobile-uiux/settings",
       method: "PUT",
       payload,
+      mutationKey: "settings",
       canWrite: canWriteSettings,
       disabledMessage: STATUS_MESSAGES.settingsWriteDisabled,
       successMessage: STATUS_MESSAGES.settingsSaved

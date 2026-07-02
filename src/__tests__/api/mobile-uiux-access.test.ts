@@ -262,6 +262,45 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     ).toBe(false);
   });
 
+  it('prefers the generated home production asset for authorized manager access', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      clinicId: 'clinic-1',
+    });
+    const productionAsset = `<!DOCTYPE html>
+<html>
+<body data-mobile-uiux-shell="production">
+<x-dc><helmet></helmet><div ref="{{ setRoot }}" data-mobile-uiux-production-root><div data-screen-label="ホーム">HOME_PRODUCTION_ASSET_ONLY</div></div></x-dc>
+<script type="text/x-dc" data-dc-script>class Component extends DCLogic { __mobileUiuxOriginalRenderVals() { return {}; } renderVals() { return this.__mobileUiuxOriginalRenderVals(); } }</script>
+</body>
+</html>`;
+    readFileMock.mockImplementation(async filePath => {
+      if (String(filePath).includes('mobile-uiux-production')) {
+        return productionAsset;
+      }
+      return buildMobileUiuxDcHtml().replace(
+        '予約</div>',
+        'HOME_SOURCE_ONLY</div>'
+      );
+    });
+
+    const response = await callMobileScreen('home');
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('HOME_PRODUCTION_ASSET_ONLY');
+    expect(body).toContain('mobile-bridge.js');
+    expect(body).not.toContain('HOME_SOURCE_ONLY');
+    expect(body).not.toContain('width: 390px; height: 812px');
+  });
+
   it('returns the mock frame through the preview route', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
