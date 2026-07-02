@@ -474,11 +474,12 @@ class Component extends DCLogic {
       ? this.__mobileUiuxHydratedVals
       : null;
     return hydratedVals
-      ? { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport, ...hydratedVals }
-      : { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport };
+      ? { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport, inputToday: this.__mobileUiuxOpenTodayReport, ...hydratedVals }
+      : { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport, inputToday: this.__mobileUiuxOpenTodayReport };
   }
 
   componentDidMount() {
+    this.__mobileUiuxPrimeDailyReportWriteSources();
     this.__mobileUiuxRegisterReadHydration();
     if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
       return this.__mobileUiuxOriginalComponentDidMount();
@@ -501,9 +502,20 @@ class Component extends DCLogic {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
+        ? component.__mobileUiuxHydratedVals
+        : {};
+      component.__mobileUiuxHydratedVals = { ...currentVals, ...hydratedVals };
       if (typeof component.setState === 'function') {
-        component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        if (Array.isArray(hydratedVals.__mobileUiuxTodayItems)) {
+          statePatch.todayItems = hydratedVals.__mobileUiuxTodayItems;
+          statePatch.items = hydratedVals.__mobileUiuxTodayItems;
+        }
+        if (typeof hydratedVals.__mobileUiuxFirstTherapistId === 'string') {
+          statePatch.formTher = hydratedVals.__mobileUiuxFirstTherapistId;
+        }
+        component.setState(statePatch);
       } else if (typeof component.forceUpdate === 'function') {
         component.forceUpdate();
       }
@@ -525,6 +537,10 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'settings-detail') {
+      return this.__mobileUiuxBuildDailyReportSettingsDetailOverrides(payload);
+    }
+
     if (screen !== 'daily-reports' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -566,8 +582,82 @@ class Component extends DCLogic {
       listRows: viewRows.listRows,
       kpiBoxes: this.__mobileUiuxBuildDailyReportKpiBoxes(summary, viewRows),
       trendCards: viewRows.trendCards,
-      statusRows: viewRows.statusRows
+      statusRows: viewRows.statusRows,
+      __mobileUiuxTodayItems: []
     };
+  }
+
+  __mobileUiuxPrimeDailyReportWriteSources() {
+    if (Array.isArray(this.MENUS_DR)) {
+      this.MENUS_DR = [];
+    }
+    if (Array.isArray(this.THER)) {
+      this.THER = [];
+    }
+    if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
+      this.setState({
+        todayItems: [],
+        items: [],
+        formTher: ''
+      });
+    }
+  }
+
+  __mobileUiuxOpenTodayReport = () => {
+    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : {};
+    const formDate = typeof hydratedVals.todayLabel === 'string' ? hydratedVals.todayLabel : '';
+    const sourceItems = this.state && Array.isArray(this.state.todayItems) ? this.state.todayItems : [];
+    const items = sourceItems.map((item) => ({ ...item }));
+    if (typeof this.setState === 'function') {
+      this.setState({ formOpen: true, editKey: 'd0', formDate, items, confirmDel: null });
+    }
+  };
+
+  __mobileUiuxBuildDailyReportSettingsDetailOverrides(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return null;
+    }
+    const data = payload.data;
+    const menus = this.__mobileUiuxBuildDailyReportMenus(data.menus);
+    const therapists = this.__mobileUiuxBuildDailyReportTherapists(data.resources);
+    this.MENUS_DR = menus;
+    this.THER = therapists;
+    return {
+      menuOpts: menus.map((menu) => ({ v: menu.name, l: menu.name })),
+      therOpts: therapists.map((therapist) => ({ v: therapist.id, l: therapist.name })),
+      __mobileUiuxFirstTherapistId: therapists.length > 0 ? therapists[0].id : ''
+    };
+  }
+
+  __mobileUiuxBuildDailyReportMenus(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name || item.isActive === false) continue;
+      rows.push({
+        name,
+        price: this.__mobileUiuxNumber(item.price),
+        type: item.isInsuranceApplicable === true ? '保険' : '自費'
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildDailyReportTherapists(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name || item.isActive === false) continue;
+      rows.push({ id, name });
+    }
+    return rows;
   }
 
   __mobileUiuxSubmitDailyReport = async () => {
@@ -844,6 +934,10 @@ class Component extends DCLogic {
 
   __mobileUiuxNumber(value) {
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
   }
 
   __mobileUiuxFormatDateLabel(value) {

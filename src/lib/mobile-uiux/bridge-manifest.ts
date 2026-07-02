@@ -135,6 +135,17 @@ export function buildMobileUiuxBridgeScript(
     "daily-reports": "/mobile-uiux/screens/daily-reports",
     settings: "/mobile-uiux/screens/settings"
   };
+  const SUPPLEMENTAL_READS_BY_SCREEN = {
+    reservations: [{ screen: "settings-detail" }],
+    "daily-reports": [{ screen: "settings-detail" }],
+    "settings-detail": [
+      {
+        screen: "settings",
+        applyScreen: "settings-detail",
+        params: { category: "clinic_hours" }
+      }
+    ]
+  };
   const STATUS_MESSAGES = {
     disabled: "実データ参照は無効です",
     unauthorized: "ログインが必要です",
@@ -275,7 +286,7 @@ export function buildMobileUiuxBridgeScript(
     return { kind: "payload", payload: responsePayload };
   }
 
-  function buildReadUrl(entry, contextData) {
+  function buildReadUrl(entry, contextData, overrideParams) {
     const params = [];
     if (entry.requiresClinicId) {
       if (typeof contextData.defaultClinicId !== "string" || contextData.defaultClinicId.length === 0) {
@@ -284,9 +295,13 @@ export function buildMobileUiuxBridgeScript(
       params.push(["clinic_id", contextData.defaultClinicId]);
     }
 
-    if (isRecord(entry.defaultParams)) {
-      for (const key of Object.keys(entry.defaultParams)) {
-        const value = entry.defaultParams[key];
+    const defaultParams = isRecord(entry.defaultParams) ? entry.defaultParams : {};
+    const mergedParams = isRecord(overrideParams)
+      ? { ...defaultParams, ...overrideParams }
+      : defaultParams;
+    if (isRecord(mergedParams)) {
+      for (const key of Object.keys(mergedParams)) {
+        const value = mergedParams[key];
         if (typeof value === "string") {
           params.push([key, value]);
         }
@@ -376,6 +391,36 @@ export function buildMobileUiuxBridgeScript(
 
     setStatus("fallback");
     return true;
+  }
+
+  function getSupplementalReadScreens(screen) {
+    const screens = SUPPLEMENTAL_READS_BY_SCREEN[screen];
+    return Array.isArray(screens) ? screens : [];
+  }
+
+  async function hydrateSupplementalReadData(screen, contextData) {
+    const supplementalReads = getSupplementalReadScreens(screen);
+    for (const read of supplementalReads) {
+      if (!isRecord(read) || typeof read.screen !== "string") {
+        continue;
+      }
+
+      const entry = MOBILE_UIUX_SCREEN_MANIFEST[read.screen];
+      if (!entry) {
+        continue;
+      }
+
+      const readUrl = buildReadUrl(entry, contextData, read.params);
+      if (!readUrl) {
+        continue;
+      }
+
+      const readResult = await fetchJson(readUrl);
+      if (readResult.kind === "payload") {
+        const applyScreen = typeof read.applyScreen === "string" ? read.applyScreen : read.screen;
+        hydrateReadOnlyData(applyScreen, readResult.payload);
+      }
+    }
   }
 
   function getNormalizedPathname() {
@@ -490,6 +535,10 @@ export function buildMobileUiuxBridgeScript(
     if (readResult.kind !== "payload" || !hydrateReadOnlyData(screen, readResult.payload)) {
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return;
+    }
+
+    if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
+      await hydrateSupplementalReadData(screen, contextResult.payload.data);
     }
   }
 
