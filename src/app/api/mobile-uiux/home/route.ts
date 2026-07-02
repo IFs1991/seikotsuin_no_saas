@@ -8,7 +8,11 @@ import {
 import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxHomeResponse } from '@/lib/mobile-uiux/contracts';
-import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import {
+  areMobileUiuxRealDataReadsEnabled,
+  getMobileUiuxFlags,
+} from '@/lib/mobile-uiux/flags';
 import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
@@ -38,6 +42,14 @@ function resolveDateKey(value: string | null): string | null {
   }
 
   return isValidDateKey(value) ? value : null;
+}
+
+function buildRealDataDisabledResponse() {
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    'モバイル UI/UX の実データ参照は無効です'
+  );
 }
 
 function normalizeReservationStatus(value: string | null): string {
@@ -123,11 +135,7 @@ async function fetchHomeDailyReportStatus(params: {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
-    return buildMobileUiuxFailure(
-      403,
-      'FORBIDDEN',
-      'モバイル UI/UX の実データ参照は無効です'
-    );
+    return buildRealDataDisabledResponse();
   }
 
   const clinicId = request.nextUrl.searchParams.get('clinic_id');
@@ -171,6 +179,15 @@ export async function GET(request: NextRequest) {
       'FORBIDDEN',
       '対象クリニックへのアクセス権がありません'
     );
+  }
+
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: access.supabase,
+    flags,
+    clinicId,
+  });
+  if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    return buildRealDataDisabledResponse();
   }
 
   const [dashboard, reservationSummary, dailyReportStatus] = await Promise.all([

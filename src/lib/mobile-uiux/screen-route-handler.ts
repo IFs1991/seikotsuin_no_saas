@@ -9,7 +9,7 @@ import {
   normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
-import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import {
   buildMobileUiuxBridgeScript,
   injectMobileUiuxBridgeScript,
@@ -17,6 +17,7 @@ import {
   MOBILE_UIUX_SCREEN_MANIFEST,
   type MobileUiuxScreenRouteResource,
 } from '@/lib/mobile-uiux/bridge-manifest';
+import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { transformMobileUiuxHtml } from '@/lib/mobile-uiux/html-transform';
 import { readMobileUiuxProductionAsset } from '@/lib/mobile-uiux/production-asset';
@@ -209,14 +210,14 @@ export async function handleMobileUiuxScreenRequest(
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
-  const mobileAccess = evaluateMobileUiuxAccess(
+  const principalDecision = evaluateMobileUiuxPrincipal(
     accessContext.permissions,
     flags
   );
 
-  if (mobileAccess.allowed === false) {
+  if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: mobileAccess.reason,
+      reasonCode: principalDecision.reason,
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
@@ -226,7 +227,7 @@ export async function handleMobileUiuxScreenRequest(
     });
     return createErrorResponse(
       'このモバイル UI/UX へのアクセス権限がありません',
-      mobileAccess.status
+      principalDecision.status
     );
   }
 
@@ -243,6 +244,28 @@ export async function handleMobileUiuxScreenRequest(
     return createErrorResponse(
       'このモバイル画面へのアクセス権限がありません',
       403
+    );
+  }
+
+  const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
+    supabase,
+    principal: principalDecision,
+    flags,
+  });
+
+  if (rolloutDecision.allowed === false) {
+    logMobileUiuxDeniedAccess({
+      reasonCode: rolloutDecision.reason,
+      role: normalizedRole,
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount:
+        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      writeTarget: `screen:${resource}`,
+      featureFlagEnabled: rolloutDecision.publicFlags.enabled,
+    });
+    return createErrorResponse(
+      'このモバイル UI/UX へのアクセス権限がありません',
+      rolloutDecision.status
     );
   }
 

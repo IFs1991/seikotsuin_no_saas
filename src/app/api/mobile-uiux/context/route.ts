@@ -1,16 +1,13 @@
 import { NextRequest } from 'next/server';
 
 import { ROLE_LABELS, normalizeRole } from '@/lib/constants/roles';
-import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
+import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import {
   type MobileUiuxContextResponse,
   type MobileUiuxDisplayMode,
-  type MobileUiuxPublicFlags,
 } from '@/lib/mobile-uiux/contracts';
-import {
-  getMobileUiuxFlags,
-  type MobileUiuxFlags,
-} from '@/lib/mobile-uiux/flags';
+import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
@@ -27,17 +24,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const DISPLAY_MODE_COOKIE = 'mobile_uiux_display_mode';
-
-function toPublicFlags(flags: MobileUiuxFlags): MobileUiuxPublicFlags {
-  return {
-    enabled: flags.enabled,
-    realDataEnabled: flags.realDataEnabled,
-    writeEnabled: flags.writeEnabled,
-    reservationWriteEnabled: flags.reservationWriteEnabled,
-    dailyReportWriteEnabled: flags.dailyReportWriteEnabled,
-    settingsWriteEnabled: flags.settingsWriteEnabled,
-  };
-}
 
 function resolveDisplayMode(request: NextRequest): MobileUiuxDisplayMode {
   const mode = request.cookies.get(DISPLAY_MODE_COOKIE)?.value;
@@ -77,14 +63,14 @@ export async function GET(request: NextRequest) {
   const accessContext = await getUserAccessContext(user.id, supabase, {
     user,
   });
-  const accessDecision = evaluateMobileUiuxAccess(
+  const principalDecision = evaluateMobileUiuxPrincipal(
     accessContext.permissions,
     flags
   );
 
-  if (accessDecision.allowed === false) {
+  if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: accessDecision.reason,
+      reasonCode: principalDecision.reason,
       role: normalizeRole(accessContext.permissions?.role),
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
@@ -93,21 +79,50 @@ export async function GET(request: NextRequest) {
       featureFlagEnabled: flags.enabled,
     });
     return buildMobileUiuxFailure(
-      accessDecision.status,
+      principalDecision.status,
       'FORBIDDEN',
       'このモバイル UI/UX へのアクセス権限がありません'
     );
   }
 
+  const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
+    supabase,
+    principal: principalDecision,
+    flags,
+  });
+
+  if (rolloutDecision.allowed === false) {
+    logMobileUiuxDeniedAccess({
+      reasonCode: rolloutDecision.reason,
+      role: normalizeRole(accessContext.permissions?.role),
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount:
+        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      writeTarget: 'context',
+      featureFlagEnabled: rolloutDecision.publicFlags.enabled,
+    });
+    return buildMobileUiuxFailure(
+      rolloutDecision.status,
+      'FORBIDDEN',
+      'このモバイル UI/UX へのアクセス権限がありません'
+    );
+  }
+
+  const contextClinicId = accessContext.clinicId;
+  const defaultClinicId =
+    contextClinicId && rolloutDecision.clinicIds.includes(contextClinicId)
+      ? contextClinicId
+      : rolloutDecision.clinicIds[0];
+
   const data: MobileUiuxContextResponse = {
     role: {
-      canonical: accessDecision.role,
-      label: ROLE_LABELS[accessDecision.role],
+      canonical: rolloutDecision.role,
+      label: ROLE_LABELS[rolloutDecision.role],
     },
-    defaultClinicId: accessContext.clinicId ?? accessDecision.clinicIds[0],
-    accessibleClinicIds: accessDecision.clinicIds,
+    defaultClinicId,
+    accessibleClinicIds: rolloutDecision.clinicIds,
     displayMode: resolveDisplayMode(request),
-    flags: toPublicFlags(flags),
+    flags: rolloutDecision.publicFlags,
   };
 
   return buildMobileUiuxSuccess(data);

@@ -6,6 +6,7 @@ import {
 
 export type MobileUiuxFlags = {
   enabled: boolean;
+  useDbEntitlements: boolean;
   realDataEnabled: boolean;
   writeEnabled: boolean;
   reservationWriteEnabled: boolean;
@@ -16,6 +17,15 @@ export type MobileUiuxFlags = {
 };
 
 export type MobileUiuxWriteTarget = 'reservation' | 'dailyReport' | 'settings';
+
+export type MobileUiuxEntitlementFlags = {
+  enabled: boolean;
+  realDataEnabled: boolean;
+  writeEnabled: boolean;
+  reservationWriteEnabled: boolean;
+  dailyReportWriteEnabled: boolean;
+  settingsWriteEnabled: boolean;
+};
 
 const DEFAULT_ALLOWED_ROLES: Role[] = [...ADMIN_USER_ROLE_VALUES];
 
@@ -42,6 +52,7 @@ function parseAllowedRoles(value: string | undefined): Role[] {
 export function getMobileUiuxFlags(): MobileUiuxFlags {
   return {
     enabled: isEnabled(process.env.MOBILE_UIUX_ENABLED),
+    useDbEntitlements: isEnabled(process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS),
     realDataEnabled: isEnabled(process.env.MOBILE_UIUX_REAL_DATA_ENABLED),
     writeEnabled: isEnabled(process.env.MOBILE_UIUX_WRITE_ENABLED),
     reservationWriteEnabled: isEnabled(
@@ -60,18 +71,84 @@ export function getMobileUiuxFlags(): MobileUiuxFlags {
 
 export function areMobileUiuxWritesEnabled(
   flags: MobileUiuxFlags,
-  target: MobileUiuxWriteTarget
+  target: MobileUiuxWriteTarget,
+  entitlement?: MobileUiuxEntitlementFlags | null
 ): boolean {
-  if (!flags.writeEnabled) {
+  if (
+    !flags.writeEnabled ||
+    !isMobileUiuxEntitlementWriteEnabled(entitlement)
+  ) {
     return false;
   }
 
   switch (target) {
     case 'reservation':
-      return flags.reservationWriteEnabled;
+      return (
+        flags.reservationWriteEnabled &&
+        isMobileUiuxTargetEntitlementEnabled(
+          entitlement,
+          'reservationWriteEnabled'
+        )
+      );
     case 'dailyReport':
-      return flags.dailyReportWriteEnabled;
+      return (
+        flags.dailyReportWriteEnabled &&
+        isMobileUiuxTargetEntitlementEnabled(
+          entitlement,
+          'dailyReportWriteEnabled'
+        )
+      );
     case 'settings':
-      return flags.settingsWriteEnabled;
+      return (
+        flags.settingsWriteEnabled &&
+        isMobileUiuxTargetEntitlementEnabled(
+          entitlement,
+          'settingsWriteEnabled'
+        )
+      );
   }
+}
+
+export function areMobileUiuxRealDataReadsEnabled(
+  flags: MobileUiuxFlags,
+  entitlement?: MobileUiuxEntitlementFlags | null
+): boolean {
+  return (
+    flags.enabled &&
+    flags.realDataEnabled &&
+    isMobileUiuxEntitlementReadEnabled(entitlement)
+  );
+}
+
+function isMobileUiuxEntitlementReadEnabled(
+  entitlement: MobileUiuxEntitlementFlags | null | undefined
+): boolean {
+  return entitlement === undefined
+    ? true
+    : entitlement !== null &&
+        entitlement.enabled &&
+        entitlement.realDataEnabled;
+}
+
+function isMobileUiuxEntitlementWriteEnabled(
+  entitlement: MobileUiuxEntitlementFlags | null | undefined
+): boolean {
+  return entitlement === undefined
+    ? true
+    : entitlement !== null &&
+        entitlement.enabled &&
+        entitlement.realDataEnabled &&
+        entitlement.writeEnabled;
+}
+
+function isMobileUiuxTargetEntitlementEnabled(
+  entitlement: MobileUiuxEntitlementFlags | null | undefined,
+  key: keyof Pick<
+    MobileUiuxEntitlementFlags,
+    | 'reservationWriteEnabled'
+    | 'dailyReportWriteEnabled'
+    | 'settingsWriteEnabled'
+  >
+): boolean {
+  return entitlement === undefined ? true : entitlement[key];
 }

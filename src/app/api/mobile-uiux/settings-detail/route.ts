@@ -3,11 +3,15 @@ import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
 import { mapMenuRowToApi, type MenuRow } from '@/app/api/menus/schema';
 import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
+import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import {
+  areMobileUiuxRealDataReadsEnabled,
+  getMobileUiuxFlags,
+} from '@/lib/mobile-uiux/flags';
 import type {
   MobileUiuxSettingsDetailResource,
   MobileUiuxSettingsDetailResponse,
 } from '@/lib/mobile-uiux/contracts';
-import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
@@ -65,14 +69,18 @@ function mapResourceListRow(
   };
 }
 
+function buildRealDataDisabledResponse() {
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    'モバイル UI/UX の実データ参照は無効です'
+  );
+}
+
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
-    return buildMobileUiuxFailure(
-      403,
-      'FORBIDDEN',
-      'モバイル UI/UX の実データ参照は無効です'
-    );
+    return buildRealDataDisabledResponse();
   }
 
   const clinicId = getRequiredClinicId(
@@ -97,6 +105,15 @@ export async function GET(request: NextRequest) {
       guard.error.status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
       '対象クリニックへのアクセス権がありません'
     );
+  }
+
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: guard.supabase,
+    flags,
+    clinicId,
+  });
+  if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    return buildRealDataDisabledResponse();
   }
 
   const [clinicResult, menusResult, resourcesResult] = await Promise.all([

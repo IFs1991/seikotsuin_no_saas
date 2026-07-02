@@ -75,7 +75,9 @@ const dailyReportsReadModel = {
 };
 
 type MaybeSingleBuilder<T> = {
-  eq: jest.MockedFunction<(field: string, value: unknown) => MaybeSingleBuilder<T>>;
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => MaybeSingleBuilder<T>
+  >;
   maybeSingle: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
 };
 
@@ -85,6 +87,29 @@ type UpsertBuilder<T> = {
 
 type UpsertSelectBuilder<T> = {
   single: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
+};
+
+type EntitlementRow = {
+  clinic_id: string;
+  mobile_uiux_enabled: boolean;
+  mobile_uiux_real_data_enabled: boolean;
+  mobile_uiux_write_enabled: boolean;
+  mobile_uiux_reservation_write_enabled: boolean;
+  mobile_uiux_daily_report_write_enabled: boolean;
+  mobile_uiux_settings_write_enabled: boolean;
+  rollout_phase: string;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+type EntitlementBuilder = {
+  select: jest.MockedFunction<(columns: string) => EntitlementBuilder>;
+  in: jest.MockedFunction<
+    (column: string, values: readonly string[]) => EntitlementBuilder
+  >;
+  returns: jest.MockedFunction<
+    () => Promise<{ data: EntitlementRow[]; error: null }>
+  >;
 };
 
 function createMaybeSingleBuilder<T>(data: T): MaybeSingleBuilder<T> {
@@ -103,6 +128,34 @@ function createUpsertBuilder<T>(data: T): UpsertBuilder<T> {
   };
 }
 
+function buildEntitlementRow(
+  enabled: boolean,
+  dailyReportWriteEnabled: boolean
+): EntitlementRow {
+  return {
+    clinic_id: clinicId,
+    mobile_uiux_enabled: enabled,
+    mobile_uiux_real_data_enabled: enabled,
+    mobile_uiux_write_enabled: dailyReportWriteEnabled,
+    mobile_uiux_reservation_write_enabled: false,
+    mobile_uiux_daily_report_write_enabled: dailyReportWriteEnabled,
+    mobile_uiux_settings_write_enabled: false,
+    rollout_phase: enabled ? 'pilot' : 'off',
+    updated_at: '2026-07-02T00:00:00.000Z',
+    updated_by: null,
+  };
+}
+
+function createEntitlementBuilder(rows: EntitlementRow[]): EntitlementBuilder {
+  let builder: EntitlementBuilder;
+  builder = {
+    select: jest.fn(() => builder),
+    in: jest.fn(() => builder),
+    returns: jest.fn(async () => ({ data: rows, error: null })),
+  };
+  return builder;
+}
+
 function buildMutationRequest(payload = validDto) {
   return new NextRequest('http://localhost/api/mobile-uiux/daily-reports', {
     method: 'POST',
@@ -116,6 +169,7 @@ function buildMutationRequest(payload = validDto) {
 function buildMutationClient(params?: {
   staffFound?: boolean;
   reportFound?: boolean;
+  entitlementRows?: EntitlementRow[];
 }) {
   const upsertedRow = {
     id: reportId,
@@ -138,6 +192,9 @@ function buildMutationClient(params?: {
     params?.reportFound === false ? null : { id: reportId }
   );
   const upsertBuilder = createUpsertBuilder(upsertedRow);
+  const entitlementBuilder = createEntitlementBuilder(
+    params?.entitlementRows ?? []
+  );
   const staffTable = {
     select: jest.fn().mockReturnValue(staffQuery),
   };
@@ -149,6 +206,7 @@ function buildMutationClient(params?: {
     from: jest.fn().mockImplementation((table: string) => {
       if (table === 'staff') return staffTable;
       if (table === 'daily_reports') return dailyReportsTable;
+      if (table === 'clinic_feature_flags') return entitlementBuilder;
       return {};
     }),
   };
@@ -158,6 +216,7 @@ function buildMutationClient(params?: {
     staffQuery,
     reportQuery,
     dailyReportsTable,
+    entitlementBuilder,
   };
 }
 
@@ -199,6 +258,26 @@ describe('POST /api/mobile-uiux/daily-reports write pilot', () => {
 
     expect(response.status).toBe(403);
     expect(processClinicScopedBodyMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 when DB entitlement disables daily report write', async () => {
+    process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
+    const { client, dailyReportsTable } = buildMutationClient({
+      entitlementRows: [buildEntitlementRow(true, false)],
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: validDto,
+      auth,
+      permissions,
+      supabase: client,
+    });
+    const { POST } = await import('@/app/api/mobile-uiux/daily-reports/route');
+
+    const response = await POST(buildMutationRequest());
+
+    expect(response.status).toBe(403);
+    expect(dailyReportsTable.upsert).not.toHaveBeenCalled();
   });
 
   it('returns 400 when new_patients exceeds total_patients', async () => {
