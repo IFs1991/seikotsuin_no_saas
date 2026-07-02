@@ -331,6 +331,10 @@ export function buildMobileUiuxBridgeScript(
       return "ホームデータを読み込みました";
     }
 
+    if (screen === "patients" && Array.isArray(data.rows)) {
+      return "患者分析データを読み込みました（" + data.rows.length + "件）";
+    }
+
     if (screen === "daily-reports" && isRecord(data.dailyReports) && Array.isArray(data.dailyReports.reports)) {
       return "日報データを読み込みました（" + data.dailyReports.reports.length + "件）";
     }

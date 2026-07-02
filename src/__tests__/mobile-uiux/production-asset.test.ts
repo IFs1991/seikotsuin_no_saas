@@ -106,7 +106,7 @@ describe('mobile-uiux production assets', () => {
     }
   );
 
-  it('keeps patients as production shell only until patient hydration is scoped', async () => {
+  it('builds patients as a hydrated production asset', async () => {
     const sourceHtml = await readFile(
       getMobileUiuxSourceAssetPath('patients'),
       'utf-8'
@@ -117,12 +117,12 @@ describe('mobile-uiux production assets', () => {
     );
 
     expect(productionHtml).toContain('data-mobile-uiux-production-root');
-    expect(productionHtml).not.toContain('__mobileUiuxOriginalRenderVals');
-    expect(productionHtml).not.toContain(
+    expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
+    expect(productionHtml).toContain(
       'window.__MOBILE_UIUX_APPLY_READ_DATA__'
     );
     expect(MOBILE_UIUX_PRODUCTION_ASSET_NOTES.patients).toContain(
-      'deferred'
+      'patient analysis hydration'
     );
   });
 
@@ -138,6 +138,7 @@ describe('mobile-uiux production assets', () => {
     expect(MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES).toEqual([
       'home',
       'reservations',
+      'patients',
       'daily-reports',
       'settings',
       'settings-detail',

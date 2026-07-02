@@ -507,6 +507,165 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
   });
 
+  it('hydrates patients KPI, patient lists, and detail values from BFF payload', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  state = { pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  man(n) {
+    return '¥' + (Math.round(n / 1000) / 10).toFixed(1) + '万';
+  }
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailClinic: id });
+  renderVals() {
+    return {
+      scopeLabel: '本町ケア整骨院',
+      scSummary: [{ label: '来院患者数', value: '312名' }],
+      funnel: [{ label: '新患', value: '48名' }],
+      trendBars: [{ label: '6月', newH: '48px', repH: '264px' }],
+      segments: [{ label: 'VIP', value: '24名' }],
+      riskList: [{ name: '木村 美穂' }],
+      followList: [{ name: '三浦 彩' }],
+      ltvList: [{ name: '渡辺 結衣' }],
+      riskHighCount: 3,
+      pClinic: this.state.pClinic,
+      clinicSelOpts: [{ v: 'all', l: '全院（担当院すべて）' }],
+      periodLabel: '今月',
+      kpiBoxes: [{ label: '総売上', value: '¥184.0万' }],
+      chartBars: [{ short: '本町', value: 312 }],
+      clinicCards: [{ name: '本町ケア整骨院' }],
+      detailOpen: false,
+      dName: '本町ケア整骨院',
+      dKpi: [{ label: '来院患者数', value: '312名' }],
+      dRisk: [{ name: '井上 健' }],
+      dFollow: [{ name: '高橋 涼介' }]
+    };
+  }
+}`),
+      {
+        screen: 'patients',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const beforeHydrationVals = component.renderVals();
+    expect(beforeHydrationVals.scopeLabel).toBe('実データ読み込み中');
+    expect(beforeHydrationVals.riskList).toEqual([]);
+    expect(JSON.stringify(beforeHydrationVals)).not.toContain('木村 美穂');
+    expect(JSON.stringify(beforeHydrationVals)).not.toContain('三浦 彩');
+    expect(JSON.stringify(beforeHydrationVals)).not.toContain('渡辺 結衣');
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('patients', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        clinicName: 'BFF 本町院',
+        analysis: {
+          totalPatients: 2,
+          activePatients: 1,
+          conversionData: {
+            newPatients: 1,
+            returnPatients: 1,
+            conversionRate: 50,
+            stages: [
+              { name: '初回来院', value: 2 },
+              { name: '2回目来院', value: 1 },
+            ],
+          },
+          visitCounts: { average: 2, monthlyChange: 0 },
+          riskScores: [],
+          ltvRanking: [],
+          segmentData: {
+            visit: [
+              { label: '中度リピート', value: 1 },
+              { label: '初診のみ', value: 1 },
+            ],
+          },
+          followUpList: [
+            {
+              name: 'BFF 患者A',
+              reason: '80%の離脱リスク',
+              lastVisit: '2026-06-01',
+              action: '電話フォロー推奨',
+            },
+          ],
+        },
+        rows: [
+          {
+            name: 'BFF 患者A',
+            lastVisit: '2026-06-01',
+            visitCount: 3,
+            totalRevenue: 30000,
+            ltv: 30000,
+            riskScore: 80,
+            riskCategory: 'high',
+          },
+          {
+            name: 'BFF 患者B',
+            lastVisit: '2026-06-10',
+            visitCount: 1,
+            totalRevenue: 8000,
+            ltv: 8000,
+            riskScore: 20,
+            riskCategory: 'low',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const summary = Array.isArray(vals.scSummary) ? vals.scSummary : [];
+    const firstSummary = getRecord(summary[0]);
+    const riskList = Array.isArray(vals.riskList) ? vals.riskList : [];
+    const firstRisk = getRecord(riskList[0]);
+    const followList = Array.isArray(vals.followList) ? vals.followList : [];
+    const firstFollow = getRecord(followList[0]);
+    const ltvList = Array.isArray(vals.ltvList) ? vals.ltvList : [];
+    const firstLtv = getRecord(ltvList[0]);
+    const clinicCards = Array.isArray(vals.clinicCards)
+      ? vals.clinicCards
+      : [];
+    const firstClinic = getRecord(clinicCards[0]);
+    const onTap = firstClinic.onTap;
+    if (typeof onTap !== 'function') {
+      throw new Error('Expected patients clinic card onTap to be a function');
+    }
+    onTap();
+    const detailVals = component.renderVals();
+    const detailKpis = Array.isArray(detailVals.dKpi) ? detailVals.dKpi : [];
+    const firstDetailKpi = getRecord(detailKpis[0]);
+    const serialized = JSON.stringify(vals);
+
+    expect(applied).toBe(true);
+    expect(vals.scopeLabel).toBe('BFF 本町院');
+    expect(firstSummary).toEqual({
+      label: '来院患者数',
+      value: '2名',
+      color: 'var(--fg)',
+    });
+    expect(vals.riskHighCount).toBe(1);
+    expect(firstRisk.name).toBe('BFF 患者A');
+    expect(firstRisk.level).toBe('高');
+    expect(firstFollow.name).toBe('BFF 患者A');
+    expect(firstLtv.name).toBe('BFF 患者A');
+    expect(firstClinic.name).toBe('BFF 本町院');
+    expect(detailVals.detailOpen).toBe(true);
+    expect(detailVals.dName).toBe('BFF 本町院');
+    expect(firstDetailKpi.value).toBe('2名');
+    expect(serialized).not.toContain('木村 美穂');
+    expect(serialized).not.toContain('三浦 彩');
+    expect(serialized).not.toContain('渡辺 結衣');
+    expect(serialized).not.toContain('本町ケア整骨院');
+  });
+
   it('builds clinic_hours settings payloads from the settings-detail save bar', async () => {
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {

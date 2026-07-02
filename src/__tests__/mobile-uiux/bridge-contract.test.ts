@@ -630,6 +630,74 @@ describe('mobile-uiux bridge contract', () => {
     );
   });
 
+  it('calls the patients read hydration adapter after BFF success and reports row count', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        analysis: {
+          totalPatients: 2,
+          activePatients: 1,
+          conversionData: {
+            newPatients: 2,
+            returnPatients: 1,
+            conversionRate: 50,
+            stages: [{ name: '初回来院', value: 2 }],
+          },
+          visitCounts: { average: 1.5, monthlyChange: 0 },
+          riskScores: [],
+          ltvRanking: [],
+          segmentData: { visit: [] },
+          followUpList: [],
+        },
+        rows: [
+          {
+            name: 'BFF 患者A',
+            lastVisit: '2026-06-01',
+            visitCount: 3,
+            totalRevenue: 30000,
+            ltv: 30000,
+            riskScore: 80,
+            riskCategory: 'high',
+          },
+          {
+            name: 'BFF 患者B',
+            lastVisit: '2026-06-10',
+            visitCount: 1,
+            totalRevenue: 8000,
+            ltv: 8000,
+            riskScore: 20,
+            riskCategory: 'low',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'patients',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('patients', readPayload);
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+    expect(window.document.body.textContent).toContain(
+      '患者分析データを読み込みました（2件）'
+    );
+  });
+
   it('calls the daily-reports read hydration adapter after BFF success and marks hydrated when applied', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
