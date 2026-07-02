@@ -102,6 +102,7 @@ export function transformMobileUiuxHtml(
 
   removeFakeDeviceChrome(appScreen);
   annotateBottomNav(appScreen, options.resource);
+  removeProductionOnlySampleBlocks(appScreen, options.resource);
   stageRoot.setAttribute('data-mobile-uiux-production-root', '');
 
   appScreen.remove();
@@ -113,7 +114,10 @@ export function transformMobileUiuxHtml(
   const body = requireSingleElement(root.getElementsByTagName('body'), 'body');
   body.setAttribute('data-mobile-uiux-shell', 'production');
 
-  return replaceDcScript(root.toString(), preservedDcScript);
+  const transformedHtml = replaceDcScript(root.toString(), preservedDcScript);
+  return options.resource === 'settings-detail'
+    ? stripTrailingLineWhitespace(transformedHtml)
+    : transformedHtml;
 }
 
 function requireSingleElement(
@@ -165,6 +169,46 @@ function removeFakeDeviceChrome(appScreen: HTMLElement): void {
       child.remove();
     }
   }
+}
+
+function removeProductionOnlySampleBlocks(
+  appScreen: HTMLElement,
+  resource: MobileUiuxScreenResource
+): void {
+  if (resource !== 'settings-detail') {
+    return;
+  }
+
+  removeSettingsDetailTemplateBlock(appScreen);
+}
+
+function removeSettingsDetailTemplateBlock(appScreen: HTMLElement): void {
+  const templateLabel = walkElements(appScreen).find(
+    element => element.text.trim() === 'メニューテンプレート'
+  );
+  const templateBlock = templateLabel
+    ? findNearestOverflowHiddenBlock(templateLabel, appScreen)
+    : null;
+
+  templateBlock?.remove();
+}
+
+function findNearestOverflowHiddenBlock(
+  element: HTMLElement,
+  appScreen: HTMLElement
+): HTMLElement | null {
+  let current: Node | null = element.parentNode;
+  while (current && current !== appScreen) {
+    if (isHTMLElement(current)) {
+      const style = normalizeStyle(current.getAttribute('style'));
+      if (style.includes('overflow:hidden')) {
+        return current;
+      }
+    }
+    current = current.parentNode;
+  }
+
+  return null;
 }
 
 function isDynamicIsland(element: HTMLElement): boolean {
@@ -362,6 +406,10 @@ function replaceDcScript(
 
 function normalizeStyle(style: string | undefined): string {
   return (style ?? '').toLowerCase().replace(/\s+/g, '');
+}
+
+function stripTrailingLineWhitespace(html: string): string {
+  return html.replace(/[ \t]+$/gm, '');
 }
 
 export function getMobileUiuxDcScriptOpeningTag(html: string): string {

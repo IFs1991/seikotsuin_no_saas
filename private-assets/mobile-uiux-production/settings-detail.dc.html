@@ -52,10 +52,10 @@ body[data-mobile-uiux-shell="production"] {
 </helmet>
 <div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="設定詳細（院情報・施術メニュー・保険）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
 
-      
+
 
       <!-- status bar -->
-      
+
 
       <!-- HEADER -->
       <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
@@ -328,40 +328,7 @@ body[data-mobile-uiux-shell="production"] {
             <button onClick="{{ openAddMenu }}" style="all: unset; box-sizing: border-box; width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: var(--primary-fg); border-radius: 13px; font-size: 14.5px; font-weight: 700; cursor: pointer;"><span style="font-size: 18px; line-height: 1;">＋</span>メニューを追加</button>
 
             <!-- メニューテンプレート (collapsible) -->
-            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;">
-              <button onClick="{{ toggleTpl }}" aria-expanded="{{ tplOpen }}" style="all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 15px; min-height: 44px;">
-                <span style="width: 30px; height: 30px; border-radius: 9px; background: var(--surface-2); color: var(--fg-2); display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ tplIcon }}</span>
-                <div style="display: flex; flex-direction: column; gap: 1px; margin-right: auto; min-width: 0;">
-                  <span style="font-size: 14px; font-weight: 700; color: var(--fg); text-align: left;">メニューテンプレート</span>
-                  <span style="font-size: 11px; color: var(--fg-2); text-align: left;">{{ tplSub }}</span>
-                </div>
-                <span style="color: var(--fg-3); flex: none; display: flex;">{{ tplChevron }}</span>
-              </button>
-              <sc-if value="{{ tplOpen }}" hint-placeholder-val="{{ false }}">
-                <div style="padding: 0 15px 15px; display: flex; flex-direction: column; gap: 10px;">
-                  <sc-if value="{{ isOwnerClinic }}" hint-placeholder-val="{{ false }}">
-                    <div style="display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; background: var(--primary-soft); border-radius: 11px;">
-                      <span style="font-size: 11.5px; color: var(--on-primary-soft); line-height: 1.5;">テンプレート所有院です。共通テンプレートの作成・編集ができます。</span>
-                    </div>
-                    <button onClick="{{ createTpl }}" style="all: unset; box-sizing: border-box; width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1.5px dashed var(--border-strong); border-radius: 11px; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer;"><span style="font-size: 15px; line-height: 1;">＋</span>テンプレートを作成</button>
-                  </sc-if>
-                  <sc-if value="{{ isManagerScope }}" hint-placeholder-val="{{ true }}">
-                    <div style="display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px;">
-                      <span style="font-size: 11.5px; color: var(--fg-2); line-height: 1.5;">テンプレートの作成は所有院（管理者）のみ。担当院では「適用」で取り込めます。</span>
-                    </div>
-                  </sc-if>
-                  <sc-for list="{{ templates }}" as="t" hint-placeholder-count="3">
-                    <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 13px; display: flex; align-items: center; gap: 11px;">
-                      <div style="display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0;">
-                        <span style="font-size: 13.5px; font-weight: 700; color: var(--fg);">{{ t.name }}</span>
-                        <span style="font-size: 11px; color: var(--fg-2);">{{ t.count }}メニュー ・ {{ t.scope }}</span>
-                      </div>
-                      <button onClick="{{ t.onApply }}" style="all: unset; box-sizing: border-box; min-height: 38px; padding: 0 15px; display: flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; font-size: 12.5px; font-weight: 700; color: var(--primary); cursor: pointer; flex: none;">適用</button>
-                    </div>
-                  </sc-for>
-                </div>
-              </sc-if>
-            </div>
+
 
             <!-- 登録済みメニュー -->
             <div>
@@ -847,14 +814,24 @@ class Component extends DCLogic {
       ? this.__mobileUiuxOriginalRenderVals()
       : {};
     const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const nav = Array.isArray(state.nav) ? state.nav : [];
+    const current = nav.length > 0 ? nav[nav.length - 1] : null;
+    const showSaveBar = this.__mobileUiuxIsRecord(current) &&
+      current.scr === 'clinic' &&
+      state.clinicTab === 'hours' &&
+      !state.menuSheet &&
+      !state.clinicSheet;
     return {
       ...originalVals,
+      showSaveBar,
       onSave: this.__mobileUiuxSaveSettings,
       saveLabel: this.state && this.state.saving ? '保存中…' : '保存'
     };
   }
 
   componentDidMount() {
+    this.__mobileUiuxPrimeSettingsDetailWriteSources();
     this.__mobileUiuxRegisterReadHydration();
     if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
       return this.__mobileUiuxOriginalComponentDidMount();
@@ -920,11 +897,109 @@ class Component extends DCLogic {
       return {};
     }
 
-    if (Array.isArray(data.menus) || Array.isArray(data.resources)) {
-      return {};
+    if (Array.isArray(data.menus) || Array.isArray(data.resources) || this.__mobileUiuxIsRecord(data.clinic)) {
+      return this.__mobileUiuxBuildSettingsDetailStatePatch(data);
     }
 
     return false;
+  }
+
+  __mobileUiuxPrimeSettingsDetailWriteSources() {
+    if (Array.isArray(this.CLINICS)) {
+      this.CLINICS = [{ id: '', name: '' }];
+    }
+    if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
+      this.setState({
+        clinic: '',
+        basic: this.__mobileUiuxBlankClinicBasic(),
+        intro: '',
+        hours: this.__mobileUiuxClosedClinicHours(),
+        special: [],
+        insurance: [],
+        medCode: '',
+        receiptFooter: '',
+        recToggles: { kohi: false, stamp: false },
+        closingDay: 'eom',
+        pay: { cash: false, credit: false, qr: false, emoney: false, transfer: false, insurance: false },
+        autoReconcile: false,
+        reminderDays: '',
+        menus: []
+      });
+    }
+  }
+
+  __mobileUiuxBuildSettingsDetailStatePatch(data) {
+    const patch = {};
+    if (this.__mobileUiuxIsRecord(data.clinic)) {
+      const clinic = this.__mobileUiuxNormalizeClinic(data.clinic);
+      if (clinic) {
+        this.CLINICS = [{ id: clinic.id, name: clinic.name }];
+        patch.clinic = clinic.id;
+        patch.basic = {
+          name: clinic.name,
+          tel: clinic.phoneNumber,
+          zip: '',
+          fax: '',
+          addr: clinic.address,
+          email: '',
+          site: ''
+        };
+        patch.intro = '';
+      }
+    }
+    if (Array.isArray(data.menus)) {
+      patch.menus = this.__mobileUiuxBuildSettingsDetailMenus(data.menus);
+    }
+    return patch;
+  }
+
+  __mobileUiuxNormalizeClinic(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : '';
+    const name = this.__mobileUiuxDisplayText(value.name, '');
+    if (!id || !name) return null;
+    return {
+      id,
+      name,
+      address: this.__mobileUiuxDisplayText(value.address, ''),
+      phoneNumber: this.__mobileUiuxDisplayText(value.phoneNumber, '')
+    };
+  }
+
+  __mobileUiuxBuildSettingsDetailMenus(value) {
+    const rows = [];
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      rows.push({
+        id,
+        name,
+        cat: this.__mobileUiuxDisplayText(item.category, 'その他'),
+        kind: item.isInsuranceApplicable === true ? 'ins' : 'self',
+        dur: String(this.__mobileUiuxPositiveNumber(item.durationMinutes, 30)),
+        price: String(this.__mobileUiuxNonNegativeNumber(item.price)),
+        active: item.isActive !== false
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBlankClinicBasic() {
+    return { name: '', tel: '', zip: '', fax: '', addr: '', email: '', site: '' };
+  }
+
+  __mobileUiuxClosedClinicHours() {
+    return [
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] },
+      { open: false, slots: [] }
+    ];
   }
 
   __mobileUiuxSaveSettings = async () => {
@@ -1116,6 +1191,18 @@ class Component extends DCLogic {
 
   __mobileUiuxIsTime(value) {
     return /^\d{2}:\d{2}$/.test(value);
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  __mobileUiuxNonNegativeNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  __mobileUiuxPositiveNumber(value, fallback) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
   }
 
   __mobileUiuxShowSettingsToast(message) {

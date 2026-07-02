@@ -289,6 +289,16 @@ describe('mobile-uiux bridge contract', () => {
     },
     generatedAt: '2026-06-30T00:00:00.000Z',
   };
+  const settingsDetailReadPayload = {
+    success: true,
+    data: {
+      clinicId: '11111111-1111-4111-8111-111111111111',
+      clinic: null,
+      menus: [],
+      resources: [],
+    },
+    generatedAt: '2026-06-30T00:00:00.000Z',
+  };
 
   it('does not fetch when MOBILE_UIUX_REAL_DATA_ENABLED=false', async () => {
     const script = buildMobileUiuxBridgeScript({
@@ -475,6 +485,47 @@ describe('mobile-uiux bridge contract', () => {
     expect(calls.some(call => call.method !== 'GET')).toBe(false);
   });
 
+  it('loads supplemental settings-detail data when a write screen adapter is installed', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(calls).toContainEqual({
+      url: expect.stringMatching(
+        /^\/api\/mobile-uiux\/settings-detail\?clinic_id=/
+      ) as string,
+      method: 'GET',
+      body: undefined,
+    });
+    expect(applyReadData).toHaveBeenCalledWith(
+      'settings-detail',
+      settingsDetailReadPayload
+    );
+  });
+
   it('calls the read hydration adapter after BFF success and marks hydrated when applied', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -505,6 +556,7 @@ describe('mobile-uiux bridge contract', () => {
       [
         buildJsonResponse(200, contextPayload),
         buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
       ],
       applyReadData
     );
@@ -621,6 +673,7 @@ describe('mobile-uiux bridge contract', () => {
       [
         buildJsonResponse(200, contextPayload),
         buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
       ],
       applyReadData
     );
@@ -872,6 +925,7 @@ describe('mobile-uiux bridge contract', () => {
           },
           generatedAt: '2026-06-30T00:00:00.000Z',
         }),
+        buildJsonResponse(200, settingsDetailReadPayload),
         buildJsonResponse(200, mutationPayload),
       ],
       applyReadData
@@ -1084,6 +1138,14 @@ describe('mobile-uiux bridge contract', () => {
         generatedAt: '2026-06-30T00:00:00.000Z',
       });
     });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, settingsDetailReadPayload);
+    });
     window.fetch.mockImplementation(async (url, init) => {
       calls.push({
         url,
@@ -1259,6 +1321,7 @@ describe('mobile-uiux bridge contract', () => {
           },
           generatedAt: '2026-06-30T00:00:00.000Z',
         }),
+        buildJsonResponse(200, settingsDetailReadPayload),
         buildJsonResponse(200, {
           success: true,
           data: {
@@ -1393,6 +1456,14 @@ describe('mobile-uiux bridge contract', () => {
         },
         generatedAt: '2026-06-30T00:00:00.000Z',
       });
+    });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, settingsDetailReadPayload);
     });
     window.fetch.mockImplementation(async (url, init) => {
       calls.push({
@@ -1708,6 +1779,20 @@ describe('mobile-uiux bridge contract', () => {
             clinic: null,
             menus: [],
             resources: [],
+          },
+          generatedAt: '2026-07-01T00:00:00.000Z',
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            category: 'clinic_hours',
+            settings: {
+              hoursByDay: {},
+              holidays: [],
+            },
+            updatedAt: null,
+            updatedBy: null,
           },
           generatedAt: '2026-07-01T00:00:00.000Z',
         }),

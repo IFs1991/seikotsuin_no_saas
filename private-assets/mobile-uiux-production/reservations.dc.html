@@ -793,6 +793,7 @@ class Component extends DCLogic {
   }
 
   componentDidMount() {
+    this.__mobileUiuxPrimeReservationWriteSources();
     this.__mobileUiuxRegisterReadHydration();
     if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
       return this.__mobileUiuxOriginalComponentDidMount();
@@ -815,12 +816,23 @@ class Component extends DCLogic {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
+        ? component.__mobileUiuxHydratedVals
+        : {};
+      component.__mobileUiuxHydratedVals = { ...currentVals, ...hydratedVals };
       if (typeof component.setState === 'function') {
         const statePatch = { __mobileUiuxHydratedAt: Date.now() };
         if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
           statePatch.appts = hydratedVals.__mobileUiuxAppts;
           statePatch.loading = false;
+        }
+        if (typeof hydratedVals.__mobileUiuxFirstMenuName === 'string') {
+          statePatch.fMenu = hydratedVals.__mobileUiuxFirstMenuName;
+          statePatch.fDur = hydratedVals.__mobileUiuxFirstMenuDuration;
+        }
+        if (typeof hydratedVals.__mobileUiuxFirstResourceId === 'string') {
+          statePatch.fRes = hydratedVals.__mobileUiuxFirstResourceId;
+          statePatch.timelineRes = hydratedVals.__mobileUiuxFirstResourceId;
         }
         component.setState(statePatch);
       } else if (typeof component.forceUpdate === 'function') {
@@ -844,6 +856,10 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'settings-detail') {
+      return this.__mobileUiuxBuildReservationSettingsDetailOverrides(payload);
+    }
+
     if (screen !== 'reservations' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -878,6 +894,94 @@ class Component extends DCLogic {
       showTimeline: false,
       __mobileUiuxAppts: viewModels.appts
     };
+  }
+
+  __mobileUiuxPrimeReservationWriteSources() {
+    if (Array.isArray(this.CLINICS)) {
+      this.CLINICS = [];
+    }
+    if (Array.isArray(this.MENUS)) {
+      this.MENUS = [];
+    }
+    if (Array.isArray(this.THER)) {
+      this.THER = [];
+      this.__mobileUiuxStaffResourceSource = null;
+      this.__mobileUiuxStaffResourceMap = null;
+    }
+    this.historyFor = () => [];
+    if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
+      this.setState({
+        fMenu: '',
+        fRes: '',
+        timelineRes: ''
+      });
+    }
+  }
+
+  __mobileUiuxBuildReservationSettingsDetailOverrides(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return null;
+    }
+    const data = payload.data;
+    const menus = this.__mobileUiuxBuildReservationMenus(data.menus);
+    const resources = this.__mobileUiuxBuildReservationResources(data.resources);
+    const clinic = this.__mobileUiuxBuildReservationClinic(data.clinic);
+    this.MENUS = menus;
+    this.THER = resources;
+    this.CLINICS = clinic ? [clinic] : [];
+    this.__mobileUiuxStaffResourceSource = null;
+    this.__mobileUiuxStaffResourceMap = null;
+    return {
+      __mobileUiuxFirstMenuName: menus.length > 0 ? menus[0].name : '',
+      __mobileUiuxFirstMenuDuration: menus.length > 0 ? menus[0].dur : 0,
+      __mobileUiuxFirstResourceId: resources.length > 0 ? resources[0].id : ''
+    };
+  }
+
+  __mobileUiuxBuildReservationMenus(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name) continue;
+      const duration = this.__mobileUiuxPositiveNumber(item.durationMinutes, 30);
+      rows.push({
+        id: typeof item.id === 'string' ? item.id : name,
+        name,
+        dur: duration,
+        price: this.__mobileUiuxNonNegativeNumber(item.price),
+        active: item.isActive !== false
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildReservationClinic(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : this.__mobileUiuxCurrentClinicId;
+    const name = this.__mobileUiuxDisplayText(value.name, '');
+    if (!id || !name) return null;
+    return { id, name };
+  }
+
+  __mobileUiuxBuildReservationResources(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name || item.isActive === false || item.isBookable === false) continue;
+      rows.push({
+        id,
+        name,
+        role: this.__mobileUiuxDisplayText(item.type, '担当'),
+        clinic: 'c1',
+        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee)
+      });
+    }
+    return rows;
   }
 
   __mobileUiuxBuildReservationViewModels(reservations) {
@@ -1166,6 +1270,14 @@ class Component extends DCLogic {
 
   __mobileUiuxNormalizeStatus(value) {
     return typeof value === 'string' ? value : '';
+  }
+
+  __mobileUiuxNonNegativeNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  __mobileUiuxPositiveNumber(value, fallback) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
   }
 
   __mobileUiuxDisplayText(value, fallback) {

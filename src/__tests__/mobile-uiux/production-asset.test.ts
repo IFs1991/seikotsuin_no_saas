@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { parse } from 'node-html-parser';
 
 import {
   MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES,
@@ -25,6 +26,25 @@ function getRecord(value: unknown): Record<string, unknown> {
     throw new Error('Expected record value');
   }
   return value as Record<string, unknown>;
+}
+
+function getRenderedShellText(html: string): string {
+  const root = parse(html, {
+    blockTextElements: {
+      script: true,
+      style: true,
+      pre: true,
+    },
+  });
+
+  for (const script of root.querySelectorAll('script')) {
+    script.remove();
+  }
+  for (const style of root.querySelectorAll('style')) {
+    style.remove();
+  }
+
+  return root.text;
 }
 
 describe('mobile-uiux production assets', () => {
@@ -122,6 +142,22 @@ describe('mobile-uiux production assets', () => {
       'settings',
       'settings-detail',
     ]);
+  });
+
+  it('omits production-only hidden sample blocks from generated settings-detail asset', async () => {
+    const sourceHtml = await readFile(
+      getMobileUiuxSourceAssetPath('settings-detail'),
+      'utf-8'
+    );
+    const productionHtml = buildMobileUiuxProductionAsset(
+      'settings-detail',
+      sourceHtml
+    );
+
+    const renderedText = getRenderedShellText(productionHtml);
+
+    expect(renderedText).not.toContain('メニューテンプレート');
+    expect(renderedText).not.toContain('テンプレートの作成は所有院');
   });
 
   it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(

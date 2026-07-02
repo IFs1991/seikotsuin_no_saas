@@ -43,6 +43,25 @@ function getNavTargets(html: string): string[] {
     .map(element => element.getAttribute('data-mobile-uiux-nav-target') ?? '');
 }
 
+function getRenderedShellText(html: string): string {
+  const root = parse(html, {
+    blockTextElements: {
+      script: true,
+      style: true,
+      pre: true,
+    },
+  });
+
+  for (const script of root.querySelectorAll('script')) {
+    script.remove();
+  }
+  for (const style of root.querySelectorAll('style')) {
+    style.remove();
+  }
+
+  return root.text;
+}
+
 describe('transformMobileUiuxHtml', () => {
   it.each(SCREEN_RESOURCES)(
     'converts %s to a production shell while preserving DC runtime',
@@ -135,6 +154,21 @@ describe('transformMobileUiuxHtml', () => {
       expect(item.getAttribute('aria-label')).toMatch(/へ移動$/);
     }
     expect(getNavTargets(settingsDetail)).toEqual(EXPECTED_NAV_TARGETS);
+  });
+
+  it('removes the settings-detail sample menu template block in production', async () => {
+    const settingsDetail = transformMobileUiuxHtml(
+      await readFixture('settings-detail'),
+      {
+        mode: 'production',
+        resource: 'settings-detail',
+      }
+    );
+
+    const renderedText = getRenderedShellText(settingsDetail);
+
+    expect(renderedText).not.toContain('メニューテンプレート');
+    expect(renderedText).not.toContain('テンプレートの作成は所有院');
   });
 
   it('leaves preview mode unchanged', async () => {

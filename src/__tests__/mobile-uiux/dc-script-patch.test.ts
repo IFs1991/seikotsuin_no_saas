@@ -553,6 +553,29 @@ describe('patchMobileUiuxDcScript', () => {
     window.MobileUiuxBridge = { updateSettings };
 
     component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('settings-detail', {
+      success: true,
+      data: {
+        category: 'clinic_hours',
+        settings: {
+          hoursByDay: {
+            monday: {
+              open: true,
+              slots: [{ start: '09:00', end: '13:00' }],
+            },
+            tuesday: {
+              open: true,
+              slots: [{ start: '10:00', end: '18:00' }],
+            },
+          },
+          specialClosures: [
+            { date: '2026-07-20', type: '休診', label: '海の日' },
+            { date: '2026-08-13', type: '短縮営業', label: '夏季短縮' },
+          ],
+        },
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    });
     const vals = component.renderVals();
     const onSave = vals.onSave;
     if (typeof onSave !== 'function') {
@@ -705,6 +728,275 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.listRows).toEqual([]);
   });
 
+  it('hydrates reservations write options from settings-detail without sample menu or staff labels', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  CLINICS = [{ id: 'c1', name: '本町ケア整骨院' }];
+  MENUS = [{ name: '産後骨盤矯正', dur: 45 }];
+  THER = [{ id: 'sample-staff', name: '田中 健太', role: '柔整師', clinic: 'c1' }];
+  state = {
+    fMenu: '産後骨盤矯正',
+    fDur: 45,
+    fRes: 'sample-staff',
+    timelineRes: 'sample-staff'
+  };
+  renderVals() {
+    return {
+      fMenu: this.state.fMenu,
+      fRes: this.state.fRes,
+      menuOpts: this.MENUS.map(menu => ({ v: menu.name, l: menu.name + '（' + menu.dur + '分）' })),
+      resOpts: this.THER.map(resource => ({ v: resource.id, l: resource.name + ' / ' + resource.role })),
+      clinicOpts: this.CLINICS.map(clinic => clinic.name),
+      historyItems: this.historyFor({ patient: '渡辺 結衣', res: 'sample-staff' })
+    };
+  }
+  historyFor() {
+    return [{ date: '6/6（金）', menu: '産後骨盤矯正', ther: '田中 健太' }];
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'settings-detail',
+      {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          clinic: {
+            id: '11111111-1111-4111-8111-111111111111',
+            name: 'BFF 実院',
+          },
+          menus: [
+            {
+              id: 'menu-bff',
+              name: 'BFF 実メニュー',
+              durationMinutes: 35,
+              price: 5200,
+              isActive: true,
+            },
+          ],
+          resources: [
+            {
+              id: 'staff-bff',
+              name: 'BFF 実担当',
+              type: 'staff',
+              isActive: true,
+              isBookable: true,
+            },
+          ],
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }
+    );
+    const vals = component.renderVals();
+    const serialized = JSON.stringify(vals);
+
+    expect(applied).toBe(true);
+    expect(vals.fMenu).toBe('BFF 実メニュー');
+    expect(vals.fRes).toBe('staff-bff');
+    expect(serialized).toContain('BFF 実メニュー');
+    expect(serialized).toContain('BFF 実担当');
+    expect(serialized).toContain('BFF 実院');
+    expect(serialized).not.toContain('産後骨盤矯正');
+    expect(serialized).not.toContain('田中 健太');
+    expect(serialized).not.toContain('本町ケア整骨院');
+    expect(vals.historyItems).toEqual([]);
+  });
+
+  it('clears daily-reports sample line items and hydrates write options from settings-detail', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  THER = [{ id: 'sample-therapist', name: '佐藤 美咲' }];
+  MENUS_DR = [{ name: '美容鍼', price: 5500, type: '自費' }];
+  state = {
+    formOpen: false,
+    editKey: null,
+    formTher: 'sample-therapist',
+    items: [],
+    itemSeq: 10,
+    todayItems: [{ id: 1, patient: '渡辺 結衣', menu: '美容鍼', type: '自費', ratio: 3 }]
+  };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  openInput = (key) => () => {
+    const items = key === 'd0' ? this.state.todayItems.map(item => ({ ...item })) : [];
+    this.setState({ formOpen: true, editKey: key, items });
+  };
+  inputToday = this.openInput('d0');
+  addItem = () => this.setState(state => {
+    const menu = this.MENUS_DR[0];
+    return {
+      items: [...state.items, { id: state.itemSeq, patient: '', menu: menu ? menu.name : '', type: menu ? menu.type : '自費', ratio: 3 }],
+      itemSeq: state.itemSeq + 1
+    };
+  });
+  renderVals() {
+    return {
+      inputToday: this.inputToday,
+      addItem: this.addItem,
+      formDate: this.state.formDate,
+      formTher: this.state.formTher,
+      menuOpts: this.MENUS_DR.map(menu => ({ v: menu.name, l: menu.name })),
+      therOpts: this.THER.map(therapist => ({ v: therapist.id, l: therapist.name })),
+      itemRows: this.state.items.map(item => ({ patient: item.patient, menuVal: item.menu }))
+    };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-07-01',
+        endDate: '2026-07-01',
+        dailyReports: {
+          reports: [],
+          summary: {
+            totalReports: 0,
+            averagePatients: 0,
+            averageRevenue: 0,
+            totalRevenue: 0,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    });
+    const settingsApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'settings-detail',
+      {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          clinic: null,
+          menus: [
+            {
+              id: 'menu-bff',
+              name: 'BFF 実メニュー',
+              durationMinutes: 30,
+              price: 4100,
+              isInsuranceApplicable: false,
+              isActive: true,
+            },
+          ],
+          resources: [
+            {
+              id: 'therapist-bff',
+              name: 'BFF 実記入者',
+              isActive: true,
+            },
+          ],
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }
+    );
+    const initialVals = component.renderVals();
+    const inputToday = initialVals.inputToday;
+    if (typeof inputToday !== 'function') {
+      throw new Error('Expected inputToday function');
+    }
+    inputToday();
+    const addItem = component.renderVals().addItem;
+    if (typeof addItem !== 'function') {
+      throw new Error('Expected addItem function');
+    }
+    addItem();
+    const vals = component.renderVals();
+    const serialized = JSON.stringify(vals);
+
+    expect(settingsApplied).toBe(true);
+    expect(vals.formDate).toBe('7/1（水）');
+    expect(vals.formTher).toBe('therapist-bff');
+    expect(serialized).toContain('BFF 実メニュー');
+    expect(serialized).toContain('BFF 実記入者');
+    expect(serialized).not.toContain('渡辺 結衣');
+    expect(serialized).not.toContain('美容鍼');
+    expect(serialized).not.toContain('佐藤 美咲');
+  });
+
+  it('hydrates settings-detail clinic and menu values while hiding unsupported save bars', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  CLINICS = [{ id: 'sample-clinic', name: '本町ケア整骨院' }];
+  state = {
+    nav: [{ scr: 'clinic' }],
+    clinicTab: 'basic',
+    menuSheet: false,
+    clinicSheet: false,
+    saving: false,
+    clinic: 'sample-clinic',
+    basic: { name: '本町ケア整骨院', tel: '06-0000-0000', zip: '', fax: '', addr: '大阪市サンプル', email: '', site: '' },
+    menus: [{ id: 'sample-menu', name: '産後骨盤矯正', cat: '骨盤矯正', kind: 'self', dur: '45', price: '6600', active: true }]
+  };
+  renderVals() {
+    return {
+      showSaveBar: true,
+      clinicName: this.state.basic.name,
+      basicFields: [{ label: '院名', value: this.state.basic.name }],
+      menuCards: this.state.menus.map(menu => ({ name: menu.name, category: menu.cat }))
+    };
+  }
+}`,
+      { screen: 'settings-detail' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'settings-detail',
+      {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          clinic: {
+            id: 'clinic-bff',
+            name: 'BFF 実クリニック',
+            address: 'BFF 実住所',
+            phoneNumber: '03-1111-2222',
+          },
+          menus: [
+            {
+              id: 'menu-bff',
+              name: 'BFF 実メニュー',
+              category: '実カテゴリ',
+              durationMinutes: 40,
+              price: 7700,
+              isInsuranceApplicable: false,
+              isActive: true,
+            },
+          ],
+          resources: [],
+        },
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      }
+    );
+    const basicVals = component.renderVals();
+    component.state = {
+      ...component.state,
+      nav: [{ scr: 'clinic' }],
+      clinicTab: 'hours',
+    };
+    const hoursVals = component.renderVals();
+    const serialized = JSON.stringify(basicVals);
+
+    expect(applied).toBe(true);
+    expect(basicVals.showSaveBar).toBe(false);
+    expect(hoursVals.showSaveBar).toBe(true);
+    expect(serialized).toContain('BFF 実クリニック');
+    expect(serialized).toContain('BFF 実メニュー');
+    expect(serialized).not.toContain('本町ケア整骨院');
+    expect(serialized).not.toContain('産後骨盤矯正');
+    expect(serialized).not.toContain('大阪市サンプル');
+  });
+
   it('wires daily report save to the mobile bridge without sending patient names', async () => {
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
@@ -766,6 +1058,55 @@ describe('patchMobileUiuxDcScript', () => {
       },
       generatedAt: '2026-06-30T00:00:00.000Z',
     });
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('settings-detail', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        clinic: null,
+        menus: [
+          {
+            id: 'menu-insurance',
+            name: 'BFF 保険施術',
+            price: 5000,
+            durationMinutes: 30,
+            isInsuranceApplicable: true,
+            isActive: true,
+          },
+          {
+            id: 'menu-private',
+            name: 'BFF 自費施術',
+            price: 4400,
+            durationMinutes: 40,
+            isInsuranceApplicable: false,
+            isActive: true,
+          },
+        ],
+        resources: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    component.state = {
+      ...component.state,
+      role: 'therapist',
+      editKey: 'd0',
+      formOpen: true,
+      items: [
+        {
+          id: 1,
+          patient: '患者名は送らない',
+          menu: 'BFF 保険施術',
+          type: '保険',
+          ratio: 3,
+        },
+        {
+          id: 2,
+          patient: '自由記述も送らない',
+          menu: 'BFF 自費施術',
+          type: '自費',
+          ratio: 3,
+        },
+      ],
+    };
     const saveReport = component.renderVals().saveReport;
     if (typeof saveReport !== 'function') {
       throw new Error('Expected patched saveReport');
