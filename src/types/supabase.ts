@@ -849,51 +849,6 @@ export type Database = {
           },
         ];
       };
-      clinic_settings: {
-        Row: {
-          category: string;
-          clinic_id: string;
-          created_at: string;
-          id: string;
-          settings: Json;
-          updated_at: string;
-          updated_by: string | null;
-        };
-        Insert: {
-          category: string;
-          clinic_id: string;
-          created_at?: string;
-          id?: string;
-          settings?: Json;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Update: {
-          category?: string;
-          clinic_id?: string;
-          created_at?: string;
-          id?: string;
-          settings?: Json;
-          updated_at?: string;
-          updated_by?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'clinic_settings_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinic_hierarchy';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'clinic_settings_clinic_id_fkey';
-            columns: ['clinic_id'];
-            isOneToOne: false;
-            referencedRelation: 'clinics';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
       clinic_feature_flags: {
         Row: {
           clinic_id: string;
@@ -943,6 +898,51 @@ export type Database = {
             foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
             columns: ['clinic_id'];
             isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      clinic_settings: {
+        Row: {
+          category: string;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          settings: Json;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          category: string;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          settings?: Json;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          category?: string;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          settings?: Json;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_settings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_settings_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
             referencedRelation: 'clinics';
             referencedColumns: ['id'];
           },
