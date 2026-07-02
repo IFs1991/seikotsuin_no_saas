@@ -19,6 +19,7 @@ import {
 } from '@/lib/mobile-uiux/bridge-manifest';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { transformMobileUiuxHtml } from '@/lib/mobile-uiux/html-transform';
+import { readMobileUiuxProductionAsset } from '@/lib/mobile-uiux/production-asset';
 import {
   createClient,
   getCurrentUser,
@@ -225,17 +226,35 @@ export async function handleMobileUiuxScreenRequest(
     );
   }
 
-  const filePath = path.join(ASSET_ROOT, definition.fileName);
-  const content =
-    resource === 'mobile-bridge.js'
-      ? buildMobileUiuxBridgeScript({
-          realDataEnabled: flags.realDataEnabled,
-          manifest: MOBILE_UIUX_SCREEN_MANIFEST,
-        })
-      : await readFile(filePath, 'utf-8');
+  let usesProductionAsset = false;
+  let content: string;
+  if (resource === 'mobile-bridge.js') {
+    content = buildMobileUiuxBridgeScript({
+      realDataEnabled: flags.realDataEnabled,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+  } else if (mode === 'production' && isMobileUiuxScreenResource(resource)) {
+    const productionAsset = await readMobileUiuxProductionAsset(resource);
+    if (productionAsset !== null) {
+      content = productionAsset;
+      usesProductionAsset = true;
+    } else {
+      content = await readFile(
+        path.join(ASSET_ROOT, definition.fileName),
+        'utf-8'
+      );
+    }
+  } else {
+    content = await readFile(
+      path.join(ASSET_ROOT, definition.fileName),
+      'utf-8'
+    );
+  }
 
   const shellContent = definition.contentType.startsWith('text/html')
-    ? transformScreenHtml(resource, content, mode)
+    ? usesProductionAsset
+      ? content
+      : transformScreenHtml(resource, content, mode)
     : content;
   const responseContent =
     mode === 'production' && isMobileUiuxScreenResource(resource)

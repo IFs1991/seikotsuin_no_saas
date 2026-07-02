@@ -95,6 +95,10 @@ type BridgeWindow = {
     submitDailyReport: (payload: unknown) => Promise<boolean>;
     updateSettings: (payload: unknown) => Promise<boolean>;
   };
+  __MOBILE_UIUX_APPLY_READ_DATA__?: (
+    screen: string,
+    payload: unknown
+  ) => boolean;
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
 };
 
@@ -117,6 +121,12 @@ function buildJsonResponse(status: number, body: unknown): BridgeFetchResponse {
   };
 }
 
+function buildNodeFileNotFoundError(): Error & { code: string } {
+  const error = new Error('missing file') as Error & { code: string };
+  error.code = 'ENOENT';
+  return error;
+}
+
 function buildElement(tagName: string): BridgeElement {
   const attributes: Record<string, string> = {};
   return {
@@ -131,7 +141,8 @@ function buildElement(tagName: string): BridgeElement {
 
 function buildBridgeWindow(
   screen: string,
-  responses: BridgeFetchResponse[]
+  responses: BridgeFetchResponse[],
+  applyReadData?: (screen: string, payload: unknown) => boolean
 ): {
   window: BridgeWindow;
   calls: FetchCall[];
@@ -191,6 +202,9 @@ function buildBridgeWindow(
     },
     CustomEvent,
   };
+  if (applyReadData) {
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
   return { window, calls, listeners };
 }
 
@@ -441,6 +455,87 @@ describe('mobile-uiux bridge contract', () => {
       },
     ]);
     expect(calls.some(call => call.method !== 'GET')).toBe(false);
+  });
+
+  it('calls the read hydration adapter after BFF success and marks hydrated when applied', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            customerName: 'BFF 患者',
+            menuName: 'BFF メニュー',
+            staffName: 'BFF 先生',
+            startTime: '2026-06-30T01:00:00.000Z',
+            endTime: '2026-06-30T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('reservations', readPayload);
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+    expect(window.document.body.textContent).toContain(
+      '予約データを読み込みました（1件）'
+    );
+  });
+
+  it('does not mark hydrated when only the fallback status element is added', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => false);
+    const { window } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('reservations', readPayload);
+    expect(window.document.body.textContent).toContain(
+      '予約データを読み込みました（0件）'
+    );
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'fallback'
+    );
   });
 
   it('does not treat non-mobile-BFF payloads as business data', async () => {
@@ -954,7 +1049,12 @@ describe('mobile-uiux bridge route and response-time injection', () => {
       MOBILE_UIUX_ALLOWED_CLINIC_IDS: 'clinic-1',
       MOBILE_UIUX_REAL_DATA_ENABLED: 'true',
     };
-    readFileMock.mockResolvedValue('<!doctype html><html><body></body></html>');
+    readFileMock.mockImplementation(async filePath => {
+      if (String(filePath).includes('mobile-uiux-production')) {
+        throw buildNodeFileNotFoundError();
+      }
+      return '<!doctype html><html><body></body></html>';
+    });
     createClientMock.mockResolvedValue(supabase);
     getCurrentUserMock.mockResolvedValue(user);
     getUserAccessContextMock.mockResolvedValue({
@@ -1001,11 +1101,17 @@ describe('mobile-uiux bridge route and response-time injection', () => {
 
   it('injects the bridge when MOBILE_UIUX_REAL_DATA_ENABLED=false for Bottom Nav navigation', async () => {
     process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'false';
-    readFileMock.mockResolvedValue(`<!DOCTYPE html>
+    const rawHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="./support.js"></script></head>
 <body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
-</html>`);
+</html>`;
+    readFileMock.mockImplementation(async filePath => {
+      if (String(filePath).includes('mobile-uiux-production')) {
+        throw buildNodeFileNotFoundError();
+      }
+      return rawHtml;
+    });
     const { GET } =
       await import('@/app/(app)/mobile-uiux/screens/[resource]/route');
     const response = await GET(

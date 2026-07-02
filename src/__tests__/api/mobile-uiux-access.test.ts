@@ -27,6 +27,12 @@ const getUserAccessContextMock = getUserAccessContext as jest.Mock;
 const user = { id: 'user-1', email: 'staff@example.com' };
 const supabase = { client: 'supabase' };
 
+function buildNodeFileNotFoundError(): Error & { code: string } {
+  const error = new Error('missing file') as Error & { code: string };
+  error.code = 'ENOENT';
+  return error;
+}
+
 function buildRequest(pathname: string) {
   return new NextRequest(`http://localhost${pathname}`);
 }
@@ -93,7 +99,12 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     delete process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS;
     delete process.env.MOBILE_UIUX_ALLOWED_ROLES;
 
-    readFileMock.mockResolvedValue(buildMobileUiuxDcHtml());
+    readFileMock.mockImplementation(async filePath => {
+      if (String(filePath).includes('mobile-uiux-production')) {
+        throw buildNodeFileNotFoundError();
+      }
+      return buildMobileUiuxDcHtml();
+    });
     createClientMock.mockResolvedValue(supabase);
     getCurrentUserMock.mockResolvedValue(user);
     getUserAccessContextMock.mockResolvedValue({
@@ -209,6 +220,46 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(body).not.toContain('STAGE CONTROLS');
     expect(body).not.toContain('width: 390px; height: 812px');
     expect(body).not.toContain('width: 108px; height: 30px');
+  });
+
+  it('prefers the generated reservations production asset without applying the shell transform again', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
+    const productionAsset = `<!DOCTYPE html>
+<html>
+<body data-mobile-uiux-shell="production">
+<x-dc><helmet></helmet><div ref="{{ setRoot }}" data-mobile-uiux-production-root><div data-screen-label="予約">PRODUCTION_ASSET_ONLY</div></div></x-dc>
+<script type="text/x-dc" data-dc-script>class Component extends DCLogic { __mobileUiuxOriginalRenderVals() { return {}; } renderVals() { return this.__mobileUiuxOriginalRenderVals(); } }</script>
+</body>
+</html>`;
+    readFileMock.mockImplementation(async filePath => {
+      if (String(filePath).includes('mobile-uiux-production')) {
+        return productionAsset;
+      }
+      return buildMobileUiuxDcHtml().replace('予約</div>', 'SOURCE_ONLY</div>');
+    });
+
+    const response = await callMobileScreen('reservations');
+    const body = await response.text();
+    const readPaths = readFileMock.mock.calls.map(([filePath]) =>
+      String(filePath)
+    );
+
+    expect(response.status).toBe(200);
+    expect(body).toContain('PRODUCTION_ASSET_ONLY');
+    expect(body).toContain('mobile-bridge.js');
+    expect(body).not.toContain('SOURCE_ONLY');
+    expect(body).not.toContain('width: 390px; height: 812px');
+    expect(
+      readPaths.some(
+        filePath =>
+          filePath.includes('private-assets') &&
+          filePath.includes('mobile-uiux') &&
+          !filePath.includes('mobile-uiux-production') &&
+          filePath.endsWith('reservations.dc.html')
+      )
+    ).toBe(false);
   });
 
   it('returns the mock frame through the preview route', async () => {

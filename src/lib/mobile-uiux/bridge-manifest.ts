@@ -312,12 +312,7 @@ export function buildMobileUiuxBridgeScript(
     return true;
   }
 
-  function hydrateReadOnlyData(screen, payload) {
-    const summary = summarizePayload(screen, payload);
-    if (!summary) {
-      return false;
-    }
-
+  function appendReadStatus(screen, summary) {
     const status = document.createElement("div");
     status.setAttribute("role", "status");
     status.dataset.mobileUiuxHydrated = screen;
@@ -325,7 +320,27 @@ export function buildMobileUiuxBridgeScript(
     if (document.body) {
       document.body.appendChild(status);
     }
-    setStatus("hydrated");
+  }
+
+  function applyReadData(screen, payload) {
+    const apply = window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    return typeof apply === "function" && apply(screen, payload) === true;
+  }
+
+  function hydrateReadOnlyData(screen, payload) {
+    const summary = summarizePayload(screen, payload);
+    if (!summary) {
+      return false;
+    }
+
+    const applied = applyReadData(screen, payload);
+    appendReadStatus(screen, summary);
+    if (applied === true) {
+      setStatus("hydrated");
+      return true;
+    }
+
+    setStatus("fallback");
     return true;
   }
 
