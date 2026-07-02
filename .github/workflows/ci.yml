@@ -16,7 +16,7 @@ concurrency:
 # ---------------------------------------------------------------------------
 # MVP Required Gates (CI-MVP-01 / CI-MVP-02 / CI-MVP-03)
 #
-#  quality            – lint / type-check / secret scan
+#  quality            – lint / type-check / generated asset drift / secret scan
 #  build              – npm run build  (DOD-10)
 #  supabase-contract  – validates src/types/supabase.ts header  (DOD-12)
 #  fixture-preflight  – static fixture UUID/email checks  (DOD-05)
@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   # --------------------------------------------------------------------------
-  # 1. Quality: lint / type-check / secret scan
+  # 1. Quality: lint / type-check / generated asset drift / secret scan
   # --------------------------------------------------------------------------
   quality:
     name: Quality Checks
@@ -52,6 +52,9 @@ jobs:
 
       - name: Type check
         run: npm run type-check
+
+      - name: Mobile UIUX production asset drift check
+        run: npm run mobile-uiux:check-production-assets
 
       - name: Secret scan
         run: npm run scan:secrets
