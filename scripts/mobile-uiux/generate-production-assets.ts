@@ -15,6 +15,7 @@ const {
   getMobileUiuxProductionAssetPath,
   getMobileUiuxProductionAssetRoot,
   getMobileUiuxSourceAssetPath,
+  validateMobileUiuxProductionAsset,
 } = require('../../src/lib/mobile-uiux/production-asset.ts');
 
 async function buildMobileUiuxProductionAssets() {
@@ -37,30 +38,13 @@ async function generateMobileUiuxProductionAssets(mode) {
   const assets = await buildMobileUiuxProductionAssets();
 
   if (mode === 'write') {
-    await mkdir(getMobileUiuxProductionAssetRoot(), { recursive: true });
-    await Promise.all(assets.map(writeProductionAssetIfChanged));
+    await writeProductionAssetsIfChanged(assets);
     return;
   }
 
-  const drift = [];
-  for (const asset of assets) {
-    const actual = await readProductionAssetIfPresent(asset.outputPath);
-    if (actual === null) {
-      drift.push({
-        resource: asset.resource,
-        outputPath: asset.outputPath,
-        reason: 'missing',
-      });
-      continue;
-    }
-    if (actual !== asset.content) {
-      drift.push({
-        resource: asset.resource,
-        outputPath: asset.outputPath,
-        reason: 'changed',
-      });
-    }
-  }
+  const drift = (
+    await Promise.all(assets.map(checkProductionAssetDrift))
+  ).filter(Boolean);
 
   if (drift.length > 0) {
     const details = drift
@@ -80,16 +64,58 @@ async function generateMobileUiuxProductionAssets(mode) {
   console.log('mobile-uiux production assets are up to date');
 }
 
-async function writeProductionAssetIfChanged(asset) {
-  const relativePath = path.relative(process.cwd(), asset.outputPath);
+async function writeProductionAssetsIfChanged(assets) {
+  const writePlans = await Promise.all(
+    assets.map(createProductionAssetWritePlan)
+  );
+  const changedPlans = writePlans.filter(plan => plan.changed);
+
+  if (changedPlans.length > 0) {
+    await mkdir(getMobileUiuxProductionAssetRoot(), { recursive: true });
+  }
+
+  await Promise.all(writePlans.map(applyProductionAssetWritePlan));
+}
+
+async function createProductionAssetWritePlan(asset) {
   const actual = await readProductionAssetIfPresent(asset.outputPath);
-  if (actual === asset.content) {
+  return {
+    asset,
+    changed: actual !== asset.content,
+  };
+}
+
+async function applyProductionAssetWritePlan(plan) {
+  const relativePath = path.relative(process.cwd(), plan.asset.outputPath);
+  if (!plan.changed) {
     console.log(`up to date ${relativePath}`);
     return;
   }
 
-  await writeFile(asset.outputPath, asset.content, 'utf-8');
+  await writeFile(plan.asset.outputPath, plan.asset.content, 'utf-8');
   console.log(`generated ${relativePath}`);
+}
+
+async function checkProductionAssetDrift(asset) {
+  const actual = await readProductionAssetIfPresent(asset.outputPath);
+  if (actual === null) {
+    return {
+      resource: asset.resource,
+      outputPath: asset.outputPath,
+      reason: 'missing',
+    };
+  }
+
+  validateMobileUiuxProductionAsset(asset.resource, actual);
+  if (actual !== asset.content) {
+    return {
+      resource: asset.resource,
+      outputPath: asset.outputPath,
+      reason: 'changed',
+    };
+  }
+
+  return null;
 }
 
 async function readProductionAssetIfPresent(outputPath) {
