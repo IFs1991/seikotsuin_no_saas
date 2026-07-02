@@ -4,11 +4,14 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import {
+  MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES,
+  MOBILE_UIUX_PRODUCTION_ASSET_NOTES,
   MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES,
   buildMobileUiuxProductionAsset,
   getMobileUiuxProductionAssetPath,
   getMobileUiuxSourceAssetPath,
   readMobileUiuxProductionAsset,
+  validateMobileUiuxProductionAsset,
 } from '@/lib/mobile-uiux/production-asset';
 
 const execFileAsync = promisify(execFile);
@@ -26,7 +29,7 @@ function getRecord(value: unknown): Record<string, unknown> {
 
 describe('mobile-uiux production assets', () => {
   it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
-    'builds the %s production asset with shell and hydration patch applied',
+    'builds the %s production asset with required production markers',
     async resource => {
       const sourceHtml = await readFile(
         getMobileUiuxSourceAssetPath(resource),
@@ -38,21 +41,81 @@ describe('mobile-uiux production assets', () => {
       );
 
       expect(productionHtml).toContain('data-mobile-uiux-production-root');
+      expect(productionHtml).toContain('data-mobile-uiux-shell="production"');
       expect(productionHtml).toContain('ref="{{ setRoot }}"');
       expect(countDcScripts(productionHtml)).toBe(1);
       expect(productionHtml).toContain('class Component extends DCLogic');
-      expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
+      expect(productionHtml).toContain('data-mobile-uiux-nav-target="home"');
       expect(productionHtml).toContain(
-        'window.__MOBILE_UIUX_APPLY_READ_DATA__'
+        'data-mobile-uiux-nav-target="reservations"'
+      );
+      expect(productionHtml).toContain(
+        'data-mobile-uiux-nav-target="patients"'
+      );
+      expect(productionHtml).toContain(
+        'data-mobile-uiux-nav-target="daily-reports"'
+      );
+      expect(productionHtml).toContain(
+        'data-mobile-uiux-nav-target="settings"'
       );
       expect(productionHtml).not.toContain('STAGE CONTROLS');
       expect(productionHtml).not.toContain('width: 390px; height: 812px');
       expect(productionHtml).not.toContain('data-mobile-uiux-bridge');
+      expect(() =>
+        validateMobileUiuxProductionAsset(resource, productionHtml)
+      ).not.toThrow();
     }
   );
 
+  it.each(MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES)(
+    'builds the %s production asset with the existing hydration patch',
+    async resource => {
+      const sourceHtml = await readFile(
+        getMobileUiuxSourceAssetPath(resource),
+        'utf-8'
+      );
+      const productionHtml = buildMobileUiuxProductionAsset(
+        resource,
+        sourceHtml
+      );
+
+      expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
+      expect(productionHtml).toContain(
+        'window.__MOBILE_UIUX_APPLY_READ_DATA__'
+      );
+    }
+  );
+
+  it('keeps patients as production shell only until patient hydration is scoped', async () => {
+    const sourceHtml = await readFile(
+      getMobileUiuxSourceAssetPath('patients'),
+      'utf-8'
+    );
+    const productionHtml = buildMobileUiuxProductionAsset(
+      'patients',
+      sourceHtml
+    );
+
+    expect(productionHtml).toContain('data-mobile-uiux-production-root');
+    expect(productionHtml).not.toContain('__mobileUiuxOriginalRenderVals');
+    expect(productionHtml).not.toContain(
+      'window.__MOBILE_UIUX_APPLY_READ_DATA__'
+    );
+    expect(MOBILE_UIUX_PRODUCTION_ASSET_NOTES.patients).toContain(
+      'deferred'
+    );
+  });
+
   it('keeps the generated assets in the production asset manifest', () => {
     expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toEqual([
+      'home',
+      'reservations',
+      'patients',
+      'daily-reports',
+      'settings',
+      'settings-detail',
+    ]);
+    expect(MOBILE_UIUX_HYDRATED_PRODUCTION_ASSET_RESOURCES).toEqual([
       'home',
       'reservations',
       'daily-reports',
@@ -68,13 +131,14 @@ describe('mobile-uiux production assets', () => {
 
       expect(actual).not.toBeNull();
       expect(actual).toContain('data-mobile-uiux-production-root');
-      expect(actual).toContain('__mobileUiuxOriginalRenderVals');
-      expect(actual).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
+      expect(() =>
+        validateMobileUiuxProductionAsset(resource, actual ?? '')
+      ).not.toThrow();
     }
   );
 
-  it('returns null for screens outside the generated asset scope', async () => {
-    await expect(readMobileUiuxProductionAsset('patients')).resolves.toBeNull();
+  it('keeps every screen resource inside the generated asset scope', () => {
+    expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toHaveLength(6);
   });
 
   it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
@@ -135,5 +199,6 @@ describe('mobile-uiux production assets', () => {
     expect(stdout).toContain('up to date');
     expect(stdout).toContain('home.dc.html');
     expect(stdout).toContain('reservations.dc.html');
+    expect(stdout).toContain('patients.dc.html');
   });
 });
