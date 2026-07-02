@@ -1,4 +1,5 @@
 import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { NextRequest } from 'next/server';
 
@@ -1001,6 +1002,209 @@ describe('mobile-uiux bridge contract', () => {
     });
   });
 
+  it('fills scoped clinic id and applies returned daily report read model after write success', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const applyReadData = jest.fn(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'daily-reports',
+      [
+        buildJsonResponse(200, {
+          ...contextPayload,
+          data: {
+            ...contextPayload.data,
+            flags: {
+              ...contextPayload.data.flags,
+              writeEnabled: true,
+              dailyReportWriteEnabled: true,
+            },
+          },
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            startDate: null,
+            endDate: null,
+            dailyReports: { reports: [] },
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            reportDate: '2026-06-30',
+            report: { id: 'report-1' },
+            dailyReports: {
+              reports: [
+                {
+                  id: 'report-1',
+                  reportDate: '2026-06-30',
+                  totalPatients: 2,
+                  totalRevenue: 9000,
+                  insuranceRevenue: 1500,
+                  privateRevenue: 7500,
+                  status: 'submitted',
+                },
+              ],
+            },
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.submitDailyReport({
+      report_date: '2026-06-30',
+      total_patients: 2,
+      new_patients: 0,
+      total_revenue: 9000,
+      insurance_revenue: 1500,
+      private_revenue: 7500,
+      report_text: null,
+    });
+
+    expect(result).toBe(true);
+    expect(applyReadData).toHaveBeenCalledWith(
+      'daily-reports',
+      expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          reportDate: '2026-06-30',
+        }),
+      })
+    );
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/daily-reports',
+      method: 'POST',
+      body: JSON.stringify({
+        report_date: '2026-06-30',
+        total_patients: 2,
+        new_patients: 0,
+        total_revenue: 9000,
+        insurance_revenue: 1500,
+        private_revenue: 7500,
+        report_text: null,
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+      }),
+    });
+  });
+
+  it('prevents duplicate in-flight daily report mutations', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    let resolveMutation: ((value: BridgeFetchResponse) => void) | null = null;
+    const mutationResponse = new Promise<BridgeFetchResponse>(resolve => {
+      resolveMutation = resolve;
+    });
+    const applyReadData = jest.fn(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'daily-reports',
+      [
+        buildJsonResponse(200, {
+          ...contextPayload,
+          data: {
+            ...contextPayload.data,
+            flags: {
+              ...contextPayload.data.flags,
+              writeEnabled: true,
+              dailyReportWriteEnabled: true,
+            },
+          },
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            startDate: null,
+            endDate: null,
+            dailyReports: { reports: [] },
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+      ],
+      applyReadData
+    );
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            dailyReportWriteEnabled: true,
+          },
+        },
+      });
+    });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+    });
+    window.fetch.mockImplementation(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return mutationResponse;
+    });
+    const payload = {
+      report_date: '2026-06-30',
+      total_patients: 1,
+      new_patients: 0,
+      total_revenue: 3000,
+      insurance_revenue: 0,
+      private_revenue: 3000,
+    };
+
+    await runBridgeScript(script, window);
+    const firstMutation = window.MobileUiuxBridge?.submitDailyReport(payload);
+    const secondMutation = window.MobileUiuxBridge?.submitDailyReport(payload);
+
+    expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
+    resolveMutation?.(
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reportDate: '2026-06-30',
+          report: { id: 'report-1' },
+          dailyReports: { reports: [{ id: 'report-1' }] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      })
+    );
+    await expect(firstMutation).resolves.toBe(true);
+    await expect(secondMutation).resolves.toBe(true);
+  });
+
   it('marks daily report server errors as failed without logging identifiers', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -1056,6 +1260,66 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).not.toContain('clinic-secret');
     expect(window.document.body.textContent).not.toContain('user-secret');
     expect(window.document.body.textContent).not.toContain('staff-secret');
+  });
+
+  it('reuses fallback and mutation status elements on repeated daily report failures', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, bodyNodes } = buildBridgeWindow('daily-reports', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            dailyReportWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(500, { success: false }),
+      buildJsonResponse(500, { success: false }),
+    ]);
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      report_date: '2026-06-30',
+      total_patients: 1,
+      new_patients: 0,
+      total_revenue: 3000,
+      insurance_revenue: 0,
+      private_revenue: 3000,
+    };
+
+    await runBridgeScript(script, window);
+    await expect(
+      window.MobileUiuxBridge?.submitDailyReport(payload)
+    ).resolves.toBe(false);
+    await expect(
+      window.MobileUiuxBridge?.submitDailyReport(payload)
+    ).resolves.toBe(false);
+
+    expect(
+      bodyNodes.filter(
+        node => node.dataset.mobileUiuxBridgeFallback !== undefined
+      )
+    ).toHaveLength(1);
+    expect(
+      bodyNodes.filter(
+        node => node.dataset.mobileUiuxMutationStatus !== undefined
+      )
+    ).toHaveLength(1);
   });
 
   it('keeps settings mutation disabled when server flags disable writes', async () => {
@@ -1230,6 +1494,19 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).not.toContain('webhook-secret');
     expect(window.document.body.textContent).not.toContain('token-secret');
     expect(window.document.body.textContent).not.toContain('credential-secret');
+  });
+
+  it('documents mobile UIUX write flags as disabled by default in env example', () => {
+    const envExample = readFileSync('.env.local.example', 'utf-8');
+
+    expect(envExample).toContain('MOBILE_UIUX_WRITE_ENABLED=false');
+    expect(envExample).toContain(
+      'MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED=false'
+    );
+    expect(envExample).toContain(
+      'MOBILE_UIUX_RESERVATION_WRITE_ENABLED=false'
+    );
+    expect(envExample).toContain('MOBILE_UIUX_SETTINGS_WRITE_ENABLED=false');
   });
 });
 

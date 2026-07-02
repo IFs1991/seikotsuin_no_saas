@@ -151,6 +151,7 @@ export function buildMobileUiuxBridgeScript(
   };
   let currentContext = null;
   const inFlightMutations = new Map();
+  let fallbackStatusElement = null;
   let mutationStatusElement = null;
 
   function isRecord(value) {
@@ -170,11 +171,15 @@ export function buildMobileUiuxBridgeScript(
 
   function showFallback(status, message) {
     setStatus("fallback");
-    const fallback = document.createElement("div");
-    fallback.setAttribute("role", "status");
+    const fallback = fallbackStatusElement || document.createElement("div");
+    if (!fallbackStatusElement) {
+      fallback.setAttribute("role", "status");
+      fallbackStatusElement = fallback;
+    }
     fallback.dataset.mobileUiuxBridgeFallback = status;
     fallback.textContent = message;
-    if (document.body) {
+    if (document.body && !fallback.dataset.mobileUiuxFallbackAttached) {
+      fallback.dataset.mobileUiuxFallbackAttached = "true";
       document.body.appendChild(fallback);
     }
   }
@@ -498,6 +503,32 @@ export function buildMobileUiuxBridgeScript(
     return options.mutationKey + ":" + options.method + ":" + options.url;
   }
 
+  function getDefaultClinicId() {
+    return isRecord(currentContext) && typeof currentContext.defaultClinicId === "string"
+      ? currentContext.defaultClinicId
+      : "";
+  }
+
+  function normalizeDailyReportPayload(payload) {
+    if (!isRecord(payload)) {
+      return payload;
+    }
+
+    if (typeof payload.clinic_id === "string" && payload.clinic_id.length > 0) {
+      return payload;
+    }
+
+    const clinicId = getDefaultClinicId();
+    if (!clinicId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      clinic_id: clinicId
+    };
+  }
+
   async function runMobileBffMutation(options) {
     showMutationStatus("pending", STATUS_MESSAGES.saving);
     const result = await mutateJson(options.url, options.method, options.payload);
@@ -521,6 +552,15 @@ export function buildMobileUiuxBridgeScript(
       showMutationStatus("failed", STATUS_MESSAGES.invalid);
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return false;
+    }
+
+    if (options.applyReadScreen && typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
+      const applied = applyReadData(options.applyReadScreen, result.payload);
+      if (applied !== true) {
+        showMutationStatus("failed", STATUS_MESSAGES.invalid);
+        showFallback("invalid", STATUS_MESSAGES.invalid);
+        return false;
+      }
     }
 
     showMutationStatus("success", options.successMessage);
@@ -563,11 +603,12 @@ export function buildMobileUiuxBridgeScript(
     return mutateMobileBff({
       url: "/api/mobile-uiux/daily-reports",
       method: "POST",
-      payload,
+      payload: normalizeDailyReportPayload(payload),
       mutationKey: "daily-reports",
       canWrite: canWriteDailyReports,
       disabledMessage: STATUS_MESSAGES.dailyReportWriteDisabled,
-      successMessage: STATUS_MESSAGES.dailyReportSaved
+      successMessage: STATUS_MESSAGES.dailyReportSaved,
+      applyReadScreen: "daily-reports"
     });
   }
 

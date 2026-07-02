@@ -25,6 +25,9 @@ type EvaluatedWindow = {
   __MOBILE_UIUX_APPLY_READ_DATA__?: ApplyReadData & {
     __mobileUiuxHydrationOwner?: unknown;
   };
+  MobileUiuxBridge?: {
+    submitDailyReport: jest.Mock<Promise<boolean>, [unknown]>;
+  };
 };
 
 type EvaluatedComponent = {
@@ -32,6 +35,7 @@ type EvaluatedComponent = {
   props: Record<string, unknown>;
   calls?: string[];
   renderVals: () => Record<string, unknown>;
+  saveReport?: () => Promise<boolean>;
   componentDidMount: () => void;
   componentWillUnmount: () => void;
 };
@@ -40,6 +44,9 @@ type EvaluatedSandbox = {
   window: EvaluatedWindow;
   __Component?: new () => EvaluatedComponent;
   Date: DateConstructor;
+  Intl: typeof Intl;
+  setTimeout: (callback: () => void, timeout: number) => number;
+  clearTimeout: (timeout: number | undefined) => void;
 };
 
 function wrapDcScript(source: string): string {
@@ -57,6 +64,9 @@ function evaluatePatchedComponent(source: string): {
   const sandbox: EvaluatedSandbox = {
     window: {},
     Date,
+    Intl,
+    setTimeout: () => 0,
+    clearTimeout: () => undefined,
   };
   vm.runInNewContext(
     `
@@ -543,6 +553,154 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.sumRevenue).toBe('¥0');
     expect(vals.sumPatients).toBe('0名');
     expect(vals.listRows).toEqual([]);
+  });
+
+  it('wires daily report save to the mobile bridge without sending patient names', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  MENUS_DR = [
+    { name: '保険施術（健康保険）', price: 5000, type: '保険' },
+    { name: '産後骨盤矯正', price: 4400, type: '自費' }
+  ];
+  state = {
+    role: 'therapist',
+    editKey: 'd0',
+    formOpen: true,
+    confirmDel: null,
+    toast: '',
+    items: [
+      { id: 1, patient: '患者名は送らない', menu: '保険施術（健康保険）', type: '保険', ratio: 3 },
+      { id: 2, patient: '自由記述も送らない', menu: '産後骨盤矯正', type: '自費', ratio: 3 }
+    ]
+  };
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  amt(it) {
+    const menu = this.MENUS_DR.find(item => item.name === it.menu) || { price: 0 };
+    return it.type === '保険' ? Math.round(menu.price * it.ratio / 10) : menu.price;
+  }
+  renderVals() {
+    return {
+      saveReport: this.saveReport,
+      formOpen: this.state.formOpen
+    };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const submitDailyReport = jest.fn(async () => true);
+    window.MobileUiuxBridge = { submitDailyReport };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [],
+          summary: {
+            totalReports: 0,
+            averagePatients: 0,
+            averageRevenue: 0,
+            totalRevenue: 0,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const saveReport = component.renderVals().saveReport;
+    if (typeof saveReport !== 'function') {
+      throw new Error('Expected patched saveReport');
+    }
+
+    await saveReport();
+
+    expect(submitDailyReport).toHaveBeenCalledWith({
+      report_date: '2026-06-30',
+      total_patients: 2,
+      new_patients: 0,
+      total_revenue: 5900,
+      insurance_revenue: 1500,
+      private_revenue: 4400,
+      report_text: null,
+    });
+    expect(component.state.formOpen).toBe(false);
+    expect(component.state.toast).toBe('日報を保存しました');
+    expect(JSON.stringify(submitDailyReport.mock.calls)).not.toContain(
+      '患者名は送らない'
+    );
+  });
+
+  it('keeps the daily report form open when write flags make bridge save fail', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  MENUS_DR = [{ name: '産後骨盤矯正', price: 4400, type: '自費' }];
+  state = {
+    role: 'therapist',
+    editKey: 'd0',
+    formOpen: true,
+    confirmDel: null,
+    toast: '',
+    items: [{ id: 1, patient: '患者A', menu: '産後骨盤矯正', type: '自費', ratio: 3 }]
+  };
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  amt(it) {
+    const menu = this.MENUS_DR.find(item => item.name === it.menu) || { price: 0 };
+    return menu.price;
+  }
+  renderVals() {
+    return { saveReport: this.saveReport, formOpen: this.state.formOpen };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const submitDailyReport = jest.fn(async () => false);
+    window.MobileUiuxBridge = { submitDailyReport };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [],
+          summary: {
+            totalReports: 0,
+            averagePatients: 0,
+            averageRevenue: 0,
+            totalRevenue: 0,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const saveReport = component.renderVals().saveReport;
+    if (typeof saveReport !== 'function') {
+      throw new Error('Expected patched saveReport');
+    }
+
+    await saveReport();
+
+    expect(submitDailyReport).toHaveBeenCalledTimes(1);
+    expect(component.state.formOpen).toBe(true);
+    expect(component.state.toast).toBe('日報は保存されていません');
   });
 
   it('keeps sample values when the payload is invalid', () => {

@@ -921,7 +921,9 @@ function buildDailyReportsHydrationAdapterSource(): string {
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return hydratedVals
+      ? { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport, ...hydratedVals }
+      : { ...originalVals, saveReport: this.__mobileUiuxSubmitDailyReport };
   }
 
   componentDidMount() {
@@ -989,6 +991,7 @@ function buildDailyReportsHydrationAdapterSource(): string {
     if (!reportDate) {
       return null;
     }
+    this.__mobileUiuxCurrentReportDateKey = reportDate;
 
     const todayReport = reports.length > 0 ? reports[0] : null;
     const todaySubmitted = todayReport !== null;
@@ -1013,6 +1016,135 @@ function buildDailyReportsHydrationAdapterSource(): string {
       trendCards: viewRows.trendCards,
       statusRows: viewRows.statusRows
     };
+  }
+
+  __mobileUiuxSubmitDailyReport = async () => {
+    if (this.__mobileUiuxDailyReportSaving === true) {
+      this.__mobileUiuxShowWriteToast('日報を保存中です');
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.submitDailyReport !== 'function') {
+      this.__mobileUiuxShowWriteToast('日報保存は現在利用できません');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildDailyReportPayload();
+    if (!payload) {
+      this.__mobileUiuxShowWriteToast('日報を保存できません。入力内容を確認してください');
+      return false;
+    }
+
+    this.__mobileUiuxDailyReportSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.submitDailyReport(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxDailyReportSaving = false;
+    }
+
+    if (ok === true) {
+      if (typeof this.setState === 'function') {
+        this.setState({ formOpen: false, confirmDel: null });
+      }
+      this.__mobileUiuxShowWriteToast('日報を保存しました');
+      return true;
+    }
+
+    this.__mobileUiuxShowWriteToast('日報は保存されていません');
+    return false;
+  }
+
+  __mobileUiuxBuildDailyReportPayload() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (state.role === 'manager' || state.editKey !== 'd0' || !Array.isArray(state.items)) {
+      return null;
+    }
+
+    const reportDate = typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
+      ? this.__mobileUiuxCurrentReportDateKey
+      : this.__mobileUiuxTodayJstDateKey();
+    if (!reportDate) return null;
+
+    let totalRevenue = 0;
+    let insuranceRevenue = 0;
+    const menuAmountByName = this.__mobileUiuxBuildDailyReportMenuAmountMap();
+    for (const item of state.items) {
+      const amount = this.__mobileUiuxDailyReportItemAmount(item, menuAmountByName);
+      if (amount === null) return null;
+      totalRevenue += amount;
+      if (this.__mobileUiuxIsRecord(item) && item.type === '保険') {
+        insuranceRevenue += amount;
+      }
+    }
+
+    return {
+      report_date: reportDate,
+      total_patients: state.items.length,
+      new_patients: 0,
+      total_revenue: Math.round(totalRevenue),
+      insurance_revenue: Math.round(insuranceRevenue),
+      private_revenue: Math.round(totalRevenue - insuranceRevenue),
+      report_text: null
+    };
+  }
+
+  __mobileUiuxBuildDailyReportMenuAmountMap() {
+    const source = Array.isArray(this.MENUS_DR) ? this.MENUS_DR : [];
+    if (this.__mobileUiuxDailyReportMenuSource === source && this.__mobileUiuxDailyReportMenuAmountMap) {
+      return this.__mobileUiuxDailyReportMenuAmountMap;
+    }
+
+    const amountByName = new Map();
+    for (const menu of source) {
+      if (!this.__mobileUiuxIsRecord(menu) || typeof menu.name !== 'string') continue;
+      amountByName.set(menu.name, this.__mobileUiuxNumber(menu.price));
+    }
+
+    this.__mobileUiuxDailyReportMenuSource = source;
+    this.__mobileUiuxDailyReportMenuAmountMap = amountByName;
+    return amountByName;
+  }
+
+  __mobileUiuxDailyReportItemAmount(item, menuAmountByName) {
+    if (!this.__mobileUiuxIsRecord(item)) return null;
+    const baseAmount = typeof item.menu === 'string'
+      ? menuAmountByName.get(item.menu) || 0
+      : 0;
+    const ratio = Number(item.ratio);
+    const amount = item.type === '保険'
+      ? Math.round(baseAmount * (Number.isFinite(ratio) ? ratio : 0) / 10)
+      : baseAmount;
+    return Number.isFinite(amount) && amount >= 0 ? amount : null;
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
+  }
+
+  __mobileUiuxShowWriteToast(message) {
+    if (typeof this.toast === 'function') {
+      this.toast(message);
+    } else if (typeof this.setState === 'function') {
+      this.setState({ toast: message });
+    }
   }
 
   __mobileUiuxReportToRecord(report) {
