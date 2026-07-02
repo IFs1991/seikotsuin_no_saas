@@ -26,6 +26,64 @@ const getUserAccessContextMock = getUserAccessContext as jest.Mock;
 
 const user = { id: 'user-1', email: 'staff@example.com' };
 const supabase = { client: 'supabase' };
+type EntitlementRow = {
+  clinic_id: string;
+  mobile_uiux_enabled: boolean;
+  mobile_uiux_real_data_enabled: boolean;
+  mobile_uiux_write_enabled: boolean;
+  mobile_uiux_reservation_write_enabled: boolean;
+  mobile_uiux_daily_report_write_enabled: boolean;
+  mobile_uiux_settings_write_enabled: boolean;
+  rollout_phase: string;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+type EntitlementBuilder = {
+  select: jest.MockedFunction<(columns: string) => EntitlementBuilder>;
+  in: jest.MockedFunction<
+    (column: string, values: readonly string[]) => EntitlementBuilder
+  >;
+  returns: jest.MockedFunction<
+    () => Promise<{ data: EntitlementRow[]; error: null }>
+  >;
+};
+
+function buildEntitlementRow(
+  clinicId: string,
+  enabled: boolean
+): EntitlementRow {
+  return {
+    clinic_id: clinicId,
+    mobile_uiux_enabled: enabled,
+    mobile_uiux_real_data_enabled: enabled,
+    mobile_uiux_write_enabled: false,
+    mobile_uiux_reservation_write_enabled: false,
+    mobile_uiux_daily_report_write_enabled: false,
+    mobile_uiux_settings_write_enabled: false,
+    rollout_phase: enabled ? 'pilot' : 'off',
+    updated_at: '2026-07-02T00:00:00.000Z',
+    updated_by: null,
+  };
+}
+
+function createEntitlementClient(rows: EntitlementRow[]) {
+  let builder: EntitlementBuilder;
+  builder = {
+    select: jest.fn(() => builder),
+    in: jest.fn(() => builder),
+    returns: jest.fn(async () => ({ data: rows, error: null })),
+  };
+
+  return {
+    from: jest.fn((tableName: string) => {
+      if (tableName !== 'clinic_feature_flags') {
+        throw new Error(`Unexpected table: ${tableName}`);
+      }
+      return builder;
+    }),
+  };
+}
 
 function buildNodeFileNotFoundError(): Error & { code: string } {
   const error = new Error('missing file') as Error & { code: string };
@@ -96,6 +154,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
     delete process.env.MOBILE_UIUX_ENABLED;
+    delete process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS;
     delete process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS;
     delete process.env.MOBILE_UIUX_ALLOWED_ROLES;
 
@@ -197,6 +256,62 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(response.headers.get('content-type')).toBe(
       'text/html; charset=utf-8'
     );
+    expect(readFileMock).toHaveBeenCalled();
+  });
+
+  it('returns 403 when DB entitlement is enabled and the clinic is not entitled', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    createClientMock.mockResolvedValue(
+      createEntitlementClient([buildEntitlementRow('clinic-1', false)])
+    );
+
+    const response = await callMobileScreen('reservations');
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload.success).toBe(false);
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('does not read DB entitlements when the screen role denies first', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    const entitlementClient = createEntitlementClient([
+      buildEntitlementRow('clinic-1', true),
+    ]);
+    createClientMock.mockResolvedValue(entitlementClient);
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'staff',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      clinicId: 'clinic-1',
+    });
+
+    const response = await callMobileScreen('home');
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload.success).toBe(false);
+    expect(entitlementClient.from).not.toHaveBeenCalled();
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('serves the screen when DB entitlement and env rollout gate both permit access', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    createClientMock.mockResolvedValue(
+      createEntitlementClient([buildEntitlementRow('clinic-1', true)])
+    );
+
+    const response = await callMobileScreen('reservations');
+
+    expect(response.status).toBe(200);
     expect(readFileMock).toHaveBeenCalled();
   });
 

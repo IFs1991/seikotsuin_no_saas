@@ -15,9 +15,12 @@ import {
 } from '@/lib/daily-reports/write-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxDailyReportsResponse } from '@/lib/mobile-uiux/contracts';
+import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import {
+  areMobileUiuxRealDataReadsEnabled,
   areMobileUiuxWritesEnabled,
   getMobileUiuxFlags,
+  type MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
 import {
   buildMobileUiuxFailure,
@@ -88,8 +91,15 @@ function buildWriteDisabledResponse() {
   );
 }
 
-function canUseWriteRoutes(): boolean {
-  const flags = getMobileUiuxFlags();
+function buildRealDataDisabledResponse() {
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    'モバイル UI/UX の実データ参照は無効です'
+  );
+}
+
+function canUseWriteRoutes(flags: MobileUiuxFlags): boolean {
   return (
     flags.enabled &&
     flags.realDataEnabled &&
@@ -120,11 +130,7 @@ function buildScopedBodyFailure(status: number) {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
-    return buildMobileUiuxFailure(
-      403,
-      'FORBIDDEN',
-      'モバイル UI/UX の実データ参照は無効です'
-    );
+    return buildRealDataDisabledResponse();
   }
 
   const clinicId = getRequiredClinicId(
@@ -163,6 +169,15 @@ export async function GET(request: NextRequest) {
     return buildAccessError(error);
   }
 
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: access.supabase,
+    flags,
+    clinicId,
+  });
+  if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    return buildRealDataDisabledResponse();
+  }
+
   const data: MobileUiuxDailyReportsResponse = {
     clinicId,
     startDate: startDate.value,
@@ -179,7 +194,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!canUseWriteRoutes()) {
+  const flags = getMobileUiuxFlags();
+  if (!canUseWriteRoutes(flags)) {
     return buildWriteDisabledResponse();
   }
 
@@ -193,6 +209,15 @@ export async function POST(request: NextRequest) {
     );
     if (!result.success) {
       return buildScopedBodyFailure(result.error.status);
+    }
+
+    const entitlement = await fetchMobileUiuxClinicEntitlement({
+      supabase: result.supabase,
+      flags,
+      clinicId: result.dto.clinic_id,
+    });
+    if (!areMobileUiuxWritesEnabled(flags, 'dailyReport', entitlement)) {
+      return buildWriteDisabledResponse();
     }
 
     const scope = await validateDailyReportWriteScope(

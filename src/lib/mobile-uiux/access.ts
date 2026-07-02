@@ -6,7 +6,7 @@ import {
 import { resolveScopedClinicIds, type UserPermissions } from '@/lib/supabase';
 import type { MobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 
-export type MobileUiuxAccessDecision =
+export type MobileUiuxPrincipalDecision =
   | {
       allowed: true;
       role: AdminUserRole;
@@ -15,8 +15,24 @@ export type MobileUiuxAccessDecision =
   | {
       allowed: false;
       status: 403;
-      reason: 'role_denied' | 'clinic_scope_empty' | 'clinic_denied';
+      reason: 'role_denied' | 'clinic_scope_empty';
     };
+
+export type MobileUiuxRolloutDecision =
+  | {
+      allowed: true;
+      role: AdminUserRole;
+      clinicIds: string[];
+    }
+  | {
+      allowed: false;
+      status: 403;
+      reason: 'clinic_denied';
+    };
+
+export type MobileUiuxAccessDecision =
+  | MobileUiuxRolloutDecision
+  | Extract<MobileUiuxPrincipalDecision, { allowed: false }>;
 
 function hasAllowedClinic(
   scopedClinicIds: readonly string[],
@@ -26,10 +42,18 @@ function hasAllowedClinic(
   return scopedClinicIds.some(clinicId => allowedClinicIdSet.has(clinicId));
 }
 
-export function evaluateMobileUiuxAccess(
+function filterAllowedClinicIds(
+  scopedClinicIds: readonly string[],
+  allowedClinicIds: readonly string[]
+): string[] {
+  const allowedClinicIdSet = new Set(allowedClinicIds);
+  return scopedClinicIds.filter(clinicId => allowedClinicIdSet.has(clinicId));
+}
+
+export function evaluateMobileUiuxPrincipal(
   permissions: UserPermissions | null,
   flags: MobileUiuxFlags
-): MobileUiuxAccessDecision {
+): MobileUiuxPrincipalDecision {
   const normalizedRole = normalizeRole(permissions?.role);
 
   if (
@@ -55,12 +79,23 @@ export function evaluateMobileUiuxAccess(
     };
   }
 
+  return {
+    allowed: true,
+    role: normalizedRole,
+    clinicIds: scopedClinicIds,
+  };
+}
+
+export function evaluateMobileUiuxEnvRollout(
+  principal: Extract<MobileUiuxPrincipalDecision, { allowed: true }>,
+  flags: MobileUiuxFlags
+): MobileUiuxRolloutDecision {
   if (flags.allowedClinicIds.length === 0) {
-    if (normalizedRole === 'admin') {
+    if (flags.useDbEntitlements || principal.role === 'admin') {
       return {
         allowed: true,
-        role: normalizedRole,
-        clinicIds: scopedClinicIds,
+        role: principal.role,
+        clinicIds: principal.clinicIds,
       };
     }
 
@@ -71,7 +106,7 @@ export function evaluateMobileUiuxAccess(
     };
   }
 
-  if (!hasAllowedClinic(scopedClinicIds, flags.allowedClinicIds)) {
+  if (!hasAllowedClinic(principal.clinicIds, flags.allowedClinicIds)) {
     return {
       allowed: false,
       status: 403,
@@ -81,7 +116,29 @@ export function evaluateMobileUiuxAccess(
 
   return {
     allowed: true,
-    role: normalizedRole,
-    clinicIds: scopedClinicIds,
+    role: principal.role,
+    clinicIds: filterAllowedClinicIds(
+      principal.clinicIds,
+      flags.allowedClinicIds
+    ),
   };
+}
+
+export function evaluateMobileUiuxAccess(
+  permissions: UserPermissions | null,
+  flags: MobileUiuxFlags
+): MobileUiuxAccessDecision {
+  const principal = evaluateMobileUiuxPrincipal(permissions, {
+    ...flags,
+    useDbEntitlements: false,
+  });
+
+  if (principal.allowed === false) {
+    return principal;
+  }
+
+  return evaluateMobileUiuxEnvRollout(principal, {
+    ...flags,
+    useDbEntitlements: false,
+  });
 }

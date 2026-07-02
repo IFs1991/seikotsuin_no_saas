@@ -14,7 +14,9 @@ import type {
   MobileUiuxSettingsResponse,
   MobileUiuxSettingsWriteResponse,
 } from '@/lib/mobile-uiux/contracts';
+import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import {
+  areMobileUiuxRealDataReadsEnabled,
   areMobileUiuxWritesEnabled,
   getMobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
@@ -54,6 +56,14 @@ function buildWriteDisabledResponse() {
   );
 }
 
+function buildRealDataDisabledResponse() {
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    'モバイル UI/UX の実データ参照は無効です'
+  );
+}
+
 function buildAuthFailureResponse(status: number) {
   return buildMobileUiuxFailure(
     status,
@@ -76,11 +86,7 @@ async function readClinicIdPreview(
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
-    return buildMobileUiuxFailure(
-      403,
-      'FORBIDDEN',
-      'モバイル UI/UX の実データ参照は無効です'
-    );
+    return buildRealDataDisabledResponse();
   }
 
   const clinicId = getRequiredClinicId(
@@ -126,6 +132,15 @@ export async function GET(request: NextRequest) {
       'FORBIDDEN',
       'この設定カテゴリへのアクセス権がありません'
     );
+  }
+
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: guard.supabase,
+    flags,
+    clinicId,
+  });
+  if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    return buildRealDataDisabledResponse();
   }
 
   const readResult = await fetchAdminSettingsReadModel(
@@ -183,6 +198,15 @@ export async function PUT(request: NextRequest) {
   }
 
   const envelope = envelopeValidation.payload;
+
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: guard.supabase,
+    flags,
+    clinicId: envelope.clinic_id,
+  });
+  if (!areMobileUiuxWritesEnabled(flags, 'settings', entitlement)) {
+    return buildWriteDisabledResponse();
+  }
 
   if (
     !canReadAdminSettingsCategory(guard.permissions.role, envelope.category)

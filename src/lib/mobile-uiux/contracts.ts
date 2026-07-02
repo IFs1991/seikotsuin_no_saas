@@ -23,11 +23,13 @@ export type MobileUiuxApiFailure = {
 
 export type MobileUiuxPublicFlags = {
   enabled: boolean;
+  useDbEntitlements: boolean;
   realDataEnabled: boolean;
   writeEnabled: boolean;
   reservationWriteEnabled: boolean;
   dailyReportWriteEnabled: boolean;
   settingsWriteEnabled: boolean;
+  rolloutPhase: string | null;
 };
 
 export type MobileUiuxContextResponse = {

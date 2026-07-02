@@ -17,8 +17,11 @@ import type { ReservationSnapshot } from '@/lib/notifications/email/types';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import {
   areMobileUiuxWritesEnabled,
+  areMobileUiuxRealDataReadsEnabled,
   getMobileUiuxFlags,
+  type MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
+import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import type { MobileUiuxReservationsResponse } from '@/lib/mobile-uiux/contracts';
 import {
   buildMobileUiuxFailure,
@@ -127,12 +130,19 @@ function buildWriteDisabledResponse() {
   );
 }
 
-function canUseWriteRoutes(): boolean {
-  const flags = getMobileUiuxFlags();
+function canUseWriteRoutes(flags: MobileUiuxFlags): boolean {
   return (
     flags.enabled &&
     flags.realDataEnabled &&
     areMobileUiuxWritesEnabled(flags, 'reservation')
+  );
+}
+
+function buildRealDataDisabledResponse() {
+  return buildMobileUiuxFailure(
+    403,
+    'FORBIDDEN',
+    'モバイル UI/UX の実データ参照は無効です'
   );
 }
 
@@ -365,11 +375,7 @@ function enqueueChangeWithoutBlocking(
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
-    return buildMobileUiuxFailure(
-      403,
-      'FORBIDDEN',
-      'モバイル UI/UX の実データ参照は無効です'
-    );
+    return buildRealDataDisabledResponse();
   }
 
   const clinicId = request.nextUrl.searchParams.get('clinic_id');
@@ -404,6 +410,15 @@ export async function GET(request: NextRequest) {
       auth.error.status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
       '対象クリニックへのアクセス権がありません'
     );
+  }
+
+  const entitlement = await fetchMobileUiuxClinicEntitlement({
+    supabase: auth.supabase,
+    flags,
+    clinicId,
+  });
+  if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    return buildRealDataDisabledResponse();
   }
 
   const readClient = createReservationReadClient(auth.permissions, clinicId);
@@ -442,7 +457,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!canUseWriteRoutes()) {
+  const flags = getMobileUiuxFlags();
+  if (!canUseWriteRoutes(flags)) {
     return buildWriteDisabledResponse();
   }
 
@@ -460,6 +476,15 @@ export async function POST(request: NextRequest) {
     }
 
     const dto = result.dto;
+    const entitlement = await fetchMobileUiuxClinicEntitlement({
+      supabase: result.supabase,
+      flags,
+      clinicId: dto.clinic_id,
+    });
+    if (!areMobileUiuxWritesEnabled(flags, 'reservation', entitlement)) {
+      return buildWriteDisabledResponse();
+    }
+
     const references = await getScopedReservationReferences(result.supabase, {
       clinicId: dto.clinic_id,
       customerId: dto.customerId,
@@ -545,7 +570,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!canUseWriteRoutes()) {
+  const flags = getMobileUiuxFlags();
+  if (!canUseWriteRoutes(flags)) {
     return buildWriteDisabledResponse();
   }
 
@@ -564,6 +590,15 @@ export async function PATCH(request: NextRequest) {
     }
 
     const dto = result.dto;
+    const entitlement = await fetchMobileUiuxClinicEntitlement({
+      supabase: result.supabase,
+      flags,
+      clinicId: dto.clinic_id,
+    });
+    if (!areMobileUiuxWritesEnabled(flags, 'reservation', entitlement)) {
+      return buildWriteDisabledResponse();
+    }
+
     const { data: existing, error: existingError } = await result.supabase
       .from('reservations')
       .select(

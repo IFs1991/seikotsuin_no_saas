@@ -11,7 +11,8 @@ import {
   Users,
 } from 'lucide-react';
 
-import { evaluateMobileUiuxAccess } from '@/lib/mobile-uiux/access';
+import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
+import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { DisplayModeLink } from '@/components/mobile-uiux/display-mode-link';
 import {
@@ -113,16 +114,31 @@ export default async function MobileUiuxPage() {
   }
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
-  const mobileAccess = evaluateMobileUiuxAccess(
+  const principalDecision = evaluateMobileUiuxPrincipal(
     accessContext.permissions,
     flags
   );
 
-  if (mobileAccess.allowed === false) {
+  if (principalDecision.allowed === false) {
     return (
       <MobileUiuxUnavailablePage
         title='モバイル UI/UX へのアクセス権限がありません'
-        message='許可されたロールまたは pilot clinic allowlist に含まれていないため表示できません。'
+        message='許可されたロールまたは clinic scope に含まれていないため表示できません。'
+      />
+    );
+  }
+
+  const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
+    supabase,
+    principal: principalDecision,
+    flags,
+  });
+
+  if (rolloutDecision.allowed === false) {
+    return (
+      <MobileUiuxUnavailablePage
+        title='モバイル UI/UX へのアクセス権限がありません'
+        message='pilot clinic allowlist または feature entitlement が有効ではないため表示できません。'
       />
     );
   }

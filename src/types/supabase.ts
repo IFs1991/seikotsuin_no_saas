@@ -894,6 +894,60 @@ export type Database = {
           },
         ];
       };
+      clinic_feature_flags: {
+        Row: {
+          clinic_id: string;
+          mobile_uiux_daily_report_write_enabled: boolean;
+          mobile_uiux_enabled: boolean;
+          mobile_uiux_real_data_enabled: boolean;
+          mobile_uiux_reservation_write_enabled: boolean;
+          mobile_uiux_settings_write_enabled: boolean;
+          mobile_uiux_write_enabled: boolean;
+          rollout_phase: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          mobile_uiux_daily_report_write_enabled?: boolean;
+          mobile_uiux_enabled?: boolean;
+          mobile_uiux_real_data_enabled?: boolean;
+          mobile_uiux_reservation_write_enabled?: boolean;
+          mobile_uiux_settings_write_enabled?: boolean;
+          mobile_uiux_write_enabled?: boolean;
+          rollout_phase?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          mobile_uiux_daily_report_write_enabled?: boolean;
+          mobile_uiux_enabled?: boolean;
+          mobile_uiux_real_data_enabled?: boolean;
+          mobile_uiux_reservation_write_enabled?: boolean;
+          mobile_uiux_settings_write_enabled?: boolean;
+          mobile_uiux_write_enabled?: boolean;
+          rollout_phase?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clinics: {
         Row: {
           address: string | null;
