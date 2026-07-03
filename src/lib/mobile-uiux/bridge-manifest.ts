@@ -718,6 +718,26 @@ export function buildMobileUiuxBridgeScript(
     };
   }
 
+  function normalizeReservationPayload(payload) {
+    if (!isRecord(payload)) {
+      return payload;
+    }
+
+    if (typeof payload.clinic_id === "string" && payload.clinic_id.length > 0) {
+      return payload;
+    }
+
+    const clinicId = getDefaultClinicId();
+    if (!clinicId) {
+      return payload;
+    }
+
+    return {
+      ...payload,
+      clinic_id: clinicId
+    };
+  }
+
   function normalizeSettingsPayload(payload) {
     if (!isRecord(payload)) {
       return payload;
@@ -810,12 +830,12 @@ export function buildMobileUiuxBridgeScript(
     return mutateMobileBff({
       url: "/api/mobile-uiux/reservations",
       method,
-      payload,
+      payload: method === "POST" ? normalizeReservationPayload(payload) : payload,
       mutationKey: "reservations",
       canWrite: canWriteReservations,
       disabledMessage: STATUS_MESSAGES.writeDisabled,
       successMessage: STATUS_MESSAGES.reservationSaved,
-      applyReadScreen: method === "PATCH" ? "reservations" : null
+      applyReadScreen: "reservations"
     });
   }
 

@@ -759,9 +759,15 @@ function buildReservationsHydrationAdapterSource(): string {
     const hydratedVals = candidateHydratedVals && this.__mobileUiuxCanUseHydratedVals(candidateHydratedVals)
       ? candidateHydratedVals
       : null;
+    const patchedVals = {
+      ...originalVals,
+      confirmAppt: this.__mobileUiuxConfirmReservation,
+      cancelAppt: this.__mobileUiuxCancelReservation,
+      submitForm: this.__mobileUiuxCreateReservation
+    };
     return hydratedVals
-      ? { ...originalVals, confirmAppt: this.__mobileUiuxConfirmReservation, cancelAppt: this.__mobileUiuxCancelReservation, ...hydratedVals }
-      : { ...originalVals, confirmAppt: this.__mobileUiuxConfirmReservation, cancelAppt: this.__mobileUiuxCancelReservation };
+      ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
+      : patchedVals;
   }
 
   componentDidMount() {
@@ -1050,7 +1056,7 @@ function buildReservationsHydrationAdapterSource(): string {
       if (!name) continue;
       const duration = this.__mobileUiuxPositiveNumber(item.durationMinutes, 30);
       rows.push({
-        id: typeof item.id === 'string' ? item.id : name,
+        id: typeof item.id === 'string' ? item.id : '',
         name,
         dur: duration,
         price: this.__mobileUiuxNonNegativeNumber(item.price),
@@ -1146,6 +1152,8 @@ function buildReservationsHydrationAdapterSource(): string {
         status: normalizedStatus,
         clinic: 'c1',
         mobileUiuxClinicId: typeof reservation.clinicId === 'string' ? reservation.clinicId : this.__mobileUiuxCurrentClinicId,
+        mobileUiuxCustomerId: typeof reservation.customerId === 'string' ? reservation.customerId : null,
+        mobileUiuxMenuId: typeof reservation.menuId === 'string' ? reservation.menuId : null,
         mobileUiuxStaffId: typeof reservation.staffId === 'string' ? reservation.staffId : null,
         mobileUiuxStartTime: reservation.startTime,
         mobileUiuxEndTime: reservation.endTime
@@ -1322,6 +1330,179 @@ function buildReservationsHydrationAdapterSource(): string {
       id: reservation.id,
       status
     };
+  }
+
+  __mobileUiuxCreateReservation = async () => {
+    if (this.__mobileUiuxReservationSaving === true) {
+      this.__mobileUiuxShowReservationToast('予約を保存中です');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildReservationCreatePayload();
+    if (!payload) {
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.createReservation !== 'function') {
+      this.__mobileUiuxShowReservationToast('予約作成は現在利用できません');
+      return false;
+    }
+
+    this.__mobileUiuxReservationSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.createReservation(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxReservationSaving = false;
+    }
+
+    if (ok === true) {
+      if (typeof this.setState === 'function') {
+        this.setState({ formOpen: false });
+      }
+      this.__mobileUiuxShowReservationToast('予約を登録しました');
+      return true;
+    }
+
+    this.__mobileUiuxShowReservationToast('予約は保存されていません');
+    return false;
+  };
+
+  __mobileUiuxBuildReservationCreatePayload() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const patientName = typeof state.fPatient === 'string' ? state.fPatient.trim() : '';
+    if (!patientName) {
+      this.__mobileUiuxShowReservationToast('患者名を入力してください');
+      return null;
+    }
+
+    const customerId = this.__mobileUiuxFindReservationCustomerId(patientName);
+    if (!customerId) {
+      this.__mobileUiuxShowReservationToast('患者を実データから選択できません');
+      return null;
+    }
+
+    const menu = this.__mobileUiuxFindReservationMenu(state.fMenu);
+    const menuId = menu && typeof menu.id === 'string' ? menu.id : '';
+    if (!menuId) {
+      this.__mobileUiuxShowReservationToast('メニューを実データから選択できません');
+      return null;
+    }
+
+    const staffId = this.__mobileUiuxFindReservationStaffId(state.fRes);
+    if (!staffId) {
+      this.__mobileUiuxShowReservationToast('担当を実データから選択できません');
+      return null;
+    }
+
+    const startMinutes = typeof state.fStart === 'number' && Number.isFinite(state.fStart)
+      ? state.fStart
+      : Number.parseInt(String(state.fStart), 10);
+    const duration = this.__mobileUiuxPositiveNumber(
+      state.fDur,
+      menu ? this.__mobileUiuxPositiveNumber(menu.dur, 30) : 30
+    );
+    const date = this.__mobileUiuxActiveHydratedDate();
+    const startTime = this.__mobileUiuxReservationIsoTime(date, startMinutes);
+    const endTime = this.__mobileUiuxReservationIsoTime(date, startMinutes + duration);
+    if (!startTime || !endTime) {
+      this.__mobileUiuxShowReservationToast('予約日時を確認してください');
+      return null;
+    }
+
+    const payload = {
+      customerId,
+      menuId,
+      staffId,
+      startTime,
+      endTime,
+      channel: 'walk_in',
+      isStaffRequested: state.fNominated === true
+    };
+    if (typeof state.fNote === 'string' && state.fNote.trim().length > 0) {
+      payload.notes = state.fNote.trim();
+    }
+    return payload;
+  }
+
+  __mobileUiuxFindReservationCustomerId(patientName) {
+    const normalizedName = typeof patientName === 'string' ? patientName.trim() : '';
+    if (!normalizedName) return '';
+    let customerId = '';
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (Array.isArray(state.appts)) {
+      for (const reservation of state.appts) {
+        customerId = this.__mobileUiuxResolveCustomerId(customerId, reservation, normalizedName);
+        if (customerId === null) return '';
+      }
+    }
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (this.__mobileUiuxIsRecord(current) && Array.isArray(current.reservations)) {
+      for (const reservation of current.reservations) {
+        customerId = this.__mobileUiuxResolveCustomerId(customerId, reservation, normalizedName);
+        if (customerId === null) return '';
+      }
+    }
+    return customerId || '';
+  }
+
+  __mobileUiuxResolveCustomerId(currentCustomerId, reservation, patientName) {
+    if (!this.__mobileUiuxIsRecord(reservation)) return currentCustomerId;
+    const candidateName = typeof reservation.patient === 'string'
+      ? reservation.patient.trim()
+      : typeof reservation.customerName === 'string'
+        ? reservation.customerName.trim()
+        : typeof reservation.patientName === 'string'
+          ? reservation.patientName.trim()
+          : '';
+    if (candidateName !== patientName) return currentCustomerId;
+    const candidateId = typeof reservation.mobileUiuxCustomerId === 'string' && reservation.mobileUiuxCustomerId.length > 0
+      ? reservation.mobileUiuxCustomerId
+      : typeof reservation.customerId === 'string' && reservation.customerId.length > 0
+        ? reservation.customerId
+        : '';
+    if (!candidateId) return currentCustomerId;
+    if (currentCustomerId && currentCustomerId !== candidateId) return null;
+    return candidateId;
+  }
+
+  __mobileUiuxFindReservationMenu(menuName) {
+    const normalizedName = typeof menuName === 'string' ? menuName.trim() : '';
+    if (!normalizedName || !Array.isArray(this.MENUS)) return null;
+    for (const menu of this.MENUS) {
+      if (!this.__mobileUiuxIsRecord(menu)) continue;
+      if (typeof menu.name === 'string' && menu.name.trim() === normalizedName) {
+        return menu;
+      }
+    }
+    return null;
+  }
+
+  __mobileUiuxFindReservationStaffId(resourceId) {
+    const id = typeof resourceId === 'string' ? resourceId.trim() : '';
+    if (!id || !Array.isArray(this.THER)) return '';
+    for (const resource of this.THER) {
+      if (this.__mobileUiuxIsRecord(resource) && resource.id === id) {
+        return id;
+      }
+    }
+    return '';
+  }
+
+  __mobileUiuxReservationIsoTime(dateKey, minutes) {
+    const match = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateKey);
+    if (!match || typeof minutes !== 'number' || !Number.isFinite(minutes)) return '';
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day, 0, minutes - 9 * 60, 0, 0));
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
   }
 
   __mobileUiuxReservationStatusToast(status) {

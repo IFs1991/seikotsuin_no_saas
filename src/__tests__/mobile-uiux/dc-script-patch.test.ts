@@ -26,6 +26,7 @@ type EvaluatedWindow = {
     __mobileUiuxHydrationOwner?: unknown;
   };
   MobileUiuxBridge?: {
+    createReservation?: jest.Mock<Promise<boolean>, [unknown]>;
     submitDailyReport?: jest.Mock<Promise<boolean>, [unknown]>;
     updateReservation?: jest.Mock<Promise<boolean>, [unknown]>;
     updateSettings?: jest.Mock<Promise<boolean>, [unknown]>;
@@ -813,9 +814,7 @@ describe('patchMobileUiuxDcScript', () => {
     const firstFollow = getRecord(followList[0]);
     const ltvList = Array.isArray(vals.ltvList) ? vals.ltvList : [];
     const firstLtv = getRecord(ltvList[0]);
-    const clinicCards = Array.isArray(vals.clinicCards)
-      ? vals.clinicCards
-      : [];
+    const clinicCards = Array.isArray(vals.clinicCards) ? vals.clinicCards : [];
     const firstClinic = getRecord(clinicCards[0]);
     const onTap = firstClinic.onTap;
     if (typeof onTap !== 'function') {
@@ -1534,6 +1533,159 @@ describe('patchMobileUiuxDcScript', () => {
     expect(submitDailyReport).toHaveBeenCalledTimes(1);
     expect(component.state.formOpen).toBe(true);
     expect(component.state.toast).toBe('日報は保存されていません');
+  });
+
+  it('wires reservation form creation to the mobile bridge with hydrated IDs and applies the returned row', async () => {
+    const clinicId = '11111111-1111-4111-8111-111111111111';
+    const reservationId = '22222222-2222-4222-8222-222222222222';
+    const menuId = '33333333-3333-4333-8333-333333333333';
+    const staffId = '44444444-4444-4444-8444-444444444444';
+    const customerId = '55555555-5555-4555-8555-555555555555';
+    const createdReservationId = '66666666-6666-4666-8666-666666666666';
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  CLINICS = [{ id: 'c1', name: '本町ケア整骨院' }];
+  MENUS = [{ id: 'sample-menu', name: '産後骨盤矯正', dur: 45 }];
+  THER = [{ id: 'sample-staff', name: '田中 健太', role: '柔整師', clinic: 'c1' }];
+  state = {
+    appts: [],
+    formOpen: true,
+    fStart: 660,
+    fDur: 45,
+    fMenu: '産後骨盤矯正',
+    fRes: 'sample-staff',
+    fPatient: 'BFF 患者A',
+    fNote: '  施術メモ  ',
+    fNominated: true,
+    toast: ''
+  };
+  toast(message) {
+    this.setState({ toast: message });
+  }
+  initial(name) {
+    return (name || '？').trim().charAt(0);
+  }
+  renderVals() {
+    return {
+      rows: this.state.appts.map(appt => ({ patient: appt.patient, menu: appt.menu, statusLabel: appt.status })),
+      submitForm: this.submitForm,
+      formOpen: this.state.formOpen,
+      fMenu: this.state.fMenu,
+      fRes: this.state.fRes
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const createReservation = jest.fn(async () => {
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+        success: true,
+        data: {
+          clinicId,
+          reservation: {
+            id: createdReservationId,
+            clinicId,
+            customerId,
+            customerName: 'BFF 患者A',
+            menuId,
+            menuName: 'BFF 実メニュー',
+            staffId,
+            staffName: 'BFF 実担当',
+            startTime: '2026-04-27T02:00:00.000Z',
+            endTime: '2026-04-27T02:35:00.000Z',
+            status: 'unconfirmed',
+          },
+        },
+        generatedAt: '2026-04-27T00:00:00.000Z',
+      });
+      return true;
+    });
+    window.MobileUiuxBridge = { createReservation };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId,
+        date: '2026-04-27',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: reservationId,
+            clinicId,
+            customerId,
+            customerName: 'BFF 患者A',
+            menuId,
+            menuName: 'BFF 実メニュー',
+            staffId,
+            staffName: 'BFF 実担当',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:35:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('settings-detail', {
+      success: true,
+      data: {
+        clinicId,
+        clinic: {
+          id: clinicId,
+          name: 'BFF 実院',
+        },
+        menus: [
+          {
+            id: menuId,
+            name: 'BFF 実メニュー',
+            durationMinutes: 35,
+            price: 5200,
+            isActive: true,
+          },
+        ],
+        resources: [
+          {
+            id: staffId,
+            name: 'BFF 実担当',
+            type: 'staff',
+            isActive: true,
+            isBookable: true,
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+
+    const submitForm = component.renderVals().submitForm;
+    if (typeof submitForm !== 'function') {
+      throw new Error('Expected patched submitForm');
+    }
+
+    await submitForm();
+    const updatedRows = component.renderVals().rows;
+    if (!Array.isArray(updatedRows)) {
+      throw new Error('Expected updated reservation rows');
+    }
+    const serializedCalls = JSON.stringify(createReservation.mock.calls);
+
+    expect(createReservation).toHaveBeenCalledWith({
+      customerId,
+      menuId,
+      staffId,
+      startTime: '2026-04-27T02:00:00.000Z',
+      endTime: '2026-04-27T02:35:00.000Z',
+      channel: 'walk_in',
+      isStaffRequested: true,
+      notes: '施術メモ',
+    });
+    expect(serializedCalls).not.toContain('sample-menu');
+    expect(serializedCalls).not.toContain('sample-staff');
+    expect(serializedCalls).not.toContain('BFF 患者A');
+    expect(updatedRows).toHaveLength(2);
+    expect(component.state.formOpen).toBe(false);
+    expect(component.state.toast).toBe('予約を登録しました');
   });
 
   it('wires reservation status updates to the mobile bridge and applies the returned read model', async () => {

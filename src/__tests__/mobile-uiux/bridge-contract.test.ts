@@ -610,9 +610,7 @@ describe('mobile-uiux bridge contract', () => {
       },
       generatedAt: '2026-07-01T00:00:00.000Z',
     };
-    let resolveRefresh:
-      | ((value: BridgeFetchResponse) => void)
-      | undefined;
+    let resolveRefresh: ((value: BridgeFetchResponse) => void) | undefined;
     const refreshResponse = new Promise<BridgeFetchResponse>(resolve => {
       resolveRefresh = resolve;
     });
@@ -1078,58 +1076,74 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).toContain('書き込みは無効です');
   });
 
-  it('posts reservation mutations only through the mobile BFF handler', async () => {
+  it('posts reservation creations through the mobile BFF, fills default clinic, and applies the returned read model', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
       manifest: MOBILE_UIUX_SCREEN_MANIFEST,
     });
-    const { window, calls } = buildBridgeWindow('reservations', [
-      buildJsonResponse(200, {
-        ...contextPayload,
-        data: {
-          ...contextPayload.data,
-          flags: {
-            ...contextPayload.data.flags,
-            writeEnabled: true,
-            reservationWriteEnabled: true,
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const mutationPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        reservation: {
+          id: 'reservation-1',
+          customerName: 'BFF 患者A',
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, {
+          ...contextPayload,
+          data: {
+            ...contextPayload.data,
+            flags: {
+              ...contextPayload.data.flags,
+              writeEnabled: true,
+              reservationWriteEnabled: true,
+            },
           },
-        },
-      }),
-      buildJsonResponse(200, {
-        success: true,
-        data: {
-          clinicId: '11111111-1111-4111-8111-111111111111',
-          date: '2026-06-30',
-          timezone: 'Asia/Tokyo',
-          reservations: [],
-        },
-        generatedAt: '2026-06-30T00:00:00.000Z',
-      }),
-      buildJsonResponse(201, {
-        success: true,
-        data: {
-          clinicId: '11111111-1111-4111-8111-111111111111',
-          reservation: {
-            id: 'reservation-1',
+        }),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
           },
-        },
-        generatedAt: '2026-06-30T00:00:00.000Z',
-      }),
-    ]);
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+        buildJsonResponse(200, settingsDetailReadPayload),
+        buildJsonResponse(201, mutationPayload),
+      ],
+      applyReadData
+    );
+    const createPayload = {
+      customerId: '22222222-2222-4222-8222-222222222222',
+      menuId: '33333333-3333-4333-8333-333333333333',
+      staffId: '44444444-4444-4444-8444-444444444444',
+      startTime: '2026-06-30T01:00:00.000Z',
+      endTime: '2026-06-30T01:30:00.000Z',
+      channel: 'walk_in',
+    };
 
     await runBridgeScript(script, window);
-    const pending = window.MobileUiuxBridge?.createReservation({
-      clinic_id: '11111111-1111-4111-8111-111111111111',
-    });
+    const pending = window.MobileUiuxBridge?.createReservation(createPayload);
 
     expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
       'pending'
     );
     await expect(pending).resolves.toBe(true);
+    expect(applyReadData).toHaveBeenCalledWith('reservations', mutationPayload);
     expect(calls).toContainEqual({
       url: '/api/mobile-uiux/reservations',
       method: 'POST',
       body: JSON.stringify({
+        ...createPayload,
         clinic_id: '11111111-1111-4111-8111-111111111111',
       }),
     });
@@ -1194,10 +1208,7 @@ describe('mobile-uiux bridge contract', () => {
       'pending'
     );
     await expect(pending).resolves.toBe(true);
-    expect(applyReadData).toHaveBeenCalledWith(
-      'reservations',
-      mutationPayload
-    );
+    expect(applyReadData).toHaveBeenCalledWith('reservations', mutationPayload);
     expect(calls).toContainEqual({
       url: '/api/mobile-uiux/reservations',
       method: 'PATCH',
@@ -1248,6 +1259,66 @@ describe('mobile-uiux bridge contract', () => {
       id: 'reservation-1',
       startTime: '2026-06-30T01:00:00.000Z',
       endTime: '2026-06-30T01:30:00.000Z',
+    });
+
+    expect(result).toBe(false);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'conflict'
+    );
+    expect(window.document.body.textContent).toContain(
+      '同時間帯に既存予約があります'
+    );
+    expect(window.document.body.textContent).not.toContain('clinic-secret');
+    expect(window.document.body.textContent).not.toContain(
+      'patient@example.com'
+    );
+  });
+
+  it('shows a reservation conflict message for 409 POST responses without rendering details', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            reservationWriteEnabled: true,
+          },
+        },
+      }),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(409, {
+        success: false,
+        error: {
+          code: 'CONFLICT',
+          message: 'clinic_id=clinic-secret patient@example.com',
+        },
+      }),
+    ]);
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.createReservation({
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      customerId: '22222222-2222-4222-8222-222222222222',
+      menuId: '33333333-3333-4333-8333-333333333333',
+      staffId: '44444444-4444-4444-8444-444444444444',
+      startTime: '2026-06-30T01:00:00.000Z',
+      endTime: '2026-06-30T01:30:00.000Z',
+      channel: 'walk_in',
     });
 
     expect(result).toBe(false);
@@ -2141,9 +2212,7 @@ describe('mobile-uiux bridge contract', () => {
     expect(envExample).toContain(
       'MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED=false'
     );
-    expect(envExample).toContain(
-      'MOBILE_UIUX_RESERVATION_WRITE_ENABLED=false'
-    );
+    expect(envExample).toContain('MOBILE_UIUX_RESERVATION_WRITE_ENABLED=false');
     expect(envExample).toContain('MOBILE_UIUX_SETTINGS_WRITE_ENABLED=false');
   });
 });
