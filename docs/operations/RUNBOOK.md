@@ -279,6 +279,18 @@ WHERE event_type = 'unauthorized_access'
 
 ---
 
+## Mobile UIUX entitlement 切替
+
+### env allowlist から DB entitlement への移行
+
+1. 対象クリニックの `clinic_feature_flags` 行を投入する。初期は read のみ true にし、write 系の列は false のままにする。
+2. staging で `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` にして、`/api/mobile-uiux/context` の `publicFlags` が entitlement 由来になることを確認する。
+3. production で `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` に切り替える。
+4. 一定期間の並走後、`MOBILE_UIUX_ALLOWED_CLINIC_IDS` を空にする。env allowlist は rollout gate として残置してよいが、entitlement としては使わない。
+5. write 開放は `clinic_feature_flags` の write 列を対象クリニックだけ true にする。
+
+---
+
 ## ポストモーテムテンプレート
 
 ### 記載事項
