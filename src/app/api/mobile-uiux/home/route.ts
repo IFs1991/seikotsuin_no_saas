@@ -19,6 +19,10 @@ import {
   dateKeyToUtcMidnight,
   isValidDateKey,
 } from '@/lib/mobile-uiux/route-utils';
+import {
+  summarizeReservationStatuses,
+  type ReservationStatusRow,
+} from '@/lib/reservations/status';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
@@ -32,9 +36,6 @@ const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
 
 type HomeReservationSummary = MobileUiuxHomeResponse['reservationSummary'];
 type HomeDailyReportStatus = MobileUiuxHomeResponse['dailyReportStatus'];
-type ReservationStatusRow = {
-  status: string | null;
-};
 
 function resolveDateKey(value: string | null): string | null {
   if (value === null) {
@@ -50,39 +51,6 @@ function buildRealDataDisabledResponse() {
     'FORBIDDEN',
     'モバイル UI/UX の実データ参照は無効です'
   );
-}
-
-function normalizeReservationStatus(value: string | null): string {
-  return typeof value === 'string' ? value : '';
-}
-
-function summarizeReservationStatuses(
-  rows: readonly ReservationStatusRow[]
-): HomeReservationSummary {
-  const summary: HomeReservationSummary = {
-    total: 0,
-    unconfirmed: 0,
-    cancelled: 0,
-  };
-
-  for (const row of rows) {
-    const status = normalizeReservationStatus(row.status);
-    if (status === 'cancelled' || status === 'no_show' || status === 'noshow') {
-      summary.cancelled += 1;
-      continue;
-    }
-
-    summary.total += 1;
-    if (
-      status === 'unconfirmed' ||
-      status === 'tentative' ||
-      status === 'trial'
-    ) {
-      summary.unconfirmed += 1;
-    }
-  }
-
-  return summary;
 }
 
 async function fetchHomeReservationSummary(params: {
