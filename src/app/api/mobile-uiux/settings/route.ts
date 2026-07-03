@@ -24,6 +24,11 @@ import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   getRequiredClinicId,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
+  logMobileUiuxRoleDenied,
+  logMobileUiuxWriteFlagDenied,
 } from '@/lib/mobile-uiux/route-utils';
 import {
   ADMIN_SETTINGS_MUTATION_ROLES,
@@ -86,6 +91,11 @@ async function readClinicIdPreview(
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -119,6 +129,13 @@ export async function GET(request: NextRequest) {
     requireClinicMatch: true,
   });
   if (!guard.success) {
+    if (guard.error.status === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'settings',
+        status: guard.error.status,
+      });
+    }
     return buildMobileUiuxFailure(
       guard.error.status,
       guard.error.status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
@@ -127,6 +144,12 @@ export async function GET(request: NextRequest) {
   }
 
   if (!canReadAdminSettingsCategory(guard.permissions.role, categoryParam)) {
+    logMobileUiuxRoleDenied({
+      flags,
+      writeTarget: 'settings',
+      role: guard.permissions.role,
+      status: 403,
+    });
     return buildMobileUiuxFailure(
       403,
       'FORBIDDEN',
@@ -140,6 +163,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -170,6 +198,11 @@ export async function PUT(request: NextRequest) {
     !flags.realDataEnabled ||
     !areMobileUiuxWritesEnabled(flags, 'settings')
   ) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
     return buildWriteDisabledResponse();
   }
 
@@ -181,6 +214,13 @@ export async function PUT(request: NextRequest) {
   });
 
   if (!guard.success) {
+    if (guard.error.status === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'settings',
+        status: guard.error.status,
+      });
+    }
     return buildAuthFailureResponse(guard.error.status);
   }
 
@@ -201,12 +241,23 @@ export async function PUT(request: NextRequest) {
     clinicId: envelope.clinic_id,
   });
   if (!areMobileUiuxWritesEnabled(flags, 'settings', entitlement)) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
     return buildWriteDisabledResponse();
   }
 
   if (
     !canReadAdminSettingsCategory(guard.permissions.role, envelope.category)
   ) {
+    logMobileUiuxRoleDenied({
+      flags,
+      writeTarget: 'settings',
+      role: guard.permissions.role,
+      status: 403,
+    });
     return buildMobileUiuxFailure(
       403,
       'FORBIDDEN',
@@ -217,6 +268,12 @@ export async function PUT(request: NextRequest) {
   if (
     !canManageAdminSettingsCategory(guard.permissions.role, envelope.category)
   ) {
+    logMobileUiuxRoleDenied({
+      flags,
+      writeTarget: 'settings',
+      role: guard.permissions.role,
+      status: 403,
+    });
     return buildMobileUiuxFailure(
       403,
       'FORBIDDEN',
@@ -225,6 +282,11 @@ export async function PUT(request: NextRequest) {
   }
 
   if (!MOBILE_UIUX_SETTINGS_WRITE_CATEGORY_SET.has(envelope.category)) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
     return buildMobileUiuxFailure(
       403,
       'FORBIDDEN',

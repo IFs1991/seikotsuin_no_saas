@@ -16,6 +16,9 @@ import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   getRequiredClinicId,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
 } from '@/lib/mobile-uiux/route-utils';
 import type { Json } from '@/types/supabase';
 
@@ -80,6 +83,11 @@ function buildRealDataDisabledResponse() {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({
+      flags,
+      writeTarget: 'settings-detail',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -100,6 +108,13 @@ export async function GET(request: NextRequest) {
     requireClinicMatch: true,
   });
   if (!guard.success) {
+    if (guard.error.status === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'settings-detail',
+        status: guard.error.status,
+      });
+    }
     return buildMobileUiuxFailure(
       guard.error.status,
       guard.error.status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
@@ -113,6 +128,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'settings-detail',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 

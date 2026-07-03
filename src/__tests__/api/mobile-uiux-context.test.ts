@@ -6,6 +6,18 @@ import {
   getUserAccessContext,
 } from '@/lib/supabase';
 
+const mockLoggerError = jest.fn();
+
+jest.mock('@/lib/logger', () => ({
+  createLogger: jest.fn(() => ({
+    debug: jest.fn(),
+    error: mockLoggerError,
+    info: jest.fn(),
+    log: jest.fn(),
+    warn: jest.fn(),
+  })),
+}));
+
 jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(),
   getCurrentUser: jest.fn(),
@@ -32,6 +44,9 @@ type EntitlementRow = {
   updated_at: string;
   updated_by: string | null;
 };
+type EntitlementQueryError = {
+  code: string;
+};
 
 type EntitlementBuilder = {
   select: jest.MockedFunction<(columns: string) => EntitlementBuilder>;
@@ -39,7 +54,10 @@ type EntitlementBuilder = {
     (column: string, values: readonly string[]) => EntitlementBuilder
   >;
   returns: jest.MockedFunction<
-    () => Promise<{ data: EntitlementRow[]; error: null }>
+    () => Promise<{
+      data: EntitlementRow[] | null;
+      error: EntitlementQueryError | null;
+    }>
   >;
 };
 
@@ -62,12 +80,15 @@ function buildEntitlementRow(
   };
 }
 
-function createEntitlementClient(rows: EntitlementRow[]) {
+function createEntitlementClient(
+  rows: EntitlementRow[],
+  error: EntitlementQueryError | null = null
+) {
   let builder: EntitlementBuilder;
   builder = {
     select: jest.fn(() => builder),
     in: jest.fn(() => builder),
-    returns: jest.fn(async () => ({ data: rows, error: null })),
+    returns: jest.fn(async () => ({ data: error ? null : rows, error })),
   };
 
   return {
@@ -93,6 +114,7 @@ describe('GET /api/mobile-uiux/context', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLoggerError.mockClear();
     warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     process.env = {
       ...originalEnv,
@@ -150,6 +172,30 @@ describe('GET /api/mobile-uiux/context', () => {
       },
     });
     expect(getUserAccessContextMock).not.toHaveBeenCalled();
+  });
+
+  it('logs flag_disabled when the mobile UIUX env gate is off', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'false';
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+
+    expect(response.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'flag_disabled',
+        role: null,
+        allowedClinicCount: 2,
+        scopedClinicCount: 0,
+        writeTarget: 'context',
+        featureFlagEnabled: false,
+      })
+    );
+    const logText = JSON.stringify(warnSpy.mock.calls);
+    expect(logText).not.toContain('patient@example.com');
+    expect(logText).not.toContain('user-1');
+    expect(logText).not.toContain('clinic-1');
   });
 
   it('returns 403 when role is denied', async () => {
@@ -215,7 +261,7 @@ describe('GET /api/mobile-uiux/context', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       '[mobile-uiux] access denied',
       expect.objectContaining({
-        reasonCode: 'clinic_scope_empty',
+        reasonCode: 'clinic_scope_denied',
         role: 'clinic_admin',
         allowedClinicCount: 2,
         scopedClinicCount: 0,
@@ -223,6 +269,34 @@ describe('GET /api/mobile-uiux/context', () => {
         featureFlagEnabled: true,
       })
     );
+  });
+
+  it('logs DB entitlement query errors without raw identifiers', async () => {
+    process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
+    const entitlementClient = createEntitlementClient([], {
+      code: 'PGRST500',
+    });
+    createClientMock.mockResolvedValue(entitlementClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.success).toBe(false);
+    expect(mockLoggerError).toHaveBeenCalledWith(
+      'Failed to fetch mobile UIUX clinic entitlements',
+      {
+        table: 'clinic_feature_flags',
+        clinicIdCount: 2,
+        errorCode: 'PGRST500',
+      }
+    );
+    const logText = JSON.stringify(mockLoggerError.mock.calls);
+    expect(logText).not.toContain('clinic-1');
+    expect(logText).not.toContain('clinic-2');
+    expect(logText).not.toContain('patient@example.com');
+    expect(logText).not.toContain('user-1');
   });
 
   it('returns canonical context from getUserAccessContext without user PII', async () => {
@@ -299,6 +373,20 @@ describe('GET /api/mobile-uiux/context', () => {
     expect(response.status).toBe(403);
     expect(body.success).toBe(false);
     expect(entitlementClient.from).toHaveBeenCalledWith('clinic_feature_flags');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'entitlement_denied',
+        role: 'clinic_admin',
+        allowedClinicCount: 2,
+        scopedClinicCount: 2,
+        writeTarget: 'context',
+      })
+    );
+    const logText = JSON.stringify(warnSpy.mock.calls);
+    expect(logText).not.toContain('clinic-1');
+    expect(logText).not.toContain('clinic-2');
+    expect(logText).not.toContain('patient@example.com');
   });
 
   it('returns public flags from env and DB entitlements when enabled', async () => {

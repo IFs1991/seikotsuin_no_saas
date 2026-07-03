@@ -12,6 +12,8 @@ import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   logMobileUiuxDeniedAccess,
+  mapMobileUiuxPrincipalDeniedReason,
+  mapMobileUiuxRolloutDeniedReason,
 } from '@/lib/mobile-uiux/route-utils';
 import {
   createClient,
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled) {
     logMobileUiuxDeniedAccess({
-      reasonCode: 'feature_disabled',
+      reasonCode: 'flag_disabled',
       role: null,
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount: 0,
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
 
   if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: principalDecision.reason,
+      reasonCode: mapMobileUiuxPrincipalDeniedReason(principalDecision.reason),
       role: normalizeRole(accessContext.permissions?.role),
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest) {
 
   if (rolloutDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: rolloutDecision.reason,
+      reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
       role: normalizeRole(accessContext.permissions?.role),
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:

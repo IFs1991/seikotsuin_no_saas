@@ -7,6 +7,7 @@ import type {
   MobileUiuxEntitlementFlags,
   MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
+import { createLogger } from '@/lib/logger';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -23,6 +24,8 @@ type ClinicFeatureFlagsEntitlementRow = Pick<
   | 'mobile_uiux_settings_write_enabled'
   | 'rollout_phase'
 >;
+
+const log = createLogger('MobileUiuxEntitlements');
 
 export type MobileUiuxClinicEntitlement = MobileUiuxEntitlementFlags & {
   clinicId: string;
@@ -170,6 +173,11 @@ export async function fetchMobileUiuxClinicEntitlements(
     .returns<ClinicFeatureFlagsEntitlementRow[]>();
 
   if (error) {
+    log.error('Failed to fetch mobile UIUX clinic entitlements', {
+      table: 'clinic_feature_flags',
+      clinicIdCount: new Set(clinicIds).size,
+      errorCode: error.code,
+    });
     return new Map();
   }
 

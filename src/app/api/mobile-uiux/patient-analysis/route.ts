@@ -16,6 +16,9 @@ import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   getRequiredClinicId,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
 } from '@/lib/mobile-uiux/route-utils';
 import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
@@ -93,6 +96,11 @@ function buildMobileUiuxPatientRows(
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({
+      flags,
+      writeTarget: 'patient-analysis',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -123,6 +131,19 @@ export async function GET(request: NextRequest) {
       allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
     });
   } catch (error) {
+    if (error instanceof AppError && error.statusCode === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'patient-analysis',
+        status: error.statusCode,
+      });
+    } else if (!(error instanceof AppError)) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'patient-analysis',
+        status: 403,
+      });
+    }
     return buildAccessError(error);
   }
 
@@ -132,6 +153,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'patient-analysis',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 

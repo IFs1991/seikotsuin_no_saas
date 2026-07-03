@@ -5,6 +5,7 @@ import type {
   MobileUiuxApiFailure,
   MobileUiuxApiSuccess,
 } from '@/lib/mobile-uiux/contracts';
+import type { MobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 
 const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 const NO_STORE_CACHE_CONTROL = 'no-store';
@@ -14,19 +15,96 @@ const JSON_RESPONSE_HEADERS = {
   'Cache-Control': NO_STORE_CACHE_CONTROL,
 } as const;
 
+export type MobileUiuxDeniedReasonCode =
+  | 'flag_disabled'
+  | 'entitlement_denied'
+  | 'clinic_scope_denied'
+  | 'role_denied'
+  | 'write_flag_disabled';
+
 export type MobileUiuxDeniedAccessLogDetails = {
-  reasonCode: string;
+  reasonCode: MobileUiuxDeniedReasonCode;
   role: string | null;
   allowedClinicCount: number;
   scopedClinicCount: number;
   writeTarget: string;
   featureFlagEnabled: boolean;
+  status?: number;
+};
+
+type MobileUiuxDeniedAccessLogParams = {
+  writeTarget: string;
+  flags?: Pick<MobileUiuxFlags, 'allowedClinicIds' | 'enabled'>;
+  role?: string | null;
+  scopedClinicCount?: number;
+  featureFlagEnabled?: boolean;
+  status?: number;
 };
 
 export function logMobileUiuxDeniedAccess(
   details: MobileUiuxDeniedAccessLogDetails
 ): void {
   console.warn('[mobile-uiux] access denied', details);
+}
+
+export function logMobileUiuxDeniedReason(
+  reasonCode: MobileUiuxDeniedReasonCode,
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedAccess({
+    reasonCode,
+    role: params.role ?? null,
+    allowedClinicCount: params.flags?.allowedClinicIds.length ?? 0,
+    scopedClinicCount: params.scopedClinicCount ?? 0,
+    writeTarget: params.writeTarget,
+    featureFlagEnabled:
+      params.featureFlagEnabled ?? params.flags?.enabled ?? false,
+    status: params.status,
+  });
+}
+
+export function logMobileUiuxFlagDenied(
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedReason('flag_disabled', params);
+}
+
+export function logMobileUiuxEntitlementDenied(
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedReason('entitlement_denied', params);
+}
+
+export function logMobileUiuxClinicScopeDenied(
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedReason('clinic_scope_denied', params);
+}
+
+export function logMobileUiuxRoleDenied(
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedReason('role_denied', params);
+}
+
+export function logMobileUiuxWriteFlagDenied(
+  params: MobileUiuxDeniedAccessLogParams
+): void {
+  logMobileUiuxDeniedReason('write_flag_disabled', params);
+}
+
+export function mapMobileUiuxPrincipalDeniedReason(
+  reason: 'role_denied' | 'clinic_scope_empty'
+): MobileUiuxDeniedReasonCode {
+  return reason === 'role_denied' ? 'role_denied' : 'clinic_scope_denied';
+}
+
+export function mapMobileUiuxRolloutDeniedReason(
+  reason: 'clinic_denied' | 'feature_entitlement_denied'
+): MobileUiuxDeniedReasonCode {
+  return reason === 'clinic_denied'
+    ? 'clinic_scope_denied'
+    : 'entitlement_denied';
 }
 
 export function buildMobileUiuxFailure(
@@ -130,6 +208,35 @@ export async function buildMobileUiuxFailureFromResponse(
     getMobileUiuxErrorCode(response.status),
     message
   );
+}
+
+export async function resolveMobileUiuxDeniedReasonFromResponse(
+  response: Response,
+  fallbackReason: MobileUiuxDeniedReasonCode
+): Promise<MobileUiuxDeniedReasonCode> {
+  if (response.status !== 403) {
+    return fallbackReason;
+  }
+
+  try {
+    const payload: unknown = await response.clone().json();
+    const message = resolveFailureMessage(payload, '');
+    if (message.includes('クリニック')) {
+      return 'clinic_scope_denied';
+    }
+    if (
+      message.includes('マネージャー') ||
+      message.includes('ロール') ||
+      message.includes('許可') ||
+      message.includes('権限')
+    ) {
+      return 'role_denied';
+    }
+  } catch {
+    return fallbackReason;
+  }
+
+  return fallbackReason;
 }
 
 export function isValidDateKey(value: string): boolean {

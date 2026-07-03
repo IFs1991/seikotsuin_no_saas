@@ -27,6 +27,12 @@ import {
   buildMobileUiuxSuccess,
   getRequiredClinicId,
   isValidDateKey,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxDeniedReason,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
+  logMobileUiuxWriteFlagDenied,
+  resolveMobileUiuxDeniedReasonFromResponse,
 } from '@/lib/mobile-uiux/route-utils';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
@@ -130,6 +136,11 @@ function buildScopedBodyFailure(status: number) {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({
+      flags,
+      writeTarget: 'daily-reports',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -166,6 +177,19 @@ export async function GET(request: NextRequest) {
       allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
     });
   } catch (error) {
+    if (error instanceof AppError && error.statusCode === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'daily-reports',
+        status: error.statusCode,
+      });
+    } else if (!(error instanceof AppError)) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'daily-reports',
+        status: 403,
+      });
+    }
     return buildAccessError(error);
   }
 
@@ -175,6 +199,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'daily-reports',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -196,6 +225,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!canUseWriteRoutes(flags)) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'daily-reports',
+      status: 403,
+    });
     return buildWriteDisabledResponse();
   }
 
@@ -208,6 +242,19 @@ export async function POST(request: NextRequest) {
       }
     );
     if (!result.success) {
+      if (result.error.status === 403) {
+        logMobileUiuxDeniedReason(
+          await resolveMobileUiuxDeniedReasonFromResponse(
+            result.error,
+            'clinic_scope_denied'
+          ),
+          {
+            flags,
+            writeTarget: 'daily-reports',
+            status: result.error.status,
+          }
+        );
+      }
       return buildScopedBodyFailure(result.error.status);
     }
 
@@ -217,6 +264,11 @@ export async function POST(request: NextRequest) {
       clinicId: result.dto.clinic_id,
     });
     if (!areMobileUiuxWritesEnabled(flags, 'dailyReport', entitlement)) {
+      logMobileUiuxWriteFlagDenied({
+        flags,
+        writeTarget: 'daily-reports',
+        status: 403,
+      });
       return buildWriteDisabledResponse();
     }
 
@@ -225,6 +277,13 @@ export async function POST(request: NextRequest) {
       result.dto
     );
     if (scope.ok === false) {
+      if (scope.status === 403) {
+        logMobileUiuxClinicScopeDenied({
+          flags,
+          writeTarget: 'daily-reports',
+          status: scope.status,
+        });
+      }
       return buildMobileUiuxFailure(
         scope.status,
         'FORBIDDEN',

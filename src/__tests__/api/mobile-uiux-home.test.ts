@@ -73,9 +73,11 @@ function buildRequest(search: string) {
 
 describe('GET /api/mobile-uiux/home', () => {
   const originalEnv = process.env;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     process.env = {
       ...originalEnv,
       MOBILE_UIUX_ENABLED: 'true',
@@ -126,6 +128,10 @@ describe('GET /api/mobile-uiux/home', () => {
 
   afterAll(() => {
     process.env = originalEnv;
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   it('uses the PC dashboard read model after validating mobile clinic scope', async () => {
@@ -213,6 +219,19 @@ describe('GET /api/mobile-uiux/home', () => {
       error: { code: 'FORBIDDEN' },
     });
     expect(fetchDashboardReadModelMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'clinic_scope_denied',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'home',
+        status: 403,
+      })
+    );
+    const logText = JSON.stringify(warnSpy.mock.calls);
+    expect(logText).not.toContain(clinicId);
+    expect(logText).not.toContain('staff@example.com');
   });
 
   it('fails closed when real data is disabled', async () => {
@@ -223,5 +242,16 @@ describe('GET /api/mobile-uiux/home', () => {
 
     expect(response.status).toBe(403);
     expect(ensureClinicAccessMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'flag_disabled',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'home',
+        status: 403,
+      })
+    );
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(clinicId);
   });
 });
