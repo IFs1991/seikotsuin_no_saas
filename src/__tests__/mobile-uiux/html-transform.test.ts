@@ -82,6 +82,9 @@ describe('transformMobileUiuxHtml', () => {
       expect(transformed).toContain('data-mobile-uiux-shell="production"');
       expect(transformed).toContain('viewport-fit=cover');
       expect(transformed).toContain('data-mobile-uiux-production-shell');
+      expect(transformed).toContain(
+        '<script src="./react-runtime.js" data-mobile-uiux-react-runtime></script><script src="./support.js"></script>'
+      );
 
       expect(transformed).not.toContain('STAGE CONTROLS');
       expect(transformed).not.toContain('iPHONE');
@@ -108,6 +111,39 @@ describe('transformMobileUiuxHtml', () => {
     expect(transformed).toContain('OVERLAYS');
     expect(transformed).toContain('TOAST');
     expect(transformed).toContain('ダッシュボード');
+  });
+
+  it('adds minimal production status styles without changing dataset contracts', async () => {
+    const rawHtml = await readFixture('home');
+    const transformed = transformMobileUiuxHtml(rawHtml, {
+      mode: 'production',
+      resource: 'home',
+    });
+
+    expect(transformed).toContain('[data-mobile-uiux-bridge-fallback]');
+    expect(transformed).toContain('[data-mobile-uiux-mutation-status]');
+    expect(transformed).toContain('background: var(--surface)');
+    expect(transformed).toContain('color: var(--fg)');
+    expect(transformed).toContain('border: 1px solid var(--border)');
+    expect(transformed).not.toContain('role="status"');
+  });
+
+  it('loads the local React runtime before the DC support script', async () => {
+    const rawHtml = await readFixture('home');
+    const transformed = transformMobileUiuxHtml(rawHtml, {
+      mode: 'production',
+      resource: 'home',
+    });
+
+    const runtimeIndex = transformed.indexOf(
+      '<script src="./react-runtime.js" data-mobile-uiux-react-runtime></script>'
+    );
+    const supportIndex = transformed.indexOf(
+      '<script src="./support.js"></script>'
+    );
+
+    expect(runtimeIndex).toBeGreaterThanOrEqual(0);
+    expect(supportIndex).toBeGreaterThan(runtimeIndex);
   });
 
   it('normalizes レポート and 日報 labels to daily-reports target', async () => {

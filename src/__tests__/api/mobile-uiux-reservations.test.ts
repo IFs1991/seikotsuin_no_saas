@@ -46,6 +46,7 @@ const enqueueReservationCreatedMock = jest.mocked(enqueueReservationCreated);
 const enqueueReservationChangeMock = jest.mocked(enqueueReservationChange);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
+const fixtureStyleClinicId = '00000000-0000-0000-0000-0000000000a1';
 const reservationId = '123e4567-e89b-12d3-a456-426614174001';
 const customerId = '123e4567-e89b-12d3-a456-426614174002';
 const menuId = '123e4567-e89b-12d3-a456-426614174003';
@@ -433,6 +434,49 @@ describe('GET /api/mobile-uiux/reservations', () => {
         },
       ],
     });
+  });
+
+  it('accepts fixture-style UUID values used by e2e seed data', async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const scopedClient = {
+      from: jest.fn().mockReturnValue(query),
+    };
+    const assertClinicInScope = jest.fn();
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedClient,
+      assertClinicInScope,
+    });
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = fixtureStyleClinicId;
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: fixtureStyleClinicId,
+        clinic_scope_ids: [fixtureStyleClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { GET } = await import('@/app/api/mobile-uiux/reservations/route');
+    const request = buildRequest(
+      `?clinic_id=${fixtureStyleClinicId}&date=2026-04-27`
+    );
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId: fixtureStyleClinicId,
+      requireClinicMatch: true,
+      allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+    });
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', fixtureStyleClinicId);
   });
 
   it('uses the PC manager assignment-aware guard and stops on assigned clinic violation', async () => {

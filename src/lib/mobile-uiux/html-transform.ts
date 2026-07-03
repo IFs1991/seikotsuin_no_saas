@@ -49,7 +49,35 @@ body[data-mobile-uiux-shell="production"] {
   border-radius: 0 !important;
 }
 .scrl { -webkit-overflow-scrolling: touch; }
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-bridge-fallback],
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 2147483600;
+  box-sizing: border-box;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: 600 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+  pointer-events: none;
+  transform: translateY(0);
+  opacity: 1;
+  transition: opacity .18s ease, transform .18s ease;
+}
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
+  background: var(--surface-2);
+}
 </style>`;
+
+const LOCAL_REACT_RUNTIME_SCRIPT =
+  '<script src="./react-runtime.js" data-mobile-uiux-react-runtime></script>';
 
 type TransformOptions = {
   mode: MobileUiuxHtmlShellMode;
@@ -110,6 +138,7 @@ export function transformMobileUiuxHtml(
   stageRoot.appendChild(appScreen);
 
   updateViewportMeta(root);
+  addLocalReactRuntimeScript(root);
   addProductionShellStyle(root);
   const body = requireSingleElement(root.getElementsByTagName('body'), 'body');
   body.setAttribute('data-mobile-uiux-shell', 'production');
@@ -358,6 +387,24 @@ function addProductionShellStyle(root: HTMLElement): void {
 
   const head = requireSingleElement(root.getElementsByTagName('head'), 'head');
   head.insertAdjacentHTML('beforeend', PRODUCTION_SHELL_STYLE);
+}
+
+function addLocalReactRuntimeScript(root: HTMLElement): void {
+  if (root.querySelector('script[data-mobile-uiux-react-runtime]')) {
+    return;
+  }
+
+  const head = requireSingleElement(root.getElementsByTagName('head'), 'head');
+  const supportScript = head
+    .getElementsByTagName('script')
+    .find(script => script.getAttribute('src') === './support.js');
+
+  if (supportScript) {
+    supportScript.insertAdjacentHTML('beforebegin', LOCAL_REACT_RUNTIME_SCRIPT);
+    return;
+  }
+
+  head.insertAdjacentHTML('beforeend', LOCAL_REACT_RUNTIME_SCRIPT);
 }
 
 function extractSingleDcScript(html: string): PreservedDcScript {

@@ -151,3 +151,6 @@ supabase/.env
 # Windows reserved / accidental files
 nul
 .worktrees/
+
+.vercel
+.env*
