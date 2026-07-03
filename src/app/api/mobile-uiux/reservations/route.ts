@@ -29,6 +29,12 @@ import {
   buildMobileUiuxSuccess,
   isValidDateKey,
   isValidUuid,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxDeniedReason,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
+  logMobileUiuxWriteFlagDenied,
+  resolveMobileUiuxDeniedReasonFromResponse,
 } from '@/lib/mobile-uiux/route-utils';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
 import {
@@ -346,6 +352,11 @@ function enqueueChangeWithoutBlocking(
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({
+      flags,
+      writeTarget: 'reservations',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -376,6 +387,13 @@ export async function GET(request: NextRequest) {
     allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
   });
   if (!auth.success) {
+    if (auth.error.status === 403) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'reservations',
+        status: auth.error.status,
+      });
+    }
     return buildMobileUiuxFailure(
       auth.error.status,
       auth.error.status === 401 ? 'UNAUTHORIZED' : 'FORBIDDEN',
@@ -389,6 +407,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'reservations',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 
@@ -430,6 +453,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!canUseWriteRoutes(flags)) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'reservations',
+      status: 403,
+    });
     return buildWriteDisabledResponse();
   }
 
@@ -443,6 +471,19 @@ export async function POST(request: NextRequest) {
       }
     );
     if (!result.success) {
+      if (result.error.status === 403) {
+        logMobileUiuxDeniedReason(
+          await resolveMobileUiuxDeniedReasonFromResponse(
+            result.error,
+            'clinic_scope_denied'
+          ),
+          {
+            flags,
+            writeTarget: 'reservations',
+            status: result.error.status,
+          }
+        );
+      }
       return buildMobileUiuxFailureFromResponse(
         result.error,
         '予約の作成権限を確認できませんでした'
@@ -456,6 +497,11 @@ export async function POST(request: NextRequest) {
       clinicId: dto.clinic_id,
     });
     if (!areMobileUiuxWritesEnabled(flags, 'reservation', entitlement)) {
+      logMobileUiuxWriteFlagDenied({
+        flags,
+        writeTarget: 'reservations',
+        status: 403,
+      });
       return buildWriteDisabledResponse();
     }
 
@@ -466,6 +512,13 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
     });
     if (references.ok === false) {
+      if (references.status === 403) {
+        logMobileUiuxClinicScopeDenied({
+          flags,
+          writeTarget: 'reservations',
+          status: references.status,
+        });
+      }
       return buildMobileUiuxFailure(
         references.status,
         references.status === 403 ? 'FORBIDDEN' : 'INTERNAL',
@@ -543,6 +596,11 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!canUseWriteRoutes(flags)) {
+    logMobileUiuxWriteFlagDenied({
+      flags,
+      writeTarget: 'reservations',
+      status: 403,
+    });
     return buildWriteDisabledResponse();
   }
 
@@ -557,6 +615,19 @@ export async function PATCH(request: NextRequest) {
       }
     );
     if (!result.success) {
+      if (result.error.status === 403) {
+        logMobileUiuxDeniedReason(
+          await resolveMobileUiuxDeniedReasonFromResponse(
+            result.error,
+            'clinic_scope_denied'
+          ),
+          {
+            flags,
+            writeTarget: 'reservations',
+            status: result.error.status,
+          }
+        );
+      }
       return buildMobileUiuxFailureFromResponse(
         result.error,
         '予約の更新権限を確認できませんでした'
@@ -570,6 +641,11 @@ export async function PATCH(request: NextRequest) {
       clinicId: dto.clinic_id,
     });
     if (!areMobileUiuxWritesEnabled(flags, 'reservation', entitlement)) {
+      logMobileUiuxWriteFlagDenied({
+        flags,
+        writeTarget: 'reservations',
+        status: 403,
+      });
       return buildWriteDisabledResponse();
     }
 
@@ -583,6 +659,11 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (existingError || !existing) {
+      logMobileUiuxClinicScopeDenied({
+        flags,
+        writeTarget: 'reservations',
+        status: 403,
+      });
       return buildMobileUiuxFailure(
         403,
         'FORBIDDEN',
@@ -617,6 +698,13 @@ export async function PATCH(request: NextRequest) {
         staffId: dto.staffId ?? existingRow.staff_id,
       });
       if (references.ok === false) {
+        if (references.status === 403) {
+          logMobileUiuxClinicScopeDenied({
+            flags,
+            writeTarget: 'reservations',
+            status: references.status,
+          });
+        }
         return buildMobileUiuxFailure(
           references.status,
           references.status === 403 ? 'FORBIDDEN' : 'INTERNAL',
