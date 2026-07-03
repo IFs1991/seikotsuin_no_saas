@@ -125,7 +125,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPilotMode = process.env.NEXT_PUBLIC_PILOT_MODE === 'true';
 
-  const rateLimitMiddlewares = getPathRateLimit(pathname);
+  const rateLimitMiddlewares = getPathRateLimit(pathname, request.method);
   if (rateLimitMiddlewares.length > 0) {
     const rateLimitResponse = await applyRateLimits(
       request,
