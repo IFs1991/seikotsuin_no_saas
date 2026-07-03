@@ -43,6 +43,7 @@ import {
   mapReservationListViewRow,
   RESERVATION_LIST_SELECT,
 } from '@/lib/reservations/read-model';
+import { hasReservationConflict } from '@/lib/reservations/conflict';
 
 const PATH = '/api/reservations';
 type ReservationResourceGuardRow = Pick<
@@ -260,36 +261,6 @@ function getReservationConstraintErrorMessage(
   }
 
   return null;
-}
-
-async function hasReservationConflict(
-  supabase: SupabaseServerClient,
-  params: {
-    clinicId: string;
-    staffId: string;
-    startTime: string;
-    endTime: string;
-    excludeId?: string;
-  }
-): Promise<boolean> {
-  let query = supabase
-    .from('reservations')
-    .select('id', { count: 'exact', head: true })
-    .eq('clinic_id', params.clinicId)
-    .eq('staff_id', params.staffId)
-    .lt('start_time', params.endTime)
-    .gt('end_time', params.startTime)
-    .not('status', 'in', '("cancelled","no_show")');
-
-  if (params.excludeId) {
-    query = query.neq('id', params.excludeId);
-  }
-
-  const { count, error } = await query;
-  if (error) {
-    throw normalizeSupabaseError(error, PATH);
-  }
-  return (count ?? 0) > 0;
 }
 
 async function validateReservationCustomerAndMenuPricing(
@@ -674,6 +645,7 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      path: PATH,
     });
     if (conflict) {
       return createErrorResponse('同時間帯に既存予約があります', 409);
@@ -835,6 +807,7 @@ export async function PATCH(request: NextRequest) {
         startTime: nextStartTime,
         endTime: nextEndTime,
         excludeId: dto.id,
+        path: PATH,
       });
       if (conflict) {
         return createErrorResponse('同時間帯に既存予約があります', 409);

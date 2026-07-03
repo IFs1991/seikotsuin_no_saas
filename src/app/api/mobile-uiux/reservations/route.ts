@@ -37,6 +37,7 @@ import {
   type ReservationListItem,
   RESERVATION_LIST_SELECT,
 } from '@/lib/reservations/read-model';
+import { hasReservationConflict } from '@/lib/reservations/conflict';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import type { ReservationOptionSelection } from '@/types/reservation';
@@ -45,6 +46,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const JST_TIMEZONE = 'Asia/Tokyo' as const;
+const PATH = '/api/mobile-uiux/reservations';
 const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
 const RESERVATION_INSERT_RETURN_SELECT =
   'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
@@ -207,37 +209,6 @@ function isUsableReservationResource(
     row.is_active === true &&
     row.is_bookable === true
   );
-}
-
-async function hasReservationConflict(
-  supabase: SupabaseServerClient,
-  params: {
-    clinicId: string;
-    staffId: string;
-    startTime: string;
-    endTime: string;
-    excludeId?: string;
-  }
-): Promise<boolean> {
-  let query = supabase
-    .from('reservations')
-    .select('id', { count: 'exact', head: true })
-    .eq('clinic_id', params.clinicId)
-    .eq('staff_id', params.staffId)
-    .lt('start_time', params.endTime)
-    .gt('end_time', params.startTime)
-    .not('status', 'in', '("cancelled","no_show")');
-
-  if (params.excludeId) {
-    query = query.neq('id', params.excludeId);
-  }
-
-  const { count, error } = await query;
-  if (error) {
-    throw error;
-  }
-
-  return (count ?? 0) > 0;
 }
 
 async function getScopedReservationReferences(
@@ -504,6 +475,7 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      path: PATH,
     });
     if (conflict) {
       return buildMobileUiuxFailure(
@@ -658,6 +630,7 @@ export async function PATCH(request: NextRequest) {
         startTime: dto.startTime ?? existingRow.start_time,
         endTime: dto.endTime ?? existingRow.end_time,
         excludeId: dto.id,
+        path: PATH,
       });
       if (conflict) {
         return buildMobileUiuxFailure(

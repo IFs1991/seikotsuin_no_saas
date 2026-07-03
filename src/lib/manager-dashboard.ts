@@ -10,6 +10,7 @@ import type {
   ManagerDashboardTimelineItem,
   ManagerDashboardTimelineType,
 } from '@/types/manager-dashboard';
+import { classifyReservationStatus } from '@/lib/reservations/status';
 
 export type ManagerDashboardDailyReportRow = {
   id: string;
@@ -66,10 +67,6 @@ export const REVIEW_SIGNAL_STATUSES = [
   'blocked',
 ] as const;
 const REVIEW_STATUSES: ReadonlySet<string> = new Set(REVIEW_SIGNAL_STATUSES);
-const CANCELLATION_STATUSES: ReadonlySet<string> = new Set([
-  'cancelled',
-  'no_show',
-]);
 const SEVERITY_ORDER: Record<ManagerDashboardSeverity, number> = {
   critical: 0,
   warning: 1,
@@ -228,7 +225,7 @@ function bucketReservationCounts(
       counts.set(key, entry);
     }
 
-    if (CANCELLATION_STATUSES.has(reservation.status ?? '')) {
+    if (classifyReservationStatus(reservation.status) === 'cancelled') {
       entry.cancelled += 1;
     } else {
       entry.active += 1;

@@ -341,6 +341,97 @@ describe('POST /api/reservations', () => {
     expect(enqueueReservationCreatedMock).not.toHaveBeenCalled();
   });
 
+  it('returns 409 when the requested reservation slot conflicts', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+    const adminResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildUsableResourceRow(selectedStaffId),
+        error: null,
+      }),
+    };
+    const adminCustomerSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: validCustomerId },
+        error: null,
+      }),
+    };
+    const adminMenuSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: menuId, price: 5000 },
+        error: null,
+      }),
+    };
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 1, error: null }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn(),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') {
+          return { select: jest.fn().mockReturnValue(adminResourceSelect) };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn().mockReturnValue(adminCustomerSelect) };
+        }
+        if (table === 'menus') {
+          return { select: jest.fn().mockReturnValue(adminMenuSelect) };
+        }
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope: jest.fn(),
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId,
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: {
+        from: jest.fn(),
+      },
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/reservations', { method: 'POST' })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('同時間帯に既存予約があります');
+    expect(reservationsTable.insert).not.toHaveBeenCalled();
+    expect(conflictQuery.not).toHaveBeenCalledWith(
+      'status',
+      'in',
+      '("cancelled","no_show")'
+    );
+  });
+
   it('uses scoped admin only for staff resource synchronization', async () => {
     const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
     const adminResourceSelect = {

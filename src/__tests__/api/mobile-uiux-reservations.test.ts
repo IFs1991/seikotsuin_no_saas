@@ -612,7 +612,7 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
   });
 
   it('returns 409 when the requested reservation slot conflicts', async () => {
-    const { client, reservationsTable } = buildMutationClient({
+    const { client, conflictQuery, reservationsTable } = buildMutationClient({
       conflictCount: 1,
     });
     processClinicScopedBodyMock.mockResolvedValueOnce({
@@ -630,6 +630,11 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     expect(response.status).toBe(409);
     expect(payload.success).toBe(false);
     expect(reservationsTable.insert).not.toHaveBeenCalled();
+    expect(conflictQuery.not).toHaveBeenCalledWith(
+      'status',
+      'in',
+      '("cancelled","no_show")'
+    );
   });
 
   it('returns 409 for PATCH when the requested reservation slot conflicts', async () => {
