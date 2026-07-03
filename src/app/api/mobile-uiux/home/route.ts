@@ -18,6 +18,9 @@ import {
   buildMobileUiuxSuccess,
   dateKeyToUtcMidnight,
   isValidDateKey,
+  logMobileUiuxClinicScopeDenied,
+  logMobileUiuxEntitlementDenied,
+  logMobileUiuxFlagDenied,
 } from '@/lib/mobile-uiux/route-utils';
 import {
   summarizeReservationStatuses,
@@ -103,6 +106,7 @@ async function fetchHomeDailyReportStatus(params: {
 export async function GET(request: NextRequest) {
   const flags = getMobileUiuxFlags();
   if (!flags.enabled || !flags.realDataEnabled) {
+    logMobileUiuxFlagDenied({ flags, writeTarget: 'home', status: 403 });
     return buildRealDataDisabledResponse();
   }
 
@@ -127,6 +131,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof AppError) {
+      if (error.statusCode === 403) {
+        logMobileUiuxClinicScopeDenied({
+          flags,
+          writeTarget: 'home',
+          status: error.statusCode,
+        });
+      }
       const code =
         error.statusCode === 401
           ? 'UNAUTHORIZED'
@@ -142,6 +153,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    logMobileUiuxClinicScopeDenied({
+      flags,
+      writeTarget: 'home',
+      status: 403,
+    });
     return buildMobileUiuxFailure(
       403,
       'FORBIDDEN',
@@ -155,6 +171,11 @@ export async function GET(request: NextRequest) {
     clinicId,
   });
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
+    logMobileUiuxEntitlementDenied({
+      flags,
+      writeTarget: 'home',
+      status: 403,
+    });
     return buildRealDataDisabledResponse();
   }
 

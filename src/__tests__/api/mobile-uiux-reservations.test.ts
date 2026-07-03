@@ -72,12 +72,16 @@ type PendingCountQuery = {
   not: jest.MockedFunction<
     (field: string, operator: string, value: unknown) => PendingCountQuery
   >;
-  neq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  neq: jest.MockedFunction<
+    (field: string, value: unknown) => PendingCountQuery
+  >;
   then: Promise<CountResult>['then'];
 };
 
 type MaybeSingleBuilder<T> = {
-  eq: jest.MockedFunction<(field: string, value: unknown) => MaybeSingleBuilder<T>>;
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => MaybeSingleBuilder<T>
+  >;
   maybeSingle: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
 };
 
@@ -272,12 +276,12 @@ function buildPatchMutationClient(params?: { conflictCount?: number }) {
     select: jest.fn().mockReturnValue(createSingleBuilder(updatedRow)),
   };
   const reservationsTable = {
-    select: jest.fn().mockImplementation(
-      (
-        _columns: string,
-        options?: { count?: 'exact'; head?: boolean }
-      ) => (options?.count === 'exact' ? conflictQuery : existingQuery)
-    ),
+    select: jest
+      .fn()
+      .mockImplementation(
+        (_columns: string, options?: { count?: 'exact'; head?: boolean }) =>
+          options?.count === 'exact' ? conflictQuery : existingQuery
+      ),
     update: jest.fn().mockReturnValue(updateQuery),
   };
   const reservationListViewTable = {
@@ -304,9 +308,11 @@ function buildPatchMutationClient(params?: { conflictCount?: number }) {
 
 describe('GET /api/mobile-uiux/reservations', () => {
   const originalEnv = process.env;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     process.env = {
       ...originalEnv,
       MOBILE_UIUX_ENABLED: 'true',
@@ -329,6 +335,10 @@ describe('GET /api/mobile-uiux/reservations', () => {
 
   afterAll(() => {
     process.env = originalEnv;
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   it('queries reservation_list_view with clinic scope and a JST day range', async () => {
@@ -477,9 +487,8 @@ describe('GET /api/mobile-uiux/reservations', () => {
   });
 
   it('returns 403 for mobile reservation writes while write flags are off', async () => {
-    const { POST, PATCH } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { POST, PATCH } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(
       new NextRequest('http://localhost/api/mobile-uiux/reservations', {
@@ -494,14 +503,29 @@ describe('GET /api/mobile-uiux/reservations', () => {
 
     expect(postResponse.status).toBe(403);
     expect(patchResponse.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'write_flag_disabled',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
+    const logText = JSON.stringify(warnSpy.mock.calls);
+    expect(logText).not.toContain(clinicId);
+    expect(logText).not.toContain('staff@example.com');
   });
 });
 
 describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
   const originalEnv = process.env;
+  let warnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     process.env = {
       ...originalEnv,
       MOBILE_UIUX_ENABLED: 'true',
@@ -516,11 +540,14 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     process.env = originalEnv;
   });
 
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
   it('returns 403 when the global write flag is off', async () => {
     process.env.MOBILE_UIUX_WRITE_ENABLED = 'false';
-    const { PATCH, POST } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { PATCH, POST } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(buildMutationRequest('POST'));
     const patchResponse = await PATCH(buildMutationRequest('PATCH'));
@@ -528,13 +555,22 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     expect(postResponse.status).toBe(403);
     expect(patchResponse.status).toBe(403);
     expect(processClinicScopedBodyMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'write_flag_disabled',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
   });
 
   it('returns 403 when the reservation write flag is off', async () => {
     process.env.MOBILE_UIUX_RESERVATION_WRITE_ENABLED = 'false';
-    const { PATCH, POST } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { PATCH, POST } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(buildMutationRequest('POST'));
     const patchResponse = await PATCH(buildMutationRequest('PATCH'));
@@ -542,6 +578,16 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     expect(postResponse.status).toBe(403);
     expect(patchResponse.status).toBe(403);
     expect(processClinicScopedBodyMock).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'write_flag_disabled',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
   });
 
   it('denies manager writes before DB access', async () => {
@@ -559,6 +605,17 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'role_denied',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(clinicId);
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       request,
       expect.anything(),
@@ -584,11 +641,27 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     const response = await PATCH(request);
 
     expect(response.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'role_denied',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       request,
       expect.anything(),
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
         deniedRoles: ['manager'],
         deniedRoleMessage: 'マネージャーは予約の変更はできません。',
       }
@@ -609,6 +682,17 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     const response = await PATCH(buildMutationRequest('PATCH'));
 
     expect(response.status).toBe(403);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({
+        reasonCode: 'clinic_scope_denied',
+        allowedClinicCount: 1,
+        scopedClinicCount: 0,
+        writeTarget: 'reservations',
+        status: 403,
+      })
+    );
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(clinicId);
   });
 
   it('returns 409 when the requested reservation slot conflicts', async () => {
@@ -780,7 +864,13 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       request,
       expect.anything(),
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
         deniedRoles: ['manager'],
         deniedRoleMessage: 'マネージャーは予約の変更はできません。',
       }

@@ -21,7 +21,11 @@ import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/enti
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { transformMobileUiuxHtml } from '@/lib/mobile-uiux/html-transform';
 import { readMobileUiuxProductionAsset } from '@/lib/mobile-uiux/production-asset';
-import { logMobileUiuxDeniedAccess } from '@/lib/mobile-uiux/route-utils';
+import {
+  logMobileUiuxDeniedAccess,
+  mapMobileUiuxPrincipalDeniedReason,
+  mapMobileUiuxRolloutDeniedReason,
+} from '@/lib/mobile-uiux/route-utils';
 import {
   createClient,
   getCurrentUser,
@@ -217,7 +221,7 @@ export async function handleMobileUiuxScreenRequest(
 
   if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: principalDecision.reason,
+      reasonCode: mapMobileUiuxPrincipalDeniedReason(principalDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
@@ -233,7 +237,7 @@ export async function handleMobileUiuxScreenRequest(
 
   if (!isAllowedRole(normalizedRole, definition.allowedRoles)) {
     logMobileUiuxDeniedAccess({
-      reasonCode: 'screen_role_denied',
+      reasonCode: 'role_denied',
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
@@ -255,7 +259,7 @@ export async function handleMobileUiuxScreenRequest(
 
   if (rolloutDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
-      reasonCode: rolloutDecision.reason,
+      reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
       scopedClinicCount:
