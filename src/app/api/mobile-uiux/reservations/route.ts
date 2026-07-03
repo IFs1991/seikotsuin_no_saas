@@ -28,6 +28,7 @@ import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   isValidDateKey,
+  isValidUuid,
 } from '@/lib/mobile-uiux/route-utils';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
 import {
@@ -57,8 +58,6 @@ const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
   'マネージャーは予約の作成はできません。';
 const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
   'マネージャーは予約の変更はできません。';
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ReservationTableRow = Database['public']['Tables']['reservations']['Row'];
 
@@ -103,7 +102,7 @@ function validateUuid(value: string | null, field: string): string | null {
     return `${field} は必須です`;
   }
 
-  if (!UUID_PATTERN.test(value)) {
+  if (!isValidUuid(value)) {
     return `${field} はUUID形式で指定してください`;
   }
 
@@ -118,7 +117,7 @@ function validateOptionalUuid(
     return null;
   }
 
-  if (!UUID_PATTERN.test(value)) {
+  if (!isValidUuid(value)) {
     return `${field} はUUID形式で指定してください`;
   }
 

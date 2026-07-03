@@ -257,7 +257,8 @@ function dispatchBridgeEvent(
 
 async function runBridgeScript(
   script: string,
-  bridgeWindow: BridgeWindow
+  bridgeWindow: BridgeWindow,
+  options?: { awaitReady?: boolean }
 ): Promise<void> {
   const sandbox = {
     window: bridgeWindow,
@@ -271,7 +272,9 @@ async function runBridgeScript(
     clearTimeout,
   };
   vm.runInNewContext(script, sandbox);
-  await bridgeWindow.__MOBILE_UIUX_BRIDGE_READY__;
+  if (options?.awaitReady !== false) {
+    await bridgeWindow.__MOBILE_UIUX_BRIDGE_READY__;
+  }
 }
 
 describe('mobile-uiux bridge contract', () => {
@@ -1486,6 +1489,8 @@ describe('mobile-uiux bridge contract', () => {
     const firstMutation = window.MobileUiuxBridge?.updateReservation(payload);
     const secondMutation = window.MobileUiuxBridge?.updateReservation(payload);
 
+    // Mutations start after awaiting the settled boot promise (microtask).
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(calls.filter(call => call.method === 'PATCH')).toHaveLength(1);
     resolveMutation?.(
       buildJsonResponse(200, {
@@ -1545,6 +1550,84 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).toContain(
       '日報の書き込みは無効です'
     );
+  });
+
+  it('waits for boot to finish before evaluating daily report write flags', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const payload = {
+      clinic_id: '11111111-1111-4111-8111-111111111111',
+      report_date: '2026-06-30',
+      total_patients: 1,
+      new_patients: 0,
+      total_revenue: 5000,
+      insurance_revenue: 0,
+      private_revenue: 5000,
+    };
+    const { window, calls } = buildBridgeWindow('daily-reports', []);
+    let resolveContext: (response: BridgeFetchResponse) => void = () => {};
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body });
+      return new Promise<BridgeFetchResponse>(resolve => {
+        resolveContext = resolve;
+      });
+    });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body });
+      return buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: null,
+          endDate: null,
+          dailyReports: { reports: [] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+    });
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({ url, method: init?.method ?? 'GET', body: init?.body });
+      return buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          reportDate: '2026-06-30',
+          report: { id: 'report-1' },
+          dailyReports: { reports: [{ id: 'report-1' }] },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+    });
+
+    await runBridgeScript(script, window, { awaitReady: false });
+    // Save fired while the context fetch is still in flight (dev cold start).
+    const pending = window.MobileUiuxBridge?.submitDailyReport(payload);
+
+    resolveContext(
+      buildJsonResponse(200, {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          flags: {
+            ...contextPayload.data.flags,
+            writeEnabled: true,
+            dailyReportWriteEnabled: true,
+          },
+        },
+      })
+    );
+
+    await expect(pending).resolves.toBe(true);
+    expect(window.document.documentElement.dataset.mobileUiuxMutation).toBe(
+      'success'
+    );
+    expect(calls).toContainEqual({
+      url: '/api/mobile-uiux/daily-reports',
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   });
 
   it('posts daily report mutations only through the mobile BFF handler and marks success', async () => {
@@ -1808,6 +1891,8 @@ describe('mobile-uiux bridge contract', () => {
     const firstMutation = window.MobileUiuxBridge?.submitDailyReport(payload);
     const secondMutation = window.MobileUiuxBridge?.submitDailyReport(payload);
 
+    // Mutations start after awaiting the settled boot promise (microtask).
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(calls.filter(call => call.method === 'POST')).toHaveLength(1);
     resolveMutation?.(
       buildJsonResponse(200, {
@@ -2254,8 +2339,15 @@ describe('mobile-uiux bridge route and response-time injection', () => {
 
   it('injects the bridge script only into real-data HTML responses', () => {
     const html = '<!doctype html><html><body><main></main></body></html>';
+    const htmlWithFallbackSelector =
+      '<!doctype html><html><head><style>[data-mobile-uiux-bridge-fallback] { opacity: 1; }</style></head><body><main></main></body></html>';
 
     expect(injectMobileUiuxBridgeScript(html, 'reservations')).toContain(
+      '<script src="./mobile-bridge.js" data-mobile-uiux-bridge data-screen="reservations" defer></script>'
+    );
+    expect(
+      injectMobileUiuxBridgeScript(htmlWithFallbackSelector, 'reservations')
+    ).toContain(
       '<script src="./mobile-bridge.js" data-mobile-uiux-bridge data-screen="reservations" defer></script>'
     );
     expect(injectMobileUiuxBridgeScript(html, 'support.js')).toBe(html);
@@ -2278,6 +2370,41 @@ describe('mobile-uiux bridge route and response-time injection', () => {
     );
     expect(body).toContain('MOBILE_UIUX_SCREEN_MANIFEST');
     expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('serves a local React runtime before support.js needs CDN fallback', async () => {
+    readFileMock.mockImplementation(async filePath => {
+      const filePathText = String(filePath);
+      if (filePathText.includes('node_modules')) {
+        return readFileSync(filePathText, 'utf-8');
+      }
+      if (filePathText.includes('mobile-uiux-production')) {
+        throw buildNodeFileNotFoundError();
+      }
+      return '<!doctype html><html><body></body></html>';
+    });
+
+    const { GET } =
+      await import('@/app/(app)/mobile-uiux/screens/[resource]/route');
+    const response = await GET(
+      new NextRequest('http://localhost/mobile-uiux/screens/react-runtime.js'),
+      {
+        params: Promise.resolve({ resource: 'react-runtime.js' }),
+      }
+    );
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe(
+      'application/javascript; charset=utf-8'
+    );
+    expect(body).toContain('window.React = React');
+    expect(body).toContain('window.ReactDOM = Object.assign');
+    expect(body).toContain('"react-dom/client": function');
+    expect(readFileMock).toHaveBeenCalledWith(
+      expect.stringContaining('react.production.js'),
+      expect.objectContaining({ encoding: 'utf-8' })
+    );
   });
 
   it('injects the bridge when MOBILE_UIUX_REAL_DATA_ENABLED=false for Bottom Nav navigation', async () => {

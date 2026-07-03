@@ -9,6 +9,7 @@ export type MobileUiuxScreenResource =
 export type MobileUiuxStaticResource =
   | 'support.js'
   | 'clinic-shared.js'
+  | 'react-runtime.js'
   | 'mobile-bridge.js';
 
 export type MobileUiuxScreenRouteResource =
@@ -82,6 +83,9 @@ const BRIDGE_SCRIPT_TAG_BY_SCREEN: Record<MobileUiuxScreenResource, string> = {
     '<script src="./mobile-bridge.js" data-mobile-uiux-bridge data-screen="settings-detail" defer></script>',
 };
 
+const MOBILE_UIUX_BRIDGE_SCRIPT_RE =
+  /<script\b(?=[^>]*\bdata-mobile-uiux-bridge\b)/i;
+
 export function isMobileUiuxScreenResource(
   resource: string
 ): resource is MobileUiuxScreenResource {
@@ -99,7 +103,7 @@ export function injectMobileUiuxBridgeScript(
     return html;
   }
 
-  if (html.includes('data-mobile-uiux-bridge')) {
+  if (MOBILE_UIUX_BRIDGE_SCRIPT_RE.test(html)) {
     return html;
   }
 
@@ -164,6 +168,7 @@ export function buildMobileUiuxBridgeScript(
   let currentContext = null;
   let currentScreen = null;
   let currentReadParams = {};
+  let bootPromise = null;
   const inFlightMutations = new Map();
   const inFlightReads = new Map();
   let fallbackStatusElement = null;
@@ -807,7 +812,19 @@ export function buildMobileUiuxBridgeScript(
   }
 
   async function mutateMobileBff(options) {
-    if (!REAL_DATA_ENABLED || options.canWrite() !== true) {
+    if (!REAL_DATA_ENABLED) {
+      showMutationStatus("disabled", options.disabledMessage);
+      return false;
+    }
+
+    // Write flags arrive with the context payload during boot; a save fired
+    // before boot settles must wait for the flags instead of failing closed.
+    if (bootPromise) {
+      showMutationStatus("pending", STATUS_MESSAGES.saving);
+      await bootPromise;
+    }
+
+    if (options.canWrite() !== true) {
       showMutationStatus("disabled", options.disabledMessage);
       return false;
     }
@@ -885,10 +902,10 @@ export function buildMobileUiuxBridgeScript(
 
   bindBottomNavNavigation();
 
-  const ready = boot().catch(() => {
+  bootPromise = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);
   });
-  window.__MOBILE_UIUX_BRIDGE_READY__ = ready;
+  window.__MOBILE_UIUX_BRIDGE_READY__ = bootPromise;
 })();
 `;
 }

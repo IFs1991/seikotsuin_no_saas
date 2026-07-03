@@ -46,6 +46,7 @@ const enqueueReservationCreatedMock = jest.mocked(enqueueReservationCreated);
 const enqueueReservationChangeMock = jest.mocked(enqueueReservationChange);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
+const fixtureStyleClinicId = '00000000-0000-0000-0000-0000000000a1';
 const reservationId = '123e4567-e89b-12d3-a456-426614174001';
 const customerId = '123e4567-e89b-12d3-a456-426614174002';
 const menuId = '123e4567-e89b-12d3-a456-426614174003';
@@ -72,12 +73,16 @@ type PendingCountQuery = {
   not: jest.MockedFunction<
     (field: string, operator: string, value: unknown) => PendingCountQuery
   >;
-  neq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  neq: jest.MockedFunction<
+    (field: string, value: unknown) => PendingCountQuery
+  >;
   then: Promise<CountResult>['then'];
 };
 
 type MaybeSingleBuilder<T> = {
-  eq: jest.MockedFunction<(field: string, value: unknown) => MaybeSingleBuilder<T>>;
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => MaybeSingleBuilder<T>
+  >;
   maybeSingle: jest.MockedFunction<() => Promise<{ data: T; error: null }>>;
 };
 
@@ -272,12 +277,12 @@ function buildPatchMutationClient(params?: { conflictCount?: number }) {
     select: jest.fn().mockReturnValue(createSingleBuilder(updatedRow)),
   };
   const reservationsTable = {
-    select: jest.fn().mockImplementation(
-      (
-        _columns: string,
-        options?: { count?: 'exact'; head?: boolean }
-      ) => (options?.count === 'exact' ? conflictQuery : existingQuery)
-    ),
+    select: jest
+      .fn()
+      .mockImplementation(
+        (_columns: string, options?: { count?: 'exact'; head?: boolean }) =>
+          options?.count === 'exact' ? conflictQuery : existingQuery
+      ),
     update: jest.fn().mockReturnValue(updateQuery),
   };
   const reservationListViewTable = {
@@ -425,6 +430,49 @@ describe('GET /api/mobile-uiux/reservations', () => {
     });
   });
 
+  it('accepts fixture-style UUID values used by e2e seed data', async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({ data: [], error: null }),
+    };
+    const scopedClient = {
+      from: jest.fn().mockReturnValue(query),
+    };
+    const assertClinicInScope = jest.fn();
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedClient,
+      assertClinicInScope,
+    });
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = fixtureStyleClinicId;
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: fixtureStyleClinicId,
+        clinic_scope_ids: [fixtureStyleClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { GET } = await import('@/app/api/mobile-uiux/reservations/route');
+    const request = buildRequest(
+      `?clinic_id=${fixtureStyleClinicId}&date=2026-04-27`
+    );
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId: fixtureStyleClinicId,
+      requireClinicMatch: true,
+      allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+    });
+    expect(query.eq).toHaveBeenCalledWith('clinic_id', fixtureStyleClinicId);
+  });
+
   it('uses the PC manager assignment-aware guard and stops on assigned clinic violation', async () => {
     const guardResponse = Response.json(
       { success: false, error: '対象クリニックへのアクセス権がありません' },
@@ -477,9 +525,8 @@ describe('GET /api/mobile-uiux/reservations', () => {
   });
 
   it('returns 403 for mobile reservation writes while write flags are off', async () => {
-    const { POST, PATCH } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { POST, PATCH } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(
       new NextRequest('http://localhost/api/mobile-uiux/reservations', {
@@ -518,9 +565,8 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
 
   it('returns 403 when the global write flag is off', async () => {
     process.env.MOBILE_UIUX_WRITE_ENABLED = 'false';
-    const { PATCH, POST } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { PATCH, POST } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(buildMutationRequest('POST'));
     const patchResponse = await PATCH(buildMutationRequest('PATCH'));
@@ -532,9 +578,8 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
 
   it('returns 403 when the reservation write flag is off', async () => {
     process.env.MOBILE_UIUX_RESERVATION_WRITE_ENABLED = 'false';
-    const { PATCH, POST } = await import(
-      '@/app/api/mobile-uiux/reservations/route'
-    );
+    const { PATCH, POST } =
+      await import('@/app/api/mobile-uiux/reservations/route');
 
     const postResponse = await POST(buildMutationRequest('POST'));
     const patchResponse = await PATCH(buildMutationRequest('PATCH'));
@@ -588,7 +633,13 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       request,
       expect.anything(),
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
         deniedRoles: ['manager'],
         deniedRoleMessage: 'マネージャーは予約の変更はできません。',
       }
@@ -780,7 +831,13 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       request,
       expect.anything(),
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
         deniedRoles: ['manager'],
         deniedRoleMessage: 'マネージャーは予約の変更はできません。',
       }

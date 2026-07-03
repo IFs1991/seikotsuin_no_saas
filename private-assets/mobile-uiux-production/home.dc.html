@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script src="./support.js"></script>
+<script src="./react-runtime.js" data-mobile-uiux-react-runtime></script><script src="./support.js"></script>
 
 <style data-mobile-uiux-production-shell>
 html, body { margin: 0; padding: 0; min-height: 100%; }
@@ -31,6 +31,31 @@ body[data-mobile-uiux-shell="production"] {
   border-radius: 0 !important;
 }
 .scrl { -webkit-overflow-scrolling: touch; }
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-bridge-fallback],
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 2147483600;
+  box-sizing: border-box;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: 600 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+  pointer-events: none;
+  transform: translateY(0);
+  opacity: 1;
+  transition: opacity .18s ease, transform .18s ease;
+}
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
+  background: var(--surface-2);
+}
 </style></head>
 <body data-mobile-uiux-shell="production">
 <x-dc>

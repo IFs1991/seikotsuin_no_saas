@@ -80,7 +80,9 @@ describe('mobile-uiux production assets', () => {
       );
       expect(productionHtml).not.toContain('STAGE CONTROLS');
       expect(productionHtml).not.toContain('width: 390px; height: 812px');
-      expect(productionHtml).not.toContain('data-mobile-uiux-bridge');
+      expect(productionHtml).not.toContain(
+        '<script src="./mobile-bridge.js" data-mobile-uiux-bridge'
+      );
       expect(() =>
         validateMobileUiuxProductionAsset(resource, productionHtml)
       ).not.toThrow();
@@ -118,9 +120,7 @@ describe('mobile-uiux production assets', () => {
 
     expect(productionHtml).toContain('data-mobile-uiux-production-root');
     expect(productionHtml).toContain('__mobileUiuxOriginalRenderVals');
-    expect(productionHtml).toContain(
-      'window.__MOBILE_UIUX_APPLY_READ_DATA__'
-    );
+    expect(productionHtml).toContain('window.__MOBILE_UIUX_APPLY_READ_DATA__');
     expect(MOBILE_UIUX_PRODUCTION_ASSET_NOTES.patients).toContain(
       'patient analysis hydration'
     );
