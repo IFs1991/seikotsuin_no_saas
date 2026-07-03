@@ -29,6 +29,10 @@ type EvaluatedWindow = {
     submitDailyReport?: jest.Mock<Promise<boolean>, [unknown]>;
     updateReservation?: jest.Mock<Promise<boolean>, [unknown]>;
     updateSettings?: jest.Mock<Promise<boolean>, [unknown]>;
+    refreshReadData?: jest.Mock<
+      Promise<boolean>,
+      [{ date?: string; clinicId?: string }]
+    >;
   };
 };
 
@@ -280,6 +284,185 @@ describe('patchMobileUiuxDcScript', () => {
     expect(firstRow.endT).toBe('10:30');
     expect(firstRow.statusLabel).toBe('確定');
     expect(vals.rows).not.toEqual([{ patient: 'sample-patient' }]);
+  });
+
+  it('refreshes reservations when the date navigation changes', async () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  HOME = 'c1';
+  DAYS = ['4/26（日）', '4/27（月）', '4/28（火）'];
+  STATUS = {
+    confirmed: { label: '確定', c: 'confirmed-c', b: 'confirmed-b' },
+    unconfirmed: { label: '未確定', c: 'unconfirmed-c', b: 'unconfirmed-b' },
+    cancelled: { label: 'キャンセル', c: 'cancelled-c', b: 'cancelled-b' },
+    noshow: { label: '無断', c: 'noshow-c', b: 'noshow-b' },
+    arrived: { label: '来院済み', c: 'arrived-c', b: 'arrived-b' }
+  };
+  state = { dateIndex: 1, appts: [], loading: false, role: 'staff', clinic: 'c1' };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  renderVals() {
+    return {
+      dateLabel: this.DAYS[this.state.dateIndex],
+      nextDate: this.nextDate,
+      rows: this.state.appts.map(appt => ({ patient: appt.patient, menu: appt.menu })),
+      isLoading: this.state.loading
+    };
+  }
+}`),
+      {
+        screen: 'reservations',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    const nextPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-28',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: 'reservation-next',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: 'BFF 翌日患者',
+            menuName: 'BFF 翌日メニュー',
+            staffId: 'staff-next',
+            staffName: 'BFF 翌日先生',
+            startTime: '2026-04-28T01:00:00.000Z',
+            endTime: '2026-04-28T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-28T00:00:00.000Z',
+    };
+    const refreshReadData = jest.fn<
+      Promise<boolean>,
+      [{ date?: string; clinicId?: string }]
+    >(async () => {
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', nextPayload);
+      return true;
+    });
+    window.MobileUiuxBridge = { refreshReadData };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-27',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: 'reservation-current',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: 'BFF 当日患者',
+            menuName: 'BFF 当日メニュー',
+            staffId: 'staff-current',
+            staffName: 'BFF 当日先生',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    const initialVals = component.renderVals();
+    const nextDate = initialVals.nextDate;
+    if (typeof nextDate !== 'function') {
+      throw new Error('Expected nextDate function');
+    }
+
+    await nextDate();
+    const vals = component.renderVals();
+    const rows = Array.isArray(vals.rows) ? vals.rows : [];
+    const firstRow = getRecord(rows[0]);
+
+    expect(refreshReadData).toHaveBeenCalledWith({ date: '2026-04-28' });
+    expect(vals.dateLabel).toBe('4/28（火）');
+    expect(firstRow.patient).toBe('BFF 翌日患者');
+    expect(firstRow.menu).toBe('BFF 翌日メニュー');
+    expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
+  });
+
+  it('does not render previous reservations as the target date when refresh fails', async () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  HOME = 'c1';
+  DAYS = ['4/26（日）', '4/27（月）', '4/28（火）'];
+  STATUS = {
+    confirmed: { label: '確定', c: 'confirmed-c', b: 'confirmed-b' },
+    unconfirmed: { label: '未確定', c: 'unconfirmed-c', b: 'unconfirmed-b' },
+    cancelled: { label: 'キャンセル', c: 'cancelled-c', b: 'cancelled-b' },
+    noshow: { label: '無断', c: 'noshow-c', b: 'noshow-b' },
+    arrived: { label: '来院済み', c: 'arrived-c', b: 'arrived-b' }
+  };
+  state = { dateIndex: 1, appts: [], loading: false, role: 'staff', clinic: 'c1' };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  renderVals() {
+    return {
+      dateLabel: this.DAYS[this.state.dateIndex],
+      nextDate: this.nextDate,
+      rows: this.state.appts.map(appt => ({ patient: appt.patient, menu: appt.menu })),
+      isLoading: this.state.loading
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+    const refreshReadData = jest.fn<
+      Promise<boolean>,
+      [{ date?: string; clinicId?: string }]
+    >(async () => false);
+    window.MobileUiuxBridge = { refreshReadData };
+
+    component.componentDidMount();
+    window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-27',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            id: 'reservation-current',
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            customerName: 'BFF 当日患者',
+            menuName: 'BFF 当日メニュー',
+            staffId: 'staff-current',
+            staffName: 'BFF 当日先生',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    const nextDate = component.renderVals().nextDate;
+    if (typeof nextDate !== 'function') {
+      throw new Error('Expected nextDate function');
+    }
+
+    await nextDate();
+    const vals = component.renderVals();
+
+    expect(refreshReadData).toHaveBeenCalledWith({ date: '2026-04-28' });
+    expect(vals.dateLabel).toBe('4/28（火）');
+    expect(vals.rows).toEqual([]);
+    expect(vals.isLoading).toBe(false);
+    expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
   });
 
   it('merges daily-reports hydration overrides after the original renderVals result', () => {

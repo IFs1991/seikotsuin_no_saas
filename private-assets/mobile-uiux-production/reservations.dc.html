@@ -784,8 +784,11 @@ class Component extends DCLogic {
       ? this.__mobileUiuxOriginalRenderVals()
       : {};
     const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
-    const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+    const candidateHydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
+      : null;
+    const hydratedVals = candidateHydratedVals && this.__mobileUiuxCanUseHydratedVals(candidateHydratedVals)
+      ? candidateHydratedVals
       : null;
     return hydratedVals
       ? { ...originalVals, confirmAppt: this.__mobileUiuxConfirmReservation, cancelAppt: this.__mobileUiuxCancelReservation, ...hydratedVals }
@@ -820,6 +823,10 @@ class Component extends DCLogic {
         ? component.__mobileUiuxHydratedVals
         : {};
       component.__mobileUiuxHydratedVals = { ...currentVals, ...hydratedVals };
+      if (hydratedVals.__mobileUiuxHydratedKey && typeof hydratedVals.__mobileUiuxHydratedKey === 'object') {
+        component.__mobileUiuxHydratedKey = hydratedVals.__mobileUiuxHydratedKey;
+        component.__mobileUiuxRequestedHydratedKey = hydratedVals.__mobileUiuxHydratedKey;
+      }
       if (typeof component.setState === 'function') {
         const statePatch = { __mobileUiuxHydratedAt: Date.now() };
         if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
@@ -892,8 +899,135 @@ class Component extends DCLogic {
       isEmpty: viewModels.rows.length === 0,
       showAgenda: viewModels.rows.length > 0,
       showTimeline: false,
-      __mobileUiuxAppts: viewModels.appts
+      __mobileUiuxAppts: viewModels.appts,
+      __mobileUiuxHydratedKey: this.__mobileUiuxBuildHydratedKey(data.date, this.__mobileUiuxCurrentClinicId)
     };
+  }
+
+  __mobileUiuxCanUseHydratedVals(hydratedVals) {
+    const hydratedKey = hydratedVals.__mobileUiuxHydratedKey && typeof hydratedVals.__mobileUiuxHydratedKey === 'object'
+      ? hydratedVals.__mobileUiuxHydratedKey
+      : this.__mobileUiuxHydratedKey;
+    const requestedKey = this.__mobileUiuxRequestedHydratedKey;
+    if (!requestedKey || typeof requestedKey !== 'object' || !hydratedKey || typeof hydratedKey !== 'object') {
+      return true;
+    }
+    return requestedKey.date === hydratedKey.date && requestedKey.clinicId === hydratedKey.clinicId;
+  }
+
+  prevDate = () => this.__mobileUiuxRefreshReservationDate(-1);
+  nextDate = () => this.__mobileUiuxRefreshReservationDate(1);
+  setClinic = (clinicId) => () => this.__mobileUiuxRefreshReservationClinic(clinicId);
+
+  async __mobileUiuxRefreshReservationDate(delta) {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const currentIndex = typeof state.dateIndex === 'number' ? state.dateIndex : 1;
+    const nextIndex = Math.max(0, Math.min(2, currentIndex + delta));
+    if (nextIndex === currentIndex) return false;
+
+    const currentDate = this.__mobileUiuxActiveHydratedDate();
+    const nextDate = this.__mobileUiuxAddDays(currentDate, delta);
+    if (!nextDate) return false;
+
+    return this.__mobileUiuxRefreshReservationRead(
+      { date: nextDate },
+      { dateIndex: nextIndex }
+    );
+  }
+
+  async __mobileUiuxRefreshReservationClinic(clinicId) {
+    if (typeof clinicId !== 'string' || clinicId.length === 0) return false;
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (state.clinic === clinicId) return false;
+
+    const first = Array.isArray(this.THER)
+      ? this.THER.find((therapist) => this.__mobileUiuxIsRecord(therapist) && therapist.clinic === clinicId)
+      : null;
+    return this.__mobileUiuxRefreshReservationRead(
+      { clinicId },
+      {
+        clinic: clinicId,
+        timelineRes: first && typeof first.id === 'string' ? first.id : '',
+        selfOnly: state.role === 'therapist' && clinicId === this.HOME,
+        clinicSheet: false
+      }
+    );
+  }
+
+  async __mobileUiuxRefreshReservationRead(params, statePatch) {
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.refreshReadData !== 'function') {
+      this.__mobileUiuxShowReservationToast('実データを再読み込みできません');
+      return false;
+    }
+
+    const currentKey = this.__mobileUiuxRequestedHydratedKey && typeof this.__mobileUiuxRequestedHydratedKey === 'object'
+      ? this.__mobileUiuxRequestedHydratedKey
+      : this.__mobileUiuxHydratedKey;
+    const requestedKey = this.__mobileUiuxBuildHydratedKey(
+      typeof params.date === 'string' ? params.date : currentKey && typeof currentKey.date === 'string' ? currentKey.date : this.__mobileUiuxActiveHydratedDate(),
+      typeof params.clinicId === 'string' ? params.clinicId : currentKey && typeof currentKey.clinicId === 'string' ? currentKey.clinicId : this.__mobileUiuxCurrentClinicId
+    );
+    this.__mobileUiuxRequestedHydratedKey = requestedKey;
+
+    if (typeof this.setState === 'function') {
+      this.setState({
+        ...statePatch,
+        appts: [],
+        loading: true,
+        detailId: null,
+        formOpen: false,
+        timeSheet: false,
+        assigneeSheet: false
+      });
+    }
+
+    let ok = false;
+    try {
+      ok = await bridge.refreshReadData(params);
+    } catch {
+      ok = false;
+    }
+
+    if (ok !== true && typeof this.setState === 'function') {
+      this.setState({ loading: false });
+    }
+    return ok === true;
+  }
+
+  __mobileUiuxActiveHydratedDate() {
+    const key = this.__mobileUiuxHydratedKey && typeof this.__mobileUiuxHydratedKey === 'object'
+      ? this.__mobileUiuxHydratedKey
+      : null;
+    if (key && typeof key.date === 'string') return key.date;
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (this.__mobileUiuxIsRecord(current) && typeof current.date === 'string') {
+      return current.date;
+    }
+    return '';
+  }
+
+  __mobileUiuxBuildHydratedKey(date, clinicId) {
+    return {
+      date: typeof date === 'string' ? date : '',
+      clinicId: typeof clinicId === 'string' ? clinicId : ''
+    };
+  }
+
+  __mobileUiuxAddDays(value, delta) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return '';
+    const yearValue = Number(match[1]);
+    const monthValue = Number(match[2]);
+    const dayValue = Number(match[3]);
+    const date = new Date(Date.UTC(yearValue, monthValue - 1, dayValue + delta));
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
   }
 
   __mobileUiuxPrimeReservationWriteSources() {
