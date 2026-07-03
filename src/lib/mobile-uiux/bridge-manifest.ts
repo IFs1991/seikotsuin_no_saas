@@ -163,7 +163,9 @@ export function buildMobileUiuxBridgeScript(
   };
   let currentContext = null;
   let currentScreen = null;
+  let currentReadParams = {};
   const inFlightMutations = new Map();
+  const inFlightReads = new Map();
   let fallbackStatusElement = null;
   let mutationStatusElement = null;
 
@@ -317,6 +319,10 @@ export function buildMobileUiuxBridgeScript(
       .join("&");
   }
 
+  function isDateKey(value) {
+    return typeof value === "string" && /^\\d{4}-\\d{2}-\\d{2}$/.test(value);
+  }
+
   function summarizePayload(screen, payload) {
     if (!isSuccessPayload(payload)) {
       return null;
@@ -380,7 +386,7 @@ export function buildMobileUiuxBridgeScript(
     return typeof apply === "function" && apply(screen, payload) === true;
   }
 
-  function hydrateReadOnlyData(screen, payload) {
+  function hydrateReadOnlyData(screen, payload, requireApplied) {
     const summary = summarizePayload(screen, payload);
     if (!summary) {
       return false;
@@ -394,7 +400,7 @@ export function buildMobileUiuxBridgeScript(
     }
 
     setStatus("fallback");
-    return true;
+    return requireApplied === true ? false : true;
   }
 
   function getSupplementalReadScreens(screen) {
@@ -425,6 +431,127 @@ export function buildMobileUiuxBridgeScript(
         hydrateReadOnlyData(applyScreen, readResult.payload);
       }
     }
+  }
+
+  function getAccessibleClinicIds() {
+    return isRecord(currentContext) && Array.isArray(currentContext.accessibleClinicIds)
+      ? currentContext.accessibleClinicIds.filter(clinicId => typeof clinicId === "string")
+      : [];
+  }
+
+  function canUseClinicId(clinicId) {
+    return getAccessibleClinicIds().includes(clinicId);
+  }
+
+  function getDefaultClinicId() {
+    return isRecord(currentContext) && typeof currentContext.defaultClinicId === "string"
+      ? currentContext.defaultClinicId
+      : "";
+  }
+
+  function buildRefreshReadRequest(params) {
+    if (!REAL_DATA_ENABLED || !isRecord(currentContext)) {
+      return null;
+    }
+
+    const screen = getScreen();
+    if (!screen) {
+      return null;
+    }
+
+    const entry = MOBILE_UIUX_SCREEN_MANIFEST[screen];
+    if (!entry) {
+      return null;
+    }
+
+    const sourceParams = isRecord(params) ? params : {};
+    const currentClinicId = getDefaultClinicId();
+    const requestedClinicId = typeof sourceParams.clinicId === "string" && sourceParams.clinicId.length > 0
+      ? sourceParams.clinicId
+      : currentClinicId;
+    if (!requestedClinicId || (sourceParams.clinicId && !canUseClinicId(requestedClinicId))) {
+      return null;
+    }
+
+    const nextReadParams = { ...currentReadParams };
+    if (sourceParams.date !== undefined) {
+      if (!isDateKey(sourceParams.date)) {
+        return null;
+      }
+      nextReadParams.date = sourceParams.date;
+    }
+
+    const nextContext = {
+      ...currentContext,
+      defaultClinicId: requestedClinicId
+    };
+    const readUrl = buildReadUrl(entry, nextContext, nextReadParams);
+    if (!readUrl) {
+      return null;
+    }
+
+    return {
+      screen,
+      readUrl,
+      contextData: nextContext,
+      readParams: nextReadParams
+    };
+  }
+
+  function getReadInFlightKey(request) {
+    return request.screen + ":" + request.readUrl;
+  }
+
+  async function runRefreshReadData(request) {
+    setStatus("loading");
+    const readResult = await fetchJson(request.readUrl);
+    if (readResult.kind === "unauthorized") {
+      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+      return false;
+    }
+    if (readResult.kind === "forbidden") {
+      showFallback("forbidden", STATUS_MESSAGES.forbidden);
+      return false;
+    }
+    if (readResult.kind === "unavailable") {
+      showFallback("unavailable", STATUS_MESSAGES.unavailable);
+      return false;
+    }
+    if (
+      readResult.kind !== "payload" ||
+      !hydrateReadOnlyData(request.screen, readResult.payload, true)
+    ) {
+      showFallback("invalid", STATUS_MESSAGES.invalid);
+      return false;
+    }
+
+    currentContext = request.contextData;
+    currentReadParams = request.readParams;
+    if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
+      await hydrateSupplementalReadData(request.screen, request.contextData);
+    }
+    return true;
+  }
+
+  function refreshReadData(params) {
+    const request = buildRefreshReadRequest(params);
+    if (!request) {
+      return Promise.resolve(false);
+    }
+
+    const inFlightKey = getReadInFlightKey(request);
+    const existingRead = inFlightReads.get(inFlightKey);
+    if (existingRead) {
+      setStatus("loading");
+      return existingRead;
+    }
+
+    const read = runRefreshReadData(request).finally(() => {
+      inFlightReads.delete(inFlightKey);
+    });
+    inFlightReads.set(inFlightKey, read);
+    return read;
   }
 
   function getNormalizedPathname() {
@@ -536,7 +663,7 @@ export function buildMobileUiuxBridgeScript(
       showFallback("forbidden", STATUS_MESSAGES.forbidden);
       return;
     }
-    if (readResult.kind !== "payload" || !hydrateReadOnlyData(screen, readResult.payload)) {
+    if (readResult.kind !== "payload" || !hydrateReadOnlyData(screen, readResult.payload, false)) {
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return;
     }
@@ -569,12 +696,6 @@ export function buildMobileUiuxBridgeScript(
 
   function getMutationInFlightKey(options) {
     return options.mutationKey + ":" + options.method + ":" + options.url;
-  }
-
-  function getDefaultClinicId() {
-    return isRecord(currentContext) && typeof currentContext.defaultClinicId === "string"
-      ? currentContext.defaultClinicId
-      : "";
   }
 
   function normalizeDailyReportPayload(payload) {
@@ -736,6 +857,9 @@ export function buildMobileUiuxBridgeScript(
     },
     updateSettings(payload) {
       return mutateSettings(payload);
+    },
+    refreshReadData(params) {
+      return refreshReadData(params);
     }
   };
 

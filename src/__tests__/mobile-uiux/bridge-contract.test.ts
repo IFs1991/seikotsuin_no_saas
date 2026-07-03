@@ -95,6 +95,10 @@ type BridgeWindow = {
     updateReservation: (payload: unknown) => Promise<boolean>;
     submitDailyReport: (payload: unknown) => Promise<boolean>;
     updateSettings: (payload: unknown) => Promise<boolean>;
+    refreshReadData: (params: {
+      date?: string;
+      clinicId?: string;
+    }) => Promise<boolean>;
   };
   __MOBILE_UIUX_APPLY_READ_DATA__?: (
     screen: string,
@@ -570,6 +574,185 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.body.textContent).toContain(
       '予約データを読み込みました（1件）'
     );
+  });
+
+  it('refreshes read data with date overrides and suppresses duplicate in-flight reads', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const initialPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const refreshedPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-07-01',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            customerName: 'BFF 翌日患者',
+            menuName: 'BFF 翌日メニュー',
+            staffName: 'BFF 翌日先生',
+            startTime: '2026-07-01T01:00:00.000Z',
+            endTime: '2026-07-01T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-07-01T00:00:00.000Z',
+    };
+    let resolveRefresh:
+      | ((value: BridgeFetchResponse) => void)
+      | undefined;
+    const refreshResponse = new Promise<BridgeFetchResponse>(resolve => {
+      resolveRefresh = resolve;
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, initialPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    window.fetch.mockImplementationOnce(async (url, init) => {
+      calls.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: init?.body,
+      });
+      return refreshResponse;
+    });
+
+    const firstRefresh = window.MobileUiuxBridge?.refreshReadData({
+      date: '2026-07-01',
+    });
+    const secondRefresh = window.MobileUiuxBridge?.refreshReadData({
+      date: '2026-07-01',
+    });
+
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'loading'
+    );
+    expect(
+      calls.filter(call => call.url.includes('date=2026-07-01'))
+    ).toHaveLength(1);
+
+    resolveRefresh?.(buildJsonResponse(200, refreshedPayload));
+    await expect(firstRefresh).resolves.toBe(true);
+    await expect(secondRefresh).resolves.toBe(true);
+
+    expect(calls).toContainEqual({
+      url: expect.stringContaining('date=2026-07-01') as string,
+      method: 'GET',
+      body: undefined,
+    });
+    expect(applyReadData).toHaveBeenLastCalledWith(
+      'reservations',
+      refreshedPayload
+    );
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+  });
+
+  it('returns false and shows fallback status when refresh read data fails', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const initialPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, initialPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
+        buildJsonResponse(500, { success: false }),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    const result = await window.MobileUiuxBridge?.refreshReadData({
+      date: '2026-07-01',
+    });
+
+    expect(result).toBe(false);
+    expect(calls).toContainEqual({
+      url: expect.stringContaining('date=2026-07-01') as string,
+      method: 'GET',
+      body: undefined,
+    });
+    expect(applyReadData).not.toHaveBeenCalledWith(
+      'reservations',
+      expect.objectContaining({
+        generatedAt: '2026-07-01T00:00:00.000Z',
+      })
+    );
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'fallback'
+    );
+    expect(window.document.body.textContent).toContain(
+      '実データを一時的に表示できません'
+    );
+  });
+
+  it('rejects out-of-scope clinic refreshes without fetching', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const initialPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const { window, calls } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, initialPayload),
+      ],
+      jest.fn<boolean, [string, unknown]>(() => true)
+    );
+
+    await runBridgeScript(script, window);
+    const callsBeforeRefresh = calls.length;
+    const result = await window.MobileUiuxBridge?.refreshReadData({
+      clinicId: '22222222-2222-4222-8222-222222222222',
+    });
+
+    expect(result).toBe(false);
+    expect(calls).toHaveLength(callsBeforeRefresh);
   });
 
   it('calls the home read hydration adapter after BFF success and marks hydrated when applied', async () => {
