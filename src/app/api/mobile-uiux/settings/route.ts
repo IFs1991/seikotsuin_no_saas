@@ -149,11 +149,7 @@ export async function GET(request: NextRequest) {
     categoryParam
   );
   if (!readResult.success) {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      '設定の取得に失敗しました'
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', '設定の取得に失敗しました');
   }
 
   const response: MobileUiuxSettingsResponse = {
@@ -252,11 +248,7 @@ export async function PUT(request: NextRequest) {
     guard.auth.id
   );
   if (writeResult.success === false) {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      writeResult.message
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', writeResult.message);
   }
 
   logAdminSettingsMutation({
@@ -273,11 +265,7 @@ export async function PUT(request: NextRequest) {
     payload.category
   );
   if (!readResult.success) {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      '設定の確認に失敗しました'
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', '設定の確認に失敗しました');
   }
 
   const response: MobileUiuxSettingsWriteResponse = {

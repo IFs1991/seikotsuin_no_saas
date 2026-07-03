@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
   if (clinicResult.error || menusResult.error || resourcesResult.error) {
     return buildMobileUiuxFailure(
       500,
-      'INTERNAL_SERVER_ERROR',
+      'INTERNAL',
       '設定詳細の取得に失敗しました'
     );
   }

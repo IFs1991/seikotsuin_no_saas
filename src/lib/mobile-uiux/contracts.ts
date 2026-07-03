@@ -13,10 +13,17 @@ export type MobileUiuxApiSuccess<T> = {
   generatedAt: string;
 };
 
+export type MobileUiuxApiErrorCode =
+  | 'BAD_REQUEST'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'CONFLICT'
+  | 'INTERNAL';
+
 export type MobileUiuxApiFailure = {
   success: false;
   error: {
-    code: string;
+    code: MobileUiuxApiErrorCode;
     message: string;
   };
 };
