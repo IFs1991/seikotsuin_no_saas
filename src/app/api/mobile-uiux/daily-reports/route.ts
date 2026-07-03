@@ -250,10 +250,6 @@ export async function POST(request: NextRequest) {
 
     return buildMobileUiuxSuccess(response);
   } catch {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      '日報の保存に失敗しました'
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', '日報の保存に失敗しました');
   }
 }

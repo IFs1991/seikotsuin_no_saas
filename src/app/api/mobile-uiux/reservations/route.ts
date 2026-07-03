@@ -24,6 +24,7 @@ import {
 import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import type { MobileUiuxReservationsResponse } from '@/lib/mobile-uiux/contracts';
 import {
+  buildMobileUiuxFailureFromResponse,
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
   isValidDateKey,
@@ -412,7 +413,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     return buildMobileUiuxFailure(
       500,
-      'INTERNAL_SERVER_ERROR',
+      'INTERNAL',
       '予約一覧の取得に失敗しました'
     );
   }
@@ -443,7 +444,10 @@ export async function POST(request: NextRequest) {
       }
     );
     if (!result.success) {
-      return result.error;
+      return buildMobileUiuxFailureFromResponse(
+        result.error,
+        '予約の作成権限を確認できませんでした'
+      );
     }
 
     const dto = result.dto;
@@ -465,7 +469,7 @@ export async function POST(request: NextRequest) {
     if (references.ok === false) {
       return buildMobileUiuxFailure(
         references.status,
-        references.status === 403 ? 'FORBIDDEN' : 'INTERNAL_SERVER_ERROR',
+        references.status === 403 ? 'FORBIDDEN' : 'INTERNAL',
         references.message
       );
     }
@@ -506,7 +510,7 @@ export async function POST(request: NextRequest) {
     if (error || !data) {
       return buildMobileUiuxFailure(
         500,
-        'INTERNAL_SERVER_ERROR',
+        'INTERNAL',
         '予約の作成に失敗しました'
       );
     }
@@ -519,7 +523,7 @@ export async function POST(request: NextRequest) {
     if (!reservation) {
       return buildMobileUiuxFailure(
         500,
-        'INTERNAL_SERVER_ERROR',
+        'INTERNAL',
         '予約は作成されましたが、予約一覧への反映に失敗しました'
       );
     }
@@ -533,11 +537,7 @@ export async function POST(request: NextRequest) {
 
     return buildMobileUiuxSuccess(response, 201);
   } catch {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      '予約の作成に失敗しました'
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', '予約の作成に失敗しました');
   }
 }
 
@@ -558,7 +558,10 @@ export async function PATCH(request: NextRequest) {
       }
     );
     if (!result.success) {
-      return result.error;
+      return buildMobileUiuxFailureFromResponse(
+        result.error,
+        '予約の更新権限を確認できませんでした'
+      );
     }
 
     const dto = result.dto;
@@ -617,7 +620,7 @@ export async function PATCH(request: NextRequest) {
       if (references.ok === false) {
         return buildMobileUiuxFailure(
           references.status,
-          references.status === 403 ? 'FORBIDDEN' : 'INTERNAL_SERVER_ERROR',
+          references.status === 403 ? 'FORBIDDEN' : 'INTERNAL',
           references.message
         );
       }
@@ -667,7 +670,7 @@ export async function PATCH(request: NextRequest) {
     if (error || !data) {
       return buildMobileUiuxFailure(
         500,
-        'INTERNAL_SERVER_ERROR',
+        'INTERNAL',
         '予約の更新に失敗しました'
       );
     }
@@ -680,7 +683,7 @@ export async function PATCH(request: NextRequest) {
     if (!reservation) {
       return buildMobileUiuxFailure(
         500,
-        'INTERNAL_SERVER_ERROR',
+        'INTERNAL',
         '予約は更新されましたが、予約一覧への反映に失敗しました'
       );
     }
@@ -721,10 +724,6 @@ export async function PATCH(request: NextRequest) {
 
     return buildMobileUiuxSuccess(response);
   } catch {
-    return buildMobileUiuxFailure(
-      500,
-      'INTERNAL_SERVER_ERROR',
-      '予約の更新に失敗しました'
-    );
+    return buildMobileUiuxFailure(500, 'INTERNAL', '予約の更新に失敗しました');
   }
 }

@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 
 import type {
+  MobileUiuxApiErrorCode,
   MobileUiuxApiFailure,
   MobileUiuxApiSuccess,
 } from '@/lib/mobile-uiux/contracts';
 
 const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+const NO_STORE_CACHE_CONTROL = 'no-store';
+
+const JSON_RESPONSE_HEADERS = {
+  'Content-Type': JSON_CONTENT_TYPE,
+  'Cache-Control': NO_STORE_CACHE_CONTROL,
+} as const;
 
 export type MobileUiuxDeniedAccessLogDetails = {
   reasonCode: string;
@@ -24,22 +31,25 @@ export function logMobileUiuxDeniedAccess(
 
 export function buildMobileUiuxFailure(
   status: number,
-  code: string,
+  code: MobileUiuxApiErrorCode,
   message: string
 ): NextResponse<MobileUiuxApiFailure> {
+  const responseCode =
+    code === getMobileUiuxErrorCode(status)
+      ? code
+      : getMobileUiuxErrorCode(status);
+
   return NextResponse.json(
     {
       success: false,
       error: {
-        code,
+        code: responseCode,
         message,
       },
     },
     {
       status,
-      headers: {
-        'Content-Type': JSON_CONTENT_TYPE,
-      },
+      headers: JSON_RESPONSE_HEADERS,
     }
   );
 }
@@ -56,10 +66,69 @@ export function buildMobileUiuxSuccess<T>(
     },
     {
       status,
-      headers: {
-        'Content-Type': JSON_CONTENT_TYPE,
-      },
+      headers: JSON_RESPONSE_HEADERS,
     }
+  );
+}
+
+export function getMobileUiuxErrorCode(status: number): MobileUiuxApiErrorCode {
+  switch (status) {
+    case 400:
+      return 'BAD_REQUEST';
+    case 401:
+      return 'UNAUTHORIZED';
+    case 403:
+      return 'FORBIDDEN';
+    case 409:
+      return 'CONFLICT';
+    default:
+      return 'INTERNAL';
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function resolveFailureMessage(
+  payload: unknown,
+  fallbackMessage: string
+): string {
+  if (!isRecord(payload)) {
+    return fallbackMessage;
+  }
+
+  const error = payload.error;
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  if (isRecord(error) && typeof error.message === 'string') {
+    return error.message;
+  }
+
+  return typeof payload.message === 'string'
+    ? payload.message
+    : fallbackMessage;
+}
+
+export async function buildMobileUiuxFailureFromResponse(
+  response: Response,
+  fallbackMessage: string
+): Promise<NextResponse<MobileUiuxApiFailure>> {
+  let message = fallbackMessage;
+
+  try {
+    const payload: unknown = await response.clone().json();
+    message = resolveFailureMessage(payload, fallbackMessage);
+  } catch {
+    message = fallbackMessage;
+  }
+
+  return buildMobileUiuxFailure(
+    response.status,
+    getMobileUiuxErrorCode(response.status),
+    message
   );
 }
 
