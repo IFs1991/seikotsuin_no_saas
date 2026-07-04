@@ -90,7 +90,7 @@ describe('mobile-uiux entry UX', () => {
     await userEvent.click(await screen.findByText('スマホ版で開く'));
 
     expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
-    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux');
+    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
   });
 
   it('does not repeat the mobile viewport banner after dismiss', async () => {
@@ -107,7 +107,31 @@ describe('mobile-uiux entry UX', () => {
     });
   });
 
-  it('does not show entry points when the mobile context is forbidden', async () => {
+  it('does not show the mobile viewport banner when the mobile context is forbidden', async () => {
+    global.fetch = jest.fn(async () =>
+      Response.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'forbidden',
+          },
+        },
+        { status: 403 }
+      )
+    );
+    const { MobileUiuxEntryPrompt } = await import(
+      '@/components/mobile-uiux/mobile-entry-prompt'
+    );
+
+    render(<MobileUiuxEntryPrompt />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('スマホ版で開く')).not.toBeInTheDocument();
+    });
+  });
+
+  it('keeps the header menu entry visible when the mobile context is forbidden', async () => {
     global.fetch = jest.fn(async () =>
       Response.json(
         {
@@ -126,9 +150,11 @@ describe('mobile-uiux entry UX', () => {
 
     render(<MobileUiuxEntryPrompt variant='menu-item' />);
 
-    await waitFor(() => {
-      expect(screen.queryByText('スマホ版で開く')).not.toBeInTheDocument();
-    });
+    await userEvent.click(screen.getByText('スマホ版で開く'));
+
+    expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
+    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('saves desktop mode when returning from mobile-uiux to the PC version', async () => {

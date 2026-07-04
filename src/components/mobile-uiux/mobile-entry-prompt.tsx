@@ -23,6 +23,7 @@ type MobileUiuxContextPayload = {
 };
 
 const MOBILE_WIDTH_QUERY = '(max-width: 767px)';
+const MOBILE_UIUX_ENTRY_PATH = '/mobile-uiux/screens/home';
 
 function isMobileViewport(): boolean {
   if (typeof window === 'undefined') {
@@ -74,6 +75,31 @@ function isContextSuccess(
 export function MobileUiuxEntryPrompt({
   variant = 'banner',
 }: MobileUiuxEntryPromptProps) {
+  if (variant === 'menu-item') {
+    return <MobileUiuxMenuItemEntry />;
+  }
+
+  return <MobileUiuxBannerEntry />;
+}
+
+function openMobileUiux() {
+  setDisplayMode('mobile');
+  window.location.assign(MOBILE_UIUX_ENTRY_PATH);
+}
+
+function MobileUiuxMenuItemEntry() {
+  return (
+    <button
+      type='button'
+      className='block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
+      onClick={openMobileUiux}
+    >
+      スマホ版で開く
+    </button>
+  );
+}
+
+function MobileUiuxBannerEntry() {
   const [canUseMobileUiux, setCanUseMobileUiux] = React.useState(false);
   const [isDismissed, setIsDismissed] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
@@ -115,8 +141,7 @@ export function MobileUiuxEntryPrompt({
   }, []);
 
   const openMobile = React.useCallback(() => {
-    setDisplayMode('mobile');
-    window.location.assign('/mobile-uiux');
+    openMobileUiux();
   }, []);
 
   const stayDesktop = React.useCallback(() => {
@@ -132,18 +157,6 @@ export function MobileUiuxEntryPrompt({
 
   if (!canUseMobileUiux) {
     return null;
-  }
-
-  if (variant === 'menu-item') {
-    return (
-      <button
-        type='button'
-        className='block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
-        onClick={openMobile}
-      >
-        スマホ版で開く
-      </button>
-    );
   }
 
   if (!isMobile || isDismissed) {
