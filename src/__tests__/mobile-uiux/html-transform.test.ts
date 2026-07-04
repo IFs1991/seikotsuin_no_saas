@@ -122,6 +122,9 @@ describe('transformMobileUiuxHtml', () => {
 
     expect(transformed).toContain('[data-mobile-uiux-bridge-fallback]');
     expect(transformed).toContain('[data-mobile-uiux-mutation-status]');
+    expect(transformed).toContain('data-mobile-uiux-initial-read="hydrated"');
+    expect(transformed).toContain('visibility: hidden !important');
+    expect(transformed).toContain('読み込み中です');
     expect(transformed).toContain('background: var(--surface)');
     expect(transformed).toContain('color: var(--fg)');
     expect(transformed).toContain('border: 1px solid var(--border)');

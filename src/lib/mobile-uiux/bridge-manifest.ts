@@ -190,8 +190,19 @@ export function buildMobileUiuxBridgeScript(
     document.documentElement.dataset.mobileUiuxBridge = status;
   }
 
-  function showFallback(status, message) {
-    setStatus("fallback");
+  function setInitialReadState(status) {
+    document.documentElement.dataset.mobileUiuxInitialRead = status;
+  }
+
+  function markInitialReadFailed() {
+    if (document.documentElement.dataset.mobileUiuxInitialRead !== "hydrated") {
+      setInitialReadState("failed");
+    }
+  }
+
+  function showFallback(status, message, bridgeStatus) {
+    markInitialReadFailed();
+    setStatus(bridgeStatus || "fallback");
     const fallback = fallbackStatusElement || document.createElement("div");
     if (!fallbackStatusElement) {
       fallback.setAttribute("role", "status");
@@ -401,10 +412,12 @@ export function buildMobileUiuxBridgeScript(
     const applied = applyReadData(screen, payload);
     appendReadStatus(screen, summary);
     if (applied === true) {
+      setInitialReadState("hydrated");
       setStatus("hydrated");
       return true;
     }
 
+    markInitialReadFailed();
     setStatus("fallback");
     return requireApplied === true ? false : true;
   }
@@ -626,8 +639,11 @@ export function buildMobileUiuxBridgeScript(
   }
 
   async function boot() {
+    setInitialReadState("loading");
+    setStatus("loading");
+
     if (!REAL_DATA_ENABLED) {
-      setStatus("disabled");
+      showFallback("disabled", STATUS_MESSAGES.disabled, "disabled");
       return;
     }
 

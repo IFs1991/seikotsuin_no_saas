@@ -13,6 +13,21 @@ body[data-mobile-uiux-shell="production"] {
   background: var(--screen-bg, #f3f5f4);
   overflow: hidden;
 }
+body[data-mobile-uiux-shell="production"]::before {
+  content: "読み込み中です";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483500;
+  display: grid;
+  place-items: center;
+  background: var(--screen-bg, #f3f5f4);
+  color: var(--fg-2, #53605a);
+  font: 700 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html[data-mobile-uiux-initial-read="hydrated"] body[data-mobile-uiux-shell="production"]::before,
+html[data-mobile-uiux-initial-read="failed"] body[data-mobile-uiux-shell="production"]::before {
+  display: none;
+}
 [data-mobile-uiux-production-root] {
   width: 100% !important;
   min-height: 100svh !important;
@@ -29,6 +44,10 @@ body[data-mobile-uiux-shell="production"] {
   height: 100svh !important;
   min-height: 100svh !important;
   border-radius: 0 !important;
+  visibility: hidden !important;
+}
+html[data-mobile-uiux-initial-read="hydrated"] [data-screen-label] {
+  visibility: visible !important;
 }
 .scrl { -webkit-overflow-scrolling: touch; }
 body[data-mobile-uiux-shell="production"] [data-mobile-uiux-bridge-fallback],
