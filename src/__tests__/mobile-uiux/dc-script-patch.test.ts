@@ -691,6 +691,200 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
   });
 
+  function buildHomeDashboardPayload(
+    dashboardOverrides: Record<string, unknown>
+  ) {
+    return {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        clinicName: 'BFF 本町院',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          alerts: [],
+          ...dashboardOverrides,
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+        attentions: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+  }
+
+  function buildHomeComponentSource(): string {
+    return `class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      showAiCard: true,
+      aiSummary: 'mock ai summary should not survive',
+      aiPoints: ['mock ai point should not survive'],
+      showRevCard: true,
+      revBars: [{ h: '10%', fill: 'x', label: 'mock', labelC: 'x', labelW: '500' }],
+      revDelta: 'mock delta should not survive',
+      showHeatCard: true,
+      heatCells: [{ bg: 'mock-bg', label: 'mock-label' }]
+    };
+  }
+}`;
+  }
+
+  it('maps dashboard.aiComment to aiSummary/aiPoints and hides mock text', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        aiComment: {
+          id: 'ai-1',
+          summary: 'real ai summary',
+          highlights: ['real highlight'],
+          improvements: ['real improvement'],
+          suggestions: ['real suggestion'],
+          created_at: '2026-06-30T00:00:00.000Z',
+        },
+      })
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showAiCard).toBe(true);
+    expect(vals.aiSummary).toBe('real ai summary');
+    expect(vals.aiPoints).toEqual([
+      'real highlight',
+      'real improvement',
+      'real suggestion',
+    ]);
+    expect(vals.aiSummary).not.toContain('should not survive');
+    expect(JSON.stringify(vals.aiPoints)).not.toContain('should not survive');
+  });
+
+  it('hides the AI card when dashboard.aiComment is null', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ aiComment: null })
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showAiCard).toBe(false);
+  });
+
+  it('maps dashboard.revenueChartData to revVals/revBars and hides when empty', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const appliedWithData = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        revenueChartData: [
+          { name: '6/24', 総売上: 100000, 保険診療: 40000, 自費診療: 60000 },
+          { name: '6/25', 総売上: 120000, 保険診療: 50000, 自費診療: 70000 },
+        ],
+      })
+    );
+    const valsWithData = component.renderVals();
+
+    expect(appliedWithData).toBe(true);
+    expect(valsWithData.showRevCard).toBe(true);
+    expect(valsWithData.revVals).toEqual([100000, 120000]);
+    expect(Array.isArray(valsWithData.revBars)).toBe(true);
+    expect((valsWithData.revBars as unknown[]).length).toBe(2);
+    expect(JSON.stringify(valsWithData.revBars)).not.toContain(
+      'should not survive'
+    );
+    expect(valsWithData.revDelta).not.toContain('should not survive');
+
+    const appliedEmpty = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ revenueChartData: [] })
+    );
+    const valsEmpty = component.renderVals();
+
+    expect(appliedEmpty).toBe(true);
+    expect(valsEmpty.showRevCard).toBe(false);
+  });
+
+  it('maps dashboard.heatmapData to heatCells and hides when empty', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const appliedWithData = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        heatmapData: [
+          { hour_of_day: 10, day_of_week: 1, visit_count: 2, avg_revenue: 1000 },
+          { hour_of_day: 11, day_of_week: 1, visit_count: 8, avg_revenue: 2000 },
+        ],
+      })
+    );
+    const valsWithData = component.renderVals();
+
+    expect(appliedWithData).toBe(true);
+    expect(valsWithData.showHeatCard).toBe(true);
+    expect(Array.isArray(valsWithData.heatCells)).toBe(true);
+    expect((valsWithData.heatCells as unknown[]).length).toBe(2);
+    expect(JSON.stringify(valsWithData.heatCells)).not.toContain(
+      'should not survive'
+    );
+
+    const appliedEmpty = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ heatmapData: [] })
+    );
+    const valsEmpty = component.renderVals();
+
+    expect(appliedEmpty).toBe(true);
+    expect(valsEmpty.showHeatCard).toBe(false);
+  });
+
   it('replaces fake APPTS-derived agenda rows with real reservations data on home', () => {
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {

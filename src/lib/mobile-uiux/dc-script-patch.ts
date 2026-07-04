@@ -651,7 +651,130 @@ function buildHomeHydrationAdapterSource(): string {
       overrides.reportRows = reportStatus.rows;
     }
 
+    const aiCardOverrides = this.__mobileUiuxBuildHomeAiCardOverrides(dashboard.aiComment);
+    Object.assign(overrides, aiCardOverrides);
+
+    const revenueCardOverrides = this.__mobileUiuxBuildHomeRevenueCardOverrides(dashboard.revenueChartData);
+    Object.assign(overrides, revenueCardOverrides);
+
+    const heatmapCardOverrides = this.__mobileUiuxBuildHomeHeatmapCardOverrides(dashboard.heatmapData);
+    Object.assign(overrides, heatmapCardOverrides);
+
     return overrides;
+  }
+
+  __mobileUiuxBuildHomeAiCardOverrides(aiComment) {
+    if (!this.__mobileUiuxIsRecord(aiComment)) {
+      return { showAiCard: false };
+    }
+    const summary = this.__mobileUiuxDisplayText(aiComment.summary, '');
+    if (!summary) {
+      return { showAiCard: false };
+    }
+    const points = [];
+    if (Array.isArray(aiComment.highlights)) {
+      for (const item of aiComment.highlights) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    if (Array.isArray(aiComment.improvements)) {
+      for (const item of aiComment.improvements) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    if (Array.isArray(aiComment.suggestions)) {
+      for (const item of aiComment.suggestions) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    return {
+      showAiCard: true,
+      aiSummary: summary,
+      aiPoints: points
+    };
+  }
+
+  __mobileUiuxBuildHomeRevenueCardOverrides(revenueChartData) {
+    if (!Array.isArray(revenueChartData) || revenueChartData.length === 0) {
+      return { showRevCard: false };
+    }
+    const revVals = [];
+    const revLabels = [];
+    for (const point of revenueChartData) {
+      if (!this.__mobileUiuxIsRecord(point)) continue;
+      const total = this.__mobileUiuxNumber(point['総売上']);
+      revVals.push(total);
+      revLabels.push(this.__mobileUiuxDisplayText(point.name, ''));
+    }
+    if (revVals.length === 0) {
+      return { showRevCard: false };
+    }
+    const revMax = Math.max(...revVals, 0);
+    const lastIndex = revVals.length - 1;
+    const revBars = revVals.map((v, i) => {
+      const today = i === lastIndex;
+      const height = revMax > 0 ? Math.round((v / revMax) * 100) : 0;
+      return {
+        h: height + '%',
+        fill: today ? 'var(--primary)' : 'var(--primary-soft)',
+        label: revLabels[i] || '',
+        labelC: today ? 'var(--fg)' : 'var(--fg-3)',
+        labelW: today ? '700' : '500'
+      };
+    });
+    const first = revVals[0];
+    const last = revVals[lastIndex];
+    let revDelta = '';
+    if (typeof first === 'number' && typeof last === 'number' && first > 0) {
+      const pct = ((last - first) / first) * 100;
+      const sign = pct >= 0 ? '+' : '';
+      revDelta = sign + pct.toFixed(1) + '%';
+    }
+    return {
+      showRevCard: true,
+      revVals,
+      revBars,
+      revDelta
+    };
+  }
+
+  __mobileUiuxBuildHomeHeatmapCardOverrides(heatmapData) {
+    if (!Array.isArray(heatmapData) || heatmapData.length === 0) {
+      return { showHeatCard: false };
+    }
+    const rows = [];
+    for (const point of heatmapData) {
+      if (!this.__mobileUiuxIsRecord(point)) continue;
+      const hour = this.__mobileUiuxNumber(point.hour_of_day);
+      const count = this.__mobileUiuxNumber(point.visit_count);
+      rows.push({ hour, count });
+    }
+    if (rows.length === 0) {
+      return { showHeatCard: false };
+    }
+    rows.sort((a, b) => a.hour - b.hour);
+    const maxCount = Math.max(...rows.map((r) => r.count), 0);
+    const heatBg = ['var(--surface-3)', 'var(--primary-soft)', 'color-mix(in srgb, var(--primary) 65%, transparent)', 'var(--primary)'];
+    const heatCells = rows.map((row) => {
+      let level = 0;
+      if (maxCount > 0) {
+        const ratio = row.count / maxCount;
+        if (ratio > 0.66) level = 3;
+        else if (ratio > 0.33) level = 2;
+        else if (ratio > 0) level = 1;
+      }
+      return {
+        bg: heatBg[level],
+        label: String(row.hour)
+      };
+    });
+    return {
+      showHeatCard: true,
+      heatCells
+    };
   }
 
   __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
