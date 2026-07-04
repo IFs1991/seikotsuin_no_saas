@@ -74,7 +74,13 @@ const SCREEN_DEFINITIONS = {
   patients: {
     fileName: 'patients.dc.html',
     contentType: 'text/html; charset=utf-8',
-    allowedRoles: ['admin', 'clinic_admin', 'manager', 'staff'] as const,
+    allowedRoles: [
+      'admin',
+      'clinic_admin',
+      'manager',
+      'therapist',
+      'staff',
+    ] as const,
   },
   'daily-reports': {
     fileName: 'daily-reports.dc.html',

@@ -8,11 +8,13 @@ import {
   buildMobileUiuxDisplayModeCookie,
   MOBILE_UIUX_DISMISSED_STORAGE_KEY,
 } from '@/lib/mobile-uiux/display-mode';
+import { normalizeRole } from '@/lib/constants/roles';
 
 type MobileUiuxEntryPromptVariant = 'banner' | 'menu-item';
 
 type MobileUiuxEntryPromptProps = {
   variant?: MobileUiuxEntryPromptVariant;
+  role?: string | null;
 };
 
 type MobileUiuxContextPayload = {
@@ -23,7 +25,8 @@ type MobileUiuxContextPayload = {
 };
 
 const MOBILE_WIDTH_QUERY = '(max-width: 767px)';
-const MOBILE_UIUX_ENTRY_PATH = '/mobile-uiux/screens/home';
+const MOBILE_UIUX_ADMIN_ENTRY_PATH = '/mobile-uiux/screens/home';
+const MOBILE_UIUX_STAFF_ENTRY_PATH = '/mobile-uiux/screens/reservations';
 
 function isMobileViewport(): boolean {
   if (typeof window === 'undefined') {
@@ -74,32 +77,47 @@ function isContextSuccess(
 
 export function MobileUiuxEntryPrompt({
   variant = 'banner',
+  role = null,
 }: MobileUiuxEntryPromptProps) {
   if (variant === 'menu-item') {
-    return <MobileUiuxMenuItemEntry />;
+    return <MobileUiuxMenuItemEntry role={role} />;
   }
 
-  return <MobileUiuxBannerEntry />;
+  return <MobileUiuxBannerEntry role={role} />;
 }
 
-function openMobileUiux() {
+function resolveMobileUiuxEntryPath(role: string | null | undefined): string {
+  const normalizedRole = normalizeRole(role);
+
+  if (
+    normalizedRole === 'admin' ||
+    normalizedRole === 'clinic_admin' ||
+    normalizedRole === 'manager'
+  ) {
+    return MOBILE_UIUX_ADMIN_ENTRY_PATH;
+  }
+
+  return MOBILE_UIUX_STAFF_ENTRY_PATH;
+}
+
+function openMobileUiux(role: string | null | undefined) {
   setDisplayMode('mobile');
-  window.location.assign(MOBILE_UIUX_ENTRY_PATH);
+  window.location.assign(resolveMobileUiuxEntryPath(role));
 }
 
-function MobileUiuxMenuItemEntry() {
+function MobileUiuxMenuItemEntry({ role }: { role: string | null }) {
   return (
     <button
       type='button'
       className='block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
-      onClick={openMobileUiux}
+      onClick={() => openMobileUiux(role)}
     >
       スマホ版で開く
     </button>
   );
 }
 
-function MobileUiuxBannerEntry() {
+function MobileUiuxBannerEntry({ role }: { role: string | null }) {
   const [canUseMobileUiux, setCanUseMobileUiux] = React.useState(false);
   const [isDismissed, setIsDismissed] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(false);
@@ -141,8 +159,8 @@ function MobileUiuxBannerEntry() {
   }, []);
 
   const openMobile = React.useCallback(() => {
-    openMobileUiux();
-  }, []);
+    openMobileUiux(role);
+  }, [role]);
 
   const stayDesktop = React.useCallback(() => {
     setDisplayMode('desktop');
