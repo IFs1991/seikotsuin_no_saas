@@ -8,6 +8,8 @@ import {
   type MobileUiuxDisplayMode,
 } from '@/lib/mobile-uiux/contracts';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { resolveStaffDisplayName } from '@/lib/mobile-uiux/identity';
+import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
 import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
@@ -116,6 +118,11 @@ export async function GET(request: NextRequest) {
       ? contextClinicId
       : rolloutDecision.clinicIds[0];
 
+  const [displayName, accessibleClinics] = await Promise.all([
+    resolveStaffDisplayName(supabase, user.id),
+    fetchClinicNames(supabase, rolloutDecision.clinicIds),
+  ]);
+
   const data: MobileUiuxContextResponse = {
     role: {
       canonical: rolloutDecision.role,
@@ -125,6 +132,8 @@ export async function GET(request: NextRequest) {
     accessibleClinicIds: rolloutDecision.clinicIds,
     displayMode: resolveDisplayMode(request),
     flags: rolloutDecision.publicFlags,
+    displayName,
+    accessibleClinics,
   };
 
   return buildMobileUiuxSuccess(data);

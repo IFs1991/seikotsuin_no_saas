@@ -48,6 +48,8 @@ export type MobileUiuxContextResponse = {
   accessibleClinicIds: string[];
   displayMode: MobileUiuxDisplayMode;
   flags: MobileUiuxPublicFlags;
+  displayName: string | null;
+  accessibleClinics: Array<{ id: string; name: string }>;
 };
 
 export type MobileUiuxHomeResponse = {

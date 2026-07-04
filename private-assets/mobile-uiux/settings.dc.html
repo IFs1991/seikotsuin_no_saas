@@ -130,7 +130,6 @@
               <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
                 <div style="font-size: 17px; font-weight: 700; color: var(--fg);">{{ acctName }}</div>
                 <div style="font-size: 12px; color: var(--fg-2);">{{ acctRoleLabel }} ・ {{ acctClinic }}</div>
-                <div style="font-size: 11.5px; color: var(--fg-3);">{{ acctEmail }}</div>
               </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -428,11 +427,11 @@
 class Component extends DCLogic {
   ROLE_LABEL = { therapist: 'セラピスト', staff: '受付スタッフ', clinic_admin: '院長', manager: 'エリアM', admin: '管理者' };
   USER = {
-    therapist: { name: '佐藤 美咲', initial: '美', clinic: '本町ケア整骨院', email: 'misaki.s@example.jp' },
-    staff:     { name: '高橋 涼介', initial: '涼', clinic: '本町ケア整骨院', email: 'ryosuke.t@example.jp' },
-    clinic_admin: { name: '井上 健', initial: '健', clinic: '本町ケア整骨院', email: 'ken.i@example.jp' },
-    manager:   { name: '松本 陽子', initial: '陽', clinic: '東エリア（3院）', email: 'yoko.m@example.jp' },
-    admin:     { name: 'システム管理者', initial: 'A', clinic: '全院', email: 'admin@example.jp' },
+    therapist: { name: '佐藤 美咲', initial: '美', clinic: '本町ケア整骨院' },
+    staff:     { name: '高橋 涼介', initial: '涼', clinic: '本町ケア整骨院' },
+    clinic_admin: { name: '井上 健', initial: '健', clinic: '本町ケア整骨院' },
+    manager:   { name: '松本 陽子', initial: '陽', clinic: '東エリア（3院）' },
+    admin:     { name: 'システム管理者', initial: 'A', clinic: '全院' },
   };
 
   CATS = [
@@ -796,7 +795,7 @@ class Component extends DCLogic {
       searchVal: s.search, onSearch: this.onSearch, searchIcon: this.searchEl(),
       groups, chevR: this.chev(),
 
-      acctInitial: u.initial, acctName: u.name, acctRoleLabel: this.ROLE_LABEL[role], acctClinic: u.clinic, acctEmail: u.email,
+      acctInitial: u.initial, acctName: u.name, acctRoleLabel: this.ROLE_LABEL[role], acctClinic: u.clinic,
       acctRows,
       detailRows, subsetBanner, subsetText,
 

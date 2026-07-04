@@ -143,7 +143,6 @@ body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pen
               <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
                 <div style="font-size: 17px; font-weight: 700; color: var(--fg);">{{ acctName }}</div>
                 <div style="font-size: 12px; color: var(--fg-2);">{{ acctRoleLabel }} ・ {{ acctClinic }}</div>
-                <div style="font-size: 11.5px; color: var(--fg-3);">{{ acctEmail }}</div>
               </div>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -439,11 +438,11 @@ body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pen
 class Component extends DCLogic {
   ROLE_LABEL = { therapist: 'セラピスト', staff: '受付スタッフ', clinic_admin: '院長', manager: 'エリアM', admin: '管理者' };
   USER = {
-    therapist: { name: '佐藤 美咲', initial: '美', clinic: '本町ケア整骨院', email: 'misaki.s@example.jp' },
-    staff:     { name: '高橋 涼介', initial: '涼', clinic: '本町ケア整骨院', email: 'ryosuke.t@example.jp' },
-    clinic_admin: { name: '井上 健', initial: '健', clinic: '本町ケア整骨院', email: 'ken.i@example.jp' },
-    manager:   { name: '松本 陽子', initial: '陽', clinic: '東エリア（3院）', email: 'yoko.m@example.jp' },
-    admin:     { name: 'システム管理者', initial: 'A', clinic: '全院', email: 'admin@example.jp' },
+    therapist: { name: '佐藤 美咲', initial: '美', clinic: '本町ケア整骨院' },
+    staff:     { name: '高橋 涼介', initial: '涼', clinic: '本町ケア整骨院' },
+    clinic_admin: { name: '井上 健', initial: '健', clinic: '本町ケア整骨院' },
+    manager:   { name: '松本 陽子', initial: '陽', clinic: '東エリア（3院）' },
+    admin:     { name: 'システム管理者', initial: 'A', clinic: '全院' },
   };
 
   CATS = [
@@ -807,7 +806,7 @@ class Component extends DCLogic {
       searchVal: s.search, onSearch: this.onSearch, searchIcon: this.searchEl(),
       groups, chevR: this.chev(),
 
-      acctInitial: u.initial, acctName: u.name, acctRoleLabel: this.ROLE_LABEL[role], acctClinic: u.clinic, acctEmail: u.email,
+      acctInitial: u.initial, acctName: u.name, acctRoleLabel: this.ROLE_LABEL[role], acctClinic: u.clinic,
       acctRows,
       detailRows, subsetBanner, subsetText,
 
@@ -874,9 +873,27 @@ class Component extends DCLogic {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextOverrides = component.__mobileUiuxBuildSettingsContextOverrides();
+        if (!contextOverrides) return false;
+        component.__mobileUiuxHydratedVals = {
+          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+          ...contextOverrides
+        };
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      component.__mobileUiuxHydratedVals = {
+        ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+        ...hydratedVals
+      };
       if (typeof component.setState === 'function') {
         component.setState({ __mobileUiuxHydratedAt: Date.now() });
       } else if (typeof component.forceUpdate === 'function') {
@@ -899,7 +916,41 @@ class Component extends DCLogic {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxBuildSettingsContextOverrides() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context)) return null;
+    const overrides = {};
+    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : null;
+    const roleLabel = this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
+      ? this.ROLE_LABEL[this.state.role]
+      : 'アカウント';
+    overrides.acctName = displayName || roleLabel;
+    overrides.acctInitial = displayName ? displayName.trim().charAt(0) : '・';
+
+    let clinicName = null;
+    if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
+      const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
+      if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
+        clinicName = match.name.trim();
+      }
+    }
+    if (clinicName) {
+      overrides.acctClinic = clinicName;
+      overrides.headerSub = clinicName + ' ・ JST';
+    } else {
+      overrides.headerSub = 'JST';
+    }
+
+    return overrides;
+  }
+
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -914,6 +965,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>

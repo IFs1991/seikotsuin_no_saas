@@ -140,6 +140,7 @@ export function buildMobileUiuxBridgeScript(
     settings: "/mobile-uiux/screens/settings"
   };
   const SUPPLEMENTAL_READS_BY_SCREEN = {
+    home: [{ screen: "reservations", applyScreen: "home" }],
     reservations: [{ screen: "settings-detail" }],
     "daily-reports": [{ screen: "settings-detail" }],
     "settings-detail": [
@@ -650,6 +651,8 @@ export function buildMobileUiuxBridgeScript(
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return;
     }
+
+    applyReadData("context", contextResult.payload);
 
     const entry = MOBILE_UIUX_SCREEN_MANIFEST[screen];
     const readUrl = buildReadUrl(entry, contextResult.payload.data);

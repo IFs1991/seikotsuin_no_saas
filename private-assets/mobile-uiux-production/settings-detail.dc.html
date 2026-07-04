@@ -905,7 +905,39 @@ class Component extends DCLogic {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
   __mobileUiuxBuildSettingsStatePatch(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      const contextClinics = this.__mobileUiuxContextClinics(this.__mobileUiuxContext);
+      if (contextClinics) {
+        this.__mobileUiuxContextClinicList = contextClinics;
+        const selected = Array.isArray(this.CLINICS) && this.CLINICS.length === 1 ? this.CLINICS[0] : null;
+        this.CLINICS = selected && selected.id
+          ? this.__mobileUiuxUpsertClinic(contextClinics, selected.id, selected.name)
+          : contextClinics;
+        if (typeof this.setState === 'function') {
+          this.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof this.forceUpdate === 'function') {
+          this.forceUpdate();
+        }
+      }
+      return false;
+    }
     if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return false;
     }
@@ -958,7 +990,10 @@ class Component extends DCLogic {
     if (this.__mobileUiuxIsRecord(data.clinic)) {
       const clinic = this.__mobileUiuxNormalizeClinic(data.clinic);
       if (clinic) {
-        this.CLINICS = [{ id: clinic.id, name: clinic.name }];
+        const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+        this.CLINICS = contextClinics
+          ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name)
+          : [{ id: clinic.id, name: clinic.name }];
         patch.clinic = clinic.id;
         patch.basic = {
           name: clinic.name,
@@ -976,6 +1011,22 @@ class Component extends DCLogic {
       patch.menus = this.__mobileUiuxBuildSettingsDetailMenus(data.menus);
     }
     return patch;
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    const existing = Array.isArray(list) ? list : [];
+    let replaced = false;
+    const next = existing.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxNormalizeClinic(value) {
@@ -1240,6 +1291,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>

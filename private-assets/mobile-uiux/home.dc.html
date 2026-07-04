@@ -212,7 +212,7 @@
           </sc-if>
 
           <!-- ════════ STORE: AI コメント ════════ -->
-          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ isStore && showAiCard }}" hint-placeholder-val="{{ true }}">
           <section>
             <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
               <div style="display: flex; align-items: center; gap: 9px; margin-bottom: 9px;">
@@ -231,9 +231,10 @@
           </sc-if>
 
           <!-- ════════ STORE: 収益推移 + 時間帯混雑 ════════ -->
-          <sc-if value="{{ isStore }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ isStore && (showRevCard || showHeatCard) }}" hint-placeholder-val="{{ true }}">
           <section style="display: flex; flex-direction: column; gap: 16px;">
             <!-- revenue -->
+            <sc-if value="{{ showRevCard }}" hint-placeholder-val="{{ true }}">
             <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
               <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px;">
                 <div style="font-size: 13px; font-weight: 700; color: var(--fg);">収益推移</div>
@@ -249,7 +250,9 @@
                 </sc-for>
               </div>
             </div>
+            </sc-if>
             <!-- heatmap -->
+            <sc-if value="{{ showHeatCard }}" hint-placeholder-val="{{ true }}">
             <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px 15px; box-shadow: 0 1px 2px rgba(0,0,0,.04);">
               <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px;">
                 <div style="font-size: 13px; font-weight: 700; color: var(--fg);">時間帯別の混雑</div>
@@ -265,6 +268,7 @@
                 </sc-for>
               </div>
             </div>
+            </sc-if>
           </section>
           </sc-if>
 
@@ -307,7 +311,7 @@
           </sc-if>
 
           <!-- ════════ MANAGER: 担当院カード ════════ -->
-          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isManager && showClinicCards }}" hint-placeholder-val="{{ false }}">
           <section>
             <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">担当院</h2>
             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -335,7 +339,7 @@
           </sc-if>
 
           <!-- ════════ MANAGER: 業務イベントタイムライン ════════ -->
-          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isManager && showEvents }}" hint-placeholder-val="{{ false }}">
           <section>
             <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
               <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">タイムライン</h2>
@@ -374,7 +378,7 @@
           </sc-if>
 
           <!-- ════════ ADMIN: 経営シグナル ════════ -->
-          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isAdmin && showSignals }}" hint-placeholder-val="{{ false }}">
           <section>
             <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">経営シグナル</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -412,7 +416,7 @@
           </sc-if>
 
           <!-- ════════ ADMIN: 院別パフォーマンス ════════ -->
-          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isAdmin && showPerfRows }}" hint-placeholder-val="{{ false }}">
           <section>
             <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
               <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">院別パフォーマンス</h2>
@@ -800,9 +804,9 @@ class Component extends DCLogic {
     }
 
     // ── header scope ──
-    let greeting = 'おはようございます、田中さん', scopeTag = '自院', scopeName = '本町ケア整骨院';
-    if (isManager) { greeting = 'おはようございます、佐藤さん'; scopeTag = '担当エリア'; scopeName = '担当3院 · 関西エリア'; }
-    if (isAdmin) { greeting = 'おはようございます、管理者さん'; scopeTag = '全社'; scopeName = '全12店舗 · 本部'; }
+    let greeting = 'おはようございます', scopeTag = '自院', scopeName = '本町ケア整骨院';
+    if (isManager) { scopeTag = '担当エリア'; scopeName = '担当3院 · 関西エリア'; }
+    if (isAdmin) { scopeTag = '全社'; scopeName = '全12店舗 · 本部'; }
     if (this.NOW >= 720) greeting = greeting.replace('おはようございます', 'こんにちは');
 
     // scope switcher options
@@ -848,12 +852,15 @@ class Component extends DCLogic {
       agendaRows, agTotal, agUnc, agCancel, agPastCount,
       togglePast: this.togglePast, pastLabel, pastChevron,
       goReservations: this.goReservations,
-      aiSummary, aiPoints,
+      showAiCard: true, aiSummary, aiPoints,
+      showRevCard: true, showHeatCard: true,
       revBars, revDelta, heatCells,
       quickActions,
       drDone, drReview, drMissing, reportRows,
-      clinicCards, events,
+      showClinicCards: true, clinicCards,
+      showEvents: true, events,
       showShortcuts: isManager, shortcutsTitle, shortcuts,
+      showSignals: true, showPerfRows: true,
       signals, perfRows, goCompare: this.goCompare,
       detailOpen: !!da, closeDetail: this.closeDetail, ...detail,
       toastShow: !!s.toast, toastMsg: s.toast,

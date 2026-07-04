@@ -691,6 +691,424 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
   });
 
+  function buildHomeDashboardPayload(
+    dashboardOverrides: Record<string, unknown>
+  ) {
+    return {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        clinicName: 'BFF 本町院',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          alerts: [],
+          ...dashboardOverrides,
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+        attentions: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+  }
+
+  function buildHomeComponentSource(): string {
+    return `class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      showAiCard: true,
+      aiSummary: 'mock ai summary should not survive',
+      aiPoints: ['mock ai point should not survive'],
+      showRevCard: true,
+      revBars: [{ h: '10%', fill: 'x', label: 'mock', labelC: 'x', labelW: '500' }],
+      revDelta: 'mock delta should not survive',
+      showHeatCard: true,
+      heatCells: [{ bg: 'mock-bg', label: 'mock-label' }]
+    };
+  }
+}`;
+  }
+
+  it('maps dashboard.aiComment to aiSummary/aiPoints and hides mock text', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        aiComment: {
+          id: 'ai-1',
+          summary: 'real ai summary',
+          highlights: ['real highlight'],
+          improvements: ['real improvement'],
+          suggestions: ['real suggestion'],
+          created_at: '2026-06-30T00:00:00.000Z',
+        },
+      })
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showAiCard).toBe(true);
+    expect(vals.aiSummary).toBe('real ai summary');
+    expect(vals.aiPoints).toEqual([
+      'real highlight',
+      'real improvement',
+      'real suggestion',
+    ]);
+    expect(vals.aiSummary).not.toContain('should not survive');
+    expect(JSON.stringify(vals.aiPoints)).not.toContain('should not survive');
+  });
+
+  it('hides the AI card when dashboard.aiComment is null', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ aiComment: null })
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showAiCard).toBe(false);
+  });
+
+  it('maps dashboard.revenueChartData to revVals/revBars and hides when empty', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const appliedWithData = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        revenueChartData: [
+          { name: '6/24', 総売上: 100000, 保険診療: 40000, 自費診療: 60000 },
+          { name: '6/25', 総売上: 120000, 保険診療: 50000, 自費診療: 70000 },
+        ],
+      })
+    );
+    const valsWithData = component.renderVals();
+
+    expect(appliedWithData).toBe(true);
+    expect(valsWithData.showRevCard).toBe(true);
+    expect(valsWithData.revVals).toEqual([100000, 120000]);
+    expect(Array.isArray(valsWithData.revBars)).toBe(true);
+    expect((valsWithData.revBars as unknown[]).length).toBe(2);
+    expect(JSON.stringify(valsWithData.revBars)).not.toContain(
+      'should not survive'
+    );
+    expect(valsWithData.revDelta).not.toContain('should not survive');
+
+    const appliedEmpty = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ revenueChartData: [] })
+    );
+    const valsEmpty = component.renderVals();
+
+    expect(appliedEmpty).toBe(true);
+    expect(valsEmpty.showRevCard).toBe(false);
+  });
+
+  it('maps dashboard.heatmapData to heatCells and hides when empty', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const appliedWithData = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({
+        heatmapData: [
+          { hour_of_day: 10, day_of_week: 1, visit_count: 2, avg_revenue: 1000 },
+          { hour_of_day: 11, day_of_week: 1, visit_count: 8, avg_revenue: 2000 },
+        ],
+      })
+    );
+    const valsWithData = component.renderVals();
+
+    expect(appliedWithData).toBe(true);
+    expect(valsWithData.showHeatCard).toBe(true);
+    expect(Array.isArray(valsWithData.heatCells)).toBe(true);
+    expect((valsWithData.heatCells as unknown[]).length).toBe(2);
+    expect(JSON.stringify(valsWithData.heatCells)).not.toContain(
+      'should not survive'
+    );
+
+    const appliedEmpty = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({ heatmapData: [] })
+    );
+    const valsEmpty = component.renderVals();
+
+    expect(appliedEmpty).toBe(true);
+    expect(valsEmpty.showHeatCard).toBe(false);
+  });
+
+  it('suppresses unbacked mock blocks (clinicCards/events/signals/perfRows) on primary home hydration', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({})
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showClinicCards).toBe(false);
+    expect(vals.showEvents).toBe(false);
+    expect(vals.showSignals).toBe(false);
+    expect(vals.showPerfRows).toBe(false);
+  });
+
+  it('keeps sample show flags true when the home payload is invalid (fallback contract)', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'boom' },
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(false);
+    expect(vals.showAiCard).toBe(true);
+    expect(vals.showRevCard).toBe(true);
+    expect(vals.showHeatCard).toBe(true);
+  });
+
+  it('replaces fake APPTS-derived agenda rows with real reservations data on home', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  STATUS = {
+    unconfirmed: { label: '未確認', c: 'uc-c', b: 'uc-b' },
+    confirmed: { label: '確定', c: 'cf-c', b: 'cf-b' },
+    arrived: { label: '来院済み', c: 'cf-c', b: 'cf-b' },
+    cancelled: { label: 'キャンセル', c: 'fg3-c', b: 'cn-b' },
+    noshow: { label: '来院なし', c: 'ns-c', b: 'ns-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      attentions: [],
+      attCount: '0件',
+      agTotal: 99,
+      agUnc: 99,
+      agCancel: 99,
+      drDone: 0,
+      drReview: 0,
+      drMissing: 0,
+      reportRows: [],
+      agendaRows: [
+        { isAppt: true, patient: '渡辺 結衣', menu: '産後骨盤矯正', ther: '田中 健太' },
+        { isAppt: true, patient: '伊藤 春香', menu: '鍼灸施術', ther: '佐藤 美咲' }
+      ]
+    };
+  }
+}`),
+      {
+        screen: 'home',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            customerName: 'E2Eテスト患者',
+            menuName: '産後骨盤矯正',
+            staffName: 'BFF 先生',
+            startTime: '2026-06-30T01:00:00.000Z',
+            endTime: '2026-06-30T01:30:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            customerName: 'E2Eテスト患者2',
+            menuName: '鍼灸施術',
+            staffName: 'BFF 先生2',
+            startTime: '2026-06-30T02:00:00.000Z',
+            endTime: '2026-06-30T02:40:00.000Z',
+            status: 'arrived',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const agendaRows = Array.isArray(vals.agendaRows) ? vals.agendaRows : [];
+    const serialized = JSON.stringify(agendaRows);
+
+    expect(applied).toBe(true);
+    expect(serialized).toContain('E2Eテスト患者');
+    expect(serialized).toContain('E2Eテスト患者2');
+    expect(serialized).not.toContain('渡辺 結衣');
+    expect(serialized).not.toContain('伊藤 春香');
+    expect(serialized).not.toContain('田中 健太');
+    expect(serialized).not.toContain('佐藤 美咲');
+  });
+
+  it('applies a home payload before or after a reservations-shaped payload without losing context overrides', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      attentions: [],
+      attCount: '0件',
+      agTotal: 0,
+      agUnc: 0,
+      agCancel: 0,
+      drDone: 0,
+      drReview: 0,
+      drMissing: 0,
+      reportRows: [],
+      agendaRows: []
+    };
+  }
+}`),
+      {
+        screen: 'home',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const reservationsApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [
+            {
+              customerName: 'E2Eテスト患者',
+              menuName: '産後骨盤矯正',
+              staffName: 'BFF 先生',
+              startTime: '2026-06-30T01:00:00.000Z',
+              endTime: '2026-06-30T01:30:00.000Z',
+              status: 'confirmed',
+            },
+          ],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }
+    );
+    const homeApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 100000,
+            patients: 10,
+            insuranceRevenue: 40000,
+            privateRevenue: 60000,
+          },
+          alerts: [],
+        },
+        reservationSummary: { total: 5, unconfirmed: 1, cancelled: 0 },
+        dailyReportStatus: { done: 1, review: 0, missing: 0, rows: [] },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const agendaRows = Array.isArray(vals.agendaRows) ? vals.agendaRows : [];
+
+    expect(reservationsApplied).toBe(true);
+    expect(homeApplied).toBe(true);
+    expect(JSON.stringify(agendaRows)).toContain('E2Eテスト患者');
+    expect(vals.agTotal).toBe(5);
+  });
+
   it('hydrates patients KPI, patient lists, and detail values from BFF payload', () => {
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
@@ -1957,5 +2375,594 @@ describe('patchMobileUiuxDcScript', () => {
     expect(applied).toBe(false);
     expect(vals.todayLabel).toBe('sample-date');
     expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
+  });
+
+  it('clears the daily-reports fake patient suggestion source on mount', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  PATIENTS = ['渡辺 結衣', '小林 誠一', '加藤 さくら'];
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  genItems = (r) => [{ id: 1000, patient: this.PATIENTS[0] || '', menu: '', type: '自費', ratio: 3 }];
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [{ date: 'sample-row' }] };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [
+            {
+              id: 'report-1',
+              reportDate: '2026-06-30',
+              totalPatients: 18,
+              totalRevenue: 120000,
+              insuranceRevenue: 40000,
+              privateRevenue: 80000,
+            },
+          ],
+          summary: {
+            totalReports: 1,
+            averagePatients: 18,
+            averageRevenue: 120000,
+            totalRevenue: 120000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const generated = component.genItems({ patients: 18 });
+
+    expect(applied).toBe(true);
+    expect(component.PATIENTS).toEqual([]);
+    expect(JSON.stringify(vals)).not.toContain('渡辺 結衣');
+    expect(JSON.stringify(generated)).not.toContain('渡辺 結衣');
+  });
+
+  it('hides the reservations self-only filter once real data hydrates', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  SELF = 't1';
+  state = { selfOnly: true, role: 'therapist', clinic: 'c1', appts: [] };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      showSelf: true,
+      rows: [{ patient: 'sample-patient' }]
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-27',
+        reservations: [
+          {
+            id: 'reservation-1',
+            customerName: 'BFF 患者A',
+            menuName: 'BFF メニューA',
+            staffId: 'staff-real-1',
+            staffName: 'BFF 先生A',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            id: 'reservation-2',
+            customerName: 'BFF 患者B',
+            menuName: 'BFF メニューB',
+            staffId: 'staff-real-2',
+            staffName: 'BFF 先生B',
+            startTime: '2026-04-27T02:00:00.000Z',
+            endTime: '2026-04-27T02:30:00.000Z',
+            status: 'unconfirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const rows = Array.isArray(vals.rows) ? vals.rows : [];
+
+    expect(applied).toBe(true);
+    // 実データにはSELF('t1')に一致するstaff idが存在しないが、全行が描画される
+    expect(rows).toHaveLength(2);
+    // 本人IDを解決できないため「自分のみ」トグルはハイドレーション後に非表示。
+    // state.selfOnly は元のrenderVals（破棄される）のみが参照するため変更しない
+    expect(vals.showSelf).toBe(false);
+    expect(component.state.selfOnly).toBe(true);
+  });
+
+  describe('context payload hydration', () => {
+    const contextPayload = {
+      success: true,
+      data: {
+        role: { canonical: 'therapist', label: '施術者' },
+        displayName: 'BFF 表示名',
+        accessibleClinics: [{ id: 'c1', name: 'BFF 本町院' }],
+        defaultClinicId: 'c1',
+        accessibleClinicIds: ['c1'],
+        displayMode: 'mobile',
+        flags: {
+          enabled: true,
+          realDataEnabled: true,
+          writeEnabled: false,
+          reservationWriteEnabled: false,
+          dailyReportWriteEnabled: false,
+          settingsWriteEnabled: false,
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+
+    it('merges greeting and scopeName overrides from context into home rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院', dateLabel: 'sample-date', kpis: [{ label: 'sample-kpi', value: 'sample' }], attentions: [], attCount: '0件' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals.dateLabel).toBe(beforeVals.dateLabel);
+      expect(afterVals.kpis).toEqual(beforeVals.kpis);
+      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.greeting).not.toContain('田中');
+      expect(afterVals.greeting).not.toContain('佐藤');
+      expect(afterVals.scopeName).toBe('BFF 本町院');
+    });
+
+    it('falls back to a generic greeting when displayName is null', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      expect(afterVals.greeting).toBe('おはようございます');
+      expect(afterVals.greeting).not.toContain('田中');
+      expect(afterVals.greeting).not.toContain('さん');
+    });
+
+    it('applies screen payload hydration after context hydration on home without losing context overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'store' };
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院', dateLabel: 'sample-date' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', contextPayload);
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+        success: true,
+        data: {
+          date: '2026-07-01',
+          dashboard: {
+            dailyData: { revenue: 1000, patients: 3, insuranceRevenue: 500, privateRevenue: 500 },
+            alerts: [],
+          },
+          reservationSummary: { total: 1, unconfirmed: 0, cancelled: 0 },
+          dailyReportStatus: { done: 1, review: 0, missing: 0, rows: [] },
+          attentions: [],
+        },
+      });
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(true);
+      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.scopeName).toBe('BFF 本町院');
+      expect(afterVals.dateLabel).not.toBe('sample-date');
+    });
+
+    it('stores the context payload on reservations without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  renderVals() {
+    return { dateLabel: 'sample-date', sumTotal: 1, rows: [] };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('stores the context payload on patients and still hydrates a subsequent patients payload', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { scopeLabel: 'sample-scope', riskList: [] };
+  }
+}`),
+        { screen: 'patients' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const contextApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterContextVals = component.renderVals();
+
+      expect(contextApplied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterContextVals.scopeLabel).toBe(beforeVals.scopeLabel);
+
+      const patientsApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('patients', {
+        success: true,
+        data: {
+          clinicId: 'c1',
+          analysis: {
+            totalPatients: 10,
+            activePatients: 5,
+            conversionData: { newPatients: 1, returnPatients: 4, conversionRate: 0.5 },
+          },
+          rows: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+
+      expect(patientsApplied).toBe(true);
+    });
+
+    it('stores the context payload on daily-reports without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [] };
+  }
+}`),
+        { screen: 'daily-reports' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('merges account name/initial/clinic overrides from context on settings and never renders a fake email', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
+  renderVals() {
+    return { sampleField: 'sample-value', acctName: '佐藤 美咲', acctInitial: '美', acctClinic: '本町ケア整骨院' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals.sampleField).toBe(beforeVals.sampleField);
+      expect(afterVals.acctName).toBe('BFF 表示名');
+      expect(afterVals.acctInitial).toBe('B');
+      expect(afterVals.acctClinic).toBe('BFF 本町院');
+      expect(afterVals).not.toHaveProperty('acctEmail');
+      expect(JSON.stringify(afterVals)).not.toContain('@example.jp');
+    });
+
+    it('falls back to a role label and generic initial when displayName is null on settings', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
+  renderVals() {
+    return { acctName: '佐藤 美咲', acctInitial: '美' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      expect(afterVals.acctName).toBe('セラピスト');
+      expect(afterVals.acctInitial).toBe('・');
+    });
+
+    it('stores the context payload on settings-detail without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { nav: [{ scr: 'clinic' }], clinicTab: 'menu' };
+  renderVals() {
+    return { sampleField: 'sample-value' };
+  }
+}`),
+        { screen: 'settings-detail' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    const twoClinicContextPayload = {
+      success: true,
+      data: {
+        role: { canonical: 'therapist', label: '施術者' },
+        displayName: 'BFF 表示名',
+        accessibleClinics: [
+          { id: 'c1', name: '第一整骨院' },
+          { id: 'c2', name: '第二整骨院' },
+        ],
+        defaultClinicId: 'c1',
+        accessibleClinicIds: ['c1', 'c2'],
+        displayMode: 'mobile',
+        flags: {
+          enabled: true,
+          realDataEnabled: true,
+          writeEnabled: false,
+          reservationWriteEnabled: false,
+          dailyReportWriteEnabled: false,
+          settingsWriteEnabled: false,
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+
+    it('replaces the home scope switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  CLINICS = [
+    { id: 'sample-1', name: '本町ケア整骨院' },
+    { id: 'sample-2', name: '駅前ケア整骨院' },
+  ];
+  renderVals() {
+    return {
+      greeting: 'おはようございます、田中さん',
+      scopeName: '本町ケア整骨院',
+      scopeOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const scopeOpts = Array.isArray(vals.scopeOpts) ? vals.scopeOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(scopeOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('駅前ケア整骨院');
+    });
+
+    it('replaces the reservations clinic switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  CLINICS = [
+    { id: 'sample-1', name: '本町ケア整骨院' },
+    { id: 'sample-2', name: '駅前ケア整骨院' },
+  ];
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      sumTotal: 0,
+      rows: [],
+      clinicOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const clinicOpts = Array.isArray(vals.clinicOpts) ? vals.clinicOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('駅前ケア整骨院');
+    });
+
+    it('replaces the patients clinic switcher with real accessible clinics while keeping selected-clinic stats real', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { scopeLabel: 'sample-scope', riskList: [] };
+  }
+}`),
+        { screen: 'patients' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('patients', {
+        success: true,
+        data: {
+          clinicId: 'c1',
+          clinicName: '第一整骨院',
+          analysis: {
+            totalPatients: 10,
+            activePatients: 5,
+            conversionData: { newPatients: 1, returnPatients: 4, conversionRate: 50 },
+          },
+          rows: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+      const vals = component.renderVals();
+      const clinicSelOpts = Array.isArray(vals.clinicSelOpts) ? vals.clinicSelOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicSelOpts.map((opt) => getRecord(opt).l)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(clinicSelOpts.map((opt) => getRecord(opt).v)).toEqual(['c1', 'c2']);
+      expect(vals.scopeLabel).toBe('第一整骨院');
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('木村 美穂');
+    });
+
+    it('replaces the settings-detail clinic switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  CLINICS = [{ id: 'sample-clinic', name: '本町ケア整骨院' }];
+  state = { nav: [{ scr: 'clinic' }], clinicTab: 'basic' };
+  renderVals() {
+    return {
+      clinicOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'settings-detail' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const clinicOpts = Array.isArray(vals.clinicOpts) ? vals.clinicOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+    });
   });
 });

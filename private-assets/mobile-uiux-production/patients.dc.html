@@ -604,6 +604,18 @@ class Component extends DCLogic {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (!contextClinics) return false;
+        component.__mobileUiuxContextClinicList = contextClinics;
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const readModel = component.__mobileUiuxBuildPatientReadModel(screen, payload);
       if (!readModel) return false;
       component.__mobileUiuxPatientReadModel = readModel;
@@ -788,7 +800,7 @@ class Component extends DCLogic {
       ltvList: ltvRows,
       riskHighCount: model.highRiskCount,
       pClinic: state.pClinic === model.clinic.id ? model.clinic.id : 'all',
-      clinicSelOpts: [{ v: 'all', l: model.clinic.name }],
+      clinicSelOpts: this.__mobileUiuxBuildPatientClinicSelOpts(model),
       periodLabel,
       kpiBoxes: this.__mobileUiuxBuildPatientKpiBoxes(model),
       chartBars: [{ short: model.clinic.short, value: model.totalPatients, width: model.totalPatients > 0 ? '100%' : '0%' }],
@@ -992,6 +1004,31 @@ class Component extends DCLogic {
     ];
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
+  __mobileUiuxBuildPatientClinicSelOpts(model) {
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (!contextClinics) {
+      return [{ v: 'all', l: model.clinic.name }];
+    }
+    const hasSelected = contextClinics.some((c) => c.id === model.clinic.id);
+    const list = hasSelected ? contextClinics : [{ id: model.clinic.id, name: model.clinic.name }].concat(contextClinics);
+    return list.map((c) => ({ v: c.id, l: c.name }));
+  }
+
   __mobileUiuxBuildPatientClinicCard(model) {
     return {
       name: model.clinic.name,
@@ -1094,6 +1131,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>

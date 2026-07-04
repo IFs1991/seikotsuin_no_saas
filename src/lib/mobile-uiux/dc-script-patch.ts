@@ -493,9 +493,27 @@ function buildHomeHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextOverrides = component.__mobileUiuxBuildHomeContextOverrides();
+        if (!contextOverrides) return false;
+        component.__mobileUiuxHydratedVals = {
+          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+          ...contextOverrides
+        };
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      component.__mobileUiuxHydratedVals = {
+        ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+        ...hydratedVals
+      };
       if (typeof component.setState === 'function') {
         component.setState({ __mobileUiuxHydratedAt: Date.now() });
       } else if (typeof component.forceUpdate === 'function') {
@@ -518,12 +536,81 @@ function buildHomeHydrationAdapterSource(): string {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxBuildHomeContextOverrides() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context)) return null;
+    const overrides = {};
+    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : null;
+    const isAfternoon = typeof this.NOW === 'number' && this.NOW >= 720;
+    const prefix = isAfternoon ? 'こんにちは' : 'おはようございます';
+    overrides.greeting = displayName ? prefix + '、' + displayName + 'さん' : prefix;
+
+    if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
+      const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
+      if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
+        overrides.scopeName = match.name.trim();
+      }
+    }
+
+    const contextClinics = this.__mobileUiuxContextClinics(context);
+    if (contextClinics) {
+      this.CLINICS = contextClinics;
+      overrides.scopeOpts = this.__mobileUiuxBuildHomeScopeOpts(contextClinics, context.defaultClinicId);
+    }
+
+    return overrides;
+  }
+
+  __mobileUiuxBuildHomeScopeOpts(contextClinics, defaultClinicId) {
+    return contextClinics.map((c) => {
+      const cur = c.id === defaultClinicId;
+      const onTap = cur ? (() => {}) : (typeof this.link === 'function' ? this.link(c.name + 'は閲覧のみ可能です') : () => {});
+      return {
+        initial: c.name.charAt(0),
+        name: c.name,
+        tag: cur ? '✓ 自院' : '閲覧のみ',
+        onTap,
+        style: \`all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:\${cur ? 'default' : 'pointer'};background:\${cur ? 'var(--primary-soft)' : 'var(--surface-2)'};border:1px solid \${cur ? 'var(--primary)' : 'var(--border)'};\`,
+        tagStyle: \`flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:\${cur ? 'var(--on-primary-soft)' : 'var(--fg-3)'};background:\${cur ? 'transparent' : 'var(--surface-3)'};\`
+      };
+    });
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'home' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
     const data = payload.data;
-    if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+
+    if (!this.__mobileUiuxIsRecord(data.dashboard) && Array.isArray(data.reservations)) {
+      return this.__mobileUiuxBuildHomeAgendaOverridesFromReservations(data);
+    }
+
+    if (typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
       return null;
     }
     const dashboard = data.dashboard;
@@ -564,7 +651,135 @@ function buildHomeHydrationAdapterSource(): string {
       overrides.reportRows = reportStatus.rows;
     }
 
+    const aiCardOverrides = this.__mobileUiuxBuildHomeAiCardOverrides(dashboard.aiComment);
+    Object.assign(overrides, aiCardOverrides);
+
+    const revenueCardOverrides = this.__mobileUiuxBuildHomeRevenueCardOverrides(dashboard.revenueChartData);
+    Object.assign(overrides, revenueCardOverrides);
+
+    const heatmapCardOverrides = this.__mobileUiuxBuildHomeHeatmapCardOverrides(dashboard.heatmapData);
+    Object.assign(overrides, heatmapCardOverrides);
+
+    overrides.showClinicCards = false;
+    overrides.showEvents = false;
+    overrides.showSignals = false;
+    overrides.showPerfRows = false;
+
     return overrides;
+  }
+
+  __mobileUiuxBuildHomeAiCardOverrides(aiComment) {
+    if (!this.__mobileUiuxIsRecord(aiComment)) {
+      return { showAiCard: false };
+    }
+    const summary = this.__mobileUiuxDisplayText(aiComment.summary, '');
+    if (!summary) {
+      return { showAiCard: false };
+    }
+    const points = [];
+    if (Array.isArray(aiComment.highlights)) {
+      for (const item of aiComment.highlights) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    if (Array.isArray(aiComment.improvements)) {
+      for (const item of aiComment.improvements) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    if (Array.isArray(aiComment.suggestions)) {
+      for (const item of aiComment.suggestions) {
+        const text = this.__mobileUiuxDisplayText(item, '');
+        if (text) points.push(text);
+      }
+    }
+    return {
+      showAiCard: true,
+      aiSummary: summary,
+      aiPoints: points
+    };
+  }
+
+  __mobileUiuxBuildHomeRevenueCardOverrides(revenueChartData) {
+    if (!Array.isArray(revenueChartData) || revenueChartData.length === 0) {
+      return { showRevCard: false };
+    }
+    const revVals = [];
+    const revLabels = [];
+    for (const point of revenueChartData) {
+      if (!this.__mobileUiuxIsRecord(point)) continue;
+      const total = this.__mobileUiuxNumber(point['総売上']);
+      revVals.push(total);
+      revLabels.push(this.__mobileUiuxDisplayText(point.name, ''));
+    }
+    if (revVals.length === 0) {
+      return { showRevCard: false };
+    }
+    const revMax = Math.max(...revVals, 0);
+    const lastIndex = revVals.length - 1;
+    const revBars = revVals.map((v, i) => {
+      const today = i === lastIndex;
+      const height = revMax > 0 ? Math.round((v / revMax) * 100) : 0;
+      return {
+        h: height + '%',
+        fill: today ? 'var(--primary)' : 'var(--primary-soft)',
+        label: revLabels[i] || '',
+        labelC: today ? 'var(--fg)' : 'var(--fg-3)',
+        labelW: today ? '700' : '500'
+      };
+    });
+    const first = revVals[0];
+    const last = revVals[lastIndex];
+    let revDelta = '';
+    if (typeof first === 'number' && typeof last === 'number' && first > 0) {
+      const pct = ((last - first) / first) * 100;
+      const sign = pct >= 0 ? '+' : '';
+      revDelta = sign + pct.toFixed(1) + '%';
+    }
+    return {
+      showRevCard: true,
+      revVals,
+      revBars,
+      revDelta
+    };
+  }
+
+  __mobileUiuxBuildHomeHeatmapCardOverrides(heatmapData) {
+    if (!Array.isArray(heatmapData) || heatmapData.length === 0) {
+      return { showHeatCard: false };
+    }
+    const rows = [];
+    for (const point of heatmapData) {
+      if (!this.__mobileUiuxIsRecord(point)) continue;
+      const hour = this.__mobileUiuxNumber(point.hour_of_day);
+      const count = this.__mobileUiuxNumber(point.visit_count);
+      rows.push({ hour, count });
+    }
+    if (rows.length === 0) {
+      return { showHeatCard: false };
+    }
+    rows.sort((a, b) => a.hour - b.hour);
+    const maxCount = Math.max(...rows.map((r) => r.count), 0);
+    const heatBg = ['var(--surface-3)', 'var(--primary-soft)', 'color-mix(in srgb, var(--primary) 65%, transparent)', 'var(--primary)'];
+    const heatCells = rows.map((row) => {
+      let level = 0;
+      if (maxCount > 0) {
+        const ratio = row.count / maxCount;
+        if (ratio > 0.66) level = 3;
+        else if (ratio > 0.33) level = 2;
+        else if (ratio > 0) level = 1;
+      }
+      return {
+        bg: heatBg[level],
+        label: String(row.hour)
+      };
+    });
+    return {
+      showHeatCard: true,
+      heatCells
+    };
   }
 
   __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
@@ -742,6 +957,95 @@ function buildHomeHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
+
+  __mobileUiuxBuildHomeAgendaOverridesFromReservations(data) {
+    const agendaRows = [];
+    let agTotal = 0;
+    let agUnc = 0;
+    let agCancel = 0;
+    const reservations = Array.isArray(data.reservations) ? data.reservations : [];
+
+    for (const reservation of reservations) {
+      if (!this.__mobileUiuxIsRecord(reservation)) continue;
+      const status = this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status);
+      if (status === 'cancelled' || status === 'noshow') {
+        agCancel += 1;
+        continue;
+      }
+      agTotal += 1;
+      if (status === 'unconfirmed') {
+        agUnc += 1;
+      }
+
+      const row = this.__mobileUiuxBuildHomeAgendaRow(reservation, status);
+      if (row) {
+        agendaRows.push(row);
+      }
+    }
+
+    return { agendaRows, agTotal, agUnc, agCancel };
+  }
+
+  __mobileUiuxBuildHomeAgendaRow(reservation, status) {
+    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
+    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
+    const ther = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(status);
+    const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
+
+    return {
+      isAppt: true,
+      isDivider: false,
+      startT: times ? times.startLabel : '',
+      endT: times ? times.endLabel : '',
+      patient,
+      menu,
+      ther,
+      initial: typeof this.initial === 'function' ? this.initial(ther) : ther.charAt(0),
+      statusLabel: meta.label,
+      c: meta.c,
+      b: meta.b,
+      dim: '1',
+      rowBg: 'transparent',
+      flag: '',
+      flagShow: false,
+      flagC: '',
+      flagB: '',
+      onTap: typeof this.openDetail === 'function' && typeof reservation.id === 'string'
+        ? this.openDetail(reservation.id)
+        : (typeof this.link === 'function' ? this.link(patient + 'の予約詳細を開きます') : () => {})
+    };
+  }
+
+  __mobileUiuxNormalizeHomeAgendaStatus(value) {
+    if (value === 'confirmed' || value === 'arrived' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow') {
+      return value;
+    }
+    return 'unconfirmed';
+  }
+
+  __mobileUiuxHomeAgendaStatusMeta(status) {
+    if (this.STATUS && this.STATUS[status]) return this.STATUS[status];
+    if (status === 'confirmed' || status === 'arrived') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'cancelled' || status === 'noshow') return { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' };
+    return { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+  }
+
+  __mobileUiuxHomeAgendaTimes(startTime, endTime) {
+    if (typeof startTime !== 'string' || typeof endTime !== 'string') return null;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    const fmt = (date) => String(date.getUTCHours()).padStart(2, '0') + ':' + String(date.getUTCMinutes()).padStart(2, '0');
+    return { startLabel: fmt(start), endLabel: fmt(end) };
+  }
 `;
 }
 
@@ -792,6 +1096,22 @@ function buildReservationsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (contextClinics) {
+          component.__mobileUiuxContextClinicList = contextClinics;
+          component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
+            ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
+            : contextClinics;
+          if (typeof component.setState === 'function') {
+            component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          } else if (typeof component.forceUpdate === 'function') {
+            component.forceUpdate();
+          }
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
       const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
@@ -837,7 +1157,27 @@ function buildReservationsHydrationAdapterSource(): string {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
     if (screen === 'settings-detail') {
       return this.__mobileUiuxBuildReservationSettingsDetailOverrides(payload);
     }
@@ -874,6 +1214,7 @@ function buildReservationsHydrationAdapterSource(): string {
       isEmpty: viewModels.rows.length === 0,
       showAgenda: viewModels.rows.length > 0,
       showTimeline: false,
+      showSelf: false,
       __mobileUiuxAppts: viewModels.appts,
       __mobileUiuxHydratedKey: this.__mobileUiuxBuildHydratedKey(data.date, this.__mobileUiuxCurrentClinicId)
     };
@@ -1037,7 +1378,12 @@ function buildReservationsHydrationAdapterSource(): string {
     const clinic = this.__mobileUiuxBuildReservationClinic(data.clinic);
     this.MENUS = menus;
     this.THER = resources;
-    this.CLINICS = clinic ? [clinic] : [];
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (clinic) {
+      this.CLINICS = contextClinics ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name) : [clinic];
+    } else {
+      this.CLINICS = contextClinics || [];
+    }
     this.__mobileUiuxStaffResourceSource = null;
     this.__mobileUiuxStaffResourceMap = null;
     return {
@@ -1045,6 +1391,21 @@ function buildReservationsHydrationAdapterSource(): string {
       __mobileUiuxFirstMenuDuration: menus.length > 0 ? menus[0].dur : 0,
       __mobileUiuxFirstResourceId: resources.length > 0 ? resources[0].id : ''
     };
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    let replaced = false;
+    const next = list.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxBuildReservationMenus(value) {
@@ -1597,6 +1958,13 @@ function buildReservationsHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -1638,6 +2006,18 @@ function buildPatientsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (!contextClinics) return false;
+        component.__mobileUiuxContextClinicList = contextClinics;
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const readModel = component.__mobileUiuxBuildPatientReadModel(screen, payload);
       if (!readModel) return false;
       component.__mobileUiuxPatientReadModel = readModel;
@@ -1822,7 +2202,7 @@ function buildPatientsHydrationAdapterSource(): string {
       ltvList: ltvRows,
       riskHighCount: model.highRiskCount,
       pClinic: state.pClinic === model.clinic.id ? model.clinic.id : 'all',
-      clinicSelOpts: [{ v: 'all', l: model.clinic.name }],
+      clinicSelOpts: this.__mobileUiuxBuildPatientClinicSelOpts(model),
       periodLabel,
       kpiBoxes: this.__mobileUiuxBuildPatientKpiBoxes(model),
       chartBars: [{ short: model.clinic.short, value: model.totalPatients, width: model.totalPatients > 0 ? '100%' : '0%' }],
@@ -2026,6 +2406,31 @@ function buildPatientsHydrationAdapterSource(): string {
     ];
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
+  __mobileUiuxBuildPatientClinicSelOpts(model) {
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (!contextClinics) {
+      return [{ v: 'all', l: model.clinic.name }];
+    }
+    const hasSelected = contextClinics.some((c) => c.id === model.clinic.id);
+    const list = hasSelected ? contextClinics : [{ id: model.clinic.id, name: model.clinic.name }].concat(contextClinics);
+    return list.map((c) => ({ v: c.id, l: c.name }));
+  }
+
   __mobileUiuxBuildPatientClinicCard(model) {
     return {
       name: model.clinic.name,
@@ -2129,6 +2534,13 @@ function buildPatientsHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -2167,9 +2579,27 @@ function buildSettingsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextOverrides = component.__mobileUiuxBuildSettingsContextOverrides();
+        if (!contextOverrides) return false;
+        component.__mobileUiuxHydratedVals = {
+          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+          ...contextOverrides
+        };
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      component.__mobileUiuxHydratedVals = {
+        ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+        ...hydratedVals
+      };
       if (typeof component.setState === 'function') {
         component.setState({ __mobileUiuxHydratedAt: Date.now() });
       } else if (typeof component.forceUpdate === 'function') {
@@ -2192,7 +2622,41 @@ function buildSettingsHydrationAdapterSource(): string {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxBuildSettingsContextOverrides() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context)) return null;
+    const overrides = {};
+    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : null;
+    const roleLabel = this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
+      ? this.ROLE_LABEL[this.state.role]
+      : 'アカウント';
+    overrides.acctName = displayName || roleLabel;
+    overrides.acctInitial = displayName ? displayName.trim().charAt(0) : '・';
+
+    let clinicName = null;
+    if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
+      const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
+      if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
+        clinicName = match.name.trim();
+      }
+    }
+    if (clinicName) {
+      overrides.acctClinic = clinicName;
+      overrides.headerSub = clinicName + ' ・ JST';
+    } else {
+      overrides.headerSub = 'JST';
+    }
+
+    return overrides;
+  }
+
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -2207,6 +2671,13 @@ function buildSettingsHydrationAdapterSource(): string {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 `;
 }
@@ -2285,7 +2756,39 @@ function buildSettingsDetailHydrationAdapterSource(): string {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
   __mobileUiuxBuildSettingsStatePatch(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      const contextClinics = this.__mobileUiuxContextClinics(this.__mobileUiuxContext);
+      if (contextClinics) {
+        this.__mobileUiuxContextClinicList = contextClinics;
+        const selected = Array.isArray(this.CLINICS) && this.CLINICS.length === 1 ? this.CLINICS[0] : null;
+        this.CLINICS = selected && selected.id
+          ? this.__mobileUiuxUpsertClinic(contextClinics, selected.id, selected.name)
+          : contextClinics;
+        if (typeof this.setState === 'function') {
+          this.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof this.forceUpdate === 'function') {
+          this.forceUpdate();
+        }
+      }
+      return false;
+    }
     if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return false;
     }
@@ -2338,7 +2841,10 @@ function buildSettingsDetailHydrationAdapterSource(): string {
     if (this.__mobileUiuxIsRecord(data.clinic)) {
       const clinic = this.__mobileUiuxNormalizeClinic(data.clinic);
       if (clinic) {
-        this.CLINICS = [{ id: clinic.id, name: clinic.name }];
+        const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+        this.CLINICS = contextClinics
+          ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name)
+          : [{ id: clinic.id, name: clinic.name }];
         patch.clinic = clinic.id;
         patch.basic = {
           name: clinic.name,
@@ -2356,6 +2862,22 @@ function buildSettingsDetailHydrationAdapterSource(): string {
       patch.menus = this.__mobileUiuxBuildSettingsDetailMenus(data.menus);
     }
     return patch;
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    const existing = Array.isArray(list) ? list : [];
+    let replaced = false;
+    const next = existing.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxNormalizeClinic(value) {
@@ -2621,6 +3143,13 @@ function buildSettingsDetailHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -2699,6 +3228,11 @@ function buildDailyReportsHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
     if (screen === 'settings-detail') {
       return this.__mobileUiuxBuildDailyReportSettingsDetailOverrides(payload);
     }
@@ -2755,6 +3289,9 @@ function buildDailyReportsHydrationAdapterSource(): string {
     }
     if (Array.isArray(this.THER)) {
       this.THER = [];
+    }
+    if (Array.isArray(this.PATIENTS)) {
+      this.PATIENTS = [];
     }
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
@@ -3134,6 +3671,13 @@ function buildDailyReportsHydrationAdapterSource(): string {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 `;
 }

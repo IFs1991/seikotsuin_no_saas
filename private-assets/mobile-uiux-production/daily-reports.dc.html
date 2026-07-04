@@ -562,6 +562,11 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
     if (screen === 'settings-detail') {
       return this.__mobileUiuxBuildDailyReportSettingsDetailOverrides(payload);
     }
@@ -618,6 +623,9 @@ class Component extends DCLogic {
     }
     if (Array.isArray(this.THER)) {
       this.THER = [];
+    }
+    if (Array.isArray(this.PATIENTS)) {
+      this.PATIENTS = [];
     }
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
@@ -997,6 +1005,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>
