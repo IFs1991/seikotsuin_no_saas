@@ -39,7 +39,7 @@
     "coverage:summary": "node scripts/generate-coverage-summary.mjs",
     "swc:verify": "node scripts/check-swc-binary.mjs",
     "swc:clear": "node scripts/clear-swc-binaries.mjs",
-    "clean": "rm -rf node_modules package-lock.json && npm cache clean --force",
+    "clean": "node -e \"console.log('clean is intentionally disabled; remove generated caches manually with approved PowerShell commands.')\"",
     "supabase:types": "node scripts/generate-supabase-types.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "verify:supabase": "node scripts/verify-supabase-connection.mjs"

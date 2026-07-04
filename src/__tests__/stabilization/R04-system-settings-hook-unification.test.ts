@@ -3,7 +3,7 @@
  *
  * 検証項目:
  * 1. useSystemSettings のエクスポートが正式APIとして1つに統一されている
- * 2. useAdminMaster が useSystemSettings を参照している
+ * 2. deprecated useAdminMaster の再導入が防止されている
  * 3. UseSystemSettingsReturn 型の契約が一貫している
  */
 import * as fs from 'fs';
@@ -30,22 +30,18 @@ describe('R-04: System Settings フック一本化', () => {
     );
   });
 
-  test('useAdminMaster.ts が useSystemSettings を使用している', () => {
-    const content = fs.readFileSync(
-      path.join(SRC_DIR, 'hooks/useAdminMaster.ts'),
-      'utf-8'
-    );
-    expect(content).toMatch(
-      /import.*useSystemSettings.*from.*useSystemSettings/
+  test('deprecated useAdminMaster.ts は削除されている', () => {
+    expect(fs.existsSync(path.join(SRC_DIR, 'hooks/useAdminMaster.ts'))).toBe(
+      false
     );
   });
 
-  test('useAdminMaster.ts に @deprecated 注記がある', () => {
+  test('useMasterData.ts が正式な useMasterData 実装として残っている', () => {
     const content = fs.readFileSync(
-      path.join(SRC_DIR, 'hooks/useAdminMaster.ts'),
+      path.join(SRC_DIR, 'hooks/useMasterData.ts'),
       'utf-8'
     );
-    expect(content).toContain('@deprecated');
+    expect(content).toMatch(/export\s+function\s+useMasterData/);
   });
 
   test('両方の useSystemSettings が UseSystemSettingsReturn 型を返す', () => {
