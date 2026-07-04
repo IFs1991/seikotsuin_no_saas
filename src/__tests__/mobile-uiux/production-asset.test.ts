@@ -62,6 +62,10 @@ describe('mobile-uiux production assets', () => {
 
       expect(productionHtml).toContain('data-mobile-uiux-production-root');
       expect(productionHtml).toContain('data-mobile-uiux-shell="production"');
+      expect(productionHtml).toContain(
+        'data-mobile-uiux-initial-read="hydrated"'
+      );
+      expect(productionHtml).toContain('visibility: hidden !important');
       expect(productionHtml).toContain('ref="{{ setRoot }}"');
       expect(countDcScripts(productionHtml)).toBe(1);
       expect(productionHtml).toContain('class Component extends DCLogic');

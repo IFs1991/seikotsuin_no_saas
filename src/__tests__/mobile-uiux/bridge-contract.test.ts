@@ -320,6 +320,12 @@ describe('mobile-uiux bridge contract', () => {
     expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
       'disabled'
     );
+    expect(window.document.documentElement.dataset.mobileUiuxInitialRead).toBe(
+      'failed'
+    );
+    expect(window.document.body.textContent).toContain(
+      '実データ参照は無効です'
+    );
   });
 
   it('navigates Bottom Nav by click even when MOBILE_UIUX_REAL_DATA_ENABLED=false', async () => {
@@ -572,6 +578,9 @@ describe('mobile-uiux bridge contract', () => {
 
     expect(applyReadData).toHaveBeenCalledWith('reservations', readPayload);
     expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
+    );
+    expect(window.document.documentElement.dataset.mobileUiuxInitialRead).toBe(
       'hydrated'
     );
     expect(window.document.body.textContent).toContain(

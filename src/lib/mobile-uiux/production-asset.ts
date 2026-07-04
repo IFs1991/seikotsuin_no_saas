@@ -170,6 +170,12 @@ function collectMobileUiuxProductionAssetViolations(
   if (!html.includes('data-mobile-uiux-shell="production"')) {
     violations.push('missing production shell body marker');
   }
+  if (!html.includes('data-mobile-uiux-initial-read="hydrated"')) {
+    violations.push('missing initial read hydration visibility guard');
+  }
+  if (!html.includes('visibility: hidden !important')) {
+    violations.push('missing initial sample visibility guard');
+  }
   if (productionStyleCount !== 1) {
     violations.push(
       `expected one production shell style, found ${productionStyleCount}`
