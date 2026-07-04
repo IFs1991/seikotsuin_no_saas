@@ -198,7 +198,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               profileLoading={profileLoading}
               role={profileRole}
             />
-            <MobileUiuxEntryPrompt />
+            <MobileUiuxEntryPrompt role={profileRole} />
           </div>
         </SelectedClinicProvider>
       </UserProfileProvider>

@@ -79,18 +79,65 @@ describe('mobile-uiux entry UX', () => {
     expect(assignMock).not.toHaveBeenCalled();
   });
 
-  it('lets desktop viewport users open the mobile version intentionally', async () => {
+  it('lets desktop admin users open the mobile home version intentionally', async () => {
     setViewportWidth(1280);
+    const { MobileUiuxEntryPrompt } = await import(
+      '@/components/mobile-uiux/mobile-entry-prompt'
+    );
+
+    render(<MobileUiuxEntryPrompt variant='menu-item' role='admin' />);
+
+    await userEvent.click(await screen.findByText('スマホ版で開く'));
+
+    expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
+    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
+  });
+
+  it.each(['clinic_admin', 'manager'] as const)(
+    'opens the mobile home version for %s users',
+    async role => {
+      const { MobileUiuxEntryPrompt } = await import(
+        '@/components/mobile-uiux/mobile-entry-prompt'
+      );
+
+      render(<MobileUiuxEntryPrompt variant='menu-item' role={role} />);
+
+      await userEvent.click(screen.getByText('スマホ版で開く'));
+
+      expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
+    }
+  );
+
+  it.each(['therapist', 'staff'] as const)(
+    'opens the mobile reservations version for %s users',
+    async role => {
+      const { MobileUiuxEntryPrompt } = await import(
+        '@/components/mobile-uiux/mobile-entry-prompt'
+      );
+
+      render(<MobileUiuxEntryPrompt variant='menu-item' role={role} />);
+
+      await userEvent.click(screen.getByText('スマホ版で開く'));
+
+      expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
+      expect(assignMock).toHaveBeenCalledWith(
+        '/mobile-uiux/screens/reservations'
+      );
+    }
+  );
+
+  it('falls back to mobile reservations while the user role is not loaded', async () => {
     const { MobileUiuxEntryPrompt } = await import(
       '@/components/mobile-uiux/mobile-entry-prompt'
     );
 
     render(<MobileUiuxEntryPrompt variant='menu-item' />);
 
-    await userEvent.click(await screen.findByText('スマホ版で開く'));
+    await userEvent.click(screen.getByText('スマホ版で開く'));
 
-    expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
-    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
+    expect(assignMock).toHaveBeenCalledWith(
+      '/mobile-uiux/screens/reservations'
+    );
   });
 
   it('does not repeat the mobile viewport banner after dismiss', async () => {
@@ -148,12 +195,14 @@ describe('mobile-uiux entry UX', () => {
       '@/components/mobile-uiux/mobile-entry-prompt'
     );
 
-    render(<MobileUiuxEntryPrompt variant='menu-item' />);
+    render(<MobileUiuxEntryPrompt variant='menu-item' role='therapist' />);
 
     await userEvent.click(screen.getByText('スマホ版で開く'));
 
     expect(document.cookie).toContain('mobile_uiux_display_mode=mobile');
-    expect(assignMock).toHaveBeenCalledWith('/mobile-uiux/screens/home');
+    expect(assignMock).toHaveBeenCalledWith(
+      '/mobile-uiux/screens/reservations'
+    );
     expect(global.fetch).not.toHaveBeenCalled();
   });
 

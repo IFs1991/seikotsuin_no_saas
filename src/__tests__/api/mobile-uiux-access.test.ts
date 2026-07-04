@@ -259,6 +259,24 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(readFileMock).toHaveBeenCalled();
   });
 
+  it('serves the patients screen for therapist users when the clinic allowlist permits access', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'therapist',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      clinicId: 'clinic-1',
+    });
+
+    const response = await callMobileScreen('patients');
+
+    expect(response.status).toBe(200);
+    expect(readFileMock).toHaveBeenCalled();
+  });
+
   it('returns 403 when DB entitlement is enabled and the clinic is not entitled', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS = 'true';
