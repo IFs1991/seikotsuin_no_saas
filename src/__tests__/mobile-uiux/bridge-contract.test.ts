@@ -579,6 +579,73 @@ describe('mobile-uiux bridge contract', () => {
     );
   });
 
+  it('applies the context payload to the read hydration adapter before the screen payload', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'reservations',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, settingsDetailReadPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    const contextCallIndex = applyReadData.mock.calls.findIndex(
+      call => call[0] === 'context'
+    );
+    const screenCallIndex = applyReadData.mock.calls.findIndex(
+      call => call[0] === 'reservations'
+    );
+    expect(contextCallIndex).toBeGreaterThanOrEqual(0);
+    expect(applyReadData).toHaveBeenCalledWith('context', contextPayload);
+    expect(contextCallIndex).toBeLessThan(screenCallIndex);
+  });
+
+  it('does not fail boot when no adapter is registered for the context screen', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const { window } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, contextPayload),
+      buildJsonResponse(200, readPayload),
+      buildJsonResponse(200, settingsDetailReadPayload),
+    ]);
+
+    await runBridgeScript(script, window);
+
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'fallback'
+    );
+  });
+
   it('refreshes read data with date overrides and suppresses duplicate in-flight reads', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,

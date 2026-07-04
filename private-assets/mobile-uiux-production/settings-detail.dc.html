@@ -906,6 +906,10 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildSettingsStatePatch(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return false;
+    }
     if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return false;
     }
@@ -1240,6 +1244,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>

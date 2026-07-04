@@ -519,6 +519,10 @@ function buildHomeHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'home' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -742,6 +746,13 @@ function buildHomeHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -838,6 +849,11 @@ function buildReservationsHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
     if (screen === 'settings-detail') {
       return this.__mobileUiuxBuildReservationSettingsDetailOverrides(payload);
     }
@@ -1597,6 +1613,13 @@ function buildReservationsHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -1638,6 +1661,10 @@ function buildPatientsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        return false;
+      }
       const readModel = component.__mobileUiuxBuildPatientReadModel(screen, payload);
       if (!readModel) return false;
       component.__mobileUiuxPatientReadModel = readModel;
@@ -2129,6 +2156,13 @@ function buildPatientsHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -2193,6 +2227,10 @@ function buildSettingsHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -2207,6 +2245,13 @@ function buildSettingsHydrationAdapterSource(): string {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 `;
 }
@@ -2286,6 +2331,10 @@ function buildSettingsDetailHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildSettingsStatePatch(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return false;
+    }
     if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return false;
     }
@@ -2621,6 +2670,13 @@ function buildSettingsDetailHydrationAdapterSource(): string {
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
 `;
 }
 
@@ -2699,6 +2755,11 @@ function buildDailyReportsHydrationAdapterSource(): string {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
     if (screen === 'settings-detail') {
       return this.__mobileUiuxBuildDailyReportSettingsDetailOverrides(payload);
     }
@@ -3134,6 +3195,13 @@ function buildDailyReportsHydrationAdapterSource(): string {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 `;
 }

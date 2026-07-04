@@ -1958,4 +1958,210 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.todayLabel).toBe('sample-date');
     expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
   });
+
+  describe('context payload hydration', () => {
+    const contextPayload = {
+      success: true,
+      data: {
+        role: { canonical: 'therapist', label: '施術者' },
+        displayName: 'BFF 表示名',
+        accessibleClinics: [{ id: 'c1', name: 'BFF 本町院' }],
+        defaultClinicId: 'c1',
+        accessibleClinicIds: ['c1'],
+        displayMode: 'mobile',
+        flags: {
+          enabled: true,
+          realDataEnabled: true,
+          writeEnabled: false,
+          reservationWriteEnabled: false,
+          dailyReportWriteEnabled: false,
+          settingsWriteEnabled: false,
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+
+    it('stores the context payload on home without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  renderVals() {
+    return { dateLabel: 'sample-date', kpis: [{ label: 'sample-kpi', value: 'sample' }], attentions: [], attCount: '0件' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('stores the context payload on reservations without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  renderVals() {
+    return { dateLabel: 'sample-date', sumTotal: 1, rows: [] };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('stores the context payload on patients and still hydrates a subsequent patients payload', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { scopeLabel: 'sample-scope', riskList: [] };
+  }
+}`),
+        { screen: 'patients' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const contextApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterContextVals = component.renderVals();
+
+      expect(contextApplied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterContextVals.scopeLabel).toBe(beforeVals.scopeLabel);
+
+      const patientsApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('patients', {
+        success: true,
+        data: {
+          clinicId: 'c1',
+          analysis: {
+            totalPatients: 10,
+            activePatients: 5,
+            conversionData: { newPatients: 1, returnPatients: 4, conversionRate: 0.5 },
+          },
+          rows: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+
+      expect(patientsApplied).toBe(true);
+    });
+
+    it('stores the context payload on daily-reports without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [] };
+  }
+}`),
+        { screen: 'daily-reports' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('stores the context payload on settings without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  renderVals() {
+    return { sampleField: 'sample-value' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+
+    it('stores the context payload on settings-detail without altering rendered overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { nav: [{ scr: 'clinic' }], clinicTab: 'menu' };
+  renderVals() {
+    return { sampleField: 'sample-value' };
+  }
+}`),
+        { screen: 'settings-detail' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      const beforeVals = component.renderVals();
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'context',
+        contextPayload
+      );
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(false);
+      expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
+        contextPayload.data
+      );
+      expect(afterVals).toEqual(beforeVals);
+    });
+  });
 });

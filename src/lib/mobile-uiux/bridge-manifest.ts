@@ -651,6 +651,8 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
 
+    applyReadData("context", contextResult.payload);
+
     const entry = MOBILE_UIUX_SCREEN_MANIFEST[screen];
     const readUrl = buildReadUrl(entry, contextResult.payload.data);
     if (!readUrl) {

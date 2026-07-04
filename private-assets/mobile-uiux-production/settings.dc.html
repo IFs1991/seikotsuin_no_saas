@@ -900,6 +900,10 @@ class Component extends DCLogic {
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
     if (screen !== 'settings' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
       return null;
     }
@@ -914,6 +918,13 @@ class Component extends DCLogic {
 
   __mobileUiuxIsRecord(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
   }
 }
 </script>
