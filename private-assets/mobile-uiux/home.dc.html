@@ -800,9 +800,9 @@ class Component extends DCLogic {
     }
 
     // ── header scope ──
-    let greeting = 'おはようございます、田中さん', scopeTag = '自院', scopeName = '本町ケア整骨院';
-    if (isManager) { greeting = 'おはようございます、佐藤さん'; scopeTag = '担当エリア'; scopeName = '担当3院 · 関西エリア'; }
-    if (isAdmin) { greeting = 'おはようございます、管理者さん'; scopeTag = '全社'; scopeName = '全12店舗 · 本部'; }
+    let greeting = 'おはようございます', scopeTag = '自院', scopeName = '本町ケア整骨院';
+    if (isManager) { scopeTag = '担当エリア'; scopeName = '担当3院 · 関西エリア'; }
+    if (isAdmin) { scopeTag = '全社'; scopeName = '全12店舗 · 本部'; }
     if (this.NOW >= 720) greeting = greeting.replace('おはようございます', 'こんにちは');
 
     // scope switcher options

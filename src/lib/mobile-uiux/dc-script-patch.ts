@@ -493,9 +493,27 @@ function buildHomeHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextOverrides = component.__mobileUiuxBuildHomeContextOverrides();
+        if (!contextOverrides) return false;
+        component.__mobileUiuxHydratedVals = {
+          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+          ...contextOverrides
+        };
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      component.__mobileUiuxHydratedVals = {
+        ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+        ...hydratedVals
+      };
       if (typeof component.setState === 'function') {
         component.setState({ __mobileUiuxHydratedAt: Date.now() });
       } else if (typeof component.forceUpdate === 'function') {
@@ -516,6 +534,27 @@ function buildHomeHydrationAdapterSource(): string {
       delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
     }
     this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildHomeContextOverrides() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context)) return null;
+    const overrides = {};
+    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : null;
+    const isAfternoon = typeof this.NOW === 'number' && this.NOW >= 720;
+    const prefix = isAfternoon ? 'こんにちは' : 'おはようございます';
+    overrides.greeting = displayName ? prefix + '、' + displayName + 'さん' : prefix;
+
+    if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
+      const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
+      if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
+        overrides.scopeName = match.name.trim();
+      }
+    }
+
+    return overrides;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
@@ -2201,9 +2240,27 @@ function buildSettingsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextOverrides = component.__mobileUiuxBuildSettingsContextOverrides();
+        if (!contextOverrides) return false;
+        component.__mobileUiuxHydratedVals = {
+          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+          ...contextOverrides
+        };
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
-      component.__mobileUiuxHydratedVals = hydratedVals;
+      component.__mobileUiuxHydratedVals = {
+        ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+        ...hydratedVals
+      };
       if (typeof component.setState === 'function') {
         component.setState({ __mobileUiuxHydratedAt: Date.now() });
       } else if (typeof component.forceUpdate === 'function') {
@@ -2224,6 +2281,36 @@ function buildSettingsHydrationAdapterSource(): string {
       delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
     }
     this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxBuildSettingsContextOverrides() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context)) return null;
+    const overrides = {};
+    const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
+      ? context.displayName.trim()
+      : null;
+    const roleLabel = this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
+      ? this.ROLE_LABEL[this.state.role]
+      : 'アカウント';
+    overrides.acctName = displayName || roleLabel;
+    overrides.acctInitial = displayName ? displayName.trim().charAt(0) : '・';
+
+    let clinicName = null;
+    if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
+      const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
+      if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
+        clinicName = match.name.trim();
+      }
+    }
+    if (clinicName) {
+      overrides.acctClinic = clinicName;
+      overrides.headerSub = clinicName + ' ・ JST';
+    } else {
+      overrides.headerSub = 'JST';
+    }
+
+    return overrides;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {

@@ -1981,11 +1981,12 @@ describe('patchMobileUiuxDcScript', () => {
       generatedAt: '2026-06-30T00:00:00.000Z',
     };
 
-    it('stores the context payload on home without altering rendered overrides', () => {
+    it('merges greeting and scopeName overrides from context into home rendered overrides', () => {
       const patched = patchMobileUiuxDcScript(
         wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
   renderVals() {
-    return { dateLabel: 'sample-date', kpis: [{ label: 'sample-kpi', value: 'sample' }], attentions: [], attCount: '0件' };
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院', dateLabel: 'sample-date', kpis: [{ label: 'sample-kpi', value: 'sample' }], attentions: [], attCount: '0件' };
   }
 }`),
         { screen: 'home' }
@@ -2005,7 +2006,74 @@ describe('patchMobileUiuxDcScript', () => {
       expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
         contextPayload.data
       );
-      expect(afterVals).toEqual(beforeVals);
+      expect(afterVals.dateLabel).toBe(beforeVals.dateLabel);
+      expect(afterVals.kpis).toEqual(beforeVals.kpis);
+      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.greeting).not.toContain('田中');
+      expect(afterVals.greeting).not.toContain('佐藤');
+      expect(afterVals.scopeName).toBe('BFF 本町院');
+    });
+
+    it('falls back to a generic greeting when displayName is null', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      expect(afterVals.greeting).toBe('おはようございます');
+      expect(afterVals.greeting).not.toContain('田中');
+      expect(afterVals.greeting).not.toContain('さん');
+    });
+
+    it('applies screen payload hydration after context hydration on home without losing context overrides', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'store' };
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院', dateLabel: 'sample-date' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', contextPayload);
+      const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+        success: true,
+        data: {
+          date: '2026-07-01',
+          dashboard: {
+            dailyData: { revenue: 1000, patients: 3, insuranceRevenue: 500, privateRevenue: 500 },
+            alerts: [],
+          },
+          reservationSummary: { total: 1, unconfirmed: 0, cancelled: 0 },
+          dailyReportStatus: { done: 1, review: 0, missing: 0, rows: [] },
+          attentions: [],
+        },
+      });
+      const afterVals = component.renderVals();
+
+      expect(applied).toBe(true);
+      expect(afterVals.greeting).toBe('おはようございます、BFF 表示名さん');
+      expect(afterVals.scopeName).toBe('BFF 本町院');
+      expect(afterVals.dateLabel).not.toBe('sample-date');
     });
 
     it('stores the context payload on reservations without altering rendered overrides', () => {
@@ -2109,11 +2177,13 @@ describe('patchMobileUiuxDcScript', () => {
       expect(afterVals).toEqual(beforeVals);
     });
 
-    it('stores the context payload on settings without altering rendered overrides', () => {
+    it('merges account name/initial/clinic overrides from context on settings and never renders a fake email', () => {
       const patched = patchMobileUiuxDcScript(
         wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
   renderVals() {
-    return { sampleField: 'sample-value' };
+    return { sampleField: 'sample-value', acctName: '佐藤 美咲', acctInitial: '美', acctClinic: '本町ケア整骨院' };
   }
 }`),
         { screen: 'settings' }
@@ -2133,7 +2203,37 @@ describe('patchMobileUiuxDcScript', () => {
       expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
         contextPayload.data
       );
-      expect(afterVals).toEqual(beforeVals);
+      expect(afterVals.sampleField).toBe(beforeVals.sampleField);
+      expect(afterVals.acctName).toBe('BFF 表示名');
+      expect(afterVals.acctInitial).toBe('B');
+      expect(afterVals.acctClinic).toBe('BFF 本町院');
+      expect(afterVals).not.toHaveProperty('acctEmail');
+      expect(JSON.stringify(afterVals)).not.toContain('@example.jp');
+    });
+
+    it('falls back to a role label and generic initial when displayName is null on settings', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
+  renderVals() {
+    return { acctName: '佐藤 美咲', acctInitial: '美' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      expect(afterVals.acctName).toBe('セラピスト');
+      expect(afterVals.acctInitial).toBe('・');
     });
 
     it('stores the context payload on settings-detail without altering rendered overrides', () => {
