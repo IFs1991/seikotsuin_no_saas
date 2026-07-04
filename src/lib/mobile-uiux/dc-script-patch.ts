@@ -1127,8 +1127,6 @@ function buildReservationsHydrationAdapterSource(): string {
         if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
           statePatch.appts = hydratedVals.__mobileUiuxAppts;
           statePatch.loading = false;
-          // 実データには本人ID（SELF）を解決する手段がないため、自分のみフィルタは解除する
-          statePatch.selfOnly = false;
         }
         if (typeof hydratedVals.__mobileUiuxFirstMenuName === 'string') {
           statePatch.fMenu = hydratedVals.__mobileUiuxFirstMenuName;

@@ -2488,9 +2488,10 @@ describe('patchMobileUiuxDcScript', () => {
     expect(applied).toBe(true);
     // 実データにはSELF('t1')に一致するstaff idが存在しないが、全行が描画される
     expect(rows).toHaveLength(2);
-    // 本人IDを解決できないため「自分のみ」トグルはハイドレーション後に非表示
+    // 本人IDを解決できないため「自分のみ」トグルはハイドレーション後に非表示。
+    // state.selfOnly は元のrenderVals（破棄される）のみが参照するため変更しない
     expect(vals.showSelf).toBe(false);
-    expect(component.state.selfOnly).toBe(false);
+    expect(component.state.selfOnly).toBe(true);
   });
 
   describe('context payload hydration', () => {
