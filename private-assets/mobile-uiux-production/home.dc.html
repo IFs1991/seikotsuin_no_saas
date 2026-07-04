@@ -969,7 +969,43 @@ class Component extends DCLogic {
       }
     }
 
+    const contextClinics = this.__mobileUiuxContextClinics(context);
+    if (contextClinics) {
+      this.CLINICS = contextClinics;
+      overrides.scopeOpts = this.__mobileUiuxBuildHomeScopeOpts(contextClinics, context.defaultClinicId);
+    }
+
     return overrides;
+  }
+
+  __mobileUiuxBuildHomeScopeOpts(contextClinics, defaultClinicId) {
+    return contextClinics.map((c) => {
+      const cur = c.id === defaultClinicId;
+      const onTap = cur ? (() => {}) : (typeof this.link === 'function' ? this.link(c.name + 'は閲覧のみ可能です') : () => {});
+      return {
+        initial: c.name.charAt(0),
+        name: c.name,
+        tag: cur ? '✓ 自院' : '閲覧のみ',
+        onTap,
+        style: `all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:${cur ? 'default' : 'pointer'};background:${cur ? 'var(--primary-soft)' : 'var(--surface-2)'};border:1px solid ${cur ? 'var(--primary)' : 'var(--border)'};`,
+        tagStyle: `flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:${cur ? 'var(--on-primary-soft)' : 'var(--fg-3)'};background:${cur ? 'transparent' : 'var(--surface-3)'};`
+      };
+    });
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {

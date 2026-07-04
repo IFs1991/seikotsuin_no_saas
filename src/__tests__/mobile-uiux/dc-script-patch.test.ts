@@ -2263,5 +2263,171 @@ describe('patchMobileUiuxDcScript', () => {
       );
       expect(afterVals).toEqual(beforeVals);
     });
+
+    const twoClinicContextPayload = {
+      success: true,
+      data: {
+        role: { canonical: 'therapist', label: '施術者' },
+        displayName: 'BFF 表示名',
+        accessibleClinics: [
+          { id: 'c1', name: '第一整骨院' },
+          { id: 'c2', name: '第二整骨院' },
+        ],
+        defaultClinicId: 'c1',
+        accessibleClinicIds: ['c1', 'c2'],
+        displayMode: 'mobile',
+        flags: {
+          enabled: true,
+          realDataEnabled: true,
+          writeEnabled: false,
+          reservationWriteEnabled: false,
+          dailyReportWriteEnabled: false,
+          settingsWriteEnabled: false,
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+
+    it('replaces the home scope switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  CLINICS = [
+    { id: 'sample-1', name: '本町ケア整骨院' },
+    { id: 'sample-2', name: '駅前ケア整骨院' },
+  ];
+  renderVals() {
+    return {
+      greeting: 'おはようございます、田中さん',
+      scopeName: '本町ケア整骨院',
+      scopeOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const scopeOpts = Array.isArray(vals.scopeOpts) ? vals.scopeOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(scopeOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('駅前ケア整骨院');
+    });
+
+    it('replaces the reservations clinic switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  CLINICS = [
+    { id: 'sample-1', name: '本町ケア整骨院' },
+    { id: 'sample-2', name: '駅前ケア整骨院' },
+  ];
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      sumTotal: 0,
+      rows: [],
+      clinicOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const clinicOpts = Array.isArray(vals.clinicOpts) ? vals.clinicOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('駅前ケア整骨院');
+    });
+
+    it('replaces the patients clinic switcher with real accessible clinics while keeping selected-clinic stats real', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  state = { pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { scopeLabel: 'sample-scope', riskList: [] };
+  }
+}`),
+        { screen: 'patients' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('patients', {
+        success: true,
+        data: {
+          clinicId: 'c1',
+          clinicName: '第一整骨院',
+          analysis: {
+            totalPatients: 10,
+            activePatients: 5,
+            conversionData: { newPatients: 1, returnPatients: 4, conversionRate: 50 },
+          },
+          rows: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      });
+      const vals = component.renderVals();
+      const clinicSelOpts = Array.isArray(vals.clinicSelOpts) ? vals.clinicSelOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicSelOpts.map((opt) => getRecord(opt).l)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(clinicSelOpts.map((opt) => getRecord(opt).v)).toEqual(['c1', 'c2']);
+      expect(vals.scopeLabel).toBe('第一整骨院');
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('木村 美穂');
+    });
+
+    it('replaces the settings-detail clinic switcher with real accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  CLINICS = [{ id: 'sample-clinic', name: '本町ケア整骨院' }];
+  state = { nav: [{ scr: 'clinic' }], clinicTab: 'basic' };
+  renderVals() {
+    return {
+      clinicOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'settings-detail' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', twoClinicContextPayload);
+      const vals = component.renderVals();
+      const clinicOpts = Array.isArray(vals.clinicOpts) ? vals.clinicOpts : [];
+      const serialized = JSON.stringify(vals);
+
+      expect(clinicOpts.map((opt) => getRecord(opt).name)).toEqual([
+        '第一整骨院',
+        '第二整骨院',
+      ]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+    });
   });
 });

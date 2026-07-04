@@ -848,6 +848,22 @@ class Component extends DCLogic {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (contextClinics) {
+          component.__mobileUiuxContextClinicList = contextClinics;
+          component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
+            ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
+            : contextClinics;
+          if (typeof component.setState === 'function') {
+            component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          } else if (typeof component.forceUpdate === 'function') {
+            component.forceUpdate();
+          }
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
       const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
@@ -891,6 +907,21 @@ class Component extends DCLogic {
       delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
     }
     this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
@@ -1098,7 +1129,12 @@ class Component extends DCLogic {
     const clinic = this.__mobileUiuxBuildReservationClinic(data.clinic);
     this.MENUS = menus;
     this.THER = resources;
-    this.CLINICS = clinic ? [clinic] : [];
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (clinic) {
+      this.CLINICS = contextClinics ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name) : [clinic];
+    } else {
+      this.CLINICS = contextClinics || [];
+    }
     this.__mobileUiuxStaffResourceSource = null;
     this.__mobileUiuxStaffResourceMap = null;
     return {
@@ -1106,6 +1142,21 @@ class Component extends DCLogic {
       __mobileUiuxFirstMenuDuration: menus.length > 0 ? menus[0].dur : 0,
       __mobileUiuxFirstResourceId: resources.length > 0 ? resources[0].id : ''
     };
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    let replaced = false;
+    const next = list.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxBuildReservationMenus(value) {

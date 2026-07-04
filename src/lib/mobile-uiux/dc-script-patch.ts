@@ -554,7 +554,43 @@ function buildHomeHydrationAdapterSource(): string {
       }
     }
 
+    const contextClinics = this.__mobileUiuxContextClinics(context);
+    if (contextClinics) {
+      this.CLINICS = contextClinics;
+      overrides.scopeOpts = this.__mobileUiuxBuildHomeScopeOpts(contextClinics, context.defaultClinicId);
+    }
+
     return overrides;
+  }
+
+  __mobileUiuxBuildHomeScopeOpts(contextClinics, defaultClinicId) {
+    return contextClinics.map((c) => {
+      const cur = c.id === defaultClinicId;
+      const onTap = cur ? (() => {}) : (typeof this.link === 'function' ? this.link(c.name + 'は閲覧のみ可能です') : () => {});
+      return {
+        initial: c.name.charAt(0),
+        name: c.name,
+        tag: cur ? '✓ 自院' : '閲覧のみ',
+        onTap,
+        style: \`all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:11px 14px;min-height:56px;border-radius:14px;cursor:\${cur ? 'default' : 'pointer'};background:\${cur ? 'var(--primary-soft)' : 'var(--surface-2)'};border:1px solid \${cur ? 'var(--primary)' : 'var(--border)'};\`,
+        tagStyle: \`flex:none;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;color:\${cur ? 'var(--on-primary-soft)' : 'var(--fg-3)'};background:\${cur ? 'transparent' : 'var(--surface-3)'};\`
+      };
+    });
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
@@ -842,6 +878,22 @@ function buildReservationsHydrationAdapterSource(): string {
     const component = this;
     const applyReadData = function(screen, payload) {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (contextClinics) {
+          component.__mobileUiuxContextClinicList = contextClinics;
+          component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
+            ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
+            : contextClinics;
+          if (typeof component.setState === 'function') {
+            component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          } else if (typeof component.forceUpdate === 'function') {
+            component.forceUpdate();
+          }
+        }
+        return false;
+      }
       const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
       if (!hydratedVals) return false;
       const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
@@ -885,6 +937,21 @@ function buildReservationsHydrationAdapterSource(): string {
       delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
     }
     this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
   }
 
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
@@ -1092,7 +1159,12 @@ function buildReservationsHydrationAdapterSource(): string {
     const clinic = this.__mobileUiuxBuildReservationClinic(data.clinic);
     this.MENUS = menus;
     this.THER = resources;
-    this.CLINICS = clinic ? [clinic] : [];
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (clinic) {
+      this.CLINICS = contextClinics ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name) : [clinic];
+    } else {
+      this.CLINICS = contextClinics || [];
+    }
     this.__mobileUiuxStaffResourceSource = null;
     this.__mobileUiuxStaffResourceMap = null;
     return {
@@ -1100,6 +1172,21 @@ function buildReservationsHydrationAdapterSource(): string {
       __mobileUiuxFirstMenuDuration: menus.length > 0 ? menus[0].dur : 0,
       __mobileUiuxFirstResourceId: resources.length > 0 ? resources[0].id : ''
     };
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    let replaced = false;
+    const next = list.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxBuildReservationMenus(value) {
@@ -1702,6 +1789,14 @@ function buildPatientsHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (!contextClinics) return false;
+        component.__mobileUiuxContextClinicList = contextClinics;
+        if (typeof component.setState === 'function') {
+          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
+        }
         return false;
       }
       const readModel = component.__mobileUiuxBuildPatientReadModel(screen, payload);
@@ -1888,7 +1983,7 @@ function buildPatientsHydrationAdapterSource(): string {
       ltvList: ltvRows,
       riskHighCount: model.highRiskCount,
       pClinic: state.pClinic === model.clinic.id ? model.clinic.id : 'all',
-      clinicSelOpts: [{ v: 'all', l: model.clinic.name }],
+      clinicSelOpts: this.__mobileUiuxBuildPatientClinicSelOpts(model),
       periodLabel,
       kpiBoxes: this.__mobileUiuxBuildPatientKpiBoxes(model),
       chartBars: [{ short: model.clinic.short, value: model.totalPatients, width: model.totalPatients > 0 ? '100%' : '0%' }],
@@ -2090,6 +2185,31 @@ function buildPatientsHydrationAdapterSource(): string {
       { label: '平均LTV', value: this.__mobileUiuxMan(model.averageLtv), color: 'var(--fg)' },
       { label: '休眠患者', value: dormant + '名', color: 'var(--s-uc)' }
     ];
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
+  __mobileUiuxBuildPatientClinicSelOpts(model) {
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (!contextClinics) {
+      return [{ v: 'all', l: model.clinic.name }];
+    }
+    const hasSelected = contextClinics.some((c) => c.id === model.clinic.id);
+    const list = hasSelected ? contextClinics : [{ id: model.clinic.id, name: model.clinic.name }].concat(contextClinics);
+    return list.map((c) => ({ v: c.id, l: c.name }));
   }
 
   __mobileUiuxBuildPatientClinicCard(model) {
@@ -2417,9 +2537,37 @@ function buildSettingsDetailHydrationAdapterSource(): string {
     this.__mobileUiuxHydrationOwner = null;
   }
 
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
   __mobileUiuxBuildSettingsStatePatch(screen, payload) {
     if (screen === 'context') {
       this.__mobileUiuxStoreContext(payload);
+      const contextClinics = this.__mobileUiuxContextClinics(this.__mobileUiuxContext);
+      if (contextClinics) {
+        this.__mobileUiuxContextClinicList = contextClinics;
+        const selected = Array.isArray(this.CLINICS) && this.CLINICS.length === 1 ? this.CLINICS[0] : null;
+        this.CLINICS = selected && selected.id
+          ? this.__mobileUiuxUpsertClinic(contextClinics, selected.id, selected.name)
+          : contextClinics;
+        if (typeof this.setState === 'function') {
+          this.setState({ __mobileUiuxHydratedAt: Date.now() });
+        } else if (typeof this.forceUpdate === 'function') {
+          this.forceUpdate();
+        }
+      }
       return false;
     }
     if (screen !== 'settings-detail' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
@@ -2474,7 +2622,10 @@ function buildSettingsDetailHydrationAdapterSource(): string {
     if (this.__mobileUiuxIsRecord(data.clinic)) {
       const clinic = this.__mobileUiuxNormalizeClinic(data.clinic);
       if (clinic) {
-        this.CLINICS = [{ id: clinic.id, name: clinic.name }];
+        const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+        this.CLINICS = contextClinics
+          ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name)
+          : [{ id: clinic.id, name: clinic.name }];
         patch.clinic = clinic.id;
         patch.basic = {
           name: clinic.name,
@@ -2492,6 +2643,22 @@ function buildSettingsDetailHydrationAdapterSource(): string {
       patch.menus = this.__mobileUiuxBuildSettingsDetailMenus(data.menus);
     }
     return patch;
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    const existing = Array.isArray(list) ? list : [];
+    let replaced = false;
+    const next = existing.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
   }
 
   __mobileUiuxNormalizeClinic(value) {
