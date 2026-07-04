@@ -41,10 +41,10 @@ export async function fetchClinicNames(
     }
 
     const rows = (data as unknown[]).filter(isClinicNameRow);
-    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    const rowsById = new Map(rows.map(row => [row.id, row]));
 
     return clinicIds
-      .map((id) => rowsById.get(id))
+      .map(id => rowsById.get(id))
       .filter((row): row is MobileUiuxClinicName => row !== undefined);
   } catch {
     return [];
