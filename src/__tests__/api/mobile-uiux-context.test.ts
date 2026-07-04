@@ -102,6 +102,52 @@ function createEntitlementClient(
   };
 }
 
+type StaffProfileRow = {
+  display_name: string;
+  is_active: boolean;
+};
+
+type ClinicNameRow = {
+  id: string;
+  name: string;
+};
+
+function createContextLookupClient(options: {
+  staffProfile?: StaffProfileRow | null;
+  clinics?: ClinicNameRow[];
+}) {
+  const staffBuilder = {
+    select: jest.fn(() => staffBuilder),
+    eq: jest.fn(() => staffBuilder),
+    maybeSingle: jest.fn(async () => ({
+      data: options.staffProfile ?? null,
+      error: null,
+    })),
+  };
+
+  const clinicsBuilder = {
+    select: jest.fn(() => clinicsBuilder),
+    in: jest.fn(async () => ({
+      data: options.clinics ?? [],
+      error: null,
+    })),
+  };
+
+  return {
+    from: jest.fn((tableName: string) => {
+      if (tableName === 'staff_profiles') {
+        return staffBuilder;
+      }
+      if (tableName === 'clinics') {
+        return clinicsBuilder;
+      }
+      throw new Error(`Unexpected table: ${tableName}`);
+    }),
+    staffBuilder,
+    clinicsBuilder,
+  };
+}
+
 function buildRequest(cookieHeader?: string, search = '') {
   return new NextRequest(`http://localhost/api/mobile-uiux/context${search}`, {
     headers: cookieHeader ? { cookie: cookieHeader } : undefined,
@@ -324,6 +370,8 @@ describe('GET /api/mobile-uiux/context', () => {
         },
         defaultClinicId: 'clinic-1',
         accessibleClinicIds: ['clinic-1', 'clinic-2'],
+        displayName: null,
+        accessibleClinics: [],
         displayMode: 'mobile',
         flags: {
           enabled: true,
@@ -354,7 +402,9 @@ describe('GET /api/mobile-uiux/context', () => {
     const response = await GET(buildRequest());
 
     expect(response.status).toBe(200);
-    expect(entitlementClient.from).not.toHaveBeenCalled();
+    expect(entitlementClient.from).not.toHaveBeenCalledWith(
+      'clinic_feature_flags'
+    );
   });
 
   it('returns 403 when DB entitlements are enabled and clinic entitlement is false', async () => {
@@ -425,6 +475,75 @@ describe('GET /api/mobile-uiux/context', () => {
     expect(JSON.stringify(body)).not.toContain('patient@example.com');
     expect(JSON.stringify(body)).not.toContain('user-1');
     expect(JSON.stringify(body)).not.toContain('admin-user-id');
+  });
+
+  it('returns displayName and accessibleClinics resolved via the RLS client', async () => {
+    const lookupClient = createContextLookupClient({
+      staffProfile: { display_name: '山田 太郎', is_active: true },
+      clinics: [
+        { id: 'clinic-1', name: '第一整骨院' },
+        { id: 'clinic-2', name: '第二整骨院' },
+      ],
+    });
+    createClientMock.mockResolvedValue(lookupClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.displayName).toBe('山田 太郎');
+    expect(body.data.accessibleClinics).toEqual([
+      { id: 'clinic-1', name: '第一整骨院' },
+      { id: 'clinic-2', name: '第二整骨院' },
+    ]);
+    expect(lookupClient.from).toHaveBeenCalledWith('staff_profiles');
+    expect(lookupClient.from).toHaveBeenCalledWith('clinics');
+    expect(lookupClient.staffBuilder.eq).toHaveBeenCalledWith(
+      'user_id',
+      'user-1'
+    );
+    expect(lookupClient.clinicsBuilder.in).toHaveBeenCalledWith('id', [
+      'clinic-1',
+      'clinic-2',
+    ]);
+  });
+
+  it('returns null displayName when no staff profile row exists', async () => {
+    const lookupClient = createContextLookupClient({
+      staffProfile: null,
+      clinics: [{ id: 'clinic-1', name: '第一整骨院' }],
+    });
+    createClientMock.mockResolvedValue(lookupClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.displayName).toBeNull();
+  });
+
+  it('does not leak user email or id even with new identity fields present', async () => {
+    const lookupClient = createContextLookupClient({
+      staffProfile: { display_name: '山田 太郎', is_active: true },
+      clinics: [
+        { id: 'clinic-1', name: '第一整骨院' },
+        { id: 'clinic-2', name: '第二整骨院' },
+      ],
+    });
+    createClientMock.mockResolvedValue(lookupClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.displayName).toBe('山田 太郎');
+    const bodyText = JSON.stringify(body);
+    expect(bodyText).not.toContain('patient@example.com');
+    expect(bodyText).not.toContain('patient');
+    expect(bodyText).not.toContain('user-1');
   });
 
   it('falls back to system for unknown display mode cookie values', async () => {
