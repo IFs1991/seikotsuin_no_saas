@@ -885,6 +885,53 @@ describe('patchMobileUiuxDcScript', () => {
     expect(valsEmpty.showHeatCard).toBe(false);
   });
 
+  it('suppresses unbacked mock blocks (clinicCards/events/signals/perfRows) on primary home hydration', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      buildHomeDashboardPayload({})
+    );
+    const vals = component.renderVals();
+
+    expect(applied).toBe(true);
+    expect(vals.showClinicCards).toBe(false);
+    expect(vals.showEvents).toBe(false);
+    expect(vals.showSignals).toBe(false);
+    expect(vals.showPerfRows).toBe(false);
+  });
+
+  it('keeps sample show flags true when the home payload is invalid (fallback contract)', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(buildHomeComponentSource()),
+      { screen: 'home' }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+    component.componentDidMount();
+
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: 'boom' },
+    });
+    const vals = component.renderVals();
+
+    expect(applied).toBe(false);
+    expect(vals.showAiCard).toBe(true);
+    expect(vals.showRevCard).toBe(true);
+    expect(vals.showHeatCard).toBe(true);
+  });
+
   it('replaces fake APPTS-derived agenda rows with real reservations data on home', () => {
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {

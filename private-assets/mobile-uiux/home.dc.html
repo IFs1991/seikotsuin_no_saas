@@ -311,7 +311,7 @@
           </sc-if>
 
           <!-- ════════ MANAGER: 担当院カード ════════ -->
-          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isManager && showClinicCards }}" hint-placeholder-val="{{ false }}">
           <section>
             <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">担当院</h2>
             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -339,7 +339,7 @@
           </sc-if>
 
           <!-- ════════ MANAGER: 業務イベントタイムライン ════════ -->
-          <sc-if value="{{ isManager }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isManager && showEvents }}" hint-placeholder-val="{{ false }}">
           <section>
             <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
               <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">タイムライン</h2>
@@ -378,7 +378,7 @@
           </sc-if>
 
           <!-- ════════ ADMIN: 経営シグナル ════════ -->
-          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isAdmin && showSignals }}" hint-placeholder-val="{{ false }}">
           <section>
             <h2 style="margin: 0 2px 9px; font-size: 13px; font-weight: 700; color: var(--fg);">経営シグナル</h2>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -416,7 +416,7 @@
           </sc-if>
 
           <!-- ════════ ADMIN: 院別パフォーマンス ════════ -->
-          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+          <sc-if value="{{ isAdmin && showPerfRows }}" hint-placeholder-val="{{ false }}">
           <section>
             <div style="display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;">
               <h2 style="margin: 0; font-size: 13px; font-weight: 700; color: var(--fg);">院別パフォーマンス</h2>
@@ -857,8 +857,10 @@ class Component extends DCLogic {
       revBars, revDelta, heatCells,
       quickActions,
       drDone, drReview, drMissing, reportRows,
-      clinicCards, events,
+      showClinicCards: true, clinicCards,
+      showEvents: true, events,
       showShortcuts: isManager, shortcutsTitle, shortcuts,
+      showSignals: true, showPerfRows: true,
       signals, perfRows, goCompare: this.goCompare,
       detailOpen: !!da, closeDetail: this.closeDetail, ...detail,
       toastShow: !!s.toast, toastMsg: s.toast,

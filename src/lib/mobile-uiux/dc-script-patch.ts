@@ -660,6 +660,11 @@ function buildHomeHydrationAdapterSource(): string {
     const heatmapCardOverrides = this.__mobileUiuxBuildHomeHeatmapCardOverrides(dashboard.heatmapData);
     Object.assign(overrides, heatmapCardOverrides);
 
+    overrides.showClinicCards = false;
+    overrides.showEvents = false;
+    overrides.showSignals = false;
+    overrides.showPerfRows = false;
+
     return overrides;
   }
 
