@@ -2377,6 +2377,122 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.listRows).toEqual([{ date: 'sample-row' }]);
   });
 
+  it('clears the daily-reports fake patient suggestion source on mount', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  PATIENTS = ['渡辺 結衣', '小林 誠一', '加藤 さくら'];
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  genItems = (r) => [{ id: 1000, patient: this.PATIENTS[0] || '', menu: '', type: '自費', ratio: 3 }];
+  renderVals() {
+    return { todayLabel: 'sample-date', listRows: [{ date: 'sample-row' }] };
+  }
+}`,
+      { screen: 'daily-reports' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: '2026-06-30',
+        endDate: '2026-06-30',
+        dailyReports: {
+          reports: [
+            {
+              id: 'report-1',
+              reportDate: '2026-06-30',
+              totalPatients: 18,
+              totalRevenue: 120000,
+              insuranceRevenue: 40000,
+              privateRevenue: 80000,
+            },
+          ],
+          summary: {
+            totalReports: 1,
+            averagePatients: 18,
+            averageRevenue: 120000,
+            totalRevenue: 120000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const generated = component.genItems({ patients: 18 });
+
+    expect(applied).toBe(true);
+    expect(component.PATIENTS).toEqual([]);
+    expect(JSON.stringify(vals)).not.toContain('渡辺 結衣');
+    expect(JSON.stringify(generated)).not.toContain('渡辺 結衣');
+  });
+
+  it('hides the reservations self-only filter once real data hydrates', () => {
+    const patched = patchMobileUiuxDcScriptSource(
+      `class Component extends DCLogic {
+  SELF = 't1';
+  state = { selfOnly: true, role: 'therapist', clinic: 'c1', appts: [] };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      showSelf: true,
+      rows: [{ patient: 'sample-patient' }]
+    };
+  }
+}`,
+      { screen: 'reservations' }
+    );
+    const { component, window } = evaluatePatchedComponent(patched);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('reservations', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-04-27',
+        reservations: [
+          {
+            id: 'reservation-1',
+            customerName: 'BFF 患者A',
+            menuName: 'BFF メニューA',
+            staffId: 'staff-real-1',
+            staffName: 'BFF 先生A',
+            startTime: '2026-04-27T01:00:00.000Z',
+            endTime: '2026-04-27T01:30:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            id: 'reservation-2',
+            customerName: 'BFF 患者B',
+            menuName: 'BFF メニューB',
+            staffId: 'staff-real-2',
+            staffName: 'BFF 先生B',
+            startTime: '2026-04-27T02:00:00.000Z',
+            endTime: '2026-04-27T02:30:00.000Z',
+            status: 'unconfirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-04-27T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const rows = Array.isArray(vals.rows) ? vals.rows : [];
+
+    expect(applied).toBe(true);
+    // 実データにはSELF('t1')に一致するstaff idが存在しないが、全行が描画される
+    expect(rows).toHaveLength(2);
+    // 本人IDを解決できないため「自分のみ」トグルはハイドレーション後に非表示
+    expect(vals.showSelf).toBe(false);
+    expect(component.state.selfOnly).toBe(false);
+  });
+
   describe('context payload hydration', () => {
     const contextPayload = {
       success: true,

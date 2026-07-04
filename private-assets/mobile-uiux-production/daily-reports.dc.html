@@ -624,6 +624,9 @@ class Component extends DCLogic {
     if (Array.isArray(this.THER)) {
       this.THER = [];
     }
+    if (Array.isArray(this.PATIENTS)) {
+      this.PATIENTS = [];
+    }
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
         todayItems: [],

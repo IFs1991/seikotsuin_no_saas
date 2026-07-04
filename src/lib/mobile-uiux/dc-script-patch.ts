@@ -1127,6 +1127,8 @@ function buildReservationsHydrationAdapterSource(): string {
         if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
           statePatch.appts = hydratedVals.__mobileUiuxAppts;
           statePatch.loading = false;
+          // 実データには本人ID（SELF）を解決する手段がないため、自分のみフィルタは解除する
+          statePatch.selfOnly = false;
         }
         if (typeof hydratedVals.__mobileUiuxFirstMenuName === 'string') {
           statePatch.fMenu = hydratedVals.__mobileUiuxFirstMenuName;
@@ -1214,6 +1216,7 @@ function buildReservationsHydrationAdapterSource(): string {
       isEmpty: viewModels.rows.length === 0,
       showAgenda: viewModels.rows.length > 0,
       showTimeline: false,
+      showSelf: false,
       __mobileUiuxAppts: viewModels.appts,
       __mobileUiuxHydratedKey: this.__mobileUiuxBuildHydratedKey(data.date, this.__mobileUiuxCurrentClinicId)
     };
@@ -3288,6 +3291,9 @@ function buildDailyReportsHydrationAdapterSource(): string {
     }
     if (Array.isArray(this.THER)) {
       this.THER = [];
+    }
+    if (Array.isArray(this.PATIENTS)) {
+      this.PATIENTS = [];
     }
     if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
       this.setState({
