@@ -691,6 +691,183 @@ describe('patchMobileUiuxDcScript', () => {
     expect(vals.kpis).not.toEqual([{ label: 'sample-kpi', value: 'sample' }]);
   });
 
+  it('replaces fake APPTS-derived agenda rows with real reservations data on home', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  STATUS = {
+    unconfirmed: { label: '未確認', c: 'uc-c', b: 'uc-b' },
+    confirmed: { label: '確定', c: 'cf-c', b: 'cf-b' },
+    arrived: { label: '来院済み', c: 'cf-c', b: 'cf-b' },
+    cancelled: { label: 'キャンセル', c: 'fg3-c', b: 'cn-b' },
+    noshow: { label: '来院なし', c: 'ns-c', b: 'ns-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      attentions: [],
+      attCount: '0件',
+      agTotal: 99,
+      agUnc: 99,
+      agCancel: 99,
+      drDone: 0,
+      drReview: 0,
+      drMissing: 0,
+      reportRows: [],
+      agendaRows: [
+        { isAppt: true, patient: '渡辺 結衣', menu: '産後骨盤矯正', ther: '田中 健太' },
+        { isAppt: true, patient: '伊藤 春香', menu: '鍼灸施術', ther: '佐藤 美咲' }
+      ]
+    };
+  }
+}`),
+      {
+        screen: 'home',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const applied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            customerName: 'E2Eテスト患者',
+            menuName: '産後骨盤矯正',
+            staffName: 'BFF 先生',
+            startTime: '2026-06-30T01:00:00.000Z',
+            endTime: '2026-06-30T01:30:00.000Z',
+            status: 'confirmed',
+          },
+          {
+            customerName: 'E2Eテスト患者2',
+            menuName: '鍼灸施術',
+            staffName: 'BFF 先生2',
+            startTime: '2026-06-30T02:00:00.000Z',
+            endTime: '2026-06-30T02:40:00.000Z',
+            status: 'arrived',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const agendaRows = Array.isArray(vals.agendaRows) ? vals.agendaRows : [];
+    const serialized = JSON.stringify(agendaRows);
+
+    expect(applied).toBe(true);
+    expect(serialized).toContain('E2Eテスト患者');
+    expect(serialized).toContain('E2Eテスト患者2');
+    expect(serialized).not.toContain('渡辺 結衣');
+    expect(serialized).not.toContain('伊藤 春香');
+    expect(serialized).not.toContain('田中 健太');
+    expect(serialized).not.toContain('佐藤 美咲');
+  });
+
+  it('applies a home payload before or after a reservations-shaped payload without losing context overrides', () => {
+    const patched = patchMobileUiuxDcScript(
+      wrapDcScript(`class Component extends DCLogic {
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      dateLabel: 'sample-date',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      attentions: [],
+      attCount: '0件',
+      agTotal: 0,
+      agUnc: 0,
+      agCancel: 0,
+      drDone: 0,
+      drReview: 0,
+      drMissing: 0,
+      reportRows: [],
+      agendaRows: []
+    };
+  }
+}`),
+      {
+        screen: 'home',
+      }
+    );
+    const script = patched
+      .replace(/^<script[^>]*>/, '')
+      .replace(/<\/script>$/, '');
+    const { component, window } = evaluatePatchedComponent(script);
+
+    component.componentDidMount();
+    const reservationsApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+      'home',
+      {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [
+            {
+              customerName: 'E2Eテスト患者',
+              menuName: '産後骨盤矯正',
+              staffName: 'BFF 先生',
+              startTime: '2026-06-30T01:00:00.000Z',
+              endTime: '2026-06-30T01:30:00.000Z',
+              status: 'confirmed',
+            },
+          ],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }
+    );
+    const homeApplied = window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 100000,
+            patients: 10,
+            insuranceRevenue: 40000,
+            privateRevenue: 60000,
+          },
+          alerts: [],
+        },
+        reservationSummary: { total: 5, unconfirmed: 1, cancelled: 0 },
+        dailyReportStatus: { done: 1, review: 0, missing: 0, rows: [] },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    });
+    const vals = component.renderVals();
+    const agendaRows = Array.isArray(vals.agendaRows) ? vals.agendaRows : [];
+
+    expect(reservationsApplied).toBe(true);
+    expect(homeApplied).toBe(true);
+    expect(JSON.stringify(agendaRows)).toContain('E2Eテスト患者');
+    expect(vals.agTotal).toBe(5);
+  });
+
   it('hydrates patients KPI, patient lists, and detail values from BFF payload', () => {
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {

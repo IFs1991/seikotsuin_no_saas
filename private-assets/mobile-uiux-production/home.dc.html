@@ -1017,7 +1017,15 @@ class Component extends DCLogic {
       return null;
     }
     const data = payload.data;
-    if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+
+    if (!this.__mobileUiuxIsRecord(data.dashboard) && Array.isArray(data.reservations)) {
+      return this.__mobileUiuxBuildHomeAgendaOverridesFromReservations(data);
+    }
+
+    if (typeof data.date !== 'string' || !this.__mobileUiuxIsRecord(data.dashboard)) {
       return null;
     }
     const dashboard = data.dashboard;
@@ -1242,6 +1250,88 @@ class Component extends DCLogic {
       return;
     }
     this.__mobileUiuxContext = payload.data;
+  }
+
+  __mobileUiuxBuildHomeAgendaOverridesFromReservations(data) {
+    const agendaRows = [];
+    let agTotal = 0;
+    let agUnc = 0;
+    let agCancel = 0;
+    const reservations = Array.isArray(data.reservations) ? data.reservations : [];
+
+    for (const reservation of reservations) {
+      if (!this.__mobileUiuxIsRecord(reservation)) continue;
+      const status = this.__mobileUiuxNormalizeHomeAgendaStatus(reservation.status);
+      if (status === 'cancelled' || status === 'noshow') {
+        agCancel += 1;
+        continue;
+      }
+      agTotal += 1;
+      if (status === 'unconfirmed') {
+        agUnc += 1;
+      }
+
+      const row = this.__mobileUiuxBuildHomeAgendaRow(reservation, status);
+      if (row) {
+        agendaRows.push(row);
+      }
+    }
+
+    return { agendaRows, agTotal, agUnc, agCancel };
+  }
+
+  __mobileUiuxBuildHomeAgendaRow(reservation, status) {
+    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
+    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
+    const ther = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
+    const meta = this.__mobileUiuxHomeAgendaStatusMeta(status);
+    const times = this.__mobileUiuxHomeAgendaTimes(reservation.startTime, reservation.endTime);
+
+    return {
+      isAppt: true,
+      isDivider: false,
+      startT: times ? times.startLabel : '',
+      endT: times ? times.endLabel : '',
+      patient,
+      menu,
+      ther,
+      initial: typeof this.initial === 'function' ? this.initial(ther) : ther.charAt(0),
+      statusLabel: meta.label,
+      c: meta.c,
+      b: meta.b,
+      dim: '1',
+      rowBg: 'transparent',
+      flag: '',
+      flagShow: false,
+      flagC: '',
+      flagB: '',
+      onTap: typeof this.openDetail === 'function' && typeof reservation.id === 'string'
+        ? this.openDetail(reservation.id)
+        : (typeof this.link === 'function' ? this.link(patient + 'の予約詳細を開きます') : () => {})
+    };
+  }
+
+  __mobileUiuxNormalizeHomeAgendaStatus(value) {
+    if (value === 'confirmed' || value === 'arrived' || value === 'unconfirmed' || value === 'cancelled' || value === 'noshow') {
+      return value;
+    }
+    return 'unconfirmed';
+  }
+
+  __mobileUiuxHomeAgendaStatusMeta(status) {
+    if (this.STATUS && this.STATUS[status]) return this.STATUS[status];
+    if (status === 'confirmed' || status === 'arrived') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' };
+    if (status === 'cancelled' || status === 'noshow') return { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' };
+    return { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' };
+  }
+
+  __mobileUiuxHomeAgendaTimes(startTime, endTime) {
+    if (typeof startTime !== 'string' || typeof endTime !== 'string') return null;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    const fmt = (date) => String(date.getUTCHours()).padStart(2, '0') + ':' + String(date.getUTCMinutes()).padStart(2, '0');
+    return { startLabel: fmt(start), endLabel: fmt(end) };
   }
 }
 </script>

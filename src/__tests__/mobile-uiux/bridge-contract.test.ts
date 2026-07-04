@@ -866,6 +866,16 @@ describe('mobile-uiux bridge contract', () => {
       [
         buildJsonResponse(200, contextPayload),
         buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
       ],
       applyReadData
     );
@@ -878,6 +888,123 @@ describe('mobile-uiux bridge contract', () => {
     );
     expect(window.document.body.textContent).toContain(
       'ホームデータを読み込みました'
+    );
+  });
+
+  it('fetches supplemental reservations data for home and applies it under screen home', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          aiComment: null,
+          revenueChartData: [],
+          heatmapData: [],
+          alerts: [],
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const reservationsPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [
+          {
+            customerName: 'E2Eテスト患者',
+            menuName: 'BFF メニュー',
+            staffName: 'BFF 先生',
+            startTime: '2026-06-30T01:00:00.000Z',
+            endTime: '2026-06-30T01:30:00.000Z',
+            status: 'confirmed',
+          },
+        ],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'home',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+        buildJsonResponse(200, reservationsPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(calls).toContainEqual({
+      url: expect.stringMatching(
+        /^\/api\/mobile-uiux\/reservations\?clinic_id=/
+      ) as string,
+      method: 'GET',
+      body: undefined,
+    });
+    expect(applyReadData).toHaveBeenCalledWith('home', reservationsPayload);
+  });
+
+  it('does not break primary home hydration when the supplemental reservations fetch fails', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          aiComment: null,
+          revenueChartData: [],
+          heatmapData: [],
+          alerts: [],
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow(
+      'home',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, readPayload),
+        buildJsonResponse(500, { success: false }),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+
+    expect(applyReadData).toHaveBeenCalledWith('home', readPayload);
+    expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+      'hydrated'
     );
   });
 
