@@ -9,22 +9,38 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 
 const SRC_DIR = path.resolve(__dirname, '../..');
 
-function grepFiles(pattern: string): string[] {
-  try {
-    const result = execSync(
-      `grep -rl "${pattern}" "${SRC_DIR}" --include="*.ts" --include="*.tsx"`,
-      { encoding: 'utf-8', timeout: 10_000 }
-    ).trim();
-    return result
-      ? result.split('\n').filter(f => f && !f.includes('__tests__'))
-      : [];
-  } catch {
+function collectSourceFiles(directory: string): string[] {
+  if (!fs.existsSync(directory)) {
     return [];
   }
+
+  const files: string[] = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === '__tests__') {
+        continue;
+      }
+      files.push(...collectSourceFiles(fullPath));
+      continue;
+    }
+
+    if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function filesContaining(pattern: string): string[] {
+  return collectSourceFiles(SRC_DIR).filter(filePath => {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return content.includes(pattern);
+  });
 }
 
 describe('R-03: Supabase Client 統一', () => {
@@ -66,7 +82,7 @@ describe('R-03: Supabase Client 統一', () => {
 
   describe('未使用クライアントの排除', () => {
     test('src/api/database/supabase-client.ts への参照がプロダクションコードに存在しない', () => {
-      const refs = grepFiles('api/database/supabase-client');
+      const refs = filesContaining('api/database/supabase-client');
       const productionRefs = refs.filter(
         f => !f.includes('supabase-client.ts')
       );
@@ -76,7 +92,7 @@ describe('R-03: Supabase Client 統一', () => {
 
   describe('supabase-browser.ts の廃止', () => {
     test('supabase-browser.ts への参照がプロダクションコードに存在しない', () => {
-      const refs = grepFiles('supabase-browser');
+      const refs = filesContaining('supabase-browser');
       const productionRefs = refs.filter(
         f => !f.includes('supabase-browser.ts')
       );
