@@ -2,6 +2,12 @@ import { normalizeSupabaseError } from '@/lib/error-handler';
 import type { SupabaseServerClient } from '@/lib/supabase';
 
 const RESERVATION_NO_OVERLAP_SQLSTATE = '23P01';
+export const RESERVATION_CONFLICT_EXCLUDED_STATUSES = [
+  'cancelled',
+  'no_show',
+] as const;
+export const RESERVATION_CONFLICT_STATUS_FILTER =
+  '("cancelled","no_show")' as const;
 
 export type ReservationConflictClient = Pick<SupabaseServerClient, 'from'>;
 
@@ -40,7 +46,7 @@ export async function hasReservationConflict(
   query = query
     .lt('start_time', params.endTime)
     .gt('end_time', params.startTime)
-    .not('status', 'in', '("cancelled","no_show")');
+    .not('status', 'in', RESERVATION_CONFLICT_STATUS_FILTER);
 
   if (params.excludeId) {
     query = query.neq('id', params.excludeId);

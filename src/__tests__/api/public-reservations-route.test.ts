@@ -43,10 +43,68 @@ const VALID_RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
 const EMPTY_LIST = { data: [], error: null };
 const NO_CONFLICT = { count: 0, error: null };
 
-const buildRequest = (body: Record<string, unknown>) =>
-  ({
-    json: async () => body,
-  }) as any;
+type MockQueryResult = {
+  data: unknown;
+  error: unknown;
+};
+
+type CustomerTableMock = {
+  select: () => unknown;
+  insert: () => unknown;
+};
+
+type PublicReservationRouteRequest = {
+  json: () => Promise<unknown>;
+};
+
+type PublicReservationRouteResponse = {
+  status: number;
+  json: () => Promise<unknown>;
+};
+
+function isCustomerTableMock(value: unknown): value is CustomerTableMock {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'select' in value &&
+    'insert' in value &&
+    typeof value.select === 'function' &&
+    typeof value.insert === 'function'
+  );
+}
+
+function createThenableQuery(result: MockQueryResult) {
+  const query = {
+    eq: jest.fn(() => query),
+    in: jest.fn(() => query),
+    lt: jest.fn(() => query),
+    gt: jest.fn(() => query),
+    not: jest.fn(() => query),
+    order: jest.fn(() => query),
+    single: jest.fn(() => Promise.resolve(result)),
+    then<TResult1 = MockQueryResult, TResult2 = never>(
+      onfulfilled?:
+        | ((value: MockQueryResult) => TResult1 | PromiseLike<TResult1>)
+        | null,
+      onrejected?:
+        | ((reason: unknown) => TResult2 | PromiseLike<TResult2>)
+        | null
+    ): PromiseLike<TResult1 | TResult2> {
+      return Promise.resolve(result).then(
+        onfulfilled ?? undefined,
+        onrejected ?? undefined
+      );
+    },
+  };
+
+  return query;
+}
+
+const buildRequest = (
+  body: Record<string, unknown>
+): PublicReservationRouteRequest => ({
+  json: async () => body,
+});
 
 const buildValidBody = () => ({
   clinic_id: VALID_CLINIC_ID,
@@ -55,7 +113,7 @@ const buildValidBody = () => ({
   customer_email: 'patient@example.com',
   menu_id: VALID_MENU_ID,
   resource_id: VALID_RESOURCE_ID,
-  start_time: '2026-03-17T10:00',
+  start_time: '2026-07-10T10:00:00+09:00',
   channel: 'web' as const,
 });
 
@@ -65,17 +123,49 @@ const buildValidBody = () => ({
 function buildMockSupabase(overrides: Record<string, unknown> = {}) {
   const defaultTables: Record<string, unknown> = {
     clinic_settings: {
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: {
-                settings: { allowOnlineBooking: true },
+      select: jest.fn((columns: string) => {
+        if (columns === 'category, settings') {
+          return createThenableQuery({
+            data: [
+              {
+                category: 'clinic_hours',
+                settings: {
+                  hoursByDay: {
+                    friday: {
+                      isOpen: true,
+                      timeSlots: [{ start: '09:00', end: '19:00' }],
+                    },
+                  },
+                  holidays: [],
+                  specialClosures: [],
+                },
               },
-              error: null,
+              {
+                category: 'booking_calendar',
+                settings: {
+                  allowOnlineBooking: true,
+                  slotMinutes: 30,
+                  minAdvanceBookingHours: 0,
+                  maxAdvanceBookingDays: 36500,
+                },
+              },
+            ],
+            error: null,
+          });
+        }
+
+        return {
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  settings: { allowOnlineBooking: true },
+                },
+                error: null,
+              }),
             }),
           }),
-        }),
+        };
       }),
     },
     menus: {
@@ -84,14 +174,16 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
           eq: jest.fn().mockReturnValue({
             eq: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({
-                  data: {
-                    id: VALID_MENU_ID,
-                    name: '標準施術',
-                    duration_minutes: 60,
-                    price: 5000,
-                  },
-                  error: null,
+                eq: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({
+                    data: {
+                      id: VALID_MENU_ID,
+                      name: '標準施術',
+                      duration_minutes: 60,
+                      price: 5000,
+                    },
+                    error: null,
+                  }),
                 }),
               }),
             }),
@@ -118,8 +210,12 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            lt: jest.fn().mockReturnValue({
-              gt: jest.fn().mockResolvedValue(EMPTY_LIST),
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                lt: jest.fn().mockReturnValue({
+                  gt: jest.fn().mockResolvedValue(EMPTY_LIST),
+                }),
+              }),
             }),
           }),
         }),
@@ -152,8 +248,8 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
         single: jest.fn().mockResolvedValue({
           data: {
             id: VALID_RESERVATION_ID,
-            start_time: '2026-03-17T10:00:00.000Z',
-            end_time: '2026-03-17T11:00:00.000Z',
+            start_time: '2026-07-10T01:00:00.000Z',
+            end_time: '2026-07-10T02:00:00.000Z',
             status: 'unconfirmed',
           },
           error: null,
@@ -174,17 +270,29 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
         reservationsCallCount.value++;
         // First call is select (overlap check), second is insert
         if (reservationsCallCount.value === 1) {
-          return { select: jest.fn().mockReturnValue(tables.reservations_select) };
+          return {
+            select: jest.fn().mockReturnValue(tables.reservations_select),
+          };
         }
-        return { insert: jest.fn().mockReturnValue(tables.reservations_insert) };
+        return {
+          insert: jest.fn().mockReturnValue(tables.reservations_insert),
+        };
       }
       if (table === 'customers') {
         customersCallCount.value++;
+        if (!isCustomerTableMock(tables.customers)) {
+          throw new Error('Unexpected customers mock shape');
+        }
+
         // First call is select (find existing), second may be insert
         if (customersCallCount.value === 1) {
-          return { select: jest.fn().mockReturnValue((tables.customers as any).select()) };
+          return {
+            select: jest.fn().mockReturnValue(tables.customers.select()),
+          };
         }
-        return { insert: jest.fn().mockReturnValue((tables.customers as any).insert()) };
+        return {
+          insert: jest.fn().mockReturnValue(tables.customers.insert()),
+        };
       }
       const t = tables[table];
       if (!t) throw new Error(`Unexpected table access: ${table}`);
@@ -202,14 +310,18 @@ function setupClinicContext(supabase: unknown) {
 }
 
 describe('POST /api/public/reservations', () => {
-  let POST: (req: any) => Promise<any>;
+  let POST: (
+    req: PublicReservationRouteRequest
+  ) => Promise<PublicReservationRouteResponse>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     // Dynamic import to pick up mocks
     jest.resetModules();
     const mod = await import('@/app/api/public/reservations/route');
-    POST = mod.POST;
+    POST = mod.POST as (
+      req: PublicReservationRouteRequest
+    ) => Promise<PublicReservationRouteResponse>;
   });
 
   it('クリニックが見つからない場合は 404 を返す', async () => {
@@ -304,8 +416,8 @@ describe('POST /api/public/reservations', () => {
       reservation_id: VALID_RESERVATION_ID,
       clinic_name: 'テスト整骨院',
       menu_name: '標準施術',
-      start_time: '2026-03-17T10:00:00.000Z',
-      end_time: '2026-03-17T11:00:00.000Z',
+      start_time: '2026-07-10T01:00:00.000Z',
+      end_time: '2026-07-10T02:00:00.000Z',
       status: 'unconfirmed',
     });
   });
@@ -377,9 +489,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('バリデーションエラーの場合は 400 を返す', async () => {
-    const response = await POST(
-      buildRequest({ clinic_id: 'not-a-uuid' })
-    );
+    const response = await POST(buildRequest({ clinic_id: 'not-a-uuid' }));
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -387,7 +497,7 @@ describe('POST /api/public/reservations', () => {
     expect(data.error).toBe('Validation error');
   });
 
-  it('開始時間が30分刻みではない場合は 400 を返す', async () => {
+  it('start_timeにtimezone offsetがない場合は 400 を返す', async () => {
     const response = await POST(
       buildRequest({
         ...buildValidBody(),
@@ -400,16 +510,35 @@ describe('POST /api/public/reservations', () => {
     expect(data.success).toBe(false);
     expect(data.error).toBe('Validation error');
     expect(data.details.fieldErrors.start_time).toContain(
-      'start_time must be on a 30-minute boundary'
+      'start_time must be ISO 8601 format with timezone offset'
     );
   });
 
+  it('院設定のslotMinutes境界外の場合は 400 を返す', async () => {
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        start_time: '2026-07-10T10:15:00+09:00',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data).toEqual({
+      success: false,
+      error: 'Requested time is outside the configured slot boundary',
+    });
+  });
+
   it('不正なJSONの場合は 400 を返す', async () => {
-    const badRequest = {
+    const badRequest: PublicReservationRouteRequest = {
       json: async () => {
         throw new Error('Invalid JSON');
       },
-    } as any;
+    };
 
     const response = await POST(badRequest);
     const data = await response.json();

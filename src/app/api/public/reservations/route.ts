@@ -26,6 +26,7 @@ import {
   CustomerCreateError,
   ReservationCreateError,
 } from '@/lib/services/public-reservation-service';
+import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { reservationCreateSchema } from '../schema';
 
 export async function POST(request: NextRequest) {
@@ -124,6 +125,22 @@ export async function POST(request: NextRequest) {
       start_time,
       menu.duration_minutes
     );
+
+    try {
+      await service.validateReservationTime(startIso, endIso);
+    } catch (e) {
+      if (e instanceof PublicBookingTimeValidationError) {
+        return NextResponse.json(
+          { success: false, error: e.message },
+          { status: 400 }
+        );
+      }
+      console.error('Reservation time validation error:', e);
+      return NextResponse.json(
+        { success: false, error: 'Failed to validate reservation time' },
+        { status: 500 }
+      );
+    }
 
     // Verify resource
     try {

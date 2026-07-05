@@ -16,6 +16,7 @@ import {
   hasReservationConflict,
   isReservationNoOverlapError,
 } from '@/lib/reservations/conflict';
+import { PublicAvailabilityService } from '@/lib/services/public-availability-service';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
@@ -170,6 +171,7 @@ export class PublicReservationService {
       .eq('id', menuId)
       .eq('clinic_id', this.clinicId)
       .eq('is_active', true)
+      .eq('is_public', true)
       .eq('is_deleted', false)
       .single();
 
@@ -218,6 +220,17 @@ export class PublicReservationService {
     };
   }
 
+  async validateReservationTime(
+    startIso: string,
+    endIso: string
+  ): Promise<void> {
+    const availabilityService = new PublicAvailabilityService(
+      this.client,
+      this.clinicId
+    );
+    await availabilityService.validateReservationTime(startIso, endIso);
+  }
+
   /**
    * Check that the time slot is available (no overlapping reservations or blocks).
    * @throws SlotConflictError
@@ -253,6 +266,8 @@ export class PublicReservationService {
       .select('id, reason')
       .eq('clinic_id', this.clinicId)
       .eq('resource_id', resourceId)
+      .eq('is_active', true)
+      .eq('is_deleted', false)
       .lt('start_time', endIso)
       .gt('end_time', startIso);
 
