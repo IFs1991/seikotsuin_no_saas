@@ -1,4 +1,7 @@
-import { enqueuePatientReservationEmail } from '@/lib/notifications/reservation-notifications';
+import {
+  enqueuePatientReservationEmail,
+  enqueuePatientReservationNotification,
+} from '@/lib/notifications/reservation-notifications';
 
 type NotificationClient = Parameters<typeof enqueuePatientReservationEmail>[0];
 
@@ -93,5 +96,163 @@ describe('reservation notification idempotency', () => {
 
     expect(result).toBe('duplicate');
     expect(emailInsert).not.toHaveBeenCalled();
+  });
+});
+
+function createLineNotificationClient(params: { lineEnabled: boolean }) {
+  const notificationMaybeSingle = jest.fn().mockResolvedValue({
+    data: { id: 'notification-001' },
+    error: null,
+  });
+  const notificationUpsert = jest.fn().mockReturnValue({
+    select: jest.fn().mockReturnValue({ maybeSingle: notificationMaybeSingle }),
+  });
+  const notificationUpdate = jest.fn().mockReturnValue({
+    eq: jest.fn().mockResolvedValue({ error: null }),
+  });
+  const lineInsert = jest.fn().mockReturnValue({
+    select: jest.fn().mockReturnValue({
+      single: jest.fn().mockResolvedValue({
+        data: { id: 'line-outbox-001' },
+        error: null,
+      }),
+    }),
+  });
+  const emailInsert = jest.fn().mockReturnValue({
+    select: jest.fn().mockReturnValue({
+      single: jest.fn().mockResolvedValue({
+        data: { id: 'email-outbox-001' },
+        error: null,
+      }),
+    }),
+  });
+
+  const from = jest.fn((table: string) => {
+    if (table === 'clinic_settings') {
+      return {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: {
+              settings: {
+                channels: {
+                  lineEnabled: params.lineEnabled,
+                },
+              },
+            },
+            error: null,
+          }),
+        }),
+      };
+    }
+    if (table === 'clinic_feature_flags') {
+      return {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { line_booking_enabled: true },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }
+    if (table === 'clinic_line_credentials') {
+      return {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { is_active: true },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }
+    if (table === 'reservation_notifications') {
+      return {
+        upsert: notificationUpsert,
+        update: notificationUpdate,
+      };
+    }
+    if (table === 'line_message_outbox') {
+      return { insert: lineInsert };
+    }
+    if (table === 'email_outbox') {
+      return { insert: emailInsert };
+    }
+    throw new Error(`Unexpected table: ${table}`);
+  });
+
+  return {
+    client: { from: from as NotificationClient['from'] },
+    notificationUpsert,
+    lineInsert,
+    emailInsert,
+  };
+}
+
+describe('reservation notification channel priority', () => {
+  const originalKillSwitch = process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
+  const originalLineKey = process.env.LINE_CREDENTIALS_ENCRYPTION_KEY;
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'true';
+    process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = 'a'.repeat(64);
+  });
+
+  afterAll(() => {
+    process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = originalKillSwitch;
+    process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = originalLineKey;
+  });
+
+  it('enqueues LINE when customer and clinic gates allow push', async () => {
+    const { client, notificationUpsert, lineInsert, emailInsert } =
+      createLineNotificationClient({ lineEnabled: true });
+
+    const result = await enqueuePatientReservationNotification(client, {
+      ...baseInput,
+      lineUserId: 'U1234567890',
+    });
+
+    expect(result).toBe('enqueued');
+    expect(notificationUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'line',
+        notification_type: 'reminder_day_before',
+      }),
+      expect.objectContaining({
+        onConflict: 'reservation_id,notification_type',
+        ignoreDuplicates: true,
+      })
+    );
+    expect(lineInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clinic_id: 'clinic-001',
+        line_user_id: 'U1234567890',
+        message_type: 'reminder_day_before',
+        status: 'pending',
+      })
+    );
+    expect(emailInsert).not.toHaveBeenCalled();
+  });
+
+  it('falls back to email when clinic communication LINE is disabled', async () => {
+    const { client, lineInsert, emailInsert } = createLineNotificationClient({
+      lineEnabled: false,
+    });
+
+    const result = await enqueuePatientReservationNotification(client, {
+      ...baseInput,
+      lineUserId: 'U1234567890',
+    });
+
+    expect(result).toBe('enqueued');
+    expect(lineInsert).not.toHaveBeenCalled();
+    expect(emailInsert).toHaveBeenCalledTimes(1);
   });
 });

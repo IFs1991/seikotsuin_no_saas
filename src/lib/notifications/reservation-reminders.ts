@@ -5,7 +5,7 @@ import {
 } from '@/lib/jst';
 import { normalizeBookingCalendarReminders } from '@/lib/booking-calendar/settings';
 import {
-  enqueuePatientReservationEmail,
+  enqueuePatientReservationNotification,
   type PatientReservationEmailInput,
   type ReservationNotificationType,
 } from '@/lib/notifications/reservation-notifications';
@@ -36,7 +36,7 @@ type ReminderReservationRow = Pick<
 
 type ReminderCustomer = Pick<
   Database['public']['Tables']['customers']['Row'],
-  'email' | 'name' | 'consent_reminder'
+  'email' | 'line_user_id' | 'name' | 'consent_reminder'
 >;
 
 type ReminderContext = {
@@ -206,7 +206,7 @@ async function fetchReminderContext(
   const [customer, resource, menu] = await Promise.all([
     supabase
       .from('customers')
-      .select('email, name, consent_reminder')
+      .select('email, line_user_id, name, consent_reminder')
       .eq('id', row.customer_id)
       .eq('clinic_id', row.clinic_id)
       .maybeSingle(),
@@ -302,11 +302,12 @@ export async function processReservationReminders(
       }
 
       for (const reminder of due) {
-        const outcome = await enqueuePatientReservationEmail(supabase, {
+        const outcome = await enqueuePatientReservationNotification(supabase, {
           clinicId: reservation.clinic_id,
           reservationId: reservation.id,
           customerId: reservation.customer_id,
           toEmail: context.customer?.email ?? null,
+          lineUserId: context.customer?.line_user_id ?? null,
           notificationType: reminder.notificationType,
           templateType: getReminderTemplateType(reminder.notificationType),
           payload: {

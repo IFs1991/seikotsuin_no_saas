@@ -2,7 +2,7 @@ import { determineNotificationType } from './policy';
 import { enqueueEmail } from './enqueue-email';
 import type { EmailTemplateType, ReservationSnapshot } from './types';
 import {
-  enqueuePatientReservationEmail,
+  enqueuePatientReservationNotification,
   type ReservationNotificationType,
 } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
@@ -22,7 +22,11 @@ type ReservationWithUpdatedAt = {
 };
 
 type CustomerLookupResult = {
-  customer: { email: string | null; name: string | null } | null;
+  customer: {
+    email: string | null;
+    line_user_id: string | null;
+    name: string | null;
+  } | null;
   failureMessage: string | null;
 };
 
@@ -43,7 +47,11 @@ type LookupFailure = {
 } | null;
 
 type EnqueueDependencies = {
-  customer: { email: string | null; name: string | null } | null;
+  customer: {
+    email: string | null;
+    line_user_id: string | null;
+    name: string | null;
+  } | null;
   context: ReservationContext;
   failure: LookupFailure;
 };
@@ -143,25 +151,24 @@ export async function enqueueReservationCreated(
     }
 
     const customer = dependencies.customer;
-    if (!customer?.email) return;
+    if (!customer?.email && !customer?.line_user_id) return;
 
-    await enqueueEmail(
-      supabase,
-      {
-        clinicId: reservation.clinic_id,
-        reservationId: reservation.id,
-        customerId: reservation.customer_id,
-        templateType: 'reservation_created',
-        toEmail: customer.email,
-        payload: buildReservationEmailPayload(
-          customer,
-          dependencies.context,
-          reservation.start_time,
-          reservation.end_time
-        ),
-      },
-      reservation.updated_at
-    );
+    await enqueuePatientReservationNotification(supabase, {
+      clinicId: reservation.clinic_id,
+      reservationId: reservation.id,
+      customerId: reservation.customer_id,
+      toEmail: customer.email,
+      lineUserId: customer.line_user_id,
+      notificationType: 'received',
+      templateType: 'reservation_created',
+      payload: buildReservationEmailPayload(
+        customer,
+        dependencies.context,
+        reservation.start_time,
+        reservation.end_time
+      ),
+      dedupeTimestamp: reservation.updated_at,
+    });
   } catch (err) {
     // enqueue 失敗は予約操作をブロックしない
     logger.error('Failed to enqueue reservation_created email', err);
@@ -212,11 +219,12 @@ export async function enqueueReservationChange(
     );
 
     if (notificationType) {
-      await enqueuePatientReservationEmail(supabase, {
+      await enqueuePatientReservationNotification(supabase, {
         clinicId: after.clinic_id,
         reservationId: after.id,
         customerId: after.customer_id,
         toEmail: customer?.email ?? null,
+        lineUserId: customer?.line_user_id ?? null,
         notificationType,
         templateType,
         payload,
@@ -298,7 +306,7 @@ async function fetchCustomerEmail(
 ): Promise<CustomerLookupResult> {
   const { data, error } = await supabase
     .from('customers')
-    .select('id, email, name')
+    .select('id, email, line_user_id, name')
     .eq('id', customerId)
     .eq('clinic_id', clinicId)
     .maybeSingle();
@@ -318,7 +326,11 @@ async function fetchCustomerEmail(
   }
 
   return {
-    customer: { email: data.email, name: data.name },
+    customer: {
+      email: data.email,
+      line_user_id: data.line_user_id,
+      name: data.name,
+    },
     failureMessage: null,
   };
 }
