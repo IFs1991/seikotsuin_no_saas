@@ -58,6 +58,26 @@ describe('PublicBookingForm wizard', () => {
         });
       }
 
+      if (url.pathname === '/api/public/booking-form') {
+        return jsonResponse({
+          success: true,
+          data: {
+            fields: {
+              nameKana: { enabled: false, required: false },
+              phone: { enabled: true, required: true },
+              email: { enabled: true, required: false },
+              birthDate: { enabled: false, required: false },
+              gender: { enabled: false, required: false },
+              notes: { enabled: true, required: false },
+            },
+            staffSelection: 'optional',
+            questions: [],
+            consents: [],
+            completionMessage: '',
+          },
+        });
+      }
+
       if (url.pathname === '/api/public/availability') {
         const date = url.searchParams.get('date_from') ?? '2026-07-05';
         return jsonResponse({
@@ -135,9 +155,6 @@ describe('PublicBookingForm wizard', () => {
     expect(screen.getByText('患者情報を入力')).toBeInTheDocument();
     await user.type(screen.getByPlaceholderText('山田 太郎'), '山田 太郎');
     await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
-    await user.click(screen.getByRole('button', { name: /次へ/ }));
-
-    expect(screen.getByText('質問項目')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /次へ/ }));
 
     expect(screen.getByRole('heading', { name: '確認' })).toBeInTheDocument();

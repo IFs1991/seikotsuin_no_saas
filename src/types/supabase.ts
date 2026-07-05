@@ -3404,6 +3404,7 @@ export type Database = {
           deleted_by: string | null;
           end_time: string;
           id: string;
+          intake_responses: Json | null;
           is_deleted: boolean | null;
           is_recurring: boolean | null;
           is_staff_requested: boolean;
@@ -3439,6 +3440,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -3474,6 +3476,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time?: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -5893,6 +5896,7 @@ export type Database = {
           duration_minutes: number | null;
           end_time: string | null;
           id: string | null;
+          intake_responses: Json | null;
           is_staff_requested: boolean | null;
           menu_id: string | null;
           menu_name: string | null;

@@ -156,18 +156,20 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
           });
         }
 
-        return {
-          eq: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({
-                data: {
-                  settings: { allowOnlineBooking: true },
-                },
-                error: null,
-              }),
-            }),
+        const query = {
+          eq: jest.fn(() => query),
+          single: jest.fn().mockResolvedValue({
+            data: {
+              settings: { allowOnlineBooking: true },
+            },
+            error: null,
+          }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: null,
+            error: null,
           }),
         };
+        return query;
       }),
     },
     menus: {
@@ -538,7 +540,9 @@ describe('POST /api/public/reservations', () => {
     expect(data.error).toBe('Validation error');
   });
 
-  it('電話番号がない場合は 400 を返す', async () => {
+  it('電話番号がない場合は booking_form の必須検証で 400 を返す', async () => {
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
     const body = buildValidBody();
     const { customer_phone: customerPhone, ...withoutPhone } = body;
     expect(customerPhone).toBe('09012345678');
@@ -548,8 +552,7 @@ describe('POST /api/public/reservations', () => {
 
     expect(response.status).toBe(400);
     expect(data.success).toBe(false);
-    expect(data.error).toBe('Validation error');
-    expect(data.details.fieldErrors.customer_phone).toContain('Required');
+    expect(data.error).toBe('電話番号は必須です');
   });
 
   it('start_timeにtimezone offsetがない場合は 400 を返す', async () => {

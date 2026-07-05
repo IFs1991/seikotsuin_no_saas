@@ -1,4 +1,5 @@
 import type { ReservationOptionSelection } from '@/types/reservation';
+import type { IntakeResponseSnapshot } from '@/lib/booking-form/settings';
 
 export interface SchedulerResource {
   id: string;
@@ -57,6 +58,7 @@ export interface Appointment {
   menuName?: string;
   staffName?: string;
   selectedOptions?: ReservationOptionSelection[];
+  intakeResponses?: IntakeResponseSnapshot[];
   isStaffRequested?: boolean;
   staffNominationFee?: number;
 }

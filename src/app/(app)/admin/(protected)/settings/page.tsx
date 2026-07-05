@@ -55,6 +55,7 @@ type SettingsItemId =
   | 'insurance-billing'
   | 'booking-slots'
   | 'booking-online'
+  | 'booking-form'
   | 'booking-display'
   | 'comm-email'
   | 'comm-announcement'
@@ -125,6 +126,7 @@ const IMPLEMENTED_SETTINGS_ITEM_IDS = new Set<SettingsItemId>([
   'services-menu',
   'insurance-types',
   'booking-slots',
+  'booking-form',
   'comm-email',
   'system-general',
   'system-security',
@@ -240,6 +242,11 @@ const SETTINGS_CATEGORIES: readonly SettingsCategoryDefinition[] = [
         id: 'booking-online',
         title: 'オンライン予約',
         description: '患者向け予約ページの公開・非公開、設定',
+      },
+      {
+        id: 'booking-form',
+        title: '予約フォーム',
+        description: '公開予約フォームの入力項目、質問、同意欄の設定',
       },
       {
         id: 'booking-display',
@@ -454,6 +461,13 @@ const SETTINGS_COMPONENTS: Partial<Record<SettingsItemId, SettingsComponent>> =
       () =>
         import('@/components/admin/booking-calendar-settings').then(
           m => m.BookingCalendarSettings
+        ),
+      { loading: SettingsLoadingCard }
+    ),
+    'booking-form': dynamic(
+      () =>
+        import('@/components/admin/booking-form-settings').then(
+          m => m.BookingFormSettings
         ),
       { loading: SettingsLoadingCard }
     ),

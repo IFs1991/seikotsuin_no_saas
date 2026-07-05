@@ -12,6 +12,7 @@ import {
 } from '@/lib/admin-settings/defaults';
 import { CATEGORY_SCHEMAS } from '@/lib/admin-settings/schemas';
 import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
+import { normalizeBookingFormSettings } from '@/lib/booking-form/settings';
 import type { Json } from '@/types/supabase';
 
 export const ADMIN_SETTINGS_MUTATION_ROLES: readonly Role[] =
@@ -133,6 +134,12 @@ function normalizeSettings(
   if (category === 'communication') {
     return normalizeCommunicationSettings(
       settings ?? DEFAULT_SETTINGS.communication
+    );
+  }
+
+  if (category === 'booking_form') {
+    return normalizeBookingFormSettings(
+      settings ?? DEFAULT_SETTINGS.booking_form
     );
   }
 

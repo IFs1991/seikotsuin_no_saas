@@ -57,8 +57,24 @@ export const availabilityQuerySchema = z.object({
 export type AvailabilityQueryDTO = z.infer<typeof availabilityQuerySchema>;
 
 // ================================================================
+// GET /api/public/booking-form - Public Booking Form Settings
+// ================================================================
+
+export const bookingFormQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+export type BookingFormQueryDTO = z.infer<typeof bookingFormQuerySchema>;
+
+// ================================================================
 // POST /api/public/reservations - Reservation Creation
 // ================================================================
+
+const bookingFormResponseValueSchema = z.union([
+  z.string().max(1000),
+  z.boolean(),
+  z.array(z.string().max(50)).max(20),
+]);
 
 export const reservationCreateSchema = z.object({
   clinic_id: clinicIdSchema,
@@ -70,9 +86,15 @@ export const reservationCreateSchema = z.object({
   customer_phone: z
     .string()
     .trim()
-    .min(1, 'customer_phone is required')
-    .max(20, 'customer_phone must be 20 characters or less'),
+    .max(20, 'customer_phone must be 20 characters or less')
+    .optional(),
   customer_email: z.string().email('Invalid email address').optional(),
+  customer_name_kana: z.string().trim().max(255).optional(),
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'birth_date must be YYYY-MM-DD')
+    .optional(),
+  gender: z.string().trim().max(50).optional(),
   menu_id: z.string().uuid('menu_id must be a valid UUID'),
   resource_id: z.union([
     z.literal('any'),
@@ -88,6 +110,18 @@ export const reservationCreateSchema = z.object({
     .string()
     .max(1000, 'notes must be 1000 characters or less')
     .optional(),
+  intake_responses: z
+    .array(
+      z
+        .object({
+          id: z.string().trim().min(1).max(100),
+          value: bookingFormResponseValueSchema,
+        })
+        .required()
+    )
+    .max(20)
+    .default([]),
+  consents: z.record(z.boolean()).default({}),
   channel: z.enum(['web', 'line']).default('web'),
 });
 

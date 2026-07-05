@@ -25,8 +25,13 @@ import {
   CustomerLookupError,
   CustomerCreateError,
   ReservationCreateError,
+  BookingFormValidationError,
   type ReservationResult,
 } from '@/lib/services/public-reservation-service';
+import type {
+  BookingFormResponseValue,
+  IntakeResponseSnapshot,
+} from '@/lib/booking-form/settings';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { reservationCreateSchema } from '../schema';
 
@@ -61,10 +66,15 @@ export async function POST(request: NextRequest) {
       customer_name,
       customer_phone,
       customer_email,
+      customer_name_kana,
+      birth_date,
+      gender,
       menu_id,
       resource_id,
       start_time,
       notes,
+      intake_responses,
+      consents,
     } = parsed.data;
     const channel = 'web';
 
@@ -103,6 +113,40 @@ export async function POST(request: NextRequest) {
       console.error('Clinic settings lookup error:', e);
       return NextResponse.json(
         { success: false, error: 'Failed to verify online booking settings' },
+        { status: 500 }
+      );
+    }
+
+    let intakeResponseSnapshots: IntakeResponseSnapshot[];
+    try {
+      const normalizedIntakeResponses = intake_responses.filter(
+        (
+          response
+        ): response is { id: string; value: BookingFormResponseValue } =>
+          typeof response.id === 'string' && response.value !== undefined
+      );
+      intakeResponseSnapshots = await service.validateBookingFormResponses({
+        standardFields: {
+          nameKana: customer_name_kana,
+          phone: customer_phone,
+          email: customer_email,
+          birthDate: birth_date,
+          gender,
+          notes,
+        },
+        responses: normalizedIntakeResponses,
+        consents,
+      });
+    } catch (e) {
+      if (e instanceof BookingFormValidationError) {
+        return NextResponse.json(
+          { success: false, error: e.message },
+          { status: 400 }
+        );
+      }
+      console.error('Booking form validation error:', e);
+      return NextResponse.json(
+        { success: false, error: 'Failed to validate booking form responses' },
         { status: 500 }
       );
     }
@@ -237,6 +281,7 @@ export async function POST(request: NextRequest) {
         notes: notes ?? null,
         channel,
         isStaffRequested: !isAutoAssign,
+        intakeResponses: intakeResponseSnapshots,
       });
     } catch (e) {
       if (e instanceof SlotConflictError) {
@@ -257,6 +302,7 @@ export async function POST(request: NextRequest) {
               notes: notes ?? null,
               channel,
               isStaffRequested: false,
+              intakeResponses: intakeResponseSnapshots,
             });
           } catch (retryError) {
             if (customerResult.created) {

@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import type { SettingsCategory } from './defaults';
+import { BookingFormSettingsSchema } from '@/lib/booking-form/settings';
 
 const ClinicBasicSchema = z.object({
   name: z.string().min(1, '院名は必須です'),
@@ -121,6 +122,7 @@ export const CATEGORY_SCHEMAS: Record<SettingsCategory, z.ZodTypeAny> = {
   clinic_basic: ClinicBasicSchema,
   clinic_hours: ClinicHoursSchema,
   booking_calendar: BookingCalendarSchema,
+  booking_form: BookingFormSettingsSchema,
   communication: CommunicationSchema,
   system_security: SystemSecuritySchema,
   system_backup: SystemBackupSchema,

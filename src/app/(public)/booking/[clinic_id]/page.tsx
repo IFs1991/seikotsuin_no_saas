@@ -22,6 +22,11 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { addJSTCalendarDays, toJSTDateString } from '@/lib/jst';
+import type {
+  BookingFormQuestion,
+  BookingFormResponseValue,
+  PublicBookingFormSettings,
+} from '@/lib/booking-form/settings';
 
 type PublicMenu = {
   id: string;
@@ -61,6 +66,7 @@ type BookingData = {
   clinicName: string;
   menus: PublicMenu[];
   resources: PublicResource[];
+  bookingForm: PublicBookingFormSettings;
 };
 
 type ApiEnvelope<T> =
@@ -79,12 +85,27 @@ interface PublicBookingFormProps {
   channel?: 'web' | 'line';
   embedded?: boolean;
   previewMode?: boolean;
+  bookingFormOverride?: PublicBookingFormSettings;
 }
 
 const EMPTY_MENUS: PublicMenu[] = [];
 const EMPTY_RESOURCES: PublicResource[] = [];
 const EMPTY_DAYS: AvailabilityDay[] = [];
 const ANY_RESOURCE_ID = 'any';
+const DEFAULT_PUBLIC_BOOKING_FORM: PublicBookingFormSettings = {
+  fields: {
+    nameKana: { enabled: true, required: false },
+    phone: { enabled: true, required: true },
+    email: { enabled: true, required: false },
+    birthDate: { enabled: false, required: false },
+    gender: { enabled: false, required: false },
+    notes: { enabled: true, required: false },
+  },
+  staffSelection: 'optional',
+  questions: [],
+  consents: [],
+  completionMessage: '',
+};
 const STEP_LABELS = [
   'メニュー',
   '担当者',
@@ -123,6 +144,13 @@ const getResourceLabel = (
 const createStartTimeIso = (date: string, time: string) =>
   `${date}T${time}:00+09:00`;
 
+const formatResponseValue = (value: BookingFormResponseValue | undefined) => {
+  if (value === undefined) return '';
+  if (typeof value === 'boolean') return value ? 'はい' : 'いいえ';
+  if (Array.isArray(value)) return value.join('、');
+  return value;
+};
+
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     signal,
@@ -147,6 +175,7 @@ function buildPublicBookingUrls(clinicId: string) {
   return {
     menus: `/api/public/menus?${menuParams.toString()}`,
     resources: `/api/public/resources?${resourceParams.toString()}`,
+    bookingForm: `/api/public/booking-form?${menuParams.toString()}`,
   };
 }
 
@@ -312,11 +341,100 @@ function NavigationButtons({
   );
 }
 
+function QuestionInput({
+  question,
+  value,
+  onChange,
+}: {
+  question: BookingFormQuestion;
+  value: BookingFormResponseValue | undefined;
+  onChange: (value: BookingFormResponseValue) => void;
+}) {
+  if (question.type === 'textarea') {
+    return (
+      <Textarea
+        className='min-h-28 text-base'
+        value={typeof value === 'string' ? value : ''}
+        onChange={event => onChange(event.target.value)}
+        rows={4}
+        required={question.required}
+      />
+    );
+  }
+
+  if (question.type === 'select') {
+    return (
+      <select
+        className='min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-base'
+        value={typeof value === 'string' ? value : ''}
+        onChange={event => onChange(event.target.value)}
+        required={question.required}
+      >
+        <option value=''>選択してください</option>
+        {question.options.map(option => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (question.type === 'multiselect') {
+    const selectedValues = Array.isArray(value) ? value : [];
+    return (
+      <div className='grid gap-2'>
+        {question.options.map(option => (
+          <label
+            key={option}
+            className='flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700'
+          >
+            <input
+              type='checkbox'
+              checked={selectedValues.includes(option)}
+              onChange={event => {
+                const nextValues = event.target.checked
+                  ? [...selectedValues, option]
+                  : selectedValues.filter(item => item !== option);
+                onChange(nextValues);
+              }}
+            />
+            {option}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  if (question.type === 'boolean') {
+    return (
+      <label className='flex min-h-12 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700'>
+        <input
+          type='checkbox'
+          checked={value === true}
+          onChange={event => onChange(event.target.checked)}
+        />
+        はい
+      </label>
+    );
+  }
+
+  return (
+    <Input
+      className='min-h-12 text-base'
+      value={typeof value === 'string' ? value : ''}
+      onChange={event => onChange(event.target.value)}
+      required={question.required}
+    />
+  );
+}
+
 export function PublicBookingForm({
   clinicId,
   channel = 'web',
   embedded = false,
   previewMode = false,
+  bookingFormOverride,
 }: PublicBookingFormProps) {
   const todayString = useMemo(() => toJSTDateString(), []);
   const dateOptions = useMemo(
@@ -346,14 +464,23 @@ export function PublicBookingForm({
 
   const [formData, setFormData] = useState({
     customerName: '',
+    customerNameKana: '',
     customerPhone: '',
     customerEmail: '',
+    birthDate: '',
+    gender: '',
     menuId: '',
     resourceId: ANY_RESOURCE_ID,
     date: todayString,
     time: '',
     notes: '',
   });
+  const [questionResponses, setQuestionResponses] = useState<
+    Record<string, BookingFormResponseValue>
+  >({});
+  const [consentResponses, setConsentResponses] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     if (!clinicId) {
@@ -369,7 +496,7 @@ export function PublicBookingForm({
       setLoadError(null);
       try {
         const urls = buildPublicBookingUrls(clinicId);
-        const [menuData, resourceData] = await Promise.all([
+        const [menuData, resourceData, bookingFormData] = await Promise.all([
           fetchJson<{ clinic_name: string; menus: PublicMenu[] }>(
             urls.menus,
             controller.signal
@@ -378,12 +505,19 @@ export function PublicBookingForm({
             urls.resources,
             controller.signal
           ),
+          bookingFormOverride
+            ? Promise.resolve(bookingFormOverride)
+            : fetchJson<PublicBookingFormSettings>(
+                urls.bookingForm,
+                controller.signal
+              ).catch(() => DEFAULT_PUBLIC_BOOKING_FORM),
         ]);
 
         const nextData = {
           clinicName: menuData.clinic_name || resourceData.clinic_name,
           menus: menuData.menus,
           resources: resourceData.resources,
+          bookingForm: bookingFormData,
         };
 
         setBookingData(nextData);
@@ -410,7 +544,7 @@ export function PublicBookingForm({
     load();
 
     return () => controller.abort();
-  }, [clinicId]);
+  }, [bookingFormOverride, clinicId]);
 
   useEffect(() => {
     if (!clinicId || !formData.menuId || !formData.resourceId) return;
@@ -459,6 +593,7 @@ export function PublicBookingForm({
 
   const menus = bookingData?.menus ?? EMPTY_MENUS;
   const resources = bookingData?.resources ?? EMPTY_RESOURCES;
+  const bookingForm = bookingData?.bookingForm ?? DEFAULT_PUBLIC_BOOKING_FORM;
   const days = availability?.days ?? EMPTY_DAYS;
 
   const selectedMenu = useMemo(
@@ -484,28 +619,113 @@ export function PublicBookingForm({
       ) ?? null,
     [formData.time, selectedDay]
   );
+  const hasQuestionStep =
+    bookingForm.questions.length > 0 || bookingForm.consents.length > 0;
 
   const hasBookableChoices = menus.length > 0 && resources.length > 0;
   const canContinue = useMemo(() => {
     if (step === 1) return Boolean(formData.menuId);
-    if (step === 2) return Boolean(formData.resourceId);
+    if (step === 2) {
+      if (bookingForm.staffSelection === 'hidden') return true;
+      if (bookingForm.staffSelection === 'required') {
+        return Boolean(
+          formData.resourceId && formData.resourceId !== ANY_RESOURCE_ID
+        );
+      }
+      return Boolean(formData.resourceId);
+    }
     if (step === 3) return Boolean(formData.date && formData.time);
     if (step === 4) {
-      return Boolean(
-        formData.customerName.trim() &&
-        formData.customerPhone.trim() &&
-        formData.customerPhone.trim().length <= 20
-      );
+      if (!formData.customerName.trim()) return false;
+      if (
+        bookingForm.fields.nameKana.enabled &&
+        bookingForm.fields.nameKana.required &&
+        !formData.customerNameKana.trim()
+      ) {
+        return false;
+      }
+      if (
+        bookingForm.fields.phone.enabled &&
+        bookingForm.fields.phone.required &&
+        !formData.customerPhone.trim()
+      ) {
+        return false;
+      }
+      if (
+        bookingForm.fields.email.enabled &&
+        bookingForm.fields.email.required &&
+        !formData.customerEmail.trim()
+      ) {
+        return false;
+      }
+      if (
+        bookingForm.fields.birthDate.enabled &&
+        bookingForm.fields.birthDate.required &&
+        !formData.birthDate.trim()
+      ) {
+        return false;
+      }
+      if (
+        bookingForm.fields.gender.enabled &&
+        bookingForm.fields.gender.required &&
+        !formData.gender.trim()
+      ) {
+        return false;
+      }
+      if (
+        bookingForm.fields.notes.enabled &&
+        bookingForm.fields.notes.required &&
+        !formData.notes.trim()
+      ) {
+        return false;
+      }
+      return formData.customerPhone.trim().length <= 20;
     }
-    if (step === 5) return true;
+    if (step === 5) {
+      const questionsOk = bookingForm.questions.every(question => {
+        if (!question.required) return true;
+        const value = questionResponses[question.id];
+        if (typeof value === 'string') return value.trim().length > 0;
+        if (typeof value === 'boolean') return true;
+        return Array.isArray(value) && value.length > 0;
+      });
+      const consentsOk = bookingForm.consents.every(
+        consent => !consent.required || consentResponses[consent.id] === true
+      );
+      return questionsOk && consentsOk;
+    }
     if (step === 6) return !submitting && !previewMode;
     return false;
-  }, [formData, previewMode, step, submitting]);
+  }, [
+    bookingForm,
+    consentResponses,
+    formData,
+    previewMode,
+    questionResponses,
+    step,
+    submitting,
+  ]);
 
   const setField = useCallback(
     (field: keyof typeof formData, value: string) => {
       setSubmitState({ status: 'idle', message: null });
       setFormData(prev => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  const setQuestionResponse = useCallback(
+    (questionId: string, value: BookingFormResponseValue) => {
+      setSubmitState({ status: 'idle', message: null });
+      setQuestionResponses(prev => ({ ...prev, [questionId]: value }));
+    },
+    []
+  );
+
+  const setConsentResponse = useCallback(
+    (consentId: string, value: boolean) => {
+      setSubmitState({ status: 'idle', message: null });
+      setConsentResponses(prev => ({ ...prev, [consentId]: value }));
     },
     []
   );
@@ -611,12 +831,19 @@ export function PublicBookingForm({
         body: JSON.stringify({
           clinic_id: clinicId,
           customer_name: formData.customerName.trim(),
-          customer_phone: formData.customerPhone.trim(),
+          customer_name_kana: formData.customerNameKana.trim() || undefined,
+          customer_phone: formData.customerPhone.trim() || undefined,
           customer_email: formData.customerEmail.trim() || undefined,
+          birth_date: formData.birthDate.trim() || undefined,
+          gender: formData.gender.trim() || undefined,
           menu_id: formData.menuId,
           resource_id: formData.resourceId,
           start_time: createStartTimeIso(formData.date, formData.time),
           notes: formData.notes.trim() || undefined,
+          intake_responses: Object.entries(questionResponses).map(
+            ([id, value]) => ({ id, value })
+          ),
+          consents: consentResponses,
           channel,
         }),
       });
@@ -650,13 +877,18 @@ export function PublicBookingForm({
     channel,
     clinicId,
     formData,
+    questionResponses,
+    consentResponses,
     selectedMenu,
     validateSelectedSlot,
   ]);
 
   const goBack = useCallback(() => {
-    setStep(prev => (prev > 1 ? ((prev - 1) as WizardStep) : prev));
-  }, []);
+    setStep(prev => {
+      if (prev === 6 && !hasQuestionStep) return 4;
+      return prev > 1 ? ((prev - 1) as WizardStep) : prev;
+    });
+  }, [hasQuestionStep]);
 
   const goNext = useCallback(async () => {
     if (step === 3) {
@@ -684,8 +916,11 @@ export function PublicBookingForm({
       return;
     }
 
-    setStep(prev => (prev < 7 ? ((prev + 1) as WizardStep) : prev));
-  }, [handleSubmit, setField, step, validateSelectedSlot]);
+    setStep(prev => {
+      if (prev === 4 && !hasQuestionStep) return 6;
+      return prev < 7 ? ((prev + 1) as WizardStep) : prev;
+    });
+  }, [handleSubmit, hasQuestionStep, setField, step, validateSelectedSlot]);
 
   if (loading) {
     return <BookingLoadingState embedded={embedded} />;
@@ -799,27 +1034,34 @@ export function PublicBookingForm({
             </h2>
           </div>
           <div className='grid gap-3'>
-            <button
-              type='button'
-              className={[
-                'rounded-md border p-4 text-left transition',
-                formData.resourceId === ANY_RESOURCE_ID
-                  ? 'border-sky-600 bg-sky-50'
-                  : 'border-slate-200 bg-white active:bg-slate-50',
-              ].join(' ')}
-              onClick={() => {
-                setField('resourceId', ANY_RESOURCE_ID);
-                setField('time', '');
-              }}
-            >
-              <div className='flex items-center gap-2 font-semibold text-slate-950'>
-                <UserRound className='h-4 w-4' />
-                指名なし
+            {bookingForm.staffSelection === 'hidden' && (
+              <div className='rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600'>
+                担当者は院側で割り当てます。
               </div>
-              <p className='mt-2 text-sm leading-6 text-slate-600'>
-                空いている担当者を院側で割り当てます。
-              </p>
-            </button>
+            )}
+            {bookingForm.staffSelection === 'optional' && (
+              <button
+                type='button'
+                className={[
+                  'rounded-md border p-4 text-left transition',
+                  formData.resourceId === ANY_RESOURCE_ID
+                    ? 'border-sky-600 bg-sky-50'
+                    : 'border-slate-200 bg-white active:bg-slate-50',
+                ].join(' ')}
+                onClick={() => {
+                  setField('resourceId', ANY_RESOURCE_ID);
+                  setField('time', '');
+                }}
+              >
+                <div className='flex items-center gap-2 font-semibold text-slate-950'>
+                  <UserRound className='h-4 w-4' />
+                  指名なし
+                </div>
+                <p className='mt-2 text-sm leading-6 text-slate-600'>
+                  空いている担当者を院側で割り当てます。
+                </p>
+              </button>
+            )}
             {resources.map(resource => (
               <button
                 key={resource.id}
@@ -955,44 +1197,101 @@ export function PublicBookingForm({
               required
             />
           </label>
-          <label className='space-y-2 text-sm font-semibold text-slate-800'>
-            電話番号
-            <Input
-              className='min-h-12 text-base'
-              type='tel'
-              value={formData.customerPhone}
-              onChange={event => setField('customerPhone', event.target.value)}
-              autoComplete='tel'
-              enterKeyHint='next'
-              inputMode='tel'
-              placeholder='09012345678'
-              required
-            />
-          </label>
-          <label className='space-y-2 text-sm font-semibold text-slate-800'>
-            メールアドレス
-            <Input
-              className='min-h-12 text-base'
-              type='email'
-              value={formData.customerEmail}
-              onChange={event => setField('customerEmail', event.target.value)}
-              autoComplete='email'
-              enterKeyHint='next'
-              inputMode='email'
-              placeholder='任意'
-            />
-          </label>
-          <label className='space-y-2 text-sm font-semibold text-slate-800'>
-            相談内容・メモ
-            <Textarea
-              className='min-h-28 text-base'
-              value={formData.notes}
-              onChange={event => setField('notes', event.target.value)}
-              enterKeyHint='done'
-              placeholder='症状や相談したい内容があれば入力してください'
-              rows={4}
-            />
-          </label>
+          {bookingForm.fields.nameKana.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              ふりがな
+              <Input
+                className='min-h-12 text-base'
+                value={formData.customerNameKana}
+                onChange={event =>
+                  setField('customerNameKana', event.target.value)
+                }
+                autoComplete='name'
+                enterKeyHint='next'
+                placeholder='やまだ たろう'
+                required={bookingForm.fields.nameKana.required}
+              />
+            </label>
+          )}
+          {bookingForm.fields.phone.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              電話番号
+              <Input
+                className='min-h-12 text-base'
+                type='tel'
+                value={formData.customerPhone}
+                onChange={event =>
+                  setField('customerPhone', event.target.value)
+                }
+                autoComplete='tel'
+                enterKeyHint='next'
+                inputMode='tel'
+                placeholder='09012345678'
+                required={bookingForm.fields.phone.required}
+              />
+            </label>
+          )}
+          {bookingForm.fields.email.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              メールアドレス
+              <Input
+                className='min-h-12 text-base'
+                type='email'
+                value={formData.customerEmail}
+                onChange={event =>
+                  setField('customerEmail', event.target.value)
+                }
+                autoComplete='email'
+                enterKeyHint='next'
+                inputMode='email'
+                placeholder={bookingForm.fields.email.required ? '' : '任意'}
+                required={bookingForm.fields.email.required}
+              />
+            </label>
+          )}
+          {bookingForm.fields.birthDate.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              生年月日
+              <Input
+                className='min-h-12 text-base'
+                type='date'
+                value={formData.birthDate}
+                onChange={event => setField('birthDate', event.target.value)}
+                required={bookingForm.fields.birthDate.required}
+              />
+            </label>
+          )}
+          {bookingForm.fields.gender.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              性別
+              <select
+                className='min-h-12 w-full rounded-md border border-slate-300 bg-white px-3 text-base'
+                value={formData.gender}
+                onChange={event => setField('gender', event.target.value)}
+                required={bookingForm.fields.gender.required}
+              >
+                <option value=''>選択してください</option>
+                <option value='female'>女性</option>
+                <option value='male'>男性</option>
+                <option value='other'>その他</option>
+                <option value='no_answer'>回答しない</option>
+              </select>
+            </label>
+          )}
+          {bookingForm.fields.notes.enabled && (
+            <label className='space-y-2 text-sm font-semibold text-slate-800'>
+              相談内容・メモ
+              <Textarea
+                className='min-h-28 text-base'
+                value={formData.notes}
+                onChange={event => setField('notes', event.target.value)}
+                enterKeyHint='done'
+                placeholder='症状や相談したい内容があれば入力してください'
+                rows={4}
+                required={bookingForm.fields.notes.required}
+              />
+            </label>
+          )}
           <NavigationButtons
             step={step}
             canGoNext={canContinue}
@@ -1007,9 +1306,65 @@ export function PublicBookingForm({
           <div>
             <h2 className='text-xl font-semibold text-slate-950'>質問項目</h2>
           </div>
-          <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm leading-6 text-slate-600'>
-            現在、追加の質問はありません。
-          </div>
+          {bookingForm.questions.length === 0 &&
+          bookingForm.consents.length === 0 ? (
+            <div className='rounded-md border border-dashed border-slate-300 p-5 text-sm leading-6 text-slate-600'>
+              現在、追加の質問はありません。
+            </div>
+          ) : (
+            <div className='space-y-4'>
+              {bookingForm.questions.map(question => (
+                <label
+                  key={question.id}
+                  className='space-y-2 text-sm font-semibold text-slate-800'
+                >
+                  <span>
+                    {question.label}
+                    {question.required && (
+                      <span className='ml-1 text-red-600'>*</span>
+                    )}
+                  </span>
+                  <QuestionInput
+                    question={question}
+                    value={questionResponses[question.id]}
+                    onChange={value => setQuestionResponse(question.id, value)}
+                  />
+                </label>
+              ))}
+              {bookingForm.consents.map(consent => (
+                <label
+                  key={consent.id}
+                  className='flex items-start gap-2 rounded-md border border-slate-200 bg-white p-3 text-sm font-medium text-slate-700'
+                >
+                  <input
+                    className='mt-1'
+                    type='checkbox'
+                    checked={consentResponses[consent.id] === true}
+                    onChange={event =>
+                      setConsentResponse(consent.id, event.target.checked)
+                    }
+                    required={consent.required}
+                  />
+                  <span>
+                    {consent.label}
+                    {consent.required && (
+                      <span className='ml-1 text-red-600'>*</span>
+                    )}
+                    {consent.linkUrl && (
+                      <a
+                        className='ml-2 text-sky-700 underline'
+                        href={consent.linkUrl}
+                        target='_blank'
+                        rel='noreferrer'
+                      >
+                        確認
+                      </a>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
           <NavigationButtons
             step={step}
             canGoNext={canContinue}
@@ -1050,12 +1405,62 @@ export function PublicBookingForm({
                 {formData.customerName}
               </dd>
             </div>
-            <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
-              <dt className='text-slate-500'>電話番号</dt>
-              <dd className='font-medium text-slate-900'>
-                {formData.customerPhone}
-              </dd>
-            </div>
+            {bookingForm.fields.phone.enabled && (
+              <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
+                <dt className='text-slate-500'>電話番号</dt>
+                <dd className='font-medium text-slate-900'>
+                  {formData.customerPhone}
+                </dd>
+              </div>
+            )}
+            {bookingForm.fields.nameKana.enabled &&
+              formData.customerNameKana && (
+                <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
+                  <dt className='text-slate-500'>ふりがな</dt>
+                  <dd className='font-medium text-slate-900'>
+                    {formData.customerNameKana}
+                  </dd>
+                </div>
+              )}
+            {bookingForm.fields.email.enabled && formData.customerEmail && (
+              <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
+                <dt className='text-slate-500'>メール</dt>
+                <dd className='font-medium text-slate-900'>
+                  {formData.customerEmail}
+                </dd>
+              </div>
+            )}
+            {bookingForm.fields.birthDate.enabled && formData.birthDate && (
+              <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
+                <dt className='text-slate-500'>生年月日</dt>
+                <dd className='font-medium text-slate-900'>
+                  {formData.birthDate}
+                </dd>
+              </div>
+            )}
+            {bookingForm.fields.gender.enabled && formData.gender && (
+              <div className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'>
+                <dt className='text-slate-500'>性別</dt>
+                <dd className='font-medium text-slate-900'>
+                  {formData.gender}
+                </dd>
+              </div>
+            )}
+            {bookingForm.questions.map(question => {
+              const value = questionResponses[question.id];
+              if (formatResponseValue(value).length === 0) return null;
+              return (
+                <div
+                  key={question.id}
+                  className='grid grid-cols-[7rem_1fr] gap-3 px-3 py-3'
+                >
+                  <dt className='text-slate-500'>{question.label}</dt>
+                  <dd className='font-medium text-slate-900'>
+                    {formatResponseValue(value)}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
           <div className='rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-700'>
             送信時に空き枠を再確認します。院側で確認後、未確定予約として受け付けられます。
@@ -1089,6 +1494,11 @@ export function PublicBookingForm({
           <div className='rounded-md bg-slate-50 p-3 text-sm text-slate-700'>
             予約番号: {submitState.reservationId}
           </div>
+          {bookingForm.completionMessage && (
+            <div className='rounded-md border border-sky-100 bg-sky-50 p-3 text-sm leading-6 text-sky-800'>
+              {bookingForm.completionMessage}
+            </div>
+          )}
           <div className='space-y-2 rounded-md border border-slate-200 p-4 text-left text-sm leading-6 text-slate-700'>
             <div className='flex items-center gap-2 font-semibold text-slate-900'>
               <CalendarDays className='h-4 w-4' />

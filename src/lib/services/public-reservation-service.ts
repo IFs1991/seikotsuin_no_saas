@@ -11,7 +11,7 @@
  */
 
 import type { SupabaseServerClient } from '@/lib/supabase';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
 import {
   hasReservationConflict,
   isReservationNoOverlapError,
@@ -23,6 +23,14 @@ import {
   parseJSTDateStart,
   toJSTDateString,
 } from '@/lib/jst';
+import {
+  normalizeBookingFormSettings,
+  validateBookingFormResponses,
+  type BookingFormResponseValue,
+  type BookingFormSettings,
+  type BookingFormStandardFieldKey,
+  type IntakeResponseSnapshot,
+} from '@/lib/booking-form/settings';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
@@ -80,6 +88,13 @@ export class ReservationCreateError extends Error {
   }
 }
 
+export class BookingFormValidationError extends Error {
+  constructor(message = 'Booking form responses are invalid') {
+    super(message);
+    this.name = 'BookingFormValidationError';
+  }
+}
+
 // ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
@@ -112,6 +127,13 @@ export interface CreateReservationParams {
   notes: string | null;
   channel: string;
   isStaffRequested?: boolean;
+  intakeResponses?: IntakeResponseSnapshot[];
+}
+
+export interface ValidateBookingFormResponseParams {
+  standardFields: Partial<Record<BookingFormStandardFieldKey, string>>;
+  responses: { id: string; value: BookingFormResponseValue }[];
+  consents: Record<string, boolean>;
 }
 
 export interface AutoAssignedStaff {
@@ -139,6 +161,27 @@ function isNoRowsError(error: unknown): error is { code: string } {
     'code' in error &&
     error.code === 'PGRST116'
   );
+}
+
+function toJsonValue(value: BookingFormResponseValue): Json {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return value;
+}
+
+function toIntakeResponsesJson(
+  responses: IntakeResponseSnapshot[]
+): Json | null {
+  if (responses.length === 0) {
+    return null;
+  }
+
+  return responses.map(response => ({
+    id: response.id,
+    label: response.label,
+    value: toJsonValue(response.value),
+  }));
 }
 
 // ──────────────────────────────────────────────
@@ -179,6 +222,39 @@ export class PublicReservationService {
     if (!allowOnlineBooking) {
       throw new BookingDisabledError();
     }
+  }
+
+  async getBookingFormSettings(): Promise<BookingFormSettings> {
+    const { data: record, error } = await this.client
+      .from('clinic_settings')
+      .select('settings')
+      .eq('clinic_id', this.clinicId)
+      .eq('category', 'booking_form')
+      .maybeSingle();
+
+    if (error) {
+      throw new Error('Failed to load booking form settings');
+    }
+
+    return normalizeBookingFormSettings(record?.settings);
+  }
+
+  async validateBookingFormResponses(
+    params: ValidateBookingFormResponseParams
+  ): Promise<IntakeResponseSnapshot[]> {
+    const settings = await this.getBookingFormSettings();
+    const result = validateBookingFormResponses({
+      settings,
+      standardFields: params.standardFields,
+      responses: params.responses,
+      consents: params.consents,
+    });
+
+    if (result.ok === false) {
+      throw new BookingFormValidationError(result.message);
+    }
+
+    return result.snapshots;
   }
 
   /**
@@ -397,7 +473,7 @@ export class PublicReservationService {
     const insertData: CustomerInsert = {
       clinic_id: this.clinicId,
       name,
-      phone,
+      phone: phone ?? '',
       ...(email ? { email } : {}),
     };
 
@@ -432,6 +508,7 @@ export class PublicReservationService {
       notes: params.notes,
       channel: params.channel,
       is_staff_requested: params.isStaffRequested ?? true,
+      intake_responses: toIntakeResponsesJson(params.intakeResponses ?? []),
     };
 
     const { data, error } = await this.client
