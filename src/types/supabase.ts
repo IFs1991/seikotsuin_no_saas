@@ -1877,6 +1877,70 @@ export type Database = {
         };
         Relationships: [];
       };
+      reservation_notifications: {
+        Row: {
+          channel: string;
+          clinic_id: string;
+          created_at: string;
+          detail: Json;
+          email_outbox_id: string | null;
+          id: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          channel?: string;
+          clinic_id: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          channel?: string;
+          clinic_id?: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type?: string;
+          reservation_id?: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_email_outbox_id_fkey';
+            columns: ['email_outbox_id'];
+            isOneToOne: false;
+            referencedRelation: 'email_outbox';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       encryption_keys: {
         Row: {
           algorithm: string;

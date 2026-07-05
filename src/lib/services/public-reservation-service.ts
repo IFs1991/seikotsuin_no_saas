@@ -116,6 +116,7 @@ export interface ReservationResult {
   start_time: string;
   end_time: string;
   status: string;
+  updated_at: string;
 }
 
 export interface CreateReservationParams {
@@ -514,7 +515,7 @@ export class PublicReservationService {
     const { data, error } = await this.client
       .from('reservations')
       .insert(insert)
-      .select('id, start_time, end_time, status')
+      .select('id, start_time, end_time, status, updated_at')
       .single();
 
     if (error && isReservationNoOverlapError(error)) {

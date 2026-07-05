@@ -1,6 +1,10 @@
 import { determineNotificationType } from './policy';
 import { enqueueEmail } from './enqueue-email';
 import type { EmailTemplateType, ReservationSnapshot } from './types';
+import {
+  enqueuePatientReservationEmail,
+  type ReservationNotificationType,
+} from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
@@ -46,6 +50,19 @@ type EnqueueDependencies = {
 
 type EmailSupabaseClient = Pick<SupabaseServerClient, 'from'>;
 type EmailLogInsert = Database['public']['Tables']['email_logs']['Insert'];
+
+function getReservationNotificationType(
+  templateType: EmailTemplateType
+): ReservationNotificationType | null {
+  switch (templateType) {
+    case 'reservation_confirmed':
+      return 'confirmed';
+    case 'reservation_cancelled':
+      return 'cancelled';
+    default:
+      return null;
+  }
+}
 
 async function insertEnqueueLookupFailureLog(
   supabase: EmailSupabaseClient,
@@ -184,7 +201,29 @@ export async function enqueueReservationChange(
     }
 
     const customer = dependencies.customer;
-    if (!customer?.email) return;
+    const notificationType = getReservationNotificationType(templateType);
+    if (!customer?.email && !notificationType) return;
+
+    const payload = buildReservationEmailPayload(
+      customer ?? { email: null, name: null },
+      dependencies.context,
+      after.start_time,
+      after.end_time
+    );
+
+    if (notificationType) {
+      await enqueuePatientReservationEmail(supabase, {
+        clinicId: after.clinic_id,
+        reservationId: after.id,
+        customerId: after.customer_id,
+        toEmail: customer?.email ?? null,
+        notificationType,
+        templateType,
+        payload,
+        dedupeTimestamp: updatedAt,
+      });
+      return;
+    }
 
     await enqueueEmail(
       supabase,
@@ -194,12 +233,7 @@ export async function enqueueReservationChange(
         customerId: after.customer_id,
         templateType,
         toEmail: customer.email,
-        payload: buildReservationEmailPayload(
-          customer,
-          dependencies.context,
-          after.start_time,
-          after.end_time
-        ),
+        payload,
       },
       updatedAt,
       { ignoreDuplicate: true }

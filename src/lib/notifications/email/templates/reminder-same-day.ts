@@ -1,8 +1,6 @@
 import type { ReservationEmailPayload } from '../types';
 
-export function renderReminderDayBeforeEmail(
-  payload: ReservationEmailPayload
-): {
+export function renderReminderSameDayEmail(payload: ReservationEmailPayload): {
   subject: string;
   html: string;
   text: string;
@@ -17,13 +15,13 @@ export function renderReminderDayBeforeEmail(
     myPageUrl,
   } = payload;
 
-  const subject = `【${clinicName}】明日のご予約リマインド`;
+  const subject = `【${clinicName}】本日のご予約リマインド`;
   const myPageLine = myPageUrl ? `予約確認: ${myPageUrl}` : '';
 
   const text = [
     `${customerName} 様`,
     '',
-    `明日、${clinicName} のご予約がございます。`,
+    `本日、${clinicName} のご予約がございます。`,
     '',
     `日時: ${startTime} ～ ${endTime}`,
     `メニュー: ${menuName}`,
@@ -44,9 +42,9 @@ export function renderReminderDayBeforeEmail(
 <html lang="ja">
 <head><meta charset="utf-8"></head>
 <body style="font-family:sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px">
-  <h2 style="color:#10b981">明日のご予約リマインド</h2>
+  <h2 style="color:#0ea5e9">本日のご予約リマインド</h2>
   <p>${customerName} 様</p>
-  <p>明日、${clinicName} のご予約がございます。</p>
+  <p>本日、${clinicName} のご予約がございます。</p>
   <table style="border-collapse:collapse;width:100%;margin:16px 0">
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">日時</td>
         <td style="padding:8px;border:1px solid #e5e7eb">${startTime} ～ ${endTime}</td></tr>

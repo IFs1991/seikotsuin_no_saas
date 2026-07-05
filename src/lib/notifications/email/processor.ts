@@ -2,12 +2,16 @@ import type {
   BillingEmailTemplateType,
   EmailProvider,
   EmailTemplateType,
+  PublicReservationReceivedPayload,
   ReservationEmailPayload,
 } from './types';
 import { renderReservationCreatedEmail } from './templates/reservation-created';
+import { renderReservationConfirmedEmail } from './templates/reservation-confirmed';
 import { renderReservationUpdatedEmail } from './templates/reservation-updated';
 import { renderReservationCancelledEmail } from './templates/reservation-cancelled';
 import { renderReminderDayBeforeEmail } from './templates/reminder-day-before';
+import { renderReminderSameDayEmail } from './templates/reminder-same-day';
+import { renderPublicReservationReceivedEmail } from './templates/public-reservation-received';
 import { renderBillingLifecycleEmail } from './templates/billing-lifecycle';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database, Json } from '@/types/supabase';
@@ -37,6 +41,10 @@ function renderTemplate(
   switch (templateType) {
     case 'reservation_created':
       return renderReservationCreatedEmail(payload as ReservationEmailPayload);
+    case 'reservation_confirmed':
+      return renderReservationConfirmedEmail(
+        payload as ReservationEmailPayload
+      );
     case 'reservation_updated':
       return renderReservationUpdatedEmail(payload as ReservationEmailPayload);
     case 'reservation_cancelled':
@@ -45,6 +53,12 @@ function renderTemplate(
       );
     case 'reminder_day_before':
       return renderReminderDayBeforeEmail(payload as ReservationEmailPayload);
+    case 'reminder_same_day':
+      return renderReminderSameDayEmail(payload as ReservationEmailPayload);
+    case 'public-reservation-received':
+      return renderPublicReservationReceivedEmail(
+        payload as PublicReservationReceivedPayload
+      );
     case 'billing_payment_failed':
     case 'billing_payment_recovered':
     case 'billing_trial_will_end':

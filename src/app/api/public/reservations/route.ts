@@ -32,8 +32,29 @@ import type {
   BookingFormResponseValue,
   IntakeResponseSnapshot,
 } from '@/lib/booking-form/settings';
+import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
+import { logger } from '@/lib/logger';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { reservationCreateSchema } from '../schema';
+
+function formatIntakeResponseValue(
+  value: IntakeResponseSnapshot['value']
+): string {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'はい' : 'いいえ';
+  }
+  return value;
+}
+
+function formatIntakeSummary(snapshots: IntakeResponseSnapshot[]): string[] {
+  return snapshots.map(
+    snapshot =>
+      `${snapshot.label}: ${formatIntakeResponseValue(snapshot.value)}`
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -338,6 +359,30 @@ export async function POST(request: NextRequest) {
         );
       }
       throw e;
+    }
+
+    try {
+      await enqueuePublicReservationNotifications(clinicCtx.client, {
+        clinicId: clinic_id,
+        reservationId: reservation.id,
+        customerId: customerResult.customerId,
+        customerName: customer_name,
+        customerEmail: customer_email ?? null,
+        clinicName: clinicCtx.clinic.name,
+        menuName: menu.name,
+        resourceId: retryAssignedResourceId ?? assignedResourceId,
+        startTime: reservation.start_time,
+        endTime: reservation.end_time,
+        channel,
+        intakeSummary: formatIntakeSummary(intakeResponseSnapshots),
+        updatedAt: reservation.updated_at,
+      });
+    } catch (error) {
+      logger.error('Failed to enqueue public reservation notifications', {
+        reservationId: reservation.id,
+        clinicId: clinic_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     return NextResponse.json(

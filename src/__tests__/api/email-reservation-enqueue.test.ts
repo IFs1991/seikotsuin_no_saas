@@ -33,6 +33,17 @@ function createSelectMock(data: any) {
   };
 }
 
+function createNotificationMock() {
+  const maybeSingle = jest
+    .fn()
+    .mockResolvedValue({ data: { id: 'notification-1' }, error: null });
+  const select = jest.fn().mockReturnValue({ maybeSingle });
+  const upsert = jest.fn().mockReturnValue({ select });
+  const eq = jest.fn().mockResolvedValue({ error: null });
+  const update = jest.fn().mockReturnValue({ eq });
+  return { upsert, select, maybeSingle, update, eq };
+}
+
 describe('reservation email enqueue helpers', () => {
   // -------------------------------------------------------
   // enqueueReservationCreated
@@ -245,6 +256,7 @@ describe('reservation email enqueue helpers', () => {
 
     it('enqueues reservation_cancelled when status changes to cancelled', async () => {
       const outboxInsert = createInsertMock();
+      const notification = createNotificationMock();
       const customerSelect = createSelectMock({
         id: 'cust-001',
         email: 'patient@example.com',
@@ -255,6 +267,12 @@ describe('reservation email enqueue helpers', () => {
 
       const from = jest.fn().mockImplementation((table: string) => {
         if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'reservation_notifications') {
+          return {
+            upsert: notification.upsert,
+            update: notification.update,
+          };
+        }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
         if (table === 'staff') return { select: staffSelect.select };
@@ -274,6 +292,7 @@ describe('reservation email enqueue helpers', () => {
       expect(outboxInsert.insert).toHaveBeenCalledTimes(1);
       const insertArg = outboxInsert.insert.mock.calls[0][0];
       expect(insertArg.template_type).toBe('reservation_cancelled');
+      expect(notification.upsert).toHaveBeenCalledTimes(1);
     });
 
     it('enqueues reservation_updated when start_time changes', async () => {

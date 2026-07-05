@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import type { SettingsCategory } from './defaults';
+import { BookingCalendarRemindersSchema } from '@/lib/booking-calendar/settings';
 import { BookingFormSettingsSchema } from '@/lib/booking-form/settings';
 
 const ClinicBasicSchema = z.object({
@@ -54,6 +55,7 @@ const BookingCalendarSchema = z.object({
   allowCancellation: z.boolean().optional(),
   cancellationDeadlineHours: z.number().min(0).max(168).optional(),
   defaultCalendarView: z.enum(['day', 'week', 'month']).optional(),
+  reminders: BookingCalendarRemindersSchema.optional(),
 });
 
 const CommunicationChannelsSchema = z.object({

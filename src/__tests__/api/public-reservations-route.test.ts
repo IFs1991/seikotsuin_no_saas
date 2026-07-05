@@ -210,6 +210,19 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
           });
         }
 
+        if (columns === 'name') {
+          return {
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                maybeSingle: jest.fn().mockResolvedValue({
+                  data: { name: '山田先生' },
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+
         return {
           eq: jest.fn().mockReturnThis(),
           single: jest.fn().mockResolvedValue({
@@ -272,8 +285,32 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
             start_time: '2026-07-10T01:00:00.000Z',
             end_time: '2026-07-10T02:00:00.000Z',
             status: 'unconfirmed',
+            updated_at: '2026-07-05T00:00:00.000Z',
           },
           error: null,
+        }),
+      }),
+    },
+    reservation_notifications: {
+      upsert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'notification-001' },
+            error: null,
+          }),
+        }),
+      }),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      }),
+    },
+    email_outbox: {
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'outbox-001' },
+            error: null,
+          }),
         }),
       }),
     },
@@ -298,6 +335,12 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
           select: jest.fn().mockReturnValue(tables.customers.select()),
           insert: jest.fn().mockReturnValue(tables.customers.insert()),
         };
+      }
+      if (table === 'reservation_notifications') {
+        return tables.reservation_notifications;
+      }
+      if (table === 'email_outbox') {
+        return tables.email_outbox;
       }
       const t = tables[table];
       if (!t) throw new Error(`Unexpected table access: ${table}`);

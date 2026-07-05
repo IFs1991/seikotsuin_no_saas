@@ -1,3 +1,5 @@
+import { DEFAULT_BOOKING_CALENDAR_REMINDERS } from '@/lib/booking-calendar/settings';
+
 /**
  * 管理設定 — カテゴリ定義とデフォルト値
  * PR-05: route.ts から分離
@@ -50,6 +52,7 @@ export const DEFAULT_SETTINGS: Record<
     allowCancellation: true,
     cancellationDeadlineHours: 24,
     defaultCalendarView: 'week',
+    reminders: DEFAULT_BOOKING_CALENDAR_REMINDERS,
   },
   booking_form: {
     fields: {

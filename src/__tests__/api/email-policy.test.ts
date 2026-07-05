@@ -56,12 +56,12 @@ describe('email notification policy', () => {
       expect(determineNotificationType(change)).toBe('reservation_updated');
     });
 
-    it('returns reservation_updated when status changes to non-cancelled value', () => {
+    it('returns reservation_confirmed when status changes to confirmed', () => {
       const change: ReservationChange = {
         before: { ...base, status: 'tentative' },
         after: { ...base, status: 'confirmed' },
       };
-      expect(determineNotificationType(change)).toBe('reservation_updated');
+      expect(determineNotificationType(change)).toBe('reservation_confirmed');
     });
 
     it('returns null when only notes change', () => {
@@ -105,12 +105,20 @@ describe('email notification policy', () => {
       expect(shouldNotify('reservation_updated')).toBe(true);
     });
 
+    it('returns true for reservation_confirmed', () => {
+      expect(shouldNotify('reservation_confirmed')).toBe(true);
+    });
+
     it('returns true for reservation_cancelled', () => {
       expect(shouldNotify('reservation_cancelled')).toBe(true);
     });
 
     it('returns true for reminder_day_before', () => {
       expect(shouldNotify('reminder_day_before')).toBe(true);
+    });
+
+    it('returns true for reminder_same_day', () => {
+      expect(shouldNotify('reminder_same_day')).toBe(true);
     });
 
     it('returns false for unknown type', () => {
