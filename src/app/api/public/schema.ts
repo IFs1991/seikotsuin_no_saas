@@ -123,6 +123,7 @@ export const reservationCreateSchema = z.object({
     .default([]),
   consents: z.record(z.boolean()).default({}),
   channel: z.enum(['web', 'line']).default('web'),
+  line_id_token: z.string().trim().min(1).max(5000).optional(),
 });
 
 export type ReservationCreateDTO = z.infer<typeof reservationCreateSchema>;

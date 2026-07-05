@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
   CalendarDays,
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Clock,
   Loader2,
+  MessageCircle,
   UserRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -143,6 +144,9 @@ const getResourceLabel = (
 
 const createStartTimeIso = (date: string, time: string) =>
   `${date}T${time}:00+09:00`;
+
+const buildLineFriendAddUrl = (oaBasicId: string) =>
+  `https://line.me/R/ti/p/${encodeURIComponent(oaBasicId)}`;
 
 const formatResponseValue = (value: BookingFormResponseValue | undefined) => {
   if (value === undefined) return '';
@@ -431,7 +435,6 @@ function QuestionInput({
 
 export function PublicBookingForm({
   clinicId,
-  channel = 'web',
   embedded = false,
   previewMode = false,
   bookingFormOverride,
@@ -481,6 +484,7 @@ export function PublicBookingForm({
   const [consentResponses, setConsentResponses] = useState<
     Record<string, boolean>
   >({});
+  const [lineIdToken, setLineIdToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (!clinicId) {
@@ -545,6 +549,58 @@ export function PublicBookingForm({
 
     return () => controller.abort();
   }, [bookingFormOverride, clinicId]);
+
+  useEffect(() => {
+    const liffId = bookingData?.bookingForm.liff_id;
+    setLineIdToken(null);
+
+    if (!liffId || previewMode) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const initializeLiff = async () => {
+      try {
+        const liff = (await import('@line/liff')).default;
+        if (!liff.isInClient()) {
+          return;
+        }
+
+        await liff.init({ liffId });
+        if (cancelled) {
+          return;
+        }
+
+        const idToken = liff.getIDToken();
+        if (idToken) {
+          setLineIdToken(idToken);
+        }
+
+        try {
+          const profile = await liff.getProfile();
+          if (cancelled || !profile.displayName) {
+            return;
+          }
+          setFormData(prev =>
+            prev.customerName.trim()
+              ? prev
+              : { ...prev, customerName: profile.displayName }
+          );
+        } catch {
+          // Profile prefill is optional. Web booking must keep working.
+        }
+      } catch {
+        setLineIdToken(null);
+      }
+    };
+
+    void initializeLiff();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingData?.bookingForm.liff_id, previewMode]);
 
   useEffect(() => {
     if (!clinicId || !formData.menuId || !formData.resourceId) return;
@@ -844,7 +900,7 @@ export function PublicBookingForm({
             ([id, value]) => ({ id, value })
           ),
           consents: consentResponses,
-          channel,
+          line_id_token: lineIdToken ?? undefined,
         }),
       });
       const json = (await response.json()) as ApiEnvelope<{
@@ -874,9 +930,9 @@ export function PublicBookingForm({
     }
   }, [
     canContinue,
-    channel,
     clinicId,
     formData,
+    lineIdToken,
     questionResponses,
     consentResponses,
     selectedMenu,
@@ -1499,6 +1555,17 @@ export function PublicBookingForm({
               {bookingForm.completionMessage}
             </div>
           )}
+          {bookingForm.oa_basic_id && (
+            <a
+              className='inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#06C755] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#05a848] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06C755] focus-visible:ring-offset-2'
+              href={buildLineFriendAddUrl(bookingForm.oa_basic_id)}
+              target='_blank'
+              rel='noreferrer'
+            >
+              <MessageCircle className='h-4 w-4' />
+              LINEで友だち追加
+            </a>
+          )}
           <div className='space-y-2 rounded-md border border-slate-200 p-4 text-left text-sm leading-6 text-slate-700'>
             <div className='flex items-center gap-2 font-semibold text-slate-900'>
               <CalendarDays className='h-4 w-4' />
@@ -1526,9 +1593,7 @@ export function PublicBookingForm({
 
 export default function PublicBookingPage() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const clinicId = getFirstParam(params?.clinic_id);
-  const channel = searchParams.get('channel') === 'line' ? 'line' : 'web';
 
-  return <PublicBookingForm clinicId={clinicId} channel={channel} />;
+  return <PublicBookingForm clinicId={clinicId} />;
 }

@@ -2,6 +2,21 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PublicBookingForm } from '@/app/(public)/booking/[clinic_id]/page';
 
+const mockLiffIsInClient = jest.fn();
+const mockLiffInit = jest.fn();
+const mockLiffGetIDToken = jest.fn();
+const mockLiffGetProfile = jest.fn();
+
+jest.mock('@line/liff', () => ({
+  __esModule: true,
+  default: {
+    isInClient: () => mockLiffIsInClient(),
+    init: (options: unknown) => mockLiffInit(options),
+    getIDToken: () => mockLiffGetIDToken(),
+    getProfile: () => mockLiffGetProfile(),
+  },
+}));
+
 const CLINIC_ID = '00000000-0000-0000-0000-000000000101';
 const MENU_ID = '00000000-0000-0000-0000-000000000201';
 const STAFF_ID = '00000000-0000-0000-0000-000000000301';
@@ -13,10 +28,34 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const defaultBookingFormData = () => ({
+  fields: {
+    nameKana: { enabled: false, required: false },
+    phone: { enabled: true, required: true },
+    email: { enabled: true, required: false },
+    birthDate: { enabled: false, required: false },
+    gender: { enabled: false, required: false },
+    notes: { enabled: true, required: false },
+  },
+  staffSelection: 'optional',
+  questions: [],
+  consents: [],
+  completionMessage: '',
+});
+
 describe('PublicBookingForm wizard', () => {
   let fetchMock: jest.SpiedFunction<typeof fetch>;
+  let bookingFormData: ReturnType<typeof defaultBookingFormData> & {
+    liff_id?: string;
+    oa_basic_id?: string;
+  };
 
   beforeEach(() => {
+    bookingFormData = defaultBookingFormData();
+    mockLiffIsInClient.mockReturnValue(true);
+    mockLiffInit.mockResolvedValue(undefined);
+    mockLiffGetIDToken.mockReturnValue(null);
+    mockLiffGetProfile.mockResolvedValue({ displayName: 'LINE 太郎' });
     fetchMock = jest.spyOn(global, 'fetch');
     fetchMock.mockImplementation(async (input, init) => {
       const url = new URL(String(input), 'http://localhost');
@@ -61,20 +100,7 @@ describe('PublicBookingForm wizard', () => {
       if (url.pathname === '/api/public/booking-form') {
         return jsonResponse({
           success: true,
-          data: {
-            fields: {
-              nameKana: { enabled: false, required: false },
-              phone: { enabled: true, required: true },
-              email: { enabled: true, required: false },
-              birthDate: { enabled: false, required: false },
-              gender: { enabled: false, required: false },
-              notes: { enabled: true, required: false },
-            },
-            staffSelection: 'optional',
-            questions: [],
-            consents: [],
-            completionMessage: '',
-          },
+          data: bookingFormData,
         });
       }
 
@@ -134,6 +160,10 @@ describe('PublicBookingForm wizard', () => {
 
   afterEach(() => {
     fetchMock.mockRestore();
+    mockLiffIsInClient.mockReset();
+    mockLiffInit.mockReset();
+    mockLiffGetIDToken.mockReset();
+    mockLiffGetProfile.mockReset();
   });
 
   it('Step 1から完了まで遷移し、指名なし予約を送信する', async () => {
@@ -184,8 +214,97 @@ describe('PublicBookingForm wizard', () => {
     const body = JSON.parse(String(reservationCall?.[1]?.body)) as {
       resource_id: string;
       start_time: string;
+      line_id_token?: string;
     };
     expect(body.resource_id).toBe('any');
     expect(body.start_time).toContain('+09:00');
+    expect(body.line_id_token).toBeUndefined();
+  });
+
+  it('LIFF初期化成功時はIDトークンを同梱し、表示名を氏名初期値に使う', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      liff_id: '2000000000-AbCdEfGh',
+      oa_basic_id: '@testclinic',
+    };
+    mockLiffGetIDToken.mockReturnValue('line-id-token-001');
+    const user = userEvent.setup();
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} />);
+
+    expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockLiffInit).toHaveBeenCalledWith({
+        liffId: '2000000000-AbCdEfGh',
+      });
+    });
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(await screen.findByRole('button', { name: '10:00' }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+
+    expect(await screen.findByDisplayValue('LINE 太郎')).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'LINEで友だち追加' })
+    ).toHaveAttribute('href', 'https://line.me/R/ti/p/%40testclinic');
+
+    const reservationCall = fetchMock.mock.calls.find(call => {
+      const url = String(call[0]);
+      const init = call[1];
+      return url === '/api/public/reservations' && init?.method === 'POST';
+    });
+    const body = JSON.parse(String(reservationCall?.[1]?.body)) as {
+      customer_name: string;
+      line_id_token?: string;
+    };
+    expect(body.customer_name).toBe('LINE 太郎');
+    expect(body.line_id_token).toBe('line-id-token-001');
+  });
+
+  it('LIFF初期化失敗時もWeb予約として完了できる', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      liff_id: '2000000000-AbCdEfGh',
+    };
+    mockLiffInit.mockRejectedValue(new Error('LIFF init failed'));
+    const user = userEvent.setup();
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} />);
+
+    expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+    await waitFor(() => expect(mockLiffInit).toHaveBeenCalled());
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(await screen.findByRole('button', { name: '10:00' }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.type(screen.getByPlaceholderText('山田 太郎'), '山田 太郎');
+    await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+
+    const reservationCall = fetchMock.mock.calls.find(call => {
+      const url = String(call[0]);
+      const init = call[1];
+      return url === '/api/public/reservations' && init?.method === 'POST';
+    });
+    const body = JSON.parse(String(reservationCall?.[1]?.body)) as {
+      line_id_token?: string;
+    };
+    expect(body.line_id_token).toBeUndefined();
   });
 });

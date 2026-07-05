@@ -32,6 +32,7 @@ import type {
   BookingFormResponseValue,
   IntakeResponseSnapshot,
 } from '@/lib/booking-form/settings';
+import { verifyLineIdTokenForClinic } from '@/lib/line/id-token';
 import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
@@ -96,8 +97,9 @@ export async function POST(request: NextRequest) {
       notes,
       intake_responses,
       consents,
+      line_id_token,
     } = parsed.data;
-    const channel = 'web';
+    let channel: 'web' | 'line' = 'web';
 
     // Validate clinic exists and is active
     let clinicCtx;
@@ -136,6 +138,40 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Failed to verify online booking settings' },
         { status: 500 }
       );
+    }
+
+    let lineProfile:
+      | { lineUserId: string; displayName: string | null }
+      | undefined;
+    if (line_id_token) {
+      try {
+        const lineVerification = await verifyLineIdTokenForClinic({
+          supabase: clinicCtx.client,
+          clinicId: clinic_id,
+          idToken: line_id_token,
+        });
+        if (lineVerification.ok === true) {
+          channel = 'line';
+          lineProfile = {
+            lineUserId: lineVerification.lineUserId,
+            displayName: lineVerification.displayName,
+          };
+        } else {
+          logger.warn(
+            'LINE ID token verification failed; falling back to web',
+            {
+              clinicId: clinic_id,
+              reason: lineVerification.reason,
+              status: lineVerification.status,
+            }
+          );
+        }
+      } catch (error) {
+        logger.warn('LINE ID token verification threw; falling back to web', {
+          clinicId: clinic_id,
+          errorName: error instanceof Error ? error.name : 'UnknownError',
+        });
+      }
     }
 
     let intakeResponseSnapshots: IntakeResponseSnapshot[];
@@ -270,7 +306,8 @@ export async function POST(request: NextRequest) {
       customerResult = await service.findOrCreateCustomer(
         customer_name,
         customer_phone,
-        customer_email
+        customer_email,
+        lineProfile
       );
     } catch (e) {
       if (e instanceof CustomerLookupError) {
