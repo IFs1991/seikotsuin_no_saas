@@ -25,6 +25,7 @@ import {
   CustomerLookupError,
   CustomerCreateError,
   ReservationCreateError,
+  type ReservationResult,
 } from '@/lib/services/public-reservation-service';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { reservationCreateSchema } from '../schema';
@@ -64,8 +65,8 @@ export async function POST(request: NextRequest) {
       resource_id,
       start_time,
       notes,
-      channel,
     } = parsed.data;
+    const channel = 'web';
 
     // Validate clinic exists and is active
     let clinicCtx;
@@ -142,34 +143,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify resource
-    try {
-      await service.verifyResource(resource_id);
-    } catch (e) {
-      if (e instanceof ResourceNotFoundError) {
-        return NextResponse.json(
-          { success: false, error: e.message },
-          { status: 404 }
-        );
-      }
-      throw e;
-    }
+    const isAutoAssign = resource_id === 'any';
+    let assignedResourceId = resource_id;
+    let retryAssignedResourceId: string | null = null;
 
-    // Check slot availability
-    try {
-      await service.checkSlotAvailability(resource_id, startIso, endIso);
-    } catch (e) {
-      if (e instanceof SlotConflictError) {
+    if (isAutoAssign) {
+      try {
+        const assigned = await service.selectStaffForAutoAssign(
+          startIso,
+          endIso
+        );
+        assignedResourceId = assigned.resourceId;
+      } catch (e) {
+        if (e instanceof SlotConflictError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
+        }
+        console.error('Auto assignment error:', e);
         return NextResponse.json(
-          { success: false, error: e.message },
-          { status: 409 }
+          { success: false, error: 'Failed to assign booking resource' },
+          { status: 500 }
         );
       }
-      console.error('Reservation slot validation error:', e);
-      return NextResponse.json(
-        { success: false, error: 'Failed to validate reservation slot' },
-        { status: 500 }
-      );
+    } else {
+      // Verify resource
+      try {
+        await service.verifyResource(resource_id);
+      } catch (e) {
+        if (e instanceof ResourceNotFoundError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 404 }
+          );
+        }
+        throw e;
+      }
+
+      // Check slot availability
+      try {
+        await service.checkSlotAvailability(resource_id, startIso, endIso);
+      } catch (e) {
+        if (e instanceof SlotConflictError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
+        }
+        console.error('Reservation slot validation error:', e);
+        return NextResponse.json(
+          { success: false, error: 'Failed to validate reservation slot' },
+          { status: 500 }
+        );
+      }
     }
 
     // Find or create customer
@@ -199,26 +226,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Create reservation
-    let reservation;
+    let reservation: ReservationResult;
     try {
       reservation = await service.createReservation({
         customerId: customerResult.customerId,
         menuId: menu_id,
-        resourceId: resource_id,
+        resourceId: assignedResourceId,
         startIso,
         endIso,
         notes: notes ?? null,
         channel,
+        isStaffRequested: !isAutoAssign,
       });
     } catch (e) {
       if (e instanceof SlotConflictError) {
-        if (customerResult.created) {
-          await service.rollbackCustomer(customerResult.customerId);
+        if (isAutoAssign) {
+          try {
+            const retryAssigned = await service.selectStaffForAutoAssign(
+              startIso,
+              endIso,
+              [assignedResourceId]
+            );
+            retryAssignedResourceId = retryAssigned.resourceId;
+            reservation = await service.createReservation({
+              customerId: customerResult.customerId,
+              menuId: menu_id,
+              resourceId: retryAssignedResourceId,
+              startIso,
+              endIso,
+              notes: notes ?? null,
+              channel,
+              isStaffRequested: false,
+            });
+          } catch (retryError) {
+            if (customerResult.created) {
+              await service.rollbackCustomer(customerResult.customerId);
+            }
+            if (retryError instanceof SlotConflictError) {
+              return NextResponse.json(
+                { success: false, error: retryError.message },
+                { status: 409 }
+              );
+            }
+            throw retryError;
+          }
+        } else {
+          if (customerResult.created) {
+            await service.rollbackCustomer(customerResult.customerId);
+          }
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
         }
-        return NextResponse.json(
-          { success: false, error: e.message },
-          { status: 409 }
-        );
       }
       if (e instanceof ReservationCreateError) {
         console.error('Reservation creation error:', e);
@@ -244,6 +304,8 @@ export async function POST(request: NextRequest) {
           start_time: reservation.start_time,
           end_time: reservation.end_time,
           status: reservation.status,
+          resource_id: retryAssignedResourceId ?? assignedResourceId,
+          is_staff_requested: !isAutoAssign,
         },
       },
       { status: 201 }

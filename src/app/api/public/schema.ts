@@ -70,11 +70,14 @@ export const reservationCreateSchema = z.object({
   customer_phone: z
     .string()
     .trim()
-    .max(20, 'customer_phone must be 20 characters or less')
-    .optional(),
+    .min(1, 'customer_phone is required')
+    .max(20, 'customer_phone must be 20 characters or less'),
   customer_email: z.string().email('Invalid email address').optional(),
   menu_id: z.string().uuid('menu_id must be a valid UUID'),
-  resource_id: z.string().uuid('resource_id must be a valid UUID'),
+  resource_id: z.union([
+    z.literal('any'),
+    z.string().uuid('resource_id must be a valid UUID or "any"'),
+  ]),
   start_time: z
     .string()
     .regex(

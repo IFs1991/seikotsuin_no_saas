@@ -15,8 +15,14 @@ import type { Database } from '@/types/supabase';
 import {
   hasReservationConflict,
   isReservationNoOverlapError,
+  RESERVATION_CONFLICT_STATUS_FILTER,
 } from '@/lib/reservations/conflict';
 import { PublicAvailabilityService } from '@/lib/services/public-availability-service';
+import {
+  addJSTCalendarDays,
+  parseJSTDateStart,
+  toJSTDateString,
+} from '@/lib/jst';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
@@ -105,7 +111,22 @@ export interface CreateReservationParams {
   endIso: string;
   notes: string | null;
   channel: string;
+  isStaffRequested?: boolean;
 }
+
+export interface AutoAssignedStaff {
+  resourceId: string;
+}
+
+type ResourceAssignmentCandidate = Pick<
+  Database['public']['Tables']['resources']['Row'],
+  'id' | 'display_order' | 'created_at'
+>;
+
+type ReservationStaffRow = Pick<
+  Database['public']['Tables']['reservations']['Row'],
+  'staff_id'
+>;
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -201,6 +222,70 @@ export class PublicReservationService {
     if (error || !data) {
       throw new ResourceNotFoundError();
     }
+  }
+
+  /**
+   * Select a bookable staff member for resource_id="any".
+   * @throws SlotConflictError when no staff is available.
+   */
+  async selectStaffForAutoAssign(
+    startIso: string,
+    endIso: string,
+    excludeResourceIds: string[] = []
+  ): Promise<AutoAssignedStaff> {
+    const { data: resources, error } = await this.client
+      .from('resources')
+      .select('id, display_order, created_at')
+      .eq('clinic_id', this.clinicId)
+      .eq('type', 'staff')
+      .eq('is_active', true)
+      .eq('is_bookable', true)
+      .eq('is_deleted', false)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error('Failed to load bookable staff resources');
+    }
+
+    const candidates = (resources ?? [])
+      .filter(
+        (resource): resource is ResourceAssignmentCandidate =>
+          typeof resource.id === 'string' &&
+          !excludeResourceIds.includes(resource.id)
+      )
+      .sort(compareAssignmentCandidates);
+
+    const availableCandidates: ResourceAssignmentCandidate[] = [];
+    for (const candidate of candidates) {
+      try {
+        await this.checkSlotAvailability(candidate.id, startIso, endIso);
+        availableCandidates.push(candidate);
+      } catch (error) {
+        if (!(error instanceof SlotConflictError)) {
+          throw error;
+        }
+      }
+    }
+
+    if (availableCandidates.length === 0) {
+      throw new SlotConflictError();
+    }
+
+    const assignmentCounts = await this.loadSameDayAssignmentCounts(
+      startIso,
+      availableCandidates.map(candidate => candidate.id)
+    );
+
+    availableCandidates.sort((left, right) => {
+      const countDiff =
+        (assignmentCounts.get(left.id) ?? 0) -
+        (assignmentCounts.get(right.id) ?? 0);
+      if (countDiff !== 0) return countDiff;
+      return compareAssignmentCandidates(left, right);
+    });
+
+    return { resourceId: availableCandidates[0].id };
   }
 
   /**
@@ -346,6 +431,7 @@ export class PublicReservationService {
       status: 'unconfirmed',
       notes: params.notes,
       channel: params.channel,
+      is_staff_requested: params.isStaffRequested ?? true,
     };
 
     const { data, error } = await this.client
@@ -365,6 +451,39 @@ export class PublicReservationService {
     return data as ReservationResult;
   }
 
+  private async loadSameDayAssignmentCounts(
+    startIso: string,
+    resourceIds: string[]
+  ): Promise<Map<string, number>> {
+    if (resourceIds.length === 0) return new Map();
+
+    const jstDate = toJSTDateString(new Date(startIso));
+    const dayStart = parseJSTDateStart(jstDate).toISOString();
+    const dayEnd = parseJSTDateStart(
+      addJSTCalendarDays(jstDate, 1)
+    ).toISOString();
+
+    const { data, error } = await this.client
+      .from('reservations')
+      .select('staff_id')
+      .eq('clinic_id', this.clinicId)
+      .in('staff_id', resourceIds)
+      .eq('is_deleted', false)
+      .gte('start_time', dayStart)
+      .lt('start_time', dayEnd)
+      .not('status', 'in', RESERVATION_CONFLICT_STATUS_FILTER);
+
+    if (error) {
+      throw new Error('Failed to count staff assignment reservations');
+    }
+
+    const counts = new Map<string, number>();
+    for (const row of (data ?? []) as ReservationStaffRow[]) {
+      counts.set(row.staff_id, (counts.get(row.staff_id) ?? 0) + 1);
+    }
+    return counts;
+  }
+
   /**
    * Delete a newly created customer (rollback on reservation failure).
    */
@@ -379,4 +498,14 @@ export class PublicReservationService {
       console.error('Customer rollback error:', error);
     }
   }
+}
+
+function compareAssignmentCandidates(
+  left: ResourceAssignmentCandidate,
+  right: ResourceAssignmentCandidate
+): number {
+  const leftOrder = left.display_order ?? Number.MAX_SAFE_INTEGER;
+  const rightOrder = right.display_order ?? Number.MAX_SAFE_INTEGER;
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+  return left.created_at.localeCompare(right.created_at);
 }

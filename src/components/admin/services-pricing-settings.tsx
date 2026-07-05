@@ -45,10 +45,12 @@ import {
   TriangleAlert,
   Loader2,
   Plus,
+  QrCode,
   RefreshCw,
   Save,
   Trash2,
 } from 'lucide-react';
+import * as qrcode from 'qrcode';
 import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import type { Menu } from '@/types/reservation';
@@ -1412,16 +1414,30 @@ interface BookingPreviewCardProps {
   clinicId: string | null;
 }
 
+interface BookingCalendarPreviewSettings {
+  allowOnlineBooking?: boolean;
+}
+
+type BookingCalendarSettingsResponse = {
+  success?: boolean;
+  data?: {
+    settings?: BookingCalendarPreviewSettings;
+  };
+  error?: string;
+};
+
+const normalizePublicAppUrl = (value: string) => value.replace(/\/+$/, '');
+
 const BookingPreviewCard = memo(function BookingPreviewCard({
   clinicId,
 }: BookingPreviewCardProps) {
-  const [origin, setOrigin] = useState('');
   const [copyMessage, setCopyMessage] = useState('');
   const [previewMode, setPreviewMode] = useState<'web' | 'line' | null>(null);
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [bookingEnabled, setBookingEnabled] = useState<boolean | null>(null);
+  const publicAppUrl = normalizePublicAppUrl(
+    process.env.NEXT_PUBLIC_APP_URL ?? ''
+  );
 
   const previewPath = useMemo(
     () => (clinicId ? buildBookingPreviewPath(clinicId) : ''),
@@ -1433,8 +1449,10 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
     [clinicId]
   );
 
-  const previewUrl = origin && previewPath ? `${origin}${previewPath}` : '';
-  const lineUrl = origin && linePath ? `${origin}${linePath}` : '';
+  const previewUrl =
+    publicAppUrl && previewPath ? `${publicAppUrl}${previewPath}` : '';
+  const lineUrl = publicAppUrl && linePath ? `${publicAppUrl}${linePath}` : '';
+  const publicAppUrlMissing = Boolean(clinicId && !publicAppUrl);
   const activePreviewChannel = previewMode === 'line' ? 'line' : 'web';
   const activePreviewTitle =
     previewMode === 'line'
@@ -1451,6 +1469,70 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
       setCopyMessage('コピーできませんでした。URLを開いて確認してください');
     }
   }, []);
+
+  useEffect(() => {
+    if (!previewUrl) {
+      setQrDataUrl('');
+      return;
+    }
+
+    let active = true;
+    qrcode
+      .toDataURL(previewUrl, {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 192,
+      })
+      .then(dataUrl => {
+        if (active) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (active) setQrDataUrl('');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (!clinicId) {
+      setBookingEnabled(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const query = new URLSearchParams({
+      clinic_id: clinicId,
+      category: 'booking_calendar',
+    });
+
+    const loadBookingCalendar = async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/settings?${query.toString()}`,
+          {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+          }
+        );
+        const result =
+          (await response.json()) as BookingCalendarSettingsResponse;
+        if (!response.ok || !result.success) {
+          setBookingEnabled(null);
+          return;
+        }
+        setBookingEnabled(result.data?.settings?.allowOnlineBooking === true);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setBookingEnabled(null);
+      }
+    };
+
+    loadBookingCalendar();
+
+    return () => controller.abort();
+  }, [clinicId]);
 
   useEffect(() => {
     if (!copyMessage) return;
@@ -1479,7 +1561,10 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
           <div className='min-w-0 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'>
             <div className='text-xs font-medium text-gray-500'>Web予約URL</div>
             <div className='mt-1 truncate font-mono'>
-              {previewUrl || '対象クリニックを選択してください'}
+              {previewUrl ||
+                (publicAppUrlMissing
+                  ? 'NEXT_PUBLIC_APP_URLが未設定です'
+                  : '対象クリニックを選択してください')}
             </div>
           </div>
           <div className='flex flex-wrap gap-2'>
@@ -1509,7 +1594,10 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
               LINE導線用URL
             </div>
             <div className='mt-1 truncate font-mono'>
-              {lineUrl || '対象クリニックを選択してください'}
+              {lineUrl ||
+                (publicAppUrlMissing
+                  ? 'NEXT_PUBLIC_APP_URLが未設定です'
+                  : '対象クリニックを選択してください')}
             </div>
           </div>
           <div className='flex flex-wrap gap-2'>
@@ -1531,6 +1619,43 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
               <Clock className='mr-2 h-4 w-4' />
               LINE表示
             </Button>
+          </div>
+        </div>
+
+        {bookingEnabled === false && (
+          <div className='rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-6 text-amber-800'>
+            <TriangleAlert className='mr-2 inline h-4 w-4 align-[-2px]' />
+            オンライン予約受付がOFFです。このURLを開いても患者さんは予約できません。
+          </div>
+        )}
+
+        {publicAppUrlMissing && (
+          <div className='rounded-md border border-red-200 bg-red-50 px-3 py-3 text-sm leading-6 text-red-700'>
+            <TriangleAlert className='mr-2 inline h-4 w-4 align-[-2px]' />
+            NEXT_PUBLIC_APP_URLが未設定のため、公開URLとQRコードを生成できません。
+          </div>
+        )}
+
+        <div className='flex flex-col gap-3 rounded-md border border-gray-200 bg-white p-4 sm:flex-row sm:items-center'>
+          <div className='flex h-36 w-36 items-center justify-center rounded-md border border-gray-200 bg-gray-50'>
+            {qrDataUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- QR code is generated as a client-side data URL. */}
+                <img
+                  src={qrDataUrl}
+                  alt='Web予約URL QRコード'
+                  className='h-32 w-32'
+                />
+              </>
+            ) : (
+              <QrCode className='h-10 w-10 text-gray-400' />
+            )}
+          </div>
+          <div className='min-w-0 text-sm text-gray-700'>
+            <div className='font-medium text-gray-900'>Web予約QRコード</div>
+            <div className='mt-1 leading-6'>
+              院内掲示やリッチメニュー登録に使うWeb予約URLのQRコードです。
+            </div>
           </div>
         </div>
 
@@ -1560,6 +1685,7 @@ const BookingPreviewCard = memo(function BookingPreviewCard({
                 clinicId={clinicId}
                 channel={activePreviewChannel}
                 embedded
+                previewMode
               />
             )}
           </div>

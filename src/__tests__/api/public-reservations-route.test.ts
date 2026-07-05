@@ -78,7 +78,9 @@ function createThenableQuery(result: MockQueryResult) {
     eq: jest.fn(() => query),
     in: jest.fn(() => query),
     lt: jest.fn(() => query),
+    gte: jest.fn(() => query),
     gt: jest.fn(() => query),
+    neq: jest.fn(() => query),
     not: jest.fn(() => query),
     order: jest.fn(() => query),
     single: jest.fn(() => Promise.resolve(result)),
@@ -192,17 +194,34 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
       }),
     },
     resources: {
-      select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
-          data: { id: VALID_RESOURCE_ID },
-          error: null,
-        }),
+      select: jest.fn((columns: string) => {
+        if (columns === 'id, display_order, created_at') {
+          return createThenableQuery({
+            data: [
+              {
+                id: VALID_RESOURCE_ID,
+                display_order: 1,
+                created_at: '2026-01-01T00:00:00.000Z',
+              },
+            ],
+            error: null,
+          });
+        }
+
+        return {
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { id: VALID_RESOURCE_ID },
+            error: null,
+          }),
+        };
       }),
     },
     reservations_select: {
       eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
       lt: jest.fn().mockReturnThis(),
+      gte: jest.fn().mockReturnThis(),
       gt: jest.fn().mockReturnThis(),
       not: jest.fn().mockResolvedValue(NO_CONFLICT),
     },
@@ -260,37 +279,21 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
 
   const tables = { ...defaultTables, ...overrides };
 
-  // Track call counts per table to distinguish select vs insert on same table
-  const reservationsCallCount = { value: 0 };
-  const customersCallCount = { value: 0 };
-
   return {
     from: jest.fn((table: string) => {
       if (table === 'reservations') {
-        reservationsCallCount.value++;
-        // First call is select (overlap check), second is insert
-        if (reservationsCallCount.value === 1) {
-          return {
-            select: jest.fn().mockReturnValue(tables.reservations_select),
-          };
-        }
         return {
+          select: jest.fn().mockReturnValue(tables.reservations_select),
           insert: jest.fn().mockReturnValue(tables.reservations_insert),
         };
       }
       if (table === 'customers') {
-        customersCallCount.value++;
         if (!isCustomerTableMock(tables.customers)) {
           throw new Error('Unexpected customers mock shape');
         }
 
-        // First call is select (find existing), second may be insert
-        if (customersCallCount.value === 1) {
-          return {
-            select: jest.fn().mockReturnValue(tables.customers.select()),
-          };
-        }
         return {
+          select: jest.fn().mockReturnValue(tables.customers.select()),
           insert: jest.fn().mockReturnValue(tables.customers.insert()),
         };
       }
@@ -313,6 +316,16 @@ describe('POST /api/public/reservations', () => {
   let POST: (
     req: PublicReservationRouteRequest
   ) => Promise<PublicReservationRouteResponse>;
+
+  beforeAll(() => {
+    jest.useFakeTimers({
+      now: new Date('2026-07-05T00:00:00.000Z'),
+    });
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -419,6 +432,34 @@ describe('POST /api/public/reservations', () => {
       start_time: '2026-07-10T01:00:00.000Z',
       end_time: '2026-07-10T02:00:00.000Z',
       status: 'unconfirmed',
+      resource_id: VALID_RESOURCE_ID,
+      is_staff_requested: true,
+    });
+  });
+
+  it('resource_id=any の場合はスタッフを自動割当して 201 を返す', async () => {
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        resource_id: 'any',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(data.data).toEqual({
+      reservation_id: VALID_RESERVATION_ID,
+      clinic_name: 'テスト整骨院',
+      menu_name: '標準施術',
+      start_time: '2026-07-10T01:00:00.000Z',
+      end_time: '2026-07-10T02:00:00.000Z',
+      status: 'unconfirmed',
+      resource_id: VALID_RESOURCE_ID,
+      is_staff_requested: false,
     });
   });
 
@@ -495,6 +536,20 @@ describe('POST /api/public/reservations', () => {
     expect(response.status).toBe(400);
     expect(data.success).toBe(false);
     expect(data.error).toBe('Validation error');
+  });
+
+  it('電話番号がない場合は 400 を返す', async () => {
+    const body = buildValidBody();
+    const { customer_phone: customerPhone, ...withoutPhone } = body;
+    expect(customerPhone).toBe('09012345678');
+
+    const response = await POST(buildRequest(withoutPhone));
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe('Validation error');
+    expect(data.details.fieldErrors.customer_phone).toContain('Required');
   });
 
   it('start_timeにtimezone offsetがない場合は 400 を返す', async () => {
