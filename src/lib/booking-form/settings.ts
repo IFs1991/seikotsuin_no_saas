@@ -69,6 +69,7 @@ export type PublicBookingFormSettings = {
   completionMessage: string;
   turnstile_site_key?: string;
   liff_id?: string;
+  oa_basic_id?: string;
 };
 
 export type IntakeResponseSnapshot = {
@@ -375,6 +376,7 @@ export function sanitizeBookingFormSettings(
     completionMessage: settings.completionMessage,
     turnstile_site_key: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
     liff_id: undefined,
+    oa_basic_id: undefined,
   };
 }
 

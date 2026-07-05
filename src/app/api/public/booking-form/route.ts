@@ -8,6 +8,7 @@ import {
   normalizeBookingFormSettings,
   sanitizeBookingFormSettings,
 } from '@/lib/booking-form/settings';
+import { getPublicLineBookingMetadata } from '@/lib/line/public-booking';
 import { bookingFormQuerySchema } from '../schema';
 
 function noStoreJson(body: unknown, init?: ResponseInit) {
@@ -66,9 +67,17 @@ export async function GET(request: NextRequest) {
     }
 
     const settings = normalizeBookingFormSettings(data?.settings);
+    const lineMetadata = await getPublicLineBookingMetadata({
+      supabase: clinicCtx.client,
+      clinicId: parsed.data.clinic_id,
+    });
+
     return noStoreJson({
       success: true,
-      data: sanitizeBookingFormSettings(settings),
+      data: {
+        ...sanitizeBookingFormSettings(settings),
+        ...lineMetadata,
+      },
     });
   } catch (error) {
     console.error('Public booking-form API error:', error);

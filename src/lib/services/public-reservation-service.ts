@@ -34,6 +34,7 @@ import {
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
+type CustomerUpdate = Database['public']['Tables']['customers']['Update'];
 
 // ──────────────────────────────────────────────
 // Error types
@@ -111,6 +112,11 @@ export interface CustomerResult {
   created: boolean;
 }
 
+export interface VerifiedLineCustomerProfile {
+  lineUserId: string;
+  displayName: string | null;
+}
+
 export interface ReservationResult {
   id: string;
   start_time: string;
@@ -183,6 +189,23 @@ function toIntakeResponsesJson(
     label: response.label,
     value: toJsonValue(response.value),
   }));
+}
+
+export function normalizeCustomerPhoneForMatch(
+  phone: string | undefined
+): string | null {
+  const trimmed = phone?.trim() ?? '';
+  if (!trimmed) {
+    return null;
+  }
+
+  const compact = trimmed.replace(/[\s-]/g, '');
+  if (compact.startsWith('+81')) {
+    const domestic = `0${compact.slice(3)}`;
+    return domestic.length > 1 ? domestic : null;
+  }
+
+  return compact.length > 0 ? compact : null;
 }
 
 // ──────────────────────────────────────────────
@@ -443,39 +466,49 @@ export class PublicReservationService {
   }
 
   /**
-   * Find an existing customer by email, or create a new one.
+   * Find an existing customer by LINE user ID, normalized phone, email, or create a new one.
    * @throws CustomerLookupError
    * @throws CustomerCreateError
    */
   async findOrCreateCustomer(
     name: string,
     phone: string | undefined,
-    email: string | undefined
+    email: string | undefined,
+    lineProfile?: VerifiedLineCustomerProfile
   ): Promise<CustomerResult> {
-    if (email) {
-      const { data: existing, error: lookupError } = await this.client
-        .from('customers')
-        .select('id')
-        .eq('clinic_id', this.clinicId)
-        .eq('email', email)
-        .eq('is_deleted', false)
-        .single();
+    const normalizedPhone = normalizeCustomerPhoneForMatch(phone);
+    const normalizedEmail = email?.trim() || undefined;
 
-      if (lookupError && !isNoRowsError(lookupError)) {
-        throw new CustomerLookupError();
-      }
+    const existingCustomerId =
+      (lineProfile
+        ? await this.findCustomerIdByColumn(
+            'line_user_id',
+            lineProfile.lineUserId
+          )
+        : null) ??
+      (normalizedPhone
+        ? await this.findCustomerIdByColumn('phone', normalizedPhone)
+        : null) ??
+      (normalizedEmail
+        ? await this.findCustomerIdByColumn('email', normalizedEmail)
+        : null);
 
-      if (existing) {
-        return { customerId: existing.id, created: false };
-      }
+    if (existingCustomerId) {
+      await this.updateCustomerLineProfile(existingCustomerId, lineProfile);
+      return { customerId: existingCustomerId, created: false };
     }
 
-    // Create new customer (with or without email)
     const insertData: CustomerInsert = {
       clinic_id: this.clinicId,
       name,
-      phone: phone ?? '',
-      ...(email ? { email } : {}),
+      phone: normalizedPhone ?? phone ?? '',
+      ...(normalizedEmail ? { email: normalizedEmail } : {}),
+      ...(lineProfile
+        ? {
+            line_user_id: lineProfile.lineUserId,
+            line_display_name: lineProfile.displayName,
+          }
+        : {}),
     };
 
     const { data: newCustomer, error: createError } = await this.client
@@ -489,6 +522,51 @@ export class PublicReservationService {
     }
 
     return { customerId: newCustomer.id, created: true };
+  }
+
+  private async findCustomerIdByColumn(
+    column: 'line_user_id' | 'phone' | 'email',
+    value: string
+  ): Promise<string | null> {
+    const { data: existing, error } = await this.client
+      .from('customers')
+      .select('id')
+      .eq('clinic_id', this.clinicId)
+      .eq(column, value)
+      .eq('is_deleted', false)
+      .limit(1)
+      .maybeSingle();
+
+    if (error && !isNoRowsError(error)) {
+      throw new CustomerLookupError();
+    }
+
+    return existing?.id ?? null;
+  }
+
+  private async updateCustomerLineProfile(
+    customerId: string,
+    lineProfile: VerifiedLineCustomerProfile | undefined
+  ): Promise<void> {
+    if (!lineProfile) {
+      return;
+    }
+
+    const updateData: CustomerUpdate = {
+      line_user_id: lineProfile.lineUserId,
+      line_display_name: lineProfile.displayName,
+    };
+
+    const { error } = await this.client
+      .from('customers')
+      .update(updateData)
+      .eq('id', customerId)
+      .eq('clinic_id', this.clinicId)
+      .eq('is_deleted', false);
+
+    if (error) {
+      throw new CustomerLookupError();
+    }
   }
 
   /**

@@ -83,9 +83,12 @@ function mockChain(
   // For queries that end with .single()
   const chain: Record<string, jest.Mock> = {
     eq: jest.fn(),
+    limit: jest.fn(),
     single: jest.fn().mockResolvedValue(result),
+    maybeSingle: jest.fn().mockResolvedValue(result),
   };
   chain.eq.mockReturnValue(chain);
+  chain.limit.mockReturnValue(chain);
   return chain;
 }
 
@@ -95,8 +98,6 @@ function mockChain(
  */
 function buildClient(overrides: Record<string, () => unknown> = {}) {
   const reservationsCalls = { select: 0 };
-  const customersCalls = { method: 0 };
-
   const defaults: Record<string, () => unknown> = {
     clinic_settings: () => ({
       select: jest.fn().mockReturnValue(
@@ -174,9 +175,10 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
         return factories.reservations_insert();
       }
       if (table === 'customers') {
-        customersCalls.method++;
-        if (customersCalls.method === 1) return factories.customers_find();
-        return factories.customers_create();
+        return {
+          ...(factories.customers_find() as object),
+          ...(factories.customers_create() as object),
+        };
       }
       const factory = factories[table];
       if (!factory) throw new Error(`Unexpected table: ${table}`);
@@ -440,8 +442,8 @@ describe('PublicReservationService', () => {
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
     });
 
-    it('email なしの場合は常に新規作成する', async () => {
-      // No email → skip find, go directly to insert (first from('customers') is insert)
+    it('電話番号とemailがない場合は新規作成する', async () => {
+      // No phone/email/LINE ID → skip lookup and go directly to insert.
       const client = {
         from: jest.fn().mockReturnValue({
           insert: jest.fn().mockReturnValue({
@@ -457,14 +459,14 @@ describe('PublicReservationService', () => {
       const service = new PublicReservationService(client, CLINIC_ID);
       const result = await service.findOrCreateCustomer(
         'テスト患者',
-        '09012345678',
+        undefined,
         undefined
       );
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
     });
 
     it('顧客作成失敗時は CustomerCreateError を投げる', async () => {
-      // No email → skip find, insert fails
+      // No phone/email/LINE ID → skip lookup, insert fails.
       const client = {
         from: jest.fn().mockReturnValue({
           insert: jest.fn().mockReturnValue({
@@ -479,7 +481,7 @@ describe('PublicReservationService', () => {
       } as any;
       const service = new PublicReservationService(client, CLINIC_ID);
       await expect(
-        service.findOrCreateCustomer('テスト患者', '09012345678', undefined)
+        service.findOrCreateCustomer('テスト患者', undefined, undefined)
       ).rejects.toThrow(CustomerCreateError);
     });
   });

@@ -1,4 +1,10 @@
 const mockCreatePublicClinicContext = jest.fn();
+const TEST_ENCRYPTION_KEY =
+  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const ORIGINAL_LINE_CREDENTIALS_ENCRYPTION_KEY =
+  process.env.LINE_CREDENTIALS_ENCRYPTION_KEY;
+const ORIGINAL_ENABLE_LIFF_BOOKING =
+  process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
 
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -32,15 +38,56 @@ const buildRequest = (clinicId = CLINIC_ID) =>
     ),
   }) as { nextUrl: URL };
 
-const buildSettingsClient = (settings: unknown) => ({
-  from: jest.fn().mockReturnValue({
-    select: jest.fn().mockReturnValue({
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn().mockResolvedValue({
-        data: settings === null ? null : { settings },
-        error: null,
-      }),
+type PublicBookingFormClientOptions = {
+  lineBookingEnabled?: boolean;
+  lineCredentials?: {
+    is_active: boolean;
+    liff_id: string | null;
+    login_channel_id: string | null;
+    oa_basic_id: string | null;
+  } | null;
+};
+
+const buildQuery = (data: unknown) => {
+  const query = {
+    eq: jest.fn(() => query),
+    maybeSingle: jest.fn().mockResolvedValue({
+      data,
+      error: null,
     }),
+  };
+  return query;
+};
+
+const buildSettingsClient = (
+  settings: unknown,
+  options: PublicBookingFormClientOptions = {}
+) => ({
+  from: jest.fn((table: string) => {
+    if (table === 'clinic_settings') {
+      return {
+        select: jest
+          .fn()
+          .mockReturnValue(buildQuery(settings === null ? null : { settings })),
+      };
+    }
+    if (table === 'clinic_feature_flags') {
+      return {
+        select: jest.fn().mockReturnValue(
+          buildQuery({
+            line_booking_enabled: options.lineBookingEnabled === true,
+          })
+        ),
+      };
+    }
+    if (table === 'clinic_line_credentials') {
+      return {
+        select: jest
+          .fn()
+          .mockReturnValue(buildQuery(options.lineCredentials ?? null)),
+      };
+    }
+    throw new Error(`Unexpected table: ${table}`);
   }),
 });
 
@@ -52,10 +99,23 @@ describe('GET /api/public/booking-form', () => {
   beforeEach(async () => {
     jest.resetModules();
     jest.clearAllMocks();
+    process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = '';
+    process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'false';
     const mod = await import('@/app/api/public/booking-form/route');
     GET = mod.GET as (
       request: ReturnType<typeof buildRequest>
     ) => Promise<PublicBookingFormRouteResponse>;
+  });
+
+  afterAll(() => {
+    restoreEnvValue(
+      'LINE_CREDENTIALS_ENCRYPTION_KEY',
+      ORIGINAL_LINE_CREDENTIALS_ENCRYPTION_KEY
+    );
+    restoreEnvValue(
+      'NEXT_PUBLIC_ENABLE_LIFF_BOOKING',
+      ORIGINAL_ENABLE_LIFF_BOOKING
+    );
   });
 
   it('未保存の場合はデフォルト設定をno-storeで返す', async () => {
@@ -134,4 +194,42 @@ describe('GET /api/public/booking-form', () => {
       },
     });
   });
+
+  it('LINE有効化条件を満たす場合だけLIFF公開メタデータを返す', async () => {
+    process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
+    process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'true';
+    mockCreatePublicClinicContext.mockResolvedValue({
+      client: buildSettingsClient(null, {
+        lineBookingEnabled: true,
+        lineCredentials: {
+          is_active: true,
+          liff_id: '2000000000-AbCdEfGh',
+          login_channel_id: '2000000001',
+          oa_basic_id: '@testclinic',
+        },
+      }),
+      clinic: { id: CLINIC_ID, name: 'テスト整骨院' },
+    });
+
+    const response = await GET(buildRequest());
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toMatchObject({
+      success: true,
+      data: {
+        liff_id: '2000000000-AbCdEfGh',
+        oa_basic_id: '@testclinic',
+      },
+    });
+    expect(JSON.stringify(data)).not.toContain('2000000001');
+  });
 });
+
+function restoreEnvValue(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = value;
+}

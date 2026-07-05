@@ -8,6 +8,7 @@
  */
 
 const mockCreatePublicClinicContext = jest.fn();
+const mockVerifyLineIdTokenForClinic = jest.fn();
 
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -35,6 +36,11 @@ jest.mock('@/lib/supabase/scoped-admin', () => ({
   },
 }));
 
+jest.mock('@/lib/line/id-token', () => ({
+  verifyLineIdTokenForClinic: (...args: unknown[]) =>
+    mockVerifyLineIdTokenForClinic(...args),
+}));
+
 const VALID_CLINIC_ID = '00000000-0000-0000-0000-000000000101';
 const VALID_MENU_ID = '00000000-0000-0000-0000-000000000201';
 const VALID_RESOURCE_ID = '00000000-0000-0000-0000-000000000301';
@@ -49,8 +55,9 @@ type MockQueryResult = {
 };
 
 type CustomerTableMock = {
-  select: () => unknown;
-  insert: () => unknown;
+  select: jest.Mock;
+  insert: jest.Mock;
+  update?: jest.Mock;
 };
 
 type PublicReservationRouteRequest = {
@@ -62,6 +69,10 @@ type PublicReservationRouteResponse = {
   json: () => Promise<unknown>;
 };
 
+type InsertableTableMock = {
+  insert: jest.Mock;
+};
+
 function isCustomerTableMock(value: unknown): value is CustomerTableMock {
   return (
     typeof value === 'object' &&
@@ -71,6 +82,36 @@ function isCustomerTableMock(value: unknown): value is CustomerTableMock {
     typeof value.select === 'function' &&
     typeof value.insert === 'function'
   );
+}
+
+function isInsertableTableMock(value: unknown): value is InsertableTableMock {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'insert' in value &&
+    typeof value.insert === 'function'
+  );
+}
+
+function findReservationInsertPayload(
+  supabase: ReturnType<typeof buildMockSupabase>
+) {
+  for (const [index, result] of supabase.from.mock.results.entries()) {
+    if (supabase.from.mock.calls[index]?.[0] !== 'reservations') {
+      continue;
+    }
+    if (result.type !== 'return') {
+      continue;
+    }
+    if (!isInsertableTableMock(result.value)) {
+      continue;
+    }
+    if (result.value.insert.mock.calls.length === 0) {
+      continue;
+    }
+    return result.value.insert.mock.calls[0][0];
+  }
+  return null;
 }
 
 function createThenableQuery(result: MockQueryResult) {
@@ -257,15 +298,11 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
     },
     customers: {
       select: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({
-                data: null,
-                error: { code: 'PGRST116', message: 'No rows found' },
-              }),
-            }),
-          }),
+        eq: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: null,
+          error: null,
         }),
       }),
       insert: jest.fn().mockReturnValue({
@@ -275,6 +312,9 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
             error: null,
           }),
         }),
+      }),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
       }),
     },
     reservations_insert: {
@@ -332,8 +372,9 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
         }
 
         return {
-          select: jest.fn().mockReturnValue(tables.customers.select()),
-          insert: jest.fn().mockReturnValue(tables.customers.insert()),
+          select: tables.customers.select,
+          insert: tables.customers.insert,
+          update: tables.customers.update,
         };
       }
       if (table === 'reservation_notifications') {
@@ -374,6 +415,10 @@ describe('POST /api/public/reservations', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: false,
+      reason: 'not_configured',
+    });
     // Dynamic import to pick up mocks
     jest.resetModules();
     const mod = await import('@/app/api/public/reservations/route');
@@ -482,6 +527,115 @@ describe('POST /api/public/reservations', () => {
     });
   });
 
+  it('LINE IDトークン検証成功時は顧客にLINE IDを保存して予約を継続する', async () => {
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: true,
+      lineUserId: 'Uline-user-001',
+      displayName: 'LINE 太郎',
+      audience: '2000000001',
+    });
+    const customerInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: { id: VALID_CUSTOMER_ID },
+          error: null,
+        }),
+      }),
+    });
+    const supabase = buildMockSupabase({
+      customers: {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        }),
+        insert: customerInsert,
+      },
+    });
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        line_id_token: 'id-token-001',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(mockVerifyLineIdTokenForClinic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clinicId: VALID_CLINIC_ID,
+        idToken: 'id-token-001',
+      })
+    );
+    expect(customerInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        line_user_id: 'Uline-user-001',
+        line_display_name: 'LINE 太郎',
+      })
+    );
+    expect(findReservationInsertPayload(supabase)).toEqual(
+      expect.objectContaining({
+        channel: 'line',
+      })
+    );
+  });
+
+  it('LINE IDトークン検証失敗時もWeb予約として継続する', async () => {
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: false,
+      reason: 'aud_mismatch',
+    });
+    const customerInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: { id: VALID_CUSTOMER_ID },
+          error: null,
+        }),
+      }),
+    });
+    const supabase = buildMockSupabase({
+      customers: {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: null,
+            error: null,
+          }),
+        }),
+        insert: customerInsert,
+      },
+    });
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        line_id_token: 'id-token-001',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(customerInsert).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        line_user_id: expect.any(String),
+      })
+    );
+    expect(findReservationInsertPayload(supabase)).toEqual(
+      expect.objectContaining({
+        channel: 'web',
+      })
+    );
+  });
+
   it('resource_id=any の場合はスタッフを自動割当して 201 を返す', async () => {
     const supabase = buildMockSupabase();
     setupClinicContext(supabase);
@@ -536,15 +690,11 @@ describe('POST /api/public/reservations', () => {
     const supabase = buildMockSupabase({
       customers: {
         select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                single: jest.fn().mockResolvedValue({
-                  data: { id: VALID_CUSTOMER_ID },
-                  error: null,
-                }),
-              }),
-            }),
+          eq: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: VALID_CUSTOMER_ID },
+            error: null,
           }),
         }),
         insert: jest.fn(),

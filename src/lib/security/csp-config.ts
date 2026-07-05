@@ -5,6 +5,9 @@ import { logger } from '@/lib/logger';
  * Phase 3B: XSS攻撃対策の強化
  */
 
+const LINE_LIFF_SCRIPT_SRC = 'https://static.line-scdn.net';
+const LINE_API_CONNECT_SRC = 'https://api.line.me';
+
 // CSP設定タイプ
 export type CSPEnvironment = 'development' | 'staging' | 'production';
 
@@ -40,6 +43,7 @@ export class CSPConfig {
         "'unsafe-eval'", // 開発ツール用
         'https://vercel.live',
         'https://*.vercel-scripts.com',
+        LINE_LIFF_SCRIPT_SRC,
       ],
       'style-src': [
         "'self'",
@@ -55,6 +59,7 @@ export class CSPConfig {
         'wss://localhost:*',
         'ws://localhost:*',
         'https://vercel.live',
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
@@ -78,6 +83,7 @@ export class CSPConfig {
     if (nonce) {
       scriptSrcDirectives.push(`'nonce-${nonce}'`);
     }
+    scriptSrcDirectives.push(LINE_LIFF_SCRIPT_SRC);
 
     const csp = {
       'default-src': ["'self'"],
@@ -99,6 +105,7 @@ export class CSPConfig {
         'https://*.supabase.co',
         'https://*.upstash.io',
         'https://api.ipgeolocation.io', // IP地理情報API
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'"],
       'object-src': ["'none'"],
@@ -127,6 +134,7 @@ export class CSPConfig {
         "'self'",
         "'unsafe-inline'", // 現在の状況を監視
         "'unsafe-eval'",
+        LINE_LIFF_SCRIPT_SRC,
       ],
       'style-src': [
         "'self'",
@@ -139,6 +147,7 @@ export class CSPConfig {
         "'self'",
         'https://*.supabase.co',
         'https://*.upstash.io',
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
@@ -169,6 +178,7 @@ export class CSPConfig {
         "'unsafe-inline'",
         "'unsafe-eval'",
         'https://unpkg.com',
+        LINE_LIFF_SCRIPT_SRC,
       ],
       'style-src': [
         "'self'",
@@ -181,6 +191,7 @@ export class CSPConfig {
         "'self'",
         'https://*.supabase.co',
         'https://*.upstash.io',
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
@@ -211,6 +222,7 @@ export class CSPConfig {
 
     // 医療データ処理で必要なライブラリのみ
     scriptSrcDirectives.push('https://cdn.jsdelivr.net'); // Chart.js等の医療統計ライブラリ
+    scriptSrcDirectives.push(LINE_LIFF_SCRIPT_SRC);
 
     const csp = {
       'default-src': ["'self'"],
@@ -231,6 +243,7 @@ export class CSPConfig {
         "'self'",
         'https://*.supabase.co', // セキュアなデータベース接続
         'https://*.upstash.io', // セキュアなRedis接続
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'"],
       'object-src': ["'none'"],
