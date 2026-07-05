@@ -852,6 +852,7 @@ export type Database = {
       clinic_feature_flags: {
         Row: {
           clinic_id: string;
+          line_booking_enabled: boolean;
           mobile_uiux_daily_report_write_enabled: boolean;
           mobile_uiux_enabled: boolean;
           mobile_uiux_real_data_enabled: boolean;
@@ -864,6 +865,7 @@ export type Database = {
         };
         Insert: {
           clinic_id: string;
+          line_booking_enabled?: boolean;
           mobile_uiux_daily_report_write_enabled?: boolean;
           mobile_uiux_enabled?: boolean;
           mobile_uiux_real_data_enabled?: boolean;
@@ -876,6 +878,7 @@ export type Database = {
         };
         Update: {
           clinic_id?: string;
+          line_booking_enabled?: boolean;
           mobile_uiux_daily_report_write_enabled?: boolean;
           mobile_uiux_enabled?: boolean;
           mobile_uiux_real_data_enabled?: boolean;
@@ -896,6 +899,72 @@ export type Database = {
           },
           {
             foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      clinic_line_credentials: {
+        Row: {
+          access_token_encrypted: string | null;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at: string;
+          is_active: boolean;
+          liff_id: string | null;
+          login_channel_id: string | null;
+          messaging_channel_id: string;
+          oa_basic_id: string | null;
+          token_expires_at: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          access_token_encrypted?: string | null;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at?: string;
+          is_active?: boolean;
+          liff_id?: string | null;
+          login_channel_id?: string | null;
+          messaging_channel_id: string;
+          oa_basic_id?: string | null;
+          token_expires_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          access_token_encrypted?: string | null;
+          assertion_kid?: string;
+          assertion_private_key_encrypted?: string;
+          channel_secret_encrypted?: string;
+          clinic_id?: string;
+          created_at?: string;
+          is_active?: boolean;
+          liff_id?: string | null;
+          login_channel_id?: string | null;
+          messaging_channel_id?: string;
+          oa_basic_id?: string | null;
+          token_expires_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_line_credentials_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_credentials_clinic_id_fkey';
             columns: ['clinic_id'];
             isOneToOne: true;
             referencedRelation: 'clinics';
