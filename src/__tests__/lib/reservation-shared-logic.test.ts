@@ -1,4 +1,5 @@
 import { buildManagerDashboardResponse } from '@/lib/manager-dashboard';
+import { isReservationNoOverlapError } from '@/lib/reservations/conflict';
 import { summarizeReservationStatuses } from '@/lib/reservations/status';
 
 const clinicId = '11111111-1111-4111-8111-111111111111';
@@ -46,5 +47,17 @@ describe('shared reservation business rules', () => {
     });
     expect(card.todayReservationCount).toBe(mobileSummary.total);
     expect(card.todayCancellationCount).toBe(mobileSummary.cancelled);
+  });
+
+  it('maps reservation exclusion constraint SQLSTATE to slot conflict semantics', () => {
+    expect(
+      isReservationNoOverlapError({
+        code: '23P01',
+        message:
+          'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+      })
+    ).toBe(true);
+    expect(isReservationNoOverlapError({ code: '23505' })).toBe(false);
+    expect(isReservationNoOverlapError(new Error('23P01'))).toBe(false);
   });
 });

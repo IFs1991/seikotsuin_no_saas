@@ -25,8 +25,36 @@ import {
   CustomerLookupError,
   CustomerCreateError,
   ReservationCreateError,
+  BookingFormValidationError,
+  type ReservationResult,
 } from '@/lib/services/public-reservation-service';
+import type {
+  BookingFormResponseValue,
+  IntakeResponseSnapshot,
+} from '@/lib/booking-form/settings';
+import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
+import { logger } from '@/lib/logger';
+import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { reservationCreateSchema } from '../schema';
+
+function formatIntakeResponseValue(
+  value: IntakeResponseSnapshot['value']
+): string {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'はい' : 'いいえ';
+  }
+  return value;
+}
+
+function formatIntakeSummary(snapshots: IntakeResponseSnapshot[]): string[] {
+  return snapshots.map(
+    snapshot =>
+      `${snapshot.label}: ${formatIntakeResponseValue(snapshot.value)}`
+  );
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,12 +87,17 @@ export async function POST(request: NextRequest) {
       customer_name,
       customer_phone,
       customer_email,
+      customer_name_kana,
+      birth_date,
+      gender,
       menu_id,
       resource_id,
       start_time,
       notes,
-      channel,
+      intake_responses,
+      consents,
     } = parsed.data;
+    const channel = 'web';
 
     // Validate clinic exists and is active
     let clinicCtx;
@@ -105,6 +138,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let intakeResponseSnapshots: IntakeResponseSnapshot[];
+    try {
+      const normalizedIntakeResponses = intake_responses.filter(
+        (
+          response
+        ): response is { id: string; value: BookingFormResponseValue } =>
+          typeof response.id === 'string' && response.value !== undefined
+      );
+      intakeResponseSnapshots = await service.validateBookingFormResponses({
+        standardFields: {
+          nameKana: customer_name_kana,
+          phone: customer_phone,
+          email: customer_email,
+          birthDate: birth_date,
+          gender,
+          notes,
+        },
+        responses: normalizedIntakeResponses,
+        consents,
+      });
+    } catch (e) {
+      if (e instanceof BookingFormValidationError) {
+        return NextResponse.json(
+          { success: false, error: e.message },
+          { status: 400 }
+        );
+      }
+      console.error('Booking form validation error:', e);
+      return NextResponse.json(
+        { success: false, error: 'Failed to validate booking form responses' },
+        { status: 500 }
+      );
+    }
+
     // Verify menu
     let menu;
     try {
@@ -125,34 +192,76 @@ export async function POST(request: NextRequest) {
       menu.duration_minutes
     );
 
-    // Verify resource
     try {
-      await service.verifyResource(resource_id);
+      await service.validateReservationTime(startIso, endIso);
     } catch (e) {
-      if (e instanceof ResourceNotFoundError) {
+      if (e instanceof PublicBookingTimeValidationError) {
         return NextResponse.json(
           { success: false, error: e.message },
-          { status: 404 }
+          { status: 400 }
         );
       }
-      throw e;
-    }
-
-    // Check slot availability
-    try {
-      await service.checkSlotAvailability(resource_id, startIso, endIso);
-    } catch (e) {
-      if (e instanceof SlotConflictError) {
-        return NextResponse.json(
-          { success: false, error: e.message },
-          { status: 409 }
-        );
-      }
-      console.error('Reservation slot validation error:', e);
+      console.error('Reservation time validation error:', e);
       return NextResponse.json(
-        { success: false, error: 'Failed to validate reservation slot' },
+        { success: false, error: 'Failed to validate reservation time' },
         { status: 500 }
       );
+    }
+
+    const isAutoAssign = resource_id === 'any';
+    let assignedResourceId = resource_id;
+    let retryAssignedResourceId: string | null = null;
+
+    if (isAutoAssign) {
+      try {
+        const assigned = await service.selectStaffForAutoAssign(
+          startIso,
+          endIso
+        );
+        assignedResourceId = assigned.resourceId;
+      } catch (e) {
+        if (e instanceof SlotConflictError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
+        }
+        console.error('Auto assignment error:', e);
+        return NextResponse.json(
+          { success: false, error: 'Failed to assign booking resource' },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Verify resource
+      try {
+        await service.verifyResource(resource_id);
+      } catch (e) {
+        if (e instanceof ResourceNotFoundError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 404 }
+          );
+        }
+        throw e;
+      }
+
+      // Check slot availability
+      try {
+        await service.checkSlotAvailability(resource_id, startIso, endIso);
+      } catch (e) {
+        if (e instanceof SlotConflictError) {
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
+        }
+        console.error('Reservation slot validation error:', e);
+        return NextResponse.json(
+          { success: false, error: 'Failed to validate reservation slot' },
+          { status: 500 }
+        );
+      }
     }
 
     // Find or create customer
@@ -182,18 +291,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Create reservation
-    let reservation;
+    let reservation: ReservationResult;
     try {
       reservation = await service.createReservation({
         customerId: customerResult.customerId,
         menuId: menu_id,
-        resourceId: resource_id,
+        resourceId: assignedResourceId,
         startIso,
         endIso,
         notes: notes ?? null,
         channel,
+        isStaffRequested: !isAutoAssign,
+        intakeResponses: intakeResponseSnapshots,
       });
     } catch (e) {
+      if (e instanceof SlotConflictError) {
+        if (isAutoAssign) {
+          try {
+            const retryAssigned = await service.selectStaffForAutoAssign(
+              startIso,
+              endIso,
+              [assignedResourceId]
+            );
+            retryAssignedResourceId = retryAssigned.resourceId;
+            reservation = await service.createReservation({
+              customerId: customerResult.customerId,
+              menuId: menu_id,
+              resourceId: retryAssignedResourceId,
+              startIso,
+              endIso,
+              notes: notes ?? null,
+              channel,
+              isStaffRequested: false,
+              intakeResponses: intakeResponseSnapshots,
+            });
+          } catch (retryError) {
+            if (customerResult.created) {
+              await service.rollbackCustomer(customerResult.customerId);
+            }
+            if (retryError instanceof SlotConflictError) {
+              return NextResponse.json(
+                { success: false, error: retryError.message },
+                { status: 409 }
+              );
+            }
+            throw retryError;
+          }
+        } else {
+          if (customerResult.created) {
+            await service.rollbackCustomer(customerResult.customerId);
+          }
+          return NextResponse.json(
+            { success: false, error: e.message },
+            { status: 409 }
+          );
+        }
+      }
       if (e instanceof ReservationCreateError) {
         console.error('Reservation creation error:', e);
         // Rollback newly created customer
@@ -208,6 +361,30 @@ export async function POST(request: NextRequest) {
       throw e;
     }
 
+    try {
+      await enqueuePublicReservationNotifications(clinicCtx.client, {
+        clinicId: clinic_id,
+        reservationId: reservation.id,
+        customerId: customerResult.customerId,
+        customerName: customer_name,
+        customerEmail: customer_email ?? null,
+        clinicName: clinicCtx.clinic.name,
+        menuName: menu.name,
+        resourceId: retryAssignedResourceId ?? assignedResourceId,
+        startTime: reservation.start_time,
+        endTime: reservation.end_time,
+        channel,
+        intakeSummary: formatIntakeSummary(intakeResponseSnapshots),
+        updatedAt: reservation.updated_at,
+      });
+    } catch (error) {
+      logger.error('Failed to enqueue public reservation notifications', {
+        reservationId: reservation.id,
+        clinicId: clinic_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -218,6 +395,8 @@ export async function POST(request: NextRequest) {
           start_time: reservation.start_time,
           end_time: reservation.end_time,
           status: reservation.status,
+          resource_id: retryAssignedResourceId ?? assignedResourceId,
+          is_staff_requested: !isAutoAssign,
         },
       },
       { status: 201 }

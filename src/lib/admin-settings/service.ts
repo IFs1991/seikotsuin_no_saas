@@ -12,6 +12,8 @@ import {
 } from '@/lib/admin-settings/defaults';
 import { CATEGORY_SCHEMAS } from '@/lib/admin-settings/schemas';
 import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
+import { normalizeBookingCalendarReminders } from '@/lib/booking-calendar/settings';
+import { normalizeBookingFormSettings } from '@/lib/booking-form/settings';
 import type { Json } from '@/types/supabase';
 
 export const ADMIN_SETTINGS_MUTATION_ROLES: readonly Role[] =
@@ -134,6 +136,21 @@ function normalizeSettings(
     return normalizeCommunicationSettings(
       settings ?? DEFAULT_SETTINGS.communication
     );
+  }
+
+  if (category === 'booking_form') {
+    return normalizeBookingFormSettings(
+      settings ?? DEFAULT_SETTINGS.booking_form
+    );
+  }
+
+  if (category === 'booking_calendar') {
+    const base = settings ?? DEFAULT_SETTINGS.booking_calendar;
+    return {
+      ...DEFAULT_SETTINGS.booking_calendar,
+      ...base,
+      reminders: normalizeBookingCalendarReminders(base.reminders),
+    };
   }
 
   return settings ?? DEFAULT_SETTINGS[category];

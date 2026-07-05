@@ -30,7 +30,10 @@ import {
   type RevenueContextSource,
   type SelectableRevenueContextCode,
 } from '@/lib/revenue-context';
-import { hasReservationConflict } from '@/lib/reservations/conflict';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 
 const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
@@ -847,6 +850,10 @@ async function createNextReservation(
     .single();
 
   if (error) {
+    if (isReservationNoOverlapError(error)) {
+      return null;
+    }
+
     throw normalizeSupabaseError(error, PATH);
   }
 
@@ -956,6 +963,14 @@ async function syncNextReservationForUpdate(
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return {
+          ok: false,
+          status: 409,
+          message: '次回予約の時間帯に既存予約があります',
+        };
+      }
+
       throw normalizeSupabaseError(error, PATH);
     }
 

@@ -11,7 +11,26 @@
  */
 
 import type { SupabaseServerClient } from '@/lib/supabase';
-import type { Database } from '@/types/supabase';
+import type { Database, Json } from '@/types/supabase';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+  RESERVATION_CONFLICT_STATUS_FILTER,
+} from '@/lib/reservations/conflict';
+import { PublicAvailabilityService } from '@/lib/services/public-availability-service';
+import {
+  addJSTCalendarDays,
+  parseJSTDateStart,
+  toJSTDateString,
+} from '@/lib/jst';
+import {
+  normalizeBookingFormSettings,
+  validateBookingFormResponses,
+  type BookingFormResponseValue,
+  type BookingFormSettings,
+  type BookingFormStandardFieldKey,
+  type IntakeResponseSnapshot,
+} from '@/lib/booking-form/settings';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
@@ -69,6 +88,13 @@ export class ReservationCreateError extends Error {
   }
 }
 
+export class BookingFormValidationError extends Error {
+  constructor(message = 'Booking form responses are invalid') {
+    super(message);
+    this.name = 'BookingFormValidationError';
+  }
+}
+
 // ──────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────
@@ -90,6 +116,7 @@ export interface ReservationResult {
   start_time: string;
   end_time: string;
   status: string;
+  updated_at: string;
 }
 
 export interface CreateReservationParams {
@@ -100,7 +127,29 @@ export interface CreateReservationParams {
   endIso: string;
   notes: string | null;
   channel: string;
+  isStaffRequested?: boolean;
+  intakeResponses?: IntakeResponseSnapshot[];
 }
+
+export interface ValidateBookingFormResponseParams {
+  standardFields: Partial<Record<BookingFormStandardFieldKey, string>>;
+  responses: { id: string; value: BookingFormResponseValue }[];
+  consents: Record<string, boolean>;
+}
+
+export interface AutoAssignedStaff {
+  resourceId: string;
+}
+
+type ResourceAssignmentCandidate = Pick<
+  Database['public']['Tables']['resources']['Row'],
+  'id' | 'display_order' | 'created_at'
+>;
+
+type ReservationStaffRow = Pick<
+  Database['public']['Tables']['reservations']['Row'],
+  'staff_id'
+>;
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -113,6 +162,27 @@ function isNoRowsError(error: unknown): error is { code: string } {
     'code' in error &&
     error.code === 'PGRST116'
   );
+}
+
+function toJsonValue(value: BookingFormResponseValue): Json {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return value;
+}
+
+function toIntakeResponsesJson(
+  responses: IntakeResponseSnapshot[]
+): Json | null {
+  if (responses.length === 0) {
+    return null;
+  }
+
+  return responses.map(response => ({
+    id: response.id,
+    label: response.label,
+    value: toJsonValue(response.value),
+  }));
 }
 
 // ──────────────────────────────────────────────
@@ -155,6 +225,39 @@ export class PublicReservationService {
     }
   }
 
+  async getBookingFormSettings(): Promise<BookingFormSettings> {
+    const { data: record, error } = await this.client
+      .from('clinic_settings')
+      .select('settings')
+      .eq('clinic_id', this.clinicId)
+      .eq('category', 'booking_form')
+      .maybeSingle();
+
+    if (error) {
+      throw new Error('Failed to load booking form settings');
+    }
+
+    return normalizeBookingFormSettings(record?.settings);
+  }
+
+  async validateBookingFormResponses(
+    params: ValidateBookingFormResponseParams
+  ): Promise<IntakeResponseSnapshot[]> {
+    const settings = await this.getBookingFormSettings();
+    const result = validateBookingFormResponses({
+      settings,
+      standardFields: params.standardFields,
+      responses: params.responses,
+      consents: params.consents,
+    });
+
+    if (result.ok === false) {
+      throw new BookingFormValidationError(result.message);
+    }
+
+    return result.snapshots;
+  }
+
   /**
    * Verify that the menu exists, is active, belongs to the clinic.
    * @throws MenuNotFoundError
@@ -166,6 +269,7 @@ export class PublicReservationService {
       .eq('id', menuId)
       .eq('clinic_id', this.clinicId)
       .eq('is_active', true)
+      .eq('is_public', true)
       .eq('is_deleted', false)
       .single();
 
@@ -198,6 +302,70 @@ export class PublicReservationService {
   }
 
   /**
+   * Select a bookable staff member for resource_id="any".
+   * @throws SlotConflictError when no staff is available.
+   */
+  async selectStaffForAutoAssign(
+    startIso: string,
+    endIso: string,
+    excludeResourceIds: string[] = []
+  ): Promise<AutoAssignedStaff> {
+    const { data: resources, error } = await this.client
+      .from('resources')
+      .select('id, display_order, created_at')
+      .eq('clinic_id', this.clinicId)
+      .eq('type', 'staff')
+      .eq('is_active', true)
+      .eq('is_bookable', true)
+      .eq('is_deleted', false)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error('Failed to load bookable staff resources');
+    }
+
+    const candidates = (resources ?? [])
+      .filter(
+        (resource): resource is ResourceAssignmentCandidate =>
+          typeof resource.id === 'string' &&
+          !excludeResourceIds.includes(resource.id)
+      )
+      .sort(compareAssignmentCandidates);
+
+    const availableCandidates: ResourceAssignmentCandidate[] = [];
+    for (const candidate of candidates) {
+      try {
+        await this.checkSlotAvailability(candidate.id, startIso, endIso);
+        availableCandidates.push(candidate);
+      } catch (error) {
+        if (!(error instanceof SlotConflictError)) {
+          throw error;
+        }
+      }
+    }
+
+    if (availableCandidates.length === 0) {
+      throw new SlotConflictError();
+    }
+
+    const assignmentCounts = await this.loadSameDayAssignmentCounts(
+      startIso,
+      availableCandidates.map(candidate => candidate.id)
+    );
+
+    availableCandidates.sort((left, right) => {
+      const countDiff =
+        (assignmentCounts.get(left.id) ?? 0) -
+        (assignmentCounts.get(right.id) ?? 0);
+      if (countDiff !== 0) return countDiff;
+      return compareAssignmentCandidates(left, right);
+    });
+
+    return { resourceId: availableCandidates[0].id };
+  }
+
+  /**
    * Calculate start and end ISO strings from start_time and duration.
    */
   calculateTimeSlot(
@@ -214,6 +382,17 @@ export class PublicReservationService {
     };
   }
 
+  async validateReservationTime(
+    startIso: string,
+    endIso: string
+  ): Promise<void> {
+    const availabilityService = new PublicAvailabilityService(
+      this.client,
+      this.clinicId
+    );
+    await availabilityService.validateReservationTime(startIso, endIso);
+  }
+
   /**
    * Check that the time slot is available (no overlapping reservations or blocks).
    * @throws SlotConflictError
@@ -223,22 +402,24 @@ export class PublicReservationService {
     startIso: string,
     endIso: string
   ): Promise<void> {
-    // Check overlapping reservations
-    const { data: overlapping, error: overlapError } = await this.client
-      .from('reservations')
-      .select('id')
-      .eq('clinic_id', this.clinicId)
-      .eq('staff_id', resourceId)
-      .lt('start_time', endIso)
-      .gt('end_time', startIso)
-      .not('status', 'in', '("cancelled","no_show")');
+    try {
+      const hasConflict = await hasReservationConflict(this.client, {
+        clinicId: this.clinicId,
+        staffId: resourceId,
+        startTime: startIso,
+        endTime: endIso,
+        excludeDeleted: true,
+      });
 
-    if (overlapError) {
+      if (hasConflict) {
+        throw new SlotConflictError();
+      }
+    } catch (error) {
+      if (error instanceof SlotConflictError) {
+        throw error;
+      }
+
       throw new Error('Failed to validate reservation slot');
-    }
-
-    if (overlapping && overlapping.length > 0) {
-      throw new SlotConflictError();
     }
 
     // Check overlapping blocks
@@ -247,6 +428,8 @@ export class PublicReservationService {
       .select('id, reason')
       .eq('clinic_id', this.clinicId)
       .eq('resource_id', resourceId)
+      .eq('is_active', true)
+      .eq('is_deleted', false)
       .lt('start_time', endIso)
       .gt('end_time', startIso);
 
@@ -291,7 +474,7 @@ export class PublicReservationService {
     const insertData: CustomerInsert = {
       clinic_id: this.clinicId,
       name,
-      phone,
+      phone: phone ?? '',
       ...(email ? { email } : {}),
     };
 
@@ -325,19 +508,58 @@ export class PublicReservationService {
       status: 'unconfirmed',
       notes: params.notes,
       channel: params.channel,
+      is_staff_requested: params.isStaffRequested ?? true,
+      intake_responses: toIntakeResponsesJson(params.intakeResponses ?? []),
     };
 
     const { data, error } = await this.client
       .from('reservations')
       .insert(insert)
-      .select('id, start_time, end_time, status')
+      .select('id, start_time, end_time, status, updated_at')
       .single();
+
+    if (error && isReservationNoOverlapError(error)) {
+      throw new SlotConflictError();
+    }
 
     if (error || !data) {
       throw new ReservationCreateError();
     }
 
     return data as ReservationResult;
+  }
+
+  private async loadSameDayAssignmentCounts(
+    startIso: string,
+    resourceIds: string[]
+  ): Promise<Map<string, number>> {
+    if (resourceIds.length === 0) return new Map();
+
+    const jstDate = toJSTDateString(new Date(startIso));
+    const dayStart = parseJSTDateStart(jstDate).toISOString();
+    const dayEnd = parseJSTDateStart(
+      addJSTCalendarDays(jstDate, 1)
+    ).toISOString();
+
+    const { data, error } = await this.client
+      .from('reservations')
+      .select('staff_id')
+      .eq('clinic_id', this.clinicId)
+      .in('staff_id', resourceIds)
+      .eq('is_deleted', false)
+      .gte('start_time', dayStart)
+      .lt('start_time', dayEnd)
+      .not('status', 'in', RESERVATION_CONFLICT_STATUS_FILTER);
+
+    if (error) {
+      throw new Error('Failed to count staff assignment reservations');
+    }
+
+    const counts = new Map<string, number>();
+    for (const row of (data ?? []) as ReservationStaffRow[]) {
+      counts.set(row.staff_id, (counts.get(row.staff_id) ?? 0) + 1);
+    }
+    return counts;
   }
 
   /**
@@ -354,4 +576,14 @@ export class PublicReservationService {
       console.error('Customer rollback error:', error);
     }
   }
+}
+
+function compareAssignmentCandidates(
+  left: ResourceAssignmentCandidate,
+  right: ResourceAssignmentCandidate
+): number {
+  const leftOrder = left.display_order ?? Number.MAX_SAFE_INTEGER;
+  const rightOrder = right.display_order ?? Number.MAX_SAFE_INTEGER;
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+  return left.created_at.localeCompare(right.created_at);
 }

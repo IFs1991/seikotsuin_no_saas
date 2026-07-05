@@ -45,7 +45,10 @@ import {
   type ReservationListItem,
   RESERVATION_LIST_SELECT,
 } from '@/lib/reservations/read-model';
-import { hasReservationConflict } from '@/lib/reservations/conflict';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import type { ReservationOptionSelection } from '@/types/reservation';
@@ -531,6 +534,7 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      excludeDeleted: true,
       path: PATH,
     });
     if (conflict) {
@@ -558,6 +562,14 @@ export async function POST(request: NextRequest) {
       .insert(insertPayload)
       .select(RESERVATION_INSERT_RETURN_SELECT)
       .single();
+
+    if (error && isReservationNoOverlapError(error)) {
+      return buildMobileUiuxFailure(
+        409,
+        'CONFLICT',
+        '同時間帯に既存予約があります'
+      );
+    }
 
     if (error || !data) {
       return buildMobileUiuxFailure(
@@ -720,6 +732,7 @@ export async function PATCH(request: NextRequest) {
         startTime: dto.startTime ?? existingRow.start_time,
         endTime: dto.endTime ?? existingRow.end_time,
         excludeId: dto.id,
+        excludeDeleted: true,
         path: PATH,
       });
       if (conflict) {
@@ -753,6 +766,14 @@ export async function PATCH(request: NextRequest) {
       .eq('clinic_id', dto.clinic_id)
       .select(RESERVATION_UPDATE_RETURN_SELECT)
       .single();
+
+    if (error && isReservationNoOverlapError(error)) {
+      return buildMobileUiuxFailure(
+        409,
+        'CONFLICT',
+        '同時間帯に既存予約があります'
+      );
+    }
 
     if (error || !data) {
       return buildMobileUiuxFailure(

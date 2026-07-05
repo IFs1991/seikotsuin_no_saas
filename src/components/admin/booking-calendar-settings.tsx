@@ -20,6 +20,16 @@ interface BookingSettings {
   weekStartDay: 0 | 1;
   defaultCalendarView: 'day' | 'week' | 'month';
   allowOnlineBooking: boolean;
+  reminders: {
+    dayBefore: {
+      enabled: boolean;
+      sendAtHour: number;
+    };
+    sameDay: {
+      enabled: boolean;
+      hoursBefore: number;
+    };
+  };
 }
 
 interface OnlineBookingSettings {
@@ -35,8 +45,6 @@ interface OnlineBookingSettings {
 
 interface NotificationSettings {
   confirmationEmail: boolean;
-  reminderEmail: boolean;
-  reminderTime: number;
   staffNotification: boolean;
   cancelNotification: boolean;
 }
@@ -51,6 +59,10 @@ const initialBookingData: BookingSettings = {
   weekStartDay: 1,
   defaultCalendarView: 'week',
   allowOnlineBooking: false,
+  reminders: {
+    dayBefore: { enabled: true, sendAtHour: 18 },
+    sameDay: { enabled: false, hoursBefore: 3 },
+  },
 };
 
 const initialOnlineData: OnlineBookingSettings = {
@@ -66,8 +78,6 @@ const initialOnlineData: OnlineBookingSettings = {
 
 const initialNotificationData: NotificationSettings = {
   confirmationEmail: true,
-  reminderEmail: true,
-  reminderTime: 24,
   staffNotification: true,
   cancelNotification: true,
 };
@@ -122,6 +132,34 @@ export function BookingCalendarSettings({
 
   const updateNotifications = (updates: Partial<NotificationSettings>) => {
     setNotifications(prev => ({ ...prev, ...updates }));
+  };
+
+  const updateDayBeforeReminder = (
+    updates: Partial<BookingSettings['reminders']['dayBefore']>
+  ) => {
+    updateBooking({
+      reminders: {
+        ...bookingSettings.reminders,
+        dayBefore: {
+          ...bookingSettings.reminders.dayBefore,
+          ...updates,
+        },
+      },
+    });
+  };
+
+  const updateSameDayReminder = (
+    updates: Partial<BookingSettings['reminders']['sameDay']>
+  ) => {
+    updateBooking({
+      reminders: {
+        ...bookingSettings.reminders,
+        sameDay: {
+          ...bookingSettings.reminders.sameDay,
+          ...updates,
+        },
+      },
+    });
   };
 
   const onSave = async () => {
@@ -514,38 +552,76 @@ export function BookingCalendarSettings({
               <span className='text-sm text-gray-700'>キャンセル通知</span>
             </label>
 
-            <div className='flex items-center space-x-2'>
+            <label className='flex items-center space-x-2'>
               <input
                 type='checkbox'
-                checked={notifications.reminderEmail}
+                checked={bookingSettings.reminders.dayBefore.enabled}
                 onChange={e =>
-                  updateNotifications({ reminderEmail: e.target.checked })
+                  updateDayBeforeReminder({ enabled: e.target.checked })
                 }
                 className='rounded border-gray-300'
               />
-              <span className='text-sm text-gray-700'>リマインダーメール</span>
-            </div>
+              <span className='text-sm text-gray-700'>
+                前日リマインダーメール
+              </span>
+            </label>
           </div>
 
-          {notifications.reminderEmail && (
+          {bookingSettings.reminders.dayBefore.enabled && (
             <div className='ml-6'>
               <Label className='block text-sm text-gray-700 mb-1'>
-                リマインダー送信時間（予約の何時間前）
+                前日リマインダー送信時刻（JST）
               </Label>
               <Input
                 type='number'
-                value={notifications.reminderTime}
+                value={bookingSettings.reminders.dayBefore.sendAtHour}
                 onChange={e =>
-                  updateNotifications({
-                    reminderTime: parseInt(e.target.value),
+                  updateDayBeforeReminder({
+                    sendAtHour: parseInt(e.target.value),
                   })
                 }
                 className='w-32'
-                min='1'
-                max='168'
+                min='8'
+                max='21'
               />
             </div>
           )}
+
+          <div className='space-y-3 border-t border-gray-100 pt-4'>
+            <label className='flex items-center space-x-2'>
+              <input
+                type='checkbox'
+                checked={bookingSettings.reminders.sameDay.enabled}
+                onChange={e =>
+                  updateSameDayReminder({ enabled: e.target.checked })
+                }
+                className='rounded border-gray-300'
+              />
+              <span className='text-sm text-gray-700'>
+                当日リマインダーメール
+              </span>
+            </label>
+
+            {bookingSettings.reminders.sameDay.enabled && (
+              <div className='ml-6'>
+                <Label className='block text-sm text-gray-700 mb-1'>
+                  当日リマインダー送信タイミング（予約の何時間前）
+                </Label>
+                <Input
+                  type='number'
+                  value={bookingSettings.reminders.sameDay.hoursBefore}
+                  onChange={e =>
+                    updateSameDayReminder({
+                      hoursBefore: parseInt(e.target.value),
+                    })
+                  }
+                  className='w-32'
+                  min='1'
+                  max='12'
+                />
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 

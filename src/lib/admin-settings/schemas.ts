@@ -5,6 +5,8 @@
 
 import { z } from 'zod';
 import type { SettingsCategory } from './defaults';
+import { BookingCalendarRemindersSchema } from '@/lib/booking-calendar/settings';
+import { BookingFormSettingsSchema } from '@/lib/booking-form/settings';
 
 const ClinicBasicSchema = z.object({
   name: z.string().min(1, '院名は必須です'),
@@ -53,6 +55,7 @@ const BookingCalendarSchema = z.object({
   allowCancellation: z.boolean().optional(),
   cancellationDeadlineHours: z.number().min(0).max(168).optional(),
   defaultCalendarView: z.enum(['day', 'week', 'month']).optional(),
+  reminders: BookingCalendarRemindersSchema.optional(),
 });
 
 const CommunicationChannelsSchema = z.object({
@@ -121,6 +124,7 @@ export const CATEGORY_SCHEMAS: Record<SettingsCategory, z.ZodTypeAny> = {
   clinic_basic: ClinicBasicSchema,
   clinic_hours: ClinicHoursSchema,
   booking_calendar: BookingCalendarSchema,
+  booking_form: BookingFormSettingsSchema,
   communication: CommunicationSchema,
   system_security: SystemSecuritySchema,
   system_backup: SystemBackupSchema,

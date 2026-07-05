@@ -6,6 +6,10 @@ import {
 } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import type { ReservationOptionSelection } from '@/types/reservation';
+import type {
+  BookingFormResponseValue,
+  IntakeResponseSnapshot,
+} from '@/lib/booking-form/settings';
 
 type ReservationListViewRow =
   Database['public']['Views']['reservation_list_view']['Row'];
@@ -25,6 +29,7 @@ export type ReservationListApiRow = Pick<
   | 'channel'
   | 'notes'
   | 'selected_options'
+  | 'intake_responses'
   | 'is_staff_requested'
   | 'staff_nomination_fee'
 >;
@@ -43,12 +48,13 @@ export type ReservationListItem = {
   channel: ReservationListApiRow['channel'];
   notes?: string;
   selectedOptions: ReservationOptionSelection[];
+  intakeResponses: IntakeResponseSnapshot[];
   isStaffRequested: boolean;
   staffNominationFee: number;
 };
 
 export const RESERVATION_LIST_SELECT =
-  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, is_staff_requested, staff_nomination_fee';
+  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, intake_responses, is_staff_requested, staff_nomination_fee';
 
 function isReservationOptionSelection(
   value: unknown
@@ -72,6 +78,35 @@ export function mapSelectedOptions(
   return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
 }
 
+function isBookingFormResponseValue(
+  value: unknown
+): value is BookingFormResponseValue {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (Array.isArray(value) && value.every(item => typeof item === 'string'))
+  );
+}
+
+function isIntakeResponseSnapshot(
+  value: unknown
+): value is IntakeResponseSnapshot {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const response = value as Record<string, unknown>;
+  return (
+    typeof response.id === 'string' &&
+    typeof response.label === 'string' &&
+    isBookingFormResponseValue(response.value)
+  );
+}
+
+export function mapIntakeResponses(value: unknown): IntakeResponseSnapshot[] {
+  return Array.isArray(value) ? value.filter(isIntakeResponseSnapshot) : [];
+}
+
 export function mapReservationListViewRow(
   row: ReservationListApiRow
 ): ReservationListItem {
@@ -89,6 +124,7 @@ export function mapReservationListViewRow(
     channel: row.channel,
     notes: row.notes ?? undefined,
     selectedOptions: mapSelectedOptions(row.selected_options),
+    intakeResponses: mapIntakeResponses(row.intake_responses),
     isStaffRequested: row.is_staff_requested ?? false,
     staffNominationFee: row.staff_nomination_fee ?? 0,
   };

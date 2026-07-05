@@ -1,4 +1,5 @@
 import type { ReservationOptionSelection } from '@/types/reservation';
+import type { IntakeResponseSnapshot } from '@/lib/booking-form/settings';
 
 export interface ReservationApiItem {
   id: string;
@@ -22,6 +23,7 @@ export interface ReservationApiItem {
   channel?: 'line' | 'web' | 'phone' | 'walk_in';
   notes?: string;
   selectedOptions?: ReservationOptionSelection[];
+  intakeResponses?: IntakeResponseSnapshot[];
   isStaffRequested?: boolean;
   staffNominationFee?: number;
 }

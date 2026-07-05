@@ -550,6 +550,90 @@ describe('/api/daily-reports/items', () => {
     expect(client.from).not.toHaveBeenCalledWith('daily_report_items');
   });
 
+  test('POST returns 409 when next reservation insert hits the DB exclusion constraint', async () => {
+    const dailyReportQuery = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: reportId },
+        error: null,
+      }),
+    };
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 0, error: null }),
+    };
+    const reservationInsertSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '23P01',
+          message:
+            'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+        },
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(reservationInsertSelect),
+      }),
+    };
+    const dailyReportItemsTable = {
+      insert: jest.fn(),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_reports') {
+          return { select: jest.fn().mockReturnValue(dailyReportQuery) };
+        }
+        if (table === 'reservations') return reservationsTable;
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        report_date: '2026-05-07',
+        customerId,
+        menuId,
+        staffResourceId,
+        patientName: '山田 太郎',
+        treatmentName: '整体',
+        durationMinutes: 30,
+        fee: 5000,
+        billingType: 'private',
+        nextReservationStartTime: '2026-05-14T10:00:00.000Z',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { POST } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'POST',
+      }
+    );
+    const response = await POST(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('次回予約の時間帯に既存予約があります');
+    expect(dailyReportItemsTable.insert).not.toHaveBeenCalled();
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+  });
+
   test('PATCH rejects next reservations that conflict with the same staff time', async () => {
     const itemQuery = {
       eq: jest.fn().mockReturnThis(),
@@ -610,6 +694,91 @@ describe('/api/daily-reports/items', () => {
     expect(json.error).toBe('次回予約の時間帯に既存予約があります');
     expect(dailyReportItemsTable.update).not.toHaveBeenCalled();
     expect(reservationsTable.insert).not.toHaveBeenCalled();
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+  });
+
+  test('PATCH returns 409 when next reservation update hits the DB exclusion constraint', async () => {
+    const nextReservationId = '123e4567-e89b-12d3-a456-426614174016';
+    const itemQuery = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          ...buildItemRow(),
+          next_reservation_start_time: '2026-05-14T10:00:00.000Z',
+          next_reservation_end_time: '2026-05-14T10:30:00.000Z',
+          next_reservation_id: nextReservationId,
+        },
+        error: null,
+      }),
+    };
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockReturnThis(),
+      neq: jest.fn().mockResolvedValue({ count: 0, error: null }),
+    };
+    const reservationUpdateSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '23P01',
+          message:
+            'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+        },
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnValue(reservationUpdateSelect),
+      }),
+    };
+    const dailyReportItemsTable = {
+      select: jest.fn().mockReturnValue(itemQuery),
+      update: jest.fn(),
+    };
+    const client = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'daily_report_items') return dailyReportItemsTable;
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: itemId,
+        nextReservationStartTime: '2026-05-14T10:15:00.000Z',
+      },
+      auth: { id: 'user-1', email: 'staff@example.com', role: 'staff' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { PATCH } = await import('@/app/api/daily-reports/items/route');
+    const request = new NextRequest(
+      'http://localhost/api/daily-reports/items',
+      {
+        method: 'PATCH',
+      }
+    );
+    const response = await PATCH(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('次回予約の時間帯に既存予約があります');
+    expect(dailyReportItemsTable.update).not.toHaveBeenCalled();
+    expect(reservationsTable.update).toHaveBeenCalled();
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+    expect(conflictQuery.neq).toHaveBeenCalledWith('id', nextReservationId);
   });
 
   test('PATCH returns the existing item without writing when no fields changed', async () => {

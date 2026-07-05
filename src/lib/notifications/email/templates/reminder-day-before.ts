@@ -7,10 +7,18 @@ export function renderReminderDayBeforeEmail(
   html: string;
   text: string;
 } {
-  const { customerName, clinicName, startTime, endTime, staffName, menuName } =
-    payload;
+  const {
+    customerName,
+    clinicName,
+    startTime,
+    endTime,
+    staffName,
+    menuName,
+    myPageUrl,
+  } = payload;
 
   const subject = `【${clinicName}】明日のご予約リマインド`;
+  const myPageLine = myPageUrl ? `予約確認: ${myPageUrl}` : '';
 
   const text = [
     `${customerName} 様`,
@@ -20,9 +28,16 @@ export function renderReminderDayBeforeEmail(
     `日時: ${startTime} ～ ${endTime}`,
     `メニュー: ${menuName}`,
     `担当: ${staffName}`,
+    myPageLine,
     '',
     'お気をつけてお越しください。',
-  ].join('\n');
+  ]
+    .filter(line => line !== '')
+    .join('\n');
+
+  const myPageHtml = myPageUrl
+    ? `<p style="font-size:14px">予約確認: <a href="${myPageUrl}">${myPageUrl}</a></p>`
+    : '';
 
   const html = `
 <!DOCTYPE html>
@@ -40,6 +55,7 @@ export function renderReminderDayBeforeEmail(
     <tr><td style="padding:8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:bold">担当</td>
         <td style="padding:8px;border:1px solid #e5e7eb">${staffName}</td></tr>
   </table>
+  ${myPageHtml}
   <p style="color:#6b7280;font-size:14px">お気をつけてお越しください。</p>
 </body>
 </html>`.trim();

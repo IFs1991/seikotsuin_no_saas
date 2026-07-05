@@ -65,6 +65,7 @@ function buildMutationRequest(method: 'POST' | 'PATCH') {
 }
 
 type CountResult = { count: number; error: null };
+type PostgresTestError = { code: string; message: string };
 
 type PendingCountQuery = {
   eq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
@@ -149,6 +150,7 @@ function buildMutationClient(params?: {
   customerFound?: boolean;
   menuFound?: boolean;
   staffFound?: boolean;
+  insertError?: PostgresTestError;
 }) {
   const conflictQuery = createPendingCountQuery(params?.conflictCount ?? 0);
   const customerQuery = createMaybeSingleBuilder(
@@ -198,7 +200,15 @@ function buildMutationClient(params?: {
     staff_nomination_fee: 1500,
   };
   const insertBuilder = {
-    select: jest.fn().mockReturnValue(createSingleBuilder(insertRow)),
+    select: jest.fn().mockReturnValue({
+      single: jest
+        .fn()
+        .mockResolvedValue(
+          params?.insertError
+            ? { data: null, error: params.insertError }
+            : { data: insertRow, error: null }
+        ),
+    }),
   };
   const reservationsTable = {
     select: jest.fn().mockReturnValue(conflictQuery),
@@ -234,7 +244,10 @@ function buildMutationClient(params?: {
   };
 }
 
-function buildPatchMutationClient(params?: { conflictCount?: number }) {
+function buildPatchMutationClient(params?: {
+  conflictCount?: number;
+  updateError?: PostgresTestError;
+}) {
   const existingRow = {
     id: reservationId,
     clinic_id: clinicId,
@@ -274,7 +287,15 @@ function buildPatchMutationClient(params?: { conflictCount?: number }) {
   const conflictQuery = createPendingCountQuery(params?.conflictCount ?? 0);
   const updateQuery = {
     eq: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnValue(createSingleBuilder(updatedRow)),
+    select: jest.fn().mockReturnValue({
+      single: jest
+        .fn()
+        .mockResolvedValue(
+          params?.updateError
+            ? { data: null, error: params.updateError }
+            : { data: updatedRow, error: null }
+        ),
+    }),
   };
   const reservationsTable = {
     select: jest
@@ -763,14 +784,44 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
       'in',
       '("cancelled","no_show")'
     );
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+  });
+
+  it('returns 409 when reservation insert hits the DB exclusion constraint', async () => {
+    const { client } = buildMutationClient({
+      insertError: {
+        code: '23P01',
+        message:
+          'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+      },
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: mutationDto,
+      auth,
+      permissions,
+      supabase: client,
+    });
+
+    const { POST } = await import('@/app/api/mobile-uiux/reservations/route');
+    const response = await POST(buildMutationRequest('POST'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload).toMatchObject({
+      success: false,
+      error: {
+        code: 'CONFLICT',
+        message: '同時間帯に既存予約があります',
+      },
+    });
   });
 
   it('returns 409 for PATCH when the requested reservation slot conflicts', async () => {
-    const { client, reservationsTable, updateQuery } = buildPatchMutationClient(
-      {
+    const { client, conflictQuery, reservationsTable, updateQuery } =
+      buildPatchMutationClient({
         conflictCount: 1,
-      }
-    );
+      });
     processClinicScopedBodyMock.mockResolvedValueOnce({
       success: true,
       dto: {
@@ -791,6 +842,41 @@ describe('POST/PATCH /api/mobile-uiux/reservations write pilot', () => {
     expect(payload.success).toBe(false);
     expect(reservationsTable.update).not.toHaveBeenCalled();
     expect(updateQuery.select).not.toHaveBeenCalled();
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+  });
+
+  it('returns 409 when reservation update hits the DB exclusion constraint', async () => {
+    const { client } = buildPatchMutationClient({
+      updateError: {
+        code: '23P01',
+        message:
+          'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+      },
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: clinicId,
+        id: reservationId,
+        status: 'confirmed',
+      },
+      auth,
+      permissions,
+      supabase: client,
+    });
+
+    const { PATCH } = await import('@/app/api/mobile-uiux/reservations/route');
+    const response = await PATCH(buildMutationRequest('PATCH'));
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload).toMatchObject({
+      success: false,
+      error: {
+        code: 'CONFLICT',
+        message: '同時間帯に既存予約があります',
+      },
+    });
   });
 
   it('returns 403 without inserting when references are outside the clinic scope', async () => {

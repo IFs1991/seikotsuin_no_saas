@@ -1877,6 +1877,70 @@ export type Database = {
         };
         Relationships: [];
       };
+      reservation_notifications: {
+        Row: {
+          channel: string;
+          clinic_id: string;
+          created_at: string;
+          detail: Json;
+          email_outbox_id: string | null;
+          id: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          channel?: string;
+          clinic_id: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          channel?: string;
+          clinic_id?: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type?: string;
+          reservation_id?: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_email_outbox_id_fkey';
+            columns: ['email_outbox_id'];
+            isOneToOne: false;
+            referencedRelation: 'email_outbox';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       encryption_keys: {
         Row: {
           algorithm: string;
@@ -3404,6 +3468,7 @@ export type Database = {
           deleted_by: string | null;
           end_time: string;
           id: string;
+          intake_responses: Json | null;
           is_deleted: boolean | null;
           is_recurring: boolean | null;
           is_staff_requested: boolean;
@@ -3439,6 +3504,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -3474,6 +3540,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time?: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -5893,6 +5960,7 @@ export type Database = {
           duration_minutes: number | null;
           end_time: string | null;
           id: string | null;
+          intake_responses: Json | null;
           is_staff_requested: boolean | null;
           menu_id: string | null;
           menu_name: string | null;

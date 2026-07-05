@@ -12,6 +12,7 @@ export type SettingsCategory =
   | 'clinic_basic'
   | 'clinic_hours'
   | 'booking_calendar'
+  | 'booking_form'
   | 'communication'
   | 'system_security'
   | 'system_backup'

@@ -36,13 +36,45 @@ export const resourcesQuerySchema = z.object({
 export type ResourcesQueryDTO = z.infer<typeof resourcesQuerySchema>;
 
 // ================================================================
+// GET /api/public/availability - Public Availability
+// ================================================================
+
+const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD');
+
+export const availabilityQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+  menu_id: z.string().uuid('menu_id must be a valid UUID'),
+  resource_id: z.union([
+    z.literal('any'),
+    z.string().uuid('resource_id must be a valid UUID or "any"'),
+  ]),
+  date_from: dateOnlySchema,
+  date_to: dateOnlySchema,
+});
+
+export type AvailabilityQueryDTO = z.infer<typeof availabilityQuerySchema>;
+
+// ================================================================
+// GET /api/public/booking-form - Public Booking Form Settings
+// ================================================================
+
+export const bookingFormQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+export type BookingFormQueryDTO = z.infer<typeof bookingFormQuerySchema>;
+
+// ================================================================
 // POST /api/public/reservations - Reservation Creation
 // ================================================================
 
-const isThirtyMinuteBoundary = (value: string) => {
-  const match = value.match(/T\d{2}:(\d{2})/);
-  return match ? match[1] === '00' || match[1] === '30' : false;
-};
+const bookingFormResponseValueSchema = z.union([
+  z.string().max(1000),
+  z.boolean(),
+  z.array(z.string().max(50)).max(20),
+]);
 
 export const reservationCreateSchema = z.object({
   clinic_id: clinicIdSchema,
@@ -57,22 +89,39 @@ export const reservationCreateSchema = z.object({
     .max(20, 'customer_phone must be 20 characters or less')
     .optional(),
   customer_email: z.string().email('Invalid email address').optional(),
+  customer_name_kana: z.string().trim().max(255).optional(),
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'birth_date must be YYYY-MM-DD')
+    .optional(),
+  gender: z.string().trim().max(50).optional(),
   menu_id: z.string().uuid('menu_id must be a valid UUID'),
-  resource_id: z.string().uuid('resource_id must be a valid UUID'),
+  resource_id: z.union([
+    z.literal('any'),
+    z.string().uuid('resource_id must be a valid UUID or "any"'),
+  ]),
   start_time: z
     .string()
     .regex(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,
-      'start_time must be ISO 8601 format'
-    )
-    .refine(
-      isThirtyMinuteBoundary,
-      'start_time must be on a 30-minute boundary'
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/,
+      'start_time must be ISO 8601 format with timezone offset'
     ),
   notes: z
     .string()
     .max(1000, 'notes must be 1000 characters or less')
     .optional(),
+  intake_responses: z
+    .array(
+      z
+        .object({
+          id: z.string().trim().min(1).max(100),
+          value: bookingFormResponseValueSchema,
+        })
+        .required()
+    )
+    .max(20)
+    .default([]),
+  consents: z.record(z.boolean()).default({}),
   channel: z.enum(['web', 'line']).default('web'),
 });
 
