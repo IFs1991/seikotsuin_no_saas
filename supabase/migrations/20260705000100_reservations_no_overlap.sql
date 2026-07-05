@@ -22,7 +22,7 @@ begin
      and r2.status not in ('cancelled', 'no_show')
      and tstzrange(r1.start_time, r1.end_time, '[)') &&
          tstzrange(r2.start_time, r2.end_time, '[)')
-  ) overlaps;
+  ) overlap_rows;
 
   if overlap_count > 0 then
     raise exception
