@@ -51,9 +51,11 @@ describe('reservation email enqueue helpers', () => {
   describe('enqueueReservationCreated', () => {
     it('enqueues reservation_created with customer email', async () => {
       const outboxInsert = createInsertMock();
+      const notification = createNotificationMock();
       const customerSelect = createSelectMock({
         id: 'cust-001',
         email: 'patient@example.com',
+        line_user_id: null,
         name: '田中太郎',
       });
       const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
@@ -61,6 +63,12 @@ describe('reservation email enqueue helpers', () => {
 
       const from = jest.fn().mockImplementation((table: string) => {
         if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'reservation_notifications') {
+          return {
+            upsert: notification.upsert,
+            update: notification.update,
+          };
+        }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
         if (table === 'staff') return { select: staffSelect.select };
@@ -92,9 +100,11 @@ describe('reservation email enqueue helpers', () => {
 
     it('skips enqueue when customer has no email', async () => {
       const outboxInsert = createInsertMock();
+      const notification = createNotificationMock();
       const customerSelect = createSelectMock({
         id: 'cust-002',
         email: null,
+        line_user_id: null,
         name: '鈴木花子',
       });
       const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
@@ -102,6 +112,12 @@ describe('reservation email enqueue helpers', () => {
 
       const from = jest.fn().mockImplementation((table: string) => {
         if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'reservation_notifications') {
+          return {
+            upsert: notification.upsert,
+            update: notification.update,
+          };
+        }
         if (table === 'customers') return { select: customerSelect.select };
         if (table === 'clinics') return { select: clinicSelect.select };
         if (table === 'staff') return { select: staffSelect.select };
@@ -124,6 +140,107 @@ describe('reservation email enqueue helpers', () => {
       await enqueueReservationCreated(supabase, reservation);
 
       // Should NOT insert to outbox
+      expect(outboxInsert.insert).not.toHaveBeenCalled();
+    });
+
+    it('enqueues reservation_created to LINE when customer and clinic gates allow push', async () => {
+      const outboxInsert = createInsertMock();
+      const lineInsert = createInsertMock({ id: 'line-outbox-1' });
+      const notification = createNotificationMock();
+      const customerSelect = createSelectMock({
+        id: 'cust-005',
+        email: null,
+        line_user_id: 'U1234567890',
+        name: '佐藤一郎',
+      });
+      const clinicSelect = createSelectMock({ name: 'テスト整骨院' });
+      const staffSelect = createSelectMock({ name: '山田先生' });
+      const communicationSelect = createSelectMock({
+        settings: { channels: { lineEnabled: true } },
+      });
+      const featureFlagSelect = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { line_booking_enabled: true },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+      const credentialSelect = {
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            returns: jest.fn().mockReturnValue({
+              maybeSingle: jest.fn().mockResolvedValue({
+                data: { is_active: true },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+      const originalKillSwitch = process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
+      const originalLineKey = process.env.LINE_CREDENTIALS_ENCRYPTION_KEY;
+      process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'true';
+      process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = 'a'.repeat(64);
+
+      const from = jest.fn().mockImplementation((table: string) => {
+        if (table === 'email_outbox') return { insert: outboxInsert.insert };
+        if (table === 'line_message_outbox') {
+          return { insert: lineInsert.insert };
+        }
+        if (table === 'reservation_notifications') {
+          return {
+            upsert: notification.upsert,
+            update: notification.update,
+          };
+        }
+        if (table === 'customers') return { select: customerSelect.select };
+        if (table === 'clinics') return { select: clinicSelect.select };
+        if (table === 'staff') return { select: staffSelect.select };
+        if (table === 'clinic_settings') {
+          return { select: communicationSelect.select };
+        }
+        if (table === 'clinic_feature_flags') {
+          return { select: featureFlagSelect.select };
+        }
+        if (table === 'clinic_line_credentials') {
+          return { select: credentialSelect.select };
+        }
+        return {};
+      });
+
+      const supabase: Parameters<typeof enqueueReservationCreated>[0] = {
+        from: from as Parameters<typeof enqueueReservationCreated>[0]['from'],
+      };
+
+      try {
+        await enqueueReservationCreated(supabase, {
+          id: 'res-005',
+          clinic_id: 'clinic-001',
+          customer_id: 'cust-005',
+          status: 'unconfirmed',
+          start_time: '2026-04-15T10:00:00Z',
+          end_time: '2026-04-15T11:00:00Z',
+          staff_id: 'staff-001',
+          updated_at: '2026-04-14T09:00:00.000Z',
+        });
+      } finally {
+        process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = originalKillSwitch;
+        process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = originalLineKey;
+      }
+
+      expect(lineInsert.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinic_id: 'clinic-001',
+          line_user_id: 'U1234567890',
+          message_type: 'received',
+          status: 'pending',
+        })
+      );
       expect(outboxInsert.insert).not.toHaveBeenCalled();
     });
 

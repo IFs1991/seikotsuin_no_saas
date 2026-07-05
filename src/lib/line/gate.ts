@@ -63,7 +63,7 @@ export function evaluateLineBookingGate(
 }
 
 export async function resolveLineBookingGate(params: {
-  supabase: SupabaseServerClient;
+  supabase: Pick<SupabaseServerClient, 'from'>;
   clinicId: string;
 }): Promise<LineBookingGateDecision> {
   const [flagResult, credentialResult] = await Promise.all([

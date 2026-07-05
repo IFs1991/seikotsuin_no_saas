@@ -1946,6 +1946,56 @@ export type Database = {
         };
         Relationships: [];
       };
+      line_message_outbox: {
+        Row: {
+          attempts: number;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          last_error: string | null;
+          line_user_id: string;
+          message_type: string;
+          next_attempt_at: string;
+          payload: Json;
+          sent_at: string | null;
+          status: string;
+        };
+        Insert: {
+          attempts?: number;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          line_user_id: string;
+          message_type: string;
+          next_attempt_at?: string;
+          payload?: Json;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          attempts?: number;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          line_user_id?: string;
+          message_type?: string;
+          next_attempt_at?: string;
+          payload?: Json;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_message_outbox_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       reservation_notifications: {
         Row: {
           channel: string;

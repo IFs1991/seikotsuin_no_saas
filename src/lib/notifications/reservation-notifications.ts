@@ -1,4 +1,11 @@
 import { enqueueEmail } from '@/lib/notifications/email/enqueue-email';
+import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
+import { resolveLineBookingGate } from '@/lib/line/gate';
+import {
+  enqueueLineMessage,
+  type LineEmailFallbackPayload,
+  type LineMessagePayload,
+} from '@/lib/notifications/line-outbox';
 import type {
   EmailTemplateType,
   PublicReservationReceivedPayload,
@@ -60,6 +67,16 @@ export type PatientReservationEmailInput = {
   payload: ReservationEmailPayload;
   dedupeTimestamp: string;
   scheduledFor?: string | null;
+};
+
+export type PatientReservationNotificationInput =
+  PatientReservationEmailInput & {
+    lineUserId?: string | null;
+  };
+
+type CustomerNotificationProfile = {
+  email: string | null;
+  lineUserId: string | null;
 };
 
 function isUniqueViolation(error: unknown): boolean {
@@ -192,6 +209,146 @@ export async function enqueuePatientReservationEmail(
   }
 }
 
+async function shouldUseLineNotification(
+  supabase: NotificationSupabaseClient,
+  params: { clinicId: string; lineUserId?: string | null }
+): Promise<{ enabled: true } | { enabled: false; reasons: string[] }> {
+  if (!params.lineUserId) {
+    return { enabled: false, reasons: ['no_line_user_id'] };
+  }
+
+  const [communicationLineEnabled, gate] = await Promise.all([
+    fetchClinicCommunicationLineEnabled(supabase, params.clinicId),
+    resolveLineBookingGate({ supabase, clinicId: params.clinicId }),
+  ]);
+  const reasons = [
+    ...(communicationLineEnabled ? [] : ['communication_line_disabled']),
+    ...gate.disabledReasons,
+  ];
+
+  return reasons.length === 0 ? { enabled: true } : { enabled: false, reasons };
+}
+
+function getFallbackConfirmationUrl(clinicId: string): string | undefined {
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
+  return baseUrl ? `${baseUrl}/booking/${clinicId}` : undefined;
+}
+
+function getLineNotificationHeading(
+  notificationType: ReservationNotificationType
+): string {
+  switch (notificationType) {
+    case 'received':
+      return '予約を受け付けました。';
+    case 'confirmed':
+      return '予約が確定しました。';
+    case 'cancelled':
+      return '予約がキャンセルされました。';
+    case 'reminder_day_before':
+      return '明日のご予約のリマインドです。';
+    case 'reminder_same_day':
+      return '本日のご予約のリマインドです。';
+  }
+}
+
+function createLineEmailFallback(
+  input: PatientReservationNotificationInput
+): { fallbackEmail: LineEmailFallbackPayload } | Record<string, never> {
+  if (!input.toEmail) {
+    return {};
+  }
+
+  return {
+    fallbackEmail: {
+      clinicId: input.clinicId,
+      reservationId: input.reservationId,
+      customerId: input.customerId,
+      toEmail: input.toEmail,
+      notificationType: input.notificationType,
+      templateType: input.templateType,
+      payload: input.payload,
+      dedupeTimestamp: input.dedupeTimestamp,
+    },
+  };
+}
+
+function buildReservationLinePayload(
+  input: PatientReservationNotificationInput
+): LineMessagePayload {
+  const confirmationUrl =
+    input.payload.myPageUrl ?? getFallbackConfirmationUrl(input.clinicId);
+  const lines = [
+    `${input.payload.customerName}様`,
+    `${input.payload.clinicName}です。`,
+    getLineNotificationHeading(input.notificationType),
+    `日時: ${input.payload.startTime}`,
+    `メニュー: ${input.payload.menuName}`,
+    input.payload.staffName ? `担当: ${input.payload.staffName}` : null,
+    confirmationUrl ? `確認URL: ${confirmationUrl}` : null,
+  ].filter((line): line is string => typeof line === 'string');
+
+  return {
+    text: lines.join('\n'),
+    ...(confirmationUrl ? { confirmationUrl } : {}),
+    ...createLineEmailFallback(input),
+  };
+}
+
+export async function enqueuePatientReservationNotification(
+  supabase: NotificationSupabaseClient,
+  input: PatientReservationNotificationInput
+): Promise<'enqueued' | 'skipped' | 'duplicate'> {
+  const lineDecision = await shouldUseLineNotification(supabase, {
+    clinicId: input.clinicId,
+    lineUserId: input.lineUserId,
+  });
+  const lineUserId = input.lineUserId;
+
+  if (!lineDecision.enabled || !lineUserId) {
+    return enqueuePatientReservationEmail(supabase, input);
+  }
+
+  const claim = await claimReservationNotification(supabase, {
+    clinicId: input.clinicId,
+    reservationId: input.reservationId,
+    notificationType: input.notificationType,
+    channel: 'line',
+    scheduledFor: input.scheduledFor,
+  });
+
+  if (!claim.claimed) {
+    return 'duplicate';
+  }
+
+  try {
+    const outbox = await enqueueLineMessage(supabase, {
+      clinicId: input.clinicId,
+      lineUserId,
+      messageType: input.notificationType,
+      payload: buildReservationLinePayload(input),
+    });
+
+    await updateReservationNotification(supabase, claim.id, {
+      status: 'enqueued',
+      detail: {
+        line_outbox_id: outbox.id,
+        message_type: input.notificationType,
+        fallback_email: Boolean(input.toEmail),
+      },
+    });
+    return 'enqueued';
+  } catch (error) {
+    await updateReservationNotification(supabase, claim.id, {
+      status: 'failed',
+      detail: {
+        message_type: input.notificationType,
+        error: getErrorMessage(error),
+      },
+    });
+    throw error;
+  }
+}
+
 export type PublicReservationNotificationInput = {
   clinicId: string;
   reservationId: string;
@@ -249,6 +406,28 @@ async function fetchClinicNotificationEmail(
   return settings.email;
 }
 
+async function fetchClinicCommunicationLineEnabled(
+  supabase: NotificationSupabaseClient,
+  clinicId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('clinic_settings')
+    .select('settings')
+    .eq('clinic_id', clinicId)
+    .eq('category', 'communication')
+    .maybeSingle();
+
+  if (error) {
+    logger.warn('Failed to load communication settings for LINE notification', {
+      clinicId,
+      error: error.message,
+    });
+    return false;
+  }
+
+  return normalizeCommunicationSettings(data?.settings).channels.lineEnabled;
+}
+
 async function fetchResourceName(
   supabase: NotificationSupabaseClient,
   clinicId: string,
@@ -273,6 +452,35 @@ async function fetchResourceName(
   return typeof data?.name === 'string' ? data.name : '';
 }
 
+async function fetchCustomerNotificationProfile(
+  supabase: NotificationSupabaseClient,
+  clinicId: string,
+  customerId: string
+): Promise<CustomerNotificationProfile | null> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('email, line_user_id')
+    .eq('id', customerId)
+    .eq('clinic_id', clinicId)
+    .eq('is_deleted', false)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn('Failed to load customer notification profile', {
+      clinicId,
+      customerId,
+      error: error.message,
+    });
+    return null;
+  }
+
+  return {
+    email: typeof data?.email === 'string' ? data.email : null,
+    lineUserId:
+      typeof data?.line_user_id === 'string' ? data.line_user_id : null,
+  };
+}
+
 export async function enqueuePublicReservationNotifications(
   supabase: NotificationSupabaseClient,
   input: PublicReservationNotificationInput
@@ -281,6 +489,11 @@ export async function enqueuePublicReservationNotifications(
     supabase,
     input.clinicId,
     input.resourceId
+  );
+  const notificationProfile = await fetchCustomerNotificationProfile(
+    supabase,
+    input.clinicId,
+    input.customerId
   );
 
   const patientPayload: ReservationEmailPayload = {
@@ -292,11 +505,12 @@ export async function enqueuePublicReservationNotifications(
     menuName: input.menuName,
   };
 
-  await enqueuePatientReservationEmail(supabase, {
+  await enqueuePatientReservationNotification(supabase, {
     clinicId: input.clinicId,
     reservationId: input.reservationId,
     customerId: input.customerId,
-    toEmail: input.customerEmail,
+    toEmail: notificationProfile?.email ?? input.customerEmail,
+    lineUserId: notificationProfile?.lineUserId ?? null,
     notificationType: 'received',
     templateType: 'reservation_created',
     payload: patientPayload,
