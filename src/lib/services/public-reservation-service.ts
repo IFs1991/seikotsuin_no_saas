@@ -12,6 +12,10 @@
 
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 
 type ReservationInsert = Database['public']['Tables']['reservations']['Insert'];
 type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
@@ -223,22 +227,24 @@ export class PublicReservationService {
     startIso: string,
     endIso: string
   ): Promise<void> {
-    // Check overlapping reservations
-    const { data: overlapping, error: overlapError } = await this.client
-      .from('reservations')
-      .select('id')
-      .eq('clinic_id', this.clinicId)
-      .eq('staff_id', resourceId)
-      .lt('start_time', endIso)
-      .gt('end_time', startIso)
-      .not('status', 'in', '("cancelled","no_show")');
+    try {
+      const hasConflict = await hasReservationConflict(this.client, {
+        clinicId: this.clinicId,
+        staffId: resourceId,
+        startTime: startIso,
+        endTime: endIso,
+        excludeDeleted: true,
+      });
 
-    if (overlapError) {
+      if (hasConflict) {
+        throw new SlotConflictError();
+      }
+    } catch (error) {
+      if (error instanceof SlotConflictError) {
+        throw error;
+      }
+
       throw new Error('Failed to validate reservation slot');
-    }
-
-    if (overlapping && overlapping.length > 0) {
-      throw new SlotConflictError();
     }
 
     // Check overlapping blocks
@@ -332,6 +338,10 @@ export class PublicReservationService {
       .insert(insert)
       .select('id, start_time, end_time, status')
       .single();
+
+    if (error && isReservationNoOverlapError(error)) {
+      throw new SlotConflictError();
+    }
 
     if (error || !data) {
       throw new ReservationCreateError();

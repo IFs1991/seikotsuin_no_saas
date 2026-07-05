@@ -1,6 +1,8 @@
 import { normalizeSupabaseError } from '@/lib/error-handler';
 import type { SupabaseServerClient } from '@/lib/supabase';
 
+const RESERVATION_NO_OVERLAP_SQLSTATE = '23P01';
+
 export type ReservationConflictClient = Pick<SupabaseServerClient, 'from'>;
 
 export type ReservationConflictParams = {
@@ -12,6 +14,14 @@ export type ReservationConflictParams = {
   excludeDeleted?: boolean;
   path?: string;
 };
+
+export function isReservationNoOverlapError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false;
+  }
+
+  return error.code === RESERVATION_NO_OVERLAP_SQLSTATE;
+}
 
 export async function hasReservationConflict(
   supabase: ReservationConflictClient,

@@ -41,6 +41,7 @@ const VALID_RESOURCE_ID = '00000000-0000-0000-0000-000000000301';
 const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000401';
 const VALID_RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
 const EMPTY_LIST = { data: [], error: null };
+const NO_CONFLICT = { count: 0, error: null };
 
 const buildRequest = (body: Record<string, unknown>) =>
   ({
@@ -108,15 +109,10 @@ function buildMockSupabase(overrides: Record<string, unknown> = {}) {
       }),
     },
     reservations_select: {
-      eq: jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          lt: jest.fn().mockReturnValue({
-            gt: jest.fn().mockReturnValue({
-              not: jest.fn().mockResolvedValue(EMPTY_LIST),
-            }),
-          }),
-        }),
-      }),
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue(NO_CONFLICT),
     },
     blocks: {
       select: jest.fn().mockReturnValue({
@@ -317,16 +313,53 @@ describe('POST /api/public/reservations', () => {
   it('重複予約がある場合は 409 を返す', async () => {
     const supabase = buildMockSupabase({
       reservations_select: {
-        eq: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnThis(),
+        lt: jest.fn().mockReturnThis(),
+        gt: jest.fn().mockReturnThis(),
+        not: jest.fn().mockResolvedValue({
+          count: 1,
+          error: null,
+        }),
+      },
+    });
+    setupClinicContext(supabase);
+
+    const response = await POST(buildRequest(buildValidBody()));
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data).toEqual({
+      success: false,
+      error: 'Requested time slot is not available',
+    });
+  });
+
+  it('DB排他制約違反の場合は 409 を返す', async () => {
+    const supabase = buildMockSupabase({
+      customers: {
+        select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
-            lt: jest.fn().mockReturnValue({
-              gt: jest.fn().mockReturnValue({
-                not: jest.fn().mockResolvedValue({
-                  data: [{ id: VALID_RESERVATION_ID }],
+            eq: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: { id: VALID_CUSTOMER_ID },
                   error: null,
                 }),
               }),
             }),
+          }),
+        }),
+        insert: jest.fn(),
+      },
+      reservations_insert: {
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+              code: '23P01',
+              message:
+                'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+            },
           }),
         }),
       },

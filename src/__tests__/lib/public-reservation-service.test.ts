@@ -29,6 +29,7 @@ const CUSTOMER_ID = '00000000-0000-0000-0000-000000000401';
 const RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
 
 const EMPTY = { data: [], error: null };
+const NO_CONFLICT = { count: 0, error: null };
 const NO_ROWS = { data: null, error: { code: 'PGRST116', message: 'No rows found' } };
 
 /** Minimal input for a valid reservation */
@@ -119,7 +120,7 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
       ),
     }),
     reservations_overlap: () => ({
-      select: jest.fn().mockReturnValue(mockChain(EMPTY, 'listWithNot')),
+      select: jest.fn().mockReturnValue(mockChain(NO_CONFLICT, 'listWithNot')),
     }),
     blocks: () => ({
       select: jest.fn().mockReturnValue(mockChain(EMPTY, 'list')),
@@ -308,7 +309,7 @@ describe('PublicReservationService', () => {
     });
 
     it('キャンセル済みと来院なしは重複チェックから除外する', async () => {
-      const not = jest.fn().mockResolvedValue(EMPTY);
+      const not = jest.fn().mockResolvedValue(NO_CONFLICT);
       const reservationsChain = {
         eq: jest.fn().mockReturnThis(),
         lt: jest.fn().mockReturnThis(),
@@ -342,6 +343,7 @@ describe('PublicReservationService', () => {
         'in',
         '("cancelled","no_show")'
       );
+      expect(reservationsChain.eq).toHaveBeenCalledWith('is_deleted', false);
     });
 
     it('重複予約がある場合は SlotConflictError を投げる', async () => {
@@ -349,7 +351,7 @@ describe('PublicReservationService', () => {
         reservations_overlap: () => ({
           select: jest.fn().mockReturnValue(
             mockChain(
-              { data: [{ id: 'existing' }], error: null },
+              { count: 1, error: null },
               'listWithNot'
             )
           ),
@@ -523,6 +525,38 @@ describe('PublicReservationService', () => {
           channel: 'web',
         })
       ).rejects.toThrow(ReservationCreateError);
+    });
+
+    it('DB排他制約違反は SlotConflictError を投げる', async () => {
+      const client = buildClient({
+        reservations_overlap: () => ({
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: null,
+                error: {
+                  code: '23P01',
+                  message:
+                    'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+                },
+              }),
+            }),
+          }),
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      await expect(
+        service.createReservation({
+          customerId: CUSTOMER_ID,
+          menuId: MENU_ID,
+          resourceId: RESOURCE_ID,
+          startIso: '2026-03-17T10:00:00.000Z',
+          endIso: '2026-03-17T11:00:00.000Z',
+          notes: null,
+          channel: 'web',
+        })
+      ).rejects.toThrow(SlotConflictError);
     });
   });
 

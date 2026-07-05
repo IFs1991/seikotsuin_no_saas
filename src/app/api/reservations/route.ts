@@ -43,7 +43,10 @@ import {
   mapReservationListViewRow,
   RESERVATION_LIST_SELECT,
 } from '@/lib/reservations/read-model';
-import { hasReservationConflict } from '@/lib/reservations/conflict';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 
 const PATH = '/api/reservations';
 type ReservationResourceGuardRow = Pick<
@@ -645,6 +648,7 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      excludeDeleted: true,
       path: PATH,
     });
     if (conflict) {
@@ -672,6 +676,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return createErrorResponse('同時間帯に既存予約があります', 409);
+      }
       const constraintErrorMessage =
         getReservationConstraintErrorMessage(error);
       if (constraintErrorMessage) {
@@ -807,6 +814,7 @@ export async function PATCH(request: NextRequest) {
         startTime: nextStartTime,
         endTime: nextEndTime,
         excludeId: dto.id,
+        excludeDeleted: true,
         path: PATH,
       });
       if (conflict) {
@@ -863,6 +871,9 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return createErrorResponse('同時間帯に既存予約があります', 409);
+      }
       throw normalizeSupabaseError(error, PATH);
     }
 

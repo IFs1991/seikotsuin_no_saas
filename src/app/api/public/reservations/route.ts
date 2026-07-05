@@ -194,6 +194,15 @@ export async function POST(request: NextRequest) {
         channel,
       });
     } catch (e) {
+      if (e instanceof SlotConflictError) {
+        if (customerResult.created) {
+          await service.rollbackCustomer(customerResult.customerId);
+        }
+        return NextResponse.json(
+          { success: false, error: e.message },
+          { status: 409 }
+        );
+      }
       if (e instanceof ReservationCreateError) {
         console.error('Reservation creation error:', e);
         // Rollback newly created customer
