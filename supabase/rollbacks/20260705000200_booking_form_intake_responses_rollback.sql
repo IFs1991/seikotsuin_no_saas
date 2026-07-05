@@ -1,6 +1,8 @@
 begin;
 
-create or replace view public.reservation_list_view as
+drop view if exists public.reservation_list_view;
+
+create view public.reservation_list_view as
 select
   r.id,
   r.clinic_id,

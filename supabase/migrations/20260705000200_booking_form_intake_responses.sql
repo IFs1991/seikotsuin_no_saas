@@ -217,9 +217,9 @@ select
   r.updated_at,
   r.created_by,
   r.selected_options,
-  r.intake_responses,
   r.is_staff_requested,
-  r.staff_nomination_fee
+  r.staff_nomination_fee,
+  r.intake_responses
 from public.reservations r
 join public.customers c on r.customer_id = c.id
 join public.menus m on r.menu_id = m.id
