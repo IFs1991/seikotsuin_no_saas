@@ -4,18 +4,93 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { CSPConfig, CSPViolationReport } from '@/lib/security/csp-config';
+import { z } from 'zod';
+import { CSPConfig, type CSPViolationReport } from '@/lib/security/csp-config';
 import { cspRateLimiter } from '@/lib/rate-limiting/csp-rate-limiter';
 import { logger } from '@/lib/logger';
 import { createAdminClient, createClient } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+
+const MAX_CSP_REPORT_BODY_BYTES = 32 * 1024;
+const MAX_URI_LENGTH = 2048;
+const MAX_DIRECTIVE_LENGTH = 256;
+const MAX_POLICY_LENGTH = 4096;
+const MAX_SCRIPT_SAMPLE_LENGTH = 512;
+const MAX_USER_AGENT_LENGTH = 512;
+
+type CSPViolationInsert =
+  Database['public']['Tables']['csp_violations']['Insert'];
+type CSPViolationRow = Database['public']['Tables']['csp_violations']['Row'];
+type CSPViolationSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+const boundedString = (max: number) => z.string().trim().max(max);
+const optionalBoundedString = (max: number) =>
+  z.string().trim().max(max).optional();
+
+const CSPReportSchema = z
+  .object({
+    'document-uri': boundedString(MAX_URI_LENGTH),
+    referrer: optionalBoundedString(MAX_URI_LENGTH),
+    'violated-directive': boundedString(MAX_DIRECTIVE_LENGTH),
+    'effective-directive': optionalBoundedString(MAX_DIRECTIVE_LENGTH),
+    'original-policy': optionalBoundedString(MAX_POLICY_LENGTH),
+    disposition: z.enum(['enforce', 'report']).optional(),
+    'blocked-uri': optionalBoundedString(MAX_URI_LENGTH),
+    'line-number': z.number().int().nonnegative().optional(),
+    'column-number': z.number().int().nonnegative().optional(),
+    'source-file': optionalBoundedString(MAX_URI_LENGTH),
+    'status-code': z.number().int().nonnegative().optional(),
+    'script-sample': optionalBoundedString(MAX_SCRIPT_SAMPLE_LENGTH),
+  })
+  .strip()
+  .transform(
+    (report): CSPViolationReport => ({
+      'document-uri': report['document-uri'],
+      referrer: report.referrer,
+      'violated-directive': report['violated-directive'],
+      'effective-directive':
+        report['effective-directive'] ?? report['violated-directive'],
+      'original-policy': report['original-policy'] ?? '',
+      disposition: report.disposition ?? 'report',
+      'blocked-uri': report['blocked-uri'] ?? '',
+      'line-number': report['line-number'],
+      'column-number': report['column-number'],
+      'source-file': report['source-file'],
+      'status-code': report['status-code'],
+      'script-sample': report['script-sample'],
+    })
+  );
+
+class BodyTooLargeError extends Error {
+  constructor() {
+    super('CSP report body is too large');
+  }
+}
+
+class InvalidJsonError extends Error {
+  constructor() {
+    super('CSP report body is not valid JSON');
+  }
+}
 
 export async function POST(request: NextRequest) {
+  const clientIP = getClientIP(request);
+
   try {
+    const contentType = request.headers.get('content-type') ?? '';
+    if (!isSupportedContentType(contentType)) {
+      return NextResponse.json(
+        { error: 'Unsupported CSP report content type' },
+        { status: 415 }
+      );
+    }
+
     // レート制限チェック
-    const clientIP = getClientIP(request);
     const rateLimitResult = await cspRateLimiter.checkCSPReportLimit(clientIP);
 
     if (!rateLimitResult.allowed) {
+      const isBackendUnavailable =
+        rateLimitResult.reason?.includes('unavailable');
       const headers = {
         'X-RateLimit-Limit': '100',
         'X-RateLimit-Remaining': '0',
@@ -24,7 +99,7 @@ export async function POST(request: NextRequest) {
       };
 
       // レート制限超過をログに記録（攻撃パターン分析用）
-      logger.warn('CSP Report API: Rate limit exceeded', {
+      logger.warn('CSP Report API: Rate limit denied request', {
         clientIP,
         reason: rateLimitResult.reason,
         retryAfter: rateLimitResult.retryAfter,
@@ -33,42 +108,39 @@ export async function POST(request: NextRequest) {
       });
 
       return new NextResponse(null, {
-        status: 429,
-        statusText: 'Too Many Requests',
+        status: isBackendUnavailable ? 503 : 429,
+        statusText: isBackendUnavailable
+          ? 'Service Unavailable'
+          : 'Too Many Requests',
         headers,
       });
     }
-    // CSP違反レポートを解析
-    const contentType = request.headers.get('content-type');
-    let violationReport: CSPViolationReport;
 
-    if (contentType?.includes('application/csp-report')) {
-      // 標準的なCSPレポート形式
-      const body = await request.json();
-      violationReport = body['csp-report'] || body;
-    } else {
-      // JSON形式のレポート
-      violationReport = await request.json();
+    const violationReport = await parseCSPReportRequest(request);
+
+    // CSP違反を処理。監視ログ側の障害で保存処理は止めない。
+    try {
+      await CSPConfig.handleCSPViolation(violationReport);
+    } catch (error) {
+      logger.error('CSP違反ハンドラーエラー:', error);
     }
 
-    // リクエスト情報の追加
-    const userAgent = request.headers.get('user-agent') || '';
-    const referer = request.headers.get('referer') || '';
+    const userAgent = truncateStoredHeader(
+      request.headers.get('user-agent'),
+      MAX_USER_AGENT_LENGTH
+    );
+    const referer = truncateStoredHeader(
+      request.headers.get('referer'),
+      MAX_URI_LENGTH
+    );
 
-    // 拡張されたレポート情報
-    const enhancedReport = {
-      ...violationReport,
+    await saveCSPViolationToDB({
+      report: violationReport,
       clientIP,
       userAgent,
       referer,
       receivedAt: new Date().toISOString(),
-    };
-
-    // CSP違反を処理
-    await CSPConfig.handleCSPViolation(violationReport);
-
-    // データベースに詳細ログを保存
-    await saveCSPViolationToDB(enhancedReport);
+    });
 
     // 成功レスポンス（CSPレポートは通常204を期待）
     const successHeaders = {
@@ -82,78 +154,167 @@ export async function POST(request: NextRequest) {
       headers: successHeaders,
     });
   } catch (error) {
-    logger.error('CSP違反レポート処理エラー:', error);
+    if (error instanceof BodyTooLargeError) {
+      return NextResponse.json(
+        { error: 'CSP report body is too large' },
+        { status: 413 }
+      );
+    }
 
-    // エラーでもCSPレポート送信は成功扱い
-    return new NextResponse(null, { status: 204 });
+    if (error instanceof InvalidJsonError) {
+      return NextResponse.json(
+        { error: 'Invalid CSP report JSON' },
+        { status: 400 }
+      );
+    }
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid CSP report payload', details: error.errors },
+        { status: 400 }
+      );
+    }
+
+    logger.error('CSP違反レポート処理エラー:', error);
+    return NextResponse.json(
+      { error: 'CSP report could not be recorded' },
+      { status: 500 }
+    );
   }
+}
+
+async function parseCSPReportRequest(
+  request: NextRequest
+): Promise<CSPViolationReport> {
+  const rawBody = await readRequestBodyWithLimit(
+    request,
+    MAX_CSP_REPORT_BODY_BYTES
+  );
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    throw new InvalidJsonError();
+  }
+
+  if (parsed !== null && typeof parsed === 'object' && 'csp-report' in parsed) {
+    const maybeEnvelope = parsed as { 'csp-report'?: unknown };
+    return CSPReportSchema.parse(maybeEnvelope['csp-report']);
+  }
+
+  return CSPReportSchema.parse(parsed);
+}
+
+async function readRequestBodyWithLimit(
+  request: NextRequest,
+  maxBytes: number
+): Promise<string> {
+  if (!request.body) {
+    throw new InvalidJsonError();
+  }
+
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      throw new BodyTooLargeError();
+    }
+
+    chunks.push(decoder.decode(value, { stream: true }));
+  }
+
+  chunks.push(decoder.decode());
+  return chunks.join('');
+}
+
+function isSupportedContentType(contentType: string): boolean {
+  const normalized = contentType.toLowerCase();
+  return (
+    normalized.includes('application/csp-report') ||
+    normalized.includes('application/json')
+  );
+}
+
+function truncateStoredHeader(value: string | null, maxLength: number): string {
+  return (value ?? '').slice(0, maxLength);
 }
 
 /**
  * CSP違反をデータベースに保存
  */
-async function saveCSPViolationToDB(
-  report: Record<string, unknown>
-): Promise<void> {
+async function saveCSPViolationToDB(input: {
+  report: CSPViolationReport;
+  clientIP: string;
+  userAgent: string;
+  referer: string;
+  receivedAt: string;
+}): Promise<void> {
+  const supabase = await createClient();
+  const adminSupabase = createAdminClient();
+
+  const severity = calculateViolationSeverity(input.report);
+  const threatScore = calculateThreatScore(input.report);
+
+  // clinic_id を認証コンテキストから取得（未認証の場合は null）
+  let clinicId: string | null = null;
   try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-
-    // 違反の重要度を計算
-    const severity = calculateViolationSeverity(report);
-    const threatScore = calculateThreatScore(report);
-
-    // clinic_id を認証コンテキストから取得（未認証の場合は null）
-    let clinicId: string | null = null;
-    try {
-      const { getCurrentUser, getUserPermissions } =
-        await import('@/lib/supabase');
-      const user = await getCurrentUser(supabase);
-      if (user) {
-        const permissions = await getUserPermissions(user.id, supabase);
-        clinicId = permissions?.clinic_id ?? null;
-      }
-    } catch {
-      // 未認証のCSPレポートは clinic_id = null で記録
+    const { getCurrentUser, getUserPermissions } =
+      await import('@/lib/supabase');
+    const user = await getCurrentUser(supabase);
+    if (user) {
+      const permissions = await getUserPermissions(user.id, supabase);
+      clinicId = permissions?.clinic_id ?? null;
     }
+  } catch {
+    // 未認証のCSPレポートは clinic_id = null で記録
+  }
 
-    const violationData = {
-      clinic_id: clinicId,
-      document_uri: report['document-uri'],
-      violated_directive: report['violated-directive'],
-      blocked_uri: report['blocked-uri'],
-      effective_directive: report['effective-directive'],
-      original_policy: report['original-policy'],
-      disposition: report.disposition || 'report',
-      referrer: report.referrer,
-      client_ip: report.clientIP,
-      user_agent: report.userAgent,
-      line_number: report['line-number'] || null,
-      column_number: report['column-number'] || null,
-      source_file: report['source-file'],
-      script_sample: report['script-sample'],
-      severity,
-      threat_score: threatScore,
-      created_at: report.receivedAt,
-    };
+  const violationData: CSPViolationInsert = {
+    clinic_id: clinicId,
+    document_uri: input.report['document-uri'],
+    violated_directive: input.report['violated-directive'],
+    blocked_uri: input.report['blocked-uri'],
+    effective_directive: input.report['effective-directive'],
+    original_policy: input.report['original-policy'],
+    disposition: input.report.disposition,
+    referrer: input.report.referrer ?? input.referer,
+    client_ip: input.clientIP,
+    user_agent: input.userAgent,
+    line_number: input.report['line-number'] ?? null,
+    column_number: input.report['column-number'] ?? null,
+    source_file: input.report['source-file'] ?? null,
+    script_sample: input.report['script-sample'] ?? null,
+    severity,
+    threat_score: threatScore,
+    created_at: input.receivedAt,
+  };
 
-    const { data, error } = await adminSupabase
-      .from('csp_violations')
-      .insert([violationData] as any)
-      .select();
+  const { data, error } = await adminSupabase
+    .from('csp_violations')
+    .insert(violationData)
+    .select();
 
-    if (error) {
-      logger.error('CSP違反DB保存エラー:', error);
-    } else {
-      logger.log('CSP違反がデータベースに保存されました:', data?.[0]?.id);
+  if (error) {
+    logger.error('CSP違反DB保存エラー:', error);
+    throw error;
+  }
 
-      // 高脅威レベルの場合は即座に管理者に通知
-      if (severity === 'critical' || severity === 'high') {
-        await notifyHighSeverityViolation(data?.[0]);
-      }
-    }
-  } catch (error) {
-    logger.error('CSP違反データベース保存エラー:', error);
+  const insertedViolation = data?.[0];
+  logger.log('CSP違反がデータベースに保存されました:', insertedViolation?.id);
+
+  // 高脅威レベルの場合は即座に管理者に通知
+  if (insertedViolation && (severity === 'critical' || severity === 'high')) {
+    await notifyHighSeverityViolation(insertedViolation);
   }
 }
 
@@ -161,11 +322,11 @@ async function saveCSPViolationToDB(
  * 違反の重要度計算
  */
 function calculateViolationSeverity(
-  report: Record<string, any>
-): 'low' | 'medium' | 'high' | 'critical' {
-  const violatedDirective = report['violated-directive'] || '';
-  const blockedUri = report['blocked-uri'] || '';
-  const scriptSample = report['script-sample'] || '';
+  report: CSPViolationReport
+): CSPViolationSeverity {
+  const violatedDirective = report['violated-directive'];
+  const blockedUri = report['blocked-uri'];
+  const scriptSample = report['script-sample'] ?? '';
 
   // クリティカル: inline javascript実行試行
   if (
@@ -215,11 +376,11 @@ function calculateViolationSeverity(
 /**
  * 脅威スコア計算（0-100）
  */
-function calculateThreatScore(report: Record<string, any>): number {
+function calculateThreatScore(report: CSPViolationReport): number {
   let score = 0;
-  const violatedDirective = report['violated-directive'] || '';
-  const blockedUri = report['blocked-uri'] || '';
-  const scriptSample = report['script-sample'] || '';
+  const violatedDirective = report['violated-directive'];
+  const blockedUri = report['blocked-uri'];
+  const scriptSample = report['script-sample'] ?? '';
 
   // ディレクティブ別スコア
   if (violatedDirective.includes('script-src')) score += 40;
@@ -248,23 +409,29 @@ function calculateThreatScore(report: Record<string, any>): number {
 /**
  * 高重要度違反の管理者通知
  */
-async function notifyHighSeverityViolation(violation: any): Promise<void> {
+async function notifyHighSeverityViolation(
+  violation: CSPViolationRow
+): Promise<void> {
   try {
     // 通知システムをインポート（動的インポートでエラー回避）
     const { securityNotificationManager } =
       await import('@/lib/notifications/security-alerts');
 
+    const clientIp =
+      typeof violation.client_ip === 'string' ? violation.client_ip : 'unknown';
+    const severity = normalizeStoredSeverity(violation.severity);
+
     // 通知頻度制限チェック（スパム防止）
     const shouldNotify = await securityNotificationManager.shouldNotify(
       'csp_violation',
-      violation.client_ip,
+      clientIp,
       5 // 5分間の制限窓
     );
 
     if (!shouldNotify) {
       logger.log('CSP violation notification skipped due to rate limit', {
-        ip: violation.client_ip,
-        severity: violation.severity,
+        ip: clientIp,
+        severity,
       });
       return;
     }
@@ -272,12 +439,12 @@ async function notifyHighSeverityViolation(violation: any): Promise<void> {
     // 高重要度通知の実行
     const result = await securityNotificationManager.notifyCSPViolation({
       id: violation.id,
-      severity: violation.severity,
+      severity,
       violated_directive: violation.violated_directive,
       blocked_uri: violation.blocked_uri,
       document_uri: violation.document_uri,
       threat_score: violation.threat_score,
-      client_ip: violation.client_ip,
+      client_ip: clientIp,
       user_agent: violation.user_agent,
       created_at: violation.created_at,
     });
@@ -286,7 +453,7 @@ async function notifyHighSeverityViolation(violation: any): Promise<void> {
       logger.log('CSP violation notification sent successfully', {
         violationId: violation.id,
         channels: result.channels,
-        severity: violation.severity,
+        severity,
       });
     } else {
       logger.error('CSP violation notification failed', {
@@ -298,15 +465,28 @@ async function notifyHighSeverityViolation(violation: any): Promise<void> {
     logger.error('高重要度違反通知エラー:', error);
 
     // フォールバック: 最低限のコンソール警告
-    logger.warn('🚨 高重要度CSP違反検出（通知システム障害時）:', {
+    logger.warn('高重要度CSP違反検出（通知システム障害時）:', {
       id: violation.id,
-      severity: violation.severity,
+      severity: normalizeStoredSeverity(violation.severity),
       directive: violation.violated_directive,
       uri: violation.blocked_uri,
       ip: violation.client_ip,
       timestamp: violation.created_at,
     });
   }
+}
+
+function normalizeStoredSeverity(value: string): CSPViolationSeverity {
+  if (
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'critical'
+  ) {
+    return value;
+  }
+
+  return 'low';
 }
 
 /**

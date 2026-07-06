@@ -248,7 +248,7 @@ describe('POST /api/menus', () => {
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      { allowedRoles: Array.from(CLINIC_ADMIN_ROLES) }
+      { allowedRoles: Array.from(CLINIC_ADMIN_ROLES), path: '/api/menus' }
     );
     expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
     expect(assertClinicInScope).toHaveBeenCalledWith(clinicId);
@@ -268,5 +268,32 @@ describe('POST /api/menus', () => {
       durationMinutes: 60,
       isInsuranceApplicable: false,
     });
+  });
+
+  it('returns 403 when manager effective clinic assignment was revoked', async () => {
+    const forbiddenResponse = new Response(
+      JSON.stringify({
+        success: false,
+        error: 'このクリニックへのアクセス権がありません',
+      }),
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: false,
+      error: forbiddenResponse,
+    });
+
+    const { POST } = await import('@/app/api/menus/route');
+    const response = await POST({} as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe('このクリニックへのアクセス権がありません');
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { allowedRoles: Array.from(CLINIC_ADMIN_ROLES), path: '/api/menus' }
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
   });
 });

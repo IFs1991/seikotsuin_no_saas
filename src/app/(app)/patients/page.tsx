@@ -8,6 +8,7 @@ import {
   usePatientAnalysis,
   type PatientAnalysisViewModel,
 } from '@/hooks/usePatientAnalysis';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { useManagerPatientAnalysis } from '@/hooks/useManagerPatientAnalysis';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { normalizeRole } from '@/lib/constants/roles';
@@ -1179,7 +1180,10 @@ export default function PatientsPage() {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
   const showOutreach = canUseOutreach(profile?.role);
 
   if (!profileLoading && isManagerRole(profile?.role)) {
@@ -1195,7 +1199,7 @@ export default function PatientsPage() {
     return (
       <ClinicOutreachPage
         clinicId={clinicId}
-        profileLoading={profileLoading}
+        profileLoading={profileLoading || activeClinicLoading}
         profileError={profileError}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -1206,7 +1210,7 @@ export default function PatientsPage() {
   return (
     <ClinicPatientAnalysisPage
       clinicId={clinicId}
-      profileLoading={profileLoading}
+      profileLoading={profileLoading || activeClinicLoading}
       profileError={profileError}
       activeTab='analysis'
       showOutreach={showOutreach}

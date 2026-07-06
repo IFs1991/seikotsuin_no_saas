@@ -17,6 +17,11 @@ import type { Database } from '@/types/supabase';
 interface RateLimitConfig {
   type: RateLimitType;
   keyGenerator: (request: NextRequest) => string | Promise<string>;
+  customConfig?: Partial<{
+    window: number;
+    limit: number;
+    blockDuration: number;
+  }>;
   skipIf?: (request: NextRequest) => boolean;
   onLimitExceeded?: (
     request: NextRequest,
@@ -78,7 +83,13 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       }
 
       // レート制限チェック
-      const result = await rateLimiter.checkRateLimit(config.type, identifier);
+      const result = config.customConfig
+        ? await rateLimiter.checkRateLimit(
+            config.type,
+            identifier,
+            config.customConfig
+          )
+        : await rateLimiter.checkRateLimit(config.type, identifier);
 
       if (!result.allowed) {
         // カスタムハンドラーがある場合は使用
@@ -239,6 +250,39 @@ export const mobileUiuxWriteRateLimit = createRateLimitMiddleware({
   },
 });
 
+function getAdminSecurityClinicKey(request: NextRequest): string {
+  const clinicId =
+    request.nextUrl.searchParams.get('clinic_id') ??
+    request.headers.get('x-clinic-id');
+  return clinicId ? `clinic:${clinicId}` : 'clinic:none';
+}
+
+async function getAdminSecurityRateLimitKey(
+  request: NextRequest
+): Promise<string> {
+  const userId = await getAuthenticatedUserId(request);
+  const actorKey = userId ? `user:${userId}` : getMobileUiuxKeyPrefix(request);
+  return `${actorKey}:${getAdminSecurityClinicKey(request)}`;
+}
+
+export const adminSecurityReadRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAdminSecurityRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 30,
+  },
+});
+
+export const adminSecurityWriteRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAdminSecurityRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 10,
+  },
+});
+
 export const sessionCreationRateLimit = createRateLimitMiddleware({
   type: 'session_creation',
   keyGenerator: request => {
@@ -329,6 +373,15 @@ export function getPathRateLimit(
     }
   }
 
+  if (isAdminSecurityRateLimitedPath(pathname)) {
+    const normalizedMethod = method.toUpperCase();
+    if (normalizedMethod === 'GET') {
+      middlewares.push(adminSecurityReadRateLimit);
+    } else if (isAdminSecurityWriteMethod(normalizedMethod)) {
+      middlewares.push(adminSecurityWriteRateLimit);
+    }
+  }
+
   // 認証フローの入口
   if (isAuthEntryPoint(pathname)) {
     middlewares.push(loginRateLimit);
@@ -400,6 +453,17 @@ function isSessionManagementPath(pathname: string): boolean {
     pathname === '/api/admin/security/sessions' ||
     pathname === '/api/admin/security/sessions/terminate'
   );
+}
+
+function isAdminSecurityRateLimitedPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/admin/security/') &&
+    !isSessionManagementPath(pathname)
+  );
+}
+
+function isAdminSecurityWriteMethod(method: string): boolean {
+  return method === 'POST' || method === 'PATCH' || method === 'PUT';
 }
 
 function isMfaPath(pathname: string): boolean {

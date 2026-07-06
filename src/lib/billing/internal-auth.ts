@@ -95,7 +95,7 @@ export function requireBillingInternalRequest(
   const authorization = authorizeInternalSecret({
     authorizationHeader: request.headers.get('authorization'),
     internalApiSecret: env.INTERNAL_API_SECRET,
-    cronSecret: env.CRON_SECRET,
+    cronSecret: '',
   });
 
   if (!authorization.success) {

@@ -17,6 +17,8 @@ import {
 } from './schema';
 
 const PATH = '/api/customers';
+const MANAGER_CUSTOMER_ACCESS_DENIED_MESSAGE =
+  'マネージャーは患者情報APIへアクセスできません。';
 const CUSTOMER_RESPONSE_COLUMNS =
   'id, name, phone, email, notes, custom_attributes';
 type CustomerResponseRow = {
@@ -88,6 +90,8 @@ export async function GET(request: NextRequest) {
     const guard = await processApiRequest(request, {
       clinicId: clinic_id,
       requireClinicMatch: true,
+      deniedRoles: ['manager'],
+      deniedRoleMessage: MANAGER_CUSTOMER_ACCESS_DENIED_MESSAGE,
     });
     if (!guard.success) return guard.error;
 
@@ -148,7 +152,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await processClinicScopedBody(request, customerInsertSchema);
+    const result = await processClinicScopedBody(
+      request,
+      customerInsertSchema,
+      {
+        deniedRoles: ['manager'],
+        deniedRoleMessage: MANAGER_CUSTOMER_ACCESS_DENIED_MESSAGE,
+      }
+    );
     if (!result.success) return result.error;
 
     const insertPayload = mapCustomerInsertToRow(result.dto, result.auth.id);
@@ -176,7 +187,14 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const result = await processClinicScopedBody(request, customerUpdateSchema);
+    const result = await processClinicScopedBody(
+      request,
+      customerUpdateSchema,
+      {
+        deniedRoles: ['manager'],
+        deniedRoleMessage: MANAGER_CUSTOMER_ACCESS_DENIED_MESSAGE,
+      }
+    );
     if (!result.success) return result.error;
 
     const updatePayload = mapCustomerUpdateToRow(result.dto);

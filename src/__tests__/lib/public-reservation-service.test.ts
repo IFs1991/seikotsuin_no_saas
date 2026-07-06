@@ -483,15 +483,17 @@ describe('PublicReservationService', () => {
         data: { id: CUSTOMER_ID },
         error: null,
       });
+      const updateQuery = {
+        eq: jest.fn().mockReturnThis(),
+      };
+      const update = jest.fn().mockReturnValue(updateQuery);
       const client = buildClient({
         customers_find: () => ({
           select: jest.fn().mockReturnValue(customerFindQuery),
         }),
         customers_create: () => ({
           insert: jest.fn(),
-          update: jest.fn().mockReturnValue({
-            eq: jest.fn().mockReturnThis(),
-          }),
+          update,
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
@@ -511,6 +513,105 @@ describe('PublicReservationService', () => {
       expect(customerFindQuery.eq).not.toHaveBeenCalledWith(
         'normalized_phone',
         '09012345678'
+      );
+      expect(update).toHaveBeenCalledWith({
+        line_user_id: 'Uline-user-001',
+        line_display_name: 'LINE 太郎',
+      });
+      expect(updateQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uline-user-001'
+      );
+    });
+
+    it('別LINEと既存電話番号一致では被害者顧客にLINE IDを紐づけず新規作成する', async () => {
+      const lineLookupQuery = mockChain(NO_ROWS);
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: CUSTOMER_ID },
+            error: null,
+          }),
+        }),
+      });
+      const update = jest.fn();
+      const client = {
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue(lineLookupQuery),
+          insert,
+          update,
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '090-1234-5678',
+        undefined,
+        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
+      expect(lineLookupQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uattacker-line'
+      );
+      expect(lineLookupQuery.eq).not.toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '09012345678',
+          line_user_id: 'Uattacker-line',
+          line_display_name: 'Attacker',
+        })
+      );
+    });
+
+    it('別LINEと既存メール一致では被害者顧客にLINE IDを紐づけず新規作成する', async () => {
+      const lineLookupQuery = mockChain(NO_ROWS);
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: CUSTOMER_ID },
+            error: null,
+          }),
+        }),
+      });
+      const update = jest.fn();
+      const client = {
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue(lineLookupQuery),
+          insert,
+          update,
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        undefined,
+        'victim@example.com',
+        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
+      expect(lineLookupQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uattacker-line'
+      );
+      expect(lineLookupQuery.eq).not.toHaveBeenCalledWith(
+        'email',
+        'victim@example.com'
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'victim@example.com',
+          line_user_id: 'Uattacker-line',
+        })
       );
     });
 

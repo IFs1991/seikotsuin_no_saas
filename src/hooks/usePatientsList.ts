@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { logger } from '@/lib/logger';
 
 export interface Patient {
@@ -85,7 +86,10 @@ async function readApiError(
 
 export function usePatientsList(): UsePatientsListResult {
   const { profile, loading: profileLoading } = useUserProfileContext();
-  const clinicId = profile?.clinicId;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,7 +168,7 @@ export function usePatientsList(): UsePatientsListResult {
   }, [clinicId, debouncedQuery]);
 
   useEffect(() => {
-    if (profileLoading) {
+    if (profileLoading || activeClinicLoading) {
       setIsLoading(true);
       return;
     }
@@ -179,7 +183,7 @@ export function usePatientsList(): UsePatientsListResult {
     }
 
     fetchPatients();
-  }, [profileLoading, clinicId, fetchPatients]);
+  }, [profileLoading, activeClinicLoading, clinicId, fetchPatients]);
 
   // 新規患者を作成
   const createPatient = useCallback(

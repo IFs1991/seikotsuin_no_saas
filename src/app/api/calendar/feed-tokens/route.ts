@@ -123,6 +123,7 @@ async function canManageStaffFeed(input: {
   role: string | null;
   permissionClinicId: string | null;
   staffProfileId: string;
+  clinicId: string;
 }): Promise<boolean> {
   const profile = await loadStaffProfile(
     input.adminClient,
@@ -131,6 +132,18 @@ async function canManageStaffFeed(input: {
   if (!profile || profile.is_active === false) {
     return false;
   }
+
+  const memberships = await loadStaffMemberships(
+    input.adminClient,
+    input.staffProfileId
+  );
+  const hasClinicMembership = memberships.some(
+    membership => membership.clinic_id === input.clinicId
+  );
+  if (!hasClinicMembership) {
+    return false;
+  }
+
   if (profile.user_id === input.userId) {
     return true;
   }
@@ -138,24 +151,15 @@ async function canManageStaffFeed(input: {
     return true;
   }
 
-  const memberships = await loadStaffMemberships(
-    input.adminClient,
-    input.staffProfileId
-  );
   if (input.role === 'manager') {
     const clinicIds = await getManagerClinicIds(
       input.adminClient,
       input.userId
     );
-    return memberships.some(membership => clinicIds.has(membership.clinic_id));
+    return clinicIds.has(input.clinicId);
   }
 
-  if (!input.permissionClinicId) {
-    return false;
-  }
-  return memberships.some(
-    membership => membership.clinic_id === input.permissionClinicId
-  );
+  return input.permissionClinicId === input.clinicId;
 }
 
 export async function POST(request: NextRequest) {
@@ -209,7 +213,7 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      if (!targetStaffProfileId || targetClinicId) {
+      if (!targetStaffProfileId || !targetClinicId) {
         return createErrorResponse('スタッフ用feedの対象指定が不正です', 400);
       }
       const allowed = await canManageStaffFeed({
@@ -218,6 +222,7 @@ export async function POST(request: NextRequest) {
         role,
         permissionClinicId: authResult.permissions.clinic_id,
         staffProfileId: targetStaffProfileId,
+        clinicId: targetClinicId,
       });
       if (!allowed) {
         return createErrorResponse(
@@ -229,7 +234,7 @@ export async function POST(request: NextRequest) {
 
     const token = createCalendarFeedToken();
     const insertPayload: CalendarFeedTokenInsert = {
-      clinic_id: dto.feed_type === 'clinic' ? targetClinicId : null,
+      clinic_id: targetClinicId,
       staff_profile_id: dto.feed_type === 'staff' ? targetStaffProfileId : null,
       feed_type: dto.feed_type,
       token_hash: hashCalendarFeedToken(token),

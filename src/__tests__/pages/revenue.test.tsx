@@ -8,6 +8,7 @@ import { useManagerRevenueAnalysis } from '@/hooks/useManagerRevenueAnalysis';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import type { ManagerRevenueAnalysisResponse } from '@/lib/manager-revenue-analysis';
 
 // Mock the custom hooks
@@ -31,7 +32,23 @@ const mockUseManagerRevenueAnalysis =
 
 // Mock data
 const mockClinicId = '123e4567-e89b-12d3-a456-426614174000';
+const selectedClinicId = '123e4567-e89b-12d3-a456-426614174099';
 const resolvedRefetch = (): Promise<void> => Promise.resolve();
+
+function renderRevenuePageWithSelectedClinic() {
+  return render(
+    <SelectedClinicProvider
+      initialClinicId={selectedClinicId}
+      currentClinicId={mockClinicId}
+      clinics={[
+        { id: mockClinicId, name: '池袋院' },
+        { id: selectedClinicId, name: '新宿院' },
+      ]}
+    >
+      <RevenuePage />
+    </SelectedClinicProvider>
+  );
+}
 
 const mockRevenueData = {
   dailyRevenue: 150000,
@@ -458,7 +475,7 @@ describe('RevenuePage', () => {
       expect(screen.getByText('療養費・売上見込み詳細')).toBeInTheDocument();
     });
 
-    test('manager should not display revenue estimate amount details even when isAdmin is true', () => {
+    test('manager should not display revenue estimate amount details even when isAdmin is true', async () => {
       mockUseUserProfile.mockReturnValue({
         profile: {
           ...mockUserProfile.profile,
@@ -476,11 +493,11 @@ describe('RevenuePage', () => {
       ).not.toBeInTheDocument();
       expect(screen.queryByText('佐藤 花子')).not.toBeInTheDocument();
       expect(
-        screen.getByText('担当院の売上推移と収益構造を確認できます。')
+        await screen.findByText('担当院の売上推移と収益構造を確認できます。')
       ).toBeInTheDocument();
     });
 
-    test('manager without primary clinic should render manager revenue analysis', () => {
+    test('manager without primary clinic should render manager revenue analysis', async () => {
       jest.clearAllMocks();
       mockUseUserProfile.mockReturnValue({
         profile: {
@@ -504,7 +521,7 @@ describe('RevenuePage', () => {
       render(<RevenuePage />);
 
       expect(
-        screen.getByText('担当院の売上推移と収益構造を確認できます。')
+        await screen.findByText('担当院の売上推移と収益構造を確認できます。')
       ).toBeInTheDocument();
       expect(screen.getByText('担当院数')).toBeInTheDocument();
       expect(
@@ -561,6 +578,19 @@ describe('RevenuePage', () => {
       expect(mockUseRevenue).toHaveBeenCalledWith(mockClinicId, {
         enabled: true,
       });
+    });
+
+    test('should call useRevenue with selected active clinic when selected', () => {
+      renderRevenuePageWithSelectedClinic();
+
+      expect(mockUseRevenue).toHaveBeenCalledWith(selectedClinicId, {
+        enabled: true,
+      });
+      expect(mockUseRevenueEstimateDetails).toHaveBeenCalledWith(
+        selectedClinicId,
+        'clinic_admin',
+        { enabled: true }
+      );
     });
   });
 

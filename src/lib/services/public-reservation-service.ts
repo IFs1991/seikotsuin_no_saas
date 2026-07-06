@@ -468,6 +468,8 @@ export class PublicReservationService {
 
   /**
    * Find an existing customer by LINE user ID, normalized phone, email, or create a new one.
+   * Verified LINE profiles must not be linked to phone/email matches without
+   * extra proof, otherwise an attacker can bind their LINE account to a victim.
    * @throws CustomerLookupError
    * @throws CustomerCreateError
    */
@@ -480,19 +482,20 @@ export class PublicReservationService {
     const normalizedPhone = normalizeCustomerPhoneForMatch(phone);
     const normalizedEmail = email?.trim() || undefined;
 
-    const existingCustomerId =
-      (lineProfile
-        ? await this.findCustomerIdByColumn(
-            'line_user_id',
-            lineProfile.lineUserId
-          )
-        : null) ??
-      (normalizedPhone
-        ? await this.findCustomerIdByColumn('normalized_phone', normalizedPhone)
-        : null) ??
-      (normalizedEmail
-        ? await this.findCustomerIdByColumn('email', normalizedEmail)
-        : null);
+    const existingCustomerId = lineProfile
+      ? await this.findCustomerIdByColumn(
+          'line_user_id',
+          lineProfile.lineUserId
+        )
+      : ((normalizedPhone
+          ? await this.findCustomerIdByColumn(
+              'normalized_phone',
+              normalizedPhone
+            )
+          : null) ??
+        (normalizedEmail
+          ? await this.findCustomerIdByColumn('email', normalizedEmail)
+          : null));
 
     if (existingCustomerId) {
       await this.updateCustomerLineProfile(existingCustomerId, lineProfile);
@@ -563,6 +566,7 @@ export class PublicReservationService {
       .update(updateData)
       .eq('id', customerId)
       .eq('clinic_id', this.clinicId)
+      .eq('line_user_id', lineProfile.lineUserId)
       .eq('is_deleted', false);
 
     if (error) {

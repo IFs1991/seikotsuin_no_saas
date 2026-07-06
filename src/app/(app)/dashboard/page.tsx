@@ -21,6 +21,7 @@ import { ResponsiveGrid } from '@/components/layout/responsive-layout';
 import useDashboard from '@/hooks/useDashboard';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { isAreaManagerRole } from '@/lib/constants/roles';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 
 const RevenueChart = dynamic(
   () => import('@/components/dashboard/revenue-chart'),
@@ -291,8 +292,13 @@ export default function DashboardPage() {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
+  const isManager = isAreaManagerRole(profile?.role);
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId,
+    { enabled: !isManager }
+  );
 
-  if (profileLoading) {
+  if (profileLoading || activeClinicLoading) {
     return (
       <div className='flex items-center justify-center'>
         <div className='flex items-center space-x-2'>
@@ -325,9 +331,9 @@ export default function DashboardPage() {
     );
   }
 
-  if (isAreaManagerRole(profile?.role)) {
+  if (isManager) {
     return <ManagerDashboard />;
   }
 
-  return <ClinicDashboard clinicId={profile?.clinicId ?? null} />;
+  return <ClinicDashboard clinicId={activeClinicId} />;
 }

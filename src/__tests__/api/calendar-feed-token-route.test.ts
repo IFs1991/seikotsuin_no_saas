@@ -27,6 +27,8 @@ const resolveManagerAssignedClinicsMock = jest.mocked(
 const createAdminClientMock = jest.mocked(createAdminClient);
 
 const clinicA = '11111111-1111-4111-8111-111111111111';
+const clinicB = '22222222-2222-4222-8222-222222222222';
+const staffProfileA = '33333333-3333-4333-8333-333333333333';
 
 type TokenInsertPayload = {
   clinic_id: string | null;
@@ -68,6 +70,85 @@ class CalendarFeedTokenQueryMock {
   }
 }
 
+class StaffProfileQueryMock {
+  private row: {
+    id: string;
+    user_id: string | null;
+    is_active: boolean | null;
+  } | null;
+
+  constructor(
+    row: {
+      id: string;
+      user_id: string | null;
+      is_active: boolean | null;
+    } | null
+  ) {
+    this.row = row;
+  }
+
+  select() {
+    return this;
+  }
+
+  eq(column: string, value: string) {
+    if (column === 'id' && this.row?.id !== value) {
+      this.row = null;
+    }
+    return this;
+  }
+
+  maybeSingle<T>() {
+    return Promise.resolve({
+      data: this.row as T | null,
+      error: null,
+    });
+  }
+}
+
+class StaffMembershipQueryMock {
+  private rows: Array<{
+    staff_profile_id: string;
+    clinic_id: string;
+    membership_type: string;
+  }>;
+
+  constructor(
+    rows: ReadonlyArray<{
+      staff_profile_id: string;
+      clinic_id: string;
+      membership_type: string;
+    }>
+  ) {
+    this.rows = [...rows];
+  }
+
+  select() {
+    return this;
+  }
+
+  eq(column: string, value: string) {
+    if (column === 'staff_profile_id') {
+      this.rows = this.rows.filter(row => row.staff_profile_id === value);
+    }
+    return this;
+  }
+
+  neq(column: string, value: string) {
+    if (column === 'membership_type') {
+      this.rows = this.rows.filter(row => row.membership_type !== value);
+    }
+    return this;
+  }
+
+  returns<T>() {
+    return Promise.resolve({
+      data: this.rows as T,
+      error: null,
+    });
+  }
+}
+
 function mockAuth() {
   processApiRequestMock.mockResolvedValue({
     success: true,
@@ -97,9 +178,12 @@ async function postToken(body: object) {
 }
 
 describe('POST /api/calendar/feed-tokens', () => {
+  let tokenQuery: CalendarFeedTokenQueryMock;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuth();
+    tokenQuery = new CalendarFeedTokenQueryMock();
     resolveManagerAssignedClinicsMock.mockResolvedValue([
       {
         id: 'assignment-a',
@@ -110,14 +194,33 @@ describe('POST /api/calendar/feed-tokens', () => {
         revoked_at: null,
       },
     ]);
+    createAdminClientMock.mockReturnValue({
+      from: (table: string) => {
+        if (table === 'calendar_feed_tokens') {
+          return tokenQuery;
+        }
+        if (table === 'staff_profiles') {
+          return new StaffProfileQueryMock({
+            id: staffProfileA,
+            user_id: 'staff-user',
+            is_active: true,
+          });
+        }
+        if (table === 'staff_clinic_memberships') {
+          return new StaffMembershipQueryMock([
+            {
+              staff_profile_id: staffProfileA,
+              clinic_id: clinicA,
+              membership_type: 'home',
+            },
+          ]);
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    });
   });
 
   it('issues a clinic feed token and stores only the hash', async () => {
-    const tokenQuery = new CalendarFeedTokenQueryMock();
-    createAdminClientMock.mockReturnValue({
-      from: () => tokenQuery,
-    });
-
     const response = await postToken({
       feed_type: 'clinic',
       clinic_id: clinicA,
@@ -136,5 +239,75 @@ describe('POST /api/calendar/feed-tokens', () => {
       feed_type: 'clinic',
       label: '池袋院ロスター',
     });
+  });
+
+  it('requires clinic_id for staff feed tokens', async () => {
+    const response = await postToken({
+      feed_type: 'staff',
+      staff_profile_id: staffProfileA,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(json.success).toBe(false);
+    expect(tokenQuery.inserted).toBeNull();
+  });
+
+  it('issues staff feed tokens scoped to the requested clinic', async () => {
+    const response = await postToken({
+      feed_type: 'staff',
+      staff_profile_id: staffProfileA,
+      clinic_id: clinicA,
+      label: '池袋院 個人シフト',
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(json.success).toBe(true);
+    expect(tokenQuery.inserted).toMatchObject({
+      clinic_id: clinicA,
+      staff_profile_id: staffProfileA,
+      feed_type: 'staff',
+      label: '池袋院 個人シフト',
+    });
+    expect(json.data.clinic_id).toBe(clinicA);
+  });
+
+  it('denies staff feed tokens for clinics outside manager assignment', async () => {
+    createAdminClientMock.mockReturnValue({
+      from: (table: string) => {
+        if (table === 'staff_profiles') {
+          return new StaffProfileQueryMock({
+            id: staffProfileA,
+            user_id: 'staff-user',
+            is_active: true,
+          });
+        }
+        if (table === 'staff_clinic_memberships') {
+          return new StaffMembershipQueryMock([
+            {
+              staff_profile_id: staffProfileA,
+              clinic_id: clinicB,
+              membership_type: 'help',
+            },
+          ]);
+        }
+        if (table === 'calendar_feed_tokens') {
+          return tokenQuery;
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    });
+
+    const response = await postToken({
+      feed_type: 'staff',
+      staff_profile_id: staffProfileA,
+      clinic_id: clinicB,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.success).toBe(false);
+    expect(tokenQuery.inserted).toBeNull();
   });
 });

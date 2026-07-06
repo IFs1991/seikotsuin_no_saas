@@ -45,6 +45,7 @@ import {
   type BillingActivationStatus,
   type StoreActivationPlan,
 } from '@/lib/billing/tenant-activation';
+import { writeBillingAuditLog } from '@/lib/billing/audit';
 
 /**
  * Clinic Create Schema for admin tenant management.
@@ -982,6 +983,61 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
 
+    if (
+      tenantBillingGuardActive &&
+      storeActivationPlan?.success === true &&
+      tenantBillingSubscription
+    ) {
+      const requestId = request.headers.get('x-request-id');
+      const tenantAuditMetadata = {
+        child_clinic_id: data.id,
+        child_clinic_name: data.name,
+        parent_clinic_id: normalizedInput.clinic.parent_id,
+        stripe_subscription_id:
+          tenantBillingSubscription.stripe_subscription_id,
+        stripe_store_subscription_item_id:
+          tenantBillingSubscription.stripe_store_subscription_item_id,
+        active_billable_store_count:
+          storeActivationPlan.activeBillableStoreCount,
+        target_active_billable_store_count:
+          storeActivationPlan.targetActiveBillableStoreCount,
+        current_paid_extra_store_quantity:
+          storeActivationPlan.currentPaidExtraStoreQuantity,
+        target_paid_extra_store_quantity:
+          storeActivationPlan.targetPaidExtraStoreQuantity,
+      };
+
+      await writeBillingAuditLog({
+        client: adminSupabase,
+        audit: {
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+          actorType: 'user',
+          actorUserId: auth.id,
+          eventType: 'billing.tenant_add_requested',
+          beforeState: tenantBillingSubscription,
+          afterState: {
+            clinic: data,
+            billing_activation_plan: storeActivationPlan,
+          },
+          requestId,
+          metadata: tenantAuditMetadata,
+        },
+      });
+
+      await writeBillingAuditLog({
+        client: adminSupabase,
+        audit: {
+          orgRootClinicId: normalizedInput.clinic.parent_id,
+          actorType: 'user',
+          actorUserId: auth.id,
+          eventType: 'billing.tenant_pending_created',
+          afterState: data,
+          requestId,
+          metadata: tenantAuditMetadata,
+        },
+      });
+    }
+
     let adminAccount: ClinicAdminAccount | null = null;
 
     if (
@@ -1029,10 +1085,62 @@ export async function POST(request: NextRequest) {
     ) {
       if (storeActivationPlan.requiresStripeQuantityIncrease) {
         try {
-          await ensureStripeStoreAddOnQuantity({
+          const requestId = request.headers.get('x-request-id');
+          await writeBillingAuditLog({
+            client: adminSupabase,
+            audit: {
+              orgRootClinicId: normalizedInput.clinic.parent_id,
+              actorType: 'user',
+              actorUserId: auth.id,
+              eventType: 'billing.stripe_store_addon_quantity_change_initiated',
+              beforeState: tenantBillingSubscription,
+              afterState: {
+                target_paid_extra_store_quantity:
+                  storeActivationPlan.targetPaidExtraStoreQuantity,
+              },
+              requestId,
+              metadata: {
+                child_clinic_id: data.id,
+                stripe_subscription_id:
+                  tenantBillingSubscription.stripe_subscription_id,
+                stripe_store_subscription_item_id:
+                  tenantBillingSubscription.stripe_store_subscription_item_id,
+                current_paid_extra_store_quantity:
+                  tenantBillingSubscription.paid_extra_store_quantity,
+                target_paid_extra_store_quantity:
+                  storeActivationPlan.targetPaidExtraStoreQuantity,
+              },
+            },
+          });
+          const storeAddOnResult = await ensureStripeStoreAddOnQuantity({
             subscription: tenantBillingSubscription,
             targetPaidExtraStoreQuantity:
               storeActivationPlan.targetPaidExtraStoreQuantity,
+          });
+          await writeBillingAuditLog({
+            client: adminSupabase,
+            audit: {
+              orgRootClinicId: normalizedInput.clinic.parent_id,
+              actorType: 'user',
+              actorUserId: auth.id,
+              eventType: 'billing.stripe_store_addon_quantity_change_completed',
+              beforeState: tenantBillingSubscription,
+              afterState: {
+                paid_extra_store_quantity:
+                  storeActivationPlan.targetPaidExtraStoreQuantity,
+                stripe_store_addon_sync: storeAddOnResult,
+              },
+              requestId,
+              metadata: {
+                child_clinic_id: data.id,
+                stripe_subscription_id:
+                  tenantBillingSubscription.stripe_subscription_id,
+                stripe_store_subscription_item_id:
+                  storeAddOnResult.subscriptionItemId,
+                target_paid_extra_store_quantity:
+                  storeActivationPlan.targetPaidExtraStoreQuantity,
+              },
+            },
           });
           responseStatus = 202;
           billingActivationResult = { status: 'pending_webhook' };

@@ -76,6 +76,8 @@ type PostgresReservationError = {
 };
 const RESERVATION_INSERT_RETURN_SELECT =
   'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
+const RESERVATION_UPDATE_RETURN_SELECT =
+  'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, updated_at';
 const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
   'マネージャーは予約の作成はできません。';
 const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
@@ -867,7 +869,7 @@ export async function PATCH(request: NextRequest) {
       .update(updatePayload)
       .eq('id', dto.id)
       .eq('clinic_id', dto.clinic_id)
-      .select()
+      .select(RESERVATION_UPDATE_RETURN_SELECT)
       .single();
 
     if (error) {
@@ -922,7 +924,32 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    return createSuccessResponse(data);
+    const { data: viewRow, error: viewError } = await reservationMutationClient
+      .from('reservation_list_view')
+      .select(RESERVATION_LIST_SELECT)
+      .eq('clinic_id', dto.clinic_id)
+      .eq('id', data.id)
+      .maybeSingle();
+
+    if (viewError) {
+      throw normalizeSupabaseError(viewError, PATH);
+    }
+
+    if (!viewRow) {
+      logger.error(
+        'Updated reservation is not visible in reservation_list_view',
+        {
+          reservationId: data.id,
+          clinicId: dto.clinic_id,
+        }
+      );
+      return createErrorResponse(
+        '予約は更新されましたが、予約一覧への反映に失敗しました',
+        500
+      );
+    }
+
+    return createSuccessResponse(mapReservationListViewRow(viewRow));
   } catch (error) {
     return handleRouteError(error, PATH);
   }

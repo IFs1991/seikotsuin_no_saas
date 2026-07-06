@@ -16,15 +16,18 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { AppError } from '@/lib/error-handler';
 import {
   ADMIN_UI_ROLES,
   canAccessAdminUIWithCompat,
 } from '@/lib/constants/roles';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
 import {
   createScopedAdminContext,
   ScopeAccessError,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
+import type { Database, Json } from '@/types/supabase';
 
 // ステータス定義
 const VALID_STATUSES = [
@@ -38,10 +41,25 @@ type EventStatus = (typeof VALID_STATUSES)[number];
 // 重要度定義
 const SEVERITY_LEVELS = ['info', 'warning', 'error', 'critical'] as const;
 type SeverityLevel = (typeof SEVERITY_LEVELS)[number];
+type SecurityEventInsert =
+  Database['public']['Tables']['security_events']['Insert'];
+type SecurityEventUpdate =
+  Database['public']['Tables']['security_events']['Update'];
+
+const jsonSchema: z.ZodType<Json> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonSchema),
+    z.record(jsonSchema),
+  ])
+);
 
 // イベント更新スキーマ
-// 注意: clinic_idはリクエストから受け取らず、JWTのpermissionsから取得する（設計改善）
 const UpdateEventSchema = z.object({
+  clinic_id: z.string().uuid('有効なclinic_idを指定してください'),
   id: z.string().uuid('有効なイベントIDを指定してください'),
   status: z.enum(VALID_STATUSES).optional(),
   resolution_notes: z
@@ -64,12 +82,13 @@ const CreateEventSchema = z.object({
   ip_address: z.string().optional(),
   user_agent: z.string().optional(),
   source_component: z.string().optional(),
-  event_data: z.record(z.unknown()).optional(),
+  event_data: jsonSchema.optional(),
 });
 
 // 管理者権限チェック（定数化 + 互換マッピング対応）
 // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md (DOD-08)
 const isAdmin = (role: string) => canAccessAdminUIWithCompat(role);
+const PATH = '/api/admin/security/events';
 
 /**
  * GET /api/admin/security/events
@@ -90,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { supabase, auth } = processResult;
@@ -156,15 +175,10 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
-    const { supabase, auth, permissions, body } = processResult;
-
-    // 管理者権限チェック
-    if (!isAdmin(permissions.role)) {
-      return createErrorResponse('管理者権限が必要です', 403);
-    }
+    const { auth, body } = processResult;
 
     // バリデーション
     const parseResult = UpdateEventSchema.safeParse(body);
@@ -177,18 +191,42 @@ export async function PATCH(request: NextRequest) {
       return createErrorResponse(firstError, 400, errors);
     }
 
-    const { id, status, resolution_notes, actions_taken, assigned_to } =
-      parseResult.data;
+    const {
+      clinic_id,
+      id,
+      status,
+      resolution_notes,
+      actions_taken,
+      assigned_to,
+    } = parseResult.data;
 
-    // clinic_idはJWT/permissionsから取得（リクエストから受け取らない）
-    // これにより、テナント間データ漏洩のリスクを根本的に排除
-    const clinic_id = permissions.clinic_id;
-    if (!clinic_id) {
-      return createErrorResponse('クリニックIDが特定できません', 403);
+    let guard;
+    try {
+      guard = await ensureClinicAccess(request, PATH, clinic_id, {
+        requireClinicMatch: true,
+        allowedRoles: Array.from(ADMIN_UI_ROLES),
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        return createErrorResponse(
+          error.message,
+          error.statusCode,
+          undefined,
+          error.code
+        );
+      }
+      throw error;
+    }
+
+    const { supabase, permissions } = guard;
+
+    // 管理者権限チェック
+    if (!isAdmin(permissions.role)) {
+      return createErrorResponse('管理者権限が必要です', 403);
     }
 
     // 更新データ構築
-    const updateData: Record<string, unknown> = {
+    const updateData: SecurityEventUpdate = {
       updated_at: new Date().toISOString(),
     };
 
@@ -275,7 +313,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { auth, permissions, body } = processResult;
@@ -309,15 +347,28 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = adminCtx.client;
 
+    const now = new Date().toISOString();
+    const insertPayload: SecurityEventInsert = {
+      clinic_id: eventData.clinic_id,
+      event_type: eventData.event_type,
+      event_category: eventData.event_category,
+      severity_level: eventData.severity_level,
+      event_description: eventData.event_description,
+      user_id: eventData.user_id,
+      session_id: eventData.session_id,
+      ip_address: eventData.ip_address,
+      user_agent: eventData.user_agent,
+      source_component: eventData.source_component,
+      event_data: eventData.event_data ?? {},
+      status: 'new',
+      created_at: now,
+      updated_at: now,
+    };
+
     // イベント作成
     const { data: createdEvent, error: eventError } = await adminSupabase
       .from('security_events')
-      .insert({
-        ...eventData,
-        status: 'new',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as any)
+      .insert(insertPayload)
       .select()
       .single();
 

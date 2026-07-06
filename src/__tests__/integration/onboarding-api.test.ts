@@ -308,18 +308,21 @@ describe('Onboarding API Integration', () => {
         staffUpdateBuilder,
       ];
 
-      mockSupabaseClient.from.mockImplementation((table: string) => {
-        if (table === 'profiles') {
-          return profileBuilder;
-        }
-
-        return createQueryBuilder();
-      });
-
       const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
       const profileUpdateBuilder = createQueryBuilder({});
+      const profileBuilders = [profileBuilder, profileUpdateBuilder];
+      const permissionLookupBuilder = createQueryBuilder(null);
       const permissionUpsertBuilder = createQueryBuilder({});
+      const permissionBuilders = [
+        permissionLookupBuilder,
+        permissionUpsertBuilder,
+      ];
+      const onboardingStateLookupBuilder = createQueryBuilder(null);
       const onboardingStateUpsertBuilder = createQueryBuilder({});
+      const onboardingStateBuilders = [
+        onboardingStateLookupBuilder,
+        onboardingStateUpsertBuilder,
+      ];
 
       mockAdminSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'staff') {
@@ -331,15 +334,15 @@ describe('Onboarding API Integration', () => {
         }
 
         if (table === 'profiles') {
-          return profileUpdateBuilder;
+          return profileBuilders.shift() ?? createQueryBuilder();
         }
 
         if (table === 'user_permissions') {
-          return permissionUpsertBuilder;
+          return permissionBuilders.shift() ?? createQueryBuilder();
         }
 
         if (table === 'onboarding_states') {
-          return onboardingStateUpsertBuilder;
+          return onboardingStateBuilders.shift() ?? createQueryBuilder();
         }
 
         return createQueryBuilder();
@@ -420,6 +423,181 @@ describe('Onboarding API Integration', () => {
           email: 'test@example.com',
         })
       );
+    });
+
+    test('既存の user_permissions があるユーザーはオンボーディングでクリニック作成できない', async () => {
+      const permissionLookupBuilder = createQueryBuilder({
+        staff_id: 'test-user-id',
+      });
+      const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'user_permissions') {
+          return permissionLookupBuilder;
+        }
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+        return createQueryBuilder();
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+      const response = await POST(
+        createMockRequest('/api/onboarding/clinic', {
+          method: 'POST',
+          body: { name: 'テストクリニック' },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(clinicInsertBuilder.insert).not.toHaveBeenCalled();
+    });
+
+    test('profiles.clinic_id があるユーザーはオンボーディングでクリニック作成できない', async () => {
+      const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'user_permissions') {
+          return createQueryBuilder(null);
+        }
+        if (table === 'profiles') {
+          return createQueryBuilder({
+            full_name: '山田太郎',
+            clinic_id: 'existing-clinic',
+          });
+        }
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+        return createQueryBuilder();
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+      const response = await POST(
+        createMockRequest('/api/onboarding/clinic', {
+          method: 'POST',
+          body: { name: 'テストクリニック' },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(clinicInsertBuilder.insert).not.toHaveBeenCalled();
+    });
+
+    test('staff.clinic_id があるユーザーはオンボーディングでクリニック作成できない', async () => {
+      const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'user_permissions') {
+          return createQueryBuilder(null);
+        }
+        if (table === 'profiles') {
+          return createQueryBuilder({ full_name: '山田太郎', clinic_id: null });
+        }
+        if (table === 'staff') {
+          return createQueryBuilder({
+            id: 'test-user-id',
+            clinic_id: 'existing-clinic',
+          });
+        }
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+        return createQueryBuilder();
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+      const response = await POST(
+        createMockRequest('/api/onboarding/clinic', {
+          method: 'POST',
+          body: { name: 'テストクリニック' },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(clinicInsertBuilder.insert).not.toHaveBeenCalled();
+    });
+
+    test('完了済み onboarding state があるユーザーはオンボーディングでクリニック作成できない', async () => {
+      const clinicInsertBuilder = createQueryBuilder({ id: 'clinic-1' });
+
+      mockAdminSupabaseClient.from.mockImplementation((table: string) => {
+        if (table === 'user_permissions') {
+          return createQueryBuilder(null);
+        }
+        if (table === 'profiles') {
+          return createQueryBuilder({ full_name: '山田太郎', clinic_id: null });
+        }
+        if (table === 'staff') {
+          return createQueryBuilder({ id: 'test-user-id', clinic_id: null });
+        }
+        if (table === 'onboarding_states') {
+          return createQueryBuilder({
+            clinic_id: null,
+            current_step: 'completed',
+            completed_at: '2026-07-07T00:00:00.000Z',
+          });
+        }
+        if (table === 'clinics') {
+          return clinicInsertBuilder;
+        }
+        return createQueryBuilder();
+      });
+
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      supabaseModule.createAdminClient.mockImplementation(
+        () => mockAdminSupabaseClient
+      );
+
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+      const response = await POST(
+        createMockRequest('/api/onboarding/clinic', {
+          method: 'POST',
+          body: { name: 'テストクリニック' },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(clinicInsertBuilder.insert).not.toHaveBeenCalled();
+    });
+
+    test('parent_id を指定したオンボーディング作成は拒否される', async () => {
+      const { POST } = await import('@/app/api/onboarding/clinic/route');
+
+      const response = await POST(
+        createMockRequest('/api/onboarding/clinic', {
+          method: 'POST',
+          body: {
+            name: 'テストクリニック',
+            parent_id: '11111111-1111-4111-8111-111111111111',
+          },
+        })
+      );
+
+      expect(response.status).toBe(400);
     });
 
     test('空のクリニック名は400エラーを返す', async () => {

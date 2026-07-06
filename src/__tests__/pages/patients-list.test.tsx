@@ -1,3 +1,10 @@
+/** @jest-environment jsdom */
+
+import React from 'react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { usePatientsList } from '@/hooks/usePatientsList';
+import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
+
 // モックデータ
 const mockCustomers = [
   {
@@ -27,6 +34,9 @@ const mockCustomers = [
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+const profileClinicId = '00000000-0000-0000-0000-0000000000a1';
+const selectedClinicId = '00000000-0000-0000-0000-0000000000b2';
+
 // 認証コンテキストモック
 jest.mock('@/providers/user-profile-context', () => ({
   useUserProfileContext: () => ({
@@ -50,6 +60,35 @@ describe('患者一覧ページ', () => {
   });
 
   describe('一覧表示', () => {
+    it('selected active clinicで患者一覧APIを取得する', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: mockCustomers }),
+      });
+
+      renderHook(() => usePatientsList(), {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <SelectedClinicProvider
+            initialClinicId={selectedClinicId}
+            currentClinicId={profileClinicId}
+            clinics={[
+              { id: profileClinicId, name: '本院' },
+              { id: selectedClinicId, name: '分院' },
+            ]}
+          >
+            {children}
+          </SelectedClinicProvider>
+        ),
+      });
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining(`clinic_id=${selectedClinicId}`),
+          expect.objectContaining({ credentials: 'include' })
+        );
+      });
+    });
+
     it('患者一覧がAPI経由で取得される', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

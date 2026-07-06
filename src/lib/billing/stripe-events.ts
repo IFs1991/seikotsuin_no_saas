@@ -431,21 +431,58 @@ async function handleCheckoutSessionCompleted(input: {
 async function handleCheckoutSessionExpired(input: {
   client: SupabaseServerClient;
   session: Stripe.Checkout.Session;
+  stripeEventId: string;
+  source: StripeEventProcessingSource;
+  internalActor?: string | null;
+  requestId?: string | null;
 }) {
+  const beforeResult = await input.client
+    .from('subscriptions')
+    .select('*')
+    .eq('stripe_checkout_session_id', input.session.id)
+    .is('stripe_subscription_id', null)
+    .maybeSingle();
+
+  if (beforeResult.error) {
+    throw beforeResult.error;
+  }
+
+  const before = beforeResult.data ?? null;
+  const updatePayload = {
+    billing_state: 'none',
+    stripe_checkout_session_id: null,
+    checkout_started_at: null,
+    checkout_expires_at: null,
+    checkout_plan_code: null,
+  };
   const { error } = await input.client
     .from('subscriptions')
-    .update({
-      billing_state: 'none',
-      stripe_checkout_session_id: null,
-      checkout_started_at: null,
-      checkout_expires_at: null,
-      checkout_plan_code: null,
-    })
+    .update(updatePayload)
     .eq('stripe_checkout_session_id', input.session.id)
     .is('stripe_subscription_id', null);
 
   if (error) {
     throw error;
+  }
+
+  if (before) {
+    await writeBillingAuditLog({
+      client: input.client,
+      audit: {
+        orgRootClinicId: before.org_root_clinic_id,
+        actorType: input.source === 'stripe_webhook' ? 'stripe' : 'internal',
+        internalActor: input.internalActor ?? null,
+        eventType: 'billing.checkout_expired',
+        beforeState: before,
+        afterState: updatePayload,
+        stripeEventId: input.stripeEventId,
+        requestId: input.requestId ?? null,
+        metadata: {
+          source: input.source,
+          stripe_checkout_session_id: input.session.id,
+        },
+      },
+    });
   }
 }
 
@@ -665,6 +702,10 @@ export async function processStripeEvent(input: {
       await handleCheckoutSessionExpired({
         client: input.client,
         session: eventObject,
+        stripeEventId: input.event.id,
+        source: input.source,
+        internalActor: input.internalActor ?? null,
+        requestId: input.requestId ?? null,
       });
       return 'processed' satisfies WebhookProcessingStatus;
 

@@ -96,7 +96,7 @@ function createQuery(result: () => QueryResult | Promise<QueryResult>) {
 }
 
 function nextResult(queue: QueryResult[], fallback: QueryResult): QueryResult {
-  return queue.length > 0 ? queue.shift() ?? fallback : fallback;
+  return queue.length > 0 ? (queue.shift() ?? fallback) : fallback;
 }
 
 function buildMockClient(options: MockClientOptions = {}): MockClient {
@@ -242,7 +242,9 @@ function setupClinicContext(client: MockClient): void {
   });
 }
 
-function buildGetRequest(token: string | null = 'id-token-001'): RouteGetRequest {
+function buildGetRequest(
+  token: string | null = 'id-token-001'
+): RouteGetRequest {
   return {
     nextUrl: new URL(
       `https://example.com/api/public/my-reservations?clinic_id=${CLINIC_ID}`
@@ -317,9 +319,8 @@ describe('LIFF my-reservations public APIs', () => {
       audience: '2000000001',
     });
     const myRoute = await import('@/app/api/public/my-reservations/route');
-    const cancelRoute = await import(
-      '@/app/api/public/reservations/[id]/cancel/route'
-    );
+    const cancelRoute =
+      await import('@/app/api/public/reservations/[id]/cancel/route');
     GET = myRoute.GET as (request: RouteGetRequest) => Promise<RouteResponse>;
     PATCH = myRoute.PATCH as (
       request: RouteJsonRequest
@@ -348,9 +349,7 @@ describe('LIFF my-reservations public APIs', () => {
   it('検証済みline_user_idに紐づく将来予約だけを返す', async () => {
     const client = buildMockClient({
       customerSelectResults: [{ data: baseCustomer(), error: null }],
-      reservationSelectResults: [
-        { data: [baseReservation()], error: null },
-      ],
+      reservationSelectResults: [{ data: [baseReservation()], error: null }],
     });
     setupClinicContext(client);
 
@@ -383,6 +382,35 @@ describe('LIFF my-reservations public APIs', () => {
       'customer_id',
       CUSTOMER_ID
     );
+  });
+
+  it('別LINEで作られた顧客からは被害者予約を参照できない', async () => {
+    const client = buildMockClient({
+      customerSelectResults: [{ data: null, error: null }],
+      reservationSelectResults: [{ data: [baseReservation()], error: null }],
+    });
+    setupClinicContext(client);
+
+    const response = await GET(buildGetRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      success: true,
+      data: {
+        customer: null,
+        reservations: [],
+      },
+    });
+    expect(client.customerSelectChains[0].eq).toHaveBeenCalledWith(
+      'clinic_id',
+      CLINIC_ID
+    );
+    expect(client.customerSelectChains[0].eq).toHaveBeenCalledWith(
+      'line_user_id',
+      LINE_USER_ID
+    );
+    expect(client.reservationSelectChains).toHaveLength(0);
   });
 
   it('opt-outトグルは本人のline_user_id一致でのみ更新する', async () => {
