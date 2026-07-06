@@ -9,6 +9,7 @@ import {
   sanitizeBookingFormSettings,
 } from '@/lib/booking-form/settings';
 import { getPublicLineBookingMetadata } from '@/lib/line/public-booking';
+import { getPublicTurnstileSiteKey } from '@/lib/turnstile';
 import { bookingFormQuerySchema } from '../schema';
 
 function noStoreJson(body: unknown, init?: ResponseInit) {
@@ -76,6 +77,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         ...sanitizeBookingFormSettings(settings),
+        turnstile_site_key: getPublicTurnstileSiteKey(),
         ...lineMetadata,
       },
     });

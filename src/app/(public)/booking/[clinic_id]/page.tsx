@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -116,6 +117,32 @@ const STEP_LABELS = [
   '確認',
   '完了',
 ] as const;
+const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-api';
+const TURNSTILE_SCRIPT_SRC =
+  'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+type TurnstileRenderOptions = {
+  sitekey: string;
+  callback: (token: string) => void;
+  'expired-callback': () => void;
+  'error-callback': () => void;
+  theme: 'light' | 'dark' | 'auto';
+  size: 'normal' | 'compact' | 'flexible';
+};
+
+type TurnstileApi = {
+  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+  reset: (widgetId?: string) => void;
+  remove?: (widgetId: string) => void;
+};
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+let turnstileScriptPromise: Promise<void> | null = null;
 
 const getFirstParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -154,6 +181,48 @@ const formatResponseValue = (value: BookingFormResponseValue | undefined) => {
   if (Array.isArray(value)) return value.join('、');
   return value;
 };
+
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve();
+  }
+
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+
+  if (turnstileScriptPromise) {
+    return turnstileScriptPromise;
+  }
+
+  turnstileScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById(TURNSTILE_SCRIPT_ID);
+    if (existing instanceof HTMLScriptElement) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener(
+        'error',
+        () => reject(new Error('Turnstile script failed to load')),
+        { once: true }
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = TURNSTILE_SCRIPT_ID;
+    script.src = TURNSTILE_SCRIPT_SRC;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener('load', () => resolve(), { once: true });
+    script.addEventListener(
+      'error',
+      () => reject(new Error('Turnstile script failed to load')),
+      { once: true }
+    );
+    document.head.appendChild(script);
+  });
+
+  return turnstileScriptPromise;
+}
 
 async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
@@ -433,6 +502,108 @@ function QuestionInput({
   );
 }
 
+function TurnstileWidget({
+  siteKey,
+  resetSignal,
+  onTokenChange,
+}: {
+  siteKey: string;
+  resetSignal: number;
+  onTokenChange: (token: string | null) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+  const onTokenChangeRef = useRef(onTokenChange);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    onTokenChangeRef.current = onTokenChange;
+  }, [onTokenChange]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadError(false);
+    onTokenChangeRef.current(null);
+
+    const renderWidget = async () => {
+      try {
+        await loadTurnstileScript();
+        if (cancelled) return;
+
+        const container = containerRef.current;
+        const api = window.turnstile;
+        if (!container || !api) {
+          throw new Error('Turnstile API is unavailable');
+        }
+
+        if (widgetIdRef.current && api.remove) {
+          api.remove(widgetIdRef.current);
+        }
+        container.replaceChildren();
+
+        widgetIdRef.current = api.render(container, {
+          sitekey: siteKey,
+          callback: token => {
+            if (!cancelled) {
+              onTokenChangeRef.current(token);
+            }
+          },
+          'expired-callback': () => {
+            if (!cancelled) {
+              onTokenChangeRef.current(null);
+            }
+          },
+          'error-callback': () => {
+            if (!cancelled) {
+              onTokenChangeRef.current(null);
+              setLoadError(true);
+            }
+          },
+          theme: 'light',
+          size: 'flexible',
+        });
+      } catch {
+        if (!cancelled) {
+          setLoadError(true);
+          onTokenChangeRef.current(null);
+        }
+      }
+    };
+
+    void renderWidget();
+
+    return () => {
+      cancelled = true;
+      const widgetId = widgetIdRef.current;
+      const api = window.turnstile;
+      if (widgetId && api?.remove) {
+        api.remove(widgetId);
+      }
+      widgetIdRef.current = null;
+      containerRef.current?.replaceChildren();
+    };
+  }, [siteKey]);
+
+  useEffect(() => {
+    const widgetId = widgetIdRef.current;
+    const api = window.turnstile;
+    if (!widgetId || !api) return;
+    api.reset(widgetId);
+    onTokenChangeRef.current(null);
+  }, [resetSignal]);
+
+  return (
+    <div className='rounded-md border border-slate-200 bg-white p-3'>
+      <div ref={containerRef} className='min-h-[65px]' />
+      {loadError && (
+        <p className='mt-2 text-sm text-amber-700' role='status'>
+          スパム対策の確認を読み込めません。ページを再読み込みしてください。
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function PublicBookingForm({
   clinicId,
   embedded = false,
@@ -485,6 +656,8 @@ export function PublicBookingForm({
     Record<string, boolean>
   >({});
   const [lineIdToken, setLineIdToken] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
 
   useEffect(() => {
     if (!clinicId) {
@@ -603,6 +776,11 @@ export function PublicBookingForm({
   }, [bookingData?.bookingForm.liff_id, previewMode]);
 
   useEffect(() => {
+    setTurnstileToken(null);
+    setTurnstileResetSignal(value => value + 1);
+  }, [bookingData?.bookingForm.turnstile_site_key, lineIdToken]);
+
+  useEffect(() => {
     if (!clinicId || !formData.menuId || !formData.resourceId) return;
 
     const controller = new AbortController();
@@ -677,6 +855,9 @@ export function PublicBookingForm({
   );
   const hasQuestionStep =
     bookingForm.questions.length > 0 || bookingForm.consents.length > 0;
+  const isTurnstileRequired = Boolean(
+    bookingForm.turnstile_site_key && !lineIdToken && !previewMode
+  );
 
   const hasBookableChoices = menus.length > 0 && resources.length > 0;
   const canContinue = useMemo(() => {
@@ -750,16 +931,24 @@ export function PublicBookingForm({
       );
       return questionsOk && consentsOk;
     }
-    if (step === 6) return !submitting && !previewMode;
+    if (step === 6) {
+      return (
+        !submitting &&
+        !previewMode &&
+        (!isTurnstileRequired || Boolean(turnstileToken))
+      );
+    }
     return false;
   }, [
     bookingForm,
     consentResponses,
     formData,
+    isTurnstileRequired,
     previewMode,
     questionResponses,
     step,
     submitting,
+    turnstileToken,
   ]);
 
   const setField = useCallback(
@@ -878,6 +1067,10 @@ export function PublicBookingForm({
         throw new Error('選択した枠は受付できなくなりました');
       }
 
+      if (isTurnstileRequired && !turnstileToken) {
+        throw new Error('スパム対策の確認が完了していません');
+      }
+
       const response = await fetch('/api/public/reservations', {
         method: 'POST',
         headers: {
@@ -901,6 +1094,7 @@ export function PublicBookingForm({
           ),
           consents: consentResponses,
           line_id_token: lineIdToken ?? undefined,
+          turnstile_token: isTurnstileRequired ? turnstileToken : undefined,
         }),
       });
       const json = (await response.json()) as ApiEnvelope<{
@@ -925,6 +1119,10 @@ export function PublicBookingForm({
         message:
           error instanceof Error ? error.message : '予約の作成に失敗しました',
       });
+      if (isTurnstileRequired) {
+        setTurnstileToken(null);
+        setTurnstileResetSignal(value => value + 1);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -932,10 +1130,12 @@ export function PublicBookingForm({
     canContinue,
     clinicId,
     formData,
+    isTurnstileRequired,
     lineIdToken,
     questionResponses,
     consentResponses,
     selectedMenu,
+    turnstileToken,
     validateSelectedSlot,
   ]);
 
@@ -1525,6 +1725,13 @@ export function PublicBookingForm({
             <div className='rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800'>
               プレビューでは予約送信を無効化しています。
             </div>
+          )}
+          {isTurnstileRequired && bookingForm.turnstile_site_key && (
+            <TurnstileWidget
+              siteKey={bookingForm.turnstile_site_key}
+              resetSignal={turnstileResetSignal}
+              onTokenChange={setTurnstileToken}
+            />
           )}
           <NavigationButtons
             step={step}

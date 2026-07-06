@@ -39,6 +39,7 @@ export const ERROR_CODES = {
   // 外部サービスエラー
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   AI_SERVICE_ERROR: 'AI_SERVICE_ERROR',
+  CAPTCHA_FAILED: 'CAPTCHA_FAILED',
 
   // ビジネスロジックエラー
   CLINIC_NOT_FOUND: 'CLINIC_NOT_FOUND',
@@ -76,6 +77,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
   [ERROR_CODES.EXTERNAL_SERVICE_ERROR]: '外部サービスエラー',
   [ERROR_CODES.AI_SERVICE_ERROR]: 'AIサービスエラー',
+  [ERROR_CODES.CAPTCHA_FAILED]: 'スパム対策の確認に失敗しました',
 
   [ERROR_CODES.CLINIC_NOT_FOUND]: '店舗が見つかりません',
   [ERROR_CODES.PATIENT_NOT_FOUND]: '患者が見つかりません',
@@ -157,6 +159,7 @@ export function getStatusCodeFromErrorCode(code: string): number {
     case ERROR_CODES.INVALID_VALUE:
     case ERROR_CODES.INVALID_DATE_RANGE:
     case ERROR_CODES.CONSTRAINT_VIOLATION:
+    case ERROR_CODES.CAPTCHA_FAILED:
       return 400;
     case ERROR_CODES.UNAUTHORIZED:
     case ERROR_CODES.INVALID_CREDENTIALS:

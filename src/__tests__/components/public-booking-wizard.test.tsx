@@ -48,6 +48,7 @@ describe('PublicBookingForm wizard', () => {
   let bookingFormData: ReturnType<typeof defaultBookingFormData> & {
     liff_id?: string;
     oa_basic_id?: string;
+    turnstile_site_key?: string;
   };
 
   beforeEach(() => {
@@ -164,6 +165,8 @@ describe('PublicBookingForm wizard', () => {
     mockLiffInit.mockReset();
     mockLiffGetIDToken.mockReset();
     mockLiffGetProfile.mockReset();
+    Reflect.deleteProperty(window, 'turnstile');
+    document.getElementById('cloudflare-turnstile-api')?.remove();
   });
 
   it('Step 1から完了まで遷移し、指名なし予約を送信する', async () => {
@@ -219,6 +222,48 @@ describe('PublicBookingForm wizard', () => {
     expect(body.resource_id).toBe('any');
     expect(body.start_time).toContain('+09:00');
     expect(body.line_id_token).toBeUndefined();
+  });
+
+  it('Turnstile有効時は確認画面で取得したtokenを予約POSTに同梱する', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      turnstile_site_key: 'turnstile-site-key',
+    };
+    const turnstile = installTurnstileMock('turnstile-token-001');
+    const user = userEvent.setup();
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} />);
+
+    expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(await screen.findByRole('button', { name: '10:00' }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.type(screen.getByPlaceholderText('山田 太郎'), '山田 太郎');
+    await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+
+    expect(await screen.findByText('Turnstile widget')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(turnstile.render).toHaveBeenCalledTimes(1);
+    });
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+
+    const reservationCall = fetchMock.mock.calls.find(call => {
+      const url = String(call[0]);
+      const init = call[1];
+      return url === '/api/public/reservations' && init?.method === 'POST';
+    });
+    const body = JSON.parse(String(reservationCall?.[1]?.body)) as {
+      turnstile_token?: string;
+    };
+    expect(body.turnstile_token).toBe('turnstile-token-001');
   });
 
   it('LIFF初期化成功時はIDトークンを同梱し、表示名を氏名初期値に使う', async () => {
@@ -308,3 +353,27 @@ describe('PublicBookingForm wizard', () => {
     expect(body.line_id_token).toBeUndefined();
   });
 });
+
+type TurnstileRenderOptions = Parameters<
+  NonNullable<Window['turnstile']>['render']
+>[1];
+
+function installTurnstileMock(token: string) {
+  const render = jest.fn(
+    (container: HTMLElement, options: TurnstileRenderOptions) => {
+      const marker = document.createElement('div');
+      marker.textContent = 'Turnstile widget';
+      container.appendChild(marker);
+      options.callback(token);
+      return 'turnstile-widget-001';
+    }
+  );
+  const reset = jest.fn();
+  const remove = jest.fn();
+  Object.defineProperty(window, 'turnstile', {
+    configurable: true,
+    value: { render, reset, remove },
+  });
+
+  return { render, reset, remove };
+}

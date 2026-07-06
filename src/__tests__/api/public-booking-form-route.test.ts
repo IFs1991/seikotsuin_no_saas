@@ -5,6 +5,9 @@ const ORIGINAL_LINE_CREDENTIALS_ENCRYPTION_KEY =
   process.env.LINE_CREDENTIALS_ENCRYPTION_KEY;
 const ORIGINAL_ENABLE_LIFF_BOOKING =
   process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
+const ORIGINAL_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+const ORIGINAL_TURNSTILE_SITE_KEY =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -101,6 +104,8 @@ describe('GET /api/public/booking-form', () => {
     jest.clearAllMocks();
     process.env.LINE_CREDENTIALS_ENCRYPTION_KEY = '';
     process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING = 'false';
+    restoreEnvValue('TURNSTILE_SECRET_KEY', undefined);
+    restoreEnvValue('NEXT_PUBLIC_TURNSTILE_SITE_KEY', undefined);
     const mod = await import('@/app/api/public/booking-form/route');
     GET = mod.GET as (
       request: ReturnType<typeof buildRequest>
@@ -115,6 +120,11 @@ describe('GET /api/public/booking-form', () => {
     restoreEnvValue(
       'NEXT_PUBLIC_ENABLE_LIFF_BOOKING',
       ORIGINAL_ENABLE_LIFF_BOOKING
+    );
+    restoreEnvValue('TURNSTILE_SECRET_KEY', ORIGINAL_TURNSTILE_SECRET_KEY);
+    restoreEnvValue(
+      'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
+      ORIGINAL_TURNSTILE_SITE_KEY
     );
   });
 
@@ -223,6 +233,36 @@ describe('GET /api/public/booking-form', () => {
       },
     });
     expect(JSON.stringify(data)).not.toContain('2000000001');
+  });
+
+  it('Turnstile site keyはsecretとsite keyの両方がある場合だけ返す', async () => {
+    mockCreatePublicClinicContext.mockResolvedValue({
+      client: buildSettingsClient(null),
+      clinic: { id: CLINIC_ID, name: 'テスト整骨院' },
+    });
+
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
+    const disabledResponse = await GET(buildRequest());
+    const disabledData = await disabledResponse.json();
+    expect(disabledResponse.status).toBe(200);
+    expect(disabledData).toMatchObject({
+      success: true,
+      data: {
+        turnstile_site_key: undefined,
+      },
+    });
+
+    process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
+    const enabledResponse = await GET(buildRequest());
+    const enabledData = await enabledResponse.json();
+    expect(enabledResponse.status).toBe(200);
+    expect(enabledData).toMatchObject({
+      success: true,
+      data: {
+        turnstile_site_key: 'turnstile-site-key',
+      },
+    });
+    expect(JSON.stringify(enabledData)).not.toContain('turnstile-secret');
   });
 });
 
