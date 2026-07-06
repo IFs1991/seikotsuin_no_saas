@@ -304,7 +304,7 @@ describe('PatientsPage', () => {
     expect(screen.getByText('35人')).toBeInTheDocument();
   });
 
-  test('manager should render assigned clinic analysis without calling single-clinic analysis hook', () => {
+  test('manager should render assigned clinic analysis without calling single-clinic analysis hook', async () => {
     mockUseUserProfileContext.mockReturnValue({
       profile: {
         id: 'manager-1',
@@ -324,11 +324,12 @@ describe('PatientsPage', () => {
     expect(mockUseManagerPatientAnalysis).toHaveBeenCalled();
     expect(screen.getByText('担当院合計')).toBeInTheDocument();
     expect(screen.getByText('担当院別分析')).toBeInTheDocument();
-    expect(screen.getByText('売上推移')).toBeInTheDocument();
+    expect(await screen.findByText('売上推移')).toBeInTheDocument();
     expect(
       screen.getByText(/担当院の患者動向を期間別に確認できます。/)
     ).toBeInTheDocument();
     expect(screen.getAllByText('池袋院').length).toBeGreaterThan(0);
+    expect(screen.getByText('再来促進')).toBeInTheDocument();
     expect(screen.queryByText('患者一覧')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '連絡する' })).toBeNull();
   });

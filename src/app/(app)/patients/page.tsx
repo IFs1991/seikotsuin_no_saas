@@ -26,6 +26,10 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  OutreachCampaignBuilder,
+  type OutreachClinicOption,
+} from '@/components/outreach/outreach-campaign-builder';
 
 const PAGE_CLASS = 'min-h-screen bg-background p-4 sm:p-6';
 const CONTENT_CLASS = 'mx-auto max-w-[960px] space-y-6';
@@ -88,8 +92,19 @@ const MANAGER_TARGET_OPTIONS: Array<{
   { value: 'clinic', label: '選択院' },
 ];
 
+type PatientTabId = 'analysis' | 'outreach';
+
 function isManagerRole(role: string | null | undefined): boolean {
   return normalizeRole(role) === 'manager';
+}
+
+function canUseOutreach(role: string | null | undefined): boolean {
+  const normalizedRole = normalizeRole(role);
+  return (
+    normalizedRole === 'admin' ||
+    normalizedRole === 'clinic_admin' ||
+    normalizedRole === 'manager'
+  );
 }
 
 function formatCurrency(value: number) {
@@ -147,15 +162,46 @@ function PageMessage({
   );
 }
 
-const PatientTabs = React.memo(function PatientTabs() {
+const PatientTabs = React.memo(function PatientTabs({
+  activeTab,
+  showOutreach,
+  showListLink,
+  onTabChange,
+}: {
+  activeTab: PatientTabId;
+  showOutreach: boolean;
+  showListLink: boolean;
+  onTabChange: (tab: PatientTabId) => void;
+}) {
   return (
     <div className='flex space-x-2'>
-      <span className={ACTIVE_TAB_CLASS} aria-current='page'>
+      <button
+        type='button'
+        className={
+          activeTab === 'analysis' ? ACTIVE_TAB_CLASS : INACTIVE_TAB_CLASS
+        }
+        aria-current={activeTab === 'analysis' ? 'page' : undefined}
+        onClick={() => onTabChange('analysis')}
+      >
         患者分析
-      </span>
-      <Link href='/patients/list' className={INACTIVE_TAB_CLASS}>
-        患者一覧
-      </Link>
+      </button>
+      {showOutreach && (
+        <button
+          type='button'
+          className={
+            activeTab === 'outreach' ? ACTIVE_TAB_CLASS : INACTIVE_TAB_CLASS
+          }
+          aria-current={activeTab === 'outreach' ? 'page' : undefined}
+          onClick={() => onTabChange('outreach')}
+        >
+          再来促進
+        </button>
+      )}
+      {showListLink && (
+        <Link href='/patients/list' className={INACTIVE_TAB_CLASS}>
+          患者一覧
+        </Link>
+      )}
     </div>
   );
 });
@@ -356,13 +402,24 @@ const FollowUpSection = React.memo(function FollowUpSection({
 
 const PatientAnalysisContent = React.memo(function PatientAnalysisContent({
   data,
+  activeTab,
+  showOutreach,
+  onTabChange,
 }: {
   data: PatientAnalysisViewModel;
+  activeTab: PatientTabId;
+  showOutreach: boolean;
+  onTabChange: (tab: PatientTabId) => void;
 }) {
   return (
     <div className={PAGE_CLASS}>
       <div className={CONTENT_CLASS}>
-        <PatientTabs />
+        <PatientTabs
+          activeTab={activeTab}
+          showOutreach={showOutreach}
+          showListLink={true}
+          onTabChange={onTabChange}
+        />
         <ConversionSection stages={data.conversionData.stages} />
         <SummaryCards
           ltvRanking={data.ltvRanking}
@@ -776,7 +833,13 @@ function validateManagerPatientFilters(params: {
   return null;
 }
 
-function ManagerPatientAnalysisContent() {
+function ManagerPatientAnalysisContent({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: PatientTabId;
+  onTabChange: (tab: PatientTabId) => void;
+}) {
   const [appliedTarget, setAppliedTarget] =
     React.useState<ManagerPatientAnalysisTarget>('total');
   const [appliedPeriod, setAppliedPeriod] =
@@ -883,6 +946,32 @@ function ManagerPatientAnalysisContent() {
     );
   }
 
+  if (activeTab === 'outreach') {
+    const clinicOptions: OutreachClinicOption[] = data.clinics.map(clinic => ({
+      id: clinic.clinicId,
+      name: clinic.clinicName,
+    }));
+    const outreachClinicId =
+      selectedClinicId ?? data.clinics[0]?.clinicId ?? null;
+
+    return (
+      <div className={PAGE_CLASS}>
+        <div className='mx-auto max-w-[1200px] space-y-6'>
+          <PatientTabs
+            activeTab={activeTab}
+            showOutreach={true}
+            showListLink={false}
+            onTabChange={onTabChange}
+          />
+          <OutreachCampaignBuilder
+            initialClinicId={outreachClinicId}
+            clinics={clinicOptions}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const periodLabel =
     data.period.startDate && data.period.endDate
       ? `${data.period.startDate} - ${data.period.endDate}`
@@ -892,6 +981,12 @@ function ManagerPatientAnalysisContent() {
   return (
     <div className={PAGE_CLASS}>
       <div className='mx-auto max-w-[1200px] space-y-6'>
+        <PatientTabs
+          activeTab={activeTab}
+          showOutreach={true}
+          showListLink={false}
+          onTabChange={onTabChange}
+        />
         <div className='flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
           <div>
             <h1 className='text-2xl font-bold text-foreground'>患者分析</h1>
@@ -954,10 +1049,16 @@ function ClinicPatientAnalysisPage({
   clinicId,
   profileLoading,
   profileError,
+  activeTab,
+  showOutreach,
+  onTabChange,
 }: {
   clinicId: string | null;
   profileLoading: boolean;
   profileError: string | null;
+  activeTab: PatientTabId;
+  showOutreach: boolean;
+  onTabChange: (tab: PatientTabId) => void;
 }) {
   const { data, loading, error } = usePatientAnalysis(clinicId);
 
@@ -1011,19 +1112,95 @@ function ClinicPatientAnalysisPage({
     );
   }
 
-  return <PatientAnalysisContent data={data} />;
+  return (
+    <PatientAnalysisContent
+      data={data}
+      activeTab={activeTab}
+      showOutreach={showOutreach}
+      onTabChange={onTabChange}
+    />
+  );
+}
+
+function ClinicOutreachPage({
+  clinicId,
+  profileLoading,
+  profileError,
+  activeTab,
+  onTabChange,
+}: {
+  clinicId: string | null;
+  profileLoading: boolean;
+  profileError: string | null;
+  activeTab: PatientTabId;
+  onTabChange: (tab: PatientTabId) => void;
+}) {
+  if (profileError && !profileLoading) {
+    return (
+      <PageMessage
+        title='プロフィール取得に失敗しました'
+        description={profileError}
+        tone='error'
+        action={<ReloadButton />}
+      />
+    );
+  }
+
+  if (profileLoading) {
+    return (
+      <div
+        className={`${PAGE_CLASS} flex items-center justify-center`}
+        aria-live='polite'
+      >
+        <div className='text-gray-500'>プロフィールを読み込み中です...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={PAGE_CLASS}>
+      <div className='mx-auto max-w-[1200px] space-y-6'>
+        <PatientTabs
+          activeTab={activeTab}
+          showOutreach={true}
+          showListLink={true}
+          onTabChange={onTabChange}
+        />
+        <OutreachCampaignBuilder initialClinicId={clinicId} />
+      </div>
+    </div>
+  );
 }
 
 export default function PatientsPage() {
+  const [activeTab, setActiveTab] = React.useState<PatientTabId>('analysis');
   const {
     profile,
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
   const clinicId = profile?.clinicId ?? null;
+  const showOutreach = canUseOutreach(profile?.role);
 
   if (!profileLoading && isManagerRole(profile?.role)) {
-    return <ManagerPatientAnalysisContent />;
+    return (
+      <ManagerPatientAnalysisContent
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    );
+  }
+
+  if (activeTab === 'outreach' && showOutreach) {
+    return (
+      <ClinicOutreachPage
+        clinicId={clinicId}
+        profileLoading={profileLoading}
+        profileError={profileError}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    );
   }
 
   return (
@@ -1031,6 +1208,9 @@ export default function PatientsPage() {
       clinicId={clinicId}
       profileLoading={profileLoading}
       profileError={profileError}
+      activeTab='analysis'
+      showOutreach={showOutreach}
+      onTabChange={setActiveTab}
     />
   );
 }
