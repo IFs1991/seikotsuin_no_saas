@@ -67,6 +67,23 @@ export const bookingFormQuerySchema = z.object({
 export type BookingFormQueryDTO = z.infer<typeof bookingFormQuerySchema>;
 
 // ================================================================
+// GET/PATCH /api/public/my-reservations - LIFF My Page
+// ================================================================
+
+export const myReservationsQuerySchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+export const myReservationsConsentUpdateSchema = z.object({
+  clinic_id: clinicIdSchema,
+  consent_marketing: z.boolean(),
+});
+
+export const publicReservationCancelSchema = z.object({
+  clinic_id: clinicIdSchema,
+});
+
+// ================================================================
 // POST /api/public/reservations - Reservation Creation
 // ================================================================
 

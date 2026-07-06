@@ -50,6 +50,7 @@ const VALID_TYPES: Set<string> = new Set<string>([
   'reminder_day_before',
   'reminder_same_day',
   'public-reservation-received',
+  'public-reservation-cancelled',
 ]);
 
 /**

@@ -531,6 +531,7 @@ const EMAIL_TEMPLATE_TYPES = [
   'reminder_day_before',
   'reminder_same_day',
   'public-reservation-received',
+  'public-reservation-cancelled',
 ] as const;
 
 function isEmailTemplateType(value: unknown): value is EmailTemplateType {

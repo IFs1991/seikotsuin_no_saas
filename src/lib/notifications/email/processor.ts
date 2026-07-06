@@ -2,6 +2,7 @@ import type {
   BillingEmailTemplateType,
   EmailProvider,
   EmailTemplateType,
+  PublicReservationCancelledPayload,
   PublicReservationReceivedPayload,
   ReservationEmailPayload,
 } from './types';
@@ -12,6 +13,7 @@ import { renderReservationCancelledEmail } from './templates/reservation-cancell
 import { renderReminderDayBeforeEmail } from './templates/reminder-day-before';
 import { renderReminderSameDayEmail } from './templates/reminder-same-day';
 import { renderPublicReservationReceivedEmail } from './templates/public-reservation-received';
+import { renderPublicReservationCancelledEmail } from './templates/public-reservation-cancelled';
 import { renderBillingLifecycleEmail } from './templates/billing-lifecycle';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database, Json } from '@/types/supabase';
@@ -58,6 +60,10 @@ function renderTemplate(
     case 'public-reservation-received':
       return renderPublicReservationReceivedEmail(
         payload as PublicReservationReceivedPayload
+      );
+    case 'public-reservation-cancelled':
+      return renderPublicReservationCancelledEmail(
+        payload as PublicReservationCancelledPayload
       );
     case 'billing_payment_failed':
     case 'billing_payment_recovered':
