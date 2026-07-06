@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PublicBookingForm } from '@/app/(public)/booking/[clinic_id]/page';
+import type { PublicBookingFormSettings } from '@/lib/booking-form/settings';
 
 const mockLiffIsInClient = jest.fn();
 const mockLiffInit = jest.fn();
@@ -29,7 +30,7 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-const defaultBookingFormData = () => ({
+const defaultBookingFormData = (): PublicBookingFormSettings => ({
   fields: {
     nameKana: { enabled: false, required: false },
     phone: { enabled: true, required: true },
@@ -46,14 +47,14 @@ const defaultBookingFormData = () => ({
 
 describe('PublicBookingForm wizard', () => {
   let fetchMock: jest.SpiedFunction<typeof fetch>;
-  let bookingFormData: ReturnType<typeof defaultBookingFormData> & {
-    liff_id?: string;
-    oa_basic_id?: string;
-    turnstile_site_key?: string;
-  };
+  let bookingFormData: PublicBookingFormSettings;
+  let bookingFormStatus: number;
+  let queuedReservationResponses: Response[];
 
   beforeEach(() => {
     bookingFormData = defaultBookingFormData();
+    bookingFormStatus = 200;
+    queuedReservationResponses = [];
     mockLiffIsInClient.mockReturnValue(true);
     mockLiffInit.mockResolvedValue(undefined);
     mockLiffGetIDToken.mockReturnValue(null);
@@ -100,6 +101,13 @@ describe('PublicBookingForm wizard', () => {
       }
 
       if (url.pathname === '/api/public/booking-form') {
+        if (bookingFormStatus !== 200) {
+          return jsonResponse(
+            { success: false, error: 'Failed to load booking form settings' },
+            bookingFormStatus
+          );
+        }
+
         return jsonResponse({
           success: true,
           data: bookingFormData,
@@ -138,6 +146,11 @@ describe('PublicBookingForm wizard', () => {
         url.pathname === '/api/public/reservations' &&
         init?.method === 'POST'
       ) {
+        const queuedResponse = queuedReservationResponses.shift();
+        if (queuedResponse) {
+          return queuedResponse;
+        }
+
         return jsonResponse(
           {
             success: true,
@@ -267,6 +280,96 @@ describe('PublicBookingForm wizard', () => {
     expect(body.turnstile_token).toBe('turnstile-token-001');
   });
 
+  it('booking-form API 500時はフォーム本体を表示しない', async () => {
+    bookingFormStatus = 500;
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: '予約情報を表示できません',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('予約フォーム設定の取得に失敗しました')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('メニューを選択')).not.toBeInTheDocument();
+  });
+
+  it('previewModeではbookingFormOverrideを優先しbooking-form API失敗に依存しない', async () => {
+    bookingFormStatus = 500;
+
+    render(
+      <PublicBookingForm
+        clinicId={CLINIC_ID}
+        previewMode
+        bookingFormOverride={defaultBookingFormData()}
+      />
+    );
+
+    expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(call => {
+        const url = new URL(String(call[0]), 'http://localhost');
+        return url.pathname === '/api/public/booking-form';
+      })
+    ).toBe(false);
+  });
+
+  it('CAPTCHA_FAILED後は入力値を保持してTurnstile付きで再送できる', async () => {
+    bookingFormData = {
+      ...defaultBookingFormData(),
+      liff_id: '2000000000-AbCdEfGh',
+      turnstile_site_key: 'turnstile-site-key',
+    };
+    mockLiffGetIDToken.mockReturnValue('line-id-token-001');
+    queuedReservationResponses = [
+      jsonResponse(
+        {
+          success: false,
+          error: 'CAPTCHA verification failed',
+          code: 'CAPTCHA_FAILED',
+        },
+        400
+      ),
+    ];
+    const turnstile = installTurnstileMock('turnstile-token-002');
+    const user = userEvent.setup();
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} />);
+
+    await moveToConfirmation(user);
+    expect(screen.queryByText('Turnstile widget')).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('本人確認を追加で行ってください')
+    ).toBeInTheDocument();
+    expect(screen.getByText('山田 太郎')).toBeInTheDocument();
+    expect(await screen.findByText('Turnstile widget')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(turnstile.render).toHaveBeenCalledTimes(1);
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+
+    const reservationCalls = getReservationPostCalls(fetchMock);
+    expect(reservationCalls).toHaveLength(2);
+    const firstBody = parseReservationBody(reservationCalls[0]);
+    const secondBody = parseReservationBody(reservationCalls[1]);
+    expect(firstBody.line_id_token).toBe('line-id-token-001');
+    expect(firstBody.turnstile_token).toBeUndefined();
+    expect(secondBody.line_id_token).toBe('line-id-token-001');
+    expect(secondBody.turnstile_token).toBe('turnstile-token-002');
+  });
+
   it('campaign_id付き導線では予約POSTにcampaign_idを同梱する', async () => {
     const user = userEvent.setup();
 
@@ -390,6 +493,39 @@ describe('PublicBookingForm wizard', () => {
 type TurnstileRenderOptions = Parameters<
   NonNullable<Window['turnstile']>['render']
 >[1];
+
+type User = ReturnType<typeof userEvent.setup>;
+type FetchCall = jest.SpiedFunction<typeof fetch>['mock']['calls'][number];
+
+async function moveToConfirmation(user: User): Promise<void> {
+  expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: /次へ/ }));
+  await user.click(screen.getByRole('button', { name: /次へ/ }));
+  await user.click(await screen.findByRole('button', { name: '10:00' }));
+  await user.click(screen.getByRole('button', { name: /次へ/ }));
+  const nameInput = screen.getByPlaceholderText('山田 太郎');
+  await user.clear(nameInput);
+  await user.type(nameInput, '山田 太郎');
+  const phoneInput = screen.getByPlaceholderText('09012345678');
+  await user.clear(phoneInput);
+  await user.type(phoneInput, '09012345678');
+  await user.click(screen.getByRole('button', { name: /次へ/ }));
+  expect(screen.getByRole('heading', { name: '確認' })).toBeInTheDocument();
+}
+
+function getReservationPostCalls(
+  mock: jest.SpiedFunction<typeof fetch>
+): FetchCall[] {
+  return mock.mock.calls.filter(call => {
+    const url = String(call[0]);
+    const init = call[1];
+    return url === '/api/public/reservations' && init?.method === 'POST';
+  });
+}
+
+function parseReservationBody(call: FetchCall): Record<string, unknown> {
+  return JSON.parse(String(call[1]?.body)) as Record<string, unknown>;
+}
 
 function installTurnstileMock(token: string) {
   const render = jest.fn(

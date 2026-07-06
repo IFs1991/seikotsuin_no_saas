@@ -73,7 +73,7 @@ type BookingData = {
 
 type ApiEnvelope<T> =
   | { success: true; data: T }
-  | { success: false; error?: string };
+  | { success: false; error?: string; code?: string };
 
 type SubmitState =
   | { status: 'idle'; message: null; reservationId?: never }
@@ -121,6 +121,7 @@ const STEP_LABELS = [
 const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-api';
 const TURNSTILE_SCRIPT_SRC =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const CAPTCHA_FAILED_CODE = 'CAPTCHA_FAILED';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -667,6 +668,7 @@ export function PublicBookingForm({
   const [lineIdToken, setLineIdToken] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
+  const [captchaFallbackRequired, setCaptchaFallbackRequired] = useState(false);
 
   useEffect(() => {
     if (!clinicId) {
@@ -696,7 +698,12 @@ export function PublicBookingForm({
             : fetchJson<PublicBookingFormSettings>(
                 urls.bookingForm,
                 controller.signal
-              ).catch(() => DEFAULT_PUBLIC_BOOKING_FORM),
+              ).catch(error => {
+                if (error instanceof Error && error.name === 'AbortError') {
+                  throw error;
+                }
+                throw new Error('予約フォーム設定の取得に失敗しました');
+              }),
         ]);
 
         const nextData = {
@@ -787,6 +794,7 @@ export function PublicBookingForm({
   useEffect(() => {
     setTurnstileToken(null);
     setTurnstileResetSignal(value => value + 1);
+    setCaptchaFallbackRequired(false);
   }, [bookingData?.bookingForm.turnstile_site_key, lineIdToken]);
 
   useEffect(() => {
@@ -865,7 +873,9 @@ export function PublicBookingForm({
   const hasQuestionStep =
     bookingForm.questions.length > 0 || bookingForm.consents.length > 0;
   const isTurnstileRequired = Boolean(
-    bookingForm.turnstile_site_key && !lineIdToken && !previewMode
+    bookingForm.turnstile_site_key &&
+    !previewMode &&
+    (!lineIdToken || captchaFallbackRequired)
   );
   const normalizedCampaignId = useMemo(
     () => normalizeCampaignId(campaignId),
@@ -1116,6 +1126,18 @@ export function PublicBookingForm({
       }>;
 
       if (!response.ok || !json.success) {
+        if (json.success === false && json.code === CAPTCHA_FAILED_CODE) {
+          setCaptchaFallbackRequired(true);
+          setTurnstileToken(null);
+          setTurnstileResetSignal(value => value + 1);
+          setStep(6);
+          setSubmitState({
+            status: 'error',
+            message: '本人確認を追加で行ってください',
+          });
+          return;
+        }
+
         throw new Error(
           json.success === false ? json.error : '予約の作成に失敗しました'
         );
@@ -1142,6 +1164,7 @@ export function PublicBookingForm({
     }
   }, [
     canContinue,
+    captchaFallbackRequired,
     clinicId,
     formData,
     isTurnstileRequired,

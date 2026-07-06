@@ -6,8 +6,7 @@ const ORIGINAL_LINE_CREDENTIALS_ENCRYPTION_KEY =
 const ORIGINAL_ENABLE_LIFF_BOOKING =
   process.env.NEXT_PUBLIC_ENABLE_LIFF_BOOKING;
 const ORIGINAL_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
-const ORIGINAL_TURNSTILE_SITE_KEY =
-  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const ORIGINAL_TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 jest.mock('next/server', () => ({
   NextResponse: {
@@ -42,6 +41,7 @@ const buildRequest = (clinicId = CLINIC_ID) =>
   }) as { nextUrl: URL };
 
 type PublicBookingFormClientOptions = {
+  settingsError?: { message: string } | null;
   lineBookingEnabled?: boolean;
   lineCredentials?: {
     is_active: boolean;
@@ -51,12 +51,15 @@ type PublicBookingFormClientOptions = {
   } | null;
 };
 
-const buildQuery = (data: unknown) => {
+const buildQuery = (
+  data: unknown,
+  error: { message: string } | null = null
+) => {
   const query = {
     eq: jest.fn(() => query),
     maybeSingle: jest.fn().mockResolvedValue({
       data,
-      error: null,
+      error,
     }),
   };
   return query;
@@ -71,7 +74,12 @@ const buildSettingsClient = (
       return {
         select: jest
           .fn()
-          .mockReturnValue(buildQuery(settings === null ? null : { settings })),
+          .mockReturnValue(
+            buildQuery(
+              settings === null ? null : { settings },
+              options.settingsError ?? null
+            )
+          ),
       };
     }
     if (table === 'clinic_feature_flags') {
@@ -147,6 +155,24 @@ describe('GET /api/public/booking-form', () => {
           phone: { enabled: true, required: true },
         },
       },
+    });
+  });
+
+  it('設定取得に失敗した場合は500を返す', async () => {
+    mockCreatePublicClinicContext.mockResolvedValue({
+      client: buildSettingsClient(null, {
+        settingsError: { message: 'database unavailable' },
+      }),
+      clinic: { id: CLINIC_ID, name: 'テスト整骨院' },
+    });
+
+    const response = await GET(buildRequest());
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data).toEqual({
+      success: false,
+      error: 'Failed to load booking form settings',
     });
   });
 

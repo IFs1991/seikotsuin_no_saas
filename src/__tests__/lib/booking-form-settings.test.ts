@@ -1,6 +1,7 @@
 import {
   BookingFormSettingsSchema,
   DEFAULT_BOOKING_FORM_SETTINGS,
+  isSafePublicLinkUrl,
   normalizeBookingFormSettings,
   sanitizeBookingFormSettings,
   validateBookingFormResponses,
@@ -173,6 +174,54 @@ describe('booking form settings', () => {
     });
 
     expect(BookingFormSettingsSchema.safeParse(safeUrl).success).toBe(true);
+  });
+
+  it.each([
+    ['/privacy', true],
+    ['/terms', true],
+    ['https://example.com/privacy', true],
+    ['http://example.com/privacy', false],
+    ['//example.com/privacy', false],
+    ['/\\example.com/privacy', false],
+    ['javascript:alert(1)', false],
+  ])('isSafePublicLinkUrl(%s) は %s を返す', (url, expected) => {
+    expect(isSafePublicLinkUrl(url)).toBe(expected);
+  });
+
+  it('同意欄URLはhttp URLをschema validation errorにする', () => {
+    const settings = buildSettings({
+      consents: [
+        {
+          id: 'c_privacy',
+          label: '個人情報の取り扱いに同意する',
+          required: true,
+          linkUrl: 'http://example.com/privacy',
+        },
+      ],
+    });
+
+    expect(BookingFormSettingsSchema.safeParse(settings).success).toBe(false);
+  });
+
+  it('sanitizeは不正な同意欄URLを公開API向けレスポンスから落とす', () => {
+    const settings = buildSettings({
+      consents: [
+        {
+          id: 'c_privacy',
+          label: '個人情報の取り扱いに同意する',
+          required: true,
+          linkUrl: 'http://example.com/privacy',
+        },
+      ],
+    });
+
+    expect(sanitizeBookingFormSettings(settings).consents).toEqual([
+      {
+        id: 'c_privacy',
+        label: '個人情報の取り扱いに同意する',
+        required: true,
+      },
+    ]);
   });
 
   it('required未回答は失敗する', () => {
