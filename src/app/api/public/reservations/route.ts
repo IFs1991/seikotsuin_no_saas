@@ -35,7 +35,9 @@ import type {
 import { verifyLineIdTokenForClinic } from '@/lib/line/id-token';
 import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
+import { ERROR_CODES } from '@/lib/error-handler';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
+import { verifyTurnstileForPublicReservation } from '@/lib/turnstile';
 import { reservationCreateSchema } from '../schema';
 
 function formatIntakeResponseValue(
@@ -55,6 +57,20 @@ function formatIntakeSummary(snapshots: IntakeResponseSnapshot[]): string[] {
     snapshot =>
       `${snapshot.label}: ${formatIntakeResponseValue(snapshot.value)}`
   );
+}
+
+function getRequestIp(request: NextRequest): string | undefined {
+  const cfConnectingIp = request.headers.get('cf-connecting-ip')?.trim();
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+
+  const forwardedFor = request.headers.get('x-forwarded-for')?.trim();
+  if (!forwardedFor) {
+    return undefined;
+  }
+
+  return forwardedFor.split(',')[0]?.trim() || undefined;
 }
 
 export async function POST(request: NextRequest) {
@@ -98,6 +114,7 @@ export async function POST(request: NextRequest) {
       intake_responses,
       consents,
       line_id_token,
+      turnstile_token,
     } = parsed.data;
     let channel: 'web' | 'line' = 'web';
 
@@ -172,6 +189,22 @@ export async function POST(request: NextRequest) {
           errorName: error instanceof Error ? error.name : 'UnknownError',
         });
       }
+    }
+
+    const turnstileResult = await verifyTurnstileForPublicReservation({
+      token: turnstile_token,
+      skipForVerifiedLine: lineProfile !== undefined,
+      remoteIp: getRequestIp(request),
+    });
+    if (!turnstileResult.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'CAPTCHA verification failed',
+          code: ERROR_CODES.CAPTCHA_FAILED,
+        },
+        { status: 400 }
+      );
     }
 
     let intakeResponseSnapshots: IntakeResponseSnapshot[];

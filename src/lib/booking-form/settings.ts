@@ -358,7 +358,8 @@ export function normalizeBookingFormSettings(
 }
 
 export function sanitizeBookingFormSettings(
-  settings: BookingFormSettings
+  settings: BookingFormSettings,
+  options: { turnstileSiteKey?: string } = {}
 ): PublicBookingFormSettings {
   return {
     fields: settings.fields,
@@ -374,7 +375,7 @@ export function sanitizeBookingFormSettings(
           : undefined,
     })),
     completionMessage: settings.completionMessage,
-    turnstile_site_key: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
+    turnstile_site_key: options.turnstileSiteKey,
     liff_id: undefined,
     oa_basic_id: undefined,
   };
