@@ -21,6 +21,7 @@ const CLINIC_ID = '00000000-0000-0000-0000-000000000101';
 const MENU_ID = '00000000-0000-0000-0000-000000000201';
 const STAFF_ID = '00000000-0000-0000-0000-000000000301';
 const RESERVATION_ID = '00000000-0000-0000-0000-000000000401';
+const CAMPAIGN_ID = '00000000-0000-4000-8000-000000000501';
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -264,6 +265,38 @@ describe('PublicBookingForm wizard', () => {
       turnstile_token?: string;
     };
     expect(body.turnstile_token).toBe('turnstile-token-001');
+  });
+
+  it('campaign_id付き導線では予約POSTにcampaign_idを同梱する', async () => {
+    const user = userEvent.setup();
+
+    render(<PublicBookingForm clinicId={CLINIC_ID} campaignId={CAMPAIGN_ID} />);
+
+    expect(await screen.findByText('メニューを選択')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(await screen.findByRole('button', { name: '10:00' }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.type(screen.getByPlaceholderText('山田 太郎'), '山田 太郎');
+    await user.type(screen.getByPlaceholderText('09012345678'), '09012345678');
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
+    await user.click(
+      screen.getByRole('button', { name: '予約リクエストを送信' })
+    );
+
+    expect(
+      await screen.findByText('予約リクエストを受け付けました。')
+    ).toBeInTheDocument();
+
+    const reservationCall = fetchMock.mock.calls.find(call => {
+      const url = String(call[0]);
+      const init = call[1];
+      return url === '/api/public/reservations' && init?.method === 'POST';
+    });
+    const body = JSON.parse(String(reservationCall?.[1]?.body)) as {
+      campaign_id?: string;
+    };
+    expect(body.campaign_id).toBe(CAMPAIGN_ID);
   });
 
   it('LIFF初期化成功時はIDトークンを同梱し、表示名を氏名初期値に使う', async () => {

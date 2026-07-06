@@ -41,9 +41,21 @@ describe('OutreachCampaignBuilder', () => {
 
   it('extracts dormant candidates, supports exclusion, and creates a draft', async () => {
     const user = userEvent.setup();
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = new URL(String(input), 'http://localhost');
+
+      if (url.pathname === '/api/outreach/campaigns' && !init?.method) {
+        return jsonResponse({
+          success: true,
+          data: {
+            clinic_id: CLINIC_ID,
+            campaigns: [],
+          },
+        });
+      }
+
+      if (url.pathname === '/api/outreach/dormant-candidates') {
+        return jsonResponse({
           success: true,
           data: {
             clinic_id: CLINIC_ID,
@@ -61,6 +73,7 @@ describe('OutreachCampaignBuilder', () => {
                 total_visits: 5,
                 lifetime_value: 40000,
                 line_display_name: 'LINE太郎',
+                line_delivery_warning: false,
               },
               {
                 customer_id: CUSTOMER_B,
@@ -70,13 +83,18 @@ describe('OutreachCampaignBuilder', () => {
                 total_visits: 3,
                 lifetime_value: 24000,
                 line_display_name: 'LINE花子',
+                line_delivery_warning: true,
               },
             ],
           },
-        })
-      )
-      .mockResolvedValueOnce(
-        jsonResponse(
+        });
+      }
+
+      if (
+        url.pathname === '/api/outreach/campaigns' &&
+        init?.method === 'POST'
+      ) {
+        return jsonResponse(
           {
             success: true,
             data: {
@@ -87,8 +105,11 @@ describe('OutreachCampaignBuilder', () => {
             },
           },
           201
-        )
-      );
+        );
+      }
+
+      return jsonResponse({ success: false, error: 'not found' }, 404);
+    });
 
     render(
       <OutreachCampaignBuilder
@@ -102,6 +123,7 @@ describe('OutreachCampaignBuilder', () => {
     expect(await screen.findByText('対象患者確認')).toBeInTheDocument();
     expect(screen.getByText('休眠 太郎')).toBeInTheDocument();
     expect(screen.getByText('休眠 花子')).toBeInTheDocument();
+    expect(screen.getByText('LINE送信失敗が続いています')).toBeInTheDocument();
 
     const checkboxes = screen.getAllByRole('checkbox');
     const secondCheckbox = checkboxes[1];
@@ -117,13 +139,18 @@ describe('OutreachCampaignBuilder', () => {
       expect(screen.getByText('下書き作成完了')).toBeInTheDocument();
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
+    expect(fetchMock).toHaveBeenCalledWith(
       `/api/outreach/dormant-candidates?clinic_id=${CLINIC_ID}&days_from=60&days_to=120`,
       { cache: 'no-store' }
     );
 
-    const draftPayload = readJsonBody(fetchMock.mock.calls[1]?.[1]);
+    const draftCall = fetchMock.mock.calls.find(call => {
+      const url = new URL(String(call[0]), 'http://localhost');
+      return (
+        url.pathname === '/api/outreach/campaigns' && call[1]?.method === 'POST'
+      );
+    });
+    const draftPayload = readJsonBody(draftCall?.[1]);
     expect(draftPayload).toMatchObject({
       clinic_id: CLINIC_ID,
       days_from: 60,

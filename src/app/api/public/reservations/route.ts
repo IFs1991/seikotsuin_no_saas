@@ -38,6 +38,11 @@ import { logger } from '@/lib/logger';
 import { ERROR_CODES } from '@/lib/error-handler';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { verifyTurnstileForPublicReservation } from '@/lib/turnstile';
+import {
+  markOutreachRecipientBooked,
+  resolveOutreachAttribution,
+  type OutreachAttribution,
+} from '@/lib/outreach';
 import { reservationCreateSchema } from '../schema';
 
 function formatIntakeResponseValue(
@@ -115,6 +120,7 @@ export async function POST(request: NextRequest) {
       consents,
       line_id_token,
       turnstile_token,
+      campaign_id,
     } = parsed.data;
     let channel: 'web' | 'line' = 'web';
 
@@ -360,6 +366,21 @@ export async function POST(request: NextRequest) {
       throw e;
     }
 
+    let outreachAttribution: OutreachAttribution | null = null;
+    try {
+      outreachAttribution = await resolveOutreachAttribution(clinicCtx.client, {
+        clinicId: clinic_id,
+        campaignId: campaign_id,
+        customerId: customerResult.customerId,
+      });
+    } catch (error) {
+      logger.warn('Failed to resolve outreach attribution; continuing', {
+        clinicId: clinic_id,
+        campaignId: campaign_id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     // Create reservation
     let reservation: ReservationResult;
     try {
@@ -373,6 +394,7 @@ export async function POST(request: NextRequest) {
         channel,
         isStaffRequested: !isAutoAssign,
         intakeResponses: intakeResponseSnapshots,
+        campaignId: outreachAttribution?.campaignId ?? null,
       });
     } catch (e) {
       if (e instanceof SlotConflictError) {
@@ -394,6 +416,7 @@ export async function POST(request: NextRequest) {
               channel,
               isStaffRequested: false,
               intakeResponses: intakeResponseSnapshots,
+              campaignId: outreachAttribution?.campaignId ?? null,
             });
           } catch (retryError) {
             if (customerResult.created) {
@@ -429,6 +452,24 @@ export async function POST(request: NextRequest) {
         );
       }
       throw e;
+    }
+
+    if (outreachAttribution) {
+      try {
+        await markOutreachRecipientBooked(clinicCtx.client, {
+          clinicId: clinic_id,
+          campaignId: outreachAttribution.campaignId,
+          recipientId: outreachAttribution.recipientId,
+          reservationId: reservation.id,
+        });
+      } catch (error) {
+        logger.warn('Failed to mark outreach recipient booking attribution', {
+          clinicId: clinic_id,
+          campaignId: outreachAttribution.campaignId,
+          reservationId: reservation.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     try {
