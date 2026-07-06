@@ -488,7 +488,7 @@ export class PublicReservationService {
           )
         : null) ??
       (normalizedPhone
-        ? await this.findCustomerIdByColumn('phone', normalizedPhone)
+        ? await this.findCustomerIdByColumn('normalized_phone', normalizedPhone)
         : null) ??
       (normalizedEmail
         ? await this.findCustomerIdByColumn('email', normalizedEmail)
@@ -526,7 +526,7 @@ export class PublicReservationService {
   }
 
   private async findCustomerIdByColumn(
-    column: 'line_user_id' | 'phone' | 'email',
+    column: 'line_user_id' | 'normalized_phone' | 'email',
     value: string
   ): Promise<string | null> {
     const { data: existing, error } = await this.client

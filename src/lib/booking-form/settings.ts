@@ -131,7 +131,7 @@ export const bookingFormConsentSchema = z
       .max(500)
       .refine(
         value => value.length === 0 || isSafePublicLinkUrl(value),
-        '同意欄URLは相対パスまたはhttps/http URLで入力してください'
+        '同意欄URLは相対パスまたはhttps URLで入力してください'
       )
       .optional()
       .or(z.literal('')),
@@ -215,12 +215,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function isSafePublicLinkUrl(value: string): boolean {
   const trimmed = value.trim();
   if (trimmed.startsWith('/')) {
-    return !trimmed.startsWith('//');
+    return !/^\/[/\\]/.test(trimmed);
   }
 
   try {
     const parsed = new URL(trimmed);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return parsed.protocol === 'https:';
   } catch {
     return false;
   }

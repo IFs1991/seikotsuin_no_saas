@@ -71,16 +71,30 @@ export type ProcessReservationRemindersResult = {
   duplicates: number;
 };
 
+const RESERVATION_REMINDERS_JOB_NAME = 'reservation_reminders';
+const MAX_REMINDER_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
 function padHour(hour: number): string {
   return hour.toString().padStart(2, '0');
 }
 
 export function createReminderWindow(
   now: Date,
-  intervalMinutes = 15
+  intervalMinutes = 15,
+  lastSuccessfulRunAt: Date | null = null
 ): ReminderWindow {
+  const fallbackFrom = new Date(now.getTime() - intervalMinutes * 60 * 1000);
+  const maxLookbackFrom = new Date(now.getTime() - MAX_REMINDER_LOOKBACK_MS);
+  const requestedFrom =
+    lastSuccessfulRunAt && !Number.isNaN(lastSuccessfulRunAt.getTime())
+      ? lastSuccessfulRunAt
+      : fallbackFrom;
+
   return {
-    from: new Date(now.getTime() - intervalMinutes * 60 * 1000),
+    from:
+      requestedFrom.getTime() < maxLookbackFrom.getTime()
+        ? maxLookbackFrom
+        : requestedFrom,
     to: now,
   };
 }
@@ -176,6 +190,45 @@ async function fetchActiveClinics(
   return data ?? [];
 }
 
+async function fetchLastSuccessfulReminderRun(
+  supabase: ReminderSupabaseClient
+): Promise<Date | null> {
+  const { data, error } = await supabase
+    .from('internal_job_runs')
+    .select('last_successful_run_at')
+    .eq('job_name', RESERVATION_REMINDERS_JOB_NAME)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.last_successful_run_at) {
+    return null;
+  }
+
+  const parsed = new Date(data.last_successful_run_at);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+async function updateSuccessfulReminderRun(
+  supabase: ReminderSupabaseClient,
+  runAt: Date
+): Promise<void> {
+  const { error } = await supabase.from('internal_job_runs').upsert(
+    {
+      job_name: RESERVATION_REMINDERS_JOB_NAME,
+      last_successful_run_at: runAt.toISOString(),
+      updated_at: runAt.toISOString(),
+    },
+    { onConflict: 'job_name' }
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 async function fetchReminderReservations(
   supabase: ReminderSupabaseClient,
   clinicId: string,
@@ -264,7 +317,12 @@ export async function processReservationReminders(
   options: ProcessReservationRemindersOptions = {}
 ): Promise<ProcessReservationRemindersResult> {
   const now = options.now ?? new Date();
-  const window = createReminderWindow(now, options.intervalMinutes ?? 15);
+  const lastSuccessfulRunAt = await fetchLastSuccessfulReminderRun(supabase);
+  const window = createReminderWindow(
+    now,
+    options.intervalMinutes ?? 15,
+    lastSuccessfulRunAt
+  );
   const clinics = await fetchActiveClinics(supabase);
   const result: ProcessReservationRemindersResult = {
     scanned: 0,
@@ -334,6 +392,8 @@ export async function processReservationReminders(
       }
     }
   }
+
+  await updateSuccessfulReminderRun(supabase, window.to);
 
   return result;
 }

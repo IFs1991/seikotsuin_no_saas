@@ -1345,6 +1345,7 @@ export type Database = {
           line_user_id: string | null;
           name: string;
           name_kana: string | null;
+          normalized_phone: string | null;
           notes: string | null;
           phone: string;
           segment: string | null;
@@ -1372,6 +1373,7 @@ export type Database = {
           line_user_id?: string | null;
           name: string;
           name_kana?: string | null;
+          normalized_phone?: never;
           notes?: string | null;
           phone: string;
           segment?: string | null;
@@ -1399,6 +1401,7 @@ export type Database = {
           line_user_id?: string | null;
           name?: string;
           name_kana?: string | null;
+          normalized_phone?: never;
           notes?: string | null;
           phone?: string;
           segment?: string | null;
@@ -2542,6 +2545,24 @@ export type Database = {
           sort_order?: number;
           updated_at?: string;
           warning_code?: string;
+        };
+        Relationships: [];
+      };
+      internal_job_runs: {
+        Row: {
+          job_name: string;
+          last_successful_run_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          job_name: string;
+          last_successful_run_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          job_name?: string;
+          last_successful_run_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };

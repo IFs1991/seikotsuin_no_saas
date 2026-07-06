@@ -812,6 +812,75 @@ describe('POST /api/public/reservations', () => {
     );
   });
 
+  it('LINE IDトークン検証失敗かつTurnstile未送信なら400 CAPTCHA_FAILEDを返す', async () => {
+    process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: false,
+      reason: 'aud_mismatch',
+    });
+    const fetchMock = jest.spyOn(global, 'fetch');
+    jest.resetModules();
+    const mod = await import('@/app/api/public/reservations/route');
+    POST = mod.POST as (
+      req: PublicReservationRouteRequest
+    ) => Promise<PublicReservationRouteResponse>;
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        line_id_token: 'line-id-token-001',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data).toEqual({
+      success: false,
+      error: 'CAPTCHA verification failed',
+      code: 'CAPTCHA_FAILED',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('LINE IDトークン検証失敗でもTurnstile成功時はweb予約として201を返す', async () => {
+    process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
+    mockVerifyLineIdTokenForClinic.mockResolvedValue({
+      ok: false,
+      reason: 'aud_mismatch',
+    });
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(buildSiteverifyResponse({ success: true }));
+    jest.resetModules();
+    const mod = await import('@/app/api/public/reservations/route');
+    POST = mod.POST as (
+      req: PublicReservationRouteRequest
+    ) => Promise<PublicReservationRouteResponse>;
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        line_id_token: 'line-id-token-001',
+        turnstile_token: 'turnstile-token-001',
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(findReservationInsertPayload(supabase)).toEqual(
+      expect.objectContaining({
+        channel: 'web',
+      })
+    );
+  });
+
   it('LINE IDトークン検証成功時は顧客にLINE IDを保存して予約を継続する', async () => {
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
       ok: true,

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { AdminMessage } from './AdminMessage';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import {
   BOOKING_FORM_QUESTION_TYPES,
   BOOKING_FORM_STANDARD_FIELD_KEYS,
   DEFAULT_BOOKING_FORM_SETTINGS,
+  isSafePublicLinkUrl,
   sanitizeBookingFormSettings,
   type BookingFormConsent,
   type BookingFormQuestion,
@@ -106,6 +107,9 @@ export function BookingFormSettings({
           }
         : undefined
     );
+  const [localValidationError, setLocalValidationError] = useState<
+    string | null
+  >(null);
 
   const orderedQuestions = useMemo(
     () =>
@@ -120,6 +124,16 @@ export function BookingFormSettings({
   const previewSettings = useMemo(
     () => sanitizeBookingFormSettings(data),
     [data]
+  );
+  const invalidConsentLinkLabels = useMemo(
+    () =>
+      data.consents
+        .filter(consent => {
+          const linkUrl = consent.linkUrl?.trim();
+          return Boolean(linkUrl && !isSafePublicLinkUrl(linkUrl));
+        })
+        .map(consent => consent.label.trim() || consent.id),
+    [data.consents]
   );
 
   const updateQuestion = useCallback(
@@ -136,6 +150,9 @@ export function BookingFormSettings({
 
   const updateConsent = useCallback(
     (consentId: string, updates: Partial<BookingFormConsent>) => {
+      if ('linkUrl' in updates) {
+        setLocalValidationError(null);
+      }
       updateData(prev => ({
         ...prev,
         consents: prev.consents.map(consent =>
@@ -145,6 +162,20 @@ export function BookingFormSettings({
     },
     [updateData]
   );
+
+  const saveSettings = useCallback(async () => {
+    if (invalidConsentLinkLabels.length > 0) {
+      setLocalValidationError(
+        `同意欄URLは相対パスまたはhttps URLで入力してください: ${invalidConsentLinkLabels.join(
+          '、'
+        )}`
+      );
+      return;
+    }
+
+    setLocalValidationError(null);
+    await handleSave();
+  }, [handleSave, invalidConsentLinkLabels]);
 
   if (profileLoading || !isInitialized) {
     return (
@@ -218,9 +249,14 @@ export function BookingFormSettings({
       {loadingState.error && (
         <AdminMessage message={loadingState.error} type='error' />
       )}
-      {loadingState.savedMessage && !loadingState.error && (
-        <AdminMessage message={loadingState.savedMessage} type='success' />
+      {localValidationError && (
+        <AdminMessage message={localValidationError} type='error' />
       )}
+      {loadingState.savedMessage &&
+        !loadingState.error &&
+        !localValidationError && (
+          <AdminMessage message={loadingState.savedMessage} type='success' />
+        )}
       {!clinicId && (
         <AdminMessage message='対象クリニックを選択してください' type='error' />
       )}
@@ -478,6 +514,12 @@ export function BookingFormSettings({
               <Input
                 value={consent.linkUrl ?? ''}
                 placeholder='/privacy'
+                aria-invalid={
+                  Boolean(
+                    consent.linkUrl?.trim() &&
+                    !isSafePublicLinkUrl(consent.linkUrl)
+                  ) || undefined
+                }
                 onChange={event =>
                   updateConsent(consent.id, { linkUrl: event.target.value })
                 }
@@ -545,7 +587,9 @@ export function BookingFormSettings({
         <Button
           type='button'
           data-testid='save-booking-form-settings-button'
-          onClick={() => handleSave()}
+          onClick={() => {
+            void saveSettings();
+          }}
           disabled={loadingState.isLoading || !clinicId}
         >
           {loadingState.isLoading ? (

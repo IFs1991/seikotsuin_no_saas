@@ -16,6 +16,7 @@ import {
   CustomerLookupError,
   CustomerCreateError,
   ReservationCreateError,
+  normalizeCustomerPhoneForMatch,
 } from '@/lib/services/public-reservation-service';
 
 // ──────────────────────────────────────────────
@@ -192,6 +193,27 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
 // ──────────────────────────────────────────────
 
 describe('PublicReservationService', () => {
+  describe('normalizeCustomerPhoneForMatch', () => {
+    it('国内表記の区切り文字を除去する', () => {
+      expect(normalizeCustomerPhoneForMatch('090-1234-5678')).toBe(
+        '09012345678'
+      );
+      expect(normalizeCustomerPhoneForMatch('090 1234 5678')).toBe(
+        '09012345678'
+      );
+    });
+
+    it('+81表記を国内0始まりへ寄せる', () => {
+      expect(normalizeCustomerPhoneForMatch('+819012345678')).toBe(
+        '09012345678'
+      );
+    });
+
+    it('+81単体は照合値なしにする', () => {
+      expect(normalizeCustomerPhoneForMatch('+81')).toBeNull();
+    });
+  });
+
   describe('checkBookingEnabled', () => {
     it('オンライン予約が有効な場合は正常終了する', async () => {
       const client = buildClient();
@@ -429,6 +451,67 @@ describe('PublicReservationService', () => {
         'patient@example.com'
       );
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+    });
+
+    it('電話番号はnormalized_phoneで既存顧客を検索する', async () => {
+      const customerFindQuery = mockChain({
+        data: { id: CUSTOMER_ID },
+        error: null,
+      });
+      const client = buildClient({
+        customers_find: () => ({
+          select: jest.fn().mockReturnValue(customerFindQuery),
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '090-1234-5678',
+        undefined
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+      expect(customerFindQuery.eq).toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
+    });
+
+    it('LINE ID一致を電話番号一致より優先する', async () => {
+      const customerFindQuery = mockChain({
+        data: { id: CUSTOMER_ID },
+        error: null,
+      });
+      const client = buildClient({
+        customers_find: () => ({
+          select: jest.fn().mockReturnValue(customerFindQuery),
+        }),
+        customers_create: () => ({
+          insert: jest.fn(),
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnThis(),
+          }),
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '09012345678',
+        undefined,
+        { lineUserId: 'Uline-user-001', displayName: 'LINE 太郎' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+      expect(customerFindQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uline-user-001'
+      );
+      expect(customerFindQuery.eq).not.toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
     });
 
     it('新規顧客を作成して返す', async () => {
