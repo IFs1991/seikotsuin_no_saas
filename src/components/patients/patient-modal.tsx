@@ -36,6 +36,7 @@ interface FormErrors {
   name?: string;
   phone?: string;
   email?: string;
+  notes?: string;
   customAttributesInput?: string;
 }
 
@@ -45,6 +46,15 @@ interface PatientModalProps {
   onSave: (data: PatientFormData) => Promise<void>;
   patient?: Patient | null;
   mode: 'create' | 'edit';
+}
+
+const NAME_MAX_LENGTH = 255;
+const PHONE_MAX_LENGTH = 32;
+const EMAIL_MAX_LENGTH = 255;
+const NOTES_MAX_LENGTH = 2000;
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function PatientModalComponent({
@@ -90,17 +100,31 @@ function PatientModalComponent({
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
+    const name = formData.name.trim();
+    const phone = formData.phone.trim();
+    const email = formData.email.trim();
+    const notes = formData.notes.trim();
 
-    if (!formData.name.trim()) {
+    if (!name) {
       newErrors.name = '氏名は必須です';
+    } else if (name.length > NAME_MAX_LENGTH) {
+      newErrors.name = '氏名は255文字以内で入力してください';
     }
 
-    if (!formData.phone.trim()) {
+    if (!phone) {
       newErrors.phone = '電話番号は必須です';
+    } else if (phone.length > PHONE_MAX_LENGTH) {
+      newErrors.phone = '電話番号は32文字以内で入力してください';
     }
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (email.length > EMAIL_MAX_LENGTH) {
+      newErrors.email = 'メールアドレスは255文字以内で入力してください';
+    } else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = 'メールアドレスの形式が正しくありません';
+    }
+
+    if (notes.length > NOTES_MAX_LENGTH) {
+      newErrors.notes = 'メモは2000文字以内で入力してください';
     }
 
     setErrors(newErrors);
@@ -117,14 +141,14 @@ function PatientModalComponent({
     }
 
     try {
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isJsonObject(parsed)) {
         return {
           error:
             'JSON\u306f\u30aa\u30d6\u30b8\u30a7\u30af\u30c8\u306e\u307f\u5bfe\u5fdc\u3057\u3066\u3044\u307e\u3059',
         };
       }
-      return { value: parsed as Record<string, unknown> };
+      return { value: parsed };
     } catch {
       return {
         error:
@@ -150,10 +174,10 @@ function PatientModalComponent({
     setIsSubmitting(true);
     try {
       await onSave({
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
-        notes: formData.notes,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        notes: formData.notes.trim(),
         customAttributes: customAttributesResult.value,
       });
       onClose();
@@ -190,7 +214,7 @@ function PatientModalComponent({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className='grid gap-4 py-4'>
             {/* 氏名 */}
             <div className='grid gap-2'>
@@ -254,8 +278,12 @@ function PatientModalComponent({
                 value={formData.notes}
                 onChange={handleChange}
                 placeholder='特記事項があれば入力してください'
+                className={errors.notes ? 'border-red-500' : ''}
                 rows={3}
               />
+              {errors.notes && (
+                <p className='text-sm text-red-500'>{errors.notes}</p>
+              )}
             </div>
             {/* Custom Attributes (JSON) */}
             <div className='grid gap-2'>

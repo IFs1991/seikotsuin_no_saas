@@ -16,8 +16,19 @@ export function isSentryEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return typeof env.SENTRY_DSN === 'string' && env.SENTRY_DSN.length > 0;
 }
 
+export function resolveSentryRelease(
+  env: NodeJS.ProcessEnv = process.env
+): string | undefined {
+  return (
+    env.SENTRY_RELEASE ||
+    env.VERCEL_GIT_COMMIT_SHA ||
+    env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+  );
+}
+
 export function buildSentryInitOptions(runtime: SentryRuntime) {
-  return {
+  const release = resolveSentryRelease();
+  const options = {
     dsn: process.env.SENTRY_DSN,
     enabled: true,
     environment: process.env.NODE_ENV,
@@ -25,6 +36,8 @@ export function buildSentryInitOptions(runtime: SentryRuntime) {
     sendDefaultPii: false,
     _runtime: runtime,
   };
+
+  return release ? { ...options, release } : options;
 }
 
 export function initSentry(

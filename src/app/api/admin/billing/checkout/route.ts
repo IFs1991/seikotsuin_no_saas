@@ -21,6 +21,7 @@ import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
+import { writeBillingAuditLog } from '@/lib/billing/audit';
 
 const CHECKOUT_ENDPOINT = '/api/admin/billing/checkout';
 const TRIAL_PERIOD_DAYS = 30;
@@ -163,34 +164,50 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('Checkout URLの作成に失敗しました', 500);
     }
 
+    const checkoutUpsertPayload = {
+      org_root_clinic_id: orgRootClinic.id,
+      plan_code: parsed.data.plan_code,
+      stripe_customer_id: stripeCustomerId,
+      stripe_checkout_session_id: checkoutSession.id,
+      checkout_started_at: new Date().toISOString(),
+      checkout_expires_at: checkoutSession.expires_at
+        ? fromUnixSeconds(checkoutSession.expires_at)
+        : null,
+      checkout_plan_code: parsed.data.plan_code,
+      billing_state: 'checkout_pending',
+      stripe_status: subscription?.stripe_status ?? 'none',
+      metadata: {
+        checkout_session_id: checkoutSession.id,
+        checkout_plan_code: parsed.data.plan_code,
+      },
+    };
     const { error: upsertError } = await adminCtx.client
       .from('subscriptions')
-      .upsert(
-        {
-          org_root_clinic_id: orgRootClinic.id,
-          plan_code: parsed.data.plan_code,
-          stripe_customer_id: stripeCustomerId,
-          stripe_checkout_session_id: checkoutSession.id,
-          checkout_started_at: new Date().toISOString(),
-          checkout_expires_at: checkoutSession.expires_at
-            ? fromUnixSeconds(checkoutSession.expires_at)
-            : null,
-          checkout_plan_code: parsed.data.plan_code,
-          billing_state: 'checkout_pending',
-          stripe_status: subscription?.stripe_status ?? 'none',
-          metadata: {
-            checkout_session_id: checkoutSession.id,
-            checkout_plan_code: parsed.data.plan_code,
-          },
-        },
-        {
-          onConflict: 'org_root_clinic_id',
-        }
-      );
+      .upsert(checkoutUpsertPayload, {
+        onConflict: 'org_root_clinic_id',
+      });
 
     if (upsertError) {
       throw upsertError;
     }
+
+    await writeBillingAuditLog({
+      client: adminCtx.client,
+      audit: {
+        orgRootClinicId: orgRootClinic.id,
+        actorType: 'user',
+        actorUserId: auth.id,
+        eventType: 'billing.checkout_started',
+        beforeState: subscription,
+        afterState: checkoutUpsertPayload,
+        requestId: request.headers.get('x-request-id'),
+        metadata: {
+          stripe_customer_id: stripeCustomerId,
+          stripe_checkout_session_id: checkoutSession.id,
+          checkout_plan_code: parsed.data.plan_code,
+        },
+      },
+    });
 
     return createSuccessResponse({
       url: checkoutSession.url,

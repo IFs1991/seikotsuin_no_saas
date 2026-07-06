@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { toJSTDateString } from '@/lib/jst';
 import {
   deriveLegacyBillingType,
@@ -613,7 +614,10 @@ export default function DailyReportInputPage() {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
   const canDeleteItems = managerRoles.has(profile?.role ?? '');
 
   const [date, setDate] = useState(getTodayDateInputValue());
@@ -645,7 +649,7 @@ export default function DailyReportInputPage() {
   const loadRequestIdRef = useRef(0);
 
   const hasClinic = Boolean(clinicId);
-  const isLoading = profileLoading || isLoadingItems;
+  const isLoading = profileLoading || activeClinicLoading || isLoadingItems;
   const errorMessage = profileError;
 
   const replaceSavedItems = useCallback((nextItems: DailyReportItem[]) => {

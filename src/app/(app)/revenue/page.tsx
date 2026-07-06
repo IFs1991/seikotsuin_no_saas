@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRevenue } from '@/hooks/useRevenue';
 import { useRevenueEstimateDetails } from '@/hooks/useRevenueEstimateDetails';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import {
   canAccessAdminUIWithCompat,
   normalizeRole,
@@ -143,10 +144,14 @@ function buildBreakdownDisplayRows(
 
 type ClinicRevenuePageProps = {
   profile: UserProfile;
+  clinicId: string | null;
 };
 
-const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
-  const clinicId = profile.clinicId || '';
+const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({
+  profile,
+  clinicId,
+}) => {
+  const resolvedClinicId = clinicId ?? '';
 
   const {
     dailyRevenue,
@@ -179,8 +184,8 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
     staffRevenueContribution,
     loading: revenueLoading,
     error: revenueError,
-  } = useRevenue(clinicId, {
-    enabled: Boolean(clinicId),
+  } = useRevenue(resolvedClinicId, {
+    enabled: Boolean(resolvedClinicId),
   });
   const revenueBreakdownRows = React.useMemo(
     () => buildBreakdownDisplayRows(revenueBreakdownSummary),
@@ -191,12 +196,12 @@ const ClinicRevenuePage: React.FC<ClinicRevenuePageProps> = ({ profile }) => {
     details: revenueEstimateDetails,
     loading: revenueEstimateDetailsLoading,
     error: revenueEstimateDetailsError,
-  } = useRevenueEstimateDetails(clinicId, profile.role, {
-    enabled: Boolean(clinicId) && canViewEstimateDetails,
+  } = useRevenueEstimateDetails(resolvedClinicId, profile.role, {
+    enabled: Boolean(resolvedClinicId) && canViewEstimateDetails,
   });
 
   // clinicIdがない場合
-  if (!clinicId) {
+  if (!resolvedClinicId) {
     return (
       <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
@@ -828,8 +833,13 @@ const RevenuePage: React.FC = () => {
     loading: profileLoading,
     error: profileError,
   } = useUserProfile();
+  const isManager = normalizeRole(profile?.role) === 'manager';
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId,
+    { enabled: !isManager }
+  );
 
-  if (profileLoading) {
+  if (profileLoading || activeClinicLoading) {
     return (
       <div className='w-full bg-background p-4'>
         <div className='max-w-screen-md mx-auto text-center py-8'>
@@ -859,11 +869,11 @@ const RevenuePage: React.FC = () => {
     );
   }
 
-  if (normalizeRole(profile.role) === 'manager') {
+  if (isManager) {
     return <ManagerRevenueAnalysis />;
   }
 
-  return <ClinicRevenuePage profile={profile} />;
+  return <ClinicRevenuePage profile={profile} clinicId={activeClinicId} />;
 };
 
 export default RevenuePage;

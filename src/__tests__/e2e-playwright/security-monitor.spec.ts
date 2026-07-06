@@ -83,6 +83,7 @@ test.describe('セキュリティ監視運用', () => {
         '/api/admin/security/events',
         {
           data: {
+            clinic_id: CLINIC_A_ID,
             id: eventId,
             status: 'investigating',
             resolution_notes: 'E2Eテストによる調査開始',
@@ -317,6 +318,7 @@ test.describe('セキュリティ監視運用', () => {
     test('存在しないイベントIDでPATCHするとエラーが返る', async ({ page }) => {
       const response = await page.request.patch('/api/admin/security/events', {
         data: {
+          clinic_id: CLINIC_A_ID,
           id: '00000000-0000-0000-0000-nonexistent01',
           status: 'resolved',
         },

@@ -1,4 +1,6 @@
 import {
+  adminSecurityReadRateLimit,
+  adminSecurityWriteRateLimit,
   apiRateLimit,
   getPathRateLimit,
   loginRateLimit,
@@ -93,7 +95,25 @@ describe('getPathRateLimit', () => {
     ]);
     expect(getPathRateLimit('/api/mfa/verify')).toEqual([mfaRateLimit]);
     expect(getPathRateLimit('/api/mfa/setup/initiate')).toEqual([mfaRateLimit]);
-    expect(getPathRateLimit('/api/admin/security/events')).toEqual([]);
+  });
+
+  it('applies admin security read and write rate limits without replacing session limits', () => {
+    expect(getPathRateLimit('/api/admin/security/events', 'GET')).toEqual([
+      adminSecurityReadRateLimit,
+    ]);
+    expect(getPathRateLimit('/api/admin/security/csp-stats', 'GET')).toEqual([
+      adminSecurityReadRateLimit,
+    ]);
+    expect(
+      getPathRateLimit('/api/admin/security/csp-violations', 'PATCH')
+    ).toEqual([adminSecurityWriteRateLimit]);
+    expect(getPathRateLimit('/api/admin/security/sessions', 'GET')).toEqual([
+      sessionCreationRateLimit,
+    ]);
+    expect(
+      getPathRateLimit('/api/internal/process-email-outbox', 'POST')
+    ).toEqual([]);
+    expect(getPathRateLimit('/api/health', 'GET')).toEqual([]);
   });
 
   it('login attempts are limited to 3 with at least a 5 minute initial block', () => {
@@ -175,6 +195,43 @@ describe('getPathRateLimit', () => {
     );
     expect(response?.status).toBe(429);
     expect(response?.headers.get('Retry-After')).toBe('30');
+  });
+
+  it('uses user and clinic identifiers for admin security rate-limit keys when available', async () => {
+    process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.test';
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://supabase.example.test';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+
+    jest.spyOn(rateLimiter, 'isWhitelisted').mockResolvedValue(false);
+    const checkRateLimit = jest
+      .spyOn(rateLimiter, 'checkRateLimit')
+      .mockResolvedValue({
+        allowed: true,
+        limit: 30,
+        remaining: 29,
+        resetTime: 1_756_800_000,
+      });
+
+    const response = await adminSecurityReadRateLimit(
+      new NextRequest(
+        'http://localhost/api/admin/security/events?clinic_id=clinic-1',
+        {
+          method: 'GET',
+          headers: { cookie: 'sb-access-token=test-token' },
+        }
+      )
+    );
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      'api_calls',
+      expect.stringMatching(/^(user:[^:]+|ip:127\.0\.0\.1):clinic:clinic-1$/),
+      {
+        window: 60,
+        limit: 30,
+      }
+    );
+    expect(response?.headers.get('X-RateLimit-Remaining')).toBe('29');
   });
 
   it('fails closed in production when the rate limit backend is missing', async () => {

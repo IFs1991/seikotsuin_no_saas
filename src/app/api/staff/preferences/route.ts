@@ -10,8 +10,20 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { canManageClinicSettingsWithCompat } from '@/lib/constants/roles';
+import type { Database } from '@/types/supabase';
 
 const PATH = '/api/staff/preferences';
+type StaffPreferenceInsert =
+  Database['public']['Tables']['staff_preferences']['Insert'];
+type StaffPreferenceRow =
+  Database['public']['Tables']['staff_preferences']['Row'];
+type StaffPreferenceResource = Pick<
+  Database['public']['Tables']['resources']['Row'],
+  'id' | 'name' | 'type'
+>;
+type StaffPreferenceWithResource = StaffPreferenceRow & {
+  resources: StaffPreferenceResource | StaffPreferenceResource[] | null;
+};
 
 // クエリパラメータのスキーマ
 const preferencesQuerySchema = z.object({
@@ -80,7 +92,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_active', true);
     }
 
-    const { data: preferences, error: preferencesError } = await query;
+    const { data: preferences, error: preferencesError } =
+      await query.returns<StaffPreferenceWithResource[]>();
 
     if (preferencesError) {
       throw normalizeSupabaseError(preferencesError, PATH);
@@ -88,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     // レスポンス形式に変換
 
-    const formattedPreferences = (preferences || []).map((pref: any) => {
+    const formattedPreferences = (preferences ?? []).map(pref => {
       // Supabaseのリレーションは配列または単一オブジェクトで返される
       const resource = Array.isArray(pref.resources)
         ? pref.resources[0]
@@ -178,6 +191,15 @@ export async function POST(request: NextRequest) {
     }
 
     const dto = parsedBody.data;
+    const insertPayload: StaffPreferenceInsert = {
+      clinic_id: dto.clinic_id,
+      staff_id: dto.staff_id,
+      preference_text: dto.preference_text,
+      preference_type: dto.preference_type,
+      priority: dto.priority,
+      valid_from: dto.valid_from,
+      valid_until: dto.valid_until,
+    };
 
     const { supabase, permissions } = await ensureClinicAccess(
       request,
@@ -196,7 +218,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('staff_preferences')
-      .insert(dto as any)
+      .insert(insertPayload)
       .select()
       .single();
 

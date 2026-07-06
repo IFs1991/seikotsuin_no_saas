@@ -43,6 +43,13 @@ describe('next.config.js Sentry integration', () => {
     const config = require('../../../next.config.js');
 
     expect(withSentryConfig).toHaveBeenCalledTimes(1);
+    expect(withSentryConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ output: 'standalone' }),
+      expect.objectContaining({
+        silent: true,
+        sourcemaps: { deleteSourcemapsAfterUpload: true },
+      })
+    );
     expect(config.sentryWrapped).toBe(true);
     expect(config.output).toBe('standalone');
   });

@@ -1,5 +1,6 @@
 import { PATCH } from '@/app/api/admin/security/events/route';
 import { NextRequest } from 'next/server';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 jest.mock('@/lib/api-helpers', () => ({
   processApiRequest: jest.fn(),
@@ -16,6 +17,10 @@ jest.mock('@/lib/audit-logger', () => ({
   AuditLogger: {
     logAdminAction: jest.fn(),
   },
+}));
+
+jest.mock('@/lib/supabase/guards', () => ({
+  ensureClinicAccess: jest.fn(),
 }));
 
 // テスト用UUID
@@ -46,17 +51,20 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     jest.clearAllMocks();
   });
 
-  it('permissions.clinic_idを使用してイベント更新を許可する', async () => {
+  it('explicit clinic_idを使用してイベント更新を許可する', async () => {
     const mockSupabase = createMockSupabase();
     const { processApiRequest } = require('@/lib/api-helpers');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
 
-    // clinic_idはpermissionsから取得（リクエストには含まない）
     processApiRequest.mockResolvedValue({
       success: true,
-      supabase: mockSupabase,
       auth: { id: ADMIN_ID, email: 'admin@clinic-a.com' },
+      body: { clinic_id: CLINIC_A_ID, id: EVENT_ID, status: 'resolved' },
+    });
+    ensureClinicAccess.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: ADMIN_ID, email: 'admin@clinic-a.com' },
       permissions: { clinic_id: CLINIC_A_ID, role: 'admin' },
-      body: { id: EVENT_ID, status: 'resolved' }, // clinic_idは不要
     });
 
     mockSupabase.single.mockResolvedValue({
@@ -65,57 +73,94 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     });
 
     const request = createMockRequest({
+      clinic_id: CLINIC_A_ID,
       id: EVENT_ID,
       status: 'resolved',
-      // clinic_idは不要（JWTから取得）
     });
     const response = await PATCH(request);
 
     expect(response.status).toBe(200);
-    // permissions.clinic_idでフィルタリングされることを確認
     expect(mockSupabase.eq).toHaveBeenCalledWith('clinic_id', CLINIC_A_ID);
+    expect(ensureClinicAccess).toHaveBeenCalledWith(
+      request,
+      '/api/admin/security/events',
+      CLINIC_A_ID,
+      expect.objectContaining({ requireClinicMatch: true })
+    );
   });
 
-  it('permissions.clinic_idが未設定の場合は403を返す', async () => {
+  it('clinic_scope_idsあり・permissions.clinic_id null の管理者も選択clinicで更新できる', async () => {
     const mockSupabase = createMockSupabase();
-    const {
-      processApiRequest,
-      createErrorResponse,
-    } = require('@/lib/api-helpers');
+    const { processApiRequest } = require('@/lib/api-helpers');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
 
-    // clinic_idがpermissionsに含まれていない
     processApiRequest.mockResolvedValue({
       success: true,
-      supabase: mockSupabase,
       auth: { id: ADMIN_ID, email: 'admin@test.com' },
-      permissions: { role: 'admin' }, // clinic_idなし
-      body: { id: EVENT_ID, status: 'resolved' },
+      body: { clinic_id: CLINIC_A_ID, id: EVENT_ID, status: 'resolved' },
+    });
+    ensureClinicAccess.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: ADMIN_ID, email: 'admin@test.com' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [CLINIC_A_ID],
+      },
+    });
+    mockSupabase.single.mockResolvedValue({
+      data: { id: EVENT_ID, clinic_id: CLINIC_A_ID, status: 'resolved' },
+      error: null,
     });
 
     const request = createMockRequest({
+      clinic_id: CLINIC_A_ID,
       id: EVENT_ID,
       status: 'resolved',
     });
     const response = await PATCH(request);
 
-    // clinic_idが特定できないため403
-    expect(response.status).toBe(403);
-    expect(createErrorResponse).toHaveBeenCalledWith(
-      expect.stringContaining('クリニックID'),
-      403
+    expect(response.status).toBe(200);
+    expect(mockSupabase.eq).toHaveBeenCalledWith('clinic_id', CLINIC_A_ID);
+  });
+
+  it('cross-scope clinic_id は403を返す', async () => {
+    const { processApiRequest } = require('@/lib/api-helpers');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
+
+    processApiRequest.mockResolvedValue({
+      success: true,
+      auth: { id: ADMIN_ID, email: 'admin@test.com' },
+      body: { clinic_id: CLINIC_B_ID, id: EVENT_ID, status: 'resolved' },
+    });
+    ensureClinicAccess.mockRejectedValue(
+      new AppError(ERROR_CODES.FORBIDDEN, undefined, 403)
     );
+
+    const request = createMockRequest({
+      clinic_id: CLINIC_B_ID,
+      id: EVENT_ID,
+      status: 'resolved',
+    });
+    const response = await PATCH(request);
+
+    expect(response.status).toBe(403);
   });
 
   it('更新クエリにpermissions.clinic_idフィルターが含まれる', async () => {
     const mockSupabase = createMockSupabase();
     const { processApiRequest } = require('@/lib/api-helpers');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
 
     processApiRequest.mockResolvedValue({
       success: true,
-      supabase: mockSupabase,
       auth: { id: ADMIN_ID, email: 'admin@test.com' },
+      body: { clinic_id: CLINIC_ID, id: EVENT_ID, status: 'resolved' },
+    });
+    ensureClinicAccess.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: ADMIN_ID, email: 'admin@test.com' },
       permissions: { clinic_id: CLINIC_ID, role: 'admin' },
-      body: { id: EVENT_ID, status: 'resolved' },
     });
 
     mockSupabase.single.mockResolvedValue({
@@ -124,6 +169,7 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     });
 
     const request = createMockRequest({
+      clinic_id: CLINIC_ID,
       id: EVENT_ID,
       status: 'resolved',
     });
@@ -142,14 +188,18 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
   it('イベントが見つからない場合は404を返す', async () => {
     const mockSupabase = createMockSupabase();
     const { processApiRequest } = require('@/lib/api-helpers');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
     const nonExistentEventId = '880e8400-e29b-41d4-a716-446655440001';
 
     processApiRequest.mockResolvedValue({
       success: true,
-      supabase: mockSupabase,
       auth: { id: ADMIN_ID, email: 'admin@test.com' },
+      body: { clinic_id: CLINIC_ID, id: nonExistentEventId, status: 'resolved' },
+    });
+    ensureClinicAccess.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: ADMIN_ID, email: 'admin@test.com' },
       permissions: { clinic_id: CLINIC_ID, role: 'admin' },
-      body: { id: nonExistentEventId, status: 'resolved' },
     });
 
     // clinic_idフィルター後、該当なしでPGRST116エラー
@@ -159,6 +209,7 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     });
 
     const request = createMockRequest({
+      clinic_id: CLINIC_ID,
       id: nonExistentEventId,
       status: 'resolved',
     });
@@ -171,13 +222,17 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     const mockSupabase = createMockSupabase();
     const { processApiRequest } = require('@/lib/api-helpers');
     const { AuditLogger } = require('@/lib/audit-logger');
+    const { ensureClinicAccess } = require('@/lib/supabase/guards');
 
     processApiRequest.mockResolvedValue({
       success: true,
-      supabase: mockSupabase,
       auth: { id: ADMIN_ID, email: 'admin@test.com' },
+      body: { clinic_id: CLINIC_ID, id: EVENT_ID, status: 'resolved' },
+    });
+    ensureClinicAccess.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: ADMIN_ID, email: 'admin@test.com' },
       permissions: { clinic_id: CLINIC_ID, role: 'admin' },
-      body: { id: EVENT_ID, status: 'resolved' },
     });
 
     mockSupabase.single.mockResolvedValue({
@@ -186,6 +241,7 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     });
 
     const request = createMockRequest({
+      clinic_id: CLINIC_ID,
       id: EVENT_ID,
       status: 'resolved',
     });

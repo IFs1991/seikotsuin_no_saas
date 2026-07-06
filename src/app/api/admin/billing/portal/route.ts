@@ -16,6 +16,7 @@ import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
+import { writeBillingAuditLog } from '@/lib/billing/audit';
 
 const PORTAL_ENDPOINT = '/api/admin/billing/portal';
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       return processResult.error;
     }
 
-    const { permissions } = processResult;
+    const { auth, permissions } = processResult;
     if (!requireCustomerAdmin(permissions.role)) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
@@ -75,6 +76,22 @@ export async function POST(request: NextRequest) {
         return_url: buildBillingReturnUrl(),
       }
     );
+
+    await writeBillingAuditLog({
+      client: adminCtx.client,
+      audit: {
+        orgRootClinicId: orgRootClinic.id,
+        actorType: 'user',
+        actorUserId: auth.id,
+        eventType: 'billing.portal_opened',
+        beforeState: subscription,
+        requestId: request.headers.get('x-request-id'),
+        metadata: {
+          stripe_customer_id: subscription.stripe_customer_id,
+          stripe_portal_session_id: portalSession.id,
+        },
+      },
+    });
 
     return createSuccessResponse({
       url: portalSession.url,

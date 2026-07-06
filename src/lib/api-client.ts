@@ -3,11 +3,21 @@
 // =================================================================
 
 import {
-  ApiResponse,
-  ApiError,
-  RevenueAnalysisData,
+  type ApiResponse,
+  type ApiError,
+  type AICommentResponse,
+  type ChatSession,
+  type PatientAnalysisData,
+  type RevenueAnalysisData,
+  type StaffAnalysisData,
   type RevenueEstimateDetailsResponse,
 } from '../types/api';
+import type {
+  CustomerInsertDTO,
+  CustomerUpdateDTO,
+} from '@/app/api/customers/schema';
+import type { StaffInsertDTO } from '@/app/api/staff/schema';
+import type { DailyReportPayload } from '@/lib/daily-reports/schema';
 import type {
   ManagerDailyReportsOverview,
   ManagerDailyReportsOverviewQuery,
@@ -79,6 +89,69 @@ interface RevenueCreateRequest {
   private_revenue?: number;
   menu_id?: string | null;
   payment_method_id?: string | null;
+}
+
+type CustomerApiItem = {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  notes?: string;
+  customAttributes?: Record<string, unknown>;
+};
+
+type ChatSendRequest = {
+  message: string;
+  clinic_id?: string | null;
+  session_id?: string | null;
+  user_id?: string;
+};
+
+type ChatSendResponse = {
+  session_id: string;
+  user_message: {
+    id: string;
+    sender: string;
+    message_text: string;
+  };
+  ai_message: {
+    id: string;
+    sender: string;
+    message_text: string;
+    response_data?: Record<string, unknown>;
+  };
+};
+
+type AICommentGenerateRequest = {
+  clinic_id: string;
+  date?: string | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringifyUnknown(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function isApiErrorPayload(value: unknown): value is ApiError {
+  return (
+    isRecord(value) &&
+    typeof value.code === 'string' &&
+    typeof value.message === 'string' &&
+    (value.details === undefined || isRecord(value.details)) &&
+    (value.timestamp === undefined || typeof value.timestamp === 'string') &&
+    (value.path === undefined || typeof value.path === 'string')
+  );
 }
 
 export type ManagerPatientAnalysisQuery = {
@@ -367,11 +440,34 @@ export class ApiClient {
         }
       }
 
-      const data = JSON.parse(text);
+      const data: unknown = JSON.parse(text);
 
       // APIレスポンス形式のチェック
-      if (typeof data === 'object' && data !== null && 'success' in data) {
-        return data as ApiResponse<T>;
+      if (isRecord(data) && typeof data.success === 'boolean') {
+        if (data.success === true) {
+          return {
+            success: true,
+            data: data.data as T | undefined,
+            message:
+              typeof data.message === 'string' ? data.message : undefined,
+          };
+        }
+
+        return {
+          success: false,
+          error: isApiErrorPayload(data.error)
+            ? data.error
+            : {
+                code: getErrorCodeFromStatus(response.status),
+                message:
+                  typeof data.message === 'string'
+                    ? data.message
+                    : stringifyUnknown(data.error ?? data),
+                timestamp: new Date().toISOString(),
+                path: url,
+              },
+          message: typeof data.message === 'string' ? data.message : undefined,
+        };
       }
 
       // APIレスポンス形式でない場合、成功時はdataとして扱う
@@ -383,7 +479,7 @@ export class ApiClient {
           success: false,
           error: {
             code: getErrorCodeFromStatus(response.status),
-            message: typeof data === 'string' ? data : JSON.stringify(data),
+            message: stringifyUnknown(data),
             timestamp: new Date().toISOString(),
             path: url,
           },
@@ -461,24 +557,36 @@ export const api = {
   patients: {
     /** @deprecated Use api.customers.getAnalysis instead */
     getAnalysis: (clinicId: string) =>
-      apiClient.get('/api/patients', { clinic_id: clinicId }),
+      apiClient.get<PatientAnalysisData>('/api/patients', {
+        clinic_id: clinicId,
+      }),
     /**
      * @deprecated Use api.customers.create instead.
      * POST /api/patients is disabled. This redirects to /api/customers.
      */
-    create: (data: any) => apiClient.post('/api/customers', data),
+    create: (data: CustomerInsertDTO) => apiClient.post('/api/customers', data),
   },
 
   // 顧客（SSOT - Single Source of Truth）
   customers: {
     getAnalysis: (clinicId: string) =>
-      apiClient.get('/api/customers/analysis', { clinic_id: clinicId }),
+      apiClient.get<PatientAnalysisData>('/api/customers/analysis', {
+        clinic_id: clinicId,
+      }),
     getList: (clinicId: string, q?: string) =>
-      apiClient.get('/api/customers', { clinic_id: clinicId, ...(q && { q }) }),
+      apiClient.get<CustomerApiItem[]>('/api/customers', {
+        clinic_id: clinicId,
+        ...(q && { q }),
+      }),
     getById: (clinicId: string, id: string) =>
-      apiClient.get('/api/customers', { clinic_id: clinicId, id }),
-    create: (data: any) => apiClient.post('/api/customers', data),
-    update: (data: any) => apiClient.patch('/api/customers', data),
+      apiClient.get<CustomerApiItem>('/api/customers', {
+        clinic_id: clinicId,
+        id,
+      }),
+    create: (data: CustomerInsertDTO) =>
+      apiClient.post<CustomerApiItem>('/api/customers', data),
+    update: (data: CustomerUpdateDTO) =>
+      apiClient.patch<CustomerApiItem>('/api/customers', data),
   },
 
   // 収益分析
@@ -506,8 +614,8 @@ export const api = {
   // スタッフ分析
   staff: {
     getAnalysis: (clinicId: string) =>
-      apiClient.get('/api/staff', { clinic_id: clinicId }),
-    create: (data: any) => apiClient.post('/api/staff', data),
+      apiClient.get<StaffAnalysisData>('/api/staff', { clinic_id: clinicId }),
+    create: (data: StaffInsertDTO) => apiClient.post('/api/staff', data),
   },
 
   // 日報
@@ -518,7 +626,8 @@ export const api = {
         ...(startDate && { start_date: startDate }),
         ...(endDate && { end_date: endDate }),
       }),
-    create: (data: any) => apiClient.post('/api/daily-reports', data),
+    create: (data: DailyReportPayload) =>
+      apiClient.post('/api/daily-reports', data),
     delete: (id: string) => apiClient.delete('/api/daily-reports', { id }),
   },
 
@@ -631,11 +740,12 @@ export const api = {
   // チャット
   chat: {
     getHistory: (clinicId?: string | null, sessionId?: string) =>
-      apiClient.get('/api/chat', {
+      apiClient.get<ChatSession[]>('/api/chat', {
         ...(clinicId ? { clinic_id: clinicId } : {}),
         ...(sessionId && { session_id: sessionId }),
       }),
-    sendMessage: (data: any) => apiClient.post('/api/chat', data),
+    sendMessage: (data: ChatSendRequest) =>
+      apiClient.post<ChatSendResponse>('/api/chat', data),
   },
 
   // 通知
@@ -664,11 +774,12 @@ export const api = {
   // AIコメント
   aiComments: {
     get: (clinicId: string, date?: string) =>
-      apiClient.get('/api/ai-comments', {
+      apiClient.get<AICommentResponse>('/api/ai-comments', {
         clinic_id: clinicId,
         ...(date && { date }),
       }),
-    generate: (data: any) => apiClient.post('/api/ai-comments', data),
+    generate: (data: AICommentGenerateRequest) =>
+      apiClient.post<AICommentResponse>('/api/ai-comments', data),
   },
 } as const;
 

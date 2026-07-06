@@ -190,6 +190,7 @@ export const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          clinic_id: clinicId,
           id: selectedEvent.id,
           status: eventStatus,
           resolution_notes: resolutionNotes,

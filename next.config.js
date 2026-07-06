@@ -89,6 +89,9 @@ function exportNextConfig(config) {
 
   return withSentryConfig(config, {
     silent: true,
+    sourcemaps: {
+      deleteSourcemapsAfterUpload: true,
+    },
   });
 }
 

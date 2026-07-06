@@ -55,6 +55,41 @@ describe('/api/revenue-estimates/recalculate', () => {
     jest.clearAllMocks();
   });
 
+  test('POST returns 403 when manager effective clinic assignment was revoked', async () => {
+    const forbiddenResponse = new Response(
+      JSON.stringify({
+        success: false,
+        error: 'このクリニックへのアクセス権がありません',
+      }),
+      { status: 403 }
+    );
+    processClinicScopedBodyMock.mockResolvedValue({
+      success: false,
+      error: forbiddenResponse,
+    });
+
+    const { POST } =
+      await import('@/app/api/revenue-estimates/recalculate/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/revenue-estimates/recalculate', {
+        method: 'POST',
+      })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe('このクリニックへのアクセス権がありません');
+    expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      {
+        allowedRoles: expect.arrayContaining(['manager']),
+        path: '/api/revenue-estimates/recalculate',
+      }
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
+  });
+
   test('POST calculates fee-based estimates and warning records', async () => {
     const itemsQuery = createResolvedQuery([
       {
