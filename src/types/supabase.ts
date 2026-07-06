@@ -3307,6 +3307,111 @@ export type Database = {
           },
         ];
       };
+      patient_outreach_campaigns: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          message_body: string;
+          name: string;
+          segment_snapshot: Json;
+          sent_at: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          message_body: string;
+          name: string;
+          segment_snapshot?: Json;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          message_body?: string;
+          name?: string;
+          segment_snapshot?: Json;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_outreach_campaigns_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      patient_outreach_recipients: {
+        Row: {
+          booked_reservation_id: string | null;
+          campaign_id: string;
+          clinic_id: string;
+          created_at: string;
+          customer_id: string;
+          delivery_status: string;
+          id: string;
+          line_user_id: string;
+          sent_at: string | null;
+        };
+        Insert: {
+          booked_reservation_id?: string | null;
+          campaign_id: string;
+          clinic_id: string;
+          created_at?: string;
+          customer_id: string;
+          delivery_status?: string;
+          id?: string;
+          line_user_id: string;
+          sent_at?: string | null;
+        };
+        Update: {
+          booked_reservation_id?: string | null;
+          campaign_id?: string;
+          clinic_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          delivery_status?: string;
+          id?: string;
+          line_user_id?: string;
+          sent_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_outreach_recipients_booked_reservation_id_fkey';
+            columns: ['booked_reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_campaign_clinic_fkey';
+            columns: ['campaign_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_outreach_campaigns';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       patients: {
         Row: {
           address: string | null;
@@ -3575,6 +3680,7 @@ export type Database = {
           actual_price: number | null;
           booker_name: string | null;
           booker_phone: string | null;
+          campaign_id: string | null;
           cancellation_reason: string | null;
           channel: string;
           clinic_id: string;
@@ -3611,6 +3717,7 @@ export type Database = {
           actual_price?: number | null;
           booker_name?: string | null;
           booker_phone?: string | null;
+          campaign_id?: string | null;
           cancellation_reason?: string | null;
           channel?: string;
           clinic_id: string;
@@ -3647,6 +3754,7 @@ export type Database = {
           actual_price?: number | null;
           booker_name?: string | null;
           booker_phone?: string | null;
+          campaign_id?: string | null;
           cancellation_reason?: string | null;
           channel?: string;
           clinic_id?: string;
@@ -3680,6 +3788,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'reservations_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_outreach_campaigns';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'reservations_clinic_id_fkey';
             columns: ['clinic_id'];
