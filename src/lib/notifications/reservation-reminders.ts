@@ -5,6 +5,7 @@ import {
 } from '@/lib/jst';
 import { normalizeBookingCalendarReminders } from '@/lib/booking-calendar/settings';
 import {
+  buildPublicMyPageUrl,
   enqueuePatientReservationNotification,
   type PatientReservationEmailInput,
   type ReservationNotificationType,
@@ -317,7 +318,7 @@ export async function processReservationReminders(
             endTime: reservation.end_time,
             staffName: context.staffName,
             menuName: context.menuName,
-            myPageUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/booking/${reservation.clinic_id}/my`,
+            myPageUrl: buildPublicMyPageUrl(reservation.clinic_id),
           },
           dedupeTimestamp: reminder.scheduledFor,
           scheduledFor: reminder.scheduledFor,

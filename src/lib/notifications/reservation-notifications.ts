@@ -8,6 +8,7 @@ import {
 } from '@/lib/notifications/line-outbox';
 import type {
   EmailTemplateType,
+  PublicReservationCancelledPayload,
   PublicReservationReceivedPayload,
   ReservationEmailPayload,
 } from '@/lib/notifications/email/types';
@@ -36,6 +37,21 @@ type ReservationNotificationUpdate =
   Database['public']['Tables']['reservation_notifications']['Update'];
 
 type NotificationSupabaseClient = Pick<SupabaseServerClient, 'from'>;
+type PublicReservationCancellationReservation = Pick<
+  Database['public']['Tables']['reservations']['Row'],
+  | 'id'
+  | 'customer_id'
+  | 'menu_id'
+  | 'staff_id'
+  | 'start_time'
+  | 'end_time'
+  | 'channel'
+  | 'updated_at'
+>;
+type PublicReservationCancellationCustomer = Pick<
+  Database['public']['Tables']['customers']['Row'],
+  'id' | 'name' | 'email'
+>;
 
 type ClaimParams = {
   clinicId: string;
@@ -229,9 +245,9 @@ async function shouldUseLineNotification(
   return reasons.length === 0 ? { enabled: true } : { enabled: false, reasons };
 }
 
-function getFallbackConfirmationUrl(clinicId: string): string | undefined {
+export function buildPublicMyPageUrl(clinicId: string): string | undefined {
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/+$/, '');
-  return baseUrl ? `${baseUrl}/booking/${clinicId}` : undefined;
+  return baseUrl ? `${baseUrl}/booking/${clinicId}/my` : undefined;
 }
 
 function getLineNotificationHeading(
@@ -276,7 +292,7 @@ function buildReservationLinePayload(
   input: PatientReservationNotificationInput
 ): LineMessagePayload {
   const confirmationUrl =
-    input.payload.myPageUrl ?? getFallbackConfirmationUrl(input.clinicId);
+    input.payload.myPageUrl ?? buildPublicMyPageUrl(input.clinicId);
   const lines = [
     `${input.payload.customerName}様`,
     `${input.payload.clinicName}です。`,
@@ -452,6 +468,30 @@ async function fetchResourceName(
   return typeof data?.name === 'string' ? data.name : '';
 }
 
+async function fetchMenuName(
+  supabase: NotificationSupabaseClient,
+  clinicId: string,
+  menuId: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from('menus')
+    .select('name')
+    .eq('id', menuId)
+    .eq('clinic_id', clinicId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn('Failed to load public reservation menu name', {
+      clinicId,
+      menuId,
+      error: error.message,
+    });
+    return '';
+  }
+
+  return typeof data?.name === 'string' ? data.name : '';
+}
+
 async function fetchCustomerNotificationProfile(
   supabase: NotificationSupabaseClient,
   clinicId: string,
@@ -553,4 +593,59 @@ export async function enqueuePublicReservationNotifications(
     input.updatedAt,
     { ignoreDuplicate: true }
   );
+}
+
+export type PublicReservationCancellationNotificationInput = {
+  clinicId: string;
+  clinicName: string;
+  reservation: PublicReservationCancellationReservation;
+  customer: PublicReservationCancellationCustomer;
+};
+
+export async function enqueuePublicReservationCancellationNotification(
+  supabase: NotificationSupabaseClient,
+  input: PublicReservationCancellationNotificationInput
+): Promise<'enqueued' | 'skipped'> {
+  const clinicEmail = await fetchClinicNotificationEmail(
+    supabase,
+    input.clinicId
+  );
+  if (!clinicEmail) {
+    logger.warn('Clinic email is not configured; cancellation notice skipped', {
+      clinicId: input.clinicId,
+      reservationId: input.reservation.id,
+    });
+    return 'skipped';
+  }
+
+  const [staffName, menuName] = await Promise.all([
+    fetchResourceName(supabase, input.clinicId, input.reservation.staff_id),
+    fetchMenuName(supabase, input.clinicId, input.reservation.menu_id),
+  ]);
+
+  const payload: PublicReservationCancelledPayload = {
+    customerName: input.customer.name,
+    clinicName: input.clinicName,
+    startTime: input.reservation.start_time,
+    endTime: input.reservation.end_time,
+    staffName,
+    menuName,
+    channel: input.reservation.channel,
+  };
+
+  await enqueueEmail(
+    supabase,
+    {
+      clinicId: input.clinicId,
+      reservationId: input.reservation.id,
+      customerId: input.customer.id,
+      templateType: 'public-reservation-cancelled',
+      toEmail: clinicEmail,
+      payload,
+    },
+    input.reservation.updated_at,
+    { ignoreDuplicate: true }
+  );
+
+  return 'enqueued';
 }

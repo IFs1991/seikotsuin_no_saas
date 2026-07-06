@@ -13,6 +13,7 @@ export type EmailTemplateType =
   | 'reminder_day_before'
   | 'reminder_same_day'
   | 'public-reservation-received'
+  | 'public-reservation-cancelled'
   | BillingEmailTemplateType;
 
 export type BillingEmailTemplateType =
@@ -125,6 +126,10 @@ export type ReservationEmailPayload = {
 export type PublicReservationReceivedPayload = ReservationEmailPayload & {
   channel: string;
   intakeSummary: string[];
+};
+
+export type PublicReservationCancelledPayload = ReservationEmailPayload & {
+  channel: string;
 };
 
 export type BillingEmailPayload = {
