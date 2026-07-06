@@ -9,9 +9,10 @@
 
 const mockCreatePublicClinicContext = jest.fn();
 const mockVerifyLineIdTokenForClinic = jest.fn();
+const mockResolveOutreachAttribution = jest.fn();
+const mockMarkOutreachRecipientBooked = jest.fn();
 const ORIGINAL_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
-const ORIGINAL_TURNSTILE_SITE_KEY =
-  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const ORIGINAL_TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const ORIGINAL_SENTRY_DSN = process.env.SENTRY_DSN;
 
 jest.mock('next/server', () => ({
@@ -45,6 +46,13 @@ jest.mock('@/lib/line/id-token', () => ({
     mockVerifyLineIdTokenForClinic(...args),
 }));
 
+jest.mock('@/lib/outreach', () => ({
+  resolveOutreachAttribution: (...args: unknown[]) =>
+    mockResolveOutreachAttribution(...args),
+  markOutreachRecipientBooked: (...args: unknown[]) =>
+    mockMarkOutreachRecipientBooked(...args),
+}));
+
 jest.mock('@sentry/nextjs', () => ({
   captureException: jest.fn(),
 }));
@@ -54,6 +62,8 @@ const VALID_MENU_ID = '00000000-0000-0000-0000-000000000201';
 const VALID_RESOURCE_ID = '00000000-0000-0000-0000-000000000301';
 const VALID_CUSTOMER_ID = '00000000-0000-0000-0000-000000000401';
 const VALID_RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
+const VALID_CAMPAIGN_ID = '00000000-0000-4000-8000-000000000601';
+const VALID_RECIPIENT_ID = '00000000-0000-4000-8000-000000000701';
 const EMPTY_LIST = { data: [], error: null };
 const NO_CONFLICT = { count: 0, error: null };
 
@@ -453,6 +463,8 @@ describe('POST /api/public/reservations', () => {
       ok: false,
       reason: 'not_configured',
     });
+    mockResolveOutreachAttribution.mockResolvedValue(null);
+    mockMarkOutreachRecipientBooked.mockResolvedValue(undefined);
     // Dynamic import to pick up mocks
     jest.resetModules();
     const mod = await import('@/app/api/public/reservations/route');
@@ -568,6 +580,71 @@ describe('POST /api/public/reservations', () => {
       resource_id: VALID_RESOURCE_ID,
       is_staff_requested: true,
     });
+  });
+
+  it('campaign_idがrecipient照合済みの場合だけ予約へ帰着を記録する', async () => {
+    mockResolveOutreachAttribution.mockResolvedValue({
+      campaignId: VALID_CAMPAIGN_ID,
+      recipientId: VALID_RECIPIENT_ID,
+    });
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        campaign_id: VALID_CAMPAIGN_ID,
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(mockResolveOutreachAttribution).toHaveBeenCalledWith(
+      expect.objectContaining({}),
+      {
+        clinicId: VALID_CLINIC_ID,
+        campaignId: VALID_CAMPAIGN_ID,
+        customerId: VALID_CUSTOMER_ID,
+      }
+    );
+    expect(findReservationInsertPayload(supabase)).toEqual(
+      expect.objectContaining({
+        campaign_id: VALID_CAMPAIGN_ID,
+      })
+    );
+    expect(mockMarkOutreachRecipientBooked).toHaveBeenCalledWith(
+      expect.objectContaining({}),
+      {
+        clinicId: VALID_CLINIC_ID,
+        campaignId: VALID_CAMPAIGN_ID,
+        recipientId: VALID_RECIPIENT_ID,
+        reservationId: VALID_RESERVATION_ID,
+      }
+    );
+  });
+
+  it('campaign_idがrecipient照合できない場合は予約へ記録しない', async () => {
+    mockResolveOutreachAttribution.mockResolvedValue(null);
+    const supabase = buildMockSupabase();
+    setupClinicContext(supabase);
+
+    const response = await POST(
+      buildRequest({
+        ...buildValidBody(),
+        campaign_id: VALID_CAMPAIGN_ID,
+      })
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.success).toBe(true);
+    expect(findReservationInsertPayload(supabase)).toEqual(
+      expect.objectContaining({
+        campaign_id: null,
+      })
+    );
+    expect(mockMarkOutreachRecipientBooked).not.toHaveBeenCalled();
   });
 
   it('Turnstile有効時はsiteverify成功後に予約作成を継続する', async () => {

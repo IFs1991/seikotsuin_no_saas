@@ -20,6 +20,8 @@ type LineProcessorClient = Pick<SupabaseServerClient, 'from'>;
 type LineOutboxRow = Database['public']['Tables']['line_message_outbox']['Row'];
 type LineOutboxUpdate =
   Database['public']['Tables']['line_message_outbox']['Update'];
+type OutreachRecipientUpdate =
+  Database['public']['Tables']['patient_outreach_recipients']['Update'];
 type LineFetch = (input: string, init: RequestInit) => Promise<Response>;
 type AccessTokenResolver = typeof getLineChannelAccessToken;
 
@@ -127,6 +129,12 @@ export async function processLineOutbox(
         sent_at: sentAt,
         last_error: null,
         next_attempt_at: sentAt,
+      });
+      await updateOutreachRecipientDelivery(supabase, {
+        outreach: payload.outreach,
+        clinicId: job.clinic_id,
+        status: 'sent',
+        sentAt,
       });
       result.sent += 1;
       continue;
@@ -318,6 +326,12 @@ async function handleLineDeliveryFailure(
       last_error: params.errorMessage,
       next_attempt_at: params.now.toISOString(),
     });
+    await updateOutreachRecipientDelivery(supabase, {
+      outreach: params.payload.outreach,
+      clinicId: params.job.clinic_id,
+      status: 'failed',
+      sentAt: null,
+    });
     const fallback = await enqueueEmailFallback(
       supabase,
       params.job,
@@ -396,6 +410,42 @@ async function enqueueEmailFallback(
   return 'enqueued';
 }
 
+async function updateOutreachRecipientDelivery(
+  supabase: LineProcessorClient,
+  params: {
+    outreach: LineMessagePayload['outreach'] | undefined;
+    clinicId: string;
+    status: 'sent' | 'failed';
+    sentAt: string | null;
+  }
+): Promise<void> {
+  if (!params.outreach) {
+    return;
+  }
+
+  const update: OutreachRecipientUpdate = {
+    delivery_status: params.status,
+    ...(params.sentAt ? { sent_at: params.sentAt } : {}),
+  };
+
+  const { error } = await supabase
+    .from('patient_outreach_recipients')
+    .update(update)
+    .eq('id', params.outreach.recipientId)
+    .eq('campaign_id', params.outreach.campaignId)
+    .eq('clinic_id', params.clinicId)
+    .eq('customer_id', params.outreach.customerId);
+
+  if (error) {
+    log.warn('Failed to update outreach recipient delivery status', {
+      clinicId: params.clinicId,
+      campaignId: params.outreach.campaignId,
+      recipientId: params.outreach.recipientId,
+      error: error.message,
+    });
+  }
+}
+
 async function updateReservationNotificationFallbackDetail(
   supabase: LineProcessorClient,
   params: {
@@ -437,6 +487,7 @@ function readLineMessagePayload(value: Json): LineMessagePayload | null {
   }
 
   const fallbackEmail = readLineEmailFallback(value.fallbackEmail);
+  const outreach = readOutreachPayload(value.outreach);
 
   return {
     text: value.text,
@@ -444,6 +495,29 @@ function readLineMessagePayload(value: Json): LineMessagePayload | null {
       ? { confirmationUrl: value.confirmationUrl }
       : {}),
     ...(fallbackEmail ? { fallbackEmail } : {}),
+    ...(outreach ? { outreach } : {}),
+  };
+}
+
+function readOutreachPayload(
+  value: unknown
+): LineMessagePayload['outreach'] | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  if (
+    typeof value.campaignId !== 'string' ||
+    typeof value.recipientId !== 'string' ||
+    typeof value.customerId !== 'string'
+  ) {
+    return undefined;
+  }
+
+  return {
+    campaignId: value.campaignId,
+    recipientId: value.recipientId,
+    customerId: value.customerId,
   };
 }
 

@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   CalendarDays,
   CheckCircle2,
@@ -88,6 +88,7 @@ interface PublicBookingFormProps {
   embedded?: boolean;
   previewMode?: boolean;
   bookingFormOverride?: PublicBookingFormSettings;
+  campaignId?: string | null;
 }
 
 const EMPTY_MENUS: PublicMenu[] = [];
@@ -120,6 +121,8 @@ const STEP_LABELS = [
 const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-api';
 const TURNSTILE_SCRIPT_SRC =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type TurnstileRenderOptions = {
   sitekey: string;
@@ -171,6 +174,11 @@ const getResourceLabel = (
 
 const createStartTimeIso = (date: string, time: string) =>
   `${date}T${time}:00+09:00`;
+
+const normalizeCampaignId = (value: string | null | undefined) => {
+  const trimmed = value?.trim();
+  return trimmed && UUID_PATTERN.test(trimmed) ? trimmed : undefined;
+};
 
 const buildLineFriendAddUrl = (oaBasicId: string) =>
   `https://line.me/R/ti/p/${encodeURIComponent(oaBasicId)}`;
@@ -609,6 +617,7 @@ export function PublicBookingForm({
   embedded = false,
   previewMode = false,
   bookingFormOverride,
+  campaignId,
 }: PublicBookingFormProps) {
   const todayString = useMemo(() => toJSTDateString(), []);
   const dateOptions = useMemo(
@@ -858,6 +867,10 @@ export function PublicBookingForm({
   const isTurnstileRequired = Boolean(
     bookingForm.turnstile_site_key && !lineIdToken && !previewMode
   );
+  const normalizedCampaignId = useMemo(
+    () => normalizeCampaignId(campaignId),
+    [campaignId]
+  );
 
   const hasBookableChoices = menus.length > 0 && resources.length > 0;
   const canContinue = useMemo(() => {
@@ -1095,6 +1108,7 @@ export function PublicBookingForm({
           consents: consentResponses,
           line_id_token: lineIdToken ?? undefined,
           turnstile_token: isTurnstileRequired ? turnstileToken : undefined,
+          campaign_id: normalizedCampaignId,
         }),
       });
       const json = (await response.json()) as ApiEnvelope<{
@@ -1132,6 +1146,7 @@ export function PublicBookingForm({
     formData,
     isTurnstileRequired,
     lineIdToken,
+    normalizedCampaignId,
     questionResponses,
     consentResponses,
     selectedMenu,
@@ -1800,7 +1815,10 @@ export function PublicBookingForm({
 
 export default function PublicBookingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const clinicId = getFirstParam(params?.clinic_id);
 
-  return <PublicBookingForm clinicId={clinicId} />;
+  return (
+    <PublicBookingForm clinicId={clinicId} campaignId={searchParams.get('c')} />
+  );
 }

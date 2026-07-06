@@ -135,6 +135,7 @@ export interface CreateReservationParams {
   channel: string;
   isStaffRequested?: boolean;
   intakeResponses?: IntakeResponseSnapshot[];
+  campaignId?: string | null;
 }
 
 export interface ValidateBookingFormResponseParams {
@@ -588,6 +589,7 @@ export class PublicReservationService {
       channel: params.channel,
       is_staff_requested: params.isStaffRequested ?? true,
       intake_responses: toIntakeResponsesJson(params.intakeResponses ?? []),
+      campaign_id: params.campaignId ?? null,
     };
 
     const { data, error } = await this.client

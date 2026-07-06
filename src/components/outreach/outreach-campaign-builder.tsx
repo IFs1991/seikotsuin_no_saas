@@ -2,10 +2,11 @@
 
 import React from 'react';
 import {
-  CheckCircle2,
   ClipboardList,
   Edit3,
+  Send,
   Search,
+  AlertTriangle,
   Users,
   X,
 } from 'lucide-react';
@@ -20,7 +21,10 @@ import {
 import type {
   DormantCandidate,
   DormantCandidatesResponse,
+  OutreachCampaignsResponse,
+  OutreachCampaignSummary,
   OutreachDraftResponse,
+  OutreachSendResponse,
 } from '@/lib/outreach';
 
 export type OutreachClinicOption = {
@@ -61,7 +65,7 @@ const STEP_ITEMS: Array<{
   { id: 'review', label: '確認', icon: Users },
   { id: 'message', label: '文面', icon: Edit3 },
   { id: 'confirm', label: '最終確認', icon: ClipboardList },
-  { id: 'done', label: '下書き', icon: CheckCircle2 },
+  { id: 'done', label: '配信', icon: Send },
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -107,7 +111,8 @@ function isDormantCandidate(value: unknown): value is DormantCandidate {
     typeof value.days_since_last_visit === 'number' &&
     isNumberOrNull(value.total_visits) &&
     isNumberOrNull(value.lifetime_value) &&
-    (isString(value.line_display_name) || value.line_display_name === null)
+    (isString(value.line_display_name) || value.line_display_name === null) &&
+    typeof value.line_delivery_warning === 'boolean'
   );
 }
 
@@ -136,6 +141,46 @@ function isOutreachDraftResponse(
     value.status === 'draft' &&
     typeof value.selected_count === 'number' &&
     isString(value.created_at)
+  );
+}
+
+function isOutreachCampaignSummary(
+  value: unknown
+): value is OutreachCampaignSummary {
+  return (
+    isRecord(value) &&
+    isString(value.campaign_id) &&
+    isString(value.name) &&
+    isString(value.status) &&
+    isString(value.message_body) &&
+    isString(value.created_at) &&
+    (isString(value.sent_at) || value.sent_at === null) &&
+    typeof value.selected_count === 'number' &&
+    typeof value.sent_count === 'number' &&
+    typeof value.delivered_count === 'number' &&
+    typeof value.booked_count === 'number' &&
+    typeof value.visited_count === 'number'
+  );
+}
+
+function isOutreachCampaignsResponse(
+  value: unknown
+): value is OutreachCampaignsResponse {
+  return (
+    isRecord(value) &&
+    isString(value.clinic_id) &&
+    Array.isArray(value.campaigns) &&
+    value.campaigns.every(isOutreachCampaignSummary)
+  );
+}
+
+function isOutreachSendResponse(value: unknown): value is OutreachSendResponse {
+  return (
+    isRecord(value) &&
+    isString(value.campaign_id) &&
+    value.status === 'sent' &&
+    typeof value.enqueued_count === 'number' &&
+    isString(value.sent_at)
   );
 }
 
@@ -177,6 +222,11 @@ function buildQuery(params: {
     days_to: String(params.daysTo),
   });
   return `/api/outreach/dormant-candidates?${searchParams.toString()}`;
+}
+
+function buildCampaignsQuery(clinicId: string) {
+  const searchParams = new URLSearchParams({ clinic_id: clinicId });
+  return `/api/outreach/campaigns?${searchParams.toString()}`;
 }
 
 function uniqueClinics(
@@ -223,6 +273,15 @@ export function OutreachCampaignBuilder({
   );
   const [draftResult, setDraftResult] =
     React.useState<OutreachDraftResponse | null>(null);
+  const [sendResult, setSendResult] =
+    React.useState<OutreachSendResponse | null>(null);
+  const [campaigns, setCampaigns] = React.useState<OutreachCampaignSummary[]>(
+    []
+  );
+  const [campaignsLoading, setCampaignsLoading] = React.useState(false);
+  const [sendingCampaignId, setSendingCampaignId] = React.useState<
+    string | null
+  >(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -272,6 +331,37 @@ export function OutreachCampaignBuilder({
       setClinicId(initialClinicId);
     }
   }, [clinicId, initialClinicId]);
+
+  const refreshCampaigns = React.useCallback(async () => {
+    if (!clinicId) {
+      setCampaigns([]);
+      return;
+    }
+
+    setCampaignsLoading(true);
+    try {
+      const response = await fetch(buildCampaignsQuery(clinicId), {
+        cache: 'no-store',
+      });
+      const envelope = await readApiEnvelope(
+        response,
+        isOutreachCampaignsResponse
+      );
+      if (!isApiSuccess(envelope)) {
+        throw new Error(envelope.error);
+      }
+
+      setCampaigns(envelope.data.campaigns);
+    } catch {
+      setCampaigns([]);
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }, [clinicId]);
+
+  React.useEffect(() => {
+    void refreshCampaigns();
+  }, [refreshCampaigns]);
 
   const selectedCandidates = React.useMemo(
     () =>
@@ -380,6 +470,8 @@ export function OutreachCampaignBuilder({
       }
 
       setDraftResult(envelope.data);
+      setSendResult(null);
+      await refreshCampaigns();
       setStep('done');
     } catch (draftError) {
       setError(
@@ -397,8 +489,50 @@ export function OutreachCampaignBuilder({
     messageBody,
     parsedDaysFrom,
     parsedDaysTo,
+    refreshCampaigns,
     selectedCandidates,
   ]);
+
+  const sendCampaign = React.useCallback(
+    async (campaignId: string) => {
+      if (!clinicId) {
+        setError('院を選択してください');
+        return;
+      }
+
+      setSendingCampaignId(campaignId);
+      setError(null);
+      try {
+        const response = await fetch(
+          `/api/outreach/campaigns/${encodeURIComponent(campaignId)}/send`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clinic_id: clinicId }),
+          }
+        );
+        const envelope = await readApiEnvelope(
+          response,
+          isOutreachSendResponse
+        );
+        if (!isApiSuccess(envelope)) {
+          throw new Error(envelope.error);
+        }
+
+        setSendResult(envelope.data);
+        await refreshCampaigns();
+      } catch (sendError) {
+        setError(
+          sendError instanceof Error
+            ? sendError.message
+            : 'キャンペーン配信に失敗しました'
+        );
+      } finally {
+        setSendingCampaignId(null);
+      }
+    },
+    [clinicId, refreshCampaigns]
+  );
 
   const previewName = selectedCandidates[0]?.name ?? '患者名';
   const previewText = replaceNameToken(messageBody, previewName);
@@ -539,6 +673,15 @@ export function OutreachCampaignBuilder({
                           最終来院: {candidate.last_visit_date} / 経過:
                           {candidate.days_since_last_visit.toLocaleString()}日
                         </span>
+                        {candidate.line_delivery_warning && (
+                          <span className='mt-1 inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800'>
+                            <AlertTriangle
+                              className='h-3 w-3'
+                              aria-hidden='true'
+                            />
+                            LINE送信失敗が続いています
+                          </span>
+                        )}
                       </span>
                       {!selected && (
                         <span className='inline-flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground'>
@@ -626,7 +769,8 @@ export function OutreachCampaignBuilder({
           <CardHeader>
             <CardTitle>確認</CardTitle>
             <CardDescription>
-              このPRでは配信せず、下書きと対象者だけを保存します。
+              下書きを作成後、配信権限のあるユーザーがLINE
+              outboxへ配信できます。
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -680,7 +824,7 @@ export function OutreachCampaignBuilder({
           <CardHeader>
             <CardTitle>下書き作成完了</CardTitle>
             <CardDescription>
-              配信実行は次PRのoutbox連携で有効化します。
+              配信実行するとLINE outboxへ投入され、既存cronが送信します。
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-3 text-sm'>
@@ -689,21 +833,126 @@ export function OutreachCampaignBuilder({
               <span className='font-mono'>{draftResult.campaign_id}</span>
             </p>
             <p>対象者: {draftResult.selected_count.toLocaleString()}名</p>
-            <p>状態: {draftResult.status}</p>
-            <Button
-              variant='outline'
-              onClick={() => {
-                setStep('segment');
-                setCandidates([]);
-                setSelectedIds(new Set());
-                setDraftResult(null);
-              }}
-            >
-              新しい下書きを作成
-            </Button>
+            <p>
+              状態:{' '}
+              {sendResult?.campaign_id === draftResult.campaign_id
+                ? sendResult.status
+                : draftResult.status}
+            </p>
+            {sendResult?.campaign_id === draftResult.campaign_id && (
+              <div className='rounded border border-emerald-200 bg-emerald-50 p-3 text-emerald-800'>
+                LINE outboxへ
+                {sendResult.enqueued_count.toLocaleString()}件投入しました。
+              </div>
+            )}
+            <div className='flex flex-wrap gap-2'>
+              <Button
+                onClick={() => sendCampaign(draftResult.campaign_id)}
+                disabled={
+                  sendingCampaignId === draftResult.campaign_id ||
+                  sendResult?.campaign_id === draftResult.campaign_id
+                }
+                className='bg-blue-600 text-white'
+              >
+                <Send className='mr-2 h-4 w-4' aria-hidden='true' />
+                配信実行
+              </Button>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setStep('segment');
+                  setCandidates([]);
+                  setSelectedIds(new Set());
+                  setDraftResult(null);
+                  setSendResult(null);
+                }}
+              >
+                新しい下書きを作成
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      <Card className='bg-card'>
+        <CardHeader>
+          <CardTitle>キャンペーン一覧</CardTitle>
+          <CardDescription>
+            送信数、到達数、予約数、来院数をキャンペーン別に確認します。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className='space-y-3'>
+          {campaignsLoading ? (
+            <div className='rounded border border-border bg-background p-4 text-sm text-muted-foreground'>
+              キャンペーンを読み込み中です。
+            </div>
+          ) : campaigns.length === 0 ? (
+            <div className='rounded border border-border bg-background p-4 text-sm text-muted-foreground'>
+              まだキャンペーンがありません。
+            </div>
+          ) : (
+            <div className='overflow-x-auto rounded border border-border'>
+              <table className='w-full min-w-[760px] text-sm'>
+                <thead className='bg-muted text-left text-muted-foreground'>
+                  <tr>
+                    <th className='px-3 py-2 font-medium'>キャンペーン</th>
+                    <th className='px-3 py-2 font-medium'>状態</th>
+                    <th className='px-3 py-2 text-right font-medium'>送信数</th>
+                    <th className='px-3 py-2 text-right font-medium'>到達数</th>
+                    <th className='px-3 py-2 text-right font-medium'>予約数</th>
+                    <th className='px-3 py-2 text-right font-medium'>来院数</th>
+                    <th className='px-3 py-2 font-medium'>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map(campaign => (
+                    <tr
+                      key={campaign.campaign_id}
+                      className='border-t border-border'
+                    >
+                      <td className='px-3 py-3'>
+                        <div className='font-medium'>{campaign.name}</div>
+                        <div className='font-mono text-xs text-muted-foreground'>
+                          {campaign.campaign_id}
+                        </div>
+                      </td>
+                      <td className='px-3 py-3'>{campaign.status}</td>
+                      <td className='px-3 py-3 text-right'>
+                        {campaign.sent_count.toLocaleString()}
+                      </td>
+                      <td className='px-3 py-3 text-right'>
+                        {campaign.delivered_count.toLocaleString()}
+                      </td>
+                      <td className='px-3 py-3 text-right'>
+                        {campaign.booked_count.toLocaleString()}
+                      </td>
+                      <td className='px-3 py-3 text-right'>
+                        {campaign.visited_count.toLocaleString()}
+                      </td>
+                      <td className='px-3 py-3'>
+                        {campaign.status === 'draft' ? (
+                          <Button
+                            size='sm'
+                            onClick={() => sendCampaign(campaign.campaign_id)}
+                            disabled={
+                              sendingCampaignId === campaign.campaign_id
+                            }
+                          >
+                            <Send className='mr-2 h-4 w-4' aria-hidden='true' />
+                            配信
+                          </Button>
+                        ) : (
+                          <span className='text-muted-foreground'>-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

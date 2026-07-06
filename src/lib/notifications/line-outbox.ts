@@ -20,6 +20,11 @@ export type LineMessagePayload = {
   text: string;
   confirmationUrl?: string;
   fallbackEmail?: LineEmailFallbackPayload;
+  outreach?: {
+    campaignId: string;
+    recipientId: string;
+    customerId: string;
+  };
 };
 
 export type EnqueueLineMessageInput = {

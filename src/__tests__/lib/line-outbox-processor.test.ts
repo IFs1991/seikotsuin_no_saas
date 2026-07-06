@@ -62,6 +62,16 @@ function createProcessorClient(jobs: LineOutboxRow[]) {
       eq: jest.fn().mockReturnValue({ eq: secondEq }),
     };
   });
+  const outreachRecipientUpdateChain = {
+    eq: jest.fn(() => outreachRecipientUpdateChain),
+  };
+  outreachRecipientUpdateChain.eq.mockImplementation(() => {
+    if (outreachRecipientUpdateChain.eq.mock.calls.length >= 4) {
+      return Promise.resolve({ error: null });
+    }
+    return outreachRecipientUpdateChain;
+  });
+  const outreachRecipientUpdate = jest.fn(() => outreachRecipientUpdateChain);
 
   const fetchQuery = {
     eq: jest.fn(() => fetchQuery),
@@ -102,6 +112,9 @@ function createProcessorClient(jobs: LineOutboxRow[]) {
     if (table === 'reservation_notifications') {
       return { update: notificationUpdate };
     }
+    if (table === 'patient_outreach_recipients') {
+      return { update: outreachRecipientUpdate };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -110,6 +123,7 @@ function createProcessorClient(jobs: LineOutboxRow[]) {
     lineUpdates,
     emailInsert,
     notificationUpdate,
+    outreachRecipientUpdate,
   };
 }
 
@@ -173,6 +187,41 @@ describe('LINE outbox processor', () => {
         expect.objectContaining({ attempts: 1 }),
         expect.objectContaining({ status: 'sent' }),
       ])
+    );
+  });
+
+  it('marks outreach recipients as sent when outreach LINE push succeeds', async () => {
+    const fixture = createProcessorClient([
+      createLineJob({
+        message_type: 'outreach',
+        payload: {
+          text: '休眠 太郎さん、ご予約をお待ちしています。',
+          confirmationUrl:
+            'https://example.com/booking/clinic-001?c=campaign-001',
+          outreach: {
+            campaignId: 'campaign-001',
+            recipientId: 'recipient-001',
+            customerId: 'customer-001',
+          },
+        } satisfies Json,
+      }),
+    ]);
+    const fetcher = jest.fn(async (_input: string, _init: RequestInit) =>
+      Promise.resolve(new Response('', { status: 200 }))
+    );
+
+    const result = await processLineOutbox(fixture.client, {
+      now: NOW,
+      fetcher,
+      accessTokenResolver: createAccessTokenResolver(),
+    });
+
+    expect(result.sent).toBe(1);
+    expect(fixture.outreachRecipientUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        delivery_status: 'sent',
+        sent_at: expect.any(String),
+      })
     );
   });
 
@@ -291,6 +340,39 @@ describe('LINE outbox processor', () => {
           fallback_channel: 'email',
           line_outbox_id: 'line-job-001',
         }),
+      })
+    );
+  });
+
+  it('marks outreach recipients as failed after the third LINE failure', async () => {
+    const fixture = createProcessorClient([
+      createLineJob({
+        attempts: 2,
+        message_type: 'outreach',
+        payload: {
+          text: '休眠 太郎さん、ご予約をお待ちしています。',
+          outreach: {
+            campaignId: 'campaign-001',
+            recipientId: 'recipient-001',
+            customerId: 'customer-001',
+          },
+        } satisfies Json,
+      }),
+    ]);
+    const fetcher = jest.fn(async (_input: string, _init: RequestInit) =>
+      Promise.resolve(new Response('server error', { status: 500 }))
+    );
+
+    const result = await processLineOutbox(fixture.client, {
+      now: NOW,
+      fetcher,
+      accessTokenResolver: createAccessTokenResolver(),
+    });
+
+    expect(result.failed).toBe(1);
+    expect(fixture.outreachRecipientUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        delivery_status: 'failed',
       })
     );
   });
