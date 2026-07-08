@@ -182,10 +182,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
 
   it('returns 404 when MOBILE_UIUX_ENABLED is unset', async () => {
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(404);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('モバイル UI/UX は無効です');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -193,10 +198,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
 
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -206,10 +216,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     process.env.MOBILE_UIUX_ALLOWED_ROLES = 'admin,clinic_admin';
 
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -227,10 +242,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     });
 
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -239,10 +259,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-2';
 
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -286,10 +311,15 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     );
 
     const response = await callMobileScreen('reservations');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -311,11 +341,26 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     });
 
     const response = await callMobileScreen('home');
-    const payload = await response.json();
+    const body = await response.text();
 
     expect(response.status).toBe(403);
-    expect(payload.success).toBe(false);
+    expect(response.headers.get('content-type')).toBe(
+      'text/html; charset=utf-8'
+    );
+    expect(body).toContain('data-mobile-uiux-error-page');
+    expect(body).toContain('このモバイル画面へのアクセス権限がありません');
+    expect(body).not.toContain('"success":false');
     expect(entitlementClient.from).not.toHaveBeenCalled();
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps JSON errors for JavaScript resources', async () => {
+    const response = await callMobileScreen('mobile-bridge.js');
+    const payload = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    expect(payload.success).toBe(false);
     expect(readFileMock).not.toHaveBeenCalled();
   });
 

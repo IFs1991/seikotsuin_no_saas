@@ -34,6 +34,7 @@ import {
 } from '@/lib/supabase';
 
 const ASSET_ROOT = path.join(process.cwd(), 'private-assets', 'mobile-uiux');
+const HTML_CONTENT_TYPE = 'text/html; charset=utf-8';
 
 const REACT_RUNTIME_MODULES = [
   {
@@ -161,10 +162,110 @@ function buildNoStoreHeaders(contentType: string): Headers {
   });
 }
 
-function buildLoginRedirect(request: NextRequest) {
-  const loginUrl = new URL('/login', request.url);
-  loginUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-  return NextResponse.redirect(loginUrl);
+function isHtmlContentType(contentType: string): boolean {
+  return contentType.toLowerCase().startsWith('text/html');
+}
+
+function isHtmlResource(resource: string): boolean {
+  return (
+    !resource.toLowerCase().endsWith('.js') &&
+    !resource.toLowerCase().startsWith('api/')
+  );
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getErrorTitle(status: 401 | 403 | 404): string {
+  switch (status) {
+    case 401:
+      return 'ログインが必要です';
+    case 403:
+      return 'アクセス権限がありません';
+    case 404:
+      return 'ページを表示できません';
+  }
+}
+
+function buildMobileUiuxHtmlErrorPage(input: {
+  status: 401 | 403 | 404;
+  message: string;
+}): string {
+  const title = getErrorTitle(input.status);
+
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #111827;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    main {
+      width: min(100%, 420px);
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      line-height: 1.3;
+    }
+    p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.8;
+      color: #374151;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        background: #030712;
+        color: #f9fafb;
+      }
+      p {
+        color: #d1d5db;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main data-mobile-uiux-error-page>
+    <h1>${escapeHtml(title)}</h1>
+    <p>${escapeHtml(input.message)}</p>
+  </main>
+</body>
+</html>`;
+}
+
+function createScreenErrorResponse(input: {
+  status: 401 | 403 | 404;
+  message: string;
+  contentType: string;
+}) {
+  if (!isHtmlContentType(input.contentType)) {
+    return createErrorResponse(input.message, input.status);
+  }
+
+  return new NextResponse(buildMobileUiuxHtmlErrorPage(input), {
+    status: input.status,
+    headers: buildNoStoreHeaders(HTML_CONTENT_TYPE),
+  });
 }
 
 function buildProductionShellCacheKey(
@@ -278,15 +379,36 @@ export async function handleMobileUiuxScreenRequest(
   context: { params: Promise<{ resource: string }> },
   mode: ScreenRouteMode
 ) {
+  const { resource } = await context.params;
+  const requestedContentType = isResourceKey(resource)
+    ? SCREEN_DEFINITIONS[resource].contentType
+    : isHtmlResource(resource)
+      ? HTML_CONTENT_TYPE
+      : 'application/javascript; charset=utf-8';
   const flags = getMobileUiuxFlags();
   if (!flags.enabled) {
-    return createErrorResponse('モバイル UI/UX は無効です', 404);
+    logMobileUiuxDeniedAccess({
+      reasonCode: 'flag_disabled',
+      role: null,
+      allowedClinicCount: flags.allowedClinicIds.length,
+      scopedClinicCount: 0,
+      writeTarget: `screen:${resource}`,
+      featureFlagEnabled: false,
+      status: 404,
+    });
+    return createScreenErrorResponse({
+      message: 'モバイル UI/UX は無効です',
+      status: 404,
+      contentType: requestedContentType,
+    });
   }
 
-  const { resource } = await context.params;
-
   if (!isResourceKey(resource)) {
-    return createErrorResponse('指定されたモバイル画面は存在しません', 404);
+    return createScreenErrorResponse({
+      message: '指定されたモバイル画面は存在しません',
+      status: 404,
+      contentType: requestedContentType,
+    });
   }
 
   const definition = SCREEN_DEFINITIONS[resource];
@@ -294,10 +416,11 @@ export async function handleMobileUiuxScreenRequest(
   const user = await getCurrentUser(supabase);
 
   if (!user) {
-    if (definition.contentType.startsWith('text/html')) {
-      return buildLoginRedirect(request);
-    }
-    return createErrorResponse('認証が必要です', 401);
+    return createScreenErrorResponse({
+      message: '認証が必要です',
+      status: 401,
+      contentType: definition.contentType,
+    });
   }
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
@@ -317,10 +440,11 @@ export async function handleMobileUiuxScreenRequest(
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
-    return createErrorResponse(
-      'このモバイル UI/UX へのアクセス権限がありません',
-      principalDecision.status
-    );
+    return createScreenErrorResponse({
+      message: 'このモバイル UI/UX へのアクセス権限がありません',
+      status: principalDecision.status,
+      contentType: definition.contentType,
+    });
   }
 
   if (!isAllowedRole(normalizedRole, definition.allowedRoles)) {
@@ -333,10 +457,11 @@ export async function handleMobileUiuxScreenRequest(
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
-    return createErrorResponse(
-      'このモバイル画面へのアクセス権限がありません',
-      403
-    );
+    return createScreenErrorResponse({
+      message: 'このモバイル画面へのアクセス権限がありません',
+      status: 403,
+      contentType: definition.contentType,
+    });
   }
 
   const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
@@ -355,10 +480,11 @@ export async function handleMobileUiuxScreenRequest(
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: rolloutDecision.publicFlags.enabled,
     });
-    return createErrorResponse(
-      'このモバイル UI/UX へのアクセス権限がありません',
-      rolloutDecision.status
-    );
+    return createScreenErrorResponse({
+      message: 'このモバイル UI/UX へのアクセス権限がありません',
+      status: rolloutDecision.status,
+      contentType: definition.contentType,
+    });
   }
 
   let usesProductionAsset = false;
