@@ -210,6 +210,43 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
+  it('logs rollout denial details when clinic_admin has scope but no clinic rollout gate permits it', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      clinicId: 'clinic-1',
+    });
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+
+    try {
+      const response = await callMobileScreen('home');
+      const body = await response.text();
+
+      expect(response.status).toBe(403);
+      expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[mobile-uiux] access denied',
+        expect.objectContaining({
+          reasonCode: 'clinic_scope_denied',
+          role: 'clinic_admin',
+          scopedClinicCount: 1,
+          allowedClinicCount: 0,
+          featureFlagEnabled: true,
+          writeTarget: 'screen:home',
+        })
+      );
+      expect(readFileMock).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   it('returns 403 when the user role is outside the mobile role allowlist', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
@@ -301,6 +338,84 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(response.status).toBe(200);
     expect(readFileMock).toHaveBeenCalled();
   });
+
+  it('serves clinic_admin users when clinic_id exists without clinic_scope_ids and the clinic allowlist permits access', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: null,
+      },
+      clinicId: 'clinic-1',
+    });
+
+    const response = await callMobileScreen('home');
+
+    expect(response.status).toBe(200);
+    expect(readFileMock).toHaveBeenCalled();
+  });
+
+  it('returns 403 for clinic_admin users when no clinic_id or clinic_scope_ids are available', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: null,
+        clinic_scope_ids: [],
+      },
+      clinicId: null,
+    });
+
+    const response = await callMobileScreen('home');
+    const body = await response.text();
+
+    expect(response.status).toBe(403);
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['clinic_admin', 'home', 200],
+    ['clinic_admin', 'settings-detail', 200],
+    ['clinic_admin', 'reservations', 200],
+    ['clinic_admin', 'patients', 200],
+    ['clinic_admin', 'daily-reports', 200],
+    ['clinic_admin', 'settings', 200],
+    ['therapist', 'home', 403],
+    ['therapist', 'settings-detail', 403],
+    ['therapist', 'reservations', 200],
+    ['therapist', 'patients', 200],
+    ['therapist', 'daily-reports', 200],
+    ['therapist', 'settings', 200],
+    ['staff', 'home', 403],
+    ['staff', 'settings-detail', 403],
+    ['staff', 'reservations', 200],
+    ['staff', 'patients', 200],
+    ['staff', 'daily-reports', 200],
+    ['staff', 'settings', 200],
+    ['customer', 'reservations', 403],
+  ] as const)(
+    'enforces role x screen access for %s on %s',
+    async (role, resource, expectedStatus) => {
+      process.env.MOBILE_UIUX_ENABLED = 'true';
+      process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
+      getUserAccessContextMock.mockResolvedValue({
+        permissions: {
+          role,
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
+        clinicId: 'clinic-1',
+      });
+
+      const response = await callMobileScreen(resource);
+
+      expect(response.status).toBe(expectedStatus);
+    }
+  );
 
   it('returns 403 when DB entitlement is enabled and the clinic is not entitled', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
