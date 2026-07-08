@@ -330,11 +330,12 @@ export class AuditLogger {
     userId?: string | null,
     userEmail?: string | null,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    details?: Record<string, unknown>
   ) {
     const entry: AuditLogEntry = {
       event_type: AuditEventType.UNAUTHORIZED_ACCESS,
-      details: { attempted_resource: attemptedResource },
+      details: { attempted_resource: attemptedResource, ...details },
       success: false,
       error_message: errorMessage,
     };
@@ -351,6 +352,7 @@ export class AuditLogger {
       attemptedResource,
       userId,
       ipAddress,
+      details: redactLogDetails(details),
     });
   }
 
