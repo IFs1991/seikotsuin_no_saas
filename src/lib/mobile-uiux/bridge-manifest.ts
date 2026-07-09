@@ -134,6 +134,47 @@ export function injectMobileUiuxBridgeScript(
   return `${html}${scriptTag}`;
 }
 
+/**
+ * Serializes the inline context payload for embedding inside a <script>
+ * element. Escapes < / > (and JS line separators) so payload values can
+ * never terminate the script element or open a new tag.
+ */
+export function serializeMobileUiuxInlineContext(payload: unknown): string {
+  return JSON.stringify(payload)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+export function injectMobileUiuxInlineContext(
+  html: string,
+  payload: unknown
+): string {
+  if (html.includes('data-mobile-uiux-inline-context')) {
+    return html;
+  }
+
+  const scriptTag = `<script data-mobile-uiux-inline-context>window.__MOBILE_UIUX_CONTEXT__ = ${serializeMobileUiuxInlineContext(payload)};</script>`;
+
+  const bridgeMatch = html.match(MOBILE_UIUX_BRIDGE_SCRIPT_RE);
+  if (bridgeMatch && bridgeMatch.index !== undefined) {
+    return (
+      html.slice(0, bridgeMatch.index) + scriptTag + html.slice(bridgeMatch.index)
+    );
+  }
+
+  if (html.includes('</body>')) {
+    return html.replace('</body>', `${scriptTag}</body>`);
+  }
+
+  if (html.includes('</html>')) {
+    return html.replace('</html>', `${scriptTag}</html>`);
+  }
+
+  return `${html}${scriptTag}`;
+}
+
 export function buildMobileUiuxBridgeScript(
   options: MobileUiuxBridgeScriptOptions
 ): string {
@@ -679,6 +720,11 @@ export function buildMobileUiuxBridgeScript(
     });
   }
 
+  function getInlineContextPayload() {
+    const inline = window.__MOBILE_UIUX_CONTEXT__;
+    return isSuccessPayload(inline) ? inline : null;
+  }
+
   async function boot() {
     setInitialReadState("loading");
     setStatus("loading");
@@ -694,25 +740,32 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
 
-    const contextResult = await fetchJson("/api/mobile-uiux/context");
-    if (contextResult.kind === "unauthorized") {
-      showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
-      location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
-      return;
-    }
-    if (contextResult.kind === "forbidden") {
-      showFallback("forbidden", STATUS_MESSAGES.forbidden);
-      return;
-    }
-    if (contextResult.kind !== "payload" || !hydrateContext(contextResult.payload)) {
-      showFallback("invalid", STATUS_MESSAGES.invalid);
-      return;
+    // The screen route inlines the context payload it already computed while
+    // authorizing this page; only fall back to the context API when it is
+    // missing or malformed.
+    let contextPayload = getInlineContextPayload();
+    if (!contextPayload || !hydrateContext(contextPayload)) {
+      const contextResult = await fetchJson("/api/mobile-uiux/context");
+      if (contextResult.kind === "unauthorized") {
+        showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
+        location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
+        return;
+      }
+      if (contextResult.kind === "forbidden") {
+        showFallback("forbidden", STATUS_MESSAGES.forbidden);
+        return;
+      }
+      if (contextResult.kind !== "payload" || !hydrateContext(contextResult.payload)) {
+        showFallback("invalid", STATUS_MESSAGES.invalid);
+        return;
+      }
+      contextPayload = contextResult.payload;
     }
 
-    applyReadData("context", contextResult.payload);
+    applyReadData("context", contextPayload);
 
     const entry = MOBILE_UIUX_SCREEN_MANIFEST[screen];
-    const readUrl = buildReadUrl(entry, contextResult.payload.data);
+    const readUrl = buildReadUrl(entry, contextPayload.data);
     if (!readUrl) {
       showFallback("invalid", STATUS_MESSAGES.invalid);
       return;
@@ -734,7 +787,7 @@ export function buildMobileUiuxBridgeScript(
     }
 
     if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
-      await hydrateSupplementalReadData(screen, contextResult.payload.data);
+      await hydrateSupplementalReadData(screen, contextPayload.data);
     }
   }
 
