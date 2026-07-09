@@ -106,6 +106,7 @@ type BridgeWindow = {
     payload: unknown
   ) => boolean;
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
+  __MOBILE_UIUX_CONTEXT__?: unknown;
 };
 
 const createClientMock = createClient as jest.MockedFunction<
@@ -580,6 +581,73 @@ describe('mobile-uiux bridge contract', () => {
       },
     ]);
     expect(calls.some(call => call.method !== 'GET')).toBe(false);
+  });
+
+  it('uses the inline context payload and skips the context fetch', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    window.__MOBILE_UIUX_CONTEXT__ = contextPayload;
+
+    await runBridgeScript(script, window);
+
+    expect(calls).toEqual([
+      {
+        url: expect.stringMatching(
+          /^\/api\/mobile-uiux\/reservations\?clinic_id=/
+        ) as string,
+        method: 'GET',
+        body: undefined,
+      },
+    ]);
+    expect(
+      window.document.documentElement.dataset.mobileUiuxCanonicalRole
+    ).toBe('therapist');
+  });
+
+  it('falls back to fetching context when the inline payload is invalid', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, contextPayload),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    window.__MOBILE_UIUX_CONTEXT__ = { success: true };
+
+    await runBridgeScript(script, window);
+
+    expect(calls[0]).toEqual({
+      url: '/api/mobile-uiux/context',
+      method: 'GET',
+      body: undefined,
+    });
+    expect(
+      window.document.documentElement.dataset.mobileUiuxCanonicalRole
+    ).toBe('therapist');
   });
 
   it('loads supplemental settings-detail data when a write screen adapter is installed', async () => {
