@@ -160,7 +160,9 @@ export function injectMobileUiuxInlineContext(
   const bridgeMatch = html.match(MOBILE_UIUX_BRIDGE_SCRIPT_RE);
   if (bridgeMatch && bridgeMatch.index !== undefined) {
     return (
-      html.slice(0, bridgeMatch.index) + scriptTag + html.slice(bridgeMatch.index)
+      html.slice(0, bridgeMatch.index) +
+      scriptTag +
+      html.slice(bridgeMatch.index)
     );
   }
 
