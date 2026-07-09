@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { NextRequest } from 'next/server';
 
 import {
+  createAdminClient,
   createClient,
   getCurrentUser,
   getUserAccessContext,
@@ -13,6 +14,7 @@ jest.mock('node:fs/promises', () => ({
 
 jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(),
+  createAdminClient: jest.fn(),
   getCurrentUser: jest.fn(),
   getUserAccessContext: jest.fn(),
   resolveScopedClinicIds:
@@ -21,8 +23,30 @@ jest.mock('@/lib/supabase', () => ({
 
 const readFileMock = readFile as jest.Mock;
 const createClientMock = createClient as jest.Mock;
+const createAdminClientMock = createAdminClient as jest.Mock;
 const getCurrentUserMock = getCurrentUser as jest.Mock;
 const getUserAccessContextMock = getUserAccessContext as jest.Mock;
+
+function createManagerAssignmentsClient(clinicIds: string[]) {
+  const result = Promise.resolve({
+    data: clinicIds.map(clinicId => ({ clinic_id: clinicId })),
+    error: null,
+  });
+  const builder = {
+    select: jest.fn(() => builder),
+    eq: jest.fn(() => builder),
+    is: jest.fn(() => result),
+  };
+
+  return {
+    from: jest.fn((tableName: string) => {
+      if (tableName !== 'manager_clinic_assignments') {
+        throw new Error(`Unexpected table: ${tableName}`);
+      }
+      return builder;
+    }),
+  };
+}
 
 const user = { id: 'user-1', email: 'staff@example.com' };
 const supabase = { client: 'supabase' };
@@ -544,10 +568,51 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     ).toBe(false);
   });
 
+  it('allows manager whose clinic scope comes only from manager_clinic_assignments', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    createAdminClientMock.mockReturnValue(
+      createManagerAssignmentsClient(['clinic-1'])
+    );
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: null,
+        clinic_scope_ids: [],
+      },
+      clinicId: null,
+    });
+
+    const response = await callMobileScreen('home');
+
+    expect(response.status).toBe(200);
+  });
+
+  it('denies manager without active assignments even if permissions carry clinic scope', async () => {
+    process.env.MOBILE_UIUX_ENABLED = 'true';
+    createAdminClientMock.mockReturnValue(createManagerAssignmentsClient([]));
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      clinicId: 'clinic-1',
+    });
+
+    const response = await callMobileScreen('home');
+    const body = await response.text();
+
+    expect(response.status).toBe(403);
+    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+  });
+
   it('prefers the generated home production asset for authorized manager access', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
     process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
+    createAdminClientMock.mockReturnValue(
+      createManagerAssignmentsClient(['clinic-1'])
+    );
     getUserAccessContextMock.mockResolvedValue({
       permissions: {
         role: 'manager',
@@ -587,6 +652,9 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = 'clinic-1';
     process.env.MOBILE_UIUX_REAL_DATA_ENABLED = 'true';
+    createAdminClientMock.mockReturnValue(
+      createManagerAssignmentsClient(['clinic-1'])
+    );
     getUserAccessContextMock.mockResolvedValue({
       permissions: {
         role: 'manager',

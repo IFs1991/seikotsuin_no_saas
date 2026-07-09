@@ -2,6 +2,7 @@ import {
   evaluateMobileUiuxAccess,
   evaluateMobileUiuxEnvRollout,
   evaluateMobileUiuxPrincipal,
+  resolveMobileUiuxPrincipal,
 } from '@/lib/mobile-uiux/access';
 import type { MobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import type { UserPermissions } from '@/lib/supabase';
@@ -105,6 +106,124 @@ describe('mobile-uiux access evaluators', () => {
       allowed: false,
       status: 403,
       reason: 'clinic_denied',
+    });
+  });
+});
+
+function createAssignmentsAdminClient(clinicIds: string[]) {
+  const result = Promise.resolve({
+    data: clinicIds.map(clinicId => ({ clinic_id: clinicId })),
+    error: null,
+  });
+  const builder = {
+    select: jest.fn(() => builder),
+    eq: jest.fn(() => builder),
+    is: jest.fn(() => result),
+  };
+
+  return {
+    builder,
+    from: jest.fn((tableName: string) => {
+      if (tableName !== 'manager_clinic_assignments') {
+        throw new Error(`Unexpected table: ${tableName}`);
+      }
+      return builder;
+    }),
+  };
+}
+
+describe('resolveMobileUiuxPrincipal (manager scope)', () => {
+  it('resolves manager clinic scope from active manager_clinic_assignments', async () => {
+    const adminClient = createAssignmentsAdminClient([
+      'clinic-m1',
+      'clinic-m2',
+    ]);
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'manager-1',
+      permissions: buildPermissions('manager', []),
+      flags: BASE_FLAGS,
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: true,
+      role: 'manager',
+      clinicIds: ['clinic-m1', 'clinic-m2'],
+    });
+  });
+
+  it('denies manager without active assignments even if permissions carry clinic scope', async () => {
+    const adminClient = createAssignmentsAdminClient([]);
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'manager-1',
+      permissions: buildPermissions('manager', ['clinic-a']),
+      flags: BASE_FLAGS,
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: false,
+      status: 403,
+      reason: 'clinic_scope_empty',
+    });
+  });
+
+  it('denies manager by role before querying assignments when excluded from allowed roles', async () => {
+    const adminClient = createAssignmentsAdminClient(['clinic-m1']);
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'manager-1',
+      permissions: buildPermissions('manager'),
+      flags: { ...BASE_FLAGS, allowedRoles: ['admin', 'clinic_admin'] },
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: false,
+      status: 403,
+      reason: 'role_denied',
+    });
+    expect(adminClient.from).not.toHaveBeenCalled();
+  });
+
+  it('keeps permissions-based scope for non-manager roles without touching assignments', async () => {
+    const adminClient = createAssignmentsAdminClient(['clinic-x']);
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'staff-1',
+      permissions: buildPermissions('staff', ['clinic-a']),
+      flags: BASE_FLAGS,
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: true,
+      role: 'staff',
+      clinicIds: ['clinic-a'],
+    });
+    expect(adminClient.from).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the assignment lookup throws', async () => {
+    const adminClient = {
+      from: jest.fn(() => {
+        throw new Error('db down');
+      }),
+    };
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'manager-1',
+      permissions: buildPermissions('manager', ['clinic-a']),
+      flags: BASE_FLAGS,
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: false,
+      status: 403,
+      reason: 'clinic_scope_empty',
     });
   });
 });
