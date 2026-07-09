@@ -162,6 +162,38 @@ function buildNoStoreHeaders(contentType: string): Headers {
   });
 }
 
+function buildContentETag(content: string): string {
+  return `"${createHash('sha256').update(content).digest('hex')}"`;
+}
+
+function matchesIfNoneMatch(request: NextRequest, etag: string): boolean {
+  const header = request.headers.get('if-none-match');
+  if (!header) {
+    return false;
+  }
+  if (header.trim() === '*') {
+    return true;
+  }
+  return header
+    .split(',')
+    .map(value => value.trim().replace(/^W\//i, ''))
+    .includes(etag);
+}
+
+// Screens embed per-user state (inline context), so they must revalidate on
+// every navigation; the ETag still allows a 304 to skip the ~100KB transfer.
+// JS assets carry no tenant data and may be reused briefly without a round trip.
+function buildCacheableHeaders(contentType: string, etag: string): Headers {
+  return new Headers({
+    'Content-Type': contentType,
+    'Cache-Control': isHtmlContentType(contentType)
+      ? 'private, no-cache'
+      : 'private, max-age=3600, must-revalidate',
+    ETag: etag,
+    'X-Content-Type-Options': 'nosniff',
+  });
+}
+
 function isHtmlContentType(contentType: string): boolean {
   return contentType.toLowerCase().startsWith('text/html');
 }
@@ -425,6 +457,9 @@ export async function handleMobileUiuxScreenRequest(
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
+  const scopedClinicCount = accessContext.permissions
+    ? (resolveScopedClinicIds(accessContext.permissions)?.length ?? 0)
+    : 0;
   const principalDecision = await resolveMobileUiuxPrincipal({
     userId: user.id,
     permissions: accessContext.permissions,
@@ -436,8 +471,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: mapMobileUiuxPrincipalDeniedReason(principalDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
@@ -453,8 +487,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: 'role_denied',
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
@@ -476,8 +509,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: rolloutDecision.publicFlags.enabled,
     });
@@ -525,8 +557,12 @@ export async function handleMobileUiuxScreenRequest(
       ? injectMobileUiuxBridgeScript(shellContent, resource)
       : shellContent;
 
-  return new NextResponse(responseContent, {
-    status: 200,
-    headers: buildNoStoreHeaders(definition.contentType),
-  });
+  const etag = buildContentETag(responseContent);
+  const headers = buildCacheableHeaders(definition.contentType, etag);
+
+  if (matchesIfNoneMatch(request, etag)) {
+    return new NextResponse(null, { status: 304, headers });
+  }
+
+  return new NextResponse(responseContent, { status: 200, headers });
 }
