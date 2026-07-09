@@ -9,7 +9,7 @@ import {
   normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
-import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
+import { resolveMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import {
   buildMobileUiuxBridgeScript,
   injectMobileUiuxBridgeScript,
@@ -425,10 +425,11 @@ export async function handleMobileUiuxScreenRequest(
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
-  const principalDecision = evaluateMobileUiuxPrincipal(
-    accessContext.permissions,
-    flags
-  );
+  const principalDecision = await resolveMobileUiuxPrincipal({
+    userId: user.id,
+    permissions: accessContext.permissions,
+    flags,
+  });
 
   if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({

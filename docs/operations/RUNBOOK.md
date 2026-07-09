@@ -206,7 +206,7 @@ vercel logs --since 24h --query "access denied" --json
 
 #### 切り分け
 - `role_denied`: `role` が `clinic_admin` として解決されているか、`MOBILE_UIUX_ALLOWED_ROLES` から除外されていないか確認する
-- `clinic_scope_denied` かつ `scopedClinicCount=0`: `user_permissions.clinic_id` または `clinic_scope_ids` が空になっていないか確認する
+- `clinic_scope_denied` かつ `scopedClinicCount=0`: `user_permissions.clinic_id` または `clinic_scope_ids` が空になっていないか確認する。`role=manager` の場合は `manager_clinic_assignments` に `revoked_at is null` の担当店舗があるか確認する（managerのスコープはassignmentsのみが正で、`clinic_id` / `clinic_scope_ids` にはフォールバックしない）
 - `clinic_scope_denied` かつ `allowedClinicCount=0`: `MOBILE_UIUX_ALLOWED_CLINIC_IDS` が未設定、かつ `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` でもない可能性が高い
 - `clinic_scope_denied` かつ `allowedClinicCount>0`: 対象clinicが `MOBILE_UIUX_ALLOWED_CLINIC_IDS` に含まれているか確認する
 - `entitlement_denied`: `clinic_feature_flags.mobile_uiux_enabled=true` の行が対象clinicに存在するか確認する
@@ -216,6 +216,11 @@ vercel logs --since 24h --query "access denied" --json
 - `clinic_id` または `clinic_scope_ids` が存在する
 - `MOBILE_UIUX_ALLOWED_CLINIC_IDS` に対象clinicが含まれる、または `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true`
 - DB entitlementを使う場合、対象clinicの `clinic_feature_flags.mobile_uiux_enabled=true`
+
+#### manager が通る条件
+- `role=manager`
+- `manager_clinic_assignments` に有効（`revoked_at is null`）な担当店舗が1件以上ある（`user_permissions.clinic_id` / `clinic_scope_ids` は参照しない）
+- allowlist / entitlement の条件は clinic_admin と同じ（対象は担当店舗）
 
 #### 禁止事項
 - adminだけを通す逃げ修正をしない

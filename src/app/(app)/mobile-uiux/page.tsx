@@ -11,7 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 
-import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
+import { resolveMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { DisplayModeLink } from '@/components/mobile-uiux/display-mode-link';
@@ -114,10 +114,11 @@ export default async function MobileUiuxPage() {
   }
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
-  const principalDecision = evaluateMobileUiuxPrincipal(
-    accessContext.permissions,
-    flags
-  );
+  const principalDecision = await resolveMobileUiuxPrincipal({
+    userId: user.id,
+    permissions: accessContext.permissions,
+    flags,
+  });
 
   if (principalDecision.allowed === false) {
     return (

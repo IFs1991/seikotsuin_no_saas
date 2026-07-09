@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { ROLE_LABELS, normalizeRole } from '@/lib/constants/roles';
-import { evaluateMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
+import { resolveMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import {
   type MobileUiuxContextResponse,
@@ -67,10 +67,11 @@ export async function GET(request: NextRequest) {
   const accessContext = await getUserAccessContext(user.id, supabase, {
     user,
   });
-  const principalDecision = evaluateMobileUiuxPrincipal(
-    accessContext.permissions,
-    flags
-  );
+  const principalDecision = await resolveMobileUiuxPrincipal({
+    userId: user.id,
+    permissions: accessContext.permissions,
+    flags,
+  });
 
   if (principalDecision.allowed === false) {
     logMobileUiuxDeniedAccess({
