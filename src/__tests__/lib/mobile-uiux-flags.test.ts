@@ -57,6 +57,18 @@ describe('mobile-uiux flags', () => {
     });
   });
 
+  it('uses default allowed roles when env is an empty string', () => {
+    process.env.MOBILE_UIUX_ALLOWED_ROLES = '';
+
+    expect(getMobileUiuxFlags().allowedRoles).toEqual([
+      'admin',
+      'clinic_admin',
+      'manager',
+      'therapist',
+      'staff',
+    ]);
+  });
+
   it('requires both global and screen write flags for mutations', () => {
     process.env.MOBILE_UIUX_WRITE_ENABLED = 'true';
     process.env.MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED = 'true';

@@ -99,6 +99,7 @@ type BridgeWindow = {
       date?: string;
       clinicId?: string;
     }) => Promise<boolean>;
+    canNavigateToTarget: (target: string) => boolean;
   };
   __MOBILE_UIUX_APPLY_READ_DATA__?: (
     screen: string,
@@ -378,6 +379,89 @@ describe('mobile-uiux bridge contract', () => {
     expect(enterPreventDefault).toHaveBeenCalled();
     expect(spacePreventDefault).toHaveBeenCalled();
   });
+
+  it.each(['therapist', 'staff'])(
+    'blocks %s from navigating to home in real data mode',
+    async role => {
+      const roleContextPayload = {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          role: { canonical: role, label: role },
+        },
+      };
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const { window, listeners } = buildBridgeWindow('reservations', [
+        buildJsonResponse(200, roleContextPayload),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+      ]);
+
+      await runBridgeScript(script, window);
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildNavElement('home'),
+      });
+
+      expect(window.MobileUiuxBridge?.canNavigateToTarget('home')).toBe(false);
+      expect(
+        window.MobileUiuxBridge?.canNavigateToTarget('reservations')
+      ).toBe(true);
+      expect(window.location.assign).not.toHaveBeenCalledWith(
+        '/mobile-uiux/screens/home'
+      );
+    }
+  );
+
+  it.each(['admin', 'clinic_admin', 'manager'])(
+    'allows %s to navigate to home in real data mode',
+    async role => {
+      const roleContextPayload = {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          role: { canonical: role, label: role },
+        },
+      };
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const { window, listeners } = buildBridgeWindow('reservations', [
+        buildJsonResponse(200, roleContextPayload),
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        }),
+      ]);
+
+      await runBridgeScript(script, window);
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildNavElement('home'),
+      });
+
+      expect(window.MobileUiuxBridge?.canNavigateToTarget('home')).toBe(true);
+      expect(window.location.assign).toHaveBeenCalledWith(
+        '/mobile-uiux/screens/home'
+      );
+    }
+  );
 
   it('does not reload the current Bottom Nav path', async () => {
     const script = buildMobileUiuxBridgeScript({

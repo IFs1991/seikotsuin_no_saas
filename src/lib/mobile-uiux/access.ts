@@ -91,18 +91,10 @@ export function evaluateMobileUiuxEnvRollout(
   flags: MobileUiuxFlags
 ): MobileUiuxRolloutDecision {
   if (flags.allowedClinicIds.length === 0) {
-    if (flags.useDbEntitlements || principal.role === 'admin') {
-      return {
-        allowed: true,
-        role: principal.role,
-        clinicIds: principal.clinicIds,
-      };
-    }
-
     return {
-      allowed: false,
-      status: 403,
-      reason: 'clinic_denied',
+      allowed: true,
+      role: principal.role,
+      clinicIds: principal.clinicIds,
     };
   }
 

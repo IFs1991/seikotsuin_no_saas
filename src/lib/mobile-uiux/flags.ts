@@ -46,7 +46,7 @@ function parseCsv(value: string | undefined): string[] {
 
 function parseAllowedRoles(value: string | undefined): Role[] {
   const parsedRoles = parseCsv(value).filter(isAdminUserRole);
-  return value === undefined ? DEFAULT_ALLOWED_ROLES : parsedRoles;
+  return parsedRoles.length === 0 ? DEFAULT_ALLOWED_ROLES : parsedRoles;
 }
 
 export function getMobileUiuxFlags(): MobileUiuxFlags {

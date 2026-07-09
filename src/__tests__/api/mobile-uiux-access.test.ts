@@ -194,23 +194,22 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for non-admin roles when clinic allowlist is empty', async () => {
+  it('allows non-admin roles with clinic scope when clinic allowlist is empty', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
 
     const response = await callMobileScreen('reservations');
     const body = await response.text();
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe(
       'text/html; charset=utf-8'
     );
-    expect(body).toContain('data-mobile-uiux-error-page');
-    expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(body).toContain('data-mobile-uiux-bridge');
     expect(body).not.toContain('"success":false');
-    expect(readFileMock).not.toHaveBeenCalled();
+    expect(readFileMock).toHaveBeenCalled();
   });
 
-  it('logs rollout denial details when clinic_admin has scope but no clinic rollout gate permits it', async () => {
+  it('allows clinic_admin with scope when clinic allowlist is empty', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     getUserAccessContextMock.mockResolvedValue({
       permissions: {
@@ -228,20 +227,10 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
       const response = await callMobileScreen('home');
       const body = await response.text();
 
-      expect(response.status).toBe(403);
-      expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[mobile-uiux] access denied',
-        expect.objectContaining({
-          reasonCode: 'clinic_scope_denied',
-          role: 'clinic_admin',
-          scopedClinicCount: 1,
-          allowedClinicCount: 0,
-          featureFlagEnabled: true,
-          writeTarget: 'screen:home',
-        })
-      );
-      expect(readFileMock).not.toHaveBeenCalled();
+      expect(response.status).toBe(200);
+      expect(body).toContain('data-mobile-uiux-bridge');
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(readFileMock).toHaveBeenCalled();
     } finally {
       warnSpy.mockRestore();
     }

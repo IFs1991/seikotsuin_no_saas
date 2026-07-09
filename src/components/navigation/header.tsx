@@ -462,7 +462,12 @@ export const Header = React.memo(function Header({
                   ? '情報を取得中…'
                   : (profile?.email ?? 'ゲスト')}
               </div>
-              <MobileUiuxEntryPrompt variant='menu-item' role={profileRole} />
+              <MobileUiuxEntryPrompt
+                variant='menu-item'
+                role={profileRole}
+                className={USER_MENU_ITEM_CLASS}
+                onNavigate={closeMenus}
+              />
               <LogoutLink
                 href={logoutHref}
                 className={USER_MENU_ITEM_CLASS}
@@ -539,7 +544,12 @@ export const Header = React.memo(function Header({
                 />
               </div>
             )}
-            <MobileUiuxEntryPrompt variant='menu-item' role={profileRole} />
+            <MobileUiuxEntryPrompt
+              variant='menu-item'
+              role={profileRole}
+              className={MOBILE_LOGOUT_LINK_CLASS}
+              onNavigate={closeMenus}
+            />
             <LogoutLink
               href={logoutHref}
               className={MOBILE_LOGOUT_LINK_CLASS}

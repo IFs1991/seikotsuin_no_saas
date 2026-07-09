@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { usePathname } from 'next/navigation';
 import { Smartphone, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -8,43 +9,83 @@ import {
   buildMobileUiuxDisplayModeCookie,
   MOBILE_UIUX_DISMISSED_STORAGE_KEY,
 } from '@/lib/mobile-uiux/display-mode';
-import { normalizeRole } from '@/lib/constants/roles';
+import { resolveMobileUiuxEntryPath } from '@/lib/mobile-uiux/navigation';
+import { cn } from '@/lib/utils';
 
-type MobileUiuxEntryPromptVariant = 'banner' | 'menu-item';
+type MobileUiuxDisplayMode = 'desktop' | 'mobile' | 'system';
+
+type MobileUiuxAvailability = {
+  ready: boolean;
+  entryPath: string | null;
+  displayMode?: MobileUiuxDisplayMode;
+};
+
+type MobileUiuxEntryPromptVariant = 'banner' | 'auto' | 'menu-item';
 
 type MobileUiuxEntryPromptProps = {
   variant?: MobileUiuxEntryPromptVariant;
   role?: string | null;
+  className?: string;
+  onNavigate?: () => void;
+  navigate?: (path: string) => void;
 };
 
 type MobileUiuxContextPayload = {
-  success: boolean;
-  data?: {
-    displayMode?: string;
+  success: true;
+  data: {
+    role: {
+      canonical: string | null;
+    };
+    displayMode?: MobileUiuxDisplayMode;
   };
 };
 
-const MOBILE_WIDTH_QUERY = '(max-width: 767px)';
-const MOBILE_UIUX_ADMIN_ENTRY_PATH = '/mobile-uiux/screens/home';
-const MOBILE_UIUX_STAFF_ENTRY_PATH = '/mobile-uiux/screens/reservations';
+const MOBILE_VIEWPORT_MAX_WIDTH = 767;
+const UNAVAILABLE_AVAILABILITY: MobileUiuxAvailability = {
+  ready: true,
+  entryPath: null,
+};
 
-function isMobileViewport(): boolean {
+let cachedAvailability: MobileUiuxAvailability | null = null;
+let availabilityRequest: Promise<MobileUiuxAvailability> | null = null;
+
+function isDisplayMode(value: unknown): value is MobileUiuxDisplayMode {
+  return value === 'desktop' || value === 'mobile' || value === 'system';
+}
+
+function isMobileUiuxContextPayload(
+  value: unknown
+): value is MobileUiuxContextPayload {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as {
+    success?: unknown;
+    data?: {
+      role?: { canonical?: unknown };
+      displayMode?: unknown;
+    };
+  };
+
+  return (
+    candidate.success === true &&
+    typeof candidate.data === 'object' &&
+    candidate.data !== null &&
+    typeof candidate.data.role === 'object' &&
+    candidate.data.role !== null &&
+    (typeof candidate.data.role.canonical === 'string' ||
+      candidate.data.role.canonical === null) &&
+    (candidate.data.displayMode === undefined ||
+      isDisplayMode(candidate.data.displayMode))
+  );
+}
+
+function readDismissedFlag(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }
 
-  if (typeof window.innerWidth === 'number') {
-    return window.innerWidth < 768;
-  }
-
-  if (typeof window.matchMedia === 'function') {
-    return window.matchMedia(MOBILE_WIDTH_QUERY).matches;
-  }
-
-  return false;
-}
-
-function hasDismissedPrompt(): boolean {
   try {
     return localStorage.getItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY) === 'true';
   } catch {
@@ -52,7 +93,7 @@ function hasDismissedPrompt(): boolean {
   }
 }
 
-function dismissPrompt() {
+function writeDismissedFlag(): void {
   try {
     localStorage.setItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY, 'true');
   } catch {
@@ -60,162 +101,280 @@ function dismissPrompt() {
   }
 }
 
-function setDisplayMode(mode: 'desktop' | 'mobile' | 'system') {
-  document.cookie = buildMobileUiuxDisplayModeCookie(mode);
+function writeDisplayModeCookie(displayMode: 'desktop' | 'mobile'): void {
+  document.cookie = buildMobileUiuxDisplayModeCookie(displayMode);
 }
 
-function isContextSuccess(
-  payload: unknown
-): payload is MobileUiuxContextPayload {
-  return (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'success' in payload &&
-    payload.success === true
-  );
+function defaultNavigate(path: string): void {
+  window.location.assign(path);
+}
+
+async function requestMobileUiuxAvailability(
+  fallbackRole: string | null | undefined
+): Promise<MobileUiuxAvailability> {
+  const response = await fetch('/api/mobile-uiux/context', {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return UNAVAILABLE_AVAILABILITY;
+  }
+
+  const payload: unknown = await response.json();
+  if (!isMobileUiuxContextPayload(payload)) {
+    return UNAVAILABLE_AVAILABILITY;
+  }
+
+  const canonicalRole = payload.data.role.canonical ?? fallbackRole ?? null;
+
+  return {
+    ready: true,
+    entryPath: resolveMobileUiuxEntryPath(canonicalRole),
+    displayMode: payload.data.displayMode,
+  };
+}
+
+function loadMobileUiuxAvailability(
+  fallbackRole: string | null | undefined
+): Promise<MobileUiuxAvailability> {
+  if (cachedAvailability) {
+    return Promise.resolve(cachedAvailability);
+  }
+
+  if (!availabilityRequest) {
+    availabilityRequest = requestMobileUiuxAvailability(fallbackRole)
+      .then(
+        availability => {
+          cachedAvailability = availability;
+          return availability;
+        },
+        () => UNAVAILABLE_AVAILABILITY
+      )
+      .finally(() => {
+        availabilityRequest = null;
+      });
+  }
+
+  return availabilityRequest;
+}
+
+export function resetMobileUiuxEntryPromptCacheForTests(): void {
+  cachedAvailability = null;
+  availabilityRequest = null;
+}
+
+function useIsMobileViewport(enabled: boolean): boolean {
+  const [isMobileViewport, setIsMobileViewport] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!enabled) {
+      setIsMobileViewport(false);
+      return;
+    }
+
+    const update = () => {
+      setIsMobileViewport(window.innerWidth <= MOBILE_VIEWPORT_MAX_WIDTH);
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [enabled]);
+
+  return isMobileViewport;
+}
+
+function useMobileUiuxAvailability(
+  enabled: boolean,
+  fallbackRole: string | null | undefined
+): MobileUiuxAvailability {
+  const [availability, setAvailability] =
+    React.useState<MobileUiuxAvailability>(() => {
+      if (!enabled) {
+        return UNAVAILABLE_AVAILABILITY;
+      }
+
+      return cachedAvailability ?? { ready: false, entryPath: null };
+    });
+
+  React.useEffect(() => {
+    if (!enabled) {
+      setAvailability(UNAVAILABLE_AVAILABILITY);
+      return;
+    }
+
+    if (cachedAvailability) {
+      setAvailability(cachedAvailability);
+      return;
+    }
+
+    let active = true;
+    setAvailability({ ready: false, entryPath: null });
+    void loadMobileUiuxAvailability(fallbackRole).then(nextAvailability => {
+      if (active) {
+        setAvailability(nextAvailability);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [enabled, fallbackRole]);
+
+  return availability;
 }
 
 export function MobileUiuxEntryPrompt({
   variant = 'banner',
   role = null,
+  className,
+  onNavigate,
+  navigate = defaultNavigate,
 }: MobileUiuxEntryPromptProps) {
-  if (variant === 'menu-item') {
-    return <MobileUiuxMenuItemEntry role={role} />;
-  }
-
-  return <MobileUiuxBannerEntry role={role} />;
-}
-
-function resolveMobileUiuxEntryPath(role: string | null | undefined): string {
-  const normalizedRole = normalizeRole(role);
-
-  if (
-    normalizedRole === 'admin' ||
-    normalizedRole === 'clinic_admin' ||
-    normalizedRole === 'manager'
-  ) {
-    return MOBILE_UIUX_ADMIN_ENTRY_PATH;
-  }
-
-  return MOBILE_UIUX_STAFF_ENTRY_PATH;
-}
-
-function openMobileUiux(role: string | null | undefined) {
-  setDisplayMode('mobile');
-  window.location.assign(resolveMobileUiuxEntryPath(role));
-}
-
-function MobileUiuxMenuItemEntry({ role }: { role: string | null }) {
-  return (
-    <button
-      type='button'
-      className='block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none'
-      onClick={() => openMobileUiux(role)}
-    >
-      スマホ版で開く
-    </button>
+  const normalizedVariant = variant === 'auto' ? 'banner' : variant;
+  const pathname = usePathname();
+  const isMobileUiuxPath = pathname?.startsWith('/mobile-uiux') ?? false;
+  const isMobileViewport = useIsMobileViewport(normalizedVariant === 'banner');
+  const availability = useMobileUiuxAvailability(
+    !isMobileUiuxPath &&
+      (normalizedVariant === 'menu-item' || isMobileViewport),
+    role
   );
-}
-
-function MobileUiuxBannerEntry({ role }: { role: string | null }) {
-  const [canUseMobileUiux, setCanUseMobileUiux] = React.useState(false);
-  const [isDismissed, setIsDismissed] = React.useState(false);
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [dismissed, setDismissed] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  const entryPath = availability.entryPath;
 
   React.useEffect(() => {
-    let cancelled = false;
+    if (normalizedVariant === 'banner') {
+      setDismissed(readDismissedFlag());
+    }
+  }, [normalizedVariant]);
 
-    const loadContext = async () => {
-      setIsMobile(isMobileViewport());
-      if (hasDismissedPrompt()) {
-        setIsDismissed(true);
-      }
+  React.useEffect(() => {
+    if (
+      normalizedVariant !== 'banner' ||
+      !availability.ready ||
+      !entryPath ||
+      !isMobileViewport ||
+      isMobileUiuxPath ||
+      dismissed
+    ) {
+      setOpen(false);
+      return;
+    }
 
-      try {
-        const response = await fetch('/api/mobile-uiux/context', {
-          credentials: 'same-origin',
-          headers: {
-            Accept: 'application/json',
-          },
-        });
-        if (!response.ok) {
-          return;
-        }
+    setOpen(true);
+  }, [
+    availability.ready,
+    dismissed,
+    entryPath,
+    isMobileUiuxPath,
+    isMobileViewport,
+    normalizedVariant,
+  ]);
 
-        const payload: unknown = await response.json();
-        if (!cancelled && isContextSuccess(payload)) {
-          setCanUseMobileUiux(true);
-        }
-      } catch {
-        return;
-      }
-    };
+  const handleOpenMobile = React.useCallback(() => {
+    if (!entryPath) {
+      return;
+    }
 
-    void loadContext();
+    writeDisplayModeCookie('mobile');
+    onNavigate?.();
+    navigate(entryPath);
+  }, [entryPath, navigate, onNavigate]);
 
-    return () => {
-      cancelled = true;
-    };
+  const handleStayDesktop = React.useCallback(() => {
+    writeDisplayModeCookie('desktop');
+    writeDismissedFlag();
+    setDismissed(true);
+    setOpen(false);
   }, []);
 
-  const openMobile = React.useCallback(() => {
-    openMobileUiux(role);
-  }, [role]);
-
-  const stayDesktop = React.useCallback(() => {
-    setDisplayMode('desktop');
-    dismissPrompt();
-    setIsDismissed(true);
+  const handleClose = React.useCallback(() => {
+    writeDismissedFlag();
+    setDismissed(true);
+    setOpen(false);
   }, []);
 
-  const hideBanner = React.useCallback(() => {
-    dismissPrompt();
-    setIsDismissed(true);
-  }, []);
+  if (normalizedVariant === 'menu-item') {
+    if (!availability.ready || !entryPath || isMobileUiuxPath) {
+      return null;
+    }
 
-  if (!canUseMobileUiux) {
-    return null;
+    return (
+      <button
+        type='button'
+        className={cn(
+          'block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+          className
+        )}
+        onClick={handleOpenMobile}
+      >
+        スマホ版で開く
+      </button>
+    );
   }
 
-  if (!isMobile || isDismissed) {
+  if (!open || !entryPath) {
     return null;
   }
 
   return (
-    <div className='fixed inset-x-3 bottom-4 z-50 rounded-md border border-border bg-card p-3 text-foreground shadow-lg md:hidden'>
-      <div className='flex items-start gap-3'>
-        <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
-          <Smartphone className='h-5 w-5' aria-hidden='true' />
-        </span>
-        <div className='min-w-0 flex-1 space-y-2'>
-          <div className='space-y-1'>
-            <p className='text-sm font-semibold'>スマホ版を利用できます</p>
-            <p className='text-xs leading-5 text-muted-foreground'>
-              予約、日報、設定をスマホ幅に合わせた画面で確認できます。
-            </p>
+    <div className='fixed inset-x-3 bottom-4 z-50 md:hidden'>
+      <div
+        className='rounded-md border border-border bg-card p-3 text-foreground shadow-lg'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='mobile-uiux-entry-title'
+        aria-describedby='mobile-uiux-entry-description'
+      >
+        <div className='flex items-start gap-3'>
+          <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+            <Smartphone className='h-5 w-5' aria-hidden='true' />
+          </span>
+          <div className='min-w-0 flex-1 space-y-2'>
+            <div className='space-y-1'>
+              <h2
+                id='mobile-uiux-entry-title'
+                className='text-sm font-semibold'
+              >
+                スマホ版で表示しますか？
+              </h2>
+              <p
+                id='mobile-uiux-entry-description'
+                className='text-xs leading-5 text-muted-foreground'
+              >
+                この端末ではスマホ版の画面を利用できます。
+                予約・日報・設定をスマホ幅に最適化した画面で確認できます。
+              </p>
+            </div>
+            <div className='flex flex-wrap gap-2'>
+              <Button type='button' size='sm' onClick={handleOpenMobile}>
+                スマホ版で表示
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                onClick={handleStayDesktop}
+              >
+                PC版のまま使う
+              </Button>
+            </div>
           </div>
-          <div className='flex flex-wrap gap-2'>
-            <Button type='button' size='sm' onClick={openMobile}>
-              スマホ版で開く
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant='outline'
-              onClick={stayDesktop}
-            >
-              PC版のまま使う
-            </Button>
-          </div>
+          <button
+            type='button'
+            className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground'
+            aria-label='閉じる'
+            onClick={handleClose}
+          >
+            <X className='h-4 w-4' aria-hidden='true' />
+          </button>
         </div>
-        <button
-          type='button'
-          className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground'
-          aria-label='表示しない'
-          onClick={hideBanner}
-        >
-          <X className='h-4 w-4' aria-hidden='true' />
-        </button>
       </div>
     </div>
   );

@@ -86,6 +86,20 @@ const BRIDGE_SCRIPT_TAG_BY_SCREEN: Record<MobileUiuxScreenResource, string> = {
 const MOBILE_UIUX_BRIDGE_SCRIPT_RE =
   /<script\b(?=[^>]*\bdata-mobile-uiux-bridge\b)/i;
 
+const MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE = {
+  admin: ['home', 'reservations', 'patients', 'daily-reports', 'settings'],
+  clinic_admin: [
+    'home',
+    'reservations',
+    'patients',
+    'daily-reports',
+    'settings',
+  ],
+  manager: ['home', 'reservations', 'patients', 'daily-reports', 'settings'],
+  therapist: ['reservations', 'patients', 'daily-reports', 'settings'],
+  staff: ['reservations', 'patients', 'daily-reports', 'settings'],
+} as const;
+
 export function isMobileUiuxScreenResource(
   resource: string
 ): resource is MobileUiuxScreenResource {
@@ -124,6 +138,9 @@ export function buildMobileUiuxBridgeScript(
   options: MobileUiuxBridgeScriptOptions
 ): string {
   const manifestJson = JSON.stringify(options.manifest);
+  const navTargetsByRoleJson = JSON.stringify(
+    MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE
+  );
   const realDataEnabled = options.realDataEnabled ? 'true' : 'false';
 
   return `
@@ -139,6 +156,7 @@ export function buildMobileUiuxBridgeScript(
     "daily-reports": "/mobile-uiux/screens/daily-reports",
     settings: "/mobile-uiux/screens/settings"
   };
+  const NAV_TARGETS_BY_ROLE = ${navTargetsByRoleJson};
   const SUPPLEMENTAL_READS_BY_SCREEN = {
     home: [{ screen: "reservations", applyScreen: "home" }],
     reservations: [{ screen: "settings-detail" }],
@@ -248,6 +266,7 @@ export function buildMobileUiuxBridgeScript(
 
   async function fetchJson(url) {
     const response = await fetch(url, {
+      cache: "no-store",
       credentials: "same-origin",
       headers: {
         Accept: "application/json"
@@ -599,7 +618,29 @@ export function buildMobileUiuxBridgeScript(
       : null;
   }
 
+  function getCurrentCanonicalRole() {
+    return isRecord(currentContext) &&
+      isRecord(currentContext.role) &&
+      typeof currentContext.role.canonical === "string"
+        ? currentContext.role.canonical
+        : null;
+  }
+
+  function canNavigateToTarget(target) {
+    if (!REAL_DATA_ENABLED) {
+      return true;
+    }
+
+    const role = getCurrentCanonicalRole();
+    const allowedTargets = NAV_TARGETS_BY_ROLE[role] || [];
+    return allowedTargets.includes(target);
+  }
+
   function navigateToTarget(target) {
+    if (!canNavigateToTarget(target)) {
+      return;
+    }
+
     const nextPath = NAV_PATH_BY_TARGET[target];
     if (!nextPath || getNormalizedPathname() === nextPath) {
       return;
@@ -916,6 +957,9 @@ export function buildMobileUiuxBridgeScript(
     },
     refreshReadData(params) {
       return refreshReadData(params);
+    },
+    canNavigateToTarget(target) {
+      return canNavigateToTarget(target);
     }
   };
 
