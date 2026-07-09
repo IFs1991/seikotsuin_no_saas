@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import type {
-  MobileUiuxAccessDenied,
-  MobileUiuxAccessReasonCode,
-} from '@/lib/mobile-uiux/access';
 
 export type MobileUiuxResourceKind = 'html' | 'script';
 
+type MobileUiuxAccessDeniedLike = {
+  status: 401 | 403 | 404;
+  reasonCode: string;
+  message: string;
+};
+
 interface MobileUiuxErrorResponseInput {
   status: 401 | 403 | 404;
-  reasonCode: MobileUiuxAccessReasonCode | 'resource_not_found';
+  reasonCode: string;
   message: string;
   resourceKind: MobileUiuxResourceKind;
 }
@@ -129,7 +131,7 @@ export function createMobileUiuxErrorResponse(
 }
 
 export function createMobileUiuxAccessErrorResponse(
-  denial: MobileUiuxAccessDenied,
+  denial: MobileUiuxAccessDeniedLike,
   resourceKind: MobileUiuxResourceKind
 ): NextResponse {
   return createMobileUiuxErrorResponse({

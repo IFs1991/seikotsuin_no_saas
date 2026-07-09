@@ -10,16 +10,13 @@ import {
   ValidationErrorCollector,
 } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
+import {
+  createDashboardSupabaseReadModelClient,
+  fetchDashboardReadModel,
+} from '@/lib/dashboard/read-model';
 
-/**
- * daily_revenue_summary VIEW は AT TIME ZONE 'Asia/Tokyo' で日付を算出するため、
- * API 側も JST 基準で日付文字列を生成する。
- * JST は UTC+9 固定（サマータイムなし）。
- */
-function toJSTDateString(date: Date = new Date()): string {
-  const jst = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-  return jst.toISOString().split('T')[0];
-}
+const DASHBOARD_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
 
 export async function GET(
   request: NextRequest
@@ -51,205 +48,15 @@ export async function GET(
       );
     }
 
-    const { supabase } = await ensureClinicAccess(request, path, clinicId);
+    const { supabase } = await ensureClinicAccess(request, path, clinicId, {
+      allowedRoles: DASHBOARD_ALLOWED_ROLES,
+    });
 
     const resolvedClinicId = clinicId!;
-
-    // 基本的なダッシュボードデータを取得
-    // daily_revenue_summary VIEW は JST 基準のため toJSTDateString を使用
-    const today = toJSTDateString();
-
-    // 日次収益データ
-    const { data: dailyRevenue, error: revenueError } = await supabase
-      .from('daily_revenue_summary')
-      .select('total_revenue, insurance_revenue, private_revenue')
-      .eq('clinic_id', resolvedClinicId)
-      .eq('revenue_date', today)
-      .single();
-
-    if (revenueError && revenueError.code !== 'PGRST116') {
-      throw normalizeSupabaseError(revenueError, path);
-    }
-
-    // 患者数データ
-    const { count: patientCount, error: patientError } = await supabase
-      .from('visits')
-      .select('patient_id', { count: 'exact', head: true })
-      .eq('clinic_id', resolvedClinicId)
-      .gte('visit_date', today)
-      .lt(
-        'visit_date',
-        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      );
-
-    if (patientError) {
-      throw normalizeSupabaseError(patientError, path);
-    }
-
-    const normalizeTextList = (
-      value: string | string[] | null | undefined
-    ): string[] => {
-      if (!value) return [];
-      return Array.isArray(value) ? value.filter(Boolean) : [value];
-    };
-
-    const resolveSuggestions = (comment: Record<string, unknown>) => {
-      const suggestion = comment.suggestion_for_tomorrow;
-      if (suggestion) {
-        return normalizeTextList(suggestion as string | string[]);
-      }
-      const recommendations = comment.recommendations;
-      if (recommendations) {
-        return normalizeTextList(recommendations as string | string[]);
-      }
-      return [];
-    };
-
-    // AIコメント取得
-    let aiComment: Record<string, unknown> | null = null;
-    const { data: aiCommentData, error: aiError } = await supabase
-      .from('ai_comments')
-      .select('*')
-      .eq('clinic_id', resolvedClinicId)
-      .eq('comment_date', today)
-      .single();
-
-    if (aiError && aiError.code !== 'PGRST116') {
-      logError(new Error('Failed to fetch AI comments'), {
-        clinicId: resolvedClinicId,
-        aiError,
-      });
-    } else {
-      aiComment = aiCommentData as Record<string, unknown> | null;
-    }
-
-    // 収益トレンドデータ（過去7日）— JST 基準
-    const sevenDaysAgo = toJSTDateString(
-      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    );
-    const { data: revenueChartData, error: chartError } = await supabase
-      .from('daily_revenue_summary')
-      .select('revenue_date, total_revenue, insurance_revenue, private_revenue')
-      .eq('clinic_id', resolvedClinicId)
-      .gte('revenue_date', sevenDaysAgo)
-      .order('revenue_date', { ascending: true });
-
-    if (chartError) {
-      throw normalizeSupabaseError(chartError, path);
-    }
-
-    // ヒートマップデータ（時間別来院パターン）
-    const { data: heatmapData, error: heatmapError } = await supabase.rpc(
-      'get_hourly_visit_pattern',
-      { clinic_uuid: resolvedClinicId }
-    );
-
-    if (heatmapError) {
-      logError(new Error('Failed to fetch heatmap data'), {
-        clinicId,
-        heatmapError,
-      });
-      // ヒートマップエラーは致命的でないため、空配列で継続
-    }
-
-    // 前日データ取得（差分アラート用）— JST 基準
-    const yesterday = toJSTDateString(
-      new Date(Date.now() - 24 * 60 * 60 * 1000)
-    );
-    const { data: yesterdayRevenue } = await supabase
-      .from('daily_revenue_summary')
-      .select('total_revenue')
-      .eq('clinic_id', resolvedClinicId)
-      .eq('revenue_date', yesterday)
-      .single();
-
-    const { count: yesterdayPatientCount } = await supabase
-      .from('visits')
-      .select('patient_id', { count: 'exact', head: true })
-      .eq('clinic_id', resolvedClinicId)
-      .gte('visit_date', yesterday)
-      .lt('visit_date', today);
-
-    // 差分アラート生成
-    const alerts: string[] = [];
-    const ALERT_THRESHOLDS = {
-      REVENUE_DECREASE: 0.2, // 20%減少
-      REVENUE_INCREASE: 0.3, // 30%増加
-      PATIENTS_DECREASE: 0.2, // 20%減少
-      PATIENTS_INCREASE: 0.3, // 30%増加
-    };
-
-    const todayRevenue = dailyRevenue?.total_revenue || 0;
-    const todayPatients = patientCount || 0;
-    const prevRevenue = yesterdayRevenue?.total_revenue || 0;
-    const prevPatients = yesterdayPatientCount || 0;
-
-    if (prevRevenue > 0) {
-      const revenueChange = (todayRevenue - prevRevenue) / prevRevenue;
-      if (revenueChange < -ALERT_THRESHOLDS.REVENUE_DECREASE) {
-        const changePercent = Math.abs(Math.round(revenueChange * 100));
-        alerts.push(
-          `売上が前日比${changePercent}%減少しています（前日: ${prevRevenue.toLocaleString()}, 本日: ${todayRevenue.toLocaleString()}）`
-        );
-      } else if (revenueChange > ALERT_THRESHOLDS.REVENUE_INCREASE) {
-        const changePercent = Math.round(revenueChange * 100);
-        alerts.push(
-          `売上が前日比${changePercent}%増加しています（前日: ${prevRevenue.toLocaleString()}, 本日: ${todayRevenue.toLocaleString()}）`
-        );
-      }
-    }
-
-    if (prevPatients > 0) {
-      const patientsChange = (todayPatients - prevPatients) / prevPatients;
-      if (patientsChange < -ALERT_THRESHOLDS.PATIENTS_DECREASE) {
-        const changePercent = Math.abs(Math.round(patientsChange * 100));
-        alerts.push(
-          `患者数が前日比${changePercent}%減少しています（前日: ${prevPatients}名, 本日: ${todayPatients}名）`
-        );
-      } else if (patientsChange > ALERT_THRESHOLDS.PATIENTS_INCREASE) {
-        const changePercent = Math.round(patientsChange * 100);
-        alerts.push(
-          `患者数が前日比${changePercent}%増加しています（前日: ${prevPatients}名, 本日: ${todayPatients}名）`
-        );
-      }
-    }
-
-    // レスポンスデータの構築
-    const dashboardData: DashboardData = {
-      dailyData: {
-        revenue: todayRevenue,
-        patients: todayPatients,
-        insuranceRevenue: dailyRevenue?.insurance_revenue || 0,
-        privateRevenue: dailyRevenue?.private_revenue || 0,
-      },
-      aiComment: aiComment
-        ? {
-            id: aiComment.id as string,
-            summary: (aiComment.summary as string) || '',
-            highlights: normalizeTextList(
-              aiComment.good_points as string | string[] | null | undefined
-            ),
-            improvements: normalizeTextList(
-              aiComment.improvement_points as
-                | string
-                | string[]
-                | null
-                | undefined
-            ),
-            suggestions: resolveSuggestions(aiComment),
-            created_at: aiComment.created_at as string,
-          }
-        : null,
-      revenueChartData:
-        revenueChartData?.map(item => ({
-          name: item.revenue_date,
-          総売上: Number(item.total_revenue) || 0,
-          保険診療: Number(item.insurance_revenue) || 0,
-          自費診療: Number(item.private_revenue) || 0,
-        })) || [],
-      heatmapData: heatmapData || [],
-      alerts,
-    };
+    const dashboardData = await fetchDashboardReadModel({
+      supabase: createDashboardSupabaseReadModelClient(supabase),
+      clinicId: resolvedClinicId,
+    });
 
     const response: ApiResponse<DashboardData> = {
       success: true,

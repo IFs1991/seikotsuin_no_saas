@@ -23,7 +23,8 @@ import {
   normalizeSupabaseError,
   logError,
 } from '@/lib/error-handler';
-import { canAccessClinicScope } from '@/lib/supabase';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { normalizeRole } from '@/lib/constants/roles';
 
 // =========================================================
 // handleRouteError
@@ -86,7 +87,9 @@ export type ClinicScopedBodyResult<T> =
 export type ProcessClinicScopedBodyOptions = Pick<
   ProcessApiOptions,
   'allowedRoles' | 'deniedRoles' | 'deniedRoleMessage'
->;
+> & {
+  path?: string;
+};
 
 /**
  * POST/PATCH で共通の「body 取得 → schema validation → clinic scope 検証」を
@@ -148,18 +151,47 @@ export async function processClinicScopedBody<T>(
     };
   }
 
-  if (!canAccessClinicScope(result.permissions, clinicId)) {
+  let path = options?.path ?? '/api/unknown';
+  if (!options?.path && typeof request.url === 'string') {
+    path = new URL(request.url).pathname;
+  }
+  try {
+    const guard = await ensureClinicAccess(request, path, clinicId, {
+      requireClinicMatch: true,
+      allowedRoles: options?.allowedRoles,
+    });
+
+    return {
+      ...result,
+      auth: {
+        id: guard.user.id,
+        email: guard.user.email || '',
+        role: normalizeRole(guard.permissions.role) ?? guard.permissions.role,
+      },
+      permissions: guard.permissions,
+      supabase: guard.supabase,
+      dto,
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      return {
+        success: false,
+        error: createErrorResponse(
+          error.message,
+          error.statusCode,
+          undefined,
+          error.code
+        ),
+      };
+    }
+
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      path,
+    });
+
     return {
       success: false,
-      error: createErrorResponse(
-        'このクリニックへのアクセス権がありません',
-        403
-      ),
+      error: createErrorResponse('サーバーエラーが発生しました', 500),
     };
   }
-
-  return {
-    ...result,
-    dto,
-  };
 }

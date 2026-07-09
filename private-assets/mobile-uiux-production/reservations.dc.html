@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./react-runtime.js" data-mobile-uiux-react-runtime></script><script src="./support.js"></script>
+
+<style data-mobile-uiux-production-shell>
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body[data-mobile-uiux-shell="production"] {
+  width: 100%;
+  min-height: 100svh;
+  background: var(--screen-bg, #f3f5f4);
+  overflow: hidden;
+}
+body[data-mobile-uiux-shell="production"]::before {
+  content: "読み込み中です";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483500;
+  display: grid;
+  place-items: center;
+  background: var(--screen-bg, #f3f5f4);
+  color: var(--fg-2, #53605a);
+  font: 700 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html[data-mobile-uiux-initial-read="hydrated"] body[data-mobile-uiux-shell="production"]::before,
+html[data-mobile-uiux-initial-read="failed"] body[data-mobile-uiux-shell="production"]::before {
+  display: none;
+}
+[data-mobile-uiux-production-root] {
+  width: 100% !important;
+  min-height: 100svh !important;
+  height: 100svh !important;
+  overflow: hidden !important;
+  background: var(--screen-bg, #f3f5f4) !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  align-items: stretch !important;
+  box-sizing: border-box !important;
+}
+[data-screen-label] {
+  width: 100% !important;
+  height: 100svh !important;
+  min-height: 100svh !important;
+  border-radius: 0 !important;
+  visibility: hidden !important;
+}
+html[data-mobile-uiux-initial-read="hydrated"] [data-screen-label] {
+  visibility: visible !important;
+}
+.scrl { -webkit-overflow-scrolling: touch; }
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-bridge-fallback],
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 2147483600;
+  box-sizing: border-box;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: 600 13px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+  pointer-events: none;
+  transform: translateY(0);
+  opacity: 1;
+  transition: opacity .18s ease, transform .18s ease;
+}
+body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
+  background: var(--surface-2);
+}
+</style></head>
+<body data-mobile-uiux-shell="production">
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Noto Sans JP", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .scrl::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @keyframes nowpulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .5; } }
+</style>
+</helmet>
+<div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%; background: var(--stage-bg, #e9ece9); display: flex; flex-direction: column; align-items: center; padding: 28px 16px 56px; gap: 20px; box-sizing: border-box;" data-mobile-uiux-production-root><div data-screen-label="予約（モバイル）" style="position: relative; width: 100%; height: 100%; border-radius: 44px; overflow: hidden; background: var(--screen-bg, #f3f5f4); display: flex; flex-direction: column;">
+
+      <!-- dynamic island -->
+      
+
+      <!-- status bar -->
+      
+
+      <!-- ░ APP HEADER ░ -->
+      <div style="flex: none; background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e4e8e6); z-index: 7;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px 10px;">
+          <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-right: auto; min-width: 0;">
+            <div style="font-size: 19px; font-weight: 700; color: var(--fg);">予約</div>
+            <button onClick="{{ openClinic }}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 3px 8px; max-width: 190px;">
+              <span style="font-size: 11px; font-weight: 600; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ clinicName }}</span>
+              <span style="border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid var(--fg-3); flex: none;"></span>
+              <sc-if value="{{ crossClinic }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9px; font-weight: 700; color: var(--s-uc); background: var(--s-uc-bg); padding: 1px 6px; border-radius: 999px; flex: none;">閲覧</span></sc-if>
+            </button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 2px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px;">
+            <button onClick="{{ prevDate }}" aria-label="前の日" style="width: 32px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><span style="border-left: 2px solid var(--fg-2); border-bottom: 2px solid var(--fg-2); width: 8px; height: 8px; transform: rotate(45deg); margin-left: 3px;"></span></button>
+            <div style="min-width: 86px; text-align: center; font-size: 13px; font-weight: 700; color: var(--fg);">{{ dateLabel }}</div>
+            <button onClick="{{ nextDate }}" aria-label="次の日" style="width: 32px; height: 36px; border: none; background: transparent; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><span style="border-right: 2px solid var(--fg-2); border-top: 2px solid var(--fg-2); width: 8px; height: 8px; transform: rotate(45deg); margin-right: 3px;"></span></button>
+          </div>
+          <button onClick="{{ moreMenu }}" aria-label="その他" style="width: 40px; height: 40px; border: 1px solid var(--border); background: var(--surface-2); border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;"><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span><span style="width: 4px; height: 4px; border-radius: 50%; background: var(--fg-2);"></span></button>
+        </div>
+
+        <!-- view segmented + self toggle -->
+        <div style="display: flex; align-items: center; gap: 10px; padding: 0 16px 12px;">
+          <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px; flex: 1; max-width: 220px;">
+            <button onClick="{{ viewAgenda }}" style="{{ agStyle }}">アジェンダ</button>
+            <button onClick="{{ viewTimeline }}" style="{{ tlStyle }}">タイムライン</button>
+          </div>
+          <sc-if value="{{ showSelf }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ toggleSelf }}" style="{{ selfStyle }}">
+              <span style="{{ selfDot }}"></span>自分の担当のみ
+            </button>
+          </sc-if>
+        </div>
+
+        <!-- day summary -->
+        <div class="scrl" style="display: flex; gap: 8px; padding: 0 16px 12px; overflow-x: auto;">
+          <div style="flex: none; min-width: 78px; background: var(--primary-soft); border-radius: 12px; padding: 8px 12px;"><div style="font-size: 20px; font-weight: 700; color: var(--on-primary-soft); line-height: 1.1;">{{ sumTotal }}</div><div style="font-size: 10.5px; color: var(--on-primary-soft); opacity: .8; font-weight: 500;">本日の予約</div></div>
+          <div style="flex: none; min-width: 64px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;"><div style="font-size: 20px; font-weight: 700; color: var(--s-cf); line-height: 1.1;">{{ sumConf }}</div><div style="font-size: 10.5px; color: var(--fg-2); font-weight: 500;">確定</div></div>
+          <div style="flex: none; min-width: 64px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;"><div style="font-size: 20px; font-weight: 700; color: var(--s-uc); line-height: 1.1;">{{ sumUnc }}</div><div style="font-size: 10.5px; color: var(--fg-2); font-weight: 500;">未確認</div></div>
+          <div style="flex: none; min-width: 64px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px;"><div style="font-size: 20px; font-weight: 700; color: var(--fg-3); line-height: 1.1;">{{ sumCancel }}</div><div style="font-size: 10.5px; color: var(--fg-2); font-weight: 500;">取消/不在</div></div>
+        </div>
+      </div>
+
+      <!-- read-only banner -->
+      <sc-if value="{{ isReadOnly }}" hint-placeholder-val="{{ false }}">
+        <div style="flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--s-uc-bg); color: var(--s-uc); font-size: 11.5px; font-weight: 500; border-bottom: 1px solid var(--border);">
+          <span style="width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--s-uc); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700;">i</span>
+          {{ readonlyMsg }}
+        </div>
+      </sc-if>
+
+      <!-- ░ CONTENT ░ -->
+      <div class="scrl" style="flex: 1; overflow-y: auto; position: relative;">
+
+        <!-- skeleton -->
+        <sc-if value="{{ isLoading }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+            <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+            <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+            <div style="height: 78px; border-radius: 14px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear;"></div>
+          </div>
+        </sc-if>
+
+        <!-- empty -->
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 70px 40px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px;">
+            <div style="width: 76px; height: 76px; border-radius: 22px; background: var(--surface-2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+              <div style="width: 34px; height: 30px; border: 2px solid var(--fg-3); border-radius: 6px; position: relative;"><div style="position: absolute; top: -7px; left: 6px; width: 3px; height: 8px; border-radius: 2px; background: var(--fg-3);"></div><div style="position: absolute; top: -7px; right: 6px; width: 3px; height: 8px; border-radius: 2px; background: var(--fg-3);"></div></div>
+            </div>
+            <div style="font-size: 15px; font-weight: 700; color: var(--fg);">{{ emptyTitle }}</div>
+            <div style="font-size: 12.5px; color: var(--fg-2); line-height: 1.6; max-width: 220px;">{{ emptyBody }}</div>
+          </div>
+        </sc-if>
+
+        <!-- AGENDA -->
+        <sc-if value="{{ showAgenda }}" hint-placeholder-val="{{ true }}">
+          <div style="padding: 14px 16px 0; display: flex; flex-direction: column; gap: 9px;">
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+              <sc-if value="{{ row.isAppt }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ row.onTap }}" style="all: unset; cursor: pointer; display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 13px; align-items: stretch; box-shadow: 0 1px 2px rgba(0,0,0,.04); opacity: {{ row.dim }};">
+                  <div style="display: flex; flex-direction: column; align-items: center; gap: 3px; padding-right: 11px; border-right: 1px solid var(--border); min-width: 52px;">
+                    <div style="font-size: 15px; font-weight: 700; color: var(--fg); line-height: 1.1;">{{ row.startT }}</div>
+                    <div style="width: 1px; flex: 1; min-height: 6px; background: var(--border);"></div>
+                    <div style="font-size: 11px; color: var(--fg-3);">{{ row.endT }}</div>
+                  </div>
+                  <div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+                    <div style="font-size: 15px; font-weight: 700; color: var(--fg); line-height: 1.25;">{{ row.patient }} <span style="font-size: 11px; font-weight: 400; color: var(--fg-3);">様</span></div>
+                    <div style="font-size: 12px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.menu }}</div>
+                    <sc-if value="{{ row.showTher }}" hint-placeholder-val="{{ true }}">
+                      <div style="display: flex; align-items: center; gap: 5px; margin-top: 1px;"><span style="width: 16px; height: 16px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ row.initial }}</span><span style="font-size: 11px; color: var(--fg-2);">{{ row.ther }}</span></div>
+                    </sc-if>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between;">
+                    <span style="font-size: 11px; font-weight: 700; color: {{ row.c }}; background: {{ row.b }}; padding: 3px 9px; border-radius: 999px; white-space: nowrap;">{{ row.statusLabel }}</span>
+                    <span style="border-right: 2px solid var(--fg-3); border-top: 2px solid var(--fg-3); width: 7px; height: 7px; transform: rotate(45deg); margin-bottom: 4px; opacity: .6;"></span>
+                  </div>
+                </button>
+              </sc-if>
+              <sc-if value="{{ row.isGap }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ row.onTap }}" style="all: unset; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; border: 1.5px dashed var(--border-strong); border-radius: 12px; color: var(--primary); font-size: 12.5px; font-weight: 600; background: transparent;">
+                  <span style="font-size: 16px; line-height: 1;">＋</span>{{ row.label }}
+                </button>
+              </sc-if>
+            </sc-for>
+            <div style="height: 96px; flex: none;"></div>
+          </div>
+        </sc-if>
+
+        <!-- TIMELINE -->
+        <sc-if value="{{ showTimeline }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column;">
+            <div class="scrl" style="display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--screen-bg); z-index: 3;">
+              <sc-for list="{{ therChips }}" as="chip" hint-placeholder-count="4">
+                <button onClick="{{ chip.onTap }}" style="{{ chip.style }}">
+                  <span style="{{ chip.dotStyle }}">{{ chip.initial }}</span>{{ chip.name }}
+                </button>
+              </sc-for>
+            </div>
+            <div style="position: relative; padding: 0 16px 110px 56px;">
+              <div style="position: relative; height: {{ tlHeight }};">
+                <sc-for list="{{ tlHours }}" as="hr" hint-placeholder-count="11">
+                  <div style="position: absolute; left: -40px; right: 0; top: {{ hr.top }}; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 10.5px; color: var(--fg-3); width: 32px; text-align: right; flex: none;">{{ hr.label }}</span>
+                    <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                  </div>
+                </sc-for>
+                <sc-for list="{{ tlFree }}" as="fs" hint-placeholder-count="6">
+                  <button onClick="{{ fs.onTap }}" aria-label="空き枠" style="position: absolute; left: 0; right: 0; top: {{ fs.top }}; height: {{ fs.height }}; border: 1.5px dashed var(--border-strong); border-radius: 9px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 11px; font-weight: 600; opacity: .85;">＋ 空き</button>
+                </sc-for>
+                <sc-for list="{{ tlBlocks }}" as="blk" hint-placeholder-count="4">
+                  <button onClick="{{ blk.onTap }}" style="all: unset; cursor: pointer; position: absolute; left: 0; right: 0; top: {{ blk.top }}; height: {{ blk.height }}; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid {{ blk.c }}; border-radius: 10px; padding: 7px 11px; box-sizing: border-box; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); opacity: {{ blk.dim }};">
+                    <div style="display: flex; align-items: center; gap: 6px;"><span style="font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ blk.patient }}</span><span style="font-size: 10px; font-weight: 700; color: {{ blk.c }}; background: {{ blk.b }}; padding: 1px 7px; border-radius: 999px;">{{ blk.statusLabel }}</span></div>
+                    <div style="font-size: 11px; color: var(--fg-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ blk.timeMenu }}</div>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ tlNowShow }}" hint-placeholder-val="{{ false }}">
+                  <div style="position: absolute; left: -44px; right: 0; top: {{ tlNowTop }}; display: flex; align-items: center; z-index: 4; pointer-events: none;">
+                    <span style="font-size: 9px; font-weight: 700; color: #fff; background: var(--now); border-radius: 4px; padding: 1px 5px; flex: none;">{{ tlNowLabel }}</span>
+                    <div style="width: 9px; height: 9px; border-radius: 50%; background: var(--now); margin-left: 2px; animation: nowpulse 2s infinite ease-in-out;"></div>
+                    <div style="flex: 1; height: 1.5px; background: var(--now);"></div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- FAB -->
+      <sc-if value="{{ fabShow }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ newAppt }}" aria-label="新規予約" style="position: absolute; right: 18px; bottom: 92px; width: 56px; height: 56px; border-radius: 18px; border: none; background: var(--primary); color: var(--primary-fg); font-size: 28px; font-weight: 300; cursor: pointer; z-index: 30; box-shadow: 0 6px 18px rgba(0,0,0,.22); display: flex; align-items: center; justify-content: center; line-height: 1;">＋</button>
+      </sc-if>
+
+      <!-- BOTTOM NAV -->
+      <div style="flex: none; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 8px 24px; display: flex; z-index: 9;">
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="home" role="button" tabindex="0" aria-label="ホームへ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--fg-3); border-radius: 5px;"></div><span style="font-size: 10px; color: var(--fg-3);">ホーム</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="reservations" role="button" tabindex="0" aria-label="予約へ移動"><div style="width: 22px; height: 22px; border: 2px solid var(--primary); border-radius: 5px; position: relative;"><div style="position: absolute; inset: 3px 3px auto 3px; height: 2px; background: var(--primary);"></div></div><span style="font-size: 10px; color: var(--primary); font-weight: 700;">予約</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="patients" role="button" tabindex="0" aria-label="患者へ移動"><div style="width: 14px; height: 14px; border: 2px solid var(--fg-3); border-radius: 50%; margin-top: 2px;"></div><span style="font-size: 10px; color: var(--fg-3);">患者</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="daily-reports" role="button" tabindex="0" aria-label="レポートへ移動"><div style="display: flex; align-items: flex-end; gap: 2px; height: 18px;"><div style="width: 4px; height: 8px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 14px; background: var(--fg-3); border-radius: 1px;"></div><div style="width: 4px; height: 11px; background: var(--fg-3); border-radius: 1px;"></div></div><span style="font-size: 10px; color: var(--fg-3);">レポート</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 44px; justify-content: center;" data-mobile-uiux-nav-target="settings" role="button" tabindex="0" aria-label="設定へ移動"><div style="width: 20px; height: 20px; border: 2px solid var(--fg-3); border-radius: 50%;"></div><span style="font-size: 10px; color: var(--fg-3);">設定</span></div>
+      </div>
+
+      <!-- ░░ OVERLAYS ░░ -->
+      <!-- DETAIL -->
+      <sc-if value="{{ detailOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeDetail }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 40; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.2); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); transform: {{ detailTransform }}; transition: {{ detailTransition }}; max-height: 90%; display: flex; flex-direction: column;">
+          <div onPointerDown="{{ dragDetail }}" style="padding: 10px 0 4px; display: flex; justify-content: center; cursor: grab; touch-action: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div class="scrl" style="overflow-y: auto; padding: 8px 20px 0;">
+            <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+              <div style="width: 46px; height: 46px; border-radius: 14px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none;">{{ dInitial }}</div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 19px; font-weight: 700; color: var(--fg);">{{ dPatient }} <span style="font-size: 12px; font-weight: 400; color: var(--fg-3);">様</span></div>
+                <div style="font-size: 12.5px; color: var(--fg-2); margin-top: 2px;">{{ dMenu }}</div>
+              </div>
+              <span style="font-size: 12px; font-weight: 700; color: {{ dC }}; background: {{ dB }}; padding: 5px 12px; border-radius: 999px; flex: none;">{{ dStatusLabel }}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 14px;">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px;"><span style="font-size: 12px; color: var(--fg-2); width: 56px; flex: none;">時間</span><span style="font-size: 14px; font-weight: 600; color: var(--fg);">{{ dTime }}</span><span style="font-size: 12px; color: var(--fg-3); margin-left: auto;">{{ dDur }}</span></div>
+              <div style="height: 1px; background: var(--border);"></div>
+              <div style="display: flex; align-items: center; gap: 12px; padding: 13px 15px;"><span style="font-size: 12px; color: var(--fg-2); width: 56px; flex: none;">担当</span><span style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;">{{ dInitial }}</span><span style="font-size: 14px; font-weight: 600; color: var(--fg);">{{ dTher }}</span><span style="font-size: 11px; color: var(--fg-3); margin-left: auto;">{{ dTherRole }}</span></div>
+            </div>
+
+            <sc-if value="{{ dReadonly }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--s-uc-bg); color: var(--s-uc); font-size: 12px; border-radius: 12px; margin-bottom: 8px;"><span style="width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--s-uc); display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex: none;">i</span>閲覧専用のため、この予約は変更できません。</div>
+            </sc-if>
+
+            <sc-if value="{{ canWrite }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size: 12px; font-weight: 600; color: var(--fg-2); margin: 2px 2px 8px;">来院ステータス</div>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;">
+                <sc-for list="{{ arrivalOpts }}" as="av" hint-placeholder-count="3">
+                  <button onClick="{{ av.onTap }}" style="{{ av.style }}">{{ av.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display: flex; gap: 9px; margin-bottom: 10px;">
+                <button onClick="{{ openTime }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">時間を変更</button>
+                <button onClick="{{ openAssignee }}" style="flex: 1; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">担当を変更</button>
+              </div>
+              <sc-if value="{{ dShowConfirm }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ confirmAppt }}" style="width: 100%; min-height: 50px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; margin-bottom: 9px;">予約を確定する</button>
+              </sc-if>
+            </sc-if>
+            <button onClick="{{ openHistory }}" style="width: 100%; min-height: 48px; border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--fg); border-radius: 13px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;"><span style="width: 13px; height: 13px; border: 1.5px solid var(--fg-2); border-radius: 3px; flex: none;"></span>予約履歴を見る</button>
+          </div>
+          <div style="height: 18px; flex: none;"></div>
+        </div>
+      </sc-if>
+
+      <!-- TIME / ASSIGNEE SUB-SHEET -->
+      <sc-if value="{{ subOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeSub }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.3); z-index: 50; animation: fadeIn .2s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .28s cubic-bezier(.32,.72,0,1); max-height: 80%; display: flex; flex-direction: column;">
+          <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 10px; display: flex; align-items: center;"><div style="font-size: 16px; font-weight: 700; color: var(--fg);">{{ subTitle }}</div><button onClick="{{ closeSub }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button></div>
+          <sc-if value="{{ moveErrShow }}" hint-placeholder-val="{{ false }}">
+            <div style="margin: 0 20px 8px; padding: 10px 13px; background: var(--s-ns-bg); color: var(--s-ns); font-size: 12px; font-weight: 500; border-radius: 11px;">{{ moveError }}</div>
+          </sc-if>
+          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 24px;">
+            <!-- time slots -->
+            <sc-if value="{{ timeSheetOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                <sc-for list="{{ moveSlots }}" as="sl" hint-placeholder-count="12">
+                  <button onClick="{{ sl.onTap }}" style="{{ sl.style }}">{{ sl.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <!-- assignee -->
+            <sc-if value="{{ assigneeSheetOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <sc-for list="{{ assignOpts }}" as="op" hint-placeholder-count="4">
+                  <button onClick="{{ op.onTap }}" style="{{ op.style }}">
+                    <span style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ op.initial }}</span>
+                    <span style="display: flex; flex-direction: column; align-items: flex-start; gap: 1px;"><span style="font-size: 14px; font-weight: 600; color: var(--fg);">{{ op.name }}</span><span style="font-size: 11px; color: var(--fg-3);">{{ op.role }}</span></span>
+                    <span style="{{ op.tagStyle }}">{{ op.tag }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- NEW / EDIT FORM -->
+      <sc-if value="{{ formOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeForm }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; top: 60px; z-index: 51; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); transform: {{ formTransform }}; transition: {{ formTransition }}; display: flex; flex-direction: column;">
+          <div onPointerDown="{{ dragForm }}" style="padding: 10px 0 2px; display: flex; justify-content: center; cursor: grab; touch-action: none; flex: none;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; flex: none; border-bottom: 1px solid var(--border);"><div style="font-size: 18px; font-weight: 700; color: var(--fg);">新規予約</div><button onClick="{{ closeForm }}" style="margin-left: auto; width: 34px; height: 34px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button></div>
+          <div class="scrl" style="flex: 1; overflow-y: auto; padding: 16px 20px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">患者名（フルネーム）</span><input value="{{ fPatient }}" onChange="{{ onPatient }}" placeholder="例：山田 花子" style="font-family: inherit; font-size: 15px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; outline: none;"></label>
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">施術メニュー</span>
+                <select value="{{ fMenu }}" onChange="{{ onMenu }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 15px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 36px 13px 14px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 13px center;">
+                  <sc-for list="{{ menuOpts }}" as="o" hint-placeholder-count="6"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                </select>
+              </label>
+              <div style="display: flex; gap: 12px;">
+                <label style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">開始時刻</span>
+                  <select value="{{ fStart }}" onChange="{{ onStart }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 15px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 36px 13px 14px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 13px center;">
+                    <sc-for list="{{ startOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                  </select>
+                </label>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">終了（自動）</span><div style="font-size: 15px; color: var(--fg); background: var(--surface-3); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;">{{ fEnd }} <span style="font-size: 11px; color: var(--fg-3);">{{ fDurLabel }}</span></div></div>
+              </div>
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">担当</span>
+                <select value="{{ fRes }}" onChange="{{ onRes }}" style="appearance: none; -webkit-appearance: none; font-family: inherit; font-size: 15px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 36px 13px 14px; cursor: pointer; background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%238a958f%22 stroke-width=%221.6%22 fill=%22none%22 stroke-linecap=%22round%22/></svg>'); background-repeat: no-repeat; background-position: right 13px center;">
+                  <sc-for list="{{ resOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+                </select>
+              </label>
+              <button onClick="{{ toggleNominated }}" style="all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 2px 2px;">
+                <span style="{{ nomBoxStyle }}"><sc-if value="{{ fNominated }}" hint-placeholder-val="{{ false }}"><span style="font-size: 14px; font-weight: 800; color: var(--primary-fg); line-height: 1;">✓</span></sc-if></span>
+                <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                  <span style="font-size: 14px; font-weight: 600; color: var(--fg);">指名予約</span>
+                  <span style="font-size: 11px; color: var(--fg-2);">患者がこの担当者を指名している</span>
+                </span>
+              </button>
+              <label style="display: flex; flex-direction: column; gap: 7px;"><span style="font-size: 12px; font-weight: 600; color: var(--fg-2);">備考（任意）</span><input value="{{ fNote }}" onChange="{{ onNote }}" placeholder="初診 / 紹介 など" style="font-family: inherit; font-size: 15px; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; outline: none;"></label>
+            </div>
+          </div>
+          <div style="flex: none; padding: 12px 20px 30px; border-top: 1px solid var(--border); background: var(--surface);">
+            <button onClick="{{ submitForm }}" style="width: 100%; min-height: 52px; border: none; background: var(--primary); color: var(--primary-fg); border-radius: 14px; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;">この内容で予約を登録</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- HISTORY -->
+      <sc-if value="{{ historyOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeHistory }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 54; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 55; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 86%; display: flex; flex-direction: column;">
+          <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; flex-direction: column; gap: 1px;"><div style="font-size: 16px; font-weight: 700; color: var(--fg);">予約履歴</div><div style="font-size: 11.5px; color: var(--fg-2);">{{ dPatient }} 様 ・ 来院 {{ histCount }} 回</div></div>
+            <button onClick="{{ closeHistory }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button>
+          </div>
+          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 8px;">
+            <sc-for list="{{ historyItems }}" as="h" hint-placeholder-count="4">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 13px;">
+                <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;">
+                  <div style="font-size: 12.5px; font-weight: 700; color: var(--fg);">{{ h.date }}</div>
+                  <div style="font-size: 11.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ h.timeMenu }}</div>
+                  <div style="font-size: 11px; color: var(--fg-3);">担当 {{ h.ther }}</div>
+                </div>
+                <span style="font-size: 11px; font-weight: 700; color: {{ h.c }}; background: {{ h.b }}; padding: 4px 10px; border-radius: 999px; flex: none;">{{ h.statusLabel }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- CLINIC SWITCHER -->
+      <sc-if value="{{ clinicSheetOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeClinic }}" style="position: absolute; inset: 0; background: rgba(0,0,0,.42); z-index: 50; animation: fadeIn .25s ease;"></div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 51; background: var(--surface); border-radius: 26px 26px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: sheetUp .3s cubic-bezier(.32,.72,0,1); max-height: 80%; display: flex; flex-direction: column;">
+          <div style="padding: 12px 0 4px; display: flex; justify-content: center;"><div style="width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong);"></div></div>
+          <div style="padding: 6px 20px 12px; display: flex; align-items: center;"><div style="font-size: 16px; font-weight: 700; color: var(--fg);">店舗を切り替え</div><button onClick="{{ closeClinic }}" style="margin-left: auto; width: 32px; height: 32px; border: none; background: var(--surface-2); border-radius: 50%; cursor: pointer; color: var(--fg-2); font-size: 16px;">✕</button></div>
+          <div class="scrl" style="overflow-y: auto; padding: 4px 20px 24px; display: flex; flex-direction: column; gap: 8px;">
+            <sc-for list="{{ clinicOpts }}" as="cl" hint-placeholder-count="3">
+              <button onClick="{{ cl.onTap }}" style="{{ cl.style }}">
+                <span style="width: 34px; height: 34px; border-radius: 10px; background: var(--primary-soft); color: var(--on-primary-soft); font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none;">{{ cl.initial }}</span>
+                <span style="font-size: 14px; font-weight: 600; color: var(--fg); margin-right: auto;">{{ cl.name }}</span>
+                <span style="{{ cl.tagStyle }}">{{ cl.tag }}</span>
+              </button>
+            </sc-for>
+            <div style="font-size: 11px; color: var(--fg-3); line-height: 1.6; padding: 6px 4px 0;">他店舗の予約は閲覧のみ可能です。クリニック間の書き込み境界は維持されます。</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; bottom: 96px; left: 50%; z-index: 80; background: var(--toast-bg); color: var(--toast-fg); font-size: 13px; font-weight: 600; padding: 12px 20px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.28); animation: toastIn .25s ease; white-space: nowrap; max-width: 86%;">{{ toastMsg }}</div>
+      </sc-if>
+
+    </div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 720, &quot;height&quot;: 900}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2f7d72&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#2f7d72&quot;, &quot;#356a9c&quot;, &quot;#4a6670&quot;, &quot;#7a5a86&quot;]}}">
+class Component extends DCLogic {
+  SELF = 't1';
+  DS = 540; DE = 1140; NOW = 800; PXH = 64;
+  CLINICS = [
+    { id: 'c1', name: '本町ケア整骨院' },
+    { id: 'c2', name: '駅前ケア整骨院' },
+    { id: 'c3', name: '緑が丘ケア整骨院' },
+  ];
+  HOME = 'c1';
+  THER = [
+    { id: 't1', name: '田中 健太', role: '柔道整復師', clinic: 'c1' },
+    { id: 't2', name: '佐藤 美咲', role: '鍼灸師', clinic: 'c1' },
+    { id: 't3', name: '鈴木 大輔', role: '柔道整復師', clinic: 'c1' },
+    { id: 't4', name: '山本 由香', role: '柔整 / 産後ケア', clinic: 'c1' },
+    { id: 't5', name: '中島 涼', role: '柔道整復師', clinic: 'c2' },
+    { id: 't6', name: '大塚 千夏', role: '鍼灸師', clinic: 'c2' },
+    { id: 't7', name: '森田 隼人', role: '柔道整復師', clinic: 'c2' },
+    { id: 't8', name: '藤井 香織', role: '柔整 / 産後ケア', clinic: 'c3' },
+    { id: 't9', name: '岡本 拓', role: '柔道整復師', clinic: 'c3' },
+  ];
+  MENUS = [
+    { name: '保険施術（健康保険）', dur: 30 },
+    { name: '自費骨盤矯正', dur: 40 },
+    { name: '産後骨盤矯正', dur: 45 },
+    { name: '鍼灸施術', dur: 40 },
+    { name: '美容鍼', dur: 60 },
+    { name: '交通事故施術（自賠責）', dur: 30 },
+    { name: 'スポーツ外傷ケア', dur: 30 },
+    { name: 'EMS（楽トレ）', dur: 20 },
+    { name: '猫背・姿勢矯正', dur: 30 },
+    { name: '全身もみほぐし', dur: 60 },
+  ];
+  STATUS = {
+    unconfirmed: { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    confirmed: { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    arrived: { label: '来院済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)' },
+    late: { label: '遅刻', c: 'var(--s-uc)', b: 'var(--s-uc-bg)' },
+    cancelled: { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)' },
+    noshow: { label: '来院なし', c: 'var(--s-ns)', b: 'var(--s-ns-bg)' },
+  };
+  DAYS = ['6/18（木）', '6/19（金）', '6/20（土）'];
+
+  state = {
+    theme: 'light', role: 'therapist', view: 'agenda', selfOnly: true,
+    dateIndex: 1, loading: false, clinic: 'c1', clinicSheet: false, historySheet: false,
+    detailId: null, formOpen: false,
+    timeSheet: false, assigneeSheet: false,
+    timelineRes: 't1', toast: '', moveError: '',
+    dragSheet: null, dragY: 0,
+    fStart: 660, fDur: 30, fMenu: '保険施術（健康保険）', fRes: 't1', fPatient: '', fNote: '', fNominated: false,
+    appts: [
+      { id: 'a1', res: 't1', start: 540, dur: 60, patient: '渡辺 結衣', menu: '産後骨盤矯正', status: 'confirmed' },
+      { id: 'a2', res: 't1', start: 615, dur: 30, patient: '小林 誠一', menu: '保険施術（健康保険）', status: 'confirmed' },
+      { id: 'a3', res: 't1', start: 660, dur: 40, patient: '加藤 さくら', menu: '自費骨盤矯正', status: 'unconfirmed' },
+      { id: 'a4', res: 't1', start: 810, dur: 30, patient: '中村 拓海', menu: '交通事故施術（自賠責）', status: 'confirmed' },
+      { id: 'a5', res: 't1', start: 900, dur: 60, patient: '木村 美穂', menu: '全身もみほぐし', status: 'unconfirmed' },
+      { id: 'a6', res: 't1', start: 990, dur: 30, patient: '斎藤 隆', menu: '保険施術（健康保険）', status: 'cancelled' },
+      { id: 'a7', res: 't1', start: 1050, dur: 40, patient: '福田 一樹', menu: '自費骨盤矯正', status: 'confirmed' },
+      { id: 'a8', res: 't2', start: 570, dur: 40, patient: '伊藤 春香', menu: '鍼灸施術', status: 'confirmed' },
+      { id: 'a9', res: 't2', start: 630, dur: 60, patient: '松本 陽子', menu: '美容鍼', status: 'confirmed' },
+      { id: 'a10', res: 't2', start: 780, dur: 40, patient: '大野 真理子', menu: '鍼灸施術', status: 'unconfirmed' },
+      { id: 'a11', res: 't2', start: 960, dur: 60, patient: '岡田 七海', menu: '美容鍼', status: 'confirmed' },
+      { id: 'a12', res: 't3', start: 540, dur: 30, patient: '高橋 涼介', menu: 'スポーツ外傷ケア', status: 'confirmed' },
+      { id: 'a13', res: 't3', start: 690, dur: 30, patient: '井上 健', menu: '保険施術（健康保険）', status: 'noshow' },
+      { id: 'a14', res: 't3', start: 840, dur: 20, patient: '清水 翔', menu: 'EMS（楽トレ）', status: 'confirmed' },
+      { id: 'a15', res: 't4', start: 600, dur: 45, patient: '三浦 彩', menu: '産後骨盤矯正', status: 'confirmed' },
+      { id: 'a16', res: 't4', start: 870, dur: 30, patient: '林 大和', menu: '猫背・姿勢矯正', status: 'unconfirmed' },
+      { id: 'b1', res: 't5', start: 540, dur: 30, patient: '青木 涼介', menu: '保険施術（健康保険）', status: 'confirmed', clinic: 'c2' },
+      { id: 'b2', res: 't5', start: 660, dur: 40, patient: '西村 加奈', menu: '自費骨盤矯正', status: 'unconfirmed', clinic: 'c2' },
+      { id: 'b3', res: 't5', start: 870, dur: 30, patient: '石田 亮', menu: '交通事故施術（自賠責）', status: 'confirmed', clinic: 'c2' },
+      { id: 'b4', res: 't5', start: 1020, dur: 60, patient: '太田 京子', menu: '全身もみほぐし', status: 'confirmed', clinic: 'c2' },
+      { id: 'b5', res: 't6', start: 600, dur: 40, patient: '前田 望', menu: '鍼灸施術', status: 'confirmed', clinic: 'c2' },
+      { id: 'b6', res: 't6', start: 780, dur: 60, patient: '後藤 彩花', menu: '美容鍼', status: 'confirmed', clinic: 'c2' },
+      { id: 'b7', res: 't6', start: 960, dur: 40, patient: '近藤 駿', menu: '鍼灸施術', status: 'unconfirmed', clinic: 'c2' },
+      { id: 'b8', res: 't7', start: 570, dur: 30, patient: '村上 結菜', menu: 'スポーツ外傷ケア', status: 'confirmed', clinic: 'c2' },
+      { id: 'b9', res: 't7', start: 690, dur: 30, patient: '横山 大地', menu: '保険施術（健康保険）', status: 'noshow', clinic: 'c2' },
+      { id: 'b10', res: 't7', start: 900, dur: 30, patient: '藤本 さやか', menu: '猫背・姿勢矯正', status: 'confirmed', clinic: 'c2' },
+      { id: 'd1', res: 't8', start: 540, dur: 45, patient: '平野 美月', menu: '産後骨盤矯正', status: 'confirmed', clinic: 'c3' },
+      { id: 'd2', res: 't8', start: 750, dur: 30, patient: '川口 翔太', menu: '保険施術（健康保険）', status: 'unconfirmed', clinic: 'c3' },
+      { id: 'd3', res: 't8', start: 930, dur: 45, patient: '武田 七海', menu: '産後骨盤矯正', status: 'confirmed', clinic: 'c3' },
+      { id: 'd4', res: 't9', start: 615, dur: 30, patient: '菅原 健司', menu: 'EMS（楽トレ）', status: 'confirmed', clinic: 'c3' },
+      { id: 'd5', res: 't9', start: 690, dur: 40, patient: '杉山 直樹', menu: '自費骨盤矯正', status: 'confirmed', clinic: 'c3' },
+      { id: 'd6', res: 't9', start: 840, dur: 30, patient: '中川 由美', menu: '保険施術（健康保険）', status: 'cancelled', clinic: 'c3' },
+      { id: 'd7', res: 't9', start: 990, dur: 30, patient: '原田 蓮', menu: 'スポーツ外傷ケア', status: 'confirmed', clinic: 'c3' },
+    ],
+  };
+  _nid = 1000;
+
+  // テーマ・デザイントークンは clinic-shared.js に集約（全画面共通・キャッシュ共有）。
+  // 適用は描画後（マウント/更新時）。差分がない時はスキップ（旧: 毎更新で 32 prop 書込み）。
+  setRoot = (el) => { this._root = el; this.applyTheme(); };
+  applyTheme = () => { if (this.S && this._root) this.S.applyTheme(this._root, this.state.theme, this.props); };
+  __mobileUiuxOriginalComponentDidMount() { import('./clinic-shared.js').then((S) => { this.S = S; this.applyTheme(); }); }
+  componentDidUpdate() { this.applyTheme(); }
+
+  fmt = (m) => { const h = Math.floor(m / 60), mm = m % 60; return h + ':' + String(mm).padStart(2, '0'); };
+  tName = (id) => { const t = this.THER.find(x => x.id === id); return t ? t.name : ''; };
+  tRole = (id) => { const t = this.THER.find(x => x.id === id); return t ? t.role : ''; };
+  initial = (name) => (name || '？').trim().charAt(0);
+  conflict = (res, start, dur, ex) => this.state.appts.some(a => a.id !== ex && a.res === res && a.status !== 'cancelled' && start < a.start + a.dur && a.start < start + dur);
+
+  toast = (m) => { this.setState({ toast: m }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2300); };
+
+  setLight = () => this.setState({ theme: 'light' });
+  setDark = () => this.setState({ theme: 'dark' });
+  onRole = (e) => {
+    const r = e.target.value;
+    this.setState({ role: r, clinic: this.HOME, view: 'agenda', selfOnly: r === 'therapist', timelineRes: 't1', detailId: null, formOpen: false, timeSheet: false, assigneeSheet: false, clinicSheet: false });
+  };
+  viewAgenda = () => this.setState({ view: 'agenda' });
+  viewTimeline = () => this.setState({ view: 'timeline' });
+  toggleSelf = () => this.setState(s => ({ selfOnly: !s.selfOnly }));
+  moreMenu = () => this.toast('表示密度・並び順は準備中です');
+  changeDate = (d) => {
+    const ni = Math.max(0, Math.min(2, this.state.dateIndex + d));
+    if (ni === this.state.dateIndex) return;
+    this.setState({ dateIndex: ni, loading: true, detailId: null, formOpen: false, timeSheet: false, assigneeSheet: false });
+    clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ loading: false }), 650);
+  };
+  prevDate = () => this.changeDate(-1);
+  nextDate = () => this.changeDate(1);
+  setTLRes = (id) => () => this.setState({ timelineRes: id });
+
+  openDetail = (id) => () => this.setState({ detailId: id, dragSheet: null, dragY: 0, moveError: '' });
+  closeDetail = () => this.setState({ detailId: null, timeSheet: false, assigneeSheet: false, historySheet: false, dragSheet: null, dragY: 0 });
+  openTime = () => this.setState({ timeSheet: true, assigneeSheet: false, moveError: '' });
+  openAssignee = () => this.setState({ assigneeSheet: true, timeSheet: false, moveError: '' });
+  closeSub = () => this.setState({ timeSheet: false, assigneeSheet: false, moveError: '' });
+
+  newAppt = () => this.openForm(null);
+  openForm = (init) => {
+    const m = this.MENUS[0];
+    this.setState({ formOpen: true, fStart: (init && init.start) || 660, fDur: m.dur, fMenu: m.name, fRes: (init && init.res) || this.state.timelineRes || 't1', fPatient: '', fNote: '', fNominated: false, dragSheet: null, dragY: 0, moveError: '' });
+  };
+  openFormFor = (init) => () => this.openForm(init);
+  closeForm = () => this.setState({ formOpen: false, dragSheet: null, dragY: 0 });
+  openClinic = () => this.setState({ clinicSheet: true });
+  closeClinic = () => this.setState({ clinicSheet: false });
+  setClinic = (id) => () => {
+    const first = this.THER.find(t => t.clinic === id);
+    this.setState({ clinic: id, timelineRes: first ? first.id : 't1', selfOnly: this.state.role === 'therapist' && id === this.HOME, clinicSheet: false, detailId: null, formOpen: false, timeSheet: false, assigneeSheet: false, loading: true });
+    clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ loading: false }), 500);
+  };
+
+  update = (id, patch, msg) => { this.setState(s => ({ appts: s.appts.map(a => a.id === id ? { ...a, ...patch } : a) })); if (msg) this.toast(msg); };
+  confirmAppt = () => this.update(this.state.detailId, { status: 'confirmed' }, '予約を確定しました');
+  cancelAppt = () => this.update(this.state.detailId, { status: 'cancelled' }, '予約をキャンセルしました');
+  setArrival = (st) => () => {
+    const msg = st === 'arrived' ? '来院済みにしました' : st === 'late' ? '遅刻として記録しました' : '予約をキャンセルしました';
+    this.update(this.state.detailId, { status: st }, msg);
+  };
+  openHistory = () => this.setState({ historySheet: true });
+  closeHistory = () => this.setState({ historySheet: false });
+  historyFor = (da) => {
+    const seed = [...da.patient].reduce((a, c) => a + c.charCodeAt(0), 0);
+    const n = 2 + (seed % 4);
+    const dates = ['6/6（金）', '5/23（金）', '5/9（金）', '4/25（金）', '4/11（金）', '3/28（金）'];
+    const sts = ['arrived', 'arrived', 'arrived', 'late', 'cancelled'];
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const m = this.MENUS[(seed + i * 3) % this.MENUS.length];
+      const st = sts[(seed + i) % sts.length];
+      const startH = 9 + ((seed + i * 2) % 9);
+      out.push({ date: dates[i], time: this.fmt(startH * 60), menu: m.name, ther: this.tName(da.res), status: st });
+    }
+    return out;
+  };
+  doMove = (start) => () => {
+    const a = this.state.appts.find(x => x.id === this.state.detailId); if (!a) return;
+    if (this.conflict(a.res, start, a.dur, a.id)) { this.setState({ moveError: 'その時間は他の予約と重複しています。別の時間を選んでください。' }); return; }
+    this.update(a.id, { start }, this.fmt(start) + ' に時間を変更しました');
+    this.setState({ timeSheet: false, moveError: '' });
+  };
+  doAssign = (res) => () => {
+    const a = this.state.appts.find(x => x.id === this.state.detailId); if (!a) return;
+    if (this.conflict(res, a.start, a.dur, a.id)) { this.setState({ moveError: 'その担当者は同時間に別の予約があります。' }); return; }
+    this.update(a.id, { res }, this.tName(res) + ' に担当を変更しました');
+    this.setState({ assigneeSheet: false, moveError: '' });
+  };
+  submitForm = () => {
+    const s = this.state;
+    if (!s.fPatient.trim()) { this.toast('患者名を入力してください'); return; }
+    if (this.conflict(s.fRes, s.fStart, s.fDur, null)) { this.toast('その時間は重複しています'); return; }
+    const id = 'n' + (this._nid++);
+    this.setState(st => ({ appts: [...st.appts, { id, res: st.fRes, start: st.fStart, dur: st.fDur, patient: st.fPatient.trim(), menu: st.fMenu, nominated: st.fNominated, status: 'unconfirmed' }], formOpen: false }));
+    this.toast('予約を登録しました');
+  };
+
+  onPatient = (e) => this.setState({ fPatient: e.target.value });
+  onNote = (e) => this.setState({ fNote: e.target.value });
+  toggleNominated = () => this.setState(s => ({ fNominated: !s.fNominated }));
+  nomBox = (on) => `width: 24px; height: 24px; border-radius: 7px; flex: none; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; background: ${on ? 'var(--primary)' : 'var(--surface-2)'}; border: 1.5px solid ${on ? 'var(--primary)' : 'var(--border-strong)'};`;
+  onMenu = (e) => { const m = this.MENUS.find(x => x.name === e.target.value); this.setState({ fMenu: e.target.value, fDur: m ? m.dur : 30 }); };
+  onStart = (e) => this.setState({ fStart: parseInt(e.target.value, 10) });
+  onRes = (e) => this.setState({ fRes: e.target.value });
+
+  _drag = (which) => (e) => {
+    const sy = e.clientY; this.setState({ dragSheet: which, dragY: 0 });
+    const mv = (ev) => this.setState({ dragY: Math.max(0, ev.clientY - sy) });
+    const up = (ev) => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      if ((ev.clientY - sy) > 110) { which === 'detail' ? this.closeDetail() : this.closeForm(); }
+      else this.setState({ dragSheet: null, dragY: 0 });
+    };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  };
+  dragDetail = this._drag('detail');
+  dragForm = this._drag('form');
+
+  seg = (active) => `all: unset; box-sizing: border-box; text-align: center; flex: 1; min-height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 12.5px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500}; box-shadow: ${active ? '0 1px 3px rgba(0,0,0,.12)' : 'none'};`;
+  themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
+
+  __mobileUiuxOriginalRenderVals() {
+    const s = this.state;
+    const today = s.dateIndex === 1;
+    const isTher = s.role === 'therapist';
+    const isHome = s.clinic === this.HOME;
+    const crossClinic = !isHome;
+    const canWrite = s.role !== 'area' && isHome;
+    const singleRes = isTher && s.selfOnly && isHome;
+    const clinicOf = (a) => a.clinic || 'c1';
+
+    let scope = today ? s.appts.filter(a => clinicOf(a) === s.clinic) : [];
+    if (singleRes) scope = scope.filter(a => a.res === this.SELF);
+    scope.sort((a, b) => a.start - b.start || a.res.localeCompare(b.res));
+
+    // agenda rows
+    const rows = [];
+    scope.forEach((a, i) => {
+      const st = this.STATUS[a.status];
+      rows.push({
+        isAppt: true, isGap: false, startT: this.fmt(a.start), endT: this.fmt(a.start + a.dur),
+        patient: a.patient, menu: a.menu, ther: this.tName(a.res), initial: this.initial(this.tName(a.res)),
+        showTher: !singleRes, statusLabel: st.label, c: st.c, b: st.b,
+        dim: (a.status === 'cancelled' || a.status === 'noshow') ? 0.55 : 1, onTap: this.openDetail(a.id),
+      });
+      if (singleRes && canWrite) {
+        const next = scope[i + 1]; const gs = a.start + a.dur;
+        if (next && next.start - gs >= 30) {
+          rows.push({ isAppt: false, isGap: true, label: '空き ' + this.fmt(gs) + '〜' + this.fmt(next.start), onTap: this.openFormFor({ res: a.res, start: gs }) });
+        }
+      }
+    });
+
+    const sumTotal = scope.filter(a => a.status !== 'cancelled' && a.status !== 'noshow').length;
+    const sumConf = scope.filter(a => a.status === 'confirmed').length;
+    const sumUnc = scope.filter(a => a.status === 'unconfirmed').length;
+    const sumCancel = scope.filter(a => a.status === 'cancelled' || a.status === 'noshow').length;
+
+    const isLoading = s.loading;
+    const isEmpty = !isLoading && rows.length === 0;
+    const showAgenda = !isLoading && !isEmpty && s.view === 'agenda';
+    const showTimeline = !isLoading && s.view === 'timeline';
+
+    // timeline
+    const tlAll = today ? s.appts.filter(a => a.res === s.timelineRes && clinicOf(a) === s.clinic) : [];
+    const px = (m) => ((m - this.DS) / 60 * this.PXH);
+    const tlBlocks = tlAll.map(a => {
+      const st = this.STATUS[a.status];
+      return { top: px(a.start) + 'px', height: Math.max(34, a.dur / 60 * this.PXH - 4) + 'px', c: st.c, b: st.b, statusLabel: st.label, patient: a.patient, timeMenu: this.fmt(a.start) + '–' + this.fmt(a.start + a.dur) + ' · ' + a.menu, dim: (a.status === 'cancelled' || a.status === 'noshow') ? 0.55 : 1, onTap: this.openDetail(a.id) };
+    });
+    const tlFree = [];
+    if (canWrite && today) {
+      for (let m = this.DS; m + 30 <= this.DE; m += 30) {
+        if (!this.conflict(s.timelineRes, m, 30, null)) tlFree.push({ top: px(m) + 'px', height: (this.PXH / 2 - 4) + 'px', onTap: this.openFormFor({ res: s.timelineRes, start: m }) });
+      }
+    }
+    const tlHours = [];
+    for (let h = 9; h <= 19; h++) tlHours.push({ label: h + ':00', top: px(h * 60) + 'px' });
+    const tlNowShow = showTimeline && today;
+    const therChips = this.THER.filter(t => t.clinic === s.clinic).map(t => {
+      const on = t.id === s.timelineRes;
+      return { name: t.name, initial: this.initial(t.name), onTap: this.setTLRes(t.id),
+        style: `all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 7px; padding: 7px 13px 7px 7px; min-height: 40px; border-radius: 999px; font-size: 12.5px; font-family: inherit; cursor: pointer; white-space: nowrap; background: ${on ? 'var(--primary)' : 'var(--surface)'}; color: ${on ? 'var(--primary-fg)' : 'var(--fg)'}; border: 1px solid ${on ? 'var(--primary)' : 'var(--border)'}; font-weight: ${on ? 700 : 500};`,
+        dotStyle: `width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: ${on ? 'rgba(255,255,255,.25)' : 'var(--primary-soft)'}; color: ${on ? 'var(--primary-fg)' : 'var(--on-primary-soft)'};` };
+    });
+
+    // detail
+    const da = s.detailId ? s.appts.find(a => a.id === s.detailId) : null;
+    let detail = {};
+    if (da) {
+      const st = this.STATUS[da.status];
+      detail = { dPatient: da.patient, dMenu: da.menu, dTime: this.fmt(da.start) + ' – ' + this.fmt(da.start + da.dur), dDur: da.dur + '分', dTher: this.tName(da.res), dTherRole: this.tRole(da.res), dInitial: this.initial(this.tName(da.res)), dStatusLabel: st.label, dC: st.c, dB: st.b, dShowConfirm: canWrite && da.status === 'unconfirmed', dShowCancel: canWrite && da.status !== 'cancelled' };
+    }
+    const arrivalDefs = [{ key: 'arrived', label: '来院済み' }, { key: 'late', label: '遅刻' }, { key: 'cancelled', label: 'キャンセル' }];
+    const arrivalOpts = da ? arrivalDefs.map(d => {
+      const on = da.status === d.key; const meta = this.STATUS[d.key];
+      return { label: d.label, onTap: this.setArrival(d.key),
+        style: `all: unset; box-sizing: border-box; text-align: center; min-height: 46px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; background: ${on ? meta.b : 'var(--surface-2)'}; color: ${on ? meta.c : 'var(--fg-2)'}; border: 1px solid ${on ? meta.c : 'var(--border)'};` };
+    }) : [];
+    let historyItems = []; let histCount = 0;
+    if (da && s.historySheet) {
+      const past = this.historyFor(da);
+      histCount = past.filter(h => h.status === 'arrived' || h.status === 'late').length;
+      const cur = { date: this.DAYS[s.dateIndex], timeMenu: this.fmt(da.start) + '–' + this.fmt(da.start + da.dur) + ' · ' + da.menu, ther: this.tName(da.res), statusLabel: '今回の予約', c: 'var(--on-primary-soft)', b: 'var(--primary-soft)', current: true };
+      historyItems = [cur].concat(past.map(h => ({ date: h.date, timeMenu: h.time + ' · ' + h.menu, ther: h.ther, statusLabel: this.STATUS[h.status].label, c: this.STATUS[h.status].c, b: this.STATUS[h.status].b, current: false })));
+    }
+
+    // move slots
+    const moveSlots = [];
+    if (da && s.timeSheet) {
+      for (let m = this.DS; m + da.dur <= this.DE; m += 15) {
+        const cur = m === da.start; const bad = this.conflict(da.res, m, da.dur, da.id);
+        moveSlots.push({ label: this.fmt(m), onTap: bad ? (() => {}) : this.doMove(m),
+          style: `all: unset; box-sizing: border-box; text-align: center; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 11px; font-size: 13px; font-family: inherit; cursor: ${bad ? 'default' : 'pointer'}; font-weight: ${cur ? 700 : 500}; background: ${cur ? 'var(--primary)' : bad ? 'var(--surface-3)' : 'var(--surface-2)'}; color: ${cur ? 'var(--primary-fg)' : bad ? 'var(--fg-3)' : 'var(--fg)'}; border: 1px solid ${cur ? 'var(--primary)' : 'var(--border)'}; opacity: ${bad ? .5 : 1}; text-decoration: ${bad ? 'line-through' : 'none'};` });
+      }
+    }
+    // assignee
+    const assignOpts = [];
+    if (da && s.assigneeSheet) {
+      this.THER.filter(t => t.clinic === (da.clinic || 'c1')).forEach(t => {
+        const cur = t.id === da.res; const bad = !cur && this.conflict(t.id, da.start, da.dur, da.id);
+        const tag = cur ? '現在' : bad ? '重複' : '選択';
+        assignOpts.push({ name: t.name, role: t.role, initial: this.initial(t.name), tag, onTap: (cur || bad) ? (() => {}) : this.doAssign(t.id),
+          style: `all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 11px 14px; min-height: 56px; border-radius: 14px; cursor: ${(cur || bad) ? 'default' : 'pointer'}; background: ${cur ? 'var(--primary-soft)' : 'var(--surface-2)'}; border: 1px solid ${cur ? 'var(--primary)' : 'var(--border)'}; opacity: ${bad ? .5 : 1};`,
+          tagStyle: `margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: ${cur ? 'var(--on-primary-soft)' : bad ? 'var(--s-ns)' : 'var(--primary)'}; background: ${cur ? 'transparent' : bad ? 'var(--s-ns-bg)' : 'var(--primary-soft)'};` });
+      });
+    }
+
+    // form options
+    const menuOpts = this.MENUS.map(m => ({ v: m.name, l: m.name + '（' + m.dur + '分）' }));
+    const startOpts = [];
+    for (let m = this.DS; m <= this.DE - 15; m += 15) startOpts.push({ v: String(m), l: this.fmt(m) });
+    const resOpts = this.THER.filter(t => t.clinic === s.clinic).map(t => ({ v: t.id, l: t.name + ' / ' + t.role }));
+    const clinicName = (this.CLINICS.find(c => c.id === s.clinic) || {}).name || '';
+    const readonlyMsg = s.role === 'area' ? '閲覧専用モード（エリアマネージャー）— 予約の作成・変更はできません' : '他店舗の閲覧モード — ' + clinicName + 'の予約は変更できません';
+    const clinicOpts = this.CLINICS.map(c => {
+      const cur = c.id === s.clinic; const home = c.id === this.HOME;
+      const tag = cur ? '✓ 表示中' : home ? '自店舗' : '閲覧のみ';
+      return { name: c.name, initial: c.name.charAt(0), tag, onTap: cur ? (() => {}) : this.setClinic(c.id),
+        style: `all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 11px 14px; min-height: 56px; border-radius: 14px; cursor: ${cur ? 'default' : 'pointer'}; background: ${cur ? 'var(--primary-soft)' : 'var(--surface-2)'}; border: 1px solid ${cur ? 'var(--primary)' : 'var(--border)'};`,
+        tagStyle: `flex: none; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: ${cur ? 'var(--on-primary-soft)' : home ? 'var(--primary)' : 'var(--fg-3)'}; background: ${cur ? 'transparent' : home ? 'var(--primary-soft)' : 'var(--surface-3)'};` };
+    });
+
+    return {
+      setRoot: this.setRoot,
+      roleVal: s.role, onRole: this.onRole,
+      setLight: this.setLight, setDark: this.setDark,
+      lightBtn: this.themeBtn(s.theme === 'light'), darkBtn: this.themeBtn(s.theme === 'dark'),
+      nowClock: this.fmt(this.NOW),
+      dateLabel: this.DAYS[s.dateIndex], prevDate: this.prevDate, nextDate: this.nextDate, moreMenu: this.moreMenu,
+      agStyle: this.seg(s.view === 'agenda'), tlStyle: this.seg(s.view === 'timeline'),
+      viewAgenda: this.viewAgenda, viewTimeline: this.viewTimeline,
+      showSelf: isTher && isHome, toggleSelf: this.toggleSelf,
+      selfStyle: `all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border-radius: 10px; font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; background: ${s.selfOnly ? 'var(--primary-soft)' : 'var(--surface-2)'}; color: ${s.selfOnly ? 'var(--on-primary-soft)' : 'var(--fg-2)'}; border: 1px solid ${s.selfOnly ? 'var(--primary)' : 'var(--border)'};`,
+      selfDot: `width: 8px; height: 8px; border-radius: 50%; background: ${s.selfOnly ? 'var(--primary)' : 'var(--fg-3)'};`,
+      sumTotal, sumConf, sumUnc, sumCancel,
+      isReadOnly: !canWrite, canWrite, crossClinic, readonlyMsg, clinicName,
+      openClinic: this.openClinic, closeClinic: this.closeClinic, clinicSheetOpen: s.clinicSheet, clinicOpts,
+      isLoading, isEmpty, showAgenda, showTimeline,
+      emptyTitle: s.dateIndex === 0 ? '過去の予約はありません' : '本日の予約はありません',
+      emptyBody: singleRes ? 'この日にあなたの担当予約はありません。「＋」から新規予約を追加できます。' : 'この日に登録された予約はありません。「＋」から新規予約を追加できます。',
+      rows,
+      tlHeight: ((this.DE - this.DS) / 60 * this.PXH) + 'px',
+      tlBlocks, tlFree, tlHours, therChips,
+      tlNowShow, tlNowTop: ((this.NOW - this.DS) / 60 * this.PXH) + 'px', tlNowLabel: this.fmt(this.NOW),
+      fabShow: canWrite,
+      newAppt: this.newAppt,
+      detailOpen: !!da, closeDetail: this.closeDetail,
+      detailTransform: s.dragSheet === 'detail' ? `translateY(${s.dragY}px)` : 'translateY(0)',
+      detailTransition: s.dragSheet === 'detail' ? 'none' : 'transform .25s ease',
+      ...detail, arrivalOpts,
+      openHistory: this.openHistory, closeHistory: this.closeHistory, historyOpen: s.historySheet, historyItems, histCount,
+      dReadonly: !canWrite,
+      openTime: this.openTime, openAssignee: this.openAssignee,
+      confirmAppt: this.confirmAppt, cancelAppt: this.cancelAppt,
+      subOpen: s.timeSheet || s.assigneeSheet, closeSub: this.closeSub,
+      timeSheetOpen: s.timeSheet, assigneeSheetOpen: s.assigneeSheet,
+      subTitle: s.timeSheet ? '時間を変更' : '担当を変更',
+      moveError: s.moveError, moveErrShow: !!s.moveError,
+      moveSlots, assignOpts,
+      formOpen: s.formOpen, closeForm: this.closeForm,
+      formTransform: s.dragSheet === 'form' ? `translateY(${s.dragY}px)` : 'translateY(0)',
+      formTransition: s.dragSheet === 'form' ? 'none' : 'transform .25s ease',
+      fPatient: s.fPatient, onPatient: this.onPatient, fNote: s.fNote, onNote: this.onNote,
+      fMenu: s.fMenu, onMenu: this.onMenu, menuOpts,
+      fStart: String(s.fStart), onStart: this.onStart, startOpts,
+      fEnd: this.fmt(s.fStart + s.fDur), fDurLabel: s.fDur + '分',
+      fRes: s.fRes, onRes: this.onRes, resOpts,
+      fNominated: s.fNominated, toggleNominated: this.toggleNominated, nomBoxStyle: this.nomBox(s.fNominated),
+      submitForm: this.submitForm,
+      toastShow: !!s.toast, toastMsg: s.toast,
+    };
+  }
+
+
+  renderVals() {
+    const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
+      ? this.__mobileUiuxOriginalRenderVals()
+      : {};
+    const originalVals = originalResult && typeof originalResult === 'object' ? originalResult : {};
+    const candidateHydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
+      ? this.__mobileUiuxHydratedVals
+      : null;
+    const hydratedVals = candidateHydratedVals && this.__mobileUiuxCanUseHydratedVals(candidateHydratedVals)
+      ? candidateHydratedVals
+      : null;
+    const patchedVals = {
+      ...originalVals,
+      confirmAppt: this.__mobileUiuxConfirmReservation,
+      cancelAppt: this.__mobileUiuxCancelReservation,
+      submitForm: this.__mobileUiuxCreateReservation
+    };
+    return hydratedVals
+      ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
+      : patchedVals;
+  }
+
+  componentDidMount() {
+    this.__mobileUiuxPrimeReservationWriteSources();
+    this.__mobileUiuxRegisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentDidMount === 'function') {
+      return this.__mobileUiuxOriginalComponentDidMount();
+    }
+  }
+
+  componentWillUnmount() {
+    this.__mobileUiuxUnregisterReadHydration();
+    if (typeof this.__mobileUiuxOriginalComponentWillUnmount === 'function') {
+      return this.__mobileUiuxOriginalComponentWillUnmount();
+    }
+  }
+
+  __mobileUiuxRegisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxHydrationOwner = owner;
+    const component = this;
+    const applyReadData = function(screen, payload) {
+      if (component.__mobileUiuxHydrationOwner !== owner) return false;
+      if (screen === 'context') {
+        component.__mobileUiuxStoreContext(payload);
+        const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
+        if (contextClinics) {
+          component.__mobileUiuxContextClinicList = contextClinics;
+          component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
+            ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
+            : contextClinics;
+          if (typeof component.setState === 'function') {
+            component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          } else if (typeof component.forceUpdate === 'function') {
+            component.forceUpdate();
+          }
+        }
+        return false;
+      }
+      const hydratedVals = component.__mobileUiuxBuildHydratedOverrides(screen, payload);
+      if (!hydratedVals) return false;
+      const currentVals = component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object'
+        ? component.__mobileUiuxHydratedVals
+        : {};
+      component.__mobileUiuxHydratedVals = { ...currentVals, ...hydratedVals };
+      if (hydratedVals.__mobileUiuxHydratedKey && typeof hydratedVals.__mobileUiuxHydratedKey === 'object') {
+        component.__mobileUiuxHydratedKey = hydratedVals.__mobileUiuxHydratedKey;
+        component.__mobileUiuxRequestedHydratedKey = hydratedVals.__mobileUiuxHydratedKey;
+      }
+      if (typeof component.setState === 'function') {
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        if (Array.isArray(hydratedVals.__mobileUiuxAppts)) {
+          statePatch.appts = hydratedVals.__mobileUiuxAppts;
+          statePatch.loading = false;
+        }
+        if (typeof hydratedVals.__mobileUiuxFirstMenuName === 'string') {
+          statePatch.fMenu = hydratedVals.__mobileUiuxFirstMenuName;
+          statePatch.fDur = hydratedVals.__mobileUiuxFirstMenuDuration;
+        }
+        if (typeof hydratedVals.__mobileUiuxFirstResourceId === 'string') {
+          statePatch.fRes = hydratedVals.__mobileUiuxFirstResourceId;
+          statePatch.timelineRes = hydratedVals.__mobileUiuxFirstResourceId;
+        }
+        component.setState(statePatch);
+      } else if (typeof component.forceUpdate === 'function') {
+        component.forceUpdate();
+      }
+      return true;
+    };
+    applyReadData.__mobileUiuxHydrationOwner = owner;
+    window.__MOBILE_UIUX_APPLY_READ_DATA__ = applyReadData;
+  }
+
+  __mobileUiuxUnregisterReadHydration() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_APPLY_READ_DATA__ &&
+      window.__MOBILE_UIUX_APPLY_READ_DATA__.__mobileUiuxHydrationOwner === this.__mobileUiuxHydrationOwner
+    ) {
+      delete window.__MOBILE_UIUX_APPLY_READ_DATA__;
+    }
+    this.__mobileUiuxHydrationOwner = null;
+  }
+
+  __mobileUiuxContextClinics(context) {
+    if (!this.__mobileUiuxIsRecord(context) || !Array.isArray(context.accessibleClinics)) {
+      return null;
+    }
+    const clinics = [];
+    for (const item of context.accessibleClinics) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name) continue;
+      clinics.push({ id, name });
+    }
+    return clinics.length > 0 ? clinics : null;
+  }
+
+  __mobileUiuxBuildHydratedOverrides(screen, payload) {
+    if (screen === 'context') {
+      this.__mobileUiuxStoreContext(payload);
+      return null;
+    }
+
+    if (screen === 'settings-detail') {
+      return this.__mobileUiuxBuildReservationSettingsDetailOverrides(payload);
+    }
+
+    if (screen !== 'reservations' || !this.__mobileUiuxIsRecord(payload) || payload.success !== true) {
+      return null;
+    }
+    let data = payload.data;
+    if (!this.__mobileUiuxIsRecord(data)) {
+      return null;
+    }
+
+    if (this.__mobileUiuxIsRecord(data.reservation)) {
+      data = this.__mobileUiuxMergeReservationMutation(data);
+    }
+
+    if (!this.__mobileUiuxIsRecord(data) || typeof data.date !== 'string' || !Array.isArray(data.reservations)) {
+      return null;
+    }
+
+    this.__mobileUiuxCurrentReservationData = data;
+    this.__mobileUiuxCurrentClinicId = typeof data.clinicId === 'string' ? data.clinicId : this.__mobileUiuxCurrentClinicId;
+
+    const viewModels = this.__mobileUiuxBuildReservationViewModels(data.reservations);
+
+    return {
+      dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
+      sumTotal: viewModels.counts.total,
+      sumConf: viewModels.counts.confirmed,
+      sumUnc: viewModels.counts.unconfirmed,
+      sumCancel: viewModels.counts.cancelled,
+      rows: viewModels.rows,
+      isLoading: false,
+      isEmpty: viewModels.rows.length === 0,
+      showAgenda: viewModels.rows.length > 0,
+      showTimeline: false,
+      showSelf: false,
+      __mobileUiuxAppts: viewModels.appts,
+      __mobileUiuxHydratedKey: this.__mobileUiuxBuildHydratedKey(data.date, this.__mobileUiuxCurrentClinicId)
+    };
+  }
+
+  __mobileUiuxCanUseHydratedVals(hydratedVals) {
+    const hydratedKey = hydratedVals.__mobileUiuxHydratedKey && typeof hydratedVals.__mobileUiuxHydratedKey === 'object'
+      ? hydratedVals.__mobileUiuxHydratedKey
+      : this.__mobileUiuxHydratedKey;
+    const requestedKey = this.__mobileUiuxRequestedHydratedKey;
+    if (!requestedKey || typeof requestedKey !== 'object' || !hydratedKey || typeof hydratedKey !== 'object') {
+      return true;
+    }
+    return requestedKey.date === hydratedKey.date && requestedKey.clinicId === hydratedKey.clinicId;
+  }
+
+  prevDate = () => this.__mobileUiuxRefreshReservationDate(-1);
+  nextDate = () => this.__mobileUiuxRefreshReservationDate(1);
+  setClinic = (clinicId) => () => this.__mobileUiuxRefreshReservationClinic(clinicId);
+
+  async __mobileUiuxRefreshReservationDate(delta) {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const currentIndex = typeof state.dateIndex === 'number' ? state.dateIndex : 1;
+    const nextIndex = Math.max(0, Math.min(2, currentIndex + delta));
+    if (nextIndex === currentIndex) return false;
+
+    const currentDate = this.__mobileUiuxActiveHydratedDate();
+    const nextDate = this.__mobileUiuxAddDays(currentDate, delta);
+    if (!nextDate) return false;
+
+    return this.__mobileUiuxRefreshReservationRead(
+      { date: nextDate },
+      { dateIndex: nextIndex }
+    );
+  }
+
+  async __mobileUiuxRefreshReservationClinic(clinicId) {
+    if (typeof clinicId !== 'string' || clinicId.length === 0) return false;
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (state.clinic === clinicId) return false;
+
+    const first = Array.isArray(this.THER)
+      ? this.THER.find((therapist) => this.__mobileUiuxIsRecord(therapist) && therapist.clinic === clinicId)
+      : null;
+    return this.__mobileUiuxRefreshReservationRead(
+      { clinicId },
+      {
+        clinic: clinicId,
+        timelineRes: first && typeof first.id === 'string' ? first.id : '',
+        selfOnly: state.role === 'therapist' && clinicId === this.HOME,
+        clinicSheet: false
+      }
+    );
+  }
+
+  async __mobileUiuxRefreshReservationRead(params, statePatch) {
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.refreshReadData !== 'function') {
+      this.__mobileUiuxShowReservationToast('実データを再読み込みできません');
+      return false;
+    }
+
+    const currentKey = this.__mobileUiuxRequestedHydratedKey && typeof this.__mobileUiuxRequestedHydratedKey === 'object'
+      ? this.__mobileUiuxRequestedHydratedKey
+      : this.__mobileUiuxHydratedKey;
+    const requestedKey = this.__mobileUiuxBuildHydratedKey(
+      typeof params.date === 'string' ? params.date : currentKey && typeof currentKey.date === 'string' ? currentKey.date : this.__mobileUiuxActiveHydratedDate(),
+      typeof params.clinicId === 'string' ? params.clinicId : currentKey && typeof currentKey.clinicId === 'string' ? currentKey.clinicId : this.__mobileUiuxCurrentClinicId
+    );
+    this.__mobileUiuxRequestedHydratedKey = requestedKey;
+
+    if (typeof this.setState === 'function') {
+      this.setState({
+        ...statePatch,
+        appts: [],
+        loading: true,
+        detailId: null,
+        formOpen: false,
+        timeSheet: false,
+        assigneeSheet: false
+      });
+    }
+
+    let ok = false;
+    try {
+      ok = await bridge.refreshReadData(params);
+    } catch {
+      ok = false;
+    }
+
+    if (ok !== true && typeof this.setState === 'function') {
+      this.setState({ loading: false });
+    }
+    return ok === true;
+  }
+
+  __mobileUiuxActiveHydratedDate() {
+    const key = this.__mobileUiuxHydratedKey && typeof this.__mobileUiuxHydratedKey === 'object'
+      ? this.__mobileUiuxHydratedKey
+      : null;
+    if (key && typeof key.date === 'string') return key.date;
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (this.__mobileUiuxIsRecord(current) && typeof current.date === 'string') {
+      return current.date;
+    }
+    return '';
+  }
+
+  __mobileUiuxBuildHydratedKey(date, clinicId) {
+    return {
+      date: typeof date === 'string' ? date : '',
+      clinicId: typeof clinicId === 'string' ? clinicId : ''
+    };
+  }
+
+  __mobileUiuxAddDays(value, delta) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return '';
+    const yearValue = Number(match[1]);
+    const monthValue = Number(match[2]);
+    const dayValue = Number(match[3]);
+    const date = new Date(Date.UTC(yearValue, monthValue - 1, dayValue + delta));
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  __mobileUiuxPrimeReservationWriteSources() {
+    if (Array.isArray(this.CLINICS)) {
+      this.CLINICS = [];
+    }
+    if (Array.isArray(this.MENUS)) {
+      this.MENUS = [];
+    }
+    if (Array.isArray(this.THER)) {
+      this.THER = [];
+      this.__mobileUiuxStaffResourceSource = null;
+      this.__mobileUiuxStaffResourceMap = null;
+    }
+    this.historyFor = () => [];
+    if (this.state && typeof this.state === 'object' && typeof this.setState === 'function') {
+      this.setState({
+        fMenu: '',
+        fRes: '',
+        timelineRes: ''
+      });
+    }
+  }
+
+  __mobileUiuxBuildReservationSettingsDetailOverrides(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return null;
+    }
+    const data = payload.data;
+    const menus = this.__mobileUiuxBuildReservationMenus(data.menus);
+    const resources = this.__mobileUiuxBuildReservationResources(data.resources);
+    const clinic = this.__mobileUiuxBuildReservationClinic(data.clinic);
+    this.MENUS = menus;
+    this.THER = resources;
+    const contextClinics = Array.isArray(this.__mobileUiuxContextClinicList) ? this.__mobileUiuxContextClinicList : null;
+    if (clinic) {
+      this.CLINICS = contextClinics ? this.__mobileUiuxUpsertClinic(contextClinics, clinic.id, clinic.name) : [clinic];
+    } else {
+      this.CLINICS = contextClinics || [];
+    }
+    this.__mobileUiuxStaffResourceSource = null;
+    this.__mobileUiuxStaffResourceMap = null;
+    return {
+      __mobileUiuxFirstMenuName: menus.length > 0 ? menus[0].name : '',
+      __mobileUiuxFirstMenuDuration: menus.length > 0 ? menus[0].dur : 0,
+      __mobileUiuxFirstResourceId: resources.length > 0 ? resources[0].id : ''
+    };
+  }
+
+  __mobileUiuxUpsertClinic(list, id, name) {
+    let replaced = false;
+    const next = list.map((c) => {
+      if (this.__mobileUiuxIsRecord(c) && c.id === id) {
+        replaced = true;
+        return { id, name };
+      }
+      return c;
+    });
+    if (!replaced) {
+      next.push({ id, name });
+    }
+    return next;
+  }
+
+  __mobileUiuxBuildReservationMenus(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name) continue;
+      const duration = this.__mobileUiuxPositiveNumber(item.durationMinutes, 30);
+      rows.push({
+        id: typeof item.id === 'string' ? item.id : '',
+        name,
+        dur: duration,
+        price: this.__mobileUiuxNonNegativeNumber(item.price),
+        active: item.isActive !== false
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildReservationClinic(value) {
+    if (!this.__mobileUiuxIsRecord(value)) return null;
+    const id = typeof value.id === 'string' && value.id.length > 0 ? value.id : this.__mobileUiuxCurrentClinicId;
+    const name = this.__mobileUiuxDisplayText(value.name, '');
+    if (!id || !name) return null;
+    return { id, name };
+  }
+
+  __mobileUiuxBuildReservationResources(value) {
+    const rows = [];
+    if (!Array.isArray(value)) return rows;
+    for (const item of value) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const id = typeof item.id === 'string' && item.id.length > 0 ? item.id : '';
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!id || !name || item.isActive === false || item.isBookable === false) continue;
+      rows.push({
+        id,
+        name,
+        role: this.__mobileUiuxDisplayText(item.type, '担当'),
+        clinic: 'c1',
+        nominationFee: this.__mobileUiuxNonNegativeNumber(item.nominationFee)
+      });
+    }
+    return rows;
+  }
+
+  __mobileUiuxBuildReservationViewModels(reservations) {
+    const rows = [];
+    const appts = [];
+    const counts = { total: 0, confirmed: 0, unconfirmed: 0, cancelled: 0 };
+
+    for (const reservation of reservations) {
+      if (!this.__mobileUiuxIsRecord(reservation)) continue;
+      this.__mobileUiuxIncrementReservationCounts(counts, reservation.status);
+      const viewModel = this.__mobileUiuxReservationToViewModel(reservation);
+      if (!viewModel) continue;
+      rows.push(viewModel.row);
+      if (viewModel.appt) {
+        appts.push(viewModel.appt);
+      }
+    }
+
+    return { rows, appts, counts };
+  }
+
+  __mobileUiuxReservationToViewModel(reservation) {
+    if (!this.__mobileUiuxIsRecord(reservation)) return null;
+    const times = this.__mobileUiuxReservationTimes(reservation.startTime, reservation.endTime);
+    if (!times) return null;
+    const status = this.__mobileUiuxStatusMeta(reservation.status);
+    const staffName = this.__mobileUiuxDisplayText(reservation.staffName, '担当未設定');
+    const resourceId = this.__mobileUiuxEnsureStaffResource(reservation.staffId, staffName);
+    const normalizedStatus = this.__mobileUiuxNormalizeStatus(reservation.status) || 'unconfirmed';
+    const patient = this.__mobileUiuxDisplayText(reservation.customerName || reservation.patientName, '患者名未設定');
+    const menu = this.__mobileUiuxDisplayText(reservation.menuName, 'メニュー未設定');
+
+    return {
+      row: {
+        isAppt: true,
+        isGap: false,
+        startT: times.startLabel,
+        endT: times.endLabel,
+        patient,
+        menu,
+        ther: staffName,
+        initial: typeof this.initial === 'function' ? this.initial(staffName) : staffName.trim().charAt(0),
+        showTher: true,
+        statusLabel: status.label,
+        c: status.c,
+        b: status.b,
+        dim: status.dim,
+        onTap: typeof reservation.id === 'string' && typeof this.openDetail === 'function'
+          ? this.openDetail(reservation.id)
+          : () => {}
+      },
+      appt: typeof reservation.id === 'string' ? {
+        id: reservation.id,
+        res: resourceId,
+        start: times.startMinutes,
+        dur: times.endMinutes - times.startMinutes,
+        patient,
+        menu,
+        status: normalizedStatus,
+        clinic: 'c1',
+        mobileUiuxClinicId: typeof reservation.clinicId === 'string' ? reservation.clinicId : this.__mobileUiuxCurrentClinicId,
+        mobileUiuxCustomerId: typeof reservation.customerId === 'string' ? reservation.customerId : null,
+        mobileUiuxMenuId: typeof reservation.menuId === 'string' ? reservation.menuId : null,
+        mobileUiuxStaffId: typeof reservation.staffId === 'string' ? reservation.staffId : null,
+        mobileUiuxStartTime: reservation.startTime,
+        mobileUiuxEndTime: reservation.endTime
+      } : null
+    };
+  }
+
+  __mobileUiuxMergeReservationMutation(data) {
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (!this.__mobileUiuxIsRecord(current) || typeof current.date !== 'string' || !Array.isArray(current.reservations)) {
+      return null;
+    }
+    const reservation = data.reservation;
+    if (!this.__mobileUiuxIsRecord(reservation) || typeof reservation.id !== 'string') {
+      return null;
+    }
+    let replaced = false;
+    const reservations = current.reservations.map((item) => {
+      if (this.__mobileUiuxIsRecord(item) && item.id === reservation.id) {
+        replaced = true;
+        return reservation;
+      }
+      return item;
+    });
+    if (!replaced) {
+      reservations.push(reservation);
+    }
+    return {
+      ...current,
+      clinicId: typeof data.clinicId === 'string' ? data.clinicId : current.clinicId,
+      reservations
+    };
+  }
+
+  __mobileUiuxEnsureStaffResource(staffId, staffName) {
+    const fallback = 'mobile-uiux-staff';
+    const resourceId = typeof staffId === 'string' && staffId.length > 0 ? staffId : fallback;
+    if (!Array.isArray(this.THER)) return resourceId;
+    const resourceIndex = this.__mobileUiuxStaffResourceIndex();
+    const existing = resourceIndex.get(resourceId);
+    if (existing) {
+      if (!existing.name && staffName) existing.name = staffName;
+      return resourceId;
+    }
+    const nextResource = { id: resourceId, name: staffName, role: '担当', clinic: 'c1' };
+    this.THER = this.THER.concat([nextResource]);
+    this.__mobileUiuxStaffResourceSource = null;
+    this.__mobileUiuxStaffResourceMap = null;
+    return resourceId;
+  }
+
+  __mobileUiuxStaffResourceIndex() {
+    if (this.__mobileUiuxStaffResourceSource === this.THER && this.__mobileUiuxStaffResourceMap instanceof Map) {
+      return this.__mobileUiuxStaffResourceMap;
+    }
+    const map = new Map();
+    if (Array.isArray(this.THER)) {
+      for (const resource of this.THER) {
+        if (this.__mobileUiuxIsRecord(resource) && typeof resource.id === 'string') {
+          map.set(resource.id, resource);
+        }
+      }
+    }
+    this.__mobileUiuxStaffResourceSource = this.THER;
+    this.__mobileUiuxStaffResourceMap = map;
+    return map;
+  }
+
+  __mobileUiuxReservationTimes(startValue, endValue) {
+    const start = this.__mobileUiuxReservationTimeParts(startValue);
+    const end = this.__mobileUiuxReservationTimeParts(endValue);
+    if (!start || !end || end.minutes <= start.minutes) return null;
+    return {
+      startLabel: start.label,
+      endLabel: end.label,
+      startMinutes: start.minutes,
+      endMinutes: end.minutes
+    };
+  }
+
+  __mobileUiuxReservationTimeParts(value) {
+    if (typeof value !== 'string' || value.length === 0) return null;
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const totalMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60;
+      const minutes = ((totalMinutes % 1440) + 1440) % 1440;
+      const hours = Math.floor(minutes / 60);
+      return {
+        label: hours + ':' + String(minutes % 60).padStart(2, '0'),
+        minutes
+      };
+    }
+    const match = /T(\d{2}):(\d{2})/.exec(value);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+    const totalMinutes = hours * 60 + minutes;
+    return {
+      label: hours + ':' + String(minutes).padStart(2, '0'),
+      minutes: totalMinutes
+    };
+  }
+
+  setArrival = (status) => () => this.__mobileUiuxUpdateReservationStatus(status);
+  confirmAppt = () => this.__mobileUiuxUpdateReservationStatus('confirmed');
+  cancelAppt = () => this.__mobileUiuxUpdateReservationStatus('cancelled');
+  __mobileUiuxConfirmReservation = () => this.__mobileUiuxUpdateReservationStatus('confirmed');
+  __mobileUiuxCancelReservation = () => this.__mobileUiuxUpdateReservationStatus('cancelled');
+
+  async __mobileUiuxUpdateReservationStatus(status) {
+    if (status !== 'confirmed' && status !== 'arrived' && status !== 'cancelled') {
+      this.__mobileUiuxShowReservationToast('この操作はまだ保存できません');
+      return false;
+    }
+
+    if (this.__mobileUiuxReservationSaving === true) {
+      this.__mobileUiuxShowReservationToast('予約を保存中です');
+      return false;
+    }
+
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const reservation = Array.isArray(state.appts)
+      ? state.appts.find((item) => this.__mobileUiuxIsRecord(item) && item.id === state.detailId)
+      : null;
+    if (!this.__mobileUiuxIsRecord(reservation)) {
+      this.__mobileUiuxShowReservationToast('予約を選択してください');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildReservationUpdatePayload(reservation, status);
+    if (!payload) {
+      this.__mobileUiuxShowReservationToast('予約を保存できません');
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.updateReservation !== 'function') {
+      this.__mobileUiuxShowReservationToast('予約保存は現在利用できません');
+      return false;
+    }
+
+    this.__mobileUiuxReservationSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.updateReservation(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxReservationSaving = false;
+    }
+
+    if (ok === true) {
+      this.__mobileUiuxShowReservationToast(this.__mobileUiuxReservationStatusToast(status));
+      return true;
+    }
+
+    this.__mobileUiuxShowReservationToast('予約は保存されていません');
+    return false;
+  }
+
+  __mobileUiuxBuildReservationUpdatePayload(reservation, status) {
+    const clinicId = typeof reservation.mobileUiuxClinicId === 'string' && reservation.mobileUiuxClinicId.length > 0
+      ? reservation.mobileUiuxClinicId
+      : this.__mobileUiuxCurrentClinicId;
+    if (typeof clinicId !== 'string' || clinicId.length === 0 || typeof reservation.id !== 'string') {
+      return null;
+    }
+
+    return {
+      clinic_id: clinicId,
+      id: reservation.id,
+      status
+    };
+  }
+
+  __mobileUiuxCreateReservation = async () => {
+    if (this.__mobileUiuxReservationSaving === true) {
+      this.__mobileUiuxShowReservationToast('予約を保存中です');
+      return false;
+    }
+
+    const payload = this.__mobileUiuxBuildReservationCreatePayload();
+    if (!payload) {
+      return false;
+    }
+
+    const bridge = typeof window !== 'undefined' && window.MobileUiuxBridge
+      ? window.MobileUiuxBridge
+      : null;
+    if (!bridge || typeof bridge.createReservation !== 'function') {
+      this.__mobileUiuxShowReservationToast('予約作成は現在利用できません');
+      return false;
+    }
+
+    this.__mobileUiuxReservationSaving = true;
+    let ok = false;
+    try {
+      ok = await bridge.createReservation(payload);
+    } catch {
+      ok = false;
+    } finally {
+      this.__mobileUiuxReservationSaving = false;
+    }
+
+    if (ok === true) {
+      if (typeof this.setState === 'function') {
+        this.setState({ formOpen: false });
+      }
+      this.__mobileUiuxShowReservationToast('予約を登録しました');
+      return true;
+    }
+
+    this.__mobileUiuxShowReservationToast('予約は保存されていません');
+    return false;
+  };
+
+  __mobileUiuxBuildReservationCreatePayload() {
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    const patientName = typeof state.fPatient === 'string' ? state.fPatient.trim() : '';
+    if (!patientName) {
+      this.__mobileUiuxShowReservationToast('患者名を入力してください');
+      return null;
+    }
+
+    const customerId = this.__mobileUiuxFindReservationCustomerId(patientName);
+    if (!customerId) {
+      this.__mobileUiuxShowReservationToast('患者を実データから選択できません');
+      return null;
+    }
+
+    const menu = this.__mobileUiuxFindReservationMenu(state.fMenu);
+    const menuId = menu && typeof menu.id === 'string' ? menu.id : '';
+    if (!menuId) {
+      this.__mobileUiuxShowReservationToast('メニューを実データから選択できません');
+      return null;
+    }
+
+    const staffId = this.__mobileUiuxFindReservationStaffId(state.fRes);
+    if (!staffId) {
+      this.__mobileUiuxShowReservationToast('担当を実データから選択できません');
+      return null;
+    }
+
+    const startMinutes = typeof state.fStart === 'number' && Number.isFinite(state.fStart)
+      ? state.fStart
+      : Number.parseInt(String(state.fStart), 10);
+    const duration = this.__mobileUiuxPositiveNumber(
+      state.fDur,
+      menu ? this.__mobileUiuxPositiveNumber(menu.dur, 30) : 30
+    );
+    const date = this.__mobileUiuxActiveHydratedDate();
+    const startTime = this.__mobileUiuxReservationIsoTime(date, startMinutes);
+    const endTime = this.__mobileUiuxReservationIsoTime(date, startMinutes + duration);
+    if (!startTime || !endTime) {
+      this.__mobileUiuxShowReservationToast('予約日時を確認してください');
+      return null;
+    }
+
+    const payload = {
+      customerId,
+      menuId,
+      staffId,
+      startTime,
+      endTime,
+      channel: 'walk_in',
+      isStaffRequested: state.fNominated === true
+    };
+    if (typeof state.fNote === 'string' && state.fNote.trim().length > 0) {
+      payload.notes = state.fNote.trim();
+    }
+    return payload;
+  }
+
+  __mobileUiuxFindReservationCustomerId(patientName) {
+    const normalizedName = typeof patientName === 'string' ? patientName.trim() : '';
+    if (!normalizedName) return '';
+    let customerId = '';
+    const state = this.state && typeof this.state === 'object' ? this.state : {};
+    if (Array.isArray(state.appts)) {
+      for (const reservation of state.appts) {
+        customerId = this.__mobileUiuxResolveCustomerId(customerId, reservation, normalizedName);
+        if (customerId === null) return '';
+      }
+    }
+    const current = this.__mobileUiuxCurrentReservationData;
+    if (this.__mobileUiuxIsRecord(current) && Array.isArray(current.reservations)) {
+      for (const reservation of current.reservations) {
+        customerId = this.__mobileUiuxResolveCustomerId(customerId, reservation, normalizedName);
+        if (customerId === null) return '';
+      }
+    }
+    return customerId || '';
+  }
+
+  __mobileUiuxResolveCustomerId(currentCustomerId, reservation, patientName) {
+    if (!this.__mobileUiuxIsRecord(reservation)) return currentCustomerId;
+    const candidateName = typeof reservation.patient === 'string'
+      ? reservation.patient.trim()
+      : typeof reservation.customerName === 'string'
+        ? reservation.customerName.trim()
+        : typeof reservation.patientName === 'string'
+          ? reservation.patientName.trim()
+          : '';
+    if (candidateName !== patientName) return currentCustomerId;
+    const candidateId = typeof reservation.mobileUiuxCustomerId === 'string' && reservation.mobileUiuxCustomerId.length > 0
+      ? reservation.mobileUiuxCustomerId
+      : typeof reservation.customerId === 'string' && reservation.customerId.length > 0
+        ? reservation.customerId
+        : '';
+    if (!candidateId) return currentCustomerId;
+    if (currentCustomerId && currentCustomerId !== candidateId) return null;
+    return candidateId;
+  }
+
+  __mobileUiuxFindReservationMenu(menuName) {
+    const normalizedName = typeof menuName === 'string' ? menuName.trim() : '';
+    if (!normalizedName || !Array.isArray(this.MENUS)) return null;
+    for (const menu of this.MENUS) {
+      if (!this.__mobileUiuxIsRecord(menu)) continue;
+      if (typeof menu.name === 'string' && menu.name.trim() === normalizedName) {
+        return menu;
+      }
+    }
+    return null;
+  }
+
+  __mobileUiuxFindReservationStaffId(resourceId) {
+    const id = typeof resourceId === 'string' ? resourceId.trim() : '';
+    if (!id || !Array.isArray(this.THER)) return '';
+    for (const resource of this.THER) {
+      if (this.__mobileUiuxIsRecord(resource) && resource.id === id) {
+        return id;
+      }
+    }
+    return '';
+  }
+
+  __mobileUiuxReservationIsoTime(dateKey, minutes) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+    if (!match || typeof minutes !== 'number' || !Number.isFinite(minutes)) return '';
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day, 0, minutes - 9 * 60, 0, 0));
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
+  }
+
+  __mobileUiuxReservationStatusToast(status) {
+    if (status === 'confirmed') return '予約を確定しました';
+    if (status === 'arrived') return '来院済みにしました';
+    if (status === 'cancelled') return '予約をキャンセルしました';
+    return '予約を保存しました';
+  }
+
+  __mobileUiuxShowReservationToast(message) {
+    if (typeof this.toast === 'function') {
+      this.toast(message);
+    } else if (typeof this.setState === 'function') {
+      this.setState({ toast: message });
+    }
+  }
+
+  __mobileUiuxCountReservations(reservations) {
+    const counts = { total: 0, confirmed: 0, unconfirmed: 0, cancelled: 0 };
+    reservations.forEach((reservation) => {
+      if (!this.__mobileUiuxIsRecord(reservation)) return;
+      this.__mobileUiuxIncrementReservationCounts(counts, reservation.status);
+    });
+    return counts;
+  }
+
+  __mobileUiuxIncrementReservationCounts(counts, value) {
+    const status = this.__mobileUiuxNormalizeStatus(value);
+    if (status === 'cancelled' || status === 'no_show' || status === 'noshow') {
+      counts.cancelled += 1;
+      return;
+    }
+    counts.total += 1;
+    if (status === 'confirmed' || status === 'arrived' || status === 'completed') {
+      counts.confirmed += 1;
+    } else if (status === 'unconfirmed' || status === 'tentative' || status === 'trial') {
+      counts.unconfirmed += 1;
+    }
+  }
+
+  __mobileUiuxStatusMeta(value) {
+    const status = this.__mobileUiuxNormalizeStatus(value);
+    if (status === 'confirmed') return { label: '確定', c: 'var(--s-cf)', b: 'var(--s-cf-bg)', dim: 1 };
+    if (status === 'arrived' || status === 'completed') return { label: '来院済み', c: 'var(--s-cf)', b: 'var(--s-cf-bg)', dim: 1 };
+    if (status === 'cancelled') return { label: 'キャンセル', c: 'var(--fg-3)', b: 'var(--s-cn-bg)', dim: 0.55 };
+    if (status === 'no_show' || status === 'noshow') return { label: '来院なし', c: 'var(--s-ns)', b: 'var(--s-ns-bg)', dim: 0.55 };
+    return { label: '未確認', c: 'var(--s-uc)', b: 'var(--s-uc-bg)', dim: 1 };
+  }
+
+  __mobileUiuxNormalizeStatus(value) {
+    return typeof value === 'string' ? value : '';
+  }
+
+  __mobileUiuxNonNegativeNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+  }
+
+  __mobileUiuxPositiveNumber(value, fallback) {
+    return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+  }
+
+  __mobileUiuxDisplayText(value, fallback) {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  __mobileUiuxFormatDateLabel(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return value;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (Number.isNaN(date.getTime())) return value;
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    return month + '/' + day + '（' + weekdays[date.getUTCDay()] + '）';
+  }
+
+  __mobileUiuxFormatTime(value) {
+    if (typeof value !== 'string' || value.length === 0) return '';
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      const totalMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60;
+      const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+      const hours = Math.floor(normalized / 60);
+      const minutes = normalized % 60;
+      return hours + ':' + String(minutes).padStart(2, '0');
+    }
+    const timeMatch = /T(\d{2}):(\d{2})/.exec(value);
+    return timeMatch ? Number(timeMatch[1]) + ':' + timeMatch[2] : '';
+  }
+
+  __mobileUiuxIsRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  __mobileUiuxStoreContext(payload) {
+    if (!this.__mobileUiuxIsRecord(payload) || payload.success !== true || !this.__mobileUiuxIsRecord(payload.data)) {
+      return;
+    }
+    this.__mobileUiuxContext = payload.data;
+  }
+}
+</script>
+</body>
+</html>

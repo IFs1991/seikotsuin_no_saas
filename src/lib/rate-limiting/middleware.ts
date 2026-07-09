@@ -4,17 +4,24 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import {
   rateLimiter,
   RateLimitType,
   type RateLimitResult,
 } from './rate-limiter';
 import { logger } from '@/lib/logger';
+import type { Database } from '@/types/supabase';
 
 // レート制限設定
 interface RateLimitConfig {
   type: RateLimitType;
-  keyGenerator: (request: NextRequest) => string;
+  keyGenerator: (request: NextRequest) => string | Promise<string>;
+  customConfig?: Partial<{
+    window: number;
+    limit: number;
+    blockDuration: number;
+  }>;
   skipIf?: (request: NextRequest) => boolean;
   onLimitExceeded?: (
     request: NextRequest,
@@ -64,7 +71,7 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
         return null; // スキップ
       }
 
-      const identifier = config.keyGenerator(request);
+      const identifier = await config.keyGenerator(request);
 
       // ホワイトリストチェック
       const isWhitelisted = await rateLimiter.isWhitelisted(
@@ -76,7 +83,13 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       }
 
       // レート制限チェック
-      const result = await rateLimiter.checkRateLimit(config.type, identifier);
+      const result = config.customConfig
+        ? await rateLimiter.checkRateLimit(
+            config.type,
+            identifier,
+            config.customConfig
+          )
+        : await rateLimiter.checkRateLimit(config.type, identifier);
 
       if (!result.allowed) {
         // カスタムハンドラーがある場合は使用
@@ -174,6 +187,102 @@ export const apiRateLimit = createRateLimitMiddleware({
   },
 });
 
+async function getAuthenticatedUserId(
+  request: NextRequest
+): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+
+  try {
+    const requestCookies = request.cookies.getAll();
+    const supabase = createServerClient<Database>(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return requestCookies;
+          },
+          setAll() {
+            // Rate-limit key resolution must not mutate auth cookies.
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error || !user?.id) {
+      return null;
+    }
+
+    return user.id;
+  } catch (error) {
+    logger.warn('Mobile UIUX rate-limit user resolution failed:', error);
+    return null;
+  }
+}
+
+function getMobileUiuxKeyPrefix(request: NextRequest): string {
+  const ip = getClientIP(request);
+  return `ip:${ip}`;
+}
+
+export const mobileUiuxReadRateLimit = createRateLimitMiddleware({
+  type: 'mobile_uiux_read',
+  keyGenerator: async request => {
+    const userId = await getAuthenticatedUserId(request);
+    return userId ? `user:${userId}` : getMobileUiuxKeyPrefix(request);
+  },
+});
+
+export const mobileUiuxWriteRateLimit = createRateLimitMiddleware({
+  type: 'mobile_uiux_write',
+  keyGenerator: async request => {
+    const userId = await getAuthenticatedUserId(request);
+    return userId ? `user:${userId}` : getMobileUiuxKeyPrefix(request);
+  },
+});
+
+function getAdminSecurityClinicKey(request: NextRequest): string {
+  const clinicId =
+    request.nextUrl.searchParams.get('clinic_id') ??
+    request.headers.get('x-clinic-id');
+  return clinicId ? `clinic:${clinicId}` : 'clinic:none';
+}
+
+async function getAdminSecurityRateLimitKey(
+  request: NextRequest
+): Promise<string> {
+  const userId = await getAuthenticatedUserId(request);
+  const actorKey = userId ? `user:${userId}` : getMobileUiuxKeyPrefix(request);
+  return `${actorKey}:${getAdminSecurityClinicKey(request)}`;
+}
+
+export const adminSecurityReadRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAdminSecurityRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 30,
+  },
+});
+
+export const adminSecurityWriteRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAdminSecurityRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 10,
+  },
+});
+
 export const sessionCreationRateLimit = createRateLimitMiddleware({
   type: 'session_creation',
   keyGenerator: request => {
@@ -243,7 +352,8 @@ export async function applyRateLimits(
  * パス別レート制限設定
  */
 export function getPathRateLimit(
-  pathname: string
+  pathname: string,
+  method = 'GET'
 ): Array<(request: NextRequest) => Promise<NextResponse | null>> {
   const middlewares: Array<
     (request: NextRequest) => Promise<NextResponse | null>
@@ -252,6 +362,24 @@ export function getPathRateLimit(
   // 公開APIのみ共通制限を適用
   if (isPublicApiPath(pathname)) {
     middlewares.push(apiRateLimit);
+  }
+
+  if (isMobileUiuxApiPath(pathname)) {
+    const normalizedMethod = method.toUpperCase();
+    if (normalizedMethod === 'GET') {
+      middlewares.push(mobileUiuxReadRateLimit);
+    } else if (isMobileUiuxWriteMethod(normalizedMethod)) {
+      middlewares.push(mobileUiuxWriteRateLimit);
+    }
+  }
+
+  if (isAdminSecurityRateLimitedPath(pathname)) {
+    const normalizedMethod = method.toUpperCase();
+    if (normalizedMethod === 'GET') {
+      middlewares.push(adminSecurityReadRateLimit);
+    } else if (isAdminSecurityWriteMethod(normalizedMethod)) {
+      middlewares.push(adminSecurityWriteRateLimit);
+    }
   }
 
   // 認証フローの入口
@@ -301,6 +429,14 @@ function isPublicApiPath(pathname: string): boolean {
   return pathname.startsWith('/api/public/');
 }
 
+export function isMobileUiuxApiPath(pathname: string): boolean {
+  return pathname.startsWith('/api/mobile-uiux/');
+}
+
+function isMobileUiuxWriteMethod(method: string): boolean {
+  return method === 'POST' || method === 'PATCH' || method === 'PUT';
+}
+
 function isAuthEntryPoint(pathname: string): boolean {
   return (
     pathname === '/login' ||
@@ -319,6 +455,17 @@ function isSessionManagementPath(pathname: string): boolean {
   );
 }
 
+function isAdminSecurityRateLimitedPath(pathname: string): boolean {
+  return (
+    pathname.startsWith('/api/admin/security/') &&
+    !isSessionManagementPath(pathname)
+  );
+}
+
+function isAdminSecurityWriteMethod(method: string): boolean {
+  return method === 'POST' || method === 'PATCH' || method === 'PUT';
+}
+
 function isMfaPath(pathname: string): boolean {
   return pathname.startsWith('/api/mfa/');
 }
@@ -333,6 +480,10 @@ function getRateLimitMessage(type: RateLimitType): string {
       return 'セッション作成回数が制限に達しました。時間をおいて再試行してください。';
     case 'mfa_attempts':
       return 'MFA認証試行回数が制限に達しました。時間をおいて再試行してください。';
+    case 'mobile_uiux_read':
+      return 'モバイル画面データの取得回数が制限に達しました。時間をおいて再試行してください。';
+    case 'mobile_uiux_write':
+      return 'モバイル画面からの更新回数が制限に達しました。時間をおいて再試行してください。';
     default:
       return 'リクエスト回数が制限に達しました。時間をおいて再試行してください。';
   }

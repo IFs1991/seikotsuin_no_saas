@@ -182,11 +182,20 @@ select ok(
 select ok(
   exists (
     select 1
-    from pg_indexes
-    where schemaname = 'public'
-      and tablename = 'staff_shifts'
-      and indexname = 'staff_shifts_conversion_overlap_idx'
-      and indexdef like '%status <> ''cancelled''%'
+    from pg_class index_class
+    join pg_namespace index_namespace
+      on index_namespace.oid = index_class.relnamespace
+    join pg_index index_metadata
+      on index_metadata.indexrelid = index_class.oid
+    join pg_class table_class
+      on table_class.oid = index_metadata.indrelid
+    where index_namespace.nspname = 'public'
+      and table_class.relname = 'staff_shifts'
+      and index_class.relname = 'staff_shifts_conversion_overlap_idx'
+      and index_metadata.indpred is not null
+      and pg_get_expr(index_metadata.indpred, index_metadata.indrelid) like '%status%'
+      and pg_get_expr(index_metadata.indpred, index_metadata.indrelid) like '%<>%'
+      and pg_get_expr(index_metadata.indpred, index_metadata.indrelid) like '%''cancelled''%'
   ),
   'staff_shifts has a partial overlap index for conversion'
 );

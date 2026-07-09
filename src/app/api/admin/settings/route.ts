@@ -16,31 +16,26 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { AuditLogger } from '@/lib/audit-logger';
-import {
-  CLINIC_ADMIN_ROLES,
-  STAFF_ROLES,
-  normalizeRole,
-} from '@/lib/constants/roles';
-import {
-  VALID_CATEGORIES,
-  DEFAULT_SETTINGS,
-  type SettingsCategory,
-} from '@/lib/admin-settings/defaults';
+import { STAFF_ROLES } from '@/lib/constants/roles';
+import { VALID_CATEGORIES } from '@/lib/admin-settings/defaults';
 import {
   canManageAdminSettingsCategory,
   canReadAdminSettingsCategory,
 } from '@/lib/admin-settings/access';
-import { CATEGORY_SCHEMAS } from '@/lib/admin-settings/schemas';
-import { normalizeCommunicationSettings } from '@/lib/admin-settings/normalize';
+import {
+  ADMIN_SETTINGS_MUTATION_ROLES,
+  fetchAdminSettingsReadModel,
+  isSettingsCategory,
+  logAdminSettingsMutation,
+  readClinicIdFromAdminSettingsBody,
+  upsertAdminSettings,
+  validateAdminSettingsMutationBody,
+  validateAdminSettingsMutationSettings,
+} from '@/lib/admin-settings/service';
 
 const STAFF_ROLE_LIST = Array.from(STAFF_ROLES);
-const CLINIC_ADMIN_ROLE_LIST = Array.from(CLINIC_ADMIN_ROLES);
+const CLINIC_ADMIN_ROLE_LIST = Array.from(ADMIN_SETTINGS_MUTATION_ROLES);
 
-/**
- * GET /api/admin/settings
- * 設定を取得（未登録時はデフォルト値を返す）
- */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const clinicId = searchParams.get('clinic_id');
@@ -57,7 +52,7 @@ export async function GET(request: NextRequest) {
       return processResult.error;
     }
 
-    const { supabase, auth, permissions } = processResult;
+    const { supabase, permissions } = processResult;
 
     // バリデーション
     if (!clinicId) {
@@ -68,53 +63,33 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('categoryは必須です', 400);
     }
 
-    if (!VALID_CATEGORIES.includes(category as SettingsCategory)) {
+    if (!isSettingsCategory(category)) {
       return createErrorResponse(
         `不正なcategoryです。有効な値: ${VALID_CATEGORIES.join(', ')}`,
         400
       );
     }
 
-    const categoryValue = category as SettingsCategory;
-
-    if (!canReadAdminSettingsCategory(permissions.role, categoryValue)) {
+    if (!canReadAdminSettingsCategory(permissions.role, category)) {
       return createErrorResponse(
         'この設定カテゴリへのアクセス権がありません',
         403
       );
     }
 
-    // データベースから取得
-    const { data, error } = await supabase
-      .from('clinic_settings')
-      .select('settings, updated_at, updated_by')
-      .eq('clinic_id', clinicId)
-      .eq('category', category)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116: No rows returned（これは正常なケース）
-      logError(error, {
-        endpoint: '/api/admin/settings',
-        method: 'GET',
-        userId: auth.id,
-        params: { clinic_id: clinicId, category },
-      });
+    const readResult = await fetchAdminSettingsReadModel(
+      supabase,
+      clinicId,
+      category
+    );
+    if (!readResult.success) {
       return createErrorResponse('設定の取得に失敗しました', 500);
     }
 
-    // データがなければデフォルト値を返す
-    const settings =
-      category === 'communication'
-        ? normalizeCommunicationSettings(
-            data?.settings ?? DEFAULT_SETTINGS.communication
-          )
-        : (data?.settings ?? DEFAULT_SETTINGS[categoryValue]);
-
     return createSuccessResponse({
-      settings,
-      updated_at: data?.updated_at ?? null,
-      updated_by: data?.updated_by ?? null,
+      settings: readResult.data.settings,
+      updated_at: readResult.data.updated_at,
+      updated_by: readResult.data.updated_by,
     });
   } catch (error) {
     logError(error, {
@@ -134,11 +109,8 @@ export async function PUT(request: NextRequest) {
   try {
     let clinicIdForAuth: string | null = null;
     try {
-      const previewBody = await request.clone().json();
-      clinicIdForAuth =
-        typeof previewBody?.clinic_id === 'string'
-          ? previewBody.clinic_id
-          : null;
+      const previewBody: unknown = await request.clone().json();
+      clinicIdForAuth = readClinicIdFromAdminSettingsBody(previewBody);
     } catch {
       clinicIdForAuth = null;
     }
@@ -155,98 +127,45 @@ export async function PUT(request: NextRequest) {
 
     const { supabase, auth, permissions, body } = processResult;
 
-    // ボディのパース
-    const { clinic_id, category, settings } = body as {
-      clinic_id?: string;
-      category?: string;
-      settings?: Record<
-        SettingsCategory,
-        Record<string, unknown>
-      >[SettingsCategory];
-    };
-
-    // バリデーション
-    if (!clinic_id) {
-      return createErrorResponse('clinic_idは必須です', 400);
-    }
-
-    if (!category) {
-      return createErrorResponse('categoryは必須です', 400);
-    }
-
-    if (!VALID_CATEGORIES.includes(category as SettingsCategory)) {
+    const envelopeValidation = validateAdminSettingsMutationBody(body);
+    if (envelopeValidation.success === false) {
       return createErrorResponse(
-        `不正なcategoryです。有効な値: ${VALID_CATEGORIES.join(', ')}`,
-        400
+        envelopeValidation.message,
+        envelopeValidation.status,
+        envelopeValidation.details
       );
     }
 
-    const categoryValue = category as SettingsCategory;
-
-    if (!canManageAdminSettingsCategory(permissions.role, categoryValue)) {
+    const envelope = envelopeValidation.payload;
+    if (!canManageAdminSettingsCategory(permissions.role, envelope.category)) {
       return createErrorResponse(
         'この設定カテゴリへのアクセス権がありません',
         403
       );
     }
 
-    if (!settings || typeof settings !== 'object') {
-      return createErrorResponse('settingsは必須です', 400);
+    const settingsValidation = validateAdminSettingsMutationSettings(envelope);
+    if (settingsValidation.success === false) {
+      return createErrorResponse(
+        settingsValidation.message,
+        settingsValidation.status,
+        settingsValidation.details
+      );
     }
 
-    // カテゴリ固有のバリデーション
-    const schema = CATEGORY_SCHEMAS[categoryValue];
-    const candidateSettings =
-      category === 'communication'
-        ? normalizeCommunicationSettings(settings)
-        : settings;
-    const parseResult = schema.safeParse(candidateSettings);
-
-    if (!parseResult.success) {
-      const errors = parseResult.error.flatten();
-      const firstError =
-        Object.values(errors.fieldErrors)[0]?.[0] ??
-        errors.formErrors[0] ??
-        '入力値にエラーがあります';
-      return createErrorResponse(firstError, 400, errors);
+    const { payload } = settingsValidation;
+    const writeResult = await upsertAdminSettings(supabase, payload, auth.id);
+    if (writeResult.success === false) {
+      return createErrorResponse(writeResult.message, 500);
     }
 
-    // upsert実行
-    const { error } = await supabase.from('clinic_settings').upsert(
-      {
-        clinic_id,
-        category,
-        settings: parseResult.data,
-        updated_by: auth.id,
-      },
-      { onConflict: 'clinic_id,category' }
-    );
-
-    if (error) {
-      logError(error, {
-        endpoint: '/api/admin/settings',
-        method: 'PUT',
-        userId: auth.id,
-        params: { clinic_id, category },
-      });
-      return createErrorResponse('設定の保存に失敗しました', 500);
-    }
-
-    // 監査ログはベストエフォートで実行し、レスポンスをブロックしない。
-    void AuditLogger.logAdminAction(
-      auth.id,
-      auth.email,
-      normalizeRole(permissions.role) === 'manager'
-        ? 'manager_settings_update'
-        : 'update_settings',
-      undefined,
-      {
-        actor_role: normalizeRole(permissions.role),
-        category,
-        clinic_id,
-        settingsUpdated: true,
-      }
-    );
+    logAdminSettingsMutation({
+      userId: auth.id,
+      userEmail: auth.email,
+      role: permissions.role,
+      clinicId: payload.clinic_id,
+      category: payload.category,
+    });
 
     return createSuccessResponse({
       message: '設定を保存しました',

@@ -5,6 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DailyReportInputPage from '@/app/(app)/daily-reports/input/page';
 import { UserProfileProvider } from '@/providers/user-profile-context';
+import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 
 const mockPush = jest.fn();
 
@@ -13,6 +14,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
+const selectedClinicId = '123e4567-e89b-12d3-a456-426614174099';
 const insuranceItemId = '123e4567-e89b-12d3-a456-426614174010';
 const trafficItemId = '123e4567-e89b-12d3-a456-426614174011';
 
@@ -154,7 +156,23 @@ function setupFetch() {
   });
 }
 
-function renderPage() {
+function renderPage(activeClinicId?: string) {
+  const content = <DailyReportInputPage />;
+  const wrappedContent = activeClinicId ? (
+    <SelectedClinicProvider
+      initialClinicId={activeClinicId}
+      currentClinicId={clinicId}
+      clinics={[
+        { id: clinicId, name: 'テスト院' },
+        { id: selectedClinicId, name: '分院' },
+      ]}
+    >
+      {content}
+    </SelectedClinicProvider>
+  ) : (
+    content
+  );
+
   return render(
     <UserProfileProvider
       value={{
@@ -171,7 +189,7 @@ function renderPage() {
         error: null,
       }}
     >
-      <DailyReportInputPage />
+      {wrappedContent}
     </UserProfileProvider>
   );
 }
@@ -236,6 +254,64 @@ describe('DailyReportInputPage Phase 4A-5 pricing UI', () => {
         manualEstimatedAmount: null,
         updateCustomerCoverage: false,
       });
+    });
+  });
+
+  it('uses selected active clinic for item fetch and pricing confirmation body', async () => {
+    const fetchMock = setupFetch();
+    const user = userEvent.setup();
+
+    renderPage(selectedClinicId);
+
+    await screen.findByText('患者設定: 3割');
+    await waitFor(() => {
+      const itemRequestUrl = fetchMock.mock.calls
+        .map(call => urlFromFetchInput(call[0]))
+        .find(url => url.startsWith('/api/daily-reports/items?'));
+      expect(itemRequestUrl).toContain(`clinic_id=${selectedClinicId}`);
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: '山田 太郎の金額を確定' })
+    );
+
+    await waitFor(() => {
+      const confirmCall = fetchMock.mock.calls.find(
+        ([input, init]) =>
+          urlFromFetchInput(input) ===
+            `/api/daily-reports/items/${insuranceItemId}/pricing/confirm` &&
+          init?.method === 'POST'
+      );
+      const body =
+        typeof confirmCall?.[1]?.body === 'string'
+          ? JSON.parse(confirmCall[1].body)
+          : null;
+      expect(body).toMatchObject({ clinic_id: selectedClinicId });
+    });
+  });
+
+  it('uses selected active clinic for daily report save body', async () => {
+    const fetchMock = setupFetch();
+    const user = userEvent.setup();
+    jest.spyOn(window, 'alert').mockImplementation(() => undefined);
+
+    renderPage(selectedClinicId);
+
+    await screen.findByText('患者設定: 3割');
+    await user.click(screen.getByRole('button', { name: '保存' }));
+
+    await waitFor(() => {
+      const saveCall = fetchMock.mock.calls.find(
+        ([input, init]) =>
+          urlFromFetchInput(input) === '/api/daily-reports' &&
+          init?.method === 'POST'
+      );
+      expect(saveCall).toBeDefined();
+      const body =
+        typeof saveCall?.[1]?.body === 'string'
+          ? JSON.parse(saveCall[1].body)
+          : null;
+      expect(body).toMatchObject({ clinic_id: selectedClinicId });
     });
   });
 });

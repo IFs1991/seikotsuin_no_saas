@@ -6,6 +6,7 @@ import '@testing-library/jest-dom';
 import DashboardPage from '@/app/(app)/dashboard/page';
 import useDashboard from '@/hooks/useDashboard';
 import { UserProfileProvider } from '@/providers/user-profile-context';
+import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 import type { UserProfile } from '@/types/user-profile';
 
 jest.mock('@/hooks/useDashboard', () => ({
@@ -37,6 +38,7 @@ jest.mock('@/components/dashboard/patient-flow-heatmap', () => ({
 const mockedUseDashboard = jest.mocked(useDashboard);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
+const selectedClinicId = '123e4567-e89b-12d3-a456-426614174099';
 
 function createProfile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
@@ -51,10 +53,30 @@ function createProfile(overrides: Partial<UserProfile> = {}): UserProfile {
   };
 }
 
-function renderDashboard(profile: UserProfile | null) {
+function renderDashboard(
+  profile: UserProfile | null,
+  selectedClinic?: string | null
+) {
+  const content = <DashboardPage />;
+  const wrappedContent =
+    selectedClinic === undefined ? (
+      content
+    ) : (
+      <SelectedClinicProvider
+        initialClinicId={selectedClinic}
+        currentClinicId={clinicId}
+        clinics={[
+          { id: clinicId, name: '本町院' },
+          { id: selectedClinicId, name: '分院' },
+        ]}
+      >
+        {content}
+      </SelectedClinicProvider>
+    );
+
   return render(
     <UserProfileProvider value={{ profile, loading: false, error: null }}>
-      <DashboardPage />
+      {wrappedContent}
     </UserProfileProvider>
   );
 }
@@ -81,7 +103,7 @@ describe('DashboardPage', () => {
     mockClinicDashboardData();
   });
 
-  it('manager without primary clinic renders the manager dashboard', () => {
+  it('manager without primary clinic renders the manager dashboard', async () => {
     renderDashboard(
       createProfile({
         role: 'manager',
@@ -90,7 +112,9 @@ describe('DashboardPage', () => {
       })
     );
 
-    expect(screen.getByText('担当エリアダッシュボード')).toBeInTheDocument();
+    expect(
+      await screen.findByText('担当エリアダッシュボード')
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('クリニック情報が見つかりません')
     ).not.toBeInTheDocument();
@@ -118,5 +142,11 @@ describe('DashboardPage', () => {
     expect(screen.getByText('メインダッシュボード')).toBeInTheDocument();
     expect(screen.getByText('本日のリアルタイムデータ')).toBeInTheDocument();
     expect(mockedUseDashboard).toHaveBeenCalledWith(clinicId);
+  });
+
+  it('uses the selected active clinic instead of profile clinic', () => {
+    renderDashboard(createProfile({ role: 'staff' }), selectedClinicId);
+
+    expect(mockedUseDashboard).toHaveBeenCalledWith(selectedClinicId);
   });
 });

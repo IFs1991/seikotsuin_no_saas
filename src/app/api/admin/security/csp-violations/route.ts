@@ -4,10 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
 import { z } from 'zod';
 import { processApiRequest } from '@/lib/api-helpers';
-import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
 
 // クエリパラメータのスキーマ
 const QuerySchema = z.object({
@@ -22,17 +21,24 @@ const QuerySchema = z.object({
   severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   directive: z.string().optional(),
   client_ip: z.string().optional(),
+  clinic_id: z.string().uuid().optional(),
   hours: z
     .string()
     .optional()
     .transform(val => (val ? parseInt(val) : 24)),
 });
 
+function optionalSearchParam(value: string | null): string | undefined {
+  return value ?? undefined;
+}
+
 export async function GET(request: NextRequest) {
   try {
+    const requestedClinicId = request.nextUrl.searchParams.get('clinic_id');
     const auth = await processApiRequest(request, {
-      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
-      requireClinicMatch: false,
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      clinicId: requestedClinicId,
+      requireClinicMatch: requestedClinicId !== null,
     });
     if (!auth.success) {
       return auth.error!;
@@ -40,16 +46,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const params = QuerySchema.parse({
-      limit: searchParams.get('limit'),
-      offset: searchParams.get('offset'),
+      limit: optionalSearchParam(searchParams.get('limit')),
+      offset: optionalSearchParam(searchParams.get('offset')),
       severity: searchParams.get('severity') ?? undefined,
-      directive: searchParams.get('directive'),
-      client_ip: searchParams.get('client_ip'),
-      hours: searchParams.get('hours'),
+      directive: optionalSearchParam(searchParams.get('directive')),
+      client_ip: optionalSearchParam(searchParams.get('client_ip')),
+      clinic_id: requestedClinicId ?? undefined,
+      hours: optionalSearchParam(searchParams.get('hours')),
     });
 
-    const supabase = await createClient();
-    const clinicId = auth.permissions?.clinic_id;
+    const supabase = auth.supabase;
+    const clinicId = params.clinic_id ?? auth.permissions?.clinic_id;
 
     // 期間設定
     const sinceTime = new Date();
@@ -174,10 +181,23 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const preflightBody = await request
+      .clone()
+      .json()
+      .catch(() => null);
+    const preflightClinicId =
+      preflightBody &&
+      typeof preflightBody === 'object' &&
+      'clinic_id' in preflightBody &&
+      typeof preflightBody.clinic_id === 'string'
+        ? preflightBody.clinic_id
+        : null;
+
     const auth = await processApiRequest(request, {
       requireBody: true,
-      allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
-      requireClinicMatch: false,
+      allowedRoles: Array.from(ADMIN_UI_ROLES),
+      clinicId: preflightClinicId,
+      requireClinicMatch: preflightClinicId !== null,
       sanitizeInputValues: true,
     });
     if (!auth.success) {
@@ -193,6 +213,10 @@ export async function PATCH(request: NextRequest) {
         : undefined;
     const notes =
       body && typeof body.notes === 'string' ? body.notes : undefined;
+    const clinicId =
+      body && typeof body.clinic_id === 'string'
+        ? body.clinic_id
+        : auth.permissions?.clinic_id;
 
     if (!violationId) {
       return NextResponse.json(
@@ -201,7 +225,14 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    if (!clinicId) {
+      return NextResponse.json(
+        { error: 'clinic_id は必須です' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = auth.supabase;
 
     const { data, error } = await supabase
       .from('csp_violations')
@@ -213,6 +244,7 @@ export async function PATCH(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', violationId)
+      .eq('clinic_id', clinicId)
       .select();
 
     if (error) {

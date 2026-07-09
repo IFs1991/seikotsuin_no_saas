@@ -6,6 +6,7 @@ import {
   MenuItem,
   SchedulerResource,
 } from '../types';
+import type { BookingFormResponseValue } from '@/lib/booking-form/settings';
 
 interface Props {
   appointments: Appointment[];
@@ -16,6 +17,16 @@ interface Props {
   canConfirm?: boolean;
   readOnlyMessage?: string;
 }
+
+const formatIntakeValue = (value: BookingFormResponseValue) => {
+  if (typeof value === 'boolean') {
+    return value ? 'はい' : 'いいえ';
+  }
+  if (Array.isArray(value)) {
+    return value.join('、');
+  }
+  return value;
+};
 
 export const UnconfirmedReservationsModal: React.FC<Props> = ({
   appointments: initialAppointments,
@@ -142,6 +153,23 @@ export const UnconfirmedReservationsModal: React.FC<Props> = ({
                           {appt.memo}
                         </div>
                       )}
+                      {appt.intakeResponses?.length ? (
+                        <dl className='mt-3 grid gap-2 rounded-md border border-gray-100 bg-gray-50 p-3 text-xs text-gray-700'>
+                          {appt.intakeResponses.map(response => (
+                            <div
+                              key={response.id}
+                              className='grid grid-cols-[6rem_1fr] gap-2'
+                            >
+                              <dt className='text-gray-500'>
+                                {response.label}
+                              </dt>
+                              <dd className='font-medium text-gray-800'>
+                                {formatIntakeValue(response.value)}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : null}
                     </div>
                     <div className='flex sm:flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 sm:ml-4'>
                       <button

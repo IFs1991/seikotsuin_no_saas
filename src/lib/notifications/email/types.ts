@@ -7,9 +7,13 @@ import type { Json } from '@/types/supabase';
 /** 送信テンプレート種別 */
 export type EmailTemplateType =
   | 'reservation_created'
+  | 'reservation_confirmed'
   | 'reservation_updated'
   | 'reservation_cancelled'
   | 'reminder_day_before'
+  | 'reminder_same_day'
+  | 'public-reservation-received'
+  | 'public-reservation-cancelled'
   | BillingEmailTemplateType;
 
 export type BillingEmailTemplateType =
@@ -110,12 +114,22 @@ export type ReservationEmailPayload = {
   endTime: string;
   staffName: string;
   menuName: string;
+  myPageUrl?: string;
   /** updated テンプレート用 */
   changes?: {
     field: string;
     before: string;
     after: string;
   }[];
+};
+
+export type PublicReservationReceivedPayload = ReservationEmailPayload & {
+  channel: string;
+  intakeSummary: string[];
+};
+
+export type PublicReservationCancelledPayload = ReservationEmailPayload & {
+  channel: string;
 };
 
 export type BillingEmailPayload = {

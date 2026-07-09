@@ -14,6 +14,7 @@ import { AppointmentEditForm } from './AppointmentEditForm';
 import { AppointmentHistoryPanel } from './AppointmentHistoryPanel';
 import { statusToColor } from '../hooks/statusToColor';
 import { fetchCustomerReservations, type ReservationApiItem } from '../api';
+import type { BookingFormResponseValue } from '@/lib/booking-form/settings';
 
 const VISIT_STATUS_ACTIONS: {
   status: NonNullable<Appointment['status']>;
@@ -37,6 +38,16 @@ const VISIT_STATUS_ACTIONS: {
     className: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
   },
 ];
+
+const formatIntakeValue = (value: BookingFormResponseValue) => {
+  if (typeof value === 'boolean') {
+    return value ? 'はい' : 'いいえ';
+  }
+  if (Array.isArray(value)) {
+    return value.join('、');
+  }
+  return value;
+};
 
 interface Props {
   clinicId?: string;
@@ -364,6 +375,26 @@ export const AppointmentDetail: React.FC<Props> = ({
               </div>
             </div>
           )}
+          {!isEditing && appointment.intakeResponses?.length ? (
+            <div className='mt-5 border-t border-gray-100 pt-4'>
+              <div className='mb-2 text-xs font-bold text-gray-500'>
+                予約フォーム回答
+              </div>
+              <dl className='space-y-2 rounded-md bg-gray-50 p-3 text-sm'>
+                {appointment.intakeResponses.map(response => (
+                  <div
+                    key={response.id}
+                    className='grid grid-cols-[7rem_1fr] gap-3'
+                  >
+                    <dt className='text-gray-500'>{response.label}</dt>
+                    <dd className='font-medium text-gray-800'>
+                      {formatIntakeValue(response.value)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
           {!isEditing && historyOpen && (
             <AppointmentHistoryPanel
               items={historyItems}

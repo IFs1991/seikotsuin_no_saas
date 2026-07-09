@@ -9,7 +9,6 @@ import { logger } from '@/lib/logger';
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
 import {
   createScopedAdminContext,
-  createAdminClient,
   type SupabaseServerClient,
 } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
@@ -21,7 +20,7 @@ import {
   mapReservationUpdateToRow,
   type ReservationPricingSnapshot,
 } from './schema';
-import { normalizeRole, STAFF_ROLES } from '@/lib/constants/roles';
+import { STAFF_ROLES } from '@/lib/constants/roles';
 import {
   enqueueReservationCreated,
   enqueueReservationChange,
@@ -38,28 +37,18 @@ import {
   type PermissionStaffCandidate,
   type StaffProfileSummary,
 } from '@/lib/reservations/staff-resource-candidates';
+import {
+  createReservationReadClient,
+  mapSelectedOptions,
+  mapReservationListViewRow,
+  RESERVATION_LIST_SELECT,
+} from '@/lib/reservations/read-model';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 
 const PATH = '/api/reservations';
-type ReservationListViewRow =
-  Database['public']['Views']['reservation_list_view']['Row'];
-type ReservationListApiRow = Pick<
-  ReservationListViewRow,
-  | 'id'
-  | 'customer_id'
-  | 'customer_name'
-  | 'menu_id'
-  | 'menu_name'
-  | 'staff_id'
-  | 'staff_name'
-  | 'start_time'
-  | 'end_time'
-  | 'status'
-  | 'channel'
-  | 'notes'
-  | 'selected_options'
-  | 'is_staff_requested'
-  | 'staff_nomination_fee'
->;
 type ReservationResourceGuardRow = Pick<
   Database['public']['Tables']['resources']['Row'],
   'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable' | 'nomination_fee'
@@ -85,34 +74,14 @@ type PostgresReservationError = {
   code?: string;
   message?: string;
 };
-const RESERVATION_LIST_SELECT =
-  'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, is_staff_requested, staff_nomination_fee';
 const RESERVATION_INSERT_RETURN_SELECT =
   'id, clinic_id, customer_id, menu_id, status, start_time, end_time, staff_id, updated_at';
+const RESERVATION_UPDATE_RETURN_SELECT =
+  'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, updated_at';
 const MANAGER_RESERVATION_CREATE_DENIED_MESSAGE =
   'マネージャーは予約の作成はできません。';
 const MANAGER_RESERVATION_UPDATE_DENIED_MESSAGE =
   'マネージャーは予約の変更はできません。';
-
-function isReservationOptionSelection(
-  value: unknown
-): value is ReservationOptionSelection {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const option = value as Record<string, unknown>;
-  return (
-    typeof option.optionId === 'string' &&
-    typeof option.name === 'string' &&
-    typeof option.priceDelta === 'number' &&
-    typeof option.durationDeltaMinutes === 'number'
-  );
-}
-
-function mapSelectedOptions(value: unknown): ReservationOptionSelection[] {
-  return Array.isArray(value) ? value.filter(isReservationOptionSelection) : [];
-}
 
 function normalizePriceAmount(value: number | null | undefined) {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -162,26 +131,6 @@ function buildReservationPricingSnapshot(params: {
       normalizePriceAmount(params.menuPrice) +
       getSelectedOptionsPriceDelta(params.selectedOptions) +
       staffNominationFee,
-  };
-}
-
-function mapReservationListViewRow(row: ReservationListApiRow) {
-  return {
-    id: row.id ?? '',
-    customerId: row.customer_id ?? '',
-    customerName: row.customer_name,
-    menuId: row.menu_id ?? '',
-    menuName: row.menu_name,
-    staffId: row.staff_id ?? '',
-    staffName: row.staff_name,
-    startTime: row.start_time ?? '',
-    endTime: row.end_time ?? '',
-    status: row.status,
-    channel: row.channel,
-    notes: row.notes ?? undefined,
-    selectedOptions: mapSelectedOptions(row.selected_options),
-    isStaffRequested: row.is_staff_requested ?? false,
-    staffNominationFee: row.staff_nomination_fee ?? 0,
   };
 }
 
@@ -267,17 +216,6 @@ function createScopedReservationClient(
   return scopedAdmin.client;
 }
 
-function createReservationReadClient(
-  permissions: Parameters<typeof createScopedAdminContext>[0],
-  clinicId: string
-) {
-  if (normalizeRole(permissions.role) === 'manager') {
-    return createAdminClient();
-  }
-
-  return createScopedReservationClient(permissions, clinicId);
-}
-
 function getReservationConstraintErrorMessage(
   error: PostgresReservationError
 ): string | null {
@@ -328,36 +266,6 @@ function getReservationConstraintErrorMessage(
   }
 
   return null;
-}
-
-async function hasReservationConflict(
-  supabase: SupabaseServerClient,
-  params: {
-    clinicId: string;
-    staffId: string;
-    startTime: string;
-    endTime: string;
-    excludeId?: string;
-  }
-): Promise<boolean> {
-  let query = supabase
-    .from('reservations')
-    .select('id', { count: 'exact', head: true })
-    .eq('clinic_id', params.clinicId)
-    .eq('staff_id', params.staffId)
-    .lt('start_time', params.endTime)
-    .gt('end_time', params.startTime)
-    .not('status', 'in', '("cancelled","no_show")');
-
-  if (params.excludeId) {
-    query = query.neq('id', params.excludeId);
-  }
-
-  const { count, error } = await query;
-  if (error) {
-    throw normalizeSupabaseError(error, PATH);
-  }
-  return (count ?? 0) > 0;
 }
 
 async function validateReservationCustomerAndMenuPricing(
@@ -742,6 +650,8 @@ export async function POST(request: NextRequest) {
       staffId: dto.staffId,
       startTime: dto.startTime,
       endTime: dto.endTime,
+      excludeDeleted: true,
+      path: PATH,
     });
     if (conflict) {
       return createErrorResponse('同時間帯に既存予約があります', 409);
@@ -768,6 +678,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return createErrorResponse('同時間帯に既存予約があります', 409);
+      }
       const constraintErrorMessage =
         getReservationConstraintErrorMessage(error);
       if (constraintErrorMessage) {
@@ -903,6 +816,8 @@ export async function PATCH(request: NextRequest) {
         startTime: nextStartTime,
         endTime: nextEndTime,
         excludeId: dto.id,
+        excludeDeleted: true,
+        path: PATH,
       });
       if (conflict) {
         return createErrorResponse('同時間帯に既存予約があります', 409);
@@ -954,10 +869,13 @@ export async function PATCH(request: NextRequest) {
       .update(updatePayload)
       .eq('id', dto.id)
       .eq('clinic_id', dto.clinic_id)
-      .select()
+      .select(RESERVATION_UPDATE_RETURN_SELECT)
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return createErrorResponse('同時間帯に既存予約があります', 409);
+      }
       throw normalizeSupabaseError(error, PATH);
     }
 
@@ -1006,7 +924,32 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    return createSuccessResponse(data);
+    const { data: viewRow, error: viewError } = await reservationMutationClient
+      .from('reservation_list_view')
+      .select(RESERVATION_LIST_SELECT)
+      .eq('clinic_id', dto.clinic_id)
+      .eq('id', data.id)
+      .maybeSingle();
+
+    if (viewError) {
+      throw normalizeSupabaseError(viewError, PATH);
+    }
+
+    if (!viewRow) {
+      logger.error(
+        'Updated reservation is not visible in reservation_list_view',
+        {
+          reservationId: data.id,
+          clinicId: dto.clinic_id,
+        }
+      );
+      return createErrorResponse(
+        '予約は更新されましたが、予約一覧への反映に失敗しました',
+        500
+      );
+    }
+
+    return createSuccessResponse(mapReservationListViewRow(viewRow));
   } catch (error) {
     return handleRouteError(error, PATH);
   }

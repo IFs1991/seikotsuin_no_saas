@@ -10,6 +10,7 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { normalizeRole } from '@/lib/constants/roles';
 
 type CustomerDetail = {
@@ -56,7 +57,10 @@ export default function PatientDetailPage() {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
   const isManager = normalizeRole(profile?.role) === 'manager';
 
   const [data, setData] = useState<CustomerDetail | null>(null);
@@ -121,7 +125,7 @@ export default function PatientDetailPage() {
     );
   }, [data]);
 
-  if (profileError && !profileLoading) {
+  if (profileError && !profileLoading && !activeClinicLoading) {
     return (
       <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
@@ -140,11 +144,11 @@ export default function PatientDetailPage() {
     );
   }
 
-  if (!profileLoading && isManager) {
+  if (!profileLoading && !activeClinicLoading && isManager) {
     return <ManagerAccessClosedMessage />;
   }
 
-  if (!clinicId && !profileLoading) {
+  if (!clinicId && !profileLoading && !activeClinicLoading) {
     return (
       <div className='p-6 bg-background min-h-screen'>
         <div className='max-w-[900px] mx-auto'>
@@ -161,7 +165,7 @@ export default function PatientDetailPage() {
     );
   }
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || activeClinicLoading) {
     return (
       <div className='p-6 bg-background min-h-screen flex items-center justify-center'>
         <div className='text-gray-500'>患者情報を読み込み中です...</div>

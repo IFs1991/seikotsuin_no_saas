@@ -15,6 +15,19 @@ import { clinicCreateSchema } from '../schema';
 
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+type OnboardingEligibility = {
+  profile: {
+    full_name: string | null;
+    clinic_id: string | null;
+  } | null;
+  staff: {
+    id: string;
+    clinic_id: string | null;
+  } | null;
+};
+
 function resolveStaffName(
   email: string,
   fullName: string | null | undefined,
@@ -37,6 +50,83 @@ function resolveStaffName(
   }
 
   return email.split('@')[0] || '管理者';
+}
+
+async function verifyInitialOnboardingEligibility(
+  adminClient: AdminClient,
+  userId: string
+): Promise<OnboardingEligibility | 'existing-tenant-state'> {
+  const { data: permission, error: permissionError } = await adminClient
+    .from('user_permissions')
+    .select('staff_id')
+    .eq('staff_id', userId)
+    .maybeSingle();
+
+  if (permissionError) {
+    throw permissionError;
+  }
+  if (permission) {
+    return 'existing-tenant-state';
+  }
+
+  const { data: profile, error: profileError } = await adminClient
+    .from('profiles')
+    .select('full_name, clinic_id')
+    .eq('user_id', userId)
+    .maybeSingle<{
+      full_name: string | null;
+      clinic_id: string | null;
+    }>();
+
+  if (profileError) {
+    throw profileError;
+  }
+  if (profile?.clinic_id) {
+    return 'existing-tenant-state';
+  }
+
+  const { data: staff, error: staffError } = await adminClient
+    .from('staff')
+    .select('id, clinic_id')
+    .eq('id', userId)
+    .maybeSingle<{
+      id: string;
+      clinic_id: string | null;
+    }>();
+
+  if (staffError) {
+    throw staffError;
+  }
+  if (staff?.clinic_id) {
+    return 'existing-tenant-state';
+  }
+
+  const { data: onboardingState, error: onboardingStateError } =
+    await adminClient
+      .from('onboarding_states')
+      .select('clinic_id, current_step, completed_at')
+      .eq('user_id', userId)
+      .maybeSingle<{
+        clinic_id: string | null;
+        current_step: string;
+        completed_at: string | null;
+      }>();
+
+  if (onboardingStateError) {
+    throw onboardingStateError;
+  }
+  if (
+    onboardingState?.clinic_id ||
+    onboardingState?.current_step === 'completed' ||
+    onboardingState?.completed_at
+  ) {
+    return 'existing-tenant-state';
+  }
+
+  return {
+    profile: profile ?? null,
+    staff: staff ?? null,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -78,40 +168,41 @@ export async function POST(request: NextRequest) {
     const { name, address, phone_number, opening_date, parent_id } =
       parsed.data;
 
+    if (parent_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'オンボーディングでは親クリニックを指定できません',
+        },
+        { status: 400 }
+      );
+    }
+
     const adminClient = createAdminClient();
     const staffEmail = user.email?.trim() || `${user.id}@placeholder.local`;
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      console.error('Onboarding profile lookup error:', profileError);
+    const eligibility = await verifyInitialOnboardingEligibility(
+      adminClient,
+      user.id
+    );
+    if (eligibility === 'existing-tenant-state') {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            '既存のテナント状態があるためオンボーディングでは作成できません',
+        },
+        { status: 403 }
+      );
     }
 
     const staffName = resolveStaffName(
       staffEmail,
-      profile?.full_name,
+      eligibility.profile?.full_name,
       user.user_metadata
     );
 
-    const { data: existingStaff, error: staffLookupError } = await adminClient
-      .from('staff')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (staffLookupError) {
-      console.error('Onboarding staff lookup error:', staffLookupError);
-      return NextResponse.json(
-        { success: false, error: 'クリニック作成の準備に失敗しました' },
-        { status: 500 }
-      );
-    }
-
-    if (!existingStaff) {
+    if (!eligibility.staff) {
       const { error: staffInsertError } = await adminClient
         .from('staff')
         .insert({
@@ -133,29 +224,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (parent_id) {
-      const { data: parentClinic, error: parentLookupError } = await adminClient
-        .from('clinics')
-        .select('id')
-        .eq('id', parent_id)
-        .maybeSingle();
-
-      if (parentLookupError) {
-        console.error('Parent clinic lookup error:', parentLookupError);
-        return NextResponse.json(
-          { success: false, error: 'クリニックの作成に失敗しました' },
-          { status: 500 }
-        );
-      }
-
-      if (!parentClinic) {
-        return NextResponse.json(
-          { success: false, error: '親クリニックが見つかりません' },
-          { status: 500 }
-        );
-      }
-    }
-
     const now = new Date().toISOString();
     const { data: clinic, error: clinicInsertError } = await adminClient
       .from('clinics')
@@ -164,7 +232,7 @@ export async function POST(request: NextRequest) {
         address: address ?? null,
         phone_number: phone_number ?? null,
         opening_date: opening_date ?? null,
-        parent_id: parent_id ?? null,
+        parent_id: null,
         is_active: true,
       })
       .select('id')

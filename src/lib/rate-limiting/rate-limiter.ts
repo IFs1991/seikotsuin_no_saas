@@ -40,6 +40,18 @@ export const RATE_LIMIT_CONFIG = {
     MAX_ATTEMPTS: 10,
     BLOCK_DURATION: 900, // 15分
   },
+
+  // Mobile UIUX BFF read制限
+  MOBILE_UIUX_READ: {
+    WINDOW: 60, // 1分
+    MAX_CALLS: 60,
+  },
+
+  // Mobile UIUX BFF write制限
+  MOBILE_UIUX_WRITE: {
+    WINDOW: 60, // 1分
+    MAX_CALLS: 10,
+  },
 } as const;
 
 // レート制限タイプ
@@ -47,7 +59,9 @@ export type RateLimitType =
   | 'login_attempts'
   | 'api_calls'
   | 'session_creation'
-  | 'mfa_attempts';
+  | 'mfa_attempts'
+  | 'mobile_uiux_read'
+  | 'mobile_uiux_write';
 
 // レート制限結果
 export interface RateLimitResult {
@@ -451,6 +465,10 @@ export class RateLimiter {
         return RATE_LIMIT_CONFIG.SESSION_CREATION;
       case 'mfa_attempts':
         return RATE_LIMIT_CONFIG.MFA_ATTEMPTS;
+      case 'mobile_uiux_read':
+        return RATE_LIMIT_CONFIG.MOBILE_UIUX_READ;
+      case 'mobile_uiux_write':
+        return RATE_LIMIT_CONFIG.MOBILE_UIUX_WRITE;
       default:
         return RATE_LIMIT_CONFIG.API_CALLS;
     }

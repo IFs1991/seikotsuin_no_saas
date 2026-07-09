@@ -28,6 +28,7 @@ const PROTECTED_ROUTE_PREFIXES = [
   '/onboarding',
   '/multi-store',
   '/master-data',
+  '/mobile-uiux',
 ] as const;
 
 /**
@@ -124,7 +125,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isPilotMode = process.env.NEXT_PUBLIC_PILOT_MODE === 'true';
 
-  const rateLimitMiddlewares = getPathRateLimit(pathname);
+  const rateLimitMiddlewares = getPathRateLimit(pathname, request.method);
   if (rateLimitMiddlewares.length > 0) {
     const rateLimitResponse = await applyRateLimits(
       request,
@@ -148,7 +149,9 @@ export async function middleware(request: NextRequest) {
         | 'partial-enforce'
         | 'full-enforce'
         | undefined) ?? 'report-only';
-    const rollout = CSPConfig.getGradualRolloutCSP(phaseEnv, nonce);
+    const rollout = pathname.startsWith('/mobile-uiux')
+      ? CSPConfig.getMobileUiuxCSP()
+      : CSPConfig.getGradualRolloutCSP(phaseEnv, nonce);
     if (rollout.csp) {
       response.headers.set('Content-Security-Policy', rollout.csp);
     }

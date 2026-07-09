@@ -6,6 +6,10 @@ import {
   MobileUiuxEntryPrompt,
   resetMobileUiuxEntryPromptCacheForTests,
 } from '@/components/mobile-uiux/mobile-entry-prompt';
+import {
+  MOBILE_UIUX_DISPLAY_MODE_COOKIE,
+  MOBILE_UIUX_DISMISSED_STORAGE_KEY,
+} from '@/lib/mobile-uiux/display-mode';
 
 let pathnameMock = '/dashboard';
 
@@ -65,8 +69,11 @@ function mockContextResponse(role: string | null, status = 200): void {
     new Response(
       JSON.stringify({
         success: true,
-        role: { canonical: role },
-        displayMode: 'system',
+        data: {
+          role: { canonical: role },
+          displayMode: 'system',
+        },
+        generatedAt: '2026-07-09T00:00:00.000Z',
       }),
       {
         status: 200,
@@ -87,7 +94,7 @@ describe('MobileUiuxEntryPrompt', () => {
       configurable: true,
     });
     localStorage.clear();
-    document.cookie = 'displayMode=; path=/; max-age=0';
+    document.cookie = `${MOBILE_UIUX_DISPLAY_MODE_COOKIE}=; path=/; max-age=0`;
     setViewportWidth(390);
   });
 
@@ -115,7 +122,9 @@ describe('MobileUiuxEntryPrompt', () => {
       screen.getByRole('button', { name: 'スマホ版で表示' })
     );
 
-    expect(document.cookie).toContain('displayMode=mobile');
+    expect(document.cookie).toContain(
+      `${MOBILE_UIUX_DISPLAY_MODE_COOKIE}=mobile`
+    );
     expect(navigate).toHaveBeenCalledWith(path);
   });
 
@@ -142,7 +151,7 @@ describe('MobileUiuxEntryPrompt', () => {
   });
 
   it('does not show auto prompt when dismissed flag is already set', async () => {
-    localStorage.setItem('mobile-uiux-entry-prompt-dismissed', 'true');
+    localStorage.setItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY, 'true');
     mockContextResponse('admin');
 
     render(<MobileUiuxEntryPrompt />);
@@ -154,7 +163,7 @@ describe('MobileUiuxEntryPrompt', () => {
   });
 
   it('keeps menu item visible after dismissed when context succeeds', async () => {
-    localStorage.setItem('mobile-uiux-entry-prompt-dismissed', 'true');
+    localStorage.setItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY, 'true');
     mockContextResponse('staff');
 
     render(<MobileUiuxEntryPrompt variant='menu-item' />);
@@ -187,8 +196,10 @@ describe('MobileUiuxEntryPrompt', () => {
       screen.getByRole('button', { name: 'PC版のまま使う' })
     );
 
-    expect(document.cookie).toContain('displayMode=desktop');
-    expect(localStorage.getItem('mobile-uiux-entry-prompt-dismissed')).toBe(
+    expect(document.cookie).toContain(
+      `${MOBILE_UIUX_DISPLAY_MODE_COOKIE}=desktop`
+    );
+    expect(localStorage.getItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY)).toBe(
       'true'
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -202,7 +213,7 @@ describe('MobileUiuxEntryPrompt', () => {
     await screen.findByRole('dialog', { name: 'スマホ版で表示しますか？' });
     await userEvent.click(screen.getByRole('button', { name: '閉じる' }));
 
-    expect(localStorage.getItem('mobile-uiux-entry-prompt-dismissed')).toBe(
+    expect(localStorage.getItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY)).toBe(
       'true'
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

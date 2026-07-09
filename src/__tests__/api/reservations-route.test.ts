@@ -58,6 +58,28 @@ const buildUsableResourceRow = (id: string, nominationFee = 0) => ({
   nomination_fee: nominationFee,
 });
 
+const buildReservationListViewRow = (
+  overrides: Record<string, unknown> = {}
+) => ({
+  id: validId,
+  customer_id: validCustomerId,
+  customer_name: '山田 太郎',
+  menu_id: '123e4567-e89b-12d3-a456-426614174003',
+  menu_name: '整体',
+  staff_id: '123e4567-e89b-12d3-a456-426614174004',
+  staff_name: '田中先生',
+  start_time: '2026-04-15T10:00:00.000Z',
+  end_time: '2026-04-15T10:30:00.000Z',
+  status: 'confirmed',
+  channel: 'phone',
+  notes: null,
+  selected_options: [],
+  intake_responses: [],
+  is_staff_requested: false,
+  staff_nomination_fee: 0,
+  ...overrides,
+});
+
 describe('GET /api/reservations', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -339,6 +361,193 @@ describe('POST /api/reservations', () => {
     );
     expect(createScopedAdminContextMock).not.toHaveBeenCalled();
     expect(enqueueReservationCreatedMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the requested reservation slot conflicts', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+    const adminResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildUsableResourceRow(selectedStaffId),
+        error: null,
+      }),
+    };
+    const adminCustomerSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: validCustomerId },
+        error: null,
+      }),
+    };
+    const adminMenuSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: menuId, price: 5000 },
+        error: null,
+      }),
+    };
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 1, error: null }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn(),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') {
+          return { select: jest.fn().mockReturnValue(adminResourceSelect) };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn().mockReturnValue(adminCustomerSelect) };
+        }
+        if (table === 'menus') {
+          return { select: jest.fn().mockReturnValue(adminMenuSelect) };
+        }
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope: jest.fn(),
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId,
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: {
+        from: jest.fn(),
+      },
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/reservations', { method: 'POST' })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('同時間帯に既存予約があります');
+    expect(reservationsTable.insert).not.toHaveBeenCalled();
+    expect(conflictQuery.not).toHaveBeenCalledWith(
+      'status',
+      'in',
+      '("cancelled","no_show")'
+    );
+    expect(conflictQuery.eq).toHaveBeenCalledWith('is_deleted', false);
+  });
+
+  it('returns 409 when reservation insert hits the DB exclusion constraint', async () => {
+    const selectedStaffId = '123e4567-e89b-12d3-a456-426614174004';
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+    const adminResourceSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildUsableResourceRow(selectedStaffId),
+        error: null,
+      }),
+    };
+    const adminCustomerSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: validCustomerId },
+        error: null,
+      }),
+    };
+    const adminMenuSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: { id: menuId, price: 5000 },
+        error: null,
+      }),
+    };
+    const conflictQuery = {
+      eq: jest.fn().mockReturnThis(),
+      lt: jest.fn().mockReturnThis(),
+      gt: jest.fn().mockReturnThis(),
+      not: jest.fn().mockResolvedValue({ count: 0, error: null }),
+    };
+    const insertSelect = {
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '23P01',
+          message:
+            'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+        },
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(conflictQuery),
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(insertSelect),
+      }),
+    };
+    const adminClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'resources') {
+          return { select: jest.fn().mockReturnValue(adminResourceSelect) };
+        }
+        if (table === 'customers') {
+          return { select: jest.fn().mockReturnValue(adminCustomerSelect) };
+        }
+        if (table === 'menus') {
+          return { select: jest.fn().mockReturnValue(adminMenuSelect) };
+        }
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      assertClinicInScope: jest.fn(),
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        customerId: validCustomerId,
+        menuId,
+        staffId: selectedStaffId,
+        startTime: '2026-04-15T10:00:00.000Z',
+        endTime: '2026-04-15T10:30:00.000Z',
+        channel: 'phone',
+      },
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { POST } = await import('@/app/api/reservations/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/reservations', { method: 'POST' })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('同時間帯に既存予約があります');
   });
 
   it('uses scoped admin only for staff resource synchronization', async () => {
@@ -1265,9 +1474,24 @@ describe('PATCH /api/reservations', () => {
       select: jest.fn().mockReturnValue(existingSelect),
       update: jest.fn().mockReturnValue(updateSelect),
     };
+    const viewSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildReservationListViewRow({
+          customer_id: 'cust-001',
+          menu_id: 'menu-001',
+          staff_id: 'staff-001',
+          status: 'cancelled',
+        }),
+        error: null,
+      }),
+    };
     const scopedClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
+        if (table === 'reservation_list_view') {
+          return { select: jest.fn().mockReturnValue(viewSelect) };
+        }
         return {};
       }),
     };
@@ -1304,6 +1528,9 @@ describe('PATCH /api/reservations', () => {
     const response = await PATCH({} as unknown as NextRequest);
 
     expect(response.status).toBe(200);
+    expect(scopedClient.from).toHaveBeenCalledWith('reservation_list_view');
+    expect(viewSelect.eq).toHaveBeenCalledWith('clinic_id', validClinicId);
+    expect(viewSelect.eq).toHaveBeenCalledWith('id', validId);
     expect(processClinicScopedBodyMock).toHaveBeenCalledTimes(1);
     expect(processClinicScopedBodyMock).toHaveBeenCalledWith(
       expect.anything(),
@@ -1314,6 +1541,205 @@ describe('PATCH /api/reservations', () => {
         deniedRoleMessage: 'マネージャーは予約の変更はできません。',
       }
     );
+  });
+
+  it('returns the allowlisted reservation list shape after update', async () => {
+    const menuId = '123e4567-e89b-12d3-a456-426614174003';
+    const staffId = '123e4567-e89b-12d3-a456-426614174004';
+    const existingRow = {
+      id: validId,
+      clinic_id: validClinicId,
+      customer_id: validCustomerId,
+      menu_id: menuId,
+      status: 'confirmed',
+      staff_id: staffId,
+      start_time: '2026-04-15T10:00:00.000Z',
+      end_time: '2026-04-15T10:30:00.000Z',
+      notes: null,
+      selected_options: [],
+      is_staff_requested: false,
+    };
+    const updatedRow = {
+      ...existingRow,
+      status: 'cancelled',
+      notes: 'updated note',
+      updated_at: '2026-04-14T09:00:00.000Z',
+      booker_phone: '090-0000-0000',
+      payment_status: 'paid',
+      reminder_sent_at: '2026-04-14T08:00:00.000Z',
+      created_by: 'creator-user',
+      deleted_by: null,
+      cancellation_reason: 'internal reason',
+    };
+
+    const existingSelect = {
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: existingRow, error: null }),
+    };
+    const updateSelect = {
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
+    };
+    const viewSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildReservationListViewRow({
+          customer_id: validCustomerId,
+          menu_id: menuId,
+          staff_id: staffId,
+          status: 'cancelled',
+          notes: 'updated note',
+        }),
+        error: null,
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(existingSelect),
+      update: jest.fn().mockReturnValue(updateSelect),
+    };
+    const reservationListViewTable = {
+      select: jest.fn().mockReturnValue(viewSelect),
+    };
+    const scopedClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'reservations') return reservationsTable;
+        if (table === 'reservation_list_view') return reservationListViewTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedClient,
+      assertClinicInScope: jest.fn(),
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        id: validId,
+        status: 'cancelled',
+      },
+      auth: { id: 'user-1', email: 'test@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+    enqueueReservationChangeMock.mockResolvedValueOnce({ id: 'outbox-1' });
+
+    const { PATCH } = await import('@/app/api/reservations/route');
+    const response = await PATCH(
+      new NextRequest('http://localhost/api/reservations', { method: 'PATCH' })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(updateSelect.select).toHaveBeenCalledWith(
+      'id, clinic_id, customer_id, menu_id, status, staff_id, start_time, end_time, notes, updated_at'
+    );
+    expect(reservationListViewTable.select).toHaveBeenCalledWith(
+      'id, customer_id, customer_name, menu_id, menu_name, staff_id, staff_name, start_time, end_time, status, channel, notes, selected_options, intake_responses, is_staff_requested, staff_nomination_fee'
+    );
+    expect(json.data).toMatchObject({
+      id: validId,
+      customerId: validCustomerId,
+      customerName: '山田 太郎',
+      menuId,
+      menuName: '整体',
+      staffId,
+      staffName: '田中先生',
+      status: 'cancelled',
+      notes: 'updated note',
+    });
+    expect(json.data).not.toHaveProperty('booker_phone');
+    expect(json.data).not.toHaveProperty('payment_status');
+    expect(json.data).not.toHaveProperty('reminder_sent_at');
+    expect(json.data).not.toHaveProperty('created_by');
+    expect(json.data).not.toHaveProperty('deleted_by');
+    expect(json.data).not.toHaveProperty('cancellation_reason');
+    expect(enqueueReservationChangeMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: validId, status: 'confirmed' }),
+      expect.objectContaining({
+        id: validId,
+        status: 'cancelled',
+        notes: 'updated note',
+      }),
+      '2026-04-14T09:00:00.000Z'
+    );
+  });
+
+  it('returns 409 when reservation update hits the DB exclusion constraint', async () => {
+    const existingRow = {
+      id: validId,
+      clinic_id: validClinicId,
+      customer_id: 'cust-001',
+      menu_id: 'menu-001',
+      status: 'cancelled',
+      staff_id: 'staff-001',
+      start_time: '2026-04-15T10:00:00Z',
+      end_time: '2026-04-15T11:00:00Z',
+      notes: null,
+      selected_options: [],
+      is_staff_requested: false,
+    };
+    const existingSelect = {
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: existingRow, error: null }),
+    };
+    const updateSelect = {
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: null,
+        error: {
+          code: '23P01',
+          message:
+            'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+        },
+      }),
+    };
+    const reservationsTable = {
+      select: jest.fn().mockReturnValue(existingSelect),
+      update: jest.fn().mockReturnValue(updateSelect),
+    };
+    const scopedClient = {
+      from: jest.fn().mockImplementation((table: string) => {
+        if (table === 'reservations') return reservationsTable;
+        return {};
+      }),
+    };
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedClient,
+      assertClinicInScope: jest.fn(),
+    });
+    processClinicScopedBodyMock.mockResolvedValueOnce({
+      success: true,
+      dto: {
+        clinic_id: validClinicId,
+        id: validId,
+        status: 'confirmed',
+      },
+      auth: { id: 'user-1', email: 'test@example.com', role: 'staff' },
+      permissions: {
+        role: 'staff',
+        clinic_id: validClinicId,
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { PATCH } = await import('@/app/api/reservations/route');
+    const response = await PATCH(
+      new NextRequest('http://localhost/api/reservations', { method: 'PATCH' })
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(json.error).toBe('同時間帯に既存予約があります');
+    expect(enqueueReservationChangeMock).not.toHaveBeenCalled();
   });
 
   it('指名状態変更時に server-side の指名料で price を再計算する', async () => {
@@ -1374,6 +1800,19 @@ describe('PATCH /api/reservations', () => {
         error: null,
       }),
     };
+    const viewSelect = {
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: buildReservationListViewRow({
+          customer_id: validCustomerId,
+          menu_id: menuId,
+          staff_id: selectedStaffId,
+          is_staff_requested: true,
+          staff_nomination_fee: 1500,
+        }),
+        error: null,
+      }),
+    };
     const scopedClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
@@ -1385,6 +1824,9 @@ describe('PATCH /api/reservations', () => {
         }
         if (table === 'resources') {
           return { select: jest.fn().mockReturnValue(resourceSelect) };
+        }
+        if (table === 'reservation_list_view') {
+          return { select: jest.fn().mockReturnValue(viewSelect) };
         }
         return {};
       }),
@@ -1418,6 +1860,7 @@ describe('PATCH /api/reservations', () => {
     const response = await PATCH(
       new NextRequest('http://localhost/api/reservations')
     );
+    const json = await response.json();
 
     expect(response.status).toBe(200);
     expect(reservationsTable.update).toHaveBeenCalledWith(
@@ -1427,5 +1870,16 @@ describe('PATCH /api/reservations', () => {
         price: 6500,
       })
     );
+    expect(json.data).toMatchObject({
+      customerId: validCustomerId,
+      menuId,
+      staffId: selectedStaffId,
+      isStaffRequested: true,
+      staffNominationFee: 1500,
+    });
+    expect(json.data).not.toHaveProperty('booker_phone');
+    expect(json.data).not.toHaveProperty('payment_status');
+    expect(json.data).not.toHaveProperty('created_by');
+    expect(json.data).not.toHaveProperty('deleted_by');
   });
 });

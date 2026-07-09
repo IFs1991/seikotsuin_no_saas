@@ -8,6 +8,8 @@
  */
 import { processApiRequest } from '@/lib/api-helpers';
 import { canAccessClinicScope, createScopedAdminContext } from '@/lib/supabase';
+import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import type { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
@@ -27,6 +29,14 @@ jest.mock('@/lib/supabase', () => {
   };
 });
 
+jest.mock('@/lib/supabase/guards', () => {
+  const actual = jest.requireActual('@/lib/supabase/guards');
+  return {
+    ...actual,
+    ensureClinicAccess: jest.fn(),
+  };
+});
+
 jest.mock('@/lib/postgrest-sanitizer', () => ({
   buildSafeSearchFilter: jest.fn().mockReturnValue(null),
 }));
@@ -34,9 +44,11 @@ jest.mock('@/lib/postgrest-sanitizer', () => ({
 const processApiRequestMock = processApiRequest as jest.Mock;
 const canAccessClinicScopeMock = canAccessClinicScope as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
+const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
 
 const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
 const validId = '123e4567-e89b-12d3-a456-426614174001';
+const managerDeniedMessage = 'マネージャーは患者情報APIへアクセスできません。';
 
 describe('GET /api/customers', () => {
   beforeEach(() => {
@@ -101,6 +113,8 @@ describe('GET /api/customers', () => {
     expect(processApiRequestMock).toHaveBeenCalledWith(request, {
       clinicId: validClinicId,
       requireClinicMatch: true,
+      deniedRoles: ['manager'],
+      deniedRoleMessage: managerDeniedMessage,
     });
     expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
     expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
@@ -113,6 +127,61 @@ describe('GET /api/customers', () => {
         phone: '090-0000-0000',
       },
     ]);
+  });
+
+  it('returns 403 for manager customer list access', async () => {
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: Response.json(
+        { success: false, error: managerDeniedMessage },
+        { status: 403 }
+      ),
+    });
+
+    const { GET } = await import('@/app/api/customers/route');
+    const request = {
+      nextUrl: {
+        searchParams: new URLSearchParams({ clinic_id: validClinicId }),
+      },
+      url: `http://localhost/api/customers?clinic_id=${validClinicId}`,
+      method: 'GET',
+    } as unknown as NextRequest;
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe(managerDeniedMessage);
+    expect(processApiRequestMock).toHaveBeenCalledWith(request, {
+      clinicId: validClinicId,
+      requireClinicMatch: true,
+      deniedRoles: ['manager'],
+      deniedRoleMessage: managerDeniedMessage,
+    });
+  });
+
+  it('returns 403 for manager customer detail access', async () => {
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: Response.json(
+        { success: false, error: managerDeniedMessage },
+        { status: 403 }
+      ),
+    });
+
+    const { GET } = await import('@/app/api/customers/route');
+    const request = {
+      nextUrl: {
+        searchParams: new URLSearchParams({
+          clinic_id: validClinicId,
+          id: validId,
+        }),
+      },
+      url: `http://localhost/api/customers?clinic_id=${validClinicId}&id=${validId}`,
+      method: 'GET',
+    } as unknown as NextRequest;
+    const response = await GET(request);
+
+    expect(response.status).toBe(403);
   });
 });
 
@@ -149,6 +218,11 @@ describe('POST /api/customers', () => {
       supabase: userScopedSupabase,
     });
     canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValueOnce({
+      user: { id: 'user-1', email: 'test@example.com' },
+      permissions,
+      supabase: userScopedSupabase,
+    });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
       assertClinicInScope,
@@ -160,15 +234,45 @@ describe('POST /api/customers', () => {
     expect(response.status).toBe(201);
     // processApiRequest is now called only once (not twice)
     expect(processApiRequestMock).toHaveBeenCalledTimes(1);
-    // Clinic scope is verified via canAccessClinicScope
-    expect(canAccessClinicScopeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ clinic_id: validClinicId }),
-      validClinicId
+    expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/unknown',
+      validClinicId,
+      {
+        requireClinicMatch: true,
+        allowedRoles: undefined,
+      }
     );
     expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
     expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
     expect(from).toHaveBeenCalledWith('customers');
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for manager create access', async () => {
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: Response.json(
+        { success: false, error: managerDeniedMessage },
+        { status: 403 }
+      ),
+    });
+
+    const { POST } = await import('@/app/api/customers/route');
+    const response = await POST({} as unknown as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe(managerDeniedMessage);
+    expect(processApiRequestMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requireBody: true,
+        deniedRoles: ['manager'],
+        deniedRoleMessage: managerDeniedMessage,
+      })
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
   });
 
   it('returns auth error when processApiRequest fails on first call', async () => {
@@ -212,6 +316,13 @@ describe('POST /api/customers', () => {
       supabase: {},
     });
     canAccessClinicScopeMock.mockReturnValue(false);
+    ensureClinicAccessMock.mockRejectedValueOnce(
+      new AppError(
+        ERROR_CODES.AUTHORIZATION_ERROR,
+        'このクリニックへのアクセス権がありません',
+        403
+      )
+    );
 
     const { POST } = await import('@/app/api/customers/route');
     const response = await POST({} as unknown as NextRequest);
@@ -250,6 +361,11 @@ describe('POST /api/customers', () => {
       supabase: { from: jest.fn() },
     });
     canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValueOnce({
+      user: { id: 'user-1', email: 'a@b.com' },
+      permissions,
+      supabase: { from: jest.fn() },
+    });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
       assertClinicInScope,
@@ -301,6 +417,11 @@ describe('PATCH /api/customers', () => {
       supabase: userScopedSupabase,
     });
     canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValueOnce({
+      user: { id: 'user-1', email: 'test@example.com' },
+      permissions,
+      supabase: userScopedSupabase,
+    });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
       assertClinicInScope,
@@ -310,15 +431,45 @@ describe('PATCH /api/customers', () => {
     const response = await PATCH({} as unknown as NextRequest);
 
     expect(response.status).toBe(200);
-    // Clinic scope is checked via canAccessClinicScope (not second processApiRequest)
-    expect(canAccessClinicScopeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ clinic_id: validClinicId }),
-      validClinicId
+    expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/unknown',
+      validClinicId,
+      {
+        requireClinicMatch: true,
+        allowedRoles: undefined,
+      }
     );
     expect(createScopedAdminContextMock).toHaveBeenCalledWith(permissions);
     expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
     expect(from).toHaveBeenCalledWith('customers');
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for manager update access', async () => {
+    processApiRequestMock.mockResolvedValueOnce({
+      success: false,
+      error: Response.json(
+        { success: false, error: managerDeniedMessage },
+        { status: 403 }
+      ),
+    });
+
+    const { PATCH } = await import('@/app/api/customers/route');
+    const response = await PATCH({} as unknown as NextRequest);
+    const json = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(json.error).toBe(managerDeniedMessage);
+    expect(processApiRequestMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requireBody: true,
+        deniedRoles: ['manager'],
+        deniedRoleMessage: managerDeniedMessage,
+      })
+    );
+    expect(createScopedAdminContextMock).not.toHaveBeenCalled();
   });
 
   it('returns 403 when clinic scope check rejects', async () => {
@@ -334,6 +485,13 @@ describe('PATCH /api/customers', () => {
       supabase: {},
     });
     canAccessClinicScopeMock.mockReturnValue(false);
+    ensureClinicAccessMock.mockRejectedValueOnce(
+      new AppError(
+        ERROR_CODES.AUTHORIZATION_ERROR,
+        'このクリニックへのアクセス権がありません',
+        403
+      )
+    );
 
     const { PATCH } = await import('@/app/api/customers/route');
     const response = await PATCH({} as unknown as NextRequest);

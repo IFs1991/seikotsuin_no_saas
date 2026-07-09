@@ -2,23 +2,29 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { resolveMobileUiuxEntryPath } from '@/lib/mobile-uiux/navigation';
+import { Smartphone, X } from 'lucide-react';
 
-type DisplayMode = 'desktop' | 'mobile' | 'system';
+import { Button } from '@/components/ui/button';
+import {
+  buildMobileUiuxDisplayModeCookie,
+  MOBILE_UIUX_DISMISSED_STORAGE_KEY,
+} from '@/lib/mobile-uiux/display-mode';
+import { resolveMobileUiuxEntryPath } from '@/lib/mobile-uiux/navigation';
+import { cn } from '@/lib/utils';
+
+type MobileUiuxDisplayMode = 'desktop' | 'mobile' | 'system';
 
 type MobileUiuxAvailability = {
   ready: boolean;
   entryPath: string | null;
-  displayMode?: DisplayMode;
+  displayMode?: MobileUiuxDisplayMode;
 };
 
-type MobileUiuxEntryPromptVariant = 'auto' | 'menu-item';
+type MobileUiuxEntryPromptVariant = 'banner' | 'auto' | 'menu-item';
 
 type MobileUiuxEntryPromptProps = {
   variant?: MobileUiuxEntryPromptVariant;
+  role?: string | null;
   className?: string;
   onNavigate?: () => void;
   navigate?: (path: string) => void;
@@ -26,15 +32,15 @@ type MobileUiuxEntryPromptProps = {
 
 type MobileUiuxContextPayload = {
   success: true;
-  role: {
-    canonical: string | null;
+  data: {
+    role: {
+      canonical: string | null;
+    };
+    displayMode?: MobileUiuxDisplayMode;
   };
-  displayMode?: DisplayMode;
 };
 
-const DISMISSED_STORAGE_KEY = 'mobile-uiux-entry-prompt-dismissed';
 const MOBILE_VIEWPORT_MAX_WIDTH = 767;
-const DISPLAY_MODE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 const UNAVAILABLE_AVAILABILITY: MobileUiuxAvailability = {
   ready: true,
   entryPath: null,
@@ -43,7 +49,7 @@ const UNAVAILABLE_AVAILABILITY: MobileUiuxAvailability = {
 let cachedAvailability: MobileUiuxAvailability | null = null;
 let availabilityRequest: Promise<MobileUiuxAvailability> | null = null;
 
-function isDisplayMode(value: unknown): value is DisplayMode {
+function isDisplayMode(value: unknown): value is MobileUiuxDisplayMode {
   return value === 'desktop' || value === 'mobile' || value === 'system';
 }
 
@@ -56,18 +62,22 @@ function isMobileUiuxContextPayload(
 
   const candidate = value as {
     success?: unknown;
-    role?: { canonical?: unknown };
-    displayMode?: unknown;
+    data?: {
+      role?: { canonical?: unknown };
+      displayMode?: unknown;
+    };
   };
 
   return (
     candidate.success === true &&
-    typeof candidate.role === 'object' &&
-    candidate.role !== null &&
-    (typeof candidate.role.canonical === 'string' ||
-      candidate.role.canonical === null) &&
-    (candidate.displayMode === undefined ||
-      isDisplayMode(candidate.displayMode))
+    typeof candidate.data === 'object' &&
+    candidate.data !== null &&
+    typeof candidate.data.role === 'object' &&
+    candidate.data.role !== null &&
+    (typeof candidate.data.role.canonical === 'string' ||
+      candidate.data.role.canonical === null) &&
+    (candidate.data.displayMode === undefined ||
+      isDisplayMode(candidate.data.displayMode))
   );
 }
 
@@ -77,7 +87,7 @@ function readDismissedFlag(): boolean {
   }
 
   try {
-    return localStorage.getItem(DISMISSED_STORAGE_KEY) === 'true';
+    return localStorage.getItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY) === 'true';
   } catch {
     return false;
   }
@@ -85,29 +95,26 @@ function readDismissedFlag(): boolean {
 
 function writeDismissedFlag(): void {
   try {
-    localStorage.setItem(DISMISSED_STORAGE_KEY, 'true');
+    localStorage.setItem(MOBILE_UIUX_DISMISSED_STORAGE_KEY, 'true');
   } catch {
-    // localStorage can be unavailable in restricted browser contexts.
+    return;
   }
 }
 
 function writeDisplayModeCookie(displayMode: 'desktop' | 'mobile'): void {
-  document.cookie = [
-    `displayMode=${displayMode}`,
-    'path=/',
-    `max-age=${DISPLAY_MODE_COOKIE_MAX_AGE_SECONDS}`,
-    'SameSite=Lax',
-  ].join('; ');
+  document.cookie = buildMobileUiuxDisplayModeCookie(displayMode);
 }
 
 function defaultNavigate(path: string): void {
   window.location.assign(path);
 }
 
-async function requestMobileUiuxAvailability(): Promise<MobileUiuxAvailability> {
+async function requestMobileUiuxAvailability(
+  fallbackRole: string | null | undefined
+): Promise<MobileUiuxAvailability> {
   const response = await fetch('/api/mobile-uiux/context', {
     cache: 'no-store',
-    credentials: 'include',
+    credentials: 'same-origin',
     headers: {
       Accept: 'application/json',
     },
@@ -122,20 +129,24 @@ async function requestMobileUiuxAvailability(): Promise<MobileUiuxAvailability> 
     return UNAVAILABLE_AVAILABILITY;
   }
 
+  const canonicalRole = payload.data.role.canonical ?? fallbackRole ?? null;
+
   return {
     ready: true,
-    entryPath: resolveMobileUiuxEntryPath(payload.role.canonical),
-    displayMode: payload.displayMode,
+    entryPath: resolveMobileUiuxEntryPath(canonicalRole),
+    displayMode: payload.data.displayMode,
   };
 }
 
-function loadMobileUiuxAvailability(): Promise<MobileUiuxAvailability> {
+function loadMobileUiuxAvailability(
+  fallbackRole: string | null | undefined
+): Promise<MobileUiuxAvailability> {
   if (cachedAvailability) {
     return Promise.resolve(cachedAvailability);
   }
 
   if (!availabilityRequest) {
-    availabilityRequest = requestMobileUiuxAvailability()
+    availabilityRequest = requestMobileUiuxAvailability(fallbackRole)
       .then(
         availability => {
           cachedAvailability = availability;
@@ -177,7 +188,10 @@ function useIsMobileViewport(enabled: boolean): boolean {
   return isMobileViewport;
 }
 
-function useMobileUiuxAvailability(enabled: boolean): MobileUiuxAvailability {
+function useMobileUiuxAvailability(
+  enabled: boolean,
+  fallbackRole: string | null | undefined
+): MobileUiuxAvailability {
   const [availability, setAvailability] =
     React.useState<MobileUiuxAvailability>(() => {
       if (!enabled) {
@@ -200,7 +214,7 @@ function useMobileUiuxAvailability(enabled: boolean): MobileUiuxAvailability {
 
     let active = true;
     setAvailability({ ready: false, entryPath: null });
-    void loadMobileUiuxAvailability().then(nextAvailability => {
+    void loadMobileUiuxAvailability(fallbackRole).then(nextAvailability => {
       if (active) {
         setAvailability(nextAvailability);
       }
@@ -209,36 +223,40 @@ function useMobileUiuxAvailability(enabled: boolean): MobileUiuxAvailability {
     return () => {
       active = false;
     };
-  }, [enabled]);
+  }, [enabled, fallbackRole]);
 
   return availability;
 }
 
 export function MobileUiuxEntryPrompt({
-  variant = 'auto',
+  variant = 'banner',
+  role = null,
   className,
   onNavigate,
   navigate = defaultNavigate,
 }: MobileUiuxEntryPromptProps) {
+  const normalizedVariant = variant === 'auto' ? 'banner' : variant;
   const pathname = usePathname();
-  const isMobileViewport = useIsMobileViewport(variant === 'auto');
+  const isMobileUiuxPath = pathname?.startsWith('/mobile-uiux') ?? false;
+  const isMobileViewport = useIsMobileViewport(normalizedVariant === 'banner');
+  const availability = useMobileUiuxAvailability(
+    !isMobileUiuxPath &&
+      (normalizedVariant === 'menu-item' || isMobileViewport),
+    role
+  );
   const [dismissed, setDismissed] = React.useState(false);
   const [open, setOpen] = React.useState(false);
-  const isMobileUiuxPath = pathname?.startsWith('/mobile-uiux') ?? false;
-  const availability = useMobileUiuxAvailability(
-    !isMobileUiuxPath && (variant === 'menu-item' || isMobileViewport)
-  );
   const entryPath = availability.entryPath;
 
   React.useEffect(() => {
-    if (variant === 'auto') {
+    if (normalizedVariant === 'banner') {
       setDismissed(readDismissedFlag());
     }
-  }, [variant]);
+  }, [normalizedVariant]);
 
   React.useEffect(() => {
     if (
-      variant !== 'auto' ||
+      normalizedVariant !== 'banner' ||
       !availability.ready ||
       !entryPath ||
       !isMobileViewport ||
@@ -256,7 +274,7 @@ export function MobileUiuxEntryPrompt({
     entryPath,
     isMobileUiuxPath,
     isMobileViewport,
-    variant,
+    normalizedVariant,
   ]);
 
   const handleOpenMobile = React.useCallback(() => {
@@ -282,7 +300,7 @@ export function MobileUiuxEntryPrompt({
     setOpen(false);
   }, []);
 
-  if (variant === 'menu-item') {
+  if (normalizedVariant === 'menu-item') {
     if (!availability.ready || !entryPath || isMobileUiuxPath) {
       return null;
     }
@@ -290,7 +308,10 @@ export function MobileUiuxEntryPrompt({
     return (
       <button
         type='button'
-        className={cn(className)}
+        className={cn(
+          'block w-full px-4 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50 focus:outline-none',
+          className
+        )}
         onClick={handleOpenMobile}
       >
         スマホ版で開く
@@ -303,56 +324,56 @@ export function MobileUiuxEntryPrompt({
   }
 
   return (
-    <div className='fixed inset-x-0 bottom-0 z-[70] md:hidden'>
+    <div className='fixed inset-x-3 bottom-4 z-50 md:hidden'>
       <div
-        className='mx-auto max-w-md rounded-t-2xl border border-gray-200 bg-white p-5 text-gray-900 shadow-2xl'
+        className='rounded-md border border-border bg-card p-3 text-foreground shadow-lg'
         role='dialog'
         aria-modal='true'
         aria-labelledby='mobile-uiux-entry-title'
         aria-describedby='mobile-uiux-entry-description'
       >
-        <div className='mb-3 flex items-start gap-3'>
-          <div className='min-w-0 flex-1'>
-            <h2
-              id='mobile-uiux-entry-title'
-              className='text-base font-semibold leading-6'
-            >
-              スマホ版で表示しますか？
-            </h2>
-            <p
-              id='mobile-uiux-entry-description'
-              className='mt-2 text-sm leading-6 text-gray-600'
-            >
-              この端末ではスマホ版の画面を利用できます。
-              予約・日報・設定をスマホ幅に最適化した画面で確認できます。
-            </p>
+        <div className='flex items-start gap-3'>
+          <span className='mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+            <Smartphone className='h-5 w-5' aria-hidden='true' />
+          </span>
+          <div className='min-w-0 flex-1 space-y-2'>
+            <div className='space-y-1'>
+              <h2
+                id='mobile-uiux-entry-title'
+                className='text-sm font-semibold'
+              >
+                スマホ版で表示しますか？
+              </h2>
+              <p
+                id='mobile-uiux-entry-description'
+                className='text-xs leading-5 text-muted-foreground'
+              >
+                この端末ではスマホ版の画面を利用できます。
+                予約・日報・設定をスマホ幅に最適化した画面で確認できます。
+              </p>
+            </div>
+            <div className='flex flex-wrap gap-2'>
+              <Button type='button' size='sm' onClick={handleOpenMobile}>
+                スマホ版で表示
+              </Button>
+              <Button
+                type='button'
+                size='sm'
+                variant='outline'
+                onClick={handleStayDesktop}
+              >
+                PC版のまま使う
+              </Button>
+            </div>
           </div>
           <button
             type='button'
+            className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground'
             aria-label='閉じる'
-            className='flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600'
             onClick={handleClose}
           >
-            <X className='h-5 w-5' aria-hidden='true' />
+            <X className='h-4 w-4' aria-hidden='true' />
           </button>
-        </div>
-        <div className='grid grid-cols-1 gap-2'>
-          <Button
-            type='button'
-            variant='medical-primary'
-            className='w-full'
-            onClick={handleOpenMobile}
-          >
-            スマホ版で表示
-          </Button>
-          <Button
-            type='button'
-            variant='outline'
-            className='w-full'
-            onClick={handleStayDesktop}
-          >
-            PC版のまま使う
-          </Button>
         </div>
       </div>
     </div>

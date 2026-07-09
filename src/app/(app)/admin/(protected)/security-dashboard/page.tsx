@@ -11,6 +11,7 @@ import { SecurityDashboard } from '@/components/admin/SecurityDashboard';
 import { Card } from '@/components/ui/card';
 import { Shield, AlertTriangle, Info, Activity } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 
 export default function SecurityDashboardPage() {
   const {
@@ -19,9 +20,12 @@ export default function SecurityDashboardPage() {
     error: profileError,
   } = useUserProfileContext();
 
-  const clinicId = profile?.clinicId ?? null;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
 
-  if (profileLoading) {
+  if (profileLoading || activeClinicLoading) {
     return (
       <div className='flex items-center justify-center min-h-screen'>
         <Activity className='w-8 h-8 animate-spin text-blue-500' />

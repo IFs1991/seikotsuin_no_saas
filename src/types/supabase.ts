@@ -849,6 +849,129 @@ export type Database = {
           },
         ];
       };
+      clinic_feature_flags: {
+        Row: {
+          clinic_id: string;
+          line_booking_enabled: boolean;
+          mobile_uiux_daily_report_write_enabled: boolean;
+          mobile_uiux_enabled: boolean;
+          mobile_uiux_real_data_enabled: boolean;
+          mobile_uiux_reservation_write_enabled: boolean;
+          mobile_uiux_settings_write_enabled: boolean;
+          mobile_uiux_write_enabled: boolean;
+          rollout_phase: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          clinic_id: string;
+          line_booking_enabled?: boolean;
+          mobile_uiux_daily_report_write_enabled?: boolean;
+          mobile_uiux_enabled?: boolean;
+          mobile_uiux_real_data_enabled?: boolean;
+          mobile_uiux_reservation_write_enabled?: boolean;
+          mobile_uiux_settings_write_enabled?: boolean;
+          mobile_uiux_write_enabled?: boolean;
+          rollout_phase?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          clinic_id?: string;
+          line_booking_enabled?: boolean;
+          mobile_uiux_daily_report_write_enabled?: boolean;
+          mobile_uiux_enabled?: boolean;
+          mobile_uiux_real_data_enabled?: boolean;
+          mobile_uiux_reservation_write_enabled?: boolean;
+          mobile_uiux_settings_write_enabled?: boolean;
+          mobile_uiux_write_enabled?: boolean;
+          rollout_phase?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_feature_flags_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      clinic_line_credentials: {
+        Row: {
+          access_token_encrypted: string | null;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at: string;
+          is_active: boolean;
+          liff_id: string | null;
+          login_channel_id: string | null;
+          messaging_channel_id: string;
+          oa_basic_id: string | null;
+          token_expires_at: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          access_token_encrypted?: string | null;
+          assertion_kid: string;
+          assertion_private_key_encrypted: string;
+          channel_secret_encrypted: string;
+          clinic_id: string;
+          created_at?: string;
+          is_active?: boolean;
+          liff_id?: string | null;
+          login_channel_id?: string | null;
+          messaging_channel_id: string;
+          oa_basic_id?: string | null;
+          token_expires_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          access_token_encrypted?: string | null;
+          assertion_kid?: string;
+          assertion_private_key_encrypted?: string;
+          channel_secret_encrypted?: string;
+          clinic_id?: string;
+          created_at?: string;
+          is_active?: boolean;
+          liff_id?: string | null;
+          login_channel_id?: string | null;
+          messaging_channel_id?: string;
+          oa_basic_id?: string | null;
+          token_expires_at?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'clinic_line_credentials_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'clinic_line_credentials_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: true;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       clinic_settings: {
         Row: {
           category: string;
@@ -1222,6 +1345,7 @@ export type Database = {
           line_user_id: string | null;
           name: string;
           name_kana: string | null;
+          normalized_phone: string | null;
           notes: string | null;
           phone: string;
           segment: string | null;
@@ -1249,6 +1373,7 @@ export type Database = {
           line_user_id?: string | null;
           name: string;
           name_kana?: string | null;
+          normalized_phone?: string | null;
           notes?: string | null;
           phone: string;
           segment?: string | null;
@@ -1276,6 +1401,7 @@ export type Database = {
           line_user_id?: string | null;
           name?: string;
           name_kana?: string | null;
+          normalized_phone?: string | null;
           notes?: string | null;
           phone?: string;
           segment?: string | null;
@@ -2308,6 +2434,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      internal_job_runs: {
+        Row: {
+          job_name: string;
+          last_successful_run_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          job_name: string;
+          last_successful_run_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          job_name?: string;
+          last_successful_run_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      line_message_outbox: {
+        Row: {
+          attempts: number;
+          clinic_id: string;
+          created_at: string;
+          id: string;
+          last_error: string | null;
+          line_user_id: string;
+          message_type: string;
+          next_attempt_at: string;
+          payload: Json;
+          sent_at: string | null;
+          status: string;
+        };
+        Insert: {
+          attempts?: number;
+          clinic_id: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          line_user_id: string;
+          message_type: string;
+          next_attempt_at?: string;
+          payload?: Json;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          attempts?: number;
+          clinic_id?: string;
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          line_user_id?: string;
+          message_type?: string;
+          next_attempt_at?: string;
+          payload?: Json;
+          sent_at?: string | null;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'line_message_outbox_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'line_message_outbox_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       manager_clinic_assignments: {
         Row: {
           assigned_at: string;
@@ -3070,6 +3271,132 @@ export type Database = {
           },
         ];
       };
+      patient_outreach_campaigns: {
+        Row: {
+          clinic_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          message_body: string;
+          name: string;
+          segment_snapshot: Json;
+          sent_at: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinic_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          message_body: string;
+          name: string;
+          segment_snapshot?: Json;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinic_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          message_body?: string;
+          name?: string;
+          segment_snapshot?: Json;
+          sent_at?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_outreach_campaigns_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_campaigns_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      patient_outreach_recipients: {
+        Row: {
+          booked_reservation_id: string | null;
+          campaign_id: string;
+          clinic_id: string;
+          created_at: string;
+          customer_id: string;
+          delivery_status: string;
+          id: string;
+          line_user_id: string;
+          sent_at: string | null;
+        };
+        Insert: {
+          booked_reservation_id?: string | null;
+          campaign_id: string;
+          clinic_id: string;
+          created_at?: string;
+          customer_id: string;
+          delivery_status?: string;
+          id?: string;
+          line_user_id: string;
+          sent_at?: string | null;
+        };
+        Update: {
+          booked_reservation_id?: string | null;
+          campaign_id?: string;
+          clinic_id?: string;
+          created_at?: string;
+          customer_id?: string;
+          delivery_status?: string;
+          id?: string;
+          line_user_id?: string;
+          sent_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'patient_outreach_recipients_booked_reservation_id_fkey';
+            columns: ['booked_reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_booked_reservation_id_fkey';
+            columns: ['booked_reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_campaign_clinic_fkey';
+            columns: ['campaign_id', 'clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_outreach_campaigns';
+            referencedColumns: ['id', 'clinic_id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'customers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'patient_outreach_recipients_customer_id_fkey';
+            columns: ['customer_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_visit_summary';
+            referencedColumns: ['patient_id'];
+          },
+        ];
+      };
       patients: {
         Row: {
           address: string | null;
@@ -3333,11 +3660,90 @@ export type Database = {
           },
         ];
       };
+      reservation_notifications: {
+        Row: {
+          channel: string;
+          clinic_id: string;
+          created_at: string;
+          detail: Json;
+          email_outbox_id: string | null;
+          id: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for: string | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          channel?: string;
+          clinic_id: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type: string;
+          reservation_id: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          channel?: string;
+          clinic_id?: string;
+          created_at?: string;
+          detail?: Json;
+          email_outbox_id?: string | null;
+          id?: string;
+          notification_type?: string;
+          reservation_id?: string;
+          scheduled_for?: string | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reservation_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinic_hierarchy';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_clinic_id_fkey';
+            columns: ['clinic_id'];
+            isOneToOne: false;
+            referencedRelation: 'clinics';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_email_outbox_id_fkey';
+            columns: ['email_outbox_id'];
+            isOneToOne: false;
+            referencedRelation: 'email_outbox';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservation_list_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reservation_notifications_reservation_id_fkey';
+            columns: ['reservation_id'];
+            isOneToOne: false;
+            referencedRelation: 'reservations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       reservations: {
         Row: {
           actual_price: number | null;
           booker_name: string | null;
           booker_phone: string | null;
+          campaign_id: string | null;
           cancellation_reason: string | null;
           channel: string;
           clinic_id: string;
@@ -3350,6 +3756,7 @@ export type Database = {
           deleted_by: string | null;
           end_time: string;
           id: string;
+          intake_responses: Json | null;
           is_deleted: boolean | null;
           is_recurring: boolean | null;
           is_staff_requested: boolean;
@@ -3373,6 +3780,7 @@ export type Database = {
           actual_price?: number | null;
           booker_name?: string | null;
           booker_phone?: string | null;
+          campaign_id?: string | null;
           cancellation_reason?: string | null;
           channel?: string;
           clinic_id: string;
@@ -3385,6 +3793,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -3408,6 +3817,7 @@ export type Database = {
           actual_price?: number | null;
           booker_name?: string | null;
           booker_phone?: string | null;
+          campaign_id?: string | null;
           cancellation_reason?: string | null;
           channel?: string;
           clinic_id?: string;
@@ -3420,6 +3830,7 @@ export type Database = {
           deleted_by?: string | null;
           end_time?: string;
           id?: string;
+          intake_responses?: Json | null;
           is_deleted?: boolean | null;
           is_recurring?: boolean | null;
           is_staff_requested?: boolean;
@@ -3440,6 +3851,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'reservations_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'patient_outreach_campaigns';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'reservations_clinic_id_fkey';
             columns: ['clinic_id'];
@@ -5839,6 +6257,7 @@ export type Database = {
           duration_minutes: number | null;
           end_time: string | null;
           id: string | null;
+          intake_responses: Json | null;
           is_staff_requested: boolean | null;
           menu_id: string | null;
           menu_name: string | null;
@@ -6190,6 +6609,7 @@ export type Database = {
           workers_comp_revenue: number;
         }[];
       };
+      normalize_customer_phone: { Args: { input: string }; Returns: string };
       predict_revenue: {
         Args: { clinic_uuid: string; forecast_days?: number };
         Returns: {

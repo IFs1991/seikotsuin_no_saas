@@ -1,3 +1,5 @@
+import { DEFAULT_BOOKING_CALENDAR_REMINDERS } from '@/lib/booking-calendar/settings';
+
 /**
  * 管理設定 — カテゴリ定義とデフォルト値
  * PR-05: route.ts から分離
@@ -7,6 +9,7 @@ export const VALID_CATEGORIES = [
   'clinic_basic',
   'clinic_hours',
   'booking_calendar',
+  'booking_form',
   'communication',
   'system_security',
   'system_backup',
@@ -49,6 +52,21 @@ export const DEFAULT_SETTINGS: Record<
     allowCancellation: true,
     cancellationDeadlineHours: 24,
     defaultCalendarView: 'week',
+    reminders: DEFAULT_BOOKING_CALENDAR_REMINDERS,
+  },
+  booking_form: {
+    fields: {
+      nameKana: { enabled: true, required: false },
+      phone: { enabled: true, required: true },
+      email: { enabled: true, required: false },
+      birthDate: { enabled: false, required: false },
+      gender: { enabled: false, required: false },
+      notes: { enabled: true, required: false },
+    },
+    staffSelection: 'optional',
+    questions: [],
+    consents: [],
+    completionMessage: '',
   },
   communication: {
     channels: {

@@ -1,6 +1,10 @@
 import { determineNotificationType } from './policy';
 import { enqueueEmail } from './enqueue-email';
 import type { EmailTemplateType, ReservationSnapshot } from './types';
+import {
+  enqueuePatientReservationNotification,
+  type ReservationNotificationType,
+} from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
@@ -18,7 +22,11 @@ type ReservationWithUpdatedAt = {
 };
 
 type CustomerLookupResult = {
-  customer: { email: string | null; name: string | null } | null;
+  customer: {
+    email: string | null;
+    line_user_id: string | null;
+    name: string | null;
+  } | null;
   failureMessage: string | null;
 };
 
@@ -39,13 +47,30 @@ type LookupFailure = {
 } | null;
 
 type EnqueueDependencies = {
-  customer: { email: string | null; name: string | null } | null;
+  customer: {
+    email: string | null;
+    line_user_id: string | null;
+    name: string | null;
+  } | null;
   context: ReservationContext;
   failure: LookupFailure;
 };
 
 type EmailSupabaseClient = Pick<SupabaseServerClient, 'from'>;
 type EmailLogInsert = Database['public']['Tables']['email_logs']['Insert'];
+
+function getReservationNotificationType(
+  templateType: EmailTemplateType
+): ReservationNotificationType | null {
+  switch (templateType) {
+    case 'reservation_confirmed':
+      return 'confirmed';
+    case 'reservation_cancelled':
+      return 'cancelled';
+    default:
+      return null;
+  }
+}
 
 async function insertEnqueueLookupFailureLog(
   supabase: EmailSupabaseClient,
@@ -126,25 +151,24 @@ export async function enqueueReservationCreated(
     }
 
     const customer = dependencies.customer;
-    if (!customer?.email) return;
+    if (!customer?.email && !customer?.line_user_id) return;
 
-    await enqueueEmail(
-      supabase,
-      {
-        clinicId: reservation.clinic_id,
-        reservationId: reservation.id,
-        customerId: reservation.customer_id,
-        templateType: 'reservation_created',
-        toEmail: customer.email,
-        payload: buildReservationEmailPayload(
-          customer,
-          dependencies.context,
-          reservation.start_time,
-          reservation.end_time
-        ),
-      },
-      reservation.updated_at
-    );
+    await enqueuePatientReservationNotification(supabase, {
+      clinicId: reservation.clinic_id,
+      reservationId: reservation.id,
+      customerId: reservation.customer_id,
+      toEmail: customer.email,
+      lineUserId: customer.line_user_id,
+      notificationType: 'received',
+      templateType: 'reservation_created',
+      payload: buildReservationEmailPayload(
+        customer,
+        dependencies.context,
+        reservation.start_time,
+        reservation.end_time
+      ),
+      dedupeTimestamp: reservation.updated_at,
+    });
   } catch (err) {
     // enqueue 失敗は予約操作をブロックしない
     logger.error('Failed to enqueue reservation_created email', err);
@@ -184,7 +208,30 @@ export async function enqueueReservationChange(
     }
 
     const customer = dependencies.customer;
-    if (!customer?.email) return;
+    const notificationType = getReservationNotificationType(templateType);
+    if (!customer?.email && !notificationType) return;
+
+    const payload = buildReservationEmailPayload(
+      customer ?? { email: null, name: null },
+      dependencies.context,
+      after.start_time,
+      after.end_time
+    );
+
+    if (notificationType) {
+      await enqueuePatientReservationNotification(supabase, {
+        clinicId: after.clinic_id,
+        reservationId: after.id,
+        customerId: after.customer_id,
+        toEmail: customer?.email ?? null,
+        lineUserId: customer?.line_user_id ?? null,
+        notificationType,
+        templateType,
+        payload,
+        dedupeTimestamp: updatedAt,
+      });
+      return;
+    }
 
     await enqueueEmail(
       supabase,
@@ -194,12 +241,7 @@ export async function enqueueReservationChange(
         customerId: after.customer_id,
         templateType,
         toEmail: customer.email,
-        payload: buildReservationEmailPayload(
-          customer,
-          dependencies.context,
-          after.start_time,
-          after.end_time
-        ),
+        payload,
       },
       updatedAt,
       { ignoreDuplicate: true }
@@ -264,7 +306,7 @@ async function fetchCustomerEmail(
 ): Promise<CustomerLookupResult> {
   const { data, error } = await supabase
     .from('customers')
-    .select('id, email, name')
+    .select('id, email, line_user_id, name')
     .eq('id', customerId)
     .eq('clinic_id', clinicId)
     .maybeSingle();
@@ -284,7 +326,11 @@ async function fetchCustomerEmail(
   }
 
   return {
-    customer: { email: data.email, name: data.name },
+    customer: {
+      email: data.email,
+      line_user_id: data.line_user_id,
+      name: data.name,
+    },
     failureMessage: null,
   };
 }

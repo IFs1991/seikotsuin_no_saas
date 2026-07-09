@@ -16,6 +16,7 @@ import {
   CustomerLookupError,
   CustomerCreateError,
   ReservationCreateError,
+  normalizeCustomerPhoneForMatch,
 } from '@/lib/services/public-reservation-service';
 
 // ──────────────────────────────────────────────
@@ -29,7 +30,11 @@ const CUSTOMER_ID = '00000000-0000-0000-0000-000000000401';
 const RESERVATION_ID = '00000000-0000-0000-0000-000000000501';
 
 const EMPTY = { data: [], error: null };
-const NO_ROWS = { data: null, error: { code: 'PGRST116', message: 'No rows found' } };
+const NO_CONFLICT = { count: 0, error: null };
+const NO_ROWS = {
+  data: null,
+  error: { code: 'PGRST116', message: 'No rows found' },
+};
 
 /** Minimal input for a valid reservation */
 const validInput = () => ({
@@ -79,9 +84,12 @@ function mockChain(
   // For queries that end with .single()
   const chain: Record<string, jest.Mock> = {
     eq: jest.fn(),
+    limit: jest.fn(),
     single: jest.fn().mockResolvedValue(result),
+    maybeSingle: jest.fn().mockResolvedValue(result),
   };
   chain.eq.mockReturnValue(chain);
+  chain.limit.mockReturnValue(chain);
   return chain;
 }
 
@@ -91,8 +99,6 @@ function mockChain(
  */
 function buildClient(overrides: Record<string, () => unknown> = {}) {
   const reservationsCalls = { select: 0 };
-  const customersCalls = { method: 0 };
-
   const defaults: Record<string, () => unknown> = {
     clinic_settings: () => ({
       select: jest.fn().mockReturnValue(
@@ -105,7 +111,12 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
     menus: () => ({
       select: jest.fn().mockReturnValue(
         mockChain({
-          data: { id: MENU_ID, name: '標準施術', duration_minutes: 60, price: 5000 },
+          data: {
+            id: MENU_ID,
+            name: '標準施術',
+            duration_minutes: 60,
+            price: 5000,
+          },
           error: null,
         })
       ),
@@ -119,15 +130,13 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
       ),
     }),
     reservations_overlap: () => ({
-      select: jest.fn().mockReturnValue(mockChain(EMPTY, 'listWithNot')),
+      select: jest.fn().mockReturnValue(mockChain(NO_CONFLICT, 'listWithNot')),
     }),
     blocks: () => ({
       select: jest.fn().mockReturnValue(mockChain(EMPTY, 'list')),
     }),
     customers_find: () => ({
-      select: jest.fn().mockReturnValue(
-        mockChain(NO_ROWS)
-      ),
+      select: jest.fn().mockReturnValue(mockChain(NO_ROWS)),
     }),
     customers_create: () => ({
       insert: jest.fn().mockReturnValue({
@@ -162,13 +171,15 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
     from: jest.fn((table: string) => {
       if (table === 'reservations') {
         reservationsCalls.select++;
-        if (reservationsCalls.select === 1) return factories.reservations_overlap();
+        if (reservationsCalls.select === 1)
+          return factories.reservations_overlap();
         return factories.reservations_insert();
       }
       if (table === 'customers') {
-        customersCalls.method++;
-        if (customersCalls.method === 1) return factories.customers_find();
-        return factories.customers_create();
+        return {
+          ...(factories.customers_find() as object),
+          ...(factories.customers_create() as object),
+        };
       }
       const factory = factories[table];
       if (!factory) throw new Error(`Unexpected table: ${table}`);
@@ -182,6 +193,27 @@ function buildClient(overrides: Record<string, () => unknown> = {}) {
 // ──────────────────────────────────────────────
 
 describe('PublicReservationService', () => {
+  describe('normalizeCustomerPhoneForMatch', () => {
+    it('国内表記の区切り文字を除去する', () => {
+      expect(normalizeCustomerPhoneForMatch('090-1234-5678')).toBe(
+        '09012345678'
+      );
+      expect(normalizeCustomerPhoneForMatch('090 1234 5678')).toBe(
+        '09012345678'
+      );
+    });
+
+    it('+81表記を国内0始まりへ寄せる', () => {
+      expect(normalizeCustomerPhoneForMatch('+819012345678')).toBe(
+        '09012345678'
+      );
+    });
+
+    it('+81単体は照合値なしにする', () => {
+      expect(normalizeCustomerPhoneForMatch('+81')).toBeNull();
+    });
+  });
+
   describe('checkBookingEnabled', () => {
     it('オンライン予約が有効な場合は正常終了する', async () => {
       const client = buildClient();
@@ -201,7 +233,9 @@ describe('PublicReservationService', () => {
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
-      await expect(service.checkBookingEnabled()).rejects.toThrow(BookingDisabledError);
+      await expect(service.checkBookingEnabled()).rejects.toThrow(
+        BookingDisabledError
+      );
     });
 
     it('allowOnlineBooking=false の場合は BookingDisabledError を投げる', async () => {
@@ -216,7 +250,9 @@ describe('PublicReservationService', () => {
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
-      await expect(service.checkBookingEnabled()).rejects.toThrow(BookingDisabledError);
+      await expect(service.checkBookingEnabled()).rejects.toThrow(
+        BookingDisabledError
+      );
     });
   });
 
@@ -236,13 +272,17 @@ describe('PublicReservationService', () => {
     it('メニューが存在しない場合は MenuNotFoundError を投げる', async () => {
       const client = buildClient({
         menus: () => ({
-          select: jest.fn().mockReturnValue(
-            mockChain({ data: null, error: { code: 'PGRST116' } })
-          ),
+          select: jest
+            .fn()
+            .mockReturnValue(
+              mockChain({ data: null, error: { code: 'PGRST116' } })
+            ),
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
-      await expect(service.verifyMenu(MENU_ID)).rejects.toThrow(MenuNotFoundError);
+      await expect(service.verifyMenu(MENU_ID)).rejects.toThrow(
+        MenuNotFoundError
+      );
     });
   });
 
@@ -282,9 +322,11 @@ describe('PublicReservationService', () => {
     it('リソースが存在しない場合は ResourceNotFoundError を投げる', async () => {
       const client = buildClient({
         resources: () => ({
-          select: jest.fn().mockReturnValue(
-            mockChain({ data: null, error: { code: 'PGRST116' } })
-          ),
+          select: jest
+            .fn()
+            .mockReturnValue(
+              mockChain({ data: null, error: { code: 'PGRST116' } })
+            ),
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
@@ -308,7 +350,7 @@ describe('PublicReservationService', () => {
     });
 
     it('キャンセル済みと来院なしは重複チェックから除外する', async () => {
-      const not = jest.fn().mockResolvedValue(EMPTY);
+      const not = jest.fn().mockResolvedValue(NO_CONFLICT);
       const reservationsChain = {
         eq: jest.fn().mockReturnThis(),
         lt: jest.fn().mockReturnThis(),
@@ -342,17 +384,19 @@ describe('PublicReservationService', () => {
         'in',
         '("cancelled","no_show")'
       );
+      expect(reservationsChain.eq).toHaveBeenCalledWith('is_deleted', false);
+      expect(blocksChain.eq).toHaveBeenCalledWith('is_active', true);
+      expect(blocksChain.eq).toHaveBeenCalledWith('is_deleted', false);
     });
 
     it('重複予約がある場合は SlotConflictError を投げる', async () => {
       const client = buildClient({
         reservations_overlap: () => ({
-          select: jest.fn().mockReturnValue(
-            mockChain(
-              { data: [{ id: 'existing' }], error: null },
-              'listWithNot'
-            )
-          ),
+          select: jest
+            .fn()
+            .mockReturnValue(
+              mockChain({ count: 1, error: null }, 'listWithNot')
+            ),
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
@@ -368,9 +412,14 @@ describe('PublicReservationService', () => {
     it('重複ブロックがある場合は SlotConflictError を投げる', async () => {
       const client = buildClient({
         blocks: () => ({
-          select: jest.fn().mockReturnValue(
-            mockChain({ data: [{ id: 'block-1', reason: 'lunch' }], error: null }, 'list')
-          ),
+          select: jest
+            .fn()
+            .mockReturnValue(
+              mockChain(
+                { data: [{ id: 'block-1', reason: 'lunch' }], error: null },
+                'list'
+              )
+            ),
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
@@ -388,9 +437,11 @@ describe('PublicReservationService', () => {
     it('既存顧客が見つかった場合はそのIDを返す', async () => {
       const client = buildClient({
         customers_find: () => ({
-          select: jest.fn().mockReturnValue(
-            mockChain({ data: { id: CUSTOMER_ID }, error: null })
-          ),
+          select: jest
+            .fn()
+            .mockReturnValue(
+              mockChain({ data: { id: CUSTOMER_ID }, error: null })
+            ),
         }),
       });
       const service = new PublicReservationService(client, CLINIC_ID);
@@ -400,6 +451,168 @@ describe('PublicReservationService', () => {
         'patient@example.com'
       );
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+    });
+
+    it('電話番号はnormalized_phoneで既存顧客を検索する', async () => {
+      const customerFindQuery = mockChain({
+        data: { id: CUSTOMER_ID },
+        error: null,
+      });
+      const client = buildClient({
+        customers_find: () => ({
+          select: jest.fn().mockReturnValue(customerFindQuery),
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '090-1234-5678',
+        undefined
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+      expect(customerFindQuery.eq).toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
+    });
+
+    it('LINE ID一致を電話番号一致より優先する', async () => {
+      const customerFindQuery = mockChain({
+        data: { id: CUSTOMER_ID },
+        error: null,
+      });
+      const updateQuery = {
+        eq: jest.fn().mockReturnThis(),
+      };
+      const update = jest.fn().mockReturnValue(updateQuery);
+      const client = buildClient({
+        customers_find: () => ({
+          select: jest.fn().mockReturnValue(customerFindQuery),
+        }),
+        customers_create: () => ({
+          insert: jest.fn(),
+          update,
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '09012345678',
+        undefined,
+        { lineUserId: 'Uline-user-001', displayName: 'LINE 太郎' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: false });
+      expect(customerFindQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uline-user-001'
+      );
+      expect(customerFindQuery.eq).not.toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
+      expect(update).toHaveBeenCalledWith({
+        line_user_id: 'Uline-user-001',
+        line_display_name: 'LINE 太郎',
+      });
+      expect(updateQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uline-user-001'
+      );
+    });
+
+    it('別LINEと既存電話番号一致では被害者顧客にLINE IDを紐づけず新規作成する', async () => {
+      const lineLookupQuery = mockChain(NO_ROWS);
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: CUSTOMER_ID },
+            error: null,
+          }),
+        }),
+      });
+      const update = jest.fn();
+      const client = {
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue(lineLookupQuery),
+          insert,
+          update,
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        '090-1234-5678',
+        undefined,
+        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
+      expect(lineLookupQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uattacker-line'
+      );
+      expect(lineLookupQuery.eq).not.toHaveBeenCalledWith(
+        'normalized_phone',
+        '09012345678'
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phone: '09012345678',
+          line_user_id: 'Uattacker-line',
+          line_display_name: 'Attacker',
+        })
+      );
+    });
+
+    it('別LINEと既存メール一致では被害者顧客にLINE IDを紐づけず新規作成する', async () => {
+      const lineLookupQuery = mockChain(NO_ROWS);
+      const insert = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: CUSTOMER_ID },
+            error: null,
+          }),
+        }),
+      });
+      const update = jest.fn();
+      const client = {
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue(lineLookupQuery),
+          insert,
+          update,
+        }),
+      } as any;
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      const result = await service.findOrCreateCustomer(
+        'テスト患者',
+        undefined,
+        'victim@example.com',
+        { lineUserId: 'Uattacker-line', displayName: 'Attacker' }
+      );
+
+      expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
+      expect(lineLookupQuery.eq).toHaveBeenCalledWith(
+        'line_user_id',
+        'Uattacker-line'
+      );
+      expect(lineLookupQuery.eq).not.toHaveBeenCalledWith(
+        'email',
+        'victim@example.com'
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'victim@example.com',
+          line_user_id: 'Uattacker-line',
+        })
+      );
     });
 
     it('新規顧客を作成して返す', async () => {
@@ -413,8 +626,8 @@ describe('PublicReservationService', () => {
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
     });
 
-    it('email なしの場合は常に新規作成する', async () => {
-      // No email → skip find, go directly to insert (first from('customers') is insert)
+    it('電話番号とemailがない場合は新規作成する', async () => {
+      // No phone/email/LINE ID → skip lookup and go directly to insert.
       const client = {
         from: jest.fn().mockReturnValue({
           insert: jest.fn().mockReturnValue({
@@ -430,14 +643,14 @@ describe('PublicReservationService', () => {
       const service = new PublicReservationService(client, CLINIC_ID);
       const result = await service.findOrCreateCustomer(
         'テスト患者',
-        '09012345678',
+        undefined,
         undefined
       );
       expect(result).toEqual({ customerId: CUSTOMER_ID, created: true });
     });
 
     it('顧客作成失敗時は CustomerCreateError を投げる', async () => {
-      // No email → skip find, insert fails
+      // No phone/email/LINE ID → skip lookup, insert fails.
       const client = {
         from: jest.fn().mockReturnValue({
           insert: jest.fn().mockReturnValue({
@@ -452,7 +665,7 @@ describe('PublicReservationService', () => {
       } as any;
       const service = new PublicReservationService(client, CLINIC_ID);
       await expect(
-        service.findOrCreateCustomer('テスト患者', '09012345678', undefined)
+        service.findOrCreateCustomer('テスト患者', undefined, undefined)
       ).rejects.toThrow(CustomerCreateError);
     });
   });
@@ -524,6 +737,38 @@ describe('PublicReservationService', () => {
         })
       ).rejects.toThrow(ReservationCreateError);
     });
+
+    it('DB排他制約違反は SlotConflictError を投げる', async () => {
+      const client = buildClient({
+        reservations_overlap: () => ({
+          insert: jest.fn().mockReturnValue({
+            select: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: null,
+                error: {
+                  code: '23P01',
+                  message:
+                    'conflicting key value violates exclusion constraint "reservations_no_overlap"',
+                },
+              }),
+            }),
+          }),
+        }),
+      });
+      const service = new PublicReservationService(client, CLINIC_ID);
+
+      await expect(
+        service.createReservation({
+          customerId: CUSTOMER_ID,
+          menuId: MENU_ID,
+          resourceId: RESOURCE_ID,
+          startIso: '2026-03-17T10:00:00.000Z',
+          endIso: '2026-03-17T11:00:00.000Z',
+          notes: null,
+          channel: 'web',
+        })
+      ).rejects.toThrow(SlotConflictError);
+    });
   });
 
   describe('rollbackCustomer', () => {
@@ -538,7 +783,9 @@ describe('PublicReservationService', () => {
       } as any;
       const service = new PublicReservationService(client, CLINIC_ID);
 
-      await expect(service.rollbackCustomer(CUSTOMER_ID)).resolves.not.toThrow();
+      await expect(
+        service.rollbackCustomer(CUSTOMER_ID)
+      ).resolves.not.toThrow();
       expect(client.from).toHaveBeenCalledWith('customers');
     });
   });

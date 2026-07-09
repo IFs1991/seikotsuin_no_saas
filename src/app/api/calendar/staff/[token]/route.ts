@@ -50,7 +50,13 @@ async function loadFeedToken(
   if (error) {
     throw error;
   }
-  if (!data || !data.is_active || data.revoked_at || !data.staff_profile_id) {
+  if (
+    !data ||
+    !data.is_active ||
+    data.revoked_at ||
+    !data.staff_profile_id ||
+    !data.clinic_id
+  ) {
     return null;
   }
   return data;
@@ -58,7 +64,8 @@ async function loadFeedToken(
 
 async function loadStaffShifts(
   adminClient: AdminClient,
-  staffProfileId: string
+  staffProfileId: string,
+  clinicId: string
 ): Promise<CalendarIcsShiftRow[]> {
   const { data, error } = await adminClient
     .from('staff_shifts')
@@ -80,6 +87,7 @@ async function loadStaffShifts(
     `
     )
     .eq('staff_profile_id', staffProfileId)
+    .eq('clinic_id', clinicId)
     .eq('status', 'confirmed')
     .gte('start_time', rangeStart())
     .lte('start_time', rangeEnd())
@@ -104,7 +112,11 @@ export async function GET(
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const shifts = await loadStaffShifts(adminClient, feedToken.staff_profile_id);
+  const shifts = await loadStaffShifts(
+    adminClient,
+    feedToken.staff_profile_id,
+    feedToken.clinic_id
+  );
   return icsResponse(
     buildCalendarIcs({
       feedName: feedToken.label ?? 'Tiramisu staff shifts',

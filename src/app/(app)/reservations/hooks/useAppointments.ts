@@ -83,6 +83,7 @@ const mapReservationRowsToAppointments = (
       menuName: row.menuName,
       staffName: row.staffName,
       selectedOptions: row.selectedOptions ?? [],
+      intakeResponses: row.intakeResponses ?? [],
       isStaffRequested: row.isStaffRequested ?? false,
       staffNominationFee: row.staffNominationFee ?? 0,
     };

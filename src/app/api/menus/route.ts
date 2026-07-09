@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(request, menuInsertSchema, {
       allowedRoles: MENU_ADMIN_ROLES,
+      path: PATH,
     });
     if (!result.success) return result.error;
 
@@ -107,6 +108,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(request, menuUpdateSchema, {
       allowedRoles: MENU_ADMIN_ROLES,
+      path: PATH,
     });
     if (!result.success) return result.error;
 

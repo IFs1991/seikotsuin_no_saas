@@ -5,6 +5,10 @@ import { logger } from '@/lib/logger';
  * Phase 3B: XSS攻撃対策の強化
  */
 
+const LINE_LIFF_SCRIPT_SRC = 'https://static.line-scdn.net';
+const LINE_API_CONNECT_SRC = 'https://api.line.me';
+const TURNSTILE_CHALLENGE_SRC = 'https://challenges.cloudflare.com';
+
 // CSP設定タイプ
 export type CSPEnvironment = 'development' | 'staging' | 'production';
 
@@ -40,6 +44,8 @@ export class CSPConfig {
         "'unsafe-eval'", // 開発ツール用
         'https://vercel.live',
         'https://*.vercel-scripts.com',
+        LINE_LIFF_SCRIPT_SRC,
+        TURNSTILE_CHALLENGE_SRC,
       ],
       'style-src': [
         "'self'",
@@ -55,12 +61,14 @@ export class CSPConfig {
         'wss://localhost:*',
         'ws://localhost:*',
         'https://vercel.live',
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
       'frame-ancestors': ["'none'"],
+      'frame-src': [TURNSTILE_CHALLENGE_SRC],
       'upgrade-insecure-requests': [],
       'block-all-mixed-content': [],
     };
@@ -78,6 +86,8 @@ export class CSPConfig {
     if (nonce) {
       scriptSrcDirectives.push(`'nonce-${nonce}'`);
     }
+    scriptSrcDirectives.push(LINE_LIFF_SCRIPT_SRC);
+    scriptSrcDirectives.push(TURNSTILE_CHALLENGE_SRC);
 
     const csp = {
       'default-src': ["'self'"],
@@ -99,13 +109,14 @@ export class CSPConfig {
         'https://*.supabase.co',
         'https://*.upstash.io',
         'https://api.ipgeolocation.io', // IP地理情報API
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'"],
       'object-src': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
       'frame-ancestors': ["'none'"],
-      'frame-src': ["'none'"],
+      'frame-src': [TURNSTILE_CHALLENGE_SRC],
       'worker-src': ["'self'"],
       'manifest-src': ["'self'"],
       'upgrade-insecure-requests': [],
@@ -127,6 +138,8 @@ export class CSPConfig {
         "'self'",
         "'unsafe-inline'", // 現在の状況を監視
         "'unsafe-eval'",
+        LINE_LIFF_SCRIPT_SRC,
+        TURNSTILE_CHALLENGE_SRC,
       ],
       'style-src': [
         "'self'",
@@ -139,16 +152,68 @@ export class CSPConfig {
         "'self'",
         'https://*.supabase.co',
         'https://*.upstash.io',
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
       'frame-ancestors': ["'none'"],
+      'frame-src': [TURNSTILE_CHALLENGE_SRC],
       'report-uri': ['/api/security/csp-report'],
     };
 
     return this.buildCSPString(csp);
+  }
+
+  /**
+   * モバイル UI/UX DC ランタイム専用 CSP。
+   * 添付 runtime の new Function / dynamic script / Google Fonts 前提を、
+   * `/mobile-uiux` ルートだけに閉じ込めるために使う。
+   *
+   * @spec docs/stabilization/spec-mobile-uiux-static-integration-v0.2.md
+   */
+  static getMobileUiuxCSP(): {
+    csp: string;
+    cspReportOnly?: string;
+  } {
+    const csp = {
+      'default-src': ["'self'"],
+      'script-src': [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        'https://unpkg.com',
+        LINE_LIFF_SCRIPT_SRC,
+        TURNSTILE_CHALLENGE_SRC,
+      ],
+      'style-src': [
+        "'self'",
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+      ],
+      'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
+      'connect-src': [
+        "'self'",
+        'https://*.supabase.co',
+        'https://*.upstash.io',
+        LINE_API_CONNECT_SRC,
+      ],
+      'media-src': ["'self'", 'data:', 'blob:'],
+      'object-src': ["'none'"],
+      'base-uri': ["'self'"],
+      'form-action': ["'self'"],
+      'frame-ancestors': ["'none'"],
+      'frame-src': [TURNSTILE_CHALLENGE_SRC],
+      'worker-src': ["'self'"],
+      'manifest-src': ["'self'"],
+      'report-uri': ['/api/security/csp-report'],
+    };
+
+    return {
+      csp: this.buildCSPString(csp),
+    };
   }
 
   /**
@@ -164,6 +229,8 @@ export class CSPConfig {
 
     // 医療データ処理で必要なライブラリのみ
     scriptSrcDirectives.push('https://cdn.jsdelivr.net'); // Chart.js等の医療統計ライブラリ
+    scriptSrcDirectives.push(LINE_LIFF_SCRIPT_SRC);
+    scriptSrcDirectives.push(TURNSTILE_CHALLENGE_SRC);
 
     const csp = {
       'default-src': ["'self'"],
@@ -184,13 +251,14 @@ export class CSPConfig {
         "'self'",
         'https://*.supabase.co', // セキュアなデータベース接続
         'https://*.upstash.io', // セキュアなRedis接続
+        LINE_API_CONNECT_SRC,
       ],
       'media-src': ["'self'"],
       'object-src': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
       'frame-ancestors': ["'none'"], // 医療データの埋め込み防止
-      'frame-src': ["'none'"], // iframe完全禁止
+      'frame-src': [TURNSTILE_CHALLENGE_SRC],
       'worker-src': ["'self'"], // Web Workers制限
       'manifest-src': ["'self'"],
       'upgrade-insecure-requests': [], // HTTPS強制

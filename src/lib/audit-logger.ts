@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase';
 import { createLogger, type Logger } from '@/lib/logger';
+import type { Database, Json } from '@/types/supabase';
 
 // 監査ログの種類
 export enum AuditEventType {
@@ -30,6 +31,8 @@ export interface AuditLogEntry {
   success: boolean;
   error_message?: string;
 }
+
+type AuditLogInsert = Database['public']['Tables']['audit_logs']['Insert'];
 
 type AuditLoggerDependencies = {
   createAdminClient: typeof createAdminClient;
@@ -101,6 +104,41 @@ function redactLogDetails(
   );
 }
 
+function toJsonValue(value: unknown): Json {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === 'string' || typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => toJsonValue(item));
+  }
+
+  if (isRecord(value)) {
+    const jsonObject: { [key: string]: Json | undefined } = {};
+    for (const [key, entryValue] of Object.entries(value)) {
+      jsonObject[key] =
+        entryValue === undefined ? undefined : toJsonValue(entryValue);
+    }
+    return jsonObject;
+  }
+
+  return String(value);
+}
+
+function toJsonDetails(
+  details: Record<string, unknown> | undefined
+): Json | null {
+  return details ? toJsonValue(details) : null;
+}
+
 function readLogStringProperty(
   value: unknown,
   key: string
@@ -140,7 +178,7 @@ function getSafeAuditErrorLogData(error: unknown): Record<string, unknown> {
 
 export class AuditLogger {
   private static async createLogEntry(entry: AuditLogEntry) {
-    const logData = {
+    const logData: AuditLogInsert = {
       event_type: entry.event_type,
       user_id: entry.user_id,
       user_email: entry.user_email,
@@ -149,7 +187,7 @@ export class AuditLogger {
       clinic_id: entry.clinic_id,
       ip_address: entry.ip_address,
       user_agent: entry.user_agent,
-      details: entry.details,
+      details: toJsonDetails(entry.details),
       success: entry.success,
       error_message: entry.error_message,
       created_at: new Date().toISOString(),
@@ -157,9 +195,7 @@ export class AuditLogger {
 
     try {
       const supabase = auditLoggerDependencies.createAdminClient();
-      const { error } = await supabase
-        .from('audit_logs')
-        .insert([logData] as any);
+      const { error } = await supabase.from('audit_logs').insert(logData);
 
       if (error) {
         throw error;
@@ -177,7 +213,7 @@ export class AuditLogger {
           ip_address: logData.ip_address ? REDACTED_LOG_VALUE : undefined,
           user_agent: logData.user_agent ? REDACTED_LOG_VALUE : undefined,
           error_message: logData.error_message ? REDACTED_LOG_VALUE : undefined,
-          details: redactLogDetails(logData.details),
+          details: redactLogDetails(entry.details),
         },
       });
 

@@ -184,6 +184,48 @@ npm test -- --coverage
 
 ---
 
+### 5. Mobile UI/UX のアクセス拒否
+
+#### 症状
+- `/mobile-uiux/screens/*` が `アクセス権限がありません` をHTMLで返す
+- 画面文言が `このモバイル UI/UX へのアクセス権限がありません` の場合、画面別role拒否ではなく principal または rollout/entitlement 判定で拒否されている
+
+#### 診断手順
+```powershell
+# Vercel runtime logs
+vercel logs --since 24h --query "access denied" --json
+```
+
+`[mobile-uiux] access denied` の以下を確認する。
+- `reasonCode`
+- `role`
+- `scopedClinicCount`
+- `allowedClinicCount`
+- `featureFlagEnabled`
+- `writeTarget`
+
+#### 切り分け
+- `role_denied`: `role` が `clinic_admin` として解決されているか、`MOBILE_UIUX_ALLOWED_ROLES` から除外されていないか確認する
+- `clinic_scope_denied` かつ `scopedClinicCount=0`: `user_permissions.clinic_id` または `clinic_scope_ids` が空になっていないか確認する
+- `clinic_scope_denied` かつ `allowedClinicCount=0`: `MOBILE_UIUX_ALLOWED_CLINIC_IDS` が未設定、かつ `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` でもない可能性が高い
+- `clinic_scope_denied` かつ `allowedClinicCount>0`: 対象clinicが `MOBILE_UIUX_ALLOWED_CLINIC_IDS` に含まれているか確認する
+- `entitlement_denied`: `clinic_feature_flags.mobile_uiux_enabled=true` の行が対象clinicに存在するか確認する
+
+#### clinic_admin が通る条件
+- `role=clinic_admin`
+- `clinic_id` または `clinic_scope_ids` が存在する
+- `MOBILE_UIUX_ALLOWED_CLINIC_IDS` に対象clinicが含まれる、または `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true`
+- DB entitlementを使う場合、対象clinicの `clinic_feature_flags.mobile_uiux_enabled=true`
+
+#### 禁止事項
+- adminだけを通す逃げ修正をしない
+- clinic scopeチェックを外さない
+- `MOBILE_UIUX_ALLOWED_ROLES` を全開放しない
+- `customer` を許可しない
+- `therapist` / `staff` は `home` / `settings-detail` では拒否し、`reservations` / `patients` / `daily-reports` / `settings` では許可する
+
+---
+
 ## ロールバック手順
 
 ### Vercelデプロイのロールバック
@@ -276,6 +318,18 @@ WHERE event_type = 'unauthorized_access'
 #### GitHub Actions
 - CI失敗時 → Slack通知
 - `scan:secrets` 失敗時 → メンション付き通知
+
+---
+
+## Mobile UIUX entitlement 切替
+
+### env allowlist から DB entitlement への移行
+
+1. 対象クリニックの `clinic_feature_flags` 行を投入する。初期は read のみ true にし、write 系の列は false のままにする。
+2. staging で `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` にして、`/api/mobile-uiux/context` の `publicFlags` が entitlement 由来になることを確認する。
+3. production で `MOBILE_UIUX_USE_DB_ENTITLEMENTS=true` に切り替える。
+4. 一定期間の並走後、`MOBILE_UIUX_ALLOWED_CLINIC_IDS` を空にする。env allowlist は rollout gate として残置してよいが、entitlement としては使わない。
+5. write 開放は `clinic_feature_flags` の write 列を対象クリニックだけ true にする。
 
 ---
 

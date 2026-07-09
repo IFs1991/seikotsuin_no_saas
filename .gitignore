@@ -112,6 +112,9 @@ Thumbs.db
 # Testing
 /coverage
 
+# Playwright generated auth state
+src/__tests__/e2e-playwright/storage/*.json
+
 # Vercel
 .vercel
 
@@ -151,3 +154,6 @@ supabase/.env
 # Windows reserved / accidental files
 nul
 .worktrees/
+
+.vercel
+.env*

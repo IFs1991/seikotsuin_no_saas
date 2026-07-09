@@ -7,6 +7,7 @@ import type { Database, Json } from '@/types/supabase';
 export const BILLING_AUDIT_EVENT_TYPES = [
   'billing.checkout_started',
   'billing.checkout_completed',
+  'billing.checkout_expired',
   'billing.portal_opened',
   'billing.subscription_synced',
   'billing.subscription_canceled',
@@ -18,6 +19,8 @@ export const BILLING_AUDIT_EVENT_TYPES = [
   'billing.plan_upgraded',
   'billing.tenant_add_requested',
   'billing.tenant_pending_created',
+  'billing.stripe_store_addon_quantity_change_initiated',
+  'billing.stripe_store_addon_quantity_change_completed',
   'billing.tenant_activated',
   'billing.tenant_activation_failed',
   'billing.override_created',

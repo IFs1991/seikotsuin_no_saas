@@ -14,9 +14,8 @@ describe('Sentry monitoring setup', () => {
     delete process.env.SENTRY_DSN;
 
     const initMock = jest.fn();
-    const { initSentry, isSentryEnabled } = await import(
-      '@/lib/monitoring/sentry'
-    );
+    const { initSentry, isSentryEnabled } =
+      await import('@/lib/monitoring/sentry');
 
     const initialized = initSentry({ init: initMock }, 'server');
 
@@ -30,9 +29,8 @@ describe('Sentry monitoring setup', () => {
     process.env.NODE_ENV = 'production';
 
     const initMock = jest.fn();
-    const { buildSentryInitOptions, initSentry } = await import(
-      '@/lib/monitoring/sentry'
-    );
+    const { buildSentryInitOptions, initSentry } =
+      await import('@/lib/monitoring/sentry');
 
     expect(buildSentryInitOptions('edge')).toEqual(
       expect.objectContaining({
@@ -53,6 +51,20 @@ describe('Sentry monitoring setup', () => {
         dsn: 'https://public@example.ingest.sentry.io/1',
         enabled: true,
         environment: 'production',
+      })
+    );
+  });
+
+  it('adds release metadata when available and keeps default PII disabled', async () => {
+    process.env.SENTRY_DSN = 'https://public@example.ingest.sentry.io/1';
+    process.env.SENTRY_RELEASE = 'seikotsuin@0.1.0-pilot+abc123';
+
+    const { buildSentryInitOptions } = await import('@/lib/monitoring/sentry');
+
+    expect(buildSentryInitOptions('server')).toEqual(
+      expect.objectContaining({
+        release: 'seikotsuin@0.1.0-pilot+abc123',
+        sendDefaultPii: false,
       })
     );
   });

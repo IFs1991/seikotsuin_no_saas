@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 // --- mock setup ---
 const processApiRequestMock = jest.fn();
-const canAccessClinicScopeMock = jest.fn();
+const ensureClinicAccessMock = jest.fn();
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -20,8 +20,8 @@ jest.mock('@/lib/api-helpers', () => {
   };
 });
 
-jest.mock('@/lib/supabase', () => ({
-  canAccessClinicScope: (...args: unknown[]) => canAccessClinicScopeMock(...args),
+jest.mock('@/lib/supabase/guards', () => ({
+  ensureClinicAccess: (...args: unknown[]) => ensureClinicAccessMock(...args),
 }));
 
 import {
@@ -136,7 +136,7 @@ describe('processClinicScopedBody', () => {
       deniedRoles: ['manager'],
       deniedRoleMessage: 'マネージャーは作成できません。',
     });
-    expect(canAccessClinicScopeMock).not.toHaveBeenCalled();
+    expect(ensureClinicAccessMock).not.toHaveBeenCalled();
   });
 
   it('returns 400 when body fails schema validation', async () => {
@@ -167,7 +167,9 @@ describe('processClinicScopedBody', () => {
       permissions: { role: 'staff', clinic_id: 'other-clinic' },
       supabase: {},
     });
-    canAccessClinicScopeMock.mockReturnValue(false);
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(ERROR_CODES.FORBIDDEN, undefined, 403)
+    );
 
     const result = await processClinicScopedBody(
       fakeRequest(),
@@ -177,6 +179,82 @@ describe('processClinicScopedBody', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.status).toBe(403);
+    }
+  });
+
+  it('denies a manager with stale body scope when effective assignment is revoked', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      body: { clinic_id: validClinicId, name: 'Test' },
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'fallback-clinic',
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: {},
+    });
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(ERROR_CODES.FORBIDDEN, undefined, 403)
+    );
+
+    const result = await processClinicScopedBody(
+      fakeRequest(),
+      testInsertSchema,
+      { path: '/api/menus' }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.status).toBe(403);
+    }
+    expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/menus',
+      validClinicId,
+      { requireClinicMatch: true, allowedRoles: undefined }
+    );
+  });
+
+  it('allows a manager with an active effective assignment', async () => {
+    const finalSupabase = { from: jest.fn() };
+    const finalPermissions = {
+      role: 'manager',
+      clinic_id: null,
+      clinic_scope_ids: [validClinicId],
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      body: { clinic_id: validClinicId, name: 'Test' },
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: 'fallback-clinic',
+        clinic_scope_ids: [validClinicId],
+      },
+      supabase: {},
+    });
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: finalSupabase,
+      user: { id: 'manager-1', email: 'manager@example.com' },
+      permissions: finalPermissions,
+    });
+
+    const result = await processClinicScopedBody(
+      fakeRequest(),
+      testInsertSchema,
+      { path: '/api/menus' }
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.supabase).toBe(finalSupabase);
+      expect(result.permissions).toBe(finalPermissions);
+      expect(result.auth).toEqual({
+        id: 'manager-1',
+        email: 'manager@example.com',
+        role: 'manager',
+      });
     }
   });
 
@@ -196,7 +274,11 @@ describe('processClinicScopedBody', () => {
       permissions: mockPermissions,
       supabase: mockSupabase,
     });
-    canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: 'user-1', email: 'a@b.com' },
+      permissions: mockPermissions,
+    });
 
     const result = await processClinicScopedBody(
       fakeRequest(),
@@ -210,7 +292,7 @@ describe('processClinicScopedBody', () => {
         name: 'Test Menu',
       });
       expect(result.supabase).toBe(mockSupabase);
-      expect(result.auth).toBe(mockAuth);
+      expect(result.auth).toEqual(mockAuth);
       expect(result.permissions).toBe(mockPermissions);
     }
   });
@@ -229,13 +311,19 @@ describe('processClinicScopedBody', () => {
       permissions: mockPermissions,
       supabase: {},
     });
-    canAccessClinicScopeMock.mockReturnValue(true);
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: {},
+      user: { id: 'user-1', email: 'a@b.com' },
+      permissions: mockPermissions,
+    });
 
     await processClinicScopedBody(fakeRequest(), testInsertSchema);
 
-    expect(canAccessClinicScopeMock).toHaveBeenCalledWith(
-      mockPermissions,
-      validClinicId
+    expect(ensureClinicAccessMock).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/unknown',
+      validClinicId,
+      { requireClinicMatch: true, allowedRoles: undefined }
     );
   });
 });

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { logger } from '@/lib/logger';
 
 interface DailyReportData {
@@ -52,7 +53,10 @@ export default function DailyReportEditPage() {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
-  const clinicId = profile?.clinicId ?? null;
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
+  const clinicId = activeClinicId;
 
   const [reportData, setReportData] = useState<DailyReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,7 +188,7 @@ export default function DailyReportEditPage() {
     }
   };
 
-  const isLoading = profileLoading || loading;
+  const isLoading = profileLoading || activeClinicLoading || loading;
   const hasClinic = Boolean(clinicId);
   const errorMessage = profileError || loadError;
 

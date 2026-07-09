@@ -82,6 +82,16 @@ export class CSPRateLimiter {
     const redis = this.getRedis();
 
     if (!redis) {
+      if (process.env.NODE_ENV === 'production') {
+        return {
+          allowed: false,
+          remainingRequests: 0,
+          resetTime: now + this.config.blockDurationMs,
+          retryAfter: Math.ceil(this.config.blockDurationMs / 1000),
+          reason: 'Rate limiter unavailable in production',
+        };
+      }
+
       return {
         allowed: true,
         remainingRequests: this.config.maxRequests,
@@ -160,7 +170,16 @@ export class CSPRateLimiter {
     } catch (error) {
       log.error('CSP Rate Limiter Error:', error);
 
-      // Redis接続エラー時はリクエストを通す（可用性優先）
+      if (process.env.NODE_ENV === 'production') {
+        return {
+          allowed: false,
+          remainingRequests: 0,
+          resetTime: now + this.config.blockDurationMs,
+          retryAfter: Math.ceil(this.config.blockDurationMs / 1000),
+          reason: 'Rate limiter error in production',
+        };
+      }
+
       return {
         allowed: true,
         remainingRequests: this.config.maxRequests,

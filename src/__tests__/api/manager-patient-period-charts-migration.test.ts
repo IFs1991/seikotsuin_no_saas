@@ -15,7 +15,7 @@ describe('manager patient analysis period charts migration', () => {
   );
   const specPath = path.resolve(
     __dirname,
-    '../../../docs/stabilization/specmanagerpatientanalysisperiodchartsv0.2.md'
+    '../../../docs/stabilization/spec-manager-patient-analysis-period-charts-v0.2.md'
   );
 
   const migrationSql = fs.readFileSync(migrationPath, 'utf-8');

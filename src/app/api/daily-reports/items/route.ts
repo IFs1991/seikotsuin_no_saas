@@ -30,6 +30,10 @@ import {
   type RevenueContextSource,
   type SelectableRevenueContextCode,
 } from '@/lib/revenue-context';
+import {
+  hasReservationConflict,
+  isReservationNoOverlapError,
+} from '@/lib/reservations/conflict';
 
 const PATH = '/api/daily-reports/items';
 const ITEM_SELECT =
@@ -760,37 +764,6 @@ function buildReservationWindow(
   };
 }
 
-async function hasReservationConflict(
-  supabase: SupabaseServerClient,
-  params: {
-    clinicId: string;
-    staffId: string;
-    startTime: string;
-    endTime: string;
-    excludeId?: string;
-  }
-): Promise<boolean> {
-  let query = supabase
-    .from('reservations')
-    .select('id', { count: 'exact', head: true })
-    .eq('clinic_id', params.clinicId)
-    .eq('staff_id', params.staffId)
-    .eq('is_deleted', false)
-    .lt('start_time', params.endTime)
-    .gt('end_time', params.startTime)
-    .not('status', 'in', '("cancelled","no_show")');
-
-  if (params.excludeId) {
-    query = query.neq('id', params.excludeId);
-  }
-
-  const { count, error } = await query;
-  if (error) {
-    throw normalizeSupabaseError(error, PATH);
-  }
-  return (count ?? 0) > 0;
-}
-
 async function cancelReservation(
   supabase: SupabaseServerClient,
   params: {
@@ -848,6 +821,8 @@ async function createNextReservation(
     staffId: params.refs.staffResourceId,
     startTime: params.window.startTime,
     endTime: params.window.endTime,
+    excludeDeleted: true,
+    path: PATH,
   });
 
   if (conflict) {
@@ -875,6 +850,10 @@ async function createNextReservation(
     .single();
 
   if (error) {
+    if (isReservationNoOverlapError(error)) {
+      return null;
+    }
+
     throw normalizeSupabaseError(error, PATH);
   }
 
@@ -955,6 +934,8 @@ async function syncNextReservationForUpdate(
     startTime: window.startTime,
     endTime: window.endTime,
     excludeId: params.item.next_reservation_id ?? undefined,
+    excludeDeleted: true,
+    path: PATH,
   });
 
   if (conflict) {
@@ -982,6 +963,14 @@ async function syncNextReservationForUpdate(
       .single();
 
     if (error) {
+      if (isReservationNoOverlapError(error)) {
+        return {
+          ok: false,
+          status: 409,
+          message: '次回予約の時間帯に既存予約があります',
+        };
+      }
+
       throw normalizeSupabaseError(error, PATH);
     }
 

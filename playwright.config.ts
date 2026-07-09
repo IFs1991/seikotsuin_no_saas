@@ -29,15 +29,33 @@ function loadEnvFile(fileName: string) {
 // on the same port that `npm run dev` is configured to use in local dev.
 ['.env.local', '.env.test', '.env'].forEach(loadEnvFile);
 
-const baseURL =
+function normalizePlaywrightBaseURL(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.hostname === 'localhost') {
+      url.hostname = '127.0.0.1';
+      return url.toString().replace(/\/$/, '');
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+const rawBaseURL =
   process.env.PLAYWRIGHT_BASE_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
   'http://127.0.0.1:3000';
+const baseURL = normalizePlaywrightBaseURL(rawBaseURL);
 const isLocalBaseUrl =
   baseURL.includes('localhost') || baseURL.includes('127.0.0.1');
 const baseURLPort = new URL(baseURL).port || '3000';
 const browserChannel =
   process.env.PLAYWRIGHT_BROWSER_CHANNEL || process.env.PLAYWRIGHT_CHANNEL;
+const mobileUiuxAllowedClinicIds =
+  process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS ||
+  '00000000-0000-0000-0000-0000000000a1';
 
 export default defineConfig({
   testDir: 'src/__tests__/e2e-playwright',
@@ -58,16 +76,34 @@ export default defineConfig({
   },
   webServer: isLocalBaseUrl
     ? {
-        command: `npm run dev -- --port ${baseURLPort}`,
-        url: baseURL,
+        // --hostname 127.0.0.1 は dev script の 0.0.0.0 を上書きする（後勝ち）。
+        // 0.0.0.0 バインドのままだと Next middleware のリダイレクト Location が
+        // http://0.0.0.0:... になり、Windows の Chromium が ERR_ADDRESS_INVALID で落ちる。
+        command: `npm run dev -- --port ${baseURLPort} --hostname 127.0.0.1`,
+        url: `${baseURL}/api/health`,
         // E2E_INVITE_MODE などの環境変数を反映するため、常に新しいサーバーを起動
         // @see docs/stabilization/spec-staff-invite-e2e-stability-v0.1.md
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
         timeout: 120_000,
         // E2E専用環境変数をwebServerに渡す
         env: {
           ...process.env,
           E2E_INVITE_MODE: process.env.E2E_INVITE_MODE || 'skip',
+          NEXT_PUBLIC_APP_URL: baseURL,
+          MOBILE_UIUX_ENABLED: process.env.MOBILE_UIUX_ENABLED || 'true',
+          MOBILE_UIUX_REAL_DATA_ENABLED:
+            process.env.MOBILE_UIUX_REAL_DATA_ENABLED || 'true',
+          MOBILE_UIUX_ALLOWED_CLINIC_IDS: mobileUiuxAllowedClinicIds,
+          MOBILE_UIUX_USE_DB_ENTITLEMENTS:
+            process.env.MOBILE_UIUX_USE_DB_ENTITLEMENTS || 'false',
+          MOBILE_UIUX_WRITE_ENABLED:
+            process.env.MOBILE_UIUX_WRITE_ENABLED || 'true',
+          MOBILE_UIUX_RESERVATION_WRITE_ENABLED:
+            process.env.MOBILE_UIUX_RESERVATION_WRITE_ENABLED || 'true',
+          MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED:
+            process.env.MOBILE_UIUX_DAILY_REPORT_WRITE_ENABLED || 'true',
+          MOBILE_UIUX_SETTINGS_WRITE_ENABLED:
+            process.env.MOBILE_UIUX_SETTINGS_WRITE_ENABLED || 'true',
           NEXT_PUBLIC_E2E: 'true',
         },
       }

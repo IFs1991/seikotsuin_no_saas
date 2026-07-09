@@ -9,10 +9,26 @@ import {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const BASE_URL =
+
+function normalizePlaywrightBaseURL(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.hostname === 'localhost') {
+      url.hostname = '127.0.0.1';
+      return url.toString().replace(/\/$/, '');
+    }
+  } catch {
+    return value;
+  }
+
+  return value;
+}
+
+const BASE_URL = normalizePlaywrightBaseURL(
   process.env.PLAYWRIGHT_BASE_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  'http://127.0.0.1:3000';
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'http://127.0.0.1:3000'
+);
 
 const createCookieClient = () => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

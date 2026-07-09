@@ -14,7 +14,7 @@ const createAdminClientMock = jest.mocked(createAdminClient);
 
 const activeToken: CalendarFeedTokenRow = {
   id: 'token-a',
-  clinic_id: null,
+  clinic_id: 'clinic-a',
   staff_profile_id: 'profile-a',
   feed_type: 'staff',
   token_hash: hashCalendarFeedToken('raw-token'),
@@ -41,6 +41,14 @@ const shift: CalendarIcsShiftRow = {
   clinics: { id: 'clinic-a', name: '道玄坂院' },
 };
 
+const otherClinicShift: CalendarIcsShiftRow = {
+  ...shift,
+  id: 'shift-b',
+  clinic_id: 'clinic-b',
+  assignment_type: 'help',
+  clinics: { id: 'clinic-b', name: '池袋院' },
+};
+
 class CalendarFeedQueryMock {
   private tokenRows: CalendarFeedTokenRow[];
   private shiftRows: CalendarIcsShiftRow[];
@@ -65,6 +73,7 @@ class CalendarFeedQueryMock {
     });
     this.shiftRows = this.shiftRows.filter(row => {
       if (column === 'staff_profile_id') return row.staff_profile_id === value;
+      if (column === 'clinic_id') return row.clinic_id === value;
       if (column === 'status') return row.status === value;
       return true;
     });
@@ -111,7 +120,10 @@ describe('GET /api/calendar/staff/[token]', () => {
   });
 
   it('returns staff confirmed shifts as an ICS feed', async () => {
-    mockAdminClient({ tokenRows: [activeToken], shiftRows: [shift] });
+    mockAdminClient({
+      tokenRows: [activeToken],
+      shiftRows: [shift, otherClinicShift],
+    });
     const { GET } = await import('@/app/api/calendar/staff/[token]/route');
 
     const response = await GET(
@@ -124,6 +136,26 @@ describe('GET /api/calendar/staff/[token]', () => {
     expect(response.headers.get('Content-Type')).toContain('text/calendar');
     expect(text).toContain('BEGIN:VCALENDAR');
     expect(text).toContain('SUMMARY:ヘルプ勤務：道玄坂院');
+    expect(text).not.toContain('池袋院');
+  });
+
+  it('returns 404 for legacy unscoped staff tokens', async () => {
+    mockAdminClient({
+      tokenRows: [
+        {
+          ...activeToken,
+          clinic_id: null,
+        },
+      ],
+    });
+    const { GET } = await import('@/app/api/calendar/staff/[token]/route');
+
+    const response = await GET(
+      new NextRequest('http://localhost/api/calendar/staff/raw-token'),
+      { params: Promise.resolve({ token: 'raw-token' }) }
+    );
+
+    expect(response.status).toBe(404);
   });
 
   it('returns 404 for revoked tokens', async () => {

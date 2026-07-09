@@ -2,7 +2,11 @@ import 'server-only';
 
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { getMobileUiuxBridgeScript } from '@/lib/mobile-uiux/bridge-manifest';
+import {
+  buildMobileUiuxBridgeScript,
+  MOBILE_UIUX_SCREEN_MANIFEST,
+} from '@/lib/mobile-uiux/bridge-manifest';
+import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 
 export interface MobileUiuxAsset {
   content: string;
@@ -110,7 +114,10 @@ async function readAssetFile(
   assetFile: MobileUiuxAssetFile
 ): Promise<string | null> {
   if (assetFile.privateFileName === 'mobile-bridge.js') {
-    return getMobileUiuxBridgeScript();
+    return buildMobileUiuxBridgeScript({
+      realDataEnabled: getMobileUiuxFlags().realDataEnabled,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
   }
 
   const privateAsset = await readAssetCandidate(

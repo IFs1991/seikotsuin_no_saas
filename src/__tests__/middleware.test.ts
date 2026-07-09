@@ -31,6 +31,10 @@ jest.mock('@/lib/security/csp-config', () => ({
       csp: 'default-src self',
       cspReportOnly: null,
     }),
+    getMobileUiuxCSP: jest.fn().mockReturnValue({
+      csp: "default-src 'self'; script-src 'self' 'unsafe-eval' https://unpkg.com",
+      cspReportOnly: null,
+    }),
   },
 }));
 

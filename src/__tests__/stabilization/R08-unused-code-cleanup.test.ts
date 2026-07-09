@@ -6,35 +6,49 @@
  * 2. supabase-browser.ts の参照がプロダクションコードに存在しない (R-03 後)
  * 3. src/api/database/supabase-client.ts の参照がプロダクションコードに存在しない (R-03 後)
  */
+import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 
 const SRC_DIR = path.resolve(__dirname, '../..');
 
-function grepProductionRefs(pattern: string, selfFile?: string): string[] {
-  try {
-    const result = execSync(
-      `grep -rl "${pattern}" "${SRC_DIR}" --include="*.ts" --include="*.tsx"`,
-      { encoding: 'utf-8', timeout: 10_000 }
-    ).trim();
-    return result
-      ? result
-          .split('\n')
-          .filter(
-            f =>
-              f &&
-              !f.includes('__tests__') &&
-              (!selfFile || !f.includes(selfFile))
-          )
-      : [];
-  } catch {
+function collectSourceFiles(directory: string): string[] {
+  if (!fs.existsSync(directory)) {
     return [];
   }
+
+  const files: string[] = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === '__tests__') {
+        continue;
+      }
+      files.push(...collectSourceFiles(fullPath));
+      continue;
+    }
+
+    if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function productionRefs(pattern: string, selfFile?: string): string[] {
+  return collectSourceFiles(SRC_DIR).filter(filePath => {
+    if (selfFile && filePath.includes(selfFile)) {
+      return false;
+    }
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return content.includes(pattern);
+  });
 }
 
 describe('R-08: 未使用コード清掃', () => {
   test('error-handler-enhanced.ts への参照がプロダクションコードに存在しない', () => {
-    const refs = grepProductionRefs(
+    const refs = productionRefs(
       'error-handler-enhanced',
       'error-handler-enhanced.ts'
     );
@@ -42,7 +56,7 @@ describe('R-08: 未使用コード清掃', () => {
   });
 
   test('SecurityErrorHandler への参照がプロダクションコードに存在しない', () => {
-    const refs = grepProductionRefs(
+    const refs = productionRefs(
       'SecurityErrorHandler',
       'error-handler-enhanced.ts'
     );
@@ -50,7 +64,7 @@ describe('R-08: 未使用コード清掃', () => {
   });
 
   test('GlobalErrorHandler への参照がプロダクションコードに存在しない', () => {
-    const refs = grepProductionRefs(
+    const refs = productionRefs(
       'GlobalErrorHandler',
       'error-handler-enhanced.ts'
     );
@@ -58,12 +72,12 @@ describe('R-08: 未使用コード清掃', () => {
   });
 
   test('supabase-browser.ts への参照がプロダクションコードに存在しない', () => {
-    const refs = grepProductionRefs('supabase-browser', 'supabase-browser.ts');
+    const refs = productionRefs('supabase-browser', 'supabase-browser.ts');
     expect(refs).toHaveLength(0);
   });
 
   test('api/database/supabase-client.ts への参照がプロダクションコードに存在しない', () => {
-    const refs = grepProductionRefs(
+    const refs = productionRefs(
       'api/database/supabase-client',
       'supabase-client.ts'
     );

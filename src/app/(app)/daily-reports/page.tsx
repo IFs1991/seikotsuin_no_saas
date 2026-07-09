@@ -21,6 +21,7 @@ import {
   type ManagerDailyReportsOverviewStatus,
 } from '@/lib/manager-daily-reports';
 import { useAccessibleClinics } from '@/hooks/useAccessibleClinics';
+import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { useDashboardBootstrapQuery } from '@/hooks/queries/useDashboardBootstrapQuery';
 import { useDailyReportsQuery } from '@/hooks/queries/useDailyReportsQuery';
 import { useUserProfileContext } from '@/providers/user-profile-context';
@@ -678,15 +679,20 @@ const Page: React.FC = () => {
     loading: profileLoading,
     error: profileError,
   } = useUserProfileContext();
+  const { activeClinicId, activeClinicLoading } = useActiveClinicId(
+    profile?.clinicId
+  );
   const bootstrapQuery = useDashboardBootstrapQuery({
-    clinicId: profile?.clinicId ?? null,
-    enabled: !profile || profile.role !== 'manager',
+    clinicId: activeClinicId,
+    enabled:
+      !activeClinicLoading &&
+      Boolean(activeClinicId) &&
+      (!profile || profile.role !== 'manager'),
   });
   const bootstrapData = bootstrapQuery.data;
   const effectiveProfile = profile ?? bootstrapData?.profile ?? null;
   const initialDailyReports =
-    effectiveProfile?.clinicId &&
-    effectiveProfile.clinicId === bootstrapData?.profile.clinicId
+    activeClinicId && activeClinicId === bootstrapData?.profile.clinicId
       ? bootstrapData.dailyReports
       : undefined;
   const deferReportsFetch =
@@ -698,7 +704,7 @@ const Page: React.FC = () => {
     return <ProfileErrorView message={profileError} />;
   }
 
-  if (profileLoading && !bootstrapData) {
+  if ((profileLoading || activeClinicLoading) && !bootstrapData) {
     return (
       <div className='bg-background min-h-screen py-8'>
         <div className='container mx-auto px-4'>
@@ -718,7 +724,7 @@ const Page: React.FC = () => {
 
   return (
     <StandardDailyReportsView
-      clinicId={effectiveProfile?.clinicId ?? null}
+      clinicId={activeClinicId}
       initialDailyReports={initialDailyReports}
       deferReportsFetch={deferReportsFetch}
     />

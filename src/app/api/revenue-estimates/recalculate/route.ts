@@ -335,6 +335,7 @@ export async function POST(request: NextRequest) {
   try {
     const result = await processClinicScopedBody(request, recalculateSchema, {
       allowedRoles: Array.from(STAFF_ROLES),
+      path: PATH,
     });
     if (!result.success) return result.error;
 
