@@ -8,7 +8,7 @@ import {
 import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxHomeResponse } from '@/lib/mobile-uiux/contracts';
-import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import { prefetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import {
   areMobileUiuxRealDataReadsEnabled,
   getMobileUiuxFlags,
@@ -124,6 +124,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Overlaps the entitlement lookup with the access check; the result is
+  // consumed only after access passes (fail-closed on any lookup error).
+  const entitlementPromise = prefetchMobileUiuxClinicEntitlement({
+    flags,
+    clinicId,
+  });
+
   let access;
   try {
     access = await ensureClinicAccess(request, PATH, clinicId, {
@@ -165,11 +172,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const entitlement = await fetchMobileUiuxClinicEntitlement({
-    supabase: access.supabase,
-    flags,
-    clinicId,
-  });
+  const entitlement = await entitlementPromise;
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
     logMobileUiuxEntitlementDenied({
       flags,

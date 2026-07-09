@@ -21,7 +21,10 @@ import {
   getMobileUiuxFlags,
   type MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
-import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import {
+  fetchMobileUiuxClinicEntitlement,
+  prefetchMobileUiuxClinicEntitlement,
+} from '@/lib/mobile-uiux/entitlements';
 import type { MobileUiuxReservationsResponse } from '@/lib/mobile-uiux/contracts';
 import {
   buildMobileUiuxFailureFromResponse,
@@ -384,6 +387,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Overlaps the entitlement lookup with the access check; the result is
+  // consumed only after access passes (fail-closed on any lookup error).
+  const entitlementPromise = prefetchMobileUiuxClinicEntitlement({
+    flags,
+    clinicId,
+  });
+
   const auth = await processApiRequest(request, {
     clinicId,
     requireClinicMatch: true,
@@ -404,11 +414,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const entitlement = await fetchMobileUiuxClinicEntitlement({
-    supabase: auth.supabase,
-    flags,
-    clinicId,
-  });
+  const entitlement = await entitlementPromise;
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
     logMobileUiuxEntitlementDenied({
       flags,

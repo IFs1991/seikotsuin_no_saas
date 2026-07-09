@@ -8,7 +8,7 @@ import type {
   MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
 import { createLogger } from '@/lib/logger';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import { createClient, type SupabaseServerClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 type ClinicFeatureFlagsRow =
@@ -201,6 +201,32 @@ export async function fetchMobileUiuxClinicEntitlement(params: {
   );
 
   return entitlements.get(params.clinicId) ?? null;
+}
+
+/**
+ * Starts the clinic entitlement lookup on its own request-scoped RLS client
+ * so routes can overlap it with their access check instead of running the
+ * two sequentially. Entitlement rows are feature flags, not the
+ * authorization of record; callers must still gate on their access check
+ * before consuming the result. Never rejects: any failure resolves to null,
+ * which downstream checks treat as "not entitled" (fail-closed).
+ */
+export function prefetchMobileUiuxClinicEntitlement(params: {
+  flags: MobileUiuxFlags;
+  clinicId: string;
+}): Promise<MobileUiuxClinicEntitlement | null | undefined> {
+  if (!params.flags.useDbEntitlements) {
+    return Promise.resolve(undefined);
+  }
+
+  return (async () => {
+    const supabase = await createClient();
+    return await fetchMobileUiuxClinicEntitlement({
+      supabase,
+      flags: params.flags,
+      clinicId: params.clinicId,
+    });
+  })().catch(() => null);
 }
 
 export async function resolveMobileUiuxRolloutWithEntitlements(params: {

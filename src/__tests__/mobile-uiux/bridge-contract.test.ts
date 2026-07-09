@@ -106,6 +106,7 @@ type BridgeWindow = {
     payload: unknown
   ) => boolean;
   __MOBILE_UIUX_BRIDGE_READY__?: Promise<void>;
+  __MOBILE_UIUX_CONTEXT__?: unknown;
 };
 
 const createClientMock = createClient as jest.MockedFunction<
@@ -580,6 +581,122 @@ describe('mobile-uiux bridge contract', () => {
       },
     ]);
     expect(calls.some(call => call.method !== 'GET')).toBe(false);
+  });
+
+  it('uses the inline context payload and skips the context fetch', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    window.__MOBILE_UIUX_CONTEXT__ = contextPayload;
+
+    await runBridgeScript(script, window);
+
+    expect(calls).toEqual([
+      {
+        url: expect.stringMatching(
+          /^\/api\/mobile-uiux\/reservations\?clinic_id=/
+        ) as string,
+        method: 'GET',
+        body: undefined,
+      },
+    ]);
+    expect(
+      window.document.documentElement.dataset.mobileUiuxCanonicalRole
+    ).toBe('therapist');
+  });
+
+  it('falls back to fetching context when the inline payload is invalid', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const { window, calls } = buildBridgeWindow('reservations', [
+      buildJsonResponse(200, contextPayload),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+    ]);
+    window.__MOBILE_UIUX_CONTEXT__ = { success: true };
+
+    await runBridgeScript(script, window);
+
+    expect(calls[0]).toEqual({
+      url: '/api/mobile-uiux/context',
+      method: 'GET',
+      body: undefined,
+    });
+    expect(
+      window.document.documentElement.dataset.mobileUiuxCanonicalRole
+    ).toBe('therapist');
+  });
+
+  it('starts supplemental reads while the main read is still in flight', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const readPayload = {
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date: '2026-06-30',
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: '2026-06-30T00:00:00.000Z',
+    };
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window } = buildBridgeWindow('reservations', [], applyReadData);
+    window.__MOBILE_UIUX_CONTEXT__ = contextPayload;
+
+    const order: string[] = [];
+    window.fetch = jest.fn(async (url: string) => {
+      const endpoint = url.split('?')[0];
+      order.push(`start:${endpoint}`);
+      if (endpoint === '/api/mobile-uiux/reservations') {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        order.push('resolved:/api/mobile-uiux/reservations');
+        return buildJsonResponse(200, readPayload);
+      }
+      return buildJsonResponse(200, settingsDetailReadPayload);
+    }) as BridgeWindow['fetch'];
+
+    await runBridgeScript(script, window);
+
+    const supplementalStart = order.indexOf(
+      'start:/api/mobile-uiux/settings-detail'
+    );
+    const mainResolved = order.indexOf(
+      'resolved:/api/mobile-uiux/reservations'
+    );
+    expect(supplementalStart).toBeGreaterThan(-1);
+    expect(supplementalStart).toBeLessThan(mainResolved);
+
+    // The supplemental payload must still be applied after the main read.
+    const applyOrder = applyReadData.mock.calls.map(([screen]) => screen);
+    expect(applyOrder.indexOf('reservations')).toBeLessThan(
+      applyOrder.indexOf('settings-detail')
+    );
   });
 
   it('loads supplemental settings-detail data when a write screen adapter is installed', async () => {

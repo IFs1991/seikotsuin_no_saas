@@ -7,18 +7,30 @@ import { createErrorResponse } from '@/lib/api-helpers';
 import {
   ADMIN_USER_ROLE_VALUES,
   normalizeRole,
+  ROLE_LABELS,
   type AdminUserRole,
 } from '@/lib/constants/roles';
 import { resolveMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import {
   buildMobileUiuxBridgeScript,
   injectMobileUiuxBridgeScript,
+  injectMobileUiuxInlineContext,
   isMobileUiuxScreenResource,
   MOBILE_UIUX_SCREEN_MANIFEST,
   type MobileUiuxScreenRouteResource,
 } from '@/lib/mobile-uiux/bridge-manifest';
+import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
+import type {
+  MobileUiuxContextResponse,
+  MobileUiuxPublicFlags,
+} from '@/lib/mobile-uiux/contracts';
+import {
+  MOBILE_UIUX_DISPLAY_MODE_COOKIE,
+  normalizeMobileUiuxDisplayMode,
+} from '@/lib/mobile-uiux/display-mode';
 import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { resolveStaffDisplayName } from '@/lib/mobile-uiux/identity';
 import { transformMobileUiuxHtml } from '@/lib/mobile-uiux/html-transform';
 import { readMobileUiuxProductionAsset } from '@/lib/mobile-uiux/production-asset';
 import {
@@ -31,6 +43,7 @@ import {
   getCurrentUser,
   getUserAccessContext,
   resolveScopedClinicIds,
+  type SupabaseServerClient,
 } from '@/lib/supabase';
 
 const ASSET_ROOT = path.join(process.cwd(), 'private-assets', 'mobile-uiux');
@@ -158,6 +171,38 @@ function buildNoStoreHeaders(contentType: string): Headers {
     'Cache-Control': 'no-store, no-cache, must-revalidate',
     Pragma: 'no-cache',
     Expires: '0',
+    'X-Content-Type-Options': 'nosniff',
+  });
+}
+
+function buildContentETag(content: string): string {
+  return `"${createHash('sha256').update(content).digest('hex')}"`;
+}
+
+function matchesIfNoneMatch(request: NextRequest, etag: string): boolean {
+  const header = request.headers.get('if-none-match');
+  if (!header) {
+    return false;
+  }
+  if (header.trim() === '*') {
+    return true;
+  }
+  return header
+    .split(',')
+    .map(value => value.trim().replace(/^W\//i, ''))
+    .includes(etag);
+}
+
+// Screens embed per-user state (inline context), so they must revalidate on
+// every navigation; the ETag still allows a 304 to skip the ~100KB transfer.
+// JS assets carry no tenant data and may be reused briefly without a round trip.
+function buildCacheableHeaders(contentType: string, etag: string): Headers {
+  return new Headers({
+    'Content-Type': contentType,
+    'Cache-Control': isHtmlContentType(contentType)
+      ? 'private, no-cache'
+      : 'private, max-age=3600, must-revalidate',
+    ETag: etag,
     'X-Content-Type-Options': 'nosniff',
   });
 }
@@ -374,6 +419,47 @@ async function buildMobileUiuxReactRuntimeScript(): Promise<string> {
   return reactRuntimeScriptCache;
 }
 
+/**
+ * Builds the same payload the /api/mobile-uiux/context route returns so the
+ * screen HTML can inline it and the bridge can skip one authorized fetch.
+ * resolveStaffDisplayName / fetchClinicNames are fail-closed, so this never
+ * rejects.
+ */
+async function buildInlineContextData(params: {
+  request: NextRequest;
+  supabase: SupabaseServerClient;
+  userId: string;
+  contextClinicId: string | null;
+  role: MobileUiuxContextResponse['role']['canonical'];
+  clinicIds: string[];
+  publicFlags: MobileUiuxPublicFlags;
+}): Promise<MobileUiuxContextResponse> {
+  const defaultClinicId =
+    params.contextClinicId && params.clinicIds.includes(params.contextClinicId)
+      ? params.contextClinicId
+      : params.clinicIds[0];
+
+  const [displayName, accessibleClinics] = await Promise.all([
+    resolveStaffDisplayName(params.supabase, params.userId),
+    fetchClinicNames(params.supabase, params.clinicIds),
+  ]);
+
+  return {
+    role: {
+      canonical: params.role,
+      label: ROLE_LABELS[params.role],
+    },
+    defaultClinicId,
+    accessibleClinicIds: params.clinicIds,
+    displayMode: normalizeMobileUiuxDisplayMode(
+      params.request.cookies.get(MOBILE_UIUX_DISPLAY_MODE_COOKIE)?.value
+    ),
+    flags: params.publicFlags,
+    displayName,
+    accessibleClinics,
+  };
+}
+
 export async function handleMobileUiuxScreenRequest(
   request: NextRequest,
   context: { params: Promise<{ resource: string }> },
@@ -425,6 +511,9 @@ export async function handleMobileUiuxScreenRequest(
 
   const accessContext = await getUserAccessContext(user.id, supabase, { user });
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
+  const scopedClinicCount = accessContext.permissions
+    ? (resolveScopedClinicIds(accessContext.permissions)?.length ?? 0)
+    : 0;
   const principalDecision = await resolveMobileUiuxPrincipal({
     userId: user.id,
     permissions: accessContext.permissions,
@@ -436,8 +525,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: mapMobileUiuxPrincipalDeniedReason(principalDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
@@ -453,8 +541,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: 'role_denied',
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: flags.enabled,
     });
@@ -476,8 +563,7 @@ export async function handleMobileUiuxScreenRequest(
       reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
       role: normalizedRole,
       allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
+      scopedClinicCount,
       writeTarget: `screen:${resource}`,
       featureFlagEnabled: rolloutDecision.publicFlags.enabled,
     });
@@ -487,6 +573,24 @@ export async function handleMobileUiuxScreenRequest(
       contentType: definition.contentType,
     });
   }
+
+  // Kicked off before the asset read so the display-name / clinic-name
+  // queries overlap with file IO. Both helpers are fail-closed and never
+  // reject, so this promise is safe to leave in flight on error paths.
+  const inlineContextDataPromise =
+    mode === 'production' &&
+    isMobileUiuxScreenResource(resource) &&
+    flags.realDataEnabled
+      ? buildInlineContextData({
+          request,
+          supabase,
+          userId: user.id,
+          contextClinicId: accessContext.clinicId ?? null,
+          role: rolloutDecision.role,
+          clinicIds: rolloutDecision.clinicIds,
+          publicFlags: rolloutDecision.publicFlags,
+        })
+      : null;
 
   let usesProductionAsset = false;
   let content: string;
@@ -520,13 +624,31 @@ export async function handleMobileUiuxScreenRequest(
       ? content
       : transformScreenHtml(resource, content, mode)
     : content;
-  const responseContent =
+  const baseContent =
     mode === 'production' && isMobileUiuxScreenResource(resource)
       ? injectMobileUiuxBridgeScript(shellContent, resource)
       : shellContent;
 
-  return new NextResponse(responseContent, {
-    status: 200,
-    headers: buildNoStoreHeaders(definition.contentType),
-  });
+  let responseContent = baseContent;
+  // generatedAt changes per response, so the ETag hashes the stable parts
+  // (shell + context data) to keep 304 revalidation effective.
+  let etagSource = baseContent;
+  if (inlineContextDataPromise) {
+    const contextData = await inlineContextDataPromise;
+    etagSource = `${baseContent} ${JSON.stringify(contextData)}`;
+    responseContent = injectMobileUiuxInlineContext(baseContent, {
+      success: true,
+      data: contextData,
+      generatedAt: new Date().toISOString(),
+    });
+  }
+
+  const etag = buildContentETag(etagSource);
+  const headers = buildCacheableHeaders(definition.contentType, etag);
+
+  if (matchesIfNoneMatch(request, etag)) {
+    return new NextResponse(null, { status: 304, headers });
+  }
+
+  return new NextResponse(responseContent, { status: 200, headers });
 }

@@ -15,7 +15,10 @@ import {
 } from '@/lib/daily-reports/write-model';
 import { AppError } from '@/lib/error-handler';
 import type { MobileUiuxDailyReportsResponse } from '@/lib/mobile-uiux/contracts';
-import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import {
+  fetchMobileUiuxClinicEntitlement,
+  prefetchMobileUiuxClinicEntitlement,
+} from '@/lib/mobile-uiux/entitlements';
 import {
   areMobileUiuxRealDataReadsEnabled,
   areMobileUiuxWritesEnabled,
@@ -171,6 +174,13 @@ export async function GET(request: NextRequest) {
     return endDate.response;
   }
 
+  // Overlaps the entitlement lookup with the access check; the result is
+  // consumed only after access passes (fail-closed on any lookup error).
+  const entitlementPromise = prefetchMobileUiuxClinicEntitlement({
+    flags,
+    clinicId,
+  });
+
   let access;
   try {
     access = await ensureClinicAccess(request, PATH, clinicId, {
@@ -193,11 +203,7 @@ export async function GET(request: NextRequest) {
     return buildAccessError(error);
   }
 
-  const entitlement = await fetchMobileUiuxClinicEntitlement({
-    supabase: access.supabase,
-    flags,
-    clinicId,
-  });
+  const entitlement = await entitlementPromise;
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
     logMobileUiuxEntitlementDenied({
       flags,
@@ -258,11 +264,17 @@ export async function POST(request: NextRequest) {
       return buildScopedBodyFailure(result.error.status);
     }
 
-    const entitlement = await fetchMobileUiuxClinicEntitlement({
-      supabase: result.supabase,
-      flags,
-      clinicId: result.dto.clinic_id,
-    });
+    // Both checks are independent reads on the request-scoped client, so
+    // they run concurrently; the entitlement gate is still evaluated first
+    // and the upsert only happens after both pass (fail-closed).
+    const [entitlement, scope] = await Promise.all([
+      fetchMobileUiuxClinicEntitlement({
+        supabase: result.supabase,
+        flags,
+        clinicId: result.dto.clinic_id,
+      }),
+      validateDailyReportWriteScope(result.supabase, result.dto),
+    ]);
     if (!areMobileUiuxWritesEnabled(flags, 'dailyReport', entitlement)) {
       logMobileUiuxWriteFlagDenied({
         flags,
@@ -272,10 +284,6 @@ export async function POST(request: NextRequest) {
       return buildWriteDisabledResponse();
     }
 
-    const scope = await validateDailyReportWriteScope(
-      result.supabase,
-      result.dto
-    );
     if (scope.ok === false) {
       if (scope.status === 403) {
         logMobileUiuxClinicScopeDenied({
