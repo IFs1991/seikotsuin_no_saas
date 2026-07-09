@@ -15,6 +15,7 @@ import {
 import { logger } from '@/lib/logger';
 import { normalizeRole } from '@/lib/constants/roles';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { canRoleAccessMobileUiuxScreen } from '@/lib/mobile-uiux/navigation';
 
 export type MobileUiuxAccessReasonCode =
   | 'unauthenticated'
@@ -22,7 +23,7 @@ export type MobileUiuxAccessReasonCode =
   | 'profile_inactive'
   | 'feature_flag_disabled'
   | 'role_not_allowed'
-  | 'clinic_allowlist_empty_for_non_admin'
+  | 'screen_not_allowed'
   | 'clinic_scope_missing'
   | 'clinic_scope_not_allowed'
   | 'clinic_scope_resolution_failed';
@@ -157,6 +158,26 @@ function hasAllowedClinicScope(
   return scopedClinicIds.some(clinicId => allowedClinicIdSet.has(clinicId));
 }
 
+function normalizeScreenResource(resource: string): string | null {
+  const normalizedResource = resource
+    .replace(/\.dc\.html$/i, '')
+    .replace(/\.html$/i, '')
+    .trim();
+
+  if (
+    normalizedResource === 'home' ||
+    normalizedResource === 'reservations' ||
+    normalizedResource === 'patients' ||
+    normalizedResource === 'daily-reports' ||
+    normalizedResource === 'settings' ||
+    normalizedResource === 'settings-detail'
+  ) {
+    return normalizedResource;
+  }
+
+  return null;
+}
+
 async function deny(input: {
   request: Request;
   user: MobileUiuxUser | null;
@@ -288,29 +309,6 @@ export async function checkMobileUiuxAccess(
     });
   }
 
-  if (flags.allowedClinicIds.length === 0) {
-    if (role === 'admin') {
-      return {
-        allowed: true,
-        role,
-        scopedClinicCount,
-        ...baseLogCounts,
-      };
-    }
-
-    return await deny({
-      request,
-      user,
-      status: 403,
-      reasonCode: 'clinic_allowlist_empty_for_non_admin',
-      message: 'モバイル画面を利用できる店舗が設定されていません',
-      role,
-      scopedClinicCount,
-      resource,
-      ...baseLogCounts,
-    });
-  }
-
   if (scope.clinicIds.length === 0) {
     return await deny({
       request,
@@ -325,7 +323,25 @@ export async function checkMobileUiuxAccess(
     });
   }
 
-  if (!hasAllowedClinicScope(scope.clinicIds, flags.allowedClinicIds)) {
+  const screenResource = normalizeScreenResource(resource);
+  if (screenResource && !canRoleAccessMobileUiuxScreen(role, screenResource)) {
+    return await deny({
+      request,
+      user,
+      status: 403,
+      reasonCode: 'screen_not_allowed',
+      message: 'この画面を表示する権限がありません',
+      role,
+      scopedClinicCount,
+      resource,
+      ...baseLogCounts,
+    });
+  }
+
+  if (
+    flags.allowedClinicIds.length > 0 &&
+    !hasAllowedClinicScope(scope.clinicIds, flags.allowedClinicIds)
+  ) {
     return await deny({
       request,
       user,

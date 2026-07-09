@@ -13,6 +13,7 @@ import { isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
 import { AdminNotificationsMenu } from './admin-notifications-menu';
+import { MobileUiuxEntryPrompt } from '@/components/mobile-uiux/mobile-entry-prompt';
 
 const ClinicReservationsPreviewModal = dynamic(
   () =>
@@ -466,6 +467,11 @@ export const Header = React.memo(function Header({
                 className={USER_MENU_ITEM_CLASS}
                 onClick={closeMenus}
               />
+              <MobileUiuxEntryPrompt
+                variant='menu-item'
+                className={USER_MENU_ITEM_CLASS}
+                onNavigate={closeMenus}
+              />
             </div>
           )}
         </div>
@@ -537,6 +543,11 @@ export const Header = React.memo(function Header({
                 />
               </div>
             )}
+            <MobileUiuxEntryPrompt
+              variant='menu-item'
+              className={MOBILE_LOGOUT_LINK_CLASS}
+              onNavigate={closeMenus}
+            />
             <LogoutLink
               href={logoutHref}
               className={MOBILE_LOGOUT_LINK_CLASS}

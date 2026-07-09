@@ -4,6 +4,7 @@ const getUserAccessContextMock = jest.fn();
 const createAdminClientMock = jest.fn();
 const logUnauthorizedAccessMock = jest.fn();
 const loggerWarnMock = jest.fn();
+const resolveEffectiveClinicScopeMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   createClient: () => createClientMock(),
@@ -29,6 +30,11 @@ jest.mock('@/lib/logger', () => ({
     debug: jest.fn(),
     log: jest.fn(),
   },
+}));
+
+jest.mock('@/lib/auth/manager-scope', () => ({
+  resolveEffectiveClinicScope: (...args: unknown[]) =>
+    resolveEffectiveClinicScopeMock(...args),
 }));
 
 const { checkMobileUiuxAccess } = jest.requireActual<
@@ -65,6 +71,10 @@ describe('checkMobileUiuxAccess', () => {
     });
     logUnauthorizedAccessMock.mockClear();
     loggerWarnMock.mockClear();
+    resolveEffectiveClinicScopeMock.mockResolvedValue({
+      source: 'manager_assignments',
+      clinicIds: ['clinic-a'],
+    });
   });
 
   afterAll(() => {
@@ -124,5 +134,119 @@ describe('checkMobileUiuxAccess', () => {
       featureFlagEnabled: true,
     });
     expect(logUnauthorizedAccessMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['clinic_admin', 'manager', 'therapist', 'staff'])(
+    'allows %s with scoped clinic when allowed clinic list is empty',
+    async role => {
+      process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = '';
+      getUserAccessContextMock.mockResolvedValue({
+        permissions: {
+          role,
+          clinic_id: 'clinic-a',
+          clinic_scope_ids: ['clinic-a'],
+        },
+        role,
+        normalizedRole: role,
+        clinicId: 'clinic-a',
+        isActive: true,
+        isAdmin: role === 'clinic_admin',
+      });
+
+      const response = await checkMobileUiuxAccess(
+        new Request('http://localhost/mobile-uiux/screens/reservations'),
+        'reservations'
+      );
+
+      expect(response).toEqual({
+        allowed: true,
+        role,
+        scopedClinicCount: 1,
+        allowedClinicCount: 0,
+        featureFlagEnabled: true,
+      });
+      expect(logUnauthorizedAccessMock).not.toHaveBeenCalled();
+    }
+  );
+
+  it('denies customer even when allowed clinic list is empty', async () => {
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = '';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'customer',
+        clinic_id: 'clinic-a',
+        clinic_scope_ids: ['clinic-a'],
+      },
+      role: 'customer',
+      normalizedRole: 'customer',
+      clinicId: 'clinic-a',
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const response = await checkMobileUiuxAccess(
+      new Request('http://localhost/mobile-uiux/screens/reservations'),
+      'reservations'
+    );
+
+    expect(response).toMatchObject({
+      allowed: false,
+      status: 403,
+      reasonCode: 'role_not_allowed',
+    });
+  });
+
+  it('denies admin with empty clinic scope instead of bypassing the scope check', async () => {
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = '';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [],
+      },
+      role: 'admin',
+      normalizedRole: 'admin',
+      clinicId: null,
+      isActive: true,
+      isAdmin: true,
+    });
+
+    const response = await checkMobileUiuxAccess(
+      new Request('http://localhost/mobile-uiux/screens/home'),
+      'home'
+    );
+
+    expect(response).toMatchObject({
+      allowed: false,
+      status: 403,
+      reasonCode: 'clinic_scope_missing',
+    });
+  });
+
+  it('denies therapist access to home screen even with valid clinic scope', async () => {
+    process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = '';
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'therapist',
+        clinic_id: 'clinic-a',
+        clinic_scope_ids: ['clinic-a'],
+      },
+      role: 'therapist',
+      normalizedRole: 'therapist',
+      clinicId: 'clinic-a',
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const response = await checkMobileUiuxAccess(
+      new Request('http://localhost/mobile-uiux/screens/home'),
+      'home'
+    );
+
+    expect(response).toMatchObject({
+      allowed: false,
+      status: 403,
+      reasonCode: 'screen_not_allowed',
+    });
   });
 });

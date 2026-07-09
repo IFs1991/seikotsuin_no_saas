@@ -2,6 +2,7 @@ import 'server-only';
 
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { getMobileUiuxBridgeScript } from '@/lib/mobile-uiux/bridge-manifest';
 
 export interface MobileUiuxAsset {
   content: string;
@@ -108,6 +109,10 @@ async function readAssetCandidate(filePath: string): Promise<string | null> {
 async function readAssetFile(
   assetFile: MobileUiuxAssetFile
 ): Promise<string | null> {
+  if (assetFile.privateFileName === 'mobile-bridge.js') {
+    return getMobileUiuxBridgeScript();
+  }
+
   const privateAsset = await readAssetCandidate(
     path.join(privateAssetBasePath(), assetFile.privateFileName)
   );
@@ -119,6 +124,22 @@ async function readAssetFile(
   return await readAssetCandidate(
     path.join(sourceAssetBasePath(), assetFile.sourceFileName)
   );
+}
+
+function injectMobileBridge(content: string, resource: string): string {
+  if (
+    resource.toLowerCase().endsWith('.js') ||
+    content.includes('mobile-bridge.js')
+  ) {
+    return content;
+  }
+
+  const bridgeScript = '<script src="./mobile-bridge.js"></script>';
+  if (content.includes('</body>')) {
+    return content.replace('</body>', `${bridgeScript}\n</body>`);
+  }
+
+  return `${content}\n${bridgeScript}`;
 }
 
 export async function loadMobileUiuxAsset(
@@ -134,8 +155,12 @@ export async function loadMobileUiuxAsset(
     return null;
   }
 
+  const contentType = resolveContentType(resource);
+
   return {
-    content,
-    contentType: resolveContentType(resource),
+    content: contentType.startsWith('text/html')
+      ? injectMobileBridge(content, resource)
+      : content,
+    contentType,
   };
 }
