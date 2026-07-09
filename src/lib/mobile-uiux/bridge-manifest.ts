@@ -487,8 +487,9 @@ export function buildMobileUiuxBridgeScript(
     return Array.isArray(screens) ? screens : [];
   }
 
-  async function hydrateSupplementalReadData(screen, contextData) {
+  function startSupplementalReads(screen, contextData) {
     const supplementalReads = getSupplementalReadScreens(screen);
+    const fetches = [];
     for (const read of supplementalReads) {
       if (!isRecord(read) || typeof read.screen !== "string") {
         continue;
@@ -504,12 +505,27 @@ export function buildMobileUiuxBridgeScript(
         continue;
       }
 
-      const readResult = await fetchJson(readUrl);
+      fetches.push(
+        fetchJson(readUrl)
+          .catch(() => ({ kind: "unavailable" }))
+          .then(readResult => ({ read, readResult }))
+      );
+    }
+    return fetches;
+  }
+
+  async function applySupplementalReads(fetches) {
+    const results = await Promise.all(fetches);
+    for (const { read, readResult } of results) {
       if (readResult.kind === "payload") {
         const applyScreen = typeof read.applyScreen === "string" ? read.applyScreen : read.screen;
         hydrateReadOnlyData(applyScreen, readResult.payload);
       }
     }
+  }
+
+  async function hydrateSupplementalReadData(screen, contextData) {
+    await applySupplementalReads(startSupplementalReads(screen, contextData));
   }
 
   function getAccessibleClinicIds() {
@@ -771,7 +787,16 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
 
-    const readResult = await fetchJson(readUrl);
+    // Supplemental reads depend only on the context, so their fetches start
+    // while the main read is in flight; results are applied after the main
+    // read hydration to preserve apply order.
+    const readPromise = fetchJson(readUrl);
+    const supplementalFetches =
+      typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function"
+        ? startSupplementalReads(screen, contextPayload.data)
+        : null;
+
+    const readResult = await readPromise;
     if (readResult.kind === "unauthorized") {
       showFallback("unauthorized", STATUS_MESSAGES.unauthorized);
       location.assign("/login?redirectTo=" + encodeURIComponent(location.pathname));
@@ -786,8 +811,8 @@ export function buildMobileUiuxBridgeScript(
       return;
     }
 
-    if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
-      await hydrateSupplementalReadData(screen, contextPayload.data);
+    if (supplementalFetches) {
+      await applySupplementalReads(supplementalFetches);
     }
   }
 

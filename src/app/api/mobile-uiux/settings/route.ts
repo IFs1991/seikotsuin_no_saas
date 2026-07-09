@@ -14,7 +14,10 @@ import type {
   MobileUiuxSettingsResponse,
   MobileUiuxSettingsWriteResponse,
 } from '@/lib/mobile-uiux/contracts';
-import { fetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
+import {
+  fetchMobileUiuxClinicEntitlement,
+  prefetchMobileUiuxClinicEntitlement,
+} from '@/lib/mobile-uiux/entitlements';
 import {
   areMobileUiuxRealDataReadsEnabled,
   areMobileUiuxWritesEnabled,
@@ -123,6 +126,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Overlaps the entitlement lookup with the access check; the result is
+  // consumed only after access passes (fail-closed on any lookup error).
+  const entitlementPromise = prefetchMobileUiuxClinicEntitlement({
+    flags,
+    clinicId,
+  });
+
   const guard = await processApiRequest(request, {
     allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
     clinicId,
@@ -157,11 +167,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const entitlement = await fetchMobileUiuxClinicEntitlement({
-    supabase: guard.supabase,
-    flags,
-    clinicId,
-  });
+  const entitlement = await entitlementPromise;
   if (!areMobileUiuxRealDataReadsEnabled(flags, entitlement)) {
     logMobileUiuxEntitlementDenied({
       flags,
