@@ -1,7 +1,9 @@
 import {
+  adminApiWriteRateLimit,
   adminSecurityReadRateLimit,
   adminSecurityWriteRateLimit,
   apiRateLimit,
+  authenticatedApiWriteRateLimit,
   getPathRateLimit,
   loginRateLimit,
   mobileUiuxReadRateLimit,
@@ -116,6 +118,26 @@ describe('getPathRateLimit', () => {
     expect(getPathRateLimit('/api/health', 'GET')).toEqual([]);
   });
 
+  it('rate limits authenticated and admin API mutations while excluding machine endpoints', () => {
+    expect(getPathRateLimit('/api/reservations', 'POST')).toEqual([
+      authenticatedApiWriteRateLimit,
+    ]);
+    expect(getPathRateLimit('/api/patients/patient-1', 'DELETE')).toEqual([
+      authenticatedApiWriteRateLimit,
+    ]);
+    expect(getPathRateLimit('/api/admin/users', 'POST')).toEqual([
+      adminApiWriteRateLimit,
+    ]);
+    expect(getPathRateLimit('/api/public/reservations', 'POST')).toEqual([
+      apiRateLimit,
+    ]);
+    expect(
+      getPathRateLimit('/api/internal/process-line-outbox', 'POST')
+    ).toEqual([]);
+    expect(getPathRateLimit('/api/webhooks/resend', 'POST')).toEqual([]);
+    expect(getPathRateLimit('/api/stripe/webhook', 'POST')).toEqual([]);
+  });
+
   it('login attempts are limited to 3 with at least a 5 minute initial block', () => {
     expect(RATE_LIMIT_CONFIG.LOGIN_ATTEMPTS.MAX_ATTEMPTS).toBe(3);
     expect(
@@ -144,6 +166,7 @@ describe('getPathRateLimit', () => {
       .spyOn(rateLimiter, 'checkRateLimit')
       .mockResolvedValue({
         allowed: false,
+        backendAvailable: true,
         limit: RATE_LIMIT_CONFIG.MOBILE_UIUX_READ.MAX_CALLS,
         remaining: 0,
         resetTime: 1_756_800_000,
@@ -176,6 +199,7 @@ describe('getPathRateLimit', () => {
       .spyOn(rateLimiter, 'checkRateLimit')
       .mockResolvedValue({
         allowed: false,
+        backendAvailable: true,
         limit: RATE_LIMIT_CONFIG.MOBILE_UIUX_WRITE.MAX_CALLS,
         remaining: 0,
         resetTime: 1_756_800_000,
@@ -185,7 +209,7 @@ describe('getPathRateLimit', () => {
     const response = await mobileUiuxWriteRateLimit(
       new NextRequest('http://localhost/api/mobile-uiux/reservations', {
         method: 'POST',
-        headers: { 'x-real-ip': '203.0.113.20' },
+        headers: { 'x-vercel-forwarded-for': '203.0.113.20' },
       })
     );
 
@@ -208,6 +232,7 @@ describe('getPathRateLimit', () => {
       .spyOn(rateLimiter, 'checkRateLimit')
       .mockResolvedValue({
         allowed: true,
+        backendAvailable: true,
         limit: 30,
         remaining: 29,
         resetTime: 1_756_800_000,
@@ -241,6 +266,29 @@ describe('getPathRateLimit', () => {
 
     const response = await mfaRateLimit(
       new NextRequest('http://localhost/api/mfa/verify', {
+        method: 'POST',
+      })
+    );
+
+    expect(response?.status).toBe(503);
+  });
+
+  it('fails closed in production when Redis is configured but unavailable', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.test';
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+
+    jest.spyOn(rateLimiter, 'isWhitelisted').mockResolvedValue(false);
+    jest.spyOn(rateLimiter, 'checkRateLimit').mockResolvedValue({
+      allowed: true,
+      backendAvailable: false,
+      limit: 30,
+      remaining: 30,
+      resetTime: 1_756_800_000,
+    });
+
+    const response = await authenticatedApiWriteRateLimit(
+      new NextRequest('http://localhost/api/reservations', {
         method: 'POST',
       })
     );

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase';
 import { ResendEmailProvider } from '@/lib/notifications/email/resend-provider';
 import { processEmailOutbox } from '@/lib/notifications/email/processor';
+import { captureOperationalError } from '@/lib/monitoring/sentry';
 
 /**
  * GET /api/internal/process-email-outbox
@@ -27,9 +28,13 @@ export async function GET(request: NextRequest) {
       ...result,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    await captureOperationalError(error, {
+      source: 'cron',
+      operation: 'process-email-outbox',
+      endpoint: '/api/internal/process-email-outbox',
+    });
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: 'Internal job failed', code: 'JOB_FAILED' },
       { status: 500 }
     );
   }

@@ -88,6 +88,38 @@ describe('Sentry monitoring setup', () => {
     expect(eventId).toBe('event-123');
   });
 
+  it('captures operational errors with redacted details and safe tags', async () => {
+    const captureExceptionMock = jest.fn().mockReturnValue('event-456');
+    const { captureRedactedException } =
+      await import('@/lib/monitoring/sentry');
+
+    const eventId = captureRedactedException(
+      { captureException: captureExceptionMock },
+      new Error('patient@example.com token=secret'),
+      {
+        source: 'cron',
+        operation: 'process-email-outbox',
+        endpoint: '/api/internal/process-email-outbox',
+        status: 500,
+      }
+    );
+
+    const capturedError = captureExceptionMock.mock.calls[0]?.[0];
+    expect(capturedError).toBeInstanceOf(Error);
+    expect(capturedError.message).toBe('Operational error details redacted');
+    expect(capturedError.stack).not.toContain('patient@example.com');
+    expect(capturedError.stack).not.toContain('token=secret');
+    expect(captureExceptionMock).toHaveBeenCalledWith(capturedError, {
+      tags: {
+        source: 'cron',
+        operation: 'process-email-outbox',
+        endpoint: '/api/internal/process-email-outbox',
+        status: '500',
+      },
+    });
+    expect(eventId).toBe('event-456');
+  });
+
   it('delegates request errors to Sentry only when enabled', async () => {
     const captureRequestErrorMock = jest.fn();
     const request = {

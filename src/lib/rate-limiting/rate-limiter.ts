@@ -7,6 +7,7 @@ import 'server-only';
 
 import { Redis } from '@upstash/redis';
 import { createLogger } from '@/lib/logger';
+import { captureOperationalError } from '@/lib/monitoring/sentry';
 import { getOrCreateRedis } from '@/lib/rate-limiting/redis-client';
 
 const log = createLogger('RateLimiter');
@@ -66,6 +67,7 @@ export type RateLimitType =
 // レート制限結果
 export interface RateLimitResult {
   allowed: boolean;
+  backendAvailable: boolean;
   limit: number;
   remaining: number;
   resetTime: number;
@@ -125,6 +127,7 @@ export class RateLimiter {
     if (!redis) {
       return {
         allowed: true,
+        backendAvailable: false,
         limit,
         remaining: limit,
         resetTime: now + window,
@@ -147,6 +150,7 @@ export class RateLimiter {
         if (now < unblockTime) {
           return {
             allowed: false,
+            backendAvailable: true,
             limit,
             remaining: 0,
             resetTime: unblockTime,
@@ -195,6 +199,7 @@ export class RateLimiter {
 
         return {
           allowed: false,
+          backendAvailable: true,
           limit,
           remaining: 0,
           resetTime,
@@ -206,16 +211,22 @@ export class RateLimiter {
 
       return {
         allowed: true,
+        backendAvailable: true,
         limit,
         remaining,
         resetTime,
       };
     } catch (error) {
       log.error('レート制限チェックエラー:', error);
+      await captureOperationalError(error, {
+        source: 'rate-limiter',
+        operation: type,
+        reason: 'redis_error',
+      });
 
-      // Redisエラー時は制限しない（フェイルオープン）
       return {
         allowed: true,
+        backendAvailable: false,
         limit,
         remaining: limit,
         resetTime: now + window,

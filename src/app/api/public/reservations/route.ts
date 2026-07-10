@@ -35,7 +35,6 @@ import type {
 import { verifyLineIdTokenForClinic } from '@/lib/line/id-token';
 import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
-import { ERROR_CODES } from '@/lib/error-handler';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { verifyTurnstileForPublicReservation } from '@/lib/turnstile';
 import {
@@ -202,14 +201,17 @@ export async function POST(request: NextRequest) {
       skipForVerifiedLine: lineProfile !== undefined,
       remoteIp: getRequestIp(request),
     });
-    if (!turnstileResult.ok) {
+    if (turnstileResult.ok === false) {
+      const isUnavailable = turnstileResult.status === 'unavailable';
       return NextResponse.json(
         {
           success: false,
-          error: 'CAPTCHA verification failed',
-          code: ERROR_CODES.CAPTCHA_FAILED,
+          error: isUnavailable
+            ? 'スパム対策サービスを一時的に利用できません。時間をおいて再度お試しください。'
+            : 'CAPTCHA verification failed',
+          code: turnstileResult.code,
         },
-        { status: 400 }
+        { status: isUnavailable ? 503 : 400 }
       );
     }
 

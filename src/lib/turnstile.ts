@@ -1,5 +1,5 @@
 import { ERROR_CODES } from '@/lib/error-handler';
-import { isSentryEnabled } from '@/lib/monitoring/sentry';
+import { captureOperationalError } from '@/lib/monitoring/sentry';
 import { logger } from '@/lib/logger';
 
 const TURNSTILE_SITEVERIFY_ENDPOINT =
@@ -14,8 +14,22 @@ type TurnstileSiteverifyPayload = {
 };
 
 export type TurnstileVerificationResult =
-  | { ok: true; status: 'disabled' | 'skipped_line' | 'passed' | 'fail_open' }
-  | { ok: false; status: 'failed'; code: typeof ERROR_CODES.CAPTCHA_FAILED };
+  | { ok: true; status: 'bypassed_non_production' | 'skipped_line' | 'passed' }
+  | { ok: false; status: 'failed'; code: typeof ERROR_CODES.CAPTCHA_FAILED }
+  | {
+      ok: false;
+      status: 'unavailable';
+      code: typeof ERROR_CODES.CAPTCHA_UNAVAILABLE;
+    };
+
+export function isTurnstileNonProductionBypassEnabled(
+  envSource: NodeJS.ProcessEnv = process.env
+): boolean {
+  return (
+    envSource.NODE_ENV !== 'production' &&
+    envSource.TURNSTILE_BYPASS_NON_PRODUCTION === 'true'
+  );
+}
 
 export function isTurnstileEnabled(
   envSource: NodeJS.ProcessEnv = process.env
@@ -28,7 +42,10 @@ export function isTurnstileEnabled(
 export function getPublicTurnstileSiteKey(
   envSource: NodeJS.ProcessEnv = process.env
 ): string | undefined {
-  if (!isTurnstileEnabled(envSource)) {
+  if (
+    isTurnstileNonProductionBypassEnabled(envSource) ||
+    !isTurnstileEnabled(envSource)
+  ) {
     return undefined;
   }
 
@@ -42,12 +59,24 @@ export async function verifyTurnstileForPublicReservation(params: {
   fetcher?: TurnstileFetch;
   timeoutMs?: number;
 }): Promise<TurnstileVerificationResult> {
-  if (!isTurnstileEnabled()) {
-    return { ok: true, status: 'disabled' };
-  }
-
   if (params.skipForVerifiedLine) {
     return { ok: true, status: 'skipped_line' };
+  }
+
+  if (isTurnstileNonProductionBypassEnabled()) {
+    return { ok: true, status: 'bypassed_non_production' };
+  }
+
+  if (!isTurnstileEnabled()) {
+    await notifyTurnstileUnavailable(
+      new Error('Turnstile configuration is incomplete'),
+      'configuration_error'
+    );
+    return {
+      ok: false,
+      status: 'unavailable',
+      code: ERROR_CODES.CAPTCHA_UNAVAILABLE,
+    };
   }
 
   const token = params.token?.trim();
@@ -63,42 +92,56 @@ export async function verifyTurnstileForPublicReservation(params: {
   });
 
   if (result.kind === 'timeout') {
-    await notifyTurnstileFailOpen(
+    await notifyTurnstileUnavailable(
       new Error('Turnstile siteverify timed out'),
       'timeout'
     );
-    return { ok: true, status: 'fail_open' };
+    return {
+      ok: false,
+      status: 'unavailable',
+      code: ERROR_CODES.CAPTCHA_UNAVAILABLE,
+    };
   }
 
   if (result.kind === 'network_error') {
-    await notifyTurnstileFailOpen(
+    await notifyTurnstileUnavailable(
       new Error(`Turnstile siteverify network error: ${result.errorName}`),
       'network_error'
     );
-    return { ok: true, status: 'fail_open' };
+    return {
+      ok: false,
+      status: 'unavailable',
+      code: ERROR_CODES.CAPTCHA_UNAVAILABLE,
+    };
   }
 
   if (result.response.status >= 500 || result.response.status === 429) {
-    await notifyTurnstileFailOpen(
+    await notifyTurnstileUnavailable(
       new Error(
         `Turnstile siteverify service status ${result.response.status}`
       ),
-      'service_error'
+      'service_error',
+      result.response.status
     );
-    return { ok: true, status: 'fail_open' };
+    return {
+      ok: false,
+      status: 'unavailable',
+      code: ERROR_CODES.CAPTCHA_UNAVAILABLE,
+    };
   }
 
   const payload = await readTurnstilePayload(result.response);
   if (!isTurnstileSiteverifyPayload(payload)) {
-    if (result.response.ok) {
-      await notifyTurnstileFailOpen(
-        new Error('Turnstile siteverify returned an invalid payload'),
-        'invalid_response'
-      );
-      return { ok: true, status: 'fail_open' };
-    }
-
-    return { ok: false, status: 'failed', code: ERROR_CODES.CAPTCHA_FAILED };
+    await notifyTurnstileUnavailable(
+      new Error('Turnstile siteverify returned an invalid payload'),
+      'invalid_response',
+      result.response.status
+    );
+    return {
+      ok: false,
+      status: 'unavailable',
+      code: ERROR_CODES.CAPTCHA_UNAVAILABLE,
+    };
   }
 
   if (!payload.success) {
@@ -187,19 +230,25 @@ function isAbortError(error: unknown): boolean {
     : error instanceof Error && error.name === 'AbortError';
 }
 
-async function notifyTurnstileFailOpen(
+async function notifyTurnstileUnavailable(
   error: Error,
-  reason: 'timeout' | 'network_error' | 'service_error' | 'invalid_response'
+  reason:
+    | 'configuration_error'
+    | 'timeout'
+    | 'network_error'
+    | 'service_error'
+    | 'invalid_response',
+  status?: number
 ): Promise<void> {
-  logger.warn('Turnstile verification failed open', {
+  logger.warn('Turnstile verification unavailable', {
     reason,
     errorName: error.name,
+    ...(status !== undefined ? { status } : {}),
   });
-
-  if (!isSentryEnabled()) {
-    return;
-  }
-
-  const sentry = await import('@sentry/nextjs');
-  sentry.captureException(error);
+  await captureOperationalError(error, {
+    source: 'turnstile',
+    operation: 'siteverify',
+    reason,
+    ...(status !== undefined ? { status } : {}),
+  });
 }

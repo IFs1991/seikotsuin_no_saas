@@ -30,9 +30,8 @@ export async function GET(request: NextRequest) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // NOTE: system_events テーブルは migration 未作成のため、
-    // systemStatus の degraded / maintenance 判定は未実装。
-    // テーブル追加後に障害検知ロジックを実装する。
+    // Dependency query failures produce a degraded state. A future incident
+    // source may add an explicit maintenance state without changing this gate.
     const [clinicsResult, aiResult] = await Promise.all([
       adminSupabase
         .from('clinics')
@@ -45,11 +44,20 @@ export async function GET(request: NextRequest) {
         .gte('created_at', todayStart.toISOString()),
     ]);
 
-    const activeClinicCount = clinicsResult.count ?? 0;
-    const aiCount = aiResult.count ?? 0;
+    const activeClinicCount = clinicsResult.error
+      ? 0
+      : (clinicsResult.count ?? 0);
+    const aiCount = aiResult.error ? 0 : (aiResult.count ?? 0);
 
-    const systemStatus: 'operational' | 'degraded' | 'maintenance' =
-      'operational';
+    const systemStatus: 'operational' | 'degraded' =
+      clinicsResult.error || aiResult.error ? 'degraded' : 'operational';
+
+    if (clinicsResult.error || aiResult.error) {
+      logError(new Error('System status dependency query failed'), {
+        endpoint: '/api/system/status',
+        userId: auth.id,
+      });
+    }
 
     const aiAnalysisStatus: 'active' | 'inactive' =
       aiCount > 0 ? 'active' : 'inactive';
