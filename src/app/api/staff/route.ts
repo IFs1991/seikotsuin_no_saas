@@ -20,7 +20,7 @@ import {
   isAreaManagerRole,
   type Role,
 } from '@/lib/constants/roles';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff';
 const STAFF_OPERATION_MANAGER_ROLES = [
@@ -411,7 +411,7 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
 
-    const { supabase, user } = await ensureClinicAccess(
+    const { supabase, user, permissions } = await ensureClinicAccess(
       request,
       PATH,
       dto.clinic_id,
@@ -421,8 +421,8 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: dto.clinic_id,
     });
 

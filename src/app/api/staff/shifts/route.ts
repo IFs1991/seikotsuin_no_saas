@@ -16,7 +16,7 @@ import {
   isAreaManagerRole,
   type Role,
 } from '@/lib/constants/roles';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shifts';
 const SHIFT_OPERATION_MANAGER_ROLES = [
@@ -467,7 +467,7 @@ export async function POST(request: NextRequest) {
         clinic_id: dto.clinic_id,
       }));
 
-      const { supabase, user } = await ensureClinicAccess(
+      const { supabase, user, permissions } = await ensureClinicAccess(
         request,
         PATH,
         dto.clinic_id,
@@ -477,8 +477,8 @@ export async function POST(request: NextRequest) {
         }
       );
 
-      await ensureBusinessWriteAccess({
-        client: supabase,
+      await ensureScopedBusinessWriteAccess({
+        permissions,
         targetClinicId: dto.clinic_id,
       });
 
@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
 
     const dto = toShiftInsertDTO(parsedBody.data);
 
-    const { supabase, user } = await ensureClinicAccess(
+    const { supabase, user, permissions } = await ensureClinicAccess(
       request,
       PATH,
       dto.clinic_id,
@@ -539,8 +539,8 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: dto.clinic_id,
     });
 
@@ -615,7 +615,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const dto = parsedBody.data;
-    const { supabase } = await ensureClinicAccess(
+    const { supabase, permissions } = await ensureClinicAccess(
       request,
       PATH,
       dto.clinic_id,
@@ -625,8 +625,8 @@ export async function PATCH(request: NextRequest) {
       }
     );
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: dto.clinic_id,
     });
 

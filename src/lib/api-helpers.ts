@@ -12,7 +12,7 @@ import {
 import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 import { ALLOWED_REDIRECT_ORIGINS } from '@/lib/constants/security';
 import { ADMIN_UI_ROLES, normalizeRole } from '@/lib/constants/roles';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -325,8 +325,8 @@ export async function processApiRequest(
         );
       }
 
-      await ensureBusinessWriteAccess({
-        client: supabase,
+      await ensureScopedBusinessWriteAccess({
+        permissions,
         targetClinicId,
       });
     }

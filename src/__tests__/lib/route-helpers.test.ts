@@ -11,7 +11,7 @@ import { z } from 'zod';
 // --- mock setup ---
 const processApiRequestMock = jest.fn();
 const ensureClinicAccessMock = jest.fn();
-const ensureBusinessWriteAccessMock = jest.fn();
+const ensureScopedBusinessWriteAccessMock = jest.fn();
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -26,8 +26,8 @@ jest.mock('@/lib/supabase/guards', () => ({
 }));
 
 jest.mock('@/lib/billing/business-write', () => ({
-  ensureBusinessWriteAccess: (...args: unknown[]) =>
-    ensureBusinessWriteAccessMock(...args),
+  ensureScopedBusinessWriteAccess: (...args: unknown[]) =>
+    ensureScopedBusinessWriteAccessMock(...args),
 }));
 
 import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
@@ -90,7 +90,7 @@ describe('handleRouteError', () => {
 describe('processClinicScopedBody', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    ensureBusinessWriteAccessMock.mockResolvedValue({ mode: 'bypass' });
+    ensureScopedBusinessWriteAccessMock.mockResolvedValue({ mode: 'bypass' });
   });
 
   const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
@@ -291,6 +291,10 @@ describe('processClinicScopedBody', () => {
       expect(result.auth).toEqual(mockAuth);
       expect(result.permissions).toBe(mockPermissions);
     }
+    expect(ensureScopedBusinessWriteAccessMock).toHaveBeenCalledWith({
+      permissions: mockPermissions,
+      targetClinicId: validClinicId,
+    });
   });
 
   it('returns stable 402 when the subscription does not allow writes', async () => {
@@ -312,7 +316,7 @@ describe('processClinicScopedBody', () => {
       user: { id: 'user-1', email: 'a@b.com' },
       permissions: mockPermissions,
     });
-    ensureBusinessWriteAccessMock.mockRejectedValue(
+    ensureScopedBusinessWriteAccessMock.mockRejectedValue(
       new AppError(
         ERROR_CODES.SUBSCRIPTION_INACTIVE,
         '有効な契約が必要です',

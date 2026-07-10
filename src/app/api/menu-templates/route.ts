@@ -8,7 +8,7 @@ import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError } from '@/lib/route-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 import { resolveTemplateOwnerScope } from './helpers';
 import {
   mapMenuTemplateInsertToRow,
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await ensureBusinessWriteAccess({
-      client: result.supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions: result.permissions,
       targetClinicId: parsed.data.owner_clinic_id,
     });
 
@@ -146,8 +146,8 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    await ensureBusinessWriteAccess({
-      client: result.supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions: result.permissions,
       targetClinicId: parsed.data.owner_clinic_id,
     });
 
