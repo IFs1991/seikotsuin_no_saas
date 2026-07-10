@@ -17,7 +17,11 @@ import {
   type BillingOverride,
 } from '@/lib/billing/state';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import {
+  createScopedAdminContext,
+  type SupabaseServerClient,
+  type UserPermissions,
+} from '@/lib/supabase';
 
 export type BusinessWriteGateEnvironment = {
   nodeEnv: string;
@@ -198,4 +202,29 @@ export async function ensureBusinessWriteAccess(input: {
     orgRootClinicId,
     billingState: billingState ?? 'override_active',
   };
+}
+
+/**
+ * Checks billing with a service-role client only after the caller has resolved
+ * and validated the authenticated user's clinic scope. The user-session client
+ * intentionally remains the client used for the actual business mutation.
+ */
+export async function ensureScopedBusinessWriteAccess(input: {
+  permissions: UserPermissions;
+  targetClinicId: string;
+  now?: Date;
+}): Promise<BusinessWriteAccessResult> {
+  const mode = assertBusinessWriteGateConfiguration();
+  if (mode === 'bypass') {
+    return { mode: 'bypass' };
+  }
+
+  const scopedAdmin = createScopedAdminContext(input.permissions);
+  scopedAdmin.assertClinicInScope(input.targetClinicId);
+
+  return ensureBusinessWriteAccess({
+    client: scopedAdmin.client,
+    targetClinicId: input.targetClinicId,
+    now: input.now,
+  });
 }

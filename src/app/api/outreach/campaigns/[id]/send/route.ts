@@ -15,7 +15,7 @@ import {
   outreachCampaignSendSchema,
   sendOutreachCampaign,
 } from '@/lib/outreach';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +56,7 @@ export async function POST(
   }
 
   try {
-    const { supabase } = await ensureClinicAccess(
+    const { permissions } = await ensureClinicAccess(
       request,
       PATH,
       parsedBody.data.clinic_id,
@@ -66,8 +66,8 @@ export async function POST(
       }
     );
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: parsedBody.data.clinic_id,
     });
 

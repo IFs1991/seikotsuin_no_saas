@@ -25,7 +25,7 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { normalizeRole } from '@/lib/constants/roles';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 // =========================================================
 // handleRouteError
@@ -167,8 +167,8 @@ export async function processClinicScopedBody<T>(
       allowedRoles: options?.allowedRoles,
     });
 
-    await ensureBusinessWriteAccess({
-      client: guard.supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions: guard.permissions,
       targetClinicId: clinicId,
     });
 

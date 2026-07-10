@@ -14,7 +14,7 @@ import {
   upsertDailyReport,
   validateDailyReportWriteScope,
 } from '@/lib/daily-reports/write-model';
-import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/daily-reports';
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const payload = validationResult.data;
 
-    const { supabase } = await ensureClinicAccess(
+    const { supabase, permissions } = await ensureClinicAccess(
       request,
       PATH,
       payload.clinic_id,
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: payload.clinic_id,
     });
 
@@ -186,8 +186,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await ensureBusinessWriteAccess({
-      client: supabase,
+    await ensureScopedBusinessWriteAccess({
+      permissions,
       targetClinicId: clinicId,
     });
 
@@ -226,7 +226,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }
