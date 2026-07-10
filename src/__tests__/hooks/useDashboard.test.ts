@@ -8,9 +8,17 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import useDashboard from '../../hooks/useDashboard';
 import * as apiClient from '../../lib/api-client';
+import { logger } from '@/lib/logger';
 
 jest.mock('../../lib/api-client');
+jest.mock('@/lib/logger', () => ({
+  logger: {
+    error: jest.fn(),
+    warn: jest.fn(),
+  },
+}));
 const mockApi = apiClient as jest.Mocked<typeof apiClient>;
+const loggerMock = jest.mocked(logger);
 
 // Mock window.location
 const mockLocation = {
@@ -52,13 +60,13 @@ describe('useDashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockLocation.href = '';
-    mockApi.isSuccessResponse.mockImplementation((response: any) =>
-      Boolean(response?.success)
+    mockApi.isSuccessResponse.mockImplementation(
+      response => response.success === true && response.data !== undefined
     );
     mockApi.isErrorResponse.mockImplementation(
-      (response: any) => response?.success === false
+      response => response.success === false && response.error !== undefined
     );
-    mockApi.handleApiError.mockImplementation((error: any) => error?.message);
+    mockApi.handleApiError.mockImplementation(error => error.message);
     (mockApi.api.dashboard.get as jest.Mock).mockReset();
   });
 
@@ -253,8 +261,6 @@ describe('useDashboard', () => {
         data: mockDashboardData,
       });
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-
       const { result } = renderHook(() => useDashboard(mockClinicId));
 
       await waitFor(() => {
@@ -265,13 +271,11 @@ describe('useDashboard', () => {
         result.current.handleQuickAction('unknown-action');
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(loggerMock.warn).toHaveBeenCalledWith(
         'Unknown quick action:',
         'unknown-action'
       );
       expect(mockLocation.href).toBe('');
-
-      consoleSpy.mockRestore();
     });
   });
 });

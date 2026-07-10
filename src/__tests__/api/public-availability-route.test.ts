@@ -172,8 +172,8 @@ describe('GET /api/public/availability', () => {
         clinic_id: CLINIC_ID,
         menu_id: MENU_ID,
         resource_id: 'any',
-        date_from: '2026-07-10',
-        date_to: '2026-07-10',
+        date_from: '2099-07-10',
+        date_to: '2099-07-10',
       }),
     });
     const data = await response.json();
@@ -186,7 +186,7 @@ describe('GET /api/public/availability', () => {
         slot_minutes: 30,
         days: [
           {
-            date: '2026-07-10',
+            date: '2099-07-10',
             is_closed: false,
             slots: [
               { start: '09:00', available: true, resource_ids: [STAFF_ID] },

@@ -17,6 +17,7 @@ import { SelectedClinicProvider } from '@/providers/selected-clinic-context';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/',
 }));
 
 function renderHeader(

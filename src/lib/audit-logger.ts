@@ -35,12 +35,18 @@ export interface AuditLogEntry {
 type AuditLogInsert = Database['public']['Tables']['audit_logs']['Insert'];
 
 type AuditLoggerDependencies = {
-  createAdminClient: typeof createAdminClient;
-  createLogger: typeof createLogger;
+  persistAuditLog: (logData: AuditLogInsert) => Promise<void>;
+  createLogger: (name: string) => Pick<Logger, 'error' | 'warn'>;
 };
 
 const defaultDependencies: AuditLoggerDependencies = {
-  createAdminClient,
+  persistAuditLog: async logData => {
+    const supabase = createAdminClient();
+    const { error } = await supabase.from('audit_logs').insert(logData);
+    if (error) {
+      throw error;
+    }
+  },
   createLogger,
 };
 
@@ -59,7 +65,7 @@ export function resetAuditLoggerDependencies() {
   auditLoggerDependencies = defaultDependencies;
 }
 
-function getAuditLogger(): Logger {
+function getAuditLogger(): Pick<Logger, 'error' | 'warn'> {
   return auditLoggerDependencies.createLogger('AuditLogger');
 }
 
@@ -194,12 +200,7 @@ export class AuditLogger {
     };
 
     try {
-      const supabase = auditLoggerDependencies.createAdminClient();
-      const { error } = await supabase.from('audit_logs').insert(logData);
-
-      if (error) {
-        throw error;
-      }
+      await auditLoggerDependencies.persistAuditLog(logData);
     } catch (error) {
       // DB障害時のフォールバック: 構造化ログとして出力
       getAuditLogger().error('監査ログDB書き込み失敗 - フォールバック出力', {

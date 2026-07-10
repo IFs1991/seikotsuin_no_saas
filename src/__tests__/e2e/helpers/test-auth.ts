@@ -54,7 +54,7 @@ export function createAnonClient(): SupabaseClient {
 export async function createAuthenticatedClient(
   email: string,
   password: string
-): Promise<{ client: SupabaseClient; userId: string } | null> {
+): Promise<{ client: SupabaseClient; userId: string }> {
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const { data, error } = await client.auth.signInWithPassword({
@@ -63,8 +63,9 @@ export async function createAuthenticatedClient(
   });
 
   if (error || !data.user) {
-    console.error('認証失敗:', error?.message);
-    return null;
+    throw new Error(
+      `E2E test authentication failed for ${email}: ${error?.message ?? 'user was not returned'}`
+    );
   }
 
   return {
@@ -79,7 +80,7 @@ export async function createAuthenticatedClient(
 export async function createAdminClient(): Promise<{
   client: SupabaseClient;
   userId: string;
-} | null> {
+}> {
   return createAuthenticatedClient(
     TEST_USERS.admin.email,
     TEST_USERS.admin.password
@@ -92,7 +93,7 @@ export async function createAdminClient(): Promise<{
 export async function createTherapistClient(): Promise<{
   client: SupabaseClient;
   userId: string;
-} | null> {
+}> {
   return createAuthenticatedClient(
     TEST_USERS.therapist.email,
     TEST_USERS.therapist.password
@@ -105,7 +106,7 @@ export async function createTherapistClient(): Promise<{
 export async function createClinicAClient(): Promise<{
   client: SupabaseClient;
   userId: string;
-} | null> {
+}> {
   return createAuthenticatedClient(
     TEST_USERS.clinicA.email,
     TEST_USERS.clinicA.password
@@ -118,7 +119,7 @@ export async function createClinicAClient(): Promise<{
 export async function createClinicBClient(): Promise<{
   client: SupabaseClient;
   userId: string;
-} | null> {
+}> {
   return createAuthenticatedClient(
     TEST_USERS.clinicB.email,
     TEST_USERS.clinicB.password

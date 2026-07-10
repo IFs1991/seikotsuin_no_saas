@@ -52,12 +52,16 @@ type PendingCountQuery = {
   not: jest.MockedFunction<
     (field: string, operator: string, value: unknown) => PendingCountQuery
   >;
-  neq: jest.MockedFunction<(field: string, value: unknown) => PendingCountQuery>;
+  neq: jest.MockedFunction<
+    (field: string, value: unknown) => PendingCountQuery
+  >;
   then: Promise<CountResult>['then'];
 };
 
 type SingleSelectBuilder<T> = {
-  eq: jest.MockedFunction<(field: string, value: unknown) => SingleSelectBuilder<T>>;
+  eq: jest.MockedFunction<
+    (field: string, value: unknown) => SingleSelectBuilder<T>
+  >;
   single: jest.MockedFunction<() => Promise<QueryResult<T>>>;
 };
 
@@ -214,18 +218,24 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     const customersTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'customer-001' })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder({ id: 'customer-001' })
+        ),
     };
     const menusTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'menu-001', price: 0 })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder({ id: 'menu-001', price: 0 })
+        ),
     };
     const reservationListViewTable = {
       select: jest
         .fn()
         .mockReturnValue(
-          createMaybeSingleSelectBuilder(buildReservationListViewRow(insertedRow))
+          createMaybeSingleSelectBuilder(
+            buildReservationListViewRow(insertedRow)
+          )
         ),
     };
     const notificationClient = {
@@ -314,18 +324,24 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
     const customersTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'customer-002' })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder({ id: 'customer-002' })
+        ),
     };
     const menusTable = {
       select: jest
         .fn()
-        .mockReturnValue(createMaybeSingleSelectBuilder({ id: 'menu-002', price: 0 })),
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder({ id: 'menu-002', price: 0 })
+        ),
     };
     const reservationListViewTable = {
       select: jest
         .fn()
         .mockReturnValue(
-          createMaybeSingleSelectBuilder(buildReservationListViewRow(insertedRow))
+          createMaybeSingleSelectBuilder(
+            buildReservationListViewRow(insertedRow)
+          )
         ),
     };
     const notificationClient = {
@@ -397,9 +413,21 @@ describe('POST/PATCH /api/reservations email enqueue route', () => {
       select: jest.fn().mockReturnValue(createSingleSelectBuilder(existingRow)),
       update: jest.fn().mockReturnValue(createUpdateBuilder(updatedRow)),
     };
+    const reservationListViewTable = {
+      select: jest
+        .fn()
+        .mockReturnValue(
+          createMaybeSingleSelectBuilder(
+            buildReservationListViewRow(updatedRow)
+          )
+        ),
+    };
     const notificationClient = {
       from: jest.fn().mockImplementation((table: string) => {
         if (table === 'reservations') return reservationsTable;
+        if (table === 'reservation_list_view') {
+          return reservationListViewTable;
+        }
         return {};
       }),
     };

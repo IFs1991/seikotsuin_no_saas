@@ -53,15 +53,25 @@ const createJsonRequest = (path: string, body: object) =>
     body,
   });
 
-const createQueryBuilder = (result: { data: unknown; error: unknown }) => ({
-  select: jest.fn().mockReturnThis(),
-  eq: jest.fn().mockReturnThis(),
-  order: jest.fn().mockReturnThis(),
-  gte: jest.fn().mockReturnThis(),
-  lte: jest.fn().mockReturnThis(),
-  then: (resolve: (value: unknown) => void) =>
-    Promise.resolve(result).then(resolve),
-});
+const createQueryBuilder = (result: { data: unknown; error: unknown }) => {
+  const builder = {
+    select: jest.fn(),
+    eq: jest.fn(),
+    order: jest.fn(),
+    gte: jest.fn(),
+    lte: jest.fn(),
+    returns: jest.fn().mockResolvedValue(result),
+    then: (resolve: (value: unknown) => void) =>
+      Promise.resolve(result).then(resolve),
+  };
+
+  builder.select.mockReturnValue(builder);
+  builder.eq.mockReturnValue(builder);
+  builder.order.mockReturnValue(builder);
+  builder.gte.mockReturnValue(builder);
+  builder.lte.mockReturnValue(builder);
+  return builder;
+};
 
 beforeAll(async () => {
   const shiftsModule = await import('@/app/api/staff/shifts/route');
