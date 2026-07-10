@@ -11,6 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import type { AiInsightsResponse } from '@/api/gemini/ai-analysis-service';
+import { isAiInsightsEnabled } from '@/lib/feature-flags';
 
 const impactMeta: Record<
   'high' | 'mid' | 'low',
@@ -22,6 +23,7 @@ const impactMeta: Record<
 };
 
 const AiInsightsPage: React.FC = () => {
+  const featureEnabled = isAiInsightsEnabled();
   const {
     profile,
     loading: profileLoading,
@@ -30,11 +32,20 @@ const AiInsightsPage: React.FC = () => {
   const clinicId = profile?.clinicId ?? null;
 
   const [data, setData] = useState<AiInsightsResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(Boolean(clinicId));
+  const [loading, setLoading] = useState<boolean>(
+    featureEnabled && Boolean(clinicId)
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
+    if (!featureEnabled) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
     if (!clinicId) {
       setData(null);
@@ -81,11 +92,29 @@ const AiInsightsPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [clinicId]);
+  }, [clinicId, featureEnabled]);
 
   const isLoading = profileLoading || loading;
 
   const anomalies = useMemo(() => data?.anomalies ?? [], [data]);
+
+  if (!featureEnabled) {
+    return (
+      <div className='min-h-screen bg-background p-6'>
+        <div className='mx-auto max-w-[900px]'>
+          <Card className='bg-card'>
+            <CardHeader>
+              <CardTitle>AIインサイトは現在利用できません</CardTitle>
+              <CardDescription>
+                この環境では AI インサイト機能が有効化されていません。
+                有効化されるまでは分析結果を生成・表示しません。
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (profileError && !profileLoading) {
     return (

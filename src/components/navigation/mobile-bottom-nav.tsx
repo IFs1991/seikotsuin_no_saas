@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils';
 import {
   getAdminNavigationHrefForRole,
   getNavigationMode,
-  isAiInsightsEnabled,
 } from '@/lib/navigation/items';
 import { isTherapistRole } from '@/lib/constants/roles';
+import { isAiInsightsEnabled } from '@/lib/feature-flags';
 import {
   BarChart3,
   FileText,

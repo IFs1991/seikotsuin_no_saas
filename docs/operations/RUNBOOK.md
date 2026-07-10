@@ -1,6 +1,12 @@
 # 運用Runbook
 **Phase 3 M3: 障害対応・ロールバック・エスカレーション手順**
 
+> **運用上の注意**: 本番・限定ベータの正本は
+> [`PRODUCTION_OPERATIONS-v0.1.md`](./PRODUCTION_OPERATIONS-v0.1.md) と
+> [`DR-PLAN-v0.1.md`](./DR-PLAN-v0.1.md) です。この文書にある時間は内部目標であり、
+> 契約上の SLA や24時間365日の有人対応を保証しません。担当者と連絡先は運用開始前に
+> 安全な連絡網で確定してください。
+
 ## 目次
 1. [緊急連絡先](#緊急連絡先)
 2. [障害分類と対応フロー](#障害分類と対応フロー)
@@ -15,12 +21,11 @@
 ### オンコール体制
 | 役割 | 担当者 | 連絡手段 | 対応時間 |
 |------|--------|----------|----------|
-| Tech Lead | [名前] | Slack / 電話 | 24/7 |
-| Security Lead | [名前] | Slack / 電話 | 24/7 |
-| PM | [名前] | Slack | 平日 9-18時 |
-| Customer Success | [名前] | Slack / メール | 平日 9-18時 |
+| Incident Commander | 運用開始前に指定 | 安全な連絡網に登録 | 契約・運用体制に合わせて確定 |
+| Technical Responder | 運用開始前に指定 | 安全な連絡網に登録 | 契約・運用体制に合わせて確定 |
+| Customer Communications | 運用開始前に指定 | 安全な連絡網に登録 | 契約・運用体制に合わせて確定 |
 
-### エスカレーションフロー
+### エスカレーションフロー（内部トリアージ目標・非契約）
 ```
 Level 1: オンコールエンジニア（15分以内対応）
   ↓ 30分経過で解決しない場合
@@ -76,9 +81,9 @@ Level 3: 全体緊急対策会議招集
 - デプロイ後に500エラー
 
 #### 診断手順
-```bash
+```powershell
 # 1. ログ確認
-npm run dev 2>&1 | tee error.log
+npm run dev 2>&1 | Tee-Object -FilePath error.log
 
 # 2. 環境変数チェック
 node scripts/verify-supabase-connection.mjs
@@ -89,7 +94,7 @@ npm run swc:verify
 
 #### 対応
 1. `.env.local` の設定確認（ENV_MANAGEMENT_POLICY.md参照）
-2. `npm run swc:clear && npm install` で依存関係リセット
+2. `npm run swc:verify` でバイナリ状態を確認し、再インストールが必要なら影響を確認して別途実施
 3. `npm run type-check` で型エラー確認
 4. ロールバック実行（後述）
 
@@ -102,17 +107,17 @@ npm run swc:verify
 - API応答タイムアウト
 
 #### 診断手順
-```bash
+```powershell
 # Supabase接続テスト
 npm run verify:supabase
 ```
 
 #### 対応
 1. **Supabaseステータス確認**: https://status.supabase.com
-2. **環境変数確認**:
-   ```bash
-   echo $SUPABASE_SERVICE_ROLE_KEY
-   echo $NEXT_PUBLIC_SUPABASE_URL
+2. **環境変数確認**: 値そのものは表示せず、存在だけを確認する
+   ```powershell
+   if ([string]::IsNullOrWhiteSpace($env:SUPABASE_SERVICE_ROLE_KEY)) { throw 'SUPABASE_SERVICE_ROLE_KEY is missing' }
+   if ([string]::IsNullOrWhiteSpace($env:NEXT_PUBLIC_SUPABASE_URL)) { throw 'NEXT_PUBLIC_SUPABASE_URL is missing' }
    ```
 3. **RLS ポリシー確認**: Supabase Dashboard → Authentication → Policies
 4. **コネクションプール枯渇**: Supabase Dashboard → Database → Connection Pooling
@@ -131,25 +136,18 @@ npm run verify:supabase
 - SecurityMonitorが異常検知
 
 #### 対応（最優先）
-```bash
-# 1. 即座に該当環境変数を無効化
-# Supabase Dashboard → Settings → API → Reset Service Role Key
+1. 即座に該当環境変数をプロバイダー管理画面で無効化する
 
-# 2. 監査ログ確認
-psql $DATABASE_URL <<SQL
+```sql
+-- 2. Supabase SQL Editor で読み取り専用の監査ログ確認
 SELECT * FROM audit_logs
 WHERE created_at > NOW() - INTERVAL '24 hours'
   AND (success = false OR event_type = 'unauthorized_access')
 ORDER BY created_at DESC;
-SQL
-
-# 3. 全アクティブセッション無効化
-psql $DATABASE_URL <<SQL
-UPDATE user_sessions
-SET is_active = false, is_revoked = true
-WHERE is_active = true;
-SQL
 ```
+
+全セッション無効化は状態変更を伴います。影響範囲と承認者を記録し、Supabase Auth
+の管理機能または承認済み手順で実施してください。
 
 #### エスカレーション
 - Tech Lead + Security Lead 即時招集
@@ -165,22 +163,22 @@ SQL
 - カバレッジ閾値未達
 
 #### 診断
-```bash
+```powershell
 # ローカル実行
-npm test -- --verbose
+npm run test -- --verbose
 
 # セキュリティテストのみ
-npm test -- --testPathPattern="security"
+npm run test -- --testPathPattern="security"
 
 # カバレッジ確認
-npm test -- --coverage
+npm run test -- --coverage
 ```
 
 #### 対応
 1. テストログ確認
 2. モック設定見直し（jest.setup.js）
 3. 環境依存の問題を特定
-4. 必要に応じてスキップ設定（.testPathIgnorePatterns）
+4. 実装、fixture、環境、期待値のどこが誤っているかを特定し、失敗を隠すための skip は追加しない
 
 ---
 
@@ -238,32 +236,24 @@ vercel logs --since 24h --query "access denied" --json
 #### 手順
 1. **Vercel Dashboard** → Deployments
 2. 前回成功デプロイを選択 → "Promote to Production"
-3. 確認後、即座に反映（約30秒）
+3. 承認後に Promote し、反映完了を画面とヘルスチェックで確認
 
 #### コマンドライン
-```bash
+```powershell
 # 最新の安定版を再デプロイ
 git revert HEAD
-git push origin main
-
-# または特定コミットへロールバック
-git reset --hard <commit-hash>
-git push origin main --force
+git push origin <branch-name>
 ```
+
+`git reset --hard` と force push は通常のロールバック手順として使用しません。
 
 ### データベーススキーマのロールバック
 
 #### 手順
-```bash
-# 1. マイグレーション履歴確認
-psql $DATABASE_URL -c "\d+ migrations"
 
-# 2. ロールバックSQL実行
-psql $DATABASE_URL < sql/rollback/<migration-name>.sql
-
-# 3. 整合性確認
-npm run verify:supabase
-```
+汎用 SQL を本番へ直接実行しません。対象マイグレーションごとの仕様書、データ影響、
+バックアップ、承認済みロールバック計画に従います。災害復旧が必要な場合は
+[`DR-PLAN-v0.1.md`](./DR-PLAN-v0.1.md) を使用します。
 
 #### 注意事項
 - ⚠️ **本番データバックアップ必須**（実行前24時間以内）
@@ -277,7 +267,7 @@ npm run verify:supabase
 ### ログ監視
 
 #### 本番環境ログ確認（Vercel）
-```bash
+```powershell
 # リアルタイムログ
 vercel logs --follow
 
@@ -286,12 +276,12 @@ vercel logs --level error
 ```
 
 #### 構造化ログ検索
-```bash
+```powershell
 # AuditLogger フォールバック検出
-vercel logs | grep "監査ログDB書き込み失敗"
+vercel logs --json | Select-String -Pattern '監査ログDB書き込み失敗'
 
 # セキュリティイベント
-vercel logs | grep "SecurityMonitor"
+vercel logs --json | Select-String -Pattern 'SecurityMonitor'
 ```
 
 ### 監査ログ検証

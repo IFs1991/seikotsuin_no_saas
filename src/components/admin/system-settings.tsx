@@ -1,19 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Save,
-  Shield,
-  Database,
-  Download,
-  Upload,
-  Loader2,
-} from 'lucide-react';
+import { Save, Shield, Database, Loader2 } from 'lucide-react';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { AdminMessage } from './AdminMessage';
@@ -34,22 +27,6 @@ interface SecuritySettings {
   lockoutDuration: number;
 }
 
-interface BackupSettings {
-  autoBackup: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
-  backupTime: string;
-  retentionDays: number;
-  cloudStorage: boolean;
-  storageProvider: 'aws' | 'gcp' | 'azure';
-}
-
-interface SystemInfo {
-  version: string;
-  lastUpdate: string;
-  databaseSize: string;
-  storageUsage: number;
-}
-
 const initialSecurityData: SecuritySettings = {
   passwordPolicy: {
     minLength: 8,
@@ -64,25 +41,14 @@ const initialSecurityData: SecuritySettings = {
   lockoutDuration: 30,
 };
 
-const initialBackupData: BackupSettings = {
-  autoBackup: true,
-  backupFrequency: 'daily',
-  backupTime: '02:00',
-  retentionDays: 30,
-  cloudStorage: true,
-  storageProvider: 'aws',
-};
-
 export function SystemSettings({
   clinicId: selectedClinicId,
 }: {
   clinicId?: string | null;
 }) {
-  const systemInfo: SystemInfo = {
+  const systemInfo = {
     version: process.env.NEXT_PUBLIC_APP_VERSION?.trim() || '未設定',
     lastUpdate: process.env.NEXT_PUBLIC_BUILD_DATE?.trim() || '未設定',
-    databaseSize: '2.3 GB',
-    storageUsage: 65,
   };
 
   const { profile, loading: profileLoading } = useUserProfile();
@@ -105,9 +71,6 @@ export function SystemSettings({
       : undefined
   );
 
-  // Backup settings remain local until system_backup persistence is wired.
-  const [backup, setBackup] = useState<BackupSettings>(initialBackupData);
-
   if (profileLoading || !isInitialized) {
     return (
       <div className='flex items-center justify-center py-12'>
@@ -125,10 +88,6 @@ export function SystemSettings({
     updateData({
       passwordPolicy: { ...security.passwordPolicy, ...updates },
     });
-  };
-
-  const updateBackup = (updates: Partial<BackupSettings>) => {
-    setBackup(prev => ({ ...prev, ...updates }));
   };
 
   const onSave = async () => {
@@ -150,7 +109,7 @@ export function SystemSettings({
           システム情報
         </h3>
 
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
           <div>
             <Label className='block text-sm text-gray-700 mb-1'>
               システムバージョン
@@ -168,32 +127,6 @@ export function SystemSettings({
               {systemInfo.lastUpdate}
             </div>
           </div>
-
-          <div>
-            <Label className='block text-sm text-gray-700 mb-1'>
-              データベースサイズ
-            </Label>
-            <div className='text-lg font-medium text-gray-900'>
-              {systemInfo.databaseSize}
-            </div>
-          </div>
-
-          <div>
-            <Label className='block text-sm text-gray-700 mb-1'>
-              ストレージ使用率
-            </Label>
-            <div className='flex items-center space-x-2'>
-              <div className='flex-1 bg-gray-200 rounded-full h-2'>
-                <div
-                  className={`h-2 rounded-full ${systemInfo.storageUsage > 80 ? 'bg-red-500' : 'bg-blue-500'}`}
-                  style={{ width: `${systemInfo.storageUsage}%` }}
-                />
-              </div>
-              <span className='text-sm font-medium text-gray-900'>
-                {systemInfo.storageUsage}%
-              </span>
-            </div>
-          </div>
         </div>
       </Card>
 
@@ -201,8 +134,15 @@ export function SystemSettings({
       <Card className='p-6'>
         <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
           <Shield className='w-5 h-5 mr-2' />
-          セキュリティ設定
+          セキュリティ運用ポリシー
         </h3>
+
+        <div className='mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950'>
+          ここで保存する値は院内の運用ポリシーを記録するためのものです。
+          Supabase Auth のパスワード規則、セッション、MFA
+          設定を自動的に変更するものではありません。実際の認証設定と利用者ごとの
+          MFA 状態は、認証基盤と専用の MFA 画面で別途確認してください。
+        </div>
 
         <div className='space-y-6'>
           {/* パスワードポリシー */}
@@ -357,151 +297,35 @@ export function SystemSettings({
                 htmlFor='two-factor-toggle'
                 className='text-sm text-gray-700'
               >
-                二要素認証を有効にする
+                MFA 必須化の運用方針を記録する
               </Label>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* バックアップ設定 */}
+      {/* バックアップ運用 */}
       <Card className='p-6'>
         <h3 className='text-lg font-semibold text-gray-900 mb-4 flex items-center'>
           <Database className='w-5 h-5 mr-2' />
-          バックアップ設定
+          バックアップと復元
         </h3>
 
-        <div className='space-y-6'>
-          <div>
-            <label className='flex items-center space-x-2 mb-4'>
-              <input
-                type='checkbox'
-                checked={backup.autoBackup}
-                onChange={e => updateBackup({ autoBackup: e.target.checked })}
-                className='rounded border-gray-300'
-              />
-              <span className='text-sm font-medium text-gray-700'>
-                自動バックアップを有効にする
-              </span>
-            </label>
-
-            {backup.autoBackup && (
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                <div>
-                  <Label className='block text-sm text-gray-700 mb-1'>
-                    バックアップ頻度
-                  </Label>
-                  <select
-                    value={backup.backupFrequency}
-                    onChange={e =>
-                      updateBackup({
-                        backupFrequency: e.target.value as
-                          | 'daily'
-                          | 'weekly'
-                          | 'monthly',
-                      })
-                    }
-                    className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  >
-                    <option value='daily'>毎日</option>
-                    <option value='weekly'>毎週</option>
-                    <option value='monthly'>毎月</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label className='block text-sm text-gray-700 mb-1'>
-                    バックアップ時刻
-                  </Label>
-                  <Input
-                    type='time'
-                    value={backup.backupTime}
-                    onChange={e => updateBackup({ backupTime: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <Label className='block text-sm text-gray-700 mb-1'>
-                    保存期間（日）
-                  </Label>
-                  <Input
-                    type='number'
-                    value={backup.retentionDays}
-                    onChange={e =>
-                      updateBackup({ retentionDays: parseInt(e.target.value) })
-                    }
-                    min='1'
-                    max='365'
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className='flex items-center space-x-2 mb-4'>
-              <input
-                type='checkbox'
-                checked={backup.cloudStorage}
-                onChange={e => updateBackup({ cloudStorage: e.target.checked })}
-                className='rounded border-gray-300'
-              />
-              <span className='text-sm font-medium text-gray-700'>
-                クラウドストレージにバックアップ
-              </span>
-            </label>
-
-            {backup.cloudStorage && (
-              <div>
-                <Label className='block text-sm text-gray-700 mb-1'>
-                  ストレージプロバイダー
-                </Label>
-                <select
-                  value={backup.storageProvider}
-                  onChange={e =>
-                    updateBackup({
-                      storageProvider: e.target.value as
-                        | 'aws'
-                        | 'gcp'
-                        | 'azure',
-                    })
-                  }
-                  className='w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option value='aws'>Amazon S3</option>
-                  <option value='gcp'>Google Cloud Storage</option>
-                  <option value='azure'>Azure Blob Storage</option>
-                </select>
-              </div>
-            )}
-          </div>
-
-          <div className='rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
-            パイロット版のバックアップ管理は Supabase
-            ダッシュボードで管理してください。
-          </div>
-
-          <div className='flex space-x-4'>
-            <Button disabled className='flex items-center space-x-2'>
-              <Download className='w-4 h-4' />
-              <span>今すぐバックアップ</span>
-            </Button>
-
-            <Button
-              variant='outline'
-              disabled
-              className='flex items-center space-x-2'
-            >
-              <Upload className='w-4 h-4' />
-              <span>バックアップから復元</span>
-            </Button>
-          </div>
+        <div className='space-y-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950'>
+          <p>
+            このアプリからバックアップ設定の変更、手動バックアップ、復元は実行できません。
+            実処理のない設定値や操作ボタンは表示していません。
+          </p>
+          <p>
+            バックアップの有効状態、保存期間、復元可能時点は、運用責任者が
+            Supabase
+            の契約プランとプロジェクト設定で確認し、復元訓練の記録を残してください。
+          </p>
         </div>
       </Card>
 
       {/* 保存ボタン */}
-      <div className='flex justify-end space-x-4 pt-6 border-t border-gray-200'>
-        <Button variant='outline'>キャンセル</Button>
+      <div className='flex justify-end pt-6 border-t border-gray-200'>
         <Button
           data-testid='save-settings-button'
           onClick={onSave}
@@ -513,7 +337,9 @@ export function SystemSettings({
           ) : (
             <Save className='w-4 h-4' />
           )}
-          <span>{loadingState.isLoading ? '保存中...' : '設定を保存'}</span>
+          <span>
+            {loadingState.isLoading ? '保存中...' : '運用ポリシーを保存'}
+          </span>
         </Button>
       </div>
     </div>

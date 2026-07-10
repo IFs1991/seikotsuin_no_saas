@@ -24,6 +24,18 @@ export function LegalPage({ title, updatedAt, sections }: LegalPageProps) {
             </p>
           </div>
 
+          <aside
+            className='mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950'
+            aria-label='法務確認状況'
+          >
+            <p className='font-semibold'>商用利用前の法務確認が必要です</p>
+            <p className='mt-1'>
+              本文は限定パイロット向けの暫定案です。事業者情報、問い合わせ窓口、
+              委託先・保管条件・保存期間・開示等の手順を確定し、専門家レビューを完了するまで、
+              正式な契約条件や法令適合、第三者認証の取得を示すものではありません。
+            </p>
+          </aside>
+
           <div className='mt-8 space-y-8 text-sm leading-7 text-slate-700'>
             {sections.map(section => (
               <section key={section.title}>

@@ -1,6 +1,11 @@
 # Beta運用フロー
 **Phase 3 M4: ベータテスト運用ガイド**
 
+> この文書の人数、期間、担当、時間、指標は計画テンプレートであり、実績や契約上の
+> SLA ではありません。実運用の正本は
+> [`PRODUCTION_OPERATIONS-v0.1.md`](./PRODUCTION_OPERATIONS-v0.1.md) とし、
+> 実際の参加院、連絡先、対応時間は開始前に確定してください。
+
 ## 概要
 本ドキュメントは整骨院管理SaaSのベータ運用期間中のオペレーションフローを定義します。
 
@@ -67,20 +72,14 @@
 ## 3. 日次オペレーション
 
 ### 3.1 モーニングチェック（毎朝9:00）
-```bash
+```powershell
 # 1. システム稼働確認
-curl https://[app-url]/api/health
+$AppUrl = $env:APP_URL
+if ([string]::IsNullOrWhiteSpace($AppUrl)) { throw 'APP_URL is required' }
+Invoke-RestMethod -Method Get -Uri "$AppUrl/api/health" | ConvertTo-Json -Depth 6
 
-# 2. 監査ログ確認（前日分）
-psql $DATABASE_URL <<SQL
-SELECT event_type, success, COUNT(*)
-FROM audit_logs
-WHERE created_at >= CURRENT_DATE - INTERVAL '1 day'
-GROUP BY event_type, success;
-SQL
-
-# 3. エラーログ確認
-vercel logs --since 24h | grep ERROR
+# 2. エラーログ確認
+vercel logs --since 24h --level error --json
 ```
 
 ### 3.2 日次フィードバック収集
@@ -98,9 +97,9 @@ vercel logs --since 24h | grep ERROR
 ### 4.1 連絡手段
 | レベル | 連絡方法 | 対応時間 | 担当 |
 |--------|----------|----------|------|
-| 一般質問 | Slackチャンネル #beta-support | 平日 9-18時 | CS Lead |
-| 緊急障害 | 電話 + Slack DM | 24/7 | Tech Lead |
-| 要望・改善提案 | Google Form | - | PM |
+| 一般質問 | 開始前に確定 | 開始前に確定 | 顧客連絡担当 |
+| 緊急障害 | 安全な緊急連絡網 | 開始前に確定 | インシデント指揮者 |
+| 要望・改善提案 | 開始前に確定 | 開始前に確定 | プロダクト担当 |
 
 ### 4.2 問い合わせ分類
 
@@ -110,7 +109,7 @@ vercel logs --since 24h | grep ERROR
 3. **機能要望**: バックログ登録
 4. **バグ報告**: 優先度判定→修正
 
-#### 対応SLA
+#### 内部トリアージ目標（非契約）
 | 優先度 | 初動対応 | 解決目標 |
 |--------|----------|----------|
 | Critical（サービス停止） | 15分以内 | 1時間以内 |
@@ -236,7 +235,7 @@ vercel logs --since 24h | grep ERROR
 - [ ] 日次モーニングチェック実行
 - [ ] フィードバック収集（毎日）
 - [ ] 週次レポート作成（毎週金曜）
-- [ ] バグ対応（SLA遵守）
+- [ ] バグ対応（内部トリアージ目標との差分を記録）
 - [ ] 改善バックログ更新
 
 ### ベータ終了時
