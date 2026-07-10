@@ -6,6 +6,7 @@ import { GET as getPatients } from '@/app/api/patients/route';
 import { GET as getDailyReports } from '@/app/api/daily-reports/route';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
+import type { PatientVisitSummaryRow } from '@/lib/services/patient-analysis-service';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
@@ -72,7 +73,9 @@ describe('API integration with Supabase staging data mocks', () => {
       suggestion_for_tomorrow: '平日夜に枠追加',
       created_at: '2025-09-27T22:10:00+09:00',
     };
-    const heatmap = [{ hour_of_day: 10, patient_count: 4 }];
+    const heatmap = [
+      { hour_of_day: 10, day_of_week: 5, visit_count: 4, avg_revenue: 5000 },
+    ];
 
     const supabase = createDashboardSupabaseMock({
       dailyRevenue,
@@ -161,34 +164,32 @@ describe('API integration with Supabase staging data mocks', () => {
     const clinicId = '11111111-1111-4111-8111-111111111111';
     const patientSummary = [
       {
+        clinic_id: clinicId,
         patient_id: 'patient-1',
         patient_name: '佐藤 花子',
+        first_visit_date: '2025-07-01',
         visit_count: 6,
         total_revenue: 82000,
+        average_revenue_per_visit: 13667,
+        treatment_period_days: 87,
         last_visit_date: '2025-09-26',
         visit_category: '高度リピート',
       },
       {
+        clinic_id: clinicId,
         patient_id: 'patient-2',
         patient_name: '鈴木 太郎',
+        first_visit_date: '2025-09-01',
         visit_count: 2,
         total_revenue: 18000,
+        average_revenue_per_visit: 9000,
+        treatment_period_days: 24,
         last_visit_date: '2025-09-25',
         visit_category: '軽度リピート',
       },
     ];
 
-    const supabase = createPatientsSupabaseMock({
-      patientSummary,
-      ltvByPatient: {
-        'patient-1': 420000,
-        'patient-2': 96000,
-      },
-      riskByPatient: {
-        'patient-1': 72,
-        'patient-2': 35,
-      },
-    });
+    const supabase = createPatientsSupabaseMock({ patientSummary });
 
     ensureClinicAccessMock.mockResolvedValue({
       supabase,
@@ -205,11 +206,16 @@ describe('API integration with Supabase staging data mocks', () => {
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
     expect(payload.data.totalPatients).toBe(2);
-    expect(payload.data.ltvRanking[0].ltv).toBe(420000);
-    expect(
-      payload.data.riskScores.find((r: any) => r.patient_id === 'patient-1')
-        ?.riskScore
-    ).toBe(72);
+    expect(payload.data.ltvRanking[0].ltv).toBe(82000);
+    expect(payload.data.riskScores).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          patient_id: 'patient-1',
+          riskScore: 95,
+          category: 'high',
+        }),
+      ])
+    );
     expect(auditLogMock).toHaveBeenCalled();
   });
 
@@ -306,27 +312,31 @@ function createDashboardSupabaseMock({
                     if (dateField === 'revenue_date') {
                       const isToday = dateValue === today;
                       const isYesterday = dateValue === yesterday;
-                      return {
-                        single: jest.fn(async () => ({
-                          data: isToday
-                            ? dailyRevenue
-                            : isYesterday
-                              ? yesterdayRevenue || null
-                              : null,
-                          error:
-                            !isToday && !isYesterday
+                      const resolveSingle = jest.fn(async () => ({
+                        data: isToday
+                          ? dailyRevenue
+                          : isYesterday
+                            ? yesterdayRevenue || null
+                            : null,
+                        error:
+                          !isToday && !isYesterday
+                            ? { code: 'PGRST116' }
+                            : isYesterday && !yesterdayRevenue
                               ? { code: 'PGRST116' }
-                              : isYesterday && !yesterdayRevenue
-                                ? { code: 'PGRST116' }
-                                : null,
-                        })),
+                              : null,
+                      }));
+                      return {
+                        single: resolveSingle,
+                        maybeSingle: resolveSingle,
                       };
                     }
+                    const resolveSingle = jest.fn(async () => ({
+                      data: dailyRevenue,
+                      error: null,
+                    }));
                     return {
-                      single: jest.fn(async () => ({
-                        data: dailyRevenue,
-                        error: null,
-                      })),
+                      single: resolveSingle,
+                      maybeSingle: resolveSingle,
                     };
                   }),
                   gte: jest.fn(() => ({
@@ -344,6 +354,29 @@ function createDashboardSupabaseMock({
                 })),
               };
             }),
+          })),
+        };
+      }
+
+      if (table === 'daily_reports') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              eq: jest.fn((_field: string, dateValue: string) => ({
+                maybeSingle: jest.fn(async () => {
+                  const isToday = dateValue === today;
+                  const isYesterday = dateValue === yesterday;
+                  const rows = isYesterday ? (yesterdayVisits ?? []) : visits;
+                  return {
+                    data:
+                      isToday || isYesterday
+                        ? { total_patients: rows.length }
+                        : null,
+                    error: null,
+                  };
+                }),
+              })),
+            })),
           })),
         };
       }
@@ -387,14 +420,16 @@ function createDashboardSupabaseMock({
       }
 
       if (table === 'ai_comments') {
+        const resolveSingle = jest.fn(async () => ({
+          data: aiComment,
+          error: aiComment ? null : { code: 'PGRST116' },
+        }));
         return {
           select: jest.fn(() => ({
             eq: jest.fn(() => ({
               eq: jest.fn(() => ({
-                single: jest.fn(async () => ({
-                  data: aiComment,
-                  error: aiComment ? null : { code: 'PGRST116' },
-                })),
+                single: resolveSingle,
+                maybeSingle: resolveSingle,
               })),
             })),
           })),
@@ -411,42 +446,39 @@ function createDashboardSupabaseMock({
     }),
   } as const;
 
-  return supabase as unknown as any;
+  return supabase;
 }
 
 function createPatientsSupabaseMock({
   patientSummary,
-  ltvByPatient,
-  riskByPatient,
 }: {
-  patientSummary: Array<any>;
-  ltvByPatient: Record<string, number>;
-  riskByPatient: Record<string, number>;
+  patientSummary: PatientVisitSummaryRow[];
 }) {
   return {
     from: jest.fn((table: string) => {
       if (table === 'patient_visit_summary') {
+        const query = {
+          returns: jest.fn(async () => ({
+            data: patientSummary,
+            error: null,
+          })),
+        };
         return {
           select: jest.fn(() => ({
-            eq: jest.fn(async () => ({ data: patientSummary, error: null })),
+            eq: jest.fn(() => query),
           })),
         };
       }
       throw new Error(`Unexpected table: ${table}`);
     }),
-    rpc: jest.fn(async (fnName: string, params: { patient_uuid: string }) => {
-      if (fnName === 'calculate_patient_ltv') {
-        return { data: ltvByPatient[params.patient_uuid] ?? 0, error: null };
-      }
-      if (fnName === 'calculate_churn_risk_score') {
-        return { data: riskByPatient[params.patient_uuid] ?? 0, error: null };
-      }
-      return { data: null, error: null };
-    }),
   };
 }
 
-function createDailyReportsSupabaseMock({ reports }: { reports: Array<any> }) {
+function createDailyReportsSupabaseMock({
+  reports,
+}: {
+  reports: Array<Record<string, unknown>>;
+}) {
   return {
     from: jest.fn((table: string) => {
       if (table === 'daily_reports') {

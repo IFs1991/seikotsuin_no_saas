@@ -20,11 +20,9 @@ concurrency:
 #  build              – npm run build  (DOD-10)
 #  supabase-contract  – validates src/types/supabase.ts header  (DOD-12)
 #  fixture-preflight  – static fixture UUID/email checks  (DOD-05)
-#  focused-regression – PR-05 9-suite focused Jest  (DOD-11)
-#
-# Deferred (not required merge gate):
-#  test-security      – continue-on-error: true
-#  Playwright         – blocked by spawn EPERM on Windows; see DOD-06/DOD-07
+#  full-regression    – all non-E2E Jest suites  (DOD-11)
+#  test-security      – security/session regression suites
+#  app-e2e            – local Supabase fixture validation + Chromium smoke
 # ---------------------------------------------------------------------------
 
 jobs:
@@ -159,12 +157,10 @@ jobs:
           E2E_SKIP_DB_CHECK: '1'
 
   # --------------------------------------------------------------------------
-  # 5. Focused Regression – PR-05 9-suite set  (DOD-11)
-  # Exact file list from DoD-verification-report-2026-03-15.md.
-  # Full repo-wide Jest is deferred (cost too high; adopt in nightly/follow-up).
+  # 5. Full Regression (DOD-11)
   # --------------------------------------------------------------------------
-  focused-regression:
-    name: Focused Regression (PR-05, 9 suites)
+  full-regression:
+    name: Full Jest Regression
     runs-on: ubuntu-latest
     needs: [quality]
     steps:
@@ -180,18 +176,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run focused regression suite
-        run: npm run test:pr05:focused
+      - name: Run full non-E2E regression suite
+        run: npm run test -- --ci --testPathIgnorePatterns=e2e
 
   # --------------------------------------------------------------------------
-  # Security Tests — informational only, not a required merge gate for MVP.
-  # continue-on-error: true keeps the gate green even if these tests fail.
-  # Promote to required once the full test suite is stabilised.
+  # Security Tests — required merge gate.
   # --------------------------------------------------------------------------
   test-security:
-    name: Security Tests (informational)
+    name: Security Tests
     runs-on: ubuntu-latest
-    continue-on-error: true
+    needs: [quality]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -212,4 +206,74 @@ jobs:
         if: always()
         run: |
           echo "## Security Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "ℹ️ Informational only — not a required merge gate for MVP" >> $GITHUB_STEP_SUMMARY
+          echo "Required security/session regression gate" >> $GITHUB_STEP_SUMMARY
+
+  # --------------------------------------------------------------------------
+  # App E2E — real local Supabase, DB fixture validation, and Chromium smoke.
+  # Cross-tenant RLS enforcement remains blocked on the separately approved
+  # migration remediation and is intentionally not represented as green here.
+  # --------------------------------------------------------------------------
+  app-e2e:
+    name: App E2E (Local Supabase + Chromium)
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.84.2
+          github-token: ${{ github.token }}
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Verify generated Supabase types are current
+        run: |
+          npm run supabase:types
+          git diff --exit-code -- src/types/supabase.ts
+
+      - name: Export local test environment
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_APP_ENV=e2e" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_E2E=true" >> "$GITHUB_ENV"
+
+      - name: Validate database fixtures
+        run: npm run e2e:validate-fixtures
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run application smoke flows
+        run: >-
+          npm run test:e2e:pw --
+          src/__tests__/e2e-playwright/auth-login-flow.spec.ts
+          src/__tests__/e2e-playwright/happy-path.spec.ts
+          src/__tests__/e2e-playwright/public-menus-api.spec.ts
+          --project=chromium
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

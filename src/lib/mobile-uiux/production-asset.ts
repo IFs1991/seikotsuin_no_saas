@@ -58,11 +58,18 @@ const SOURCE_ASSET_ROOT = path.join(
   'private-assets',
   'mobile-uiux'
 );
-const PRODUCTION_ASSET_ROOT = path.join(
+const DEFAULT_PRODUCTION_ASSET_ROOT = path.join(
   process.cwd(),
   'private-assets',
   'mobile-uiux-production'
 );
+
+function resolveProductionAssetRoot(): string {
+  const overrideRoot = process.env.MOBILE_UIUX_PRODUCTION_ASSET_ROOT?.trim();
+  return overrideRoot
+    ? path.resolve(overrideRoot)
+    : DEFAULT_PRODUCTION_ASSET_ROOT;
+}
 
 const productionAssetContentCache = new Map<
   MobileUiuxProductionAssetResource,
@@ -98,11 +105,11 @@ export function getMobileUiuxSourceAssetPath(
 export function getMobileUiuxProductionAssetPath(
   resource: MobileUiuxProductionAssetResource
 ): string {
-  return path.join(PRODUCTION_ASSET_ROOT, `${resource}.dc.html`);
+  return path.join(resolveProductionAssetRoot(), `${resource}.dc.html`);
 }
 
 export function getMobileUiuxProductionAssetRoot(): string {
-  return PRODUCTION_ASSET_ROOT;
+  return resolveProductionAssetRoot();
 }
 
 export function buildMobileUiuxProductionAsset(
