@@ -131,5 +131,12 @@ export async function createPublicClinicContext(
     throw new ClinicInactiveError();
   }
 
-  return { client, clinicId, clinic };
+  return {
+    client,
+    clinicId,
+    clinic: {
+      ...clinic,
+      is_active: true,
+    },
+  };
 }

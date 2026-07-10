@@ -20,7 +20,7 @@ export type DeriveBillingStateInput = {
 export function isActiveBillingOverride(
   override: BillingOverride | null | undefined,
   now: Date
-) {
+): override is BillingOverride {
   return (
     override !== null &&
     override !== undefined &&
