@@ -90,6 +90,37 @@ describe('ensureClinicAccess', () => {
     );
   });
 
+  it('throws ACCOUNT_INACTIVE before evaluating permissions', async () => {
+    getCurrentUserMock.mockResolvedValue({ id: 'user-1', email: 'user@test' });
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+      },
+      normalizedRole: 'admin',
+      clinicId: 'clinic-1',
+      isActive: false,
+      isAdmin: true,
+    });
+
+    await expect(
+      ensureClinicAccess(request, '/api/test', 'clinic-1')
+    ).rejects.toMatchObject<AppError>({
+      code: ERROR_CODES.ACCOUNT_INACTIVE,
+      statusCode: 403,
+    });
+
+    expect(canAccessClinicScopeMock).not.toHaveBeenCalled();
+    expect(logUnauthorizedAccessMock).toHaveBeenCalledWith(
+      '/api/test',
+      'Account inactive or profile status unavailable',
+      'user-1',
+      'user@test',
+      '127.0.0.1',
+      'jest'
+    );
+  });
+
   it('throws 403 when clinic does not match and role is not privileged', async () => {
     getCurrentUserMock.mockResolvedValue({ id: 'user-1', email: 'user@test' });
     getUserAccessContextMock.mockResolvedValue({

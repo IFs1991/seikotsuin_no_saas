@@ -1,7 +1,9 @@
 import {
+  assertActiveAccount,
   buildUserAuthAccessContext,
   resolvePermissionRecord,
 } from '@/lib/supabase/auth-context';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 describe('resolvePermissionRecord', () => {
   it('prefers user_permissions over app_metadata', () => {
@@ -57,5 +59,41 @@ describe('buildUserAuthAccessContext', () => {
     expect(accessContext.normalizedRole).toBe('clinic_admin');
     expect(accessContext.clinicId).toBe('clinic-1');
     expect(accessContext.isActive).toBe(false);
+  });
+
+  it('fails closed when profile activity status is missing', () => {
+    const accessContext = buildUserAuthAccessContext({
+      role: 'admin',
+      clinic_id: null,
+    });
+
+    expect(accessContext.isActive).toBe(false);
+  });
+
+  it('fails closed when profile activity status is null', () => {
+    const accessContext = buildUserAuthAccessContext(
+      {
+        role: 'admin',
+        clinic_id: null,
+      },
+      { is_active: null }
+    );
+
+    expect(accessContext.isActive).toBe(false);
+  });
+});
+
+describe('assertActiveAccount', () => {
+  it('throws the stable ACCOUNT_INACTIVE error for inactive contexts', () => {
+    expect(() => assertActiveAccount({ isActive: false })).toThrow(
+      expect.objectContaining<AppError>({
+        code: ERROR_CODES.ACCOUNT_INACTIVE,
+        statusCode: 403,
+      })
+    );
+  });
+
+  it('allows explicitly active contexts', () => {
+    expect(() => assertActiveAccount({ isActive: true })).not.toThrow();
   });
 });

@@ -157,14 +157,13 @@ export async function clinicLogin(
     const permissions = await getUserPermissions(data.user.id, supabase);
 
     // is_active は profiles テーブルから取得
-    const { data: profileData } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('is_active')
       .eq('user_id', data.user.id)
       .single();
 
-    const isActive =
-      (profileData as { is_active?: boolean } | null)?.is_active ?? true;
+    const isActive = !profileError && profileData?.is_active === true;
 
     // is_active チェック
     if (!isActive) {

@@ -21,42 +21,33 @@ const ADMIN_ROLES = CLINIC_ADMIN_ROLES;
 const PROFILE_FETCH_TIMEOUT_MS = 8000;
 const SESSION_FETCH_TIMEOUT_MS = 2000;
 
-const resolveRole = (user: User): string | null => {
+export const resolveTrustedRole = (
+  user: Pick<User, 'app_metadata'>
+): string | null => {
   const appMeta = user.app_metadata as
     | Record<string, unknown>
     | null
     | undefined;
-  const userMeta = user.user_metadata as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  const roleCandidate =
-    appMeta?.user_role ??
-    appMeta?.role ??
-    userMeta?.role ??
-    userMeta?.user_role ??
-    null;
+  const roleCandidate = appMeta?.user_role ?? appMeta?.role ?? null;
 
   return typeof roleCandidate === 'string' ? roleCandidate : null;
 };
 
-const resolveClinicId = (user: User): string | null => {
+export const resolveTrustedClinicId = (
+  user: Pick<User, 'app_metadata'>
+): string | null => {
   const appMeta = user.app_metadata as
     | Record<string, unknown>
     | null
     | undefined;
-  const userMeta = user.user_metadata as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  const clinicCandidate = appMeta?.clinic_id ?? userMeta?.clinic_id ?? null;
+  const clinicCandidate = appMeta?.clinic_id ?? null;
 
   return typeof clinicCandidate === 'string' ? clinicCandidate : null;
 };
 
 const buildProfileFromUser = (user: User): UserProfile => {
-  const role = resolveRole(user);
-  const clinicId = resolveClinicId(user);
+  const role = resolveTrustedRole(user);
+  const clinicId = resolveTrustedClinicId(user);
 
   return {
     id: user.id,

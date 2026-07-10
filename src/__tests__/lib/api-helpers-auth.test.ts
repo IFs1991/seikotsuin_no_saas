@@ -1,5 +1,6 @@
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
-import { verifyAdminAuth } from '@/lib/api-helpers';
+import { NextRequest } from 'next/server';
+import { processApiRequest, verifyAdminAuth } from '@/lib/api-helpers';
 
 const ensureClinicAccessMock = jest.fn();
 
@@ -52,5 +53,32 @@ describe('verifyAdminAuth', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBe('forbidden');
+  });
+});
+
+describe('processApiRequest account status', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns the stable ACCOUNT_INACTIVE code with HTTP 403', async () => {
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(ERROR_CODES.ACCOUNT_INACTIVE, undefined, 403)
+    );
+
+    const result = await processApiRequest(
+      new NextRequest('http://localhost/api/protected')
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('Expected processApiRequest to reject inactive account');
+    }
+
+    expect(result.error.status).toBe(403);
+    await expect(result.error.json()).resolves.toMatchObject({
+      success: false,
+      code: ERROR_CODES.ACCOUNT_INACTIVE,
+    });
   });
 });
