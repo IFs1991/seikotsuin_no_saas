@@ -20,6 +20,7 @@ import {
   canAccessCrossClinicWithCompat,
   normalizeRole,
 } from '@/lib/constants/roles';
+import { assertActiveAccount } from '@/lib/supabase/auth-context';
 
 export interface ClinicAccessOptions {
   /**
@@ -65,6 +66,19 @@ export async function ensureClinicAccess(
   const accessContext = await getUserAccessContext(user.id, supabase, {
     user,
   });
+
+  if (!accessContext.isActive) {
+    await AuditLogger.logUnauthorizedAccess(
+      path,
+      'Account inactive or profile status unavailable',
+      user.id,
+      user.email || '',
+      ipAddress,
+      userAgent
+    );
+  }
+  assertActiveAccount(accessContext);
+
   const permissions = accessContext.permissions;
   if (!permissions) {
     await AuditLogger.logUnauthorizedAccess(

@@ -23,6 +23,7 @@ export const ERROR_CODES = {
   // 認証・認可エラー
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
+  ACCOUNT_INACTIVE: 'ACCOUNT_INACTIVE',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
 
@@ -64,6 +65,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 
   [ERROR_CODES.UNAUTHORIZED]: '認証が必要です',
   [ERROR_CODES.FORBIDDEN]: 'アクセス権限がありません',
+  [ERROR_CODES.ACCOUNT_INACTIVE]:
+    'アカウントが無効化されています。管理者にお問い合わせください',
   [ERROR_CODES.INVALID_CREDENTIALS]: '認証情報が正しくありません',
   [ERROR_CODES.TOKEN_EXPIRED]: 'セッションが期限切れです',
 
@@ -166,6 +169,7 @@ export function getStatusCodeFromErrorCode(code: string): number {
     case ERROR_CODES.TOKEN_EXPIRED:
       return 401;
     case ERROR_CODES.FORBIDDEN:
+    case ERROR_CODES.ACCOUNT_INACTIVE:
       return 403;
     case ERROR_CODES.RESOURCE_NOT_FOUND:
     case ERROR_CODES.CLINIC_NOT_FOUND:

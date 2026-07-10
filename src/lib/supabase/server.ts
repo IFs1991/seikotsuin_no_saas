@@ -18,6 +18,7 @@ import {
 import type { Database } from '@/types/supabase';
 import {
   buildUserAuthAccessContext,
+  assertActiveAccount,
   fetchProfileStatus,
   fetchUserPermissionsRecord,
   resolvePermissionRecord,
@@ -378,7 +379,12 @@ export async function requireAuth(client?: SupabaseServerClient) {
 export async function requireAdminAuth(client?: SupabaseServerClient) {
   const supabase = client ?? (await getServerClient());
   const user = await requireAuth(supabase);
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await getUserAccessContext(user.id, supabase, {
+    user,
+  });
+
+  assertActiveAccount(accessContext);
+
   const permissions = accessContext.permissions;
 
   // 互換マッピング適用: clinic_manager → clinic_admin
