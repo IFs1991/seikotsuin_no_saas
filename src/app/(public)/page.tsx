@@ -3,12 +3,6 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  Fraunces,
-  JetBrains_Mono,
-  Noto_Sans_JP,
-  Shippori_Mincho,
-} from 'next/font/google';
-import {
   ArrowRight,
   Building2,
   CheckCircle2,
@@ -38,29 +32,6 @@ import { LpFaq } from '@/components/public/lp-faq';
 import { cn } from '@/lib/utils';
 import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
 import './lp-styles.css';
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-serif-en',
-  display: 'swap',
-});
-const shippori = Shippori_Mincho({
-  weight: ['500', '700', '800'],
-  subsets: ['latin'],
-  variable: '--font-serif-jp',
-  display: 'swap',
-});
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap',
-});
-const notoSansJp = Noto_Sans_JP({
-  weight: ['400', '500', '700', '800'],
-  subsets: ['latin'],
-  variable: '--font-sans-jp',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: 'Tiramisu | 5店舗以上の整骨院グループ向け 本部管理OS',
@@ -125,15 +96,7 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
 
 export default function LandingPage() {
   return (
-    <div
-      className={cn(
-        'lp-root lp-washi min-h-screen',
-        fraunces.variable,
-        shippori.variable,
-        jetbrains.variable,
-        notoSansJp.variable
-      )}
-    >
+    <div className='lp-root lp-washi min-h-screen'>
       {/* ===== Header ===== */}
       <header className='sticky top-0 z-40 border-b border-white/10 bg-[#2B3A3F]/95 text-white backdrop-blur'>
         <div className='mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8'>

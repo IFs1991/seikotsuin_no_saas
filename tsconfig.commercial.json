@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "strict": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/lib/api-helpers.ts",
+    "src/lib/route-helpers.ts",
+    "src/lib/auth/**/*.ts",
+    "src/lib/billing/**/*.ts",
+    "src/app/api/auth/**/*.ts",
+    "src/app/api/stripe/webhook/route.ts",
+    "src/app/api/webhooks/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "dist",
+    "build",
+    "src/__tests__",
+    "src/legacy"
+  ]
+}

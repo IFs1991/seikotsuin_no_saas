@@ -117,25 +117,25 @@ export async function resolveManagerAssignedClinics(
     throw error;
   }
 
-  return (data ?? [])
-    .map(row => {
-      const clinic = readManagerAssignedClinic(row.clinics);
-      if (!clinic) {
-        return null;
-      }
+  const assignments: ManagerClinicAssignment[] = [];
 
-      return {
-        id: row.id,
-        manager_user_id: row.manager_user_id,
-        clinic_id: clinic.id,
-        clinic_name: clinic.name,
-        assigned_at: row.assigned_at,
-        revoked_at: row.revoked_at,
-      };
-    })
-    .filter((assignment): assignment is ManagerClinicAssignment =>
-      Boolean(assignment)
-    );
+  for (const row of data ?? []) {
+    const clinic = readManagerAssignedClinic(row.clinics);
+    if (!clinic) {
+      continue;
+    }
+
+    assignments.push({
+      id: row.id,
+      manager_user_id: row.manager_user_id,
+      clinic_id: clinic.id,
+      clinic_name: clinic.name,
+      assigned_at: row.assigned_at,
+      revoked_at: row.revoked_at,
+    });
+  }
+
+  return assignments;
 }
 
 export async function resolveEffectiveClinicScope({
