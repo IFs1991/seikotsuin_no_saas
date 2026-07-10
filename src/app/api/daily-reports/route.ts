@@ -14,6 +14,7 @@ import {
   upsertDailyReport,
   validateDailyReportWriteScope,
 } from '@/lib/daily-reports/write-model';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/daily-reports';
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }
@@ -122,6 +123,11 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: payload.clinic_id,
+    });
+
     const scope = await validateDailyReportWriteScope(supabase, payload);
     if (scope.ok === false) {
       return NextResponse.json(
@@ -138,7 +144,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }
@@ -179,6 +185,11 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: clinicId,
+    });
 
     // DOD-09: 削除対象の日報がこのクリニックに属しているか確認
     const { data: report, error: fetchError } = await supabase

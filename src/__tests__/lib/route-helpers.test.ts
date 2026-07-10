@@ -11,6 +11,7 @@ import { z } from 'zod';
 // --- mock setup ---
 const processApiRequestMock = jest.fn();
 const ensureClinicAccessMock = jest.fn();
+const ensureBusinessWriteAccessMock = jest.fn();
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -24,15 +25,13 @@ jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: (...args: unknown[]) => ensureClinicAccessMock(...args),
 }));
 
-import {
-  handleRouteError,
-  processClinicScopedBody,
-} from '@/lib/route-helpers';
-import {
-  AppError,
-  ERROR_CODES,
-  createApiError,
-} from '@/lib/error-handler';
+jest.mock('@/lib/billing/business-write', () => ({
+  ensureBusinessWriteAccess: (...args: unknown[]) =>
+    ensureBusinessWriteAccessMock(...args),
+}));
+
+import { handleRouteError, processClinicScopedBody } from '@/lib/route-helpers';
+import { AppError, ERROR_CODES, createApiError } from '@/lib/error-handler';
 
 // --- test schema ---
 const testInsertSchema = z.object({
@@ -91,6 +90,7 @@ describe('handleRouteError', () => {
 describe('processClinicScopedBody', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureBusinessWriteAccessMock.mockResolvedValue({ mode: 'bypass' });
   });
 
   const validClinicId = '123e4567-e89b-12d3-a456-426614174000';
@@ -121,14 +121,10 @@ describe('processClinicScopedBody', () => {
       error: mockErrorResponse,
     });
 
-    const result = await processClinicScopedBody(
-      request,
-      testInsertSchema,
-      {
-        deniedRoles: ['manager'],
-        deniedRoleMessage: 'マネージャーは作成できません。',
-      }
-    );
+    const result = await processClinicScopedBody(request, testInsertSchema, {
+      deniedRoles: ['manager'],
+      deniedRoleMessage: 'マネージャーは作成できません。',
+    });
 
     expect(result.success).toBe(false);
     expect(processApiRequestMock).toHaveBeenCalledWith(request, {
@@ -294,6 +290,48 @@ describe('processClinicScopedBody', () => {
       expect(result.supabase).toBe(mockSupabase);
       expect(result.auth).toEqual(mockAuth);
       expect(result.permissions).toBe(mockPermissions);
+    }
+  });
+
+  it('returns stable 402 when the subscription does not allow writes', async () => {
+    const mockSupabase = { from: jest.fn() };
+    const mockPermissions = {
+      role: 'staff',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      body: { clinic_id: validClinicId, name: 'Test Menu' },
+      auth: { id: 'user-1', email: 'a@b.com', role: 'staff' },
+      permissions: mockPermissions,
+      supabase: mockSupabase,
+    });
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: mockSupabase,
+      user: { id: 'user-1', email: 'a@b.com' },
+      permissions: mockPermissions,
+    });
+    ensureBusinessWriteAccessMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.SUBSCRIPTION_INACTIVE,
+        '有効な契約が必要です',
+        402
+      )
+    );
+
+    const result = await processClinicScopedBody(
+      fakeRequest(),
+      testInsertSchema
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.status).toBe(402);
+      await expect(result.error.json()).resolves.toMatchObject({
+        success: false,
+        code: ERROR_CODES.SUBSCRIPTION_INACTIVE,
+      });
     }
   });
 

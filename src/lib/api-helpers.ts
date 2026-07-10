@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { AppError } from '@/lib/error-handler';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import {
   ensureClinicAccess,
   type ClinicAccessOptions,
@@ -12,6 +12,7 @@ import {
 import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 import { ALLOWED_REDIRECT_ORIGINS } from '@/lib/constants/security';
 import { ADMIN_UI_ROLES, normalizeRole } from '@/lib/constants/roles';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 // 認証・認可の結果型
 export interface AuthResult {
@@ -233,6 +234,7 @@ export interface ProcessApiOptions {
   clinicId?: string | null;
   requireClinicMatch?: boolean;
   sanitizeInputValues?: boolean;
+  requireBusinessWriteAccess?: boolean;
 }
 
 export interface ProcessApiSuccess {
@@ -312,6 +314,22 @@ export async function processApiRequest(
       options.clinicId ?? null,
       guardOptions
     );
+
+    if (options.requireBusinessWriteAccess) {
+      const targetClinicId = options.clinicId;
+      if (!targetClinicId) {
+        throw new AppError(
+          ERROR_CODES.BILLING_CONFIGURATION_ERROR,
+          '課金対象のclinic_idが指定されていません',
+          500
+        );
+      }
+
+      await ensureBusinessWriteAccess({
+        client: supabase,
+        targetClinicId,
+      });
+    }
 
     // DOD-08: 返されるroleを正規化（clinic_manager → clinic_admin）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md

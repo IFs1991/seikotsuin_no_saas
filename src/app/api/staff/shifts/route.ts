@@ -16,6 +16,7 @@ import {
   isAreaManagerRole,
   type Role,
 } from '@/lib/constants/roles';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shifts';
 const SHIFT_OPERATION_MANAGER_ROLES = [
@@ -439,7 +440,12 @@ export async function GET(request: NextRequest) {
       path: PATH,
     });
 
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return createErrorResponse(
+      apiError.message,
+      statusCode,
+      apiError,
+      error instanceof AppError ? error.code : undefined
+    );
   }
 }
 
@@ -470,6 +476,11 @@ export async function POST(request: NextRequest) {
           requireClinicMatch: true,
         }
       );
+
+      await ensureBusinessWriteAccess({
+        client: supabase,
+        targetClinicId: dto.clinic_id,
+      });
 
       if (hasInternalOverlappingShift(shifts)) {
         return createErrorResponse(
@@ -528,6 +539,11 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: dto.clinic_id,
+    });
+
     if (await hasOverlappingShift(supabase, dto)) {
       return createErrorResponse(
         '同じスタッフのシフト時間が重複しています',
@@ -570,7 +586,12 @@ export async function POST(request: NextRequest) {
       path: PATH,
     });
 
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return createErrorResponse(
+      apiError.message,
+      statusCode,
+      apiError,
+      error instanceof AppError ? error.code : undefined
+    );
   }
 }
 
@@ -603,6 +624,11 @@ export async function PATCH(request: NextRequest) {
         requireClinicMatch: true,
       }
     );
+
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: dto.clinic_id,
+    });
 
     const payload: StaffShiftUpdate = {
       status: 'cancelled',
@@ -643,6 +669,11 @@ export async function PATCH(request: NextRequest) {
       path: PATH,
     });
 
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return createErrorResponse(
+      apiError.message,
+      statusCode,
+      apiError,
+      error instanceof AppError ? error.code : undefined
+    );
   }
 }

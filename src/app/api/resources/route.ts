@@ -252,6 +252,7 @@ export async function DELETE(request: NextRequest) {
     const guard = await processApiRequest(request, {
       clinicId,
       requireClinicMatch: true,
+      requireBusinessWriteAccess: true,
     });
     if (!guard.success) return guard.error;
     const { data, error } = await guard.supabase

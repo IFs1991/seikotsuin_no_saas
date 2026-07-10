@@ -141,6 +141,7 @@ export async function DELETE(request: NextRequest) {
       clinicId,
       requireClinicMatch: true,
       allowedRoles: MENU_ADMIN_ROLES,
+      requireBusinessWriteAccess: true,
     });
     if (!guard.success) return guard.error;
     const supabase = createMenuScopedClient(guard.permissions, clinicId);

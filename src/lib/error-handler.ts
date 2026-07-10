@@ -42,6 +42,8 @@ export const ERROR_CODES = {
   CAPTCHA_FAILED: 'CAPTCHA_FAILED',
 
   // ビジネスロジックエラー
+  SUBSCRIPTION_INACTIVE: 'SUBSCRIPTION_INACTIVE',
+  BILLING_CONFIGURATION_ERROR: 'BILLING_CONFIGURATION_ERROR',
   CLINIC_NOT_FOUND: 'CLINIC_NOT_FOUND',
   PATIENT_NOT_FOUND: 'PATIENT_NOT_FOUND',
   STAFF_NOT_FOUND: 'STAFF_NOT_FOUND',
@@ -79,6 +81,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   [ERROR_CODES.AI_SERVICE_ERROR]: 'AIサービスエラー',
   [ERROR_CODES.CAPTCHA_FAILED]: 'スパム対策の確認に失敗しました',
 
+  [ERROR_CODES.SUBSCRIPTION_INACTIVE]:
+    '契約状態により、この操作は現在利用できません',
+  [ERROR_CODES.BILLING_CONFIGURATION_ERROR]:
+    '課金設定を確認できないため、更新操作を一時停止しています',
   [ERROR_CODES.CLINIC_NOT_FOUND]: '店舗が見つかりません',
   [ERROR_CODES.PATIENT_NOT_FOUND]: '患者が見つかりません',
   [ERROR_CODES.STAFF_NOT_FOUND]: 'スタッフが見つかりません',
@@ -135,6 +141,8 @@ export function getErrorCodeFromStatus(status: number): string {
       return ERROR_CODES.VALIDATION_ERROR;
     case 401:
       return ERROR_CODES.UNAUTHORIZED;
+    case 402:
+      return ERROR_CODES.SUBSCRIPTION_INACTIVE;
     case 403:
       return ERROR_CODES.FORBIDDEN;
     case 404:
@@ -167,6 +175,10 @@ export function getStatusCodeFromErrorCode(code: string): number {
       return 401;
     case ERROR_CODES.FORBIDDEN:
       return 403;
+    case ERROR_CODES.SUBSCRIPTION_INACTIVE:
+      return 402;
+    case ERROR_CODES.BILLING_CONFIGURATION_ERROR:
+      return 503;
     case ERROR_CODES.RESOURCE_NOT_FOUND:
     case ERROR_CODES.CLINIC_NOT_FOUND:
     case ERROR_CODES.PATIENT_NOT_FOUND:

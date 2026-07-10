@@ -20,6 +20,7 @@ import {
   isAreaManagerRole,
   type Role,
 } from '@/lib/constants/roles';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff';
 const STAFF_OPERATION_MANAGER_ROLES = [
@@ -381,7 +382,12 @@ export async function GET(request: NextRequest) {
       path: PATH,
     });
 
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return createErrorResponse(
+      apiError.message,
+      statusCode,
+      apiError,
+      error instanceof AppError ? error.code : undefined
+    );
   }
 }
 
@@ -414,6 +420,11 @@ export async function POST(request: NextRequest) {
         requireClinicMatch: true,
       }
     );
+
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: dto.clinic_id,
+    });
 
     const insertPayload = mapStaffInsertToRow(dto);
 
@@ -460,6 +471,11 @@ export async function POST(request: NextRequest) {
       path: PATH,
     });
 
-    return createErrorResponse(apiError.message, statusCode, apiError);
+    return createErrorResponse(
+      apiError.message,
+      statusCode,
+      apiError,
+      error instanceof AppError ? error.code : undefined
+    );
   }
 }
