@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import { isAiInsightsEnabled } from '@/lib/feature-flags';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 
 type InsightImpact = 'high' | 'mid' | 'low';
@@ -69,6 +70,11 @@ const aiInsightsSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const path = '/api/ai-insights';
+
+  if (!isAiInsightsEnabled()) {
+    return createErrorResponse('AIインサイトは現在利用できません', 404);
+  }
+
   const clinicId = request.nextUrl.searchParams.get('clinic_id');
   const periodDaysParam = request.nextUrl.searchParams.get('period_days');
   const periodDays = periodDaysParam ? Number(periodDaysParam) : 30;

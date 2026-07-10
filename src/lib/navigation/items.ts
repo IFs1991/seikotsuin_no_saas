@@ -5,6 +5,7 @@ import {
   isTherapistRole,
   normalizeRole,
 } from '@/lib/constants/roles';
+import { isAiInsightsEnabled } from '@/lib/feature-flags';
 
 export interface NavigationItem {
   readonly id: string;
@@ -279,10 +280,6 @@ const THERAPIST_QUICK_ACCESS_ITEMS = pickNavigationItemsFromMap(
   QUICK_ACCESS_ITEM_BY_ID,
   THERAPIST_QUICK_ACCESS_ITEM_IDS
 );
-
-export function isAiInsightsEnabled() {
-  return process.env.NEXT_PUBLIC_ENABLE_AI_INSIGHTS === 'true';
-}
 
 export function getOperationMenuItems() {
   return isAiInsightsEnabled()

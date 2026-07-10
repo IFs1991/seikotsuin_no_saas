@@ -237,7 +237,7 @@ function AdminLoginContent() {
         </div>
 
         <div className='text-center text-sm text-gray-500'>
-          <p>🔒 エンタープライズグレードのセキュリティ</p>
+          <p>🔒 管理者向けの認証・アクセス制御</p>
         </div>
       </Card>
     </div>
