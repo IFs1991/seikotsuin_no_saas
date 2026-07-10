@@ -10,6 +10,7 @@ import {
   ValidationErrorCollector,
   validation,
   ERROR_CODES,
+  getStatusCodeFromErrorCode,
 } from '../../lib/error-handler';
 
 describe('Error Handler', () => {
@@ -40,6 +41,14 @@ describe('Error Handler', () => {
 
       expect(error.details).toEqual(details);
       expect(error.path).toBe(path);
+    });
+  });
+
+  describe('HTTP status mapping', () => {
+    it('maps CAPTCHA_UNAVAILABLE to service unavailable', () => {
+      expect(getStatusCodeFromErrorCode(ERROR_CODES.CAPTCHA_UNAVAILABLE)).toBe(
+        503
+      );
     });
   });
 

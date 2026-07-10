@@ -79,4 +79,25 @@ describe('GET /api/internal/reservation-reminders', () => {
     });
     expect(mockProcessReservationReminders).toHaveBeenCalledWith(client);
   });
+
+  it('does not expose reminder processor error details', async () => {
+    mockCreateAdminClient.mockReturnValue({ from: jest.fn() });
+    mockProcessReservationReminders.mockRejectedValue(
+      new Error('customer email patient@example.com')
+    );
+    const { GET } =
+      await import('@/app/api/internal/reservation-reminders/route');
+
+    const response = await GET({
+      headers: { get: () => 'Bearer secret' },
+    } as RouteRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      success: false,
+      error: 'Internal job failed',
+      code: 'JOB_FAILED',
+    });
+  });
 });

@@ -22,6 +22,14 @@
     {
       "path": "/api/internal/process-email-outbox",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/internal/process-line-outbox",
+      "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/internal/reservation-reminders",
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [

@@ -11,6 +11,7 @@ import {
   type RateLimitResult,
 } from './rate-limiter';
 import { logger } from '@/lib/logger';
+import { captureOperationalError } from '@/lib/monitoring/sentry';
 import type { Database } from '@/types/supabase';
 
 // レート制限設定
@@ -91,6 +92,14 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
           )
         : await rateLimiter.checkRateLimit(config.type, identifier);
 
+      if (result.backendAvailable === false) {
+        logger.error('Rate limiter backend check failed');
+        if (process.env.NODE_ENV === 'production') {
+          return createUnavailableResponse();
+        }
+        return null;
+      }
+
       if (!result.allowed) {
         // カスタムハンドラーがある場合は使用
         if (config.onLimitExceeded) {
@@ -128,6 +137,11 @@ export function createRateLimitMiddleware(config: RateLimitConfig) {
       });
     } catch (error) {
       logger.error('レート制限ミドルウェアエラー:', error);
+      await captureOperationalError(error, {
+        source: 'rate-limit-middleware',
+        operation: config.type,
+        reason: 'middleware_error',
+      });
       if (process.env.NODE_ENV === 'production') {
         return createUnavailableResponse();
       }
@@ -224,7 +238,7 @@ async function getAuthenticatedUserId(
 
     return user.id;
   } catch (error) {
-    logger.warn('Mobile UIUX rate-limit user resolution failed:', error);
+    logger.warn('Rate-limit user resolution failed:', error);
     return null;
   }
 }
@@ -280,6 +294,42 @@ export const adminSecurityWriteRateLimit = createRateLimitMiddleware({
   customConfig: {
     window: 60,
     limit: 10,
+  },
+});
+
+async function getAuthenticatedWriteRateLimitKey(
+  request: NextRequest
+): Promise<string> {
+  const userId = await getAuthenticatedUserId(request);
+  return userId
+    ? `authenticated-write:user:${userId}`
+    : `authenticated-write:${getMobileUiuxKeyPrefix(request)}`;
+}
+
+async function getAdminWriteRateLimitKey(
+  request: NextRequest
+): Promise<string> {
+  const userId = await getAuthenticatedUserId(request);
+  return userId
+    ? `admin-write:user:${userId}`
+    : `admin-write:${getMobileUiuxKeyPrefix(request)}`;
+}
+
+export const authenticatedApiWriteRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAuthenticatedWriteRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 30,
+  },
+});
+
+export const adminApiWriteRateLimit = createRateLimitMiddleware({
+  type: 'api_calls',
+  keyGenerator: getAdminWriteRateLimitKey,
+  customConfig: {
+    window: 60,
+    limit: 15,
   },
 });
 
@@ -382,6 +432,19 @@ export function getPathRateLimit(
     }
   }
 
+  const normalizedMethod = method.toUpperCase();
+  if (
+    isMutatingApiMethod(normalizedMethod) &&
+    isAuthenticatedMutatingApiPath(pathname) &&
+    !hasDedicatedRateLimit(pathname)
+  ) {
+    middlewares.push(
+      pathname.startsWith('/api/admin/')
+        ? adminApiWriteRateLimit
+        : authenticatedApiWriteRateLimit
+    );
+  }
+
   // 認証フローの入口
   if (isAuthEntryPoint(pathname)) {
     middlewares.push(loginRateLimit);
@@ -404,21 +467,36 @@ export function getPathRateLimit(
  * ユーティリティ関数
  */
 function getClientIP(request: NextRequest): string {
-  // 様々なヘッダーからIPアドレスを取得
+  const vercelForwardedFor = request.headers.get('x-vercel-forwarded-for');
+  if (vercelForwardedFor) {
+    return vercelForwardedFor.split(',')[0]?.trim() || '127.0.0.1';
+  }
+
   const xForwardedFor = request.headers.get('x-forwarded-for');
-  const xRealIP = request.headers.get('x-real-ip');
-  const cfConnectingIP = request.headers.get('cf-connecting-ip');
-
-  if (cfConnectingIP) {
-    return cfConnectingIP;
-  }
-
-  if (xRealIP) {
-    return xRealIP;
-  }
-
   if (xForwardedFor) {
-    return xForwardedFor.split(',')[0].trim();
+    const forwardedChain = xForwardedFor
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean);
+    const parsedTrustedProxyCount = Number.parseInt(
+      process.env.TRUSTED_PROXY_COUNT ?? '1',
+      10
+    );
+    const trustedProxyCount =
+      Number.isFinite(parsedTrustedProxyCount) && parsedTrustedProxyCount > 0
+        ? parsedTrustedProxyCount
+        : 1;
+    const clientIndex = forwardedChain.length - trustedProxyCount;
+    if (clientIndex >= 0 && forwardedChain[clientIndex]) {
+      return forwardedChain[clientIndex];
+    }
+  }
+
+  if (process.env.TRUST_CF_HEADERS === 'true') {
+    const cfConnectingIp = request.headers.get('cf-connecting-ip')?.trim();
+    if (cfConnectingIp) {
+      return cfConnectingIp;
+    }
   }
 
   // フォールバック (NextRequest does not have .ip property)
@@ -434,7 +512,7 @@ export function isMobileUiuxApiPath(pathname: string): boolean {
 }
 
 function isMobileUiuxWriteMethod(method: string): boolean {
-  return method === 'POST' || method === 'PATCH' || method === 'PUT';
+  return isMutatingApiMethod(method);
 }
 
 function isAuthEntryPoint(pathname: string): boolean {
@@ -463,7 +541,39 @@ function isAdminSecurityRateLimitedPath(pathname: string): boolean {
 }
 
 function isAdminSecurityWriteMethod(method: string): boolean {
-  return method === 'POST' || method === 'PATCH' || method === 'PUT';
+  return isMutatingApiMethod(method);
+}
+
+function isMutatingApiMethod(method: string): boolean {
+  return (
+    method === 'POST' ||
+    method === 'PATCH' ||
+    method === 'PUT' ||
+    method === 'DELETE'
+  );
+}
+
+function isAuthenticatedMutatingApiPath(pathname: string): boolean {
+  if (!pathname.startsWith('/api/')) {
+    return false;
+  }
+
+  return !(
+    pathname.startsWith('/api/public/') ||
+    pathname.startsWith('/api/internal/') ||
+    pathname.startsWith('/api/webhooks/') ||
+    pathname === '/api/stripe/webhook' ||
+    pathname === '/api/security/csp-report'
+  );
+}
+
+function hasDedicatedRateLimit(pathname: string): boolean {
+  return (
+    isMobileUiuxApiPath(pathname) ||
+    isAdminSecurityRateLimitedPath(pathname) ||
+    isSessionManagementPath(pathname) ||
+    isMfaPath(pathname)
+  );
 }
 
 function isMfaPath(pathname: string): boolean {

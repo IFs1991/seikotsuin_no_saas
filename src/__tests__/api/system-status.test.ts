@@ -1,5 +1,6 @@
 import { processApiRequest } from '@/lib/api-helpers';
 import { createAdminClient } from '@/lib/supabase';
+import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -75,7 +76,7 @@ describe('GET /api/system/status', () => {
 
     const { GET } = await import('@/app/api/system/status/route');
     const response = await GET(
-      new Request('http://localhost/api/system/status') as any
+      new NextRequest('http://localhost/api/system/status')
     );
     const body = await response.json();
 
@@ -114,11 +115,39 @@ describe('GET /api/system/status', () => {
 
     const { GET } = await import('@/app/api/system/status/route');
     const response = await GET(
-      new Request('http://localhost/api/system/status') as any
+      new NextRequest('http://localhost/api/system/status')
     );
     const body = await response.json();
 
     expect(body.data.aiAnalysisStatus).toBe('inactive');
+  });
+
+  it('dependency query failure returns a degraded status instead of operational', async () => {
+    const adminClient = {
+      from: jest
+        .fn()
+        .mockReturnValueOnce(
+          createThenableQuery({ count: 0, error: { message: 'db error' } })
+        )
+        .mockReturnValueOnce(createThenableQuery({ count: 0, error: null })),
+    };
+
+    createAdminClientMock.mockReturnValue(adminClient);
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-5', email: 'u5@example.com', role: 'staff' },
+      permissions: { role: 'staff', clinic_id: 'clinic-5' },
+      supabase: {},
+    });
+
+    const { GET } = await import('@/app/api/system/status/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/system/status')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.systemStatus).toBe('degraded');
   });
 
   it('TC-S06: 未認証リクエストは 401 を返す', async () => {

@@ -82,4 +82,25 @@ describe('GET /api/internal/process-line-outbox', () => {
     });
     expect(mockProcessLineOutbox).toHaveBeenCalledWith(client);
   });
+
+  it('does not expose processor error details', async () => {
+    mockCreateAdminClient.mockReturnValue({ from: jest.fn() });
+    mockProcessLineOutbox.mockRejectedValue(
+      new Error('database password=secret')
+    );
+    const { GET } =
+      await import('@/app/api/internal/process-line-outbox/route');
+
+    const response = await GET({
+      headers: { get: () => 'Bearer secret' },
+    } as RouteRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      success: false,
+      error: 'Internal job failed',
+      code: 'JOB_FAILED',
+    });
+  });
 });
