@@ -48,8 +48,8 @@ export function isBillingState(value: string): value is BillingState {
   return BILLING_STATES.some(state => state === value);
 }
 
-export function isEnabledFlag(value: string) {
-  return value.trim().toLowerCase() === 'true';
+export function isEnabledFlag(value: string | undefined) {
+  return value?.trim().toLowerCase() === 'true';
 }
 
 export function isBillingEnabled() {

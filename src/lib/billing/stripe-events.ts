@@ -9,7 +9,10 @@ import {
 } from '@/lib/billing/audit';
 import { enqueueBillingLifecycleEmail } from '@/lib/billing/notifications';
 import { fetchActiveBillingOverride } from '@/lib/billing/overrides';
-import { deriveBillingState } from '@/lib/billing/state';
+import {
+  canUseBusinessWriteAccess,
+  deriveBillingState,
+} from '@/lib/billing/state';
 import { mapStripeSubscriptionToBillingSnapshot } from '@/lib/billing/stripe-mapper';
 import { getStripeClient } from '@/lib/stripe/server';
 import type { Json } from '@/types/supabase';
@@ -48,6 +51,30 @@ export type PersistedStripeEventPayload = {
     object: Json;
   };
 };
+
+export type StripeWebhookClaimResult =
+  | {
+      status: 'claimed';
+      source: 'new' | 'received' | 'retry';
+    }
+  | {
+      status: 'duplicate';
+      processingStatus: 'processed' | 'ignored';
+    }
+  | {
+      status: 'busy';
+      processingStatus: 'processing' | 'received' | 'failed';
+    }
+  | {
+      status: 'terminal_failure';
+    };
+
+export type ExistingStripeWebhookClaimAction =
+  | 'duplicate'
+  | 'reclaim_received'
+  | 'reclaim_failed'
+  | 'busy'
+  | 'terminal_failure';
 
 const PAST_DUE_GRACE_DAYS = 14;
 
@@ -149,6 +176,161 @@ export function extractRelatedOrgRootClinicId(event: StripeEventLike) {
   }
 
   return metadataOrgRootClinicId(eventObject);
+}
+
+function isWebhookProcessingStatus(
+  value: string
+): value is WebhookProcessingStatus {
+  return ['received', 'processing', 'processed', 'ignored', 'failed'].includes(
+    value
+  );
+}
+
+export function classifyExistingStripeWebhookEvent(input: {
+  processingStatus: WebhookProcessingStatus;
+  retryable: boolean;
+}): ExistingStripeWebhookClaimAction {
+  if (
+    input.processingStatus === 'processed' ||
+    input.processingStatus === 'ignored'
+  ) {
+    return 'duplicate';
+  }
+
+  if (input.processingStatus === 'received') {
+    return 'reclaim_received';
+  }
+
+  if (input.processingStatus === 'failed') {
+    return input.retryable ? 'reclaim_failed' : 'terminal_failure';
+  }
+
+  return 'busy';
+}
+
+function isUniqueViolation(error: unknown) {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === '23505'
+  );
+}
+
+async function reclaimWebhookEvent(input: {
+  client: SupabaseServerClient;
+  stripeEventId: string;
+  previousStatus: 'received' | 'failed';
+}) {
+  let query = input.client
+    .from('stripe_webhook_events')
+    .update({
+      processing_status: 'processing',
+      retryable: false,
+      processing_error: null,
+      processed_at: null,
+    })
+    .eq('stripe_event_id', input.stripeEventId)
+    .eq('processing_status', input.previousStatus);
+
+  if (input.previousStatus === 'failed') {
+    query = query.eq('retryable', true);
+  }
+
+  const { data, error } = await query.select('stripe_event_id').maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data !== null;
+}
+
+export async function claimStripeWebhookEvent(input: {
+  client: SupabaseServerClient;
+  event: StripeEventLike;
+  payload: Json;
+}): Promise<StripeWebhookClaimResult> {
+  const insertResult = await input.client.from('stripe_webhook_events').insert({
+    stripe_event_id: input.event.id,
+    event_type: input.event.type,
+    stripe_created_at: fromUnixSeconds(input.event.created),
+    livemode: input.event.livemode,
+    payload: input.payload,
+    processing_status: 'processing',
+    retryable: false,
+    related_org_root_clinic_id: extractRelatedOrgRootClinicId(input.event),
+    related_stripe_subscription_id: extractRelatedStripeSubscriptionId(
+      input.event
+    ),
+  });
+
+  if (!insertResult.error) {
+    return { status: 'claimed', source: 'new' };
+  }
+
+  if (!isUniqueViolation(insertResult.error)) {
+    throw insertResult.error;
+  }
+
+  const existing = await input.client
+    .from('stripe_webhook_events')
+    .select('processing_status, retryable')
+    .eq('stripe_event_id', input.event.id)
+    .maybeSingle();
+
+  if (existing.error) {
+    throw existing.error;
+  }
+
+  if (!existing.data) {
+    return { status: 'busy', processingStatus: 'processing' };
+  }
+
+  if (!isWebhookProcessingStatus(existing.data.processing_status)) {
+    throw new Error('Unsupported Stripe webhook processing status');
+  }
+
+  const action = classifyExistingStripeWebhookEvent({
+    processingStatus: existing.data.processing_status,
+    retryable: existing.data.retryable,
+  });
+
+  if (action === 'duplicate') {
+    return {
+      status: 'duplicate',
+      processingStatus:
+        existing.data.processing_status === 'ignored' ? 'ignored' : 'processed',
+    };
+  }
+
+  if (action === 'reclaim_received') {
+    const reclaimed = await reclaimWebhookEvent({
+      client: input.client,
+      stripeEventId: input.event.id,
+      previousStatus: 'received',
+    });
+    return reclaimed
+      ? { status: 'claimed', source: 'received' }
+      : { status: 'busy', processingStatus: 'received' };
+  }
+
+  if (action === 'reclaim_failed') {
+    const reclaimed = await reclaimWebhookEvent({
+      client: input.client,
+      stripeEventId: input.event.id,
+      previousStatus: 'failed',
+    });
+    return reclaimed
+      ? { status: 'claimed', source: 'retry' }
+      : { status: 'busy', processingStatus: 'failed' };
+  }
+
+  if (action === 'terminal_failure') {
+    return { status: 'terminal_failure' };
+  }
+
+  return { status: 'busy', processingStatus: 'processing' };
 }
 
 async function resolveOrgRootClinicId(input: {
@@ -342,6 +524,23 @@ export async function syncStripeSubscription(input: {
 
   if (error) {
     throw error;
+  }
+
+  if (canUseBusinessWriteAccess(billingState)) {
+    const activationResult = await input.client
+      .from('clinics')
+      .update({
+        is_active: true,
+        billing_activation_status: 'active',
+        billing_activation_failed_at: null,
+        billing_activation_error: null,
+      })
+      .eq('id', orgRootClinicId)
+      .eq('billing_activation_status', 'pending_billing');
+
+    if (activationResult.error) {
+      throw activationResult.error;
+    }
   }
 
   if (snapshot.trialEnd !== null || snapshot.stripeStatus === 'trialing') {

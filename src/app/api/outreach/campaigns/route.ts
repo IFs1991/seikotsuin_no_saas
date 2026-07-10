@@ -16,6 +16,7 @@ import {
   outreachDraftSchema,
   OUTREACH_ALLOWED_ROLES,
 } from '@/lib/outreach';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,9 +87,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await ensureClinicAccess(request, PATH, parsedBody.data.clinic_id, {
-      allowedRoles: OUTREACH_ALLOWED_ROLES,
-      requireClinicMatch: true,
+    const { supabase } = await ensureClinicAccess(
+      request,
+      PATH,
+      parsedBody.data.clinic_id,
+      {
+        allowedRoles: OUTREACH_ALLOWED_ROLES,
+        requireClinicMatch: true,
+      }
+    );
+
+    await ensureBusinessWriteAccess({
+      client: supabase,
+      targetClinicId: parsedBody.data.clinic_id,
     });
 
     const data = await createOutreachDraft(
@@ -114,7 +125,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (error instanceof AppError) {
-      return createErrorResponse(error.message, error.statusCode);
+      return createErrorResponse(
+        error.message,
+        error.statusCode,
+        undefined,
+        error.code
+      );
     }
 
     return createErrorResponse('キャンペーン下書きの作成に失敗しました', 500);

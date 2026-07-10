@@ -35,7 +35,7 @@ import type {
 import { verifyLineIdTokenForClinic } from '@/lib/line/id-token';
 import { enqueuePublicReservationNotifications } from '@/lib/notifications/reservation-notifications';
 import { logger } from '@/lib/logger';
-import { ERROR_CODES } from '@/lib/error-handler';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { PublicBookingTimeValidationError } from '@/lib/services/public-availability-service';
 import { verifyTurnstileForPublicReservation } from '@/lib/turnstile';
 import {
@@ -44,6 +44,7 @@ import {
   type OutreachAttribution,
 } from '@/lib/outreach';
 import { reservationCreateSchema } from '../schema';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 
 function formatIntakeResponseValue(
   value: IntakeResponseSnapshot['value']
@@ -142,6 +143,25 @@ export async function POST(request: NextRequest) {
         );
       }
       throw e;
+    }
+
+    try {
+      await ensureBusinessWriteAccess({
+        client: clinicCtx.client,
+        targetClinicId: clinic_id,
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error.message,
+            code: error.code,
+          },
+          { status: error.statusCode }
+        );
+      }
+      throw error;
     }
 
     const service = new PublicReservationService(clinicCtx.client, clinic_id);

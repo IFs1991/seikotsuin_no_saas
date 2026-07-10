@@ -3,8 +3,7 @@ import type Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase';
 import { toJson } from '@/lib/billing/json';
 import {
-  extractRelatedOrgRootClinicId,
-  extractRelatedStripeSubscriptionId,
+  claimStripeWebhookEvent,
   markWebhookEvent,
   processStripeEvent,
 } from '@/lib/billing/stripe-events';
@@ -12,10 +11,6 @@ import { constructStripeWebhookEvent } from '@/lib/stripe/server';
 import { logError } from '@/lib/api-helpers';
 
 const WEBHOOK_ENDPOINT = '/api/stripe/webhook';
-
-function fromUnixSeconds(value: number) {
-  return new Date(value * 1000).toISOString();
-}
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
@@ -49,57 +44,57 @@ export async function POST(request: NextRequest) {
   }
 
   const adminClient = createAdminClient();
-  const existing = await adminClient
-    .from('stripe_webhook_events')
-    .select('processing_status')
-    .eq('stripe_event_id', event.id)
-    .maybeSingle();
-
-  if (existing.error) {
-    logError(existing.error, {
+  let claim: Awaited<ReturnType<typeof claimStripeWebhookEvent>>;
+  try {
+    claim = await claimStripeWebhookEvent({
+      client: adminClient,
+      event,
+      payload: toJson(event),
+    });
+  } catch (error) {
+    logError(error instanceof Error ? error : new Error(String(error)), {
       endpoint: WEBHOOK_ENDPOINT,
       userId: 'stripe-webhook',
       method: 'POST',
       params: {
-        stage: 'lookup_event',
+        stage: 'claim_event',
         stripe_event_id: event.id,
       },
     });
     return NextResponse.json(
-      { error: 'Webhook lookup failed' },
+      { error: 'Webhook claim failed' },
       { status: 500 }
     );
   }
 
-  if (existing.data) {
-    return NextResponse.json({ received: true, duplicate: true });
+  if (claim.status === 'duplicate') {
+    return NextResponse.json({
+      received: true,
+      duplicate: true,
+      status: claim.processingStatus,
+    });
   }
 
-  const insertResult = await adminClient.from('stripe_webhook_events').insert({
-    stripe_event_id: event.id,
-    event_type: event.type,
-    stripe_created_at: fromUnixSeconds(event.created),
-    livemode: event.livemode,
-    payload: toJson(event),
-    processing_status: 'processing',
-    retryable: false,
-    related_org_root_clinic_id: extractRelatedOrgRootClinicId(event),
-    related_stripe_subscription_id: extractRelatedStripeSubscriptionId(event),
-  });
-
-  if (insertResult.error) {
-    logError(insertResult.error, {
-      endpoint: WEBHOOK_ENDPOINT,
-      userId: 'stripe-webhook',
-      method: 'POST',
-      params: {
-        stage: 'insert_event',
-        stripe_event_id: event.id,
-      },
+  if (claim.status === 'terminal_failure') {
+    return NextResponse.json({
+      received: true,
+      duplicate: true,
+      status: 'failed',
+      retryable: false,
     });
+  }
+
+  if (claim.status === 'busy') {
     return NextResponse.json(
-      { error: 'Webhook insert failed' },
-      { status: 500 }
+      {
+        received: false,
+        status: claim.processingStatus,
+        retryable: true,
+      },
+      {
+        status: 503,
+        headers: { 'Retry-After': '5' },
+      }
     );
   }
 
@@ -121,13 +116,28 @@ export async function POST(request: NextRequest) {
       error instanceof Error
         ? error.message
         : 'Unknown webhook processing error';
-    await markWebhookEvent({
-      client: adminClient,
-      stripeEventId: event.id,
-      status: 'failed',
-      retryable: true,
-      processingError: message,
-    });
+    try {
+      await markWebhookEvent({
+        client: adminClient,
+        stripeEventId: event.id,
+        status: 'failed',
+        retryable: true,
+        processingError: message,
+      });
+    } catch (markError) {
+      logError(
+        markError instanceof Error ? markError : new Error(String(markError)),
+        {
+          endpoint: WEBHOOK_ENDPOINT,
+          userId: 'stripe-webhook',
+          method: 'POST',
+          params: {
+            stage: 'mark_event_failed',
+            stripe_event_id: event.id,
+          },
+        }
+      );
+    }
     logError(error, {
       endpoint: WEBHOOK_ENDPOINT,
       userId: 'stripe-webhook',

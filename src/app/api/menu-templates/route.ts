@@ -8,6 +8,7 @@ import { normalizeSupabaseError } from '@/lib/error-handler';
 import { handleRouteError } from '@/lib/route-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import { ensureBusinessWriteAccess } from '@/lib/billing/business-write';
 import { resolveTemplateOwnerScope } from './helpers';
 import {
   mapMenuTemplateInsertToRow,
@@ -101,6 +102,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await ensureBusinessWriteAccess({
+      client: result.supabase,
+      targetClinicId: parsed.data.owner_clinic_id,
+    });
+
     const supabase = createTemplateScopedClient(
       result.permissions,
       parsed.data.owner_clinic_id
@@ -139,6 +145,11 @@ export async function PATCH(request: NextRequest) {
         parsed.error.flatten()
       );
     }
+
+    await ensureBusinessWriteAccess({
+      client: result.supabase,
+      targetClinicId: parsed.data.owner_clinic_id,
+    });
 
     const supabase = createTemplateScopedClient(
       result.permissions,
@@ -180,6 +191,7 @@ export async function DELETE(request: NextRequest) {
       clinicId: parsedQuery.data.owner_clinic_id,
       requireClinicMatch: true,
       allowedRoles: TEMPLATE_ADMIN_ROLES,
+      requireBusinessWriteAccess: true,
     });
     if (!guard.success) return guard.error;
 
