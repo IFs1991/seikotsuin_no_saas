@@ -51,6 +51,9 @@ jobs:
       - name: Type check
         run: npm run type-check
 
+      - name: Commercial boundary type check
+        run: npm run type-check:commercial
+
       - name: Mobile UIUX production asset drift check
         run: npm run mobile-uiux:check-production-assets
 
