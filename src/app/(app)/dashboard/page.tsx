@@ -10,18 +10,23 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { HelpHint } from '@/components/ui/help-hint';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
-  CheckCircle,
+  AlertTriangle,
+  CalendarDays,
+  Sparkles,
   Stethoscope,
-  Users,
-  ArrowRight,
   Loader2,
 } from 'lucide-react';
 import { ResponsiveGrid } from '@/components/layout/responsive-layout';
 import useDashboard from '@/hooks/useDashboard';
 import { useUserProfileContext } from '@/providers/user-profile-context';
+import { useOptionalSelectedClinic } from '@/providers/selected-clinic-context';
 import { isAreaManagerRole } from '@/lib/constants/roles';
+import { isAiInsightsEnabled } from '@/lib/feature-flags';
 import { useActiveClinicId } from '@/hooks/useActiveClinicId';
+import { toJSTDateString } from '@/lib/jst';
 
 const RevenueChart = dynamic(
   () => import('@/components/dashboard/revenue-chart'),
@@ -68,13 +73,21 @@ const ManagerDashboard = dynamic(
   }
 );
 
+function formatTodayLabel(): string {
+  const [year, month, day] = toJSTDateString().split('-');
+  return `${year}年${Number(month)}月${Number(day)}日`;
+}
+
 // パフォーマンス最適化のためのメモ化コンポーネント
 const DailyDataCard = memo(
   ({ revenue, patients }: { revenue: number; patients: number }) => (
     <Card className='w-full rounded-medical shadow-medical transition-all duration-200 hover:shadow-medical-lg'>
       <CardHeader>
-        <CardTitle className='text-foreground'>
+        <CardTitle className='flex items-center gap-1 text-foreground'>
           本日のリアルタイムデータ
+          <HelpHint title='本日のリアルタイムデータ'>
+            今日これまでの売上と来院された患者数の速報値です。日報や予約の登録内容が反映されます。
+          </HelpHint>
         </CardTitle>
         <CardDescription className='text-muted-foreground'>
           現在の売上と患者数の状況です。
@@ -108,7 +121,12 @@ DailyDataCard.displayName = 'DailyDataCard';
 const AICommentCard = memo(({ comment }: { comment: string }) => (
   <Card className='w-full bg-card shadow-md'>
     <CardHeader className='bg-card'>
-      <CardTitle className='bg-card text-foreground'>AI分析コメント</CardTitle>
+      <CardTitle className='flex items-center gap-1 bg-card text-foreground'>
+        AI分析コメント
+        <HelpHint title='AI分析コメント'>
+          蓄積されたデータをもとに、AIが本日の業績の傾向を短くまとめます。参考情報としてご覧ください。
+        </HelpHint>
+      </CardTitle>
       <CardDescription className='bg-card text-muted-foreground'>
         AIによる今日の業績分析
       </CardDescription>
@@ -121,12 +139,20 @@ const AICommentCard = memo(({ comment }: { comment: string }) => (
 
 AICommentCard.displayName = 'AICommentCard';
 
+interface QuickActionsCardProps {
+  onQuickAction: (action: string) => void;
+  showAiChat: boolean;
+}
+
 const QuickActionsCard = memo(
-  ({ onQuickAction }: { onQuickAction: (action: string) => void }) => (
+  ({ onQuickAction, showAiChat }: QuickActionsCardProps) => (
     <Card className='w-full bg-card shadow-md'>
       <CardHeader className='bg-card'>
-        <CardTitle className='bg-card text-foreground'>
-          クイックアクション
+        <CardTitle className='flex items-center gap-1 bg-card text-foreground'>
+          今日やること
+          <HelpHint title='今日やること'>
+            毎日よく使う操作をまとめています。日々の業務はここから始めると迷いません。
+          </HelpHint>
         </CardTitle>
         <CardDescription className='bg-card text-muted-foreground'>
           よく使う機能へ素早くアクセスできます。
@@ -134,26 +160,45 @@ const QuickActionsCard = memo(
       </CardHeader>
       <CardContent className='bg-card p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
         <Button
-          className='w-full bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
+          className='h-auto w-full flex-col items-start gap-1 px-4 py-3 bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
           onClick={() => onQuickAction('daily-report')}
         >
-          <Stethoscope className='h-4 w-4 mr-2' />
-          日報入力
+          <span className='flex items-center text-base font-semibold'>
+            <Stethoscope className='h-4 w-4 mr-2' aria-hidden='true' />
+            日報入力
+          </span>
+          <span className='text-xs font-normal opacity-90'>
+            今日の施術内容と売上を記録します
+          </span>
         </Button>
         <Button
-          className='w-full bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
+          variant='outline'
+          className='h-auto w-full flex-col items-start gap-1 px-4 py-3'
           onClick={() => onQuickAction('appointments')}
         >
-          <Users className='h-4 w-4 mr-2' />
-          予約確認
+          <span className='flex items-center text-base font-semibold'>
+            <CalendarDays className='h-4 w-4 mr-2' aria-hidden='true' />
+            予約確認
+          </span>
+          <span className='text-xs font-normal text-muted-foreground'>
+            本日の予約状況を確認します
+          </span>
         </Button>
-        <Button
-          className='w-full bg-primary-600 text-white hover:bg-primary-600/90 dark:bg-medical-green-500 dark:hover:bg-medical-green-500/90'
-          onClick={() => onQuickAction('ai-chat')}
-        >
-          <ArrowRight className='h-4 w-4 mr-2' />
-          AIチャット
-        </Button>
+        {showAiChat && (
+          <Button
+            variant='outline'
+            className='h-auto w-full flex-col items-start gap-1 px-4 py-3'
+            onClick={() => onQuickAction('ai-chat')}
+          >
+            <span className='flex items-center text-base font-semibold'>
+              <Sparkles className='h-4 w-4 mr-2' aria-hidden='true' />
+              AIチャット
+            </span>
+            <span className='text-xs font-normal text-muted-foreground'>
+              経営データについてAIに質問できます
+            </span>
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
@@ -161,11 +206,38 @@ const QuickActionsCard = memo(
 
 QuickActionsCard.displayName = 'QuickActionsCard';
 
+function DashboardSkeleton() {
+  return (
+    <div className='p-4 pt-8 text-foreground'>
+      <div className='mx-auto max-w-7xl space-y-6'>
+        <div className='flex items-center space-x-2 text-muted-foreground'>
+          <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
+          <span>ダッシュボードデータを読み込み中...</span>
+        </div>
+        <Skeleton className='h-40 w-full' />
+        <Skeleton className='h-40 w-full' />
+        <div className='grid gap-6 lg:grid-cols-2'>
+          <Skeleton className='h-72 w-full' />
+          <Skeleton className='h-72 w-full' />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ClinicDashboard({ clinicId }: { clinicId: string | null }) {
   const { dashboardData, loading, error, handleQuickAction } =
     useDashboard(clinicId);
+  const selectedClinic = useOptionalSelectedClinic();
 
   const hasClinic = Boolean(clinicId);
+  const clinicName = useMemo(() => {
+    if (!clinicId) return null;
+    return (
+      selectedClinic?.clinics?.find(clinic => clinic.id === clinicId)?.name ??
+      null
+    );
+  }, [clinicId, selectedClinic?.clinics]);
 
   // メモ化されたデータ計算
   const memoizedData = useMemo(() => {
@@ -182,16 +254,7 @@ function ClinicDashboard({ clinicId }: { clinicId: string | null }) {
   }, [dashboardData]);
 
   if (loading) {
-    return (
-      <div className='flex items-center justify-center'>
-        <div className='flex items-center space-x-2'>
-          <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
-          <span className='text-muted-foreground'>
-            ダッシュボードデータを読み込み中...
-          </span>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!hasClinic) {
@@ -239,30 +302,24 @@ function ClinicDashboard({ clinicId }: { clinicId: string | null }) {
 
   return (
     <div className='p-4 pt-8 text-foreground'>
-      <div className='max-w-4xl mx-auto space-y-6'>
-        <h1 className='text-3xl font-bold text-foreground mb-6'>
-          メインダッシュボード
-        </h1>
+      <div className='mx-auto max-w-7xl space-y-6'>
+        <header>
+          <h1 className='text-3xl font-bold text-foreground'>ダッシュボード</h1>
+          <p className='mt-1 text-sm text-muted-foreground'>
+            {formatTodayLabel()}
+            {clinicName ? ` ・ ${clinicName}` : ''} の状況をまとめています。
+          </p>
+        </header>
 
-        {/* メモ化されたコンポーネントを使用 */}
-        <DailyDataCard
-          revenue={dailyData.revenue}
-          patients={dailyData.patients}
-        />
-        <AICommentCard comment={aiComment} />
-
-        {/* 収益推移チャート */}
-        <RevenueChart data={revenueChartData} />
-
-        {/* 時間帯別の混雑状況ヒートマップ */}
-        <PatientFlowHeatmap data={heatmapData} />
-
-        {/* 異常値アラート表示 */}
+        {/* 気づくべき情報を最上部に置く */}
         {alerts && alerts.length > 0 && (
           <Card className='w-full bg-card shadow-md border-l-4 border-red-500'>
             <CardHeader className='bg-card'>
               <CardTitle className='bg-card text-red-600 dark:text-red-400 flex items-center'>
-                <CheckCircle className='h-5 w-5 mr-2 text-red-500' />
+                <AlertTriangle
+                  className='h-5 w-5 mr-2 text-red-500'
+                  aria-hidden='true'
+                />
                 異常値アラート
               </CardTitle>
               <CardDescription className='bg-card text-muted-foreground'>
@@ -279,8 +336,24 @@ function ClinicDashboard({ clinicId }: { clinicId: string | null }) {
           </Card>
         )}
 
-        {/* クイックアクション - メモ化済みコンポーネント */}
-        <QuickActionsCard onQuickAction={handleQuickAction} />
+        {/* 毎日の導線はスクロールなしで届く位置に置く */}
+        <QuickActionsCard
+          onQuickAction={handleQuickAction}
+          showAiChat={isAiInsightsEnabled()}
+        />
+
+        <DailyDataCard
+          revenue={dailyData.revenue}
+          patients={dailyData.patients}
+        />
+
+        {/* PC幅ではチャートを2カラムで並べてスクロール量を減らす */}
+        <div className='grid gap-6 lg:grid-cols-2'>
+          <RevenueChart data={revenueChartData} />
+          <PatientFlowHeatmap data={heatmapData} />
+        </div>
+
+        <AICommentCard comment={aiComment} />
       </div>
     </div>
   );
@@ -299,16 +372,7 @@ export default function DashboardPage() {
   );
 
   if (profileLoading || activeClinicLoading) {
-    return (
-      <div className='flex items-center justify-center'>
-        <div className='flex items-center space-x-2'>
-          <Loader2 className='h-6 w-6 animate-spin text-blue-600' />
-          <span className='text-muted-foreground'>
-            ダッシュボードデータを読み込み中...
-          </span>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (profileError) {
