@@ -1,6 +1,8 @@
+import { MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE as BRIDGE_NAV_TARGETS_BY_ROLE } from '@/lib/mobile-uiux/bridge-manifest';
 import {
   canRoleAccessMobileUiuxScreen,
   canRoleNavigateToMobileUiuxTarget,
+  MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE,
   resolveMobileUiuxEntryPath,
 } from '@/lib/mobile-uiux/navigation';
 
@@ -50,5 +52,13 @@ describe('mobile-uiux role navigation contract', () => {
     expect(resolveMobileUiuxEntryPath(role)).toBeNull();
     expect(canRoleAccessMobileUiuxScreen(role, 'reservations')).toBe(false);
     expect(canRoleNavigateToMobileUiuxTarget(role, 'reservations')).toBe(false);
+  });
+
+  // navigation.ts と bridge-manifest.ts のロール別ナビ表は手動で複製されている。
+  // ズレるとサーバー判定とクライアント表示(ナビ非表示CSS/タップ判定)が食い違う。
+  it('keeps navigation.ts and bridge-manifest.ts nav-target tables in sync', () => {
+    expect(BRIDGE_NAV_TARGETS_BY_ROLE).toEqual(
+      MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE
+    );
   });
 });
