@@ -904,6 +904,23 @@ class Component extends DCLogic {
   themeBtn = (active) => `all: unset; box-sizing: border-box; padding: 6px 12px; border-radius: 7px; font-size: 12px; font-family: inherit; cursor: pointer; background: ${active ? 'var(--surface)' : 'transparent'}; color: ${active ? 'var(--fg)' : 'var(--fg-2)'}; font-weight: ${active ? 700 : 500};`;
 
 
+  __mobileUiuxCanonicalRole() {
+    const context = this.__mobileUiuxContext;
+    if (!context || typeof context !== 'object' || Array.isArray(context)) return null;
+    const role = context.role;
+    return role && typeof role === 'object' && !Array.isArray(role) && typeof role.canonical === 'string'
+      ? role.canonical
+      : null;
+  }
+
+  __mobileUiuxDcRoleForCanonical() {
+    const map = {"admin":"manager","clinic_admin":"store","manager":"manager"};
+    const canonical = this.__mobileUiuxCanonicalRole();
+    return canonical !== null && Object.prototype.hasOwnProperty.call(map, canonical)
+      ? map[canonical]
+      : null;
+  }
+
   renderVals() {
     const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
       ? this.__mobileUiuxOriginalRenderVals()
@@ -938,14 +955,20 @@ class Component extends DCLogic {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string' && dcRole !== component.state.role) {
+          statePatch.role = dcRole;
+        }
         const contextOverrides = component.__mobileUiuxBuildHomeContextOverrides();
-        if (!contextOverrides) return false;
-        component.__mobileUiuxHydratedVals = {
-          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
-          ...contextOverrides
-        };
+        if (contextOverrides) {
+          component.__mobileUiuxHydratedVals = {
+            ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+            ...contextOverrides
+          };
+        }
         if (typeof component.setState === 'function') {
-          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          component.setState(statePatch);
         } else if (typeof component.forceUpdate === 'function') {
           component.forceUpdate();
         }
@@ -1074,14 +1097,19 @@ class Component extends DCLogic {
     const reservationSummary = this.__mobileUiuxReservationSummary(data.reservationSummary);
     const reportStatus = this.__mobileUiuxDailyReportStatus(data.dailyReportStatus);
     const attentions = this.__mobileUiuxBuildHomeAttentions(data.attentions, dashboard.alerts);
-    const role = this.state && typeof this.state.role === 'string' ? this.state.role : 'store';
+    // ラベル/KPI構成は canonical role から導出する (state.role は canonical admin
+    // でも DC レイアウト都合で 'manager' になるため、表示文言の根拠にしない)
+    const canonical = this.__mobileUiuxCanonicalRole();
+    const role = canonical === 'admin' ? 'admin' : canonical === 'manager' ? 'manager' : 'store';
     const overrides = {
       dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
       kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : '本日の数値',
       kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role),
       kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role),
-      showAttention: role !== 'admin',
-      attTitle: role === 'manager' ? '今日の要確認' : '今日の要対応',
+      // canonical admin も DC 'manager' レイアウトで描画されるため、注意
+      // セクションは常に表示しタイトルだけロール別に切り替える
+      showAttention: true,
+      attTitle: role === 'manager' ? '今日の要確認' : role === 'admin' ? '要注意院' : '今日の要対応',
       attCount: attentions.length + '件',
       attentions
     };
@@ -1108,12 +1136,84 @@ class Component extends DCLogic {
     const heatmapCardOverrides = this.__mobileUiuxBuildHomeHeatmapCardOverrides(dashboard.heatmapData);
     Object.assign(overrides, heatmapCardOverrides);
 
-    overrides.showClinicCards = false;
+    // タイムライン・経営シグナル・院別パフォーマンスはデータソースが
+    // ないため非表示のまま。デザインサンプルのショートカットグリッドも
+    // 偽動作のため常時オフ
     overrides.showEvents = false;
     overrides.showSignals = false;
     overrides.showPerfRows = false;
+    overrides.showShortcuts = false;
+
+    const clinicCardOverrides = this.__mobileUiuxBuildHomeClinicCardOverrides(data.clinicCards, role);
+    Object.assign(overrides, clinicCardOverrides);
+    if (clinicCardOverrides.showClinicCards) {
+      const totals = clinicCardOverrides.__mobileUiuxClinicTotals;
+      const clinicCount = clinicCardOverrides.clinicCards.length;
+      const scopeLabel = (role === 'admin' ? '全' : '担当') + clinicCount + '院';
+      const flat = 'var(--fg-3)';
+      const dot = 'width:6px;height:6px;border-radius:50%;background:' + flat + ';flex:none;';
+      const kpis = Array.isArray(overrides.kpis) ? overrides.kpis.slice() : [];
+      kpis[0] = { label: '本日の売上', value: this.__mobileUiuxYen(totals.revenue), unit: '', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      kpis[1] = { label: '本日の来院', value: String(totals.visits), unit: '名', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      overrides.kpis = kpis;
+      overrides.kpiSub = scopeLabel + ' · 本日合計';
+      delete overrides.__mobileUiuxClinicTotals;
+    }
 
     return overrides;
+  }
+
+  // 担当院カード: revenue/visitCount 以外 (前日比・キャンセル率) は
+  // 裏付けデータがないため空欄と '—' の正直なプレースホルダにする
+  __mobileUiuxBuildHomeClinicCardOverrides(clinicCards, role) {
+    if ((role !== 'manager' && role !== 'admin') || !Array.isArray(clinicCards)) {
+      return { showClinicCards: false };
+    }
+    const flat = 'var(--fg-3)';
+    const cards = [];
+    let totalRevenue = 0;
+    let totalVisits = 0;
+    for (const item of clinicCards) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name) continue;
+      const revenue = this.__mobileUiuxNumber(item.revenue);
+      const visits = this.__mobileUiuxNumber(item.visitCount);
+      totalRevenue += revenue;
+      totalVisits += visits;
+      cards.push({
+        initial: name.charAt(0),
+        name,
+        alert: '',
+        alertShow: false,
+        revenue: this.__mobileUiuxYenCompact(revenue),
+        revDelta: '',
+        revC: flat,
+        visits: String(visits),
+        visDelta: '',
+        visC: flat,
+        cancelRate: '—',
+        cancNote: '',
+        cancC: flat,
+        links: []
+      });
+    }
+    if (cards.length === 0) {
+      return { showClinicCards: false };
+    }
+    return {
+      showClinicCards: true,
+      clinicCards: cards,
+      __mobileUiuxClinicTotals: { revenue: totalRevenue, visits: totalVisits }
+    };
+  }
+
+  // デザインの '¥184K' 形式 (カードの3カラムグリッドで桁あふれしない幅)
+  __mobileUiuxYenCompact(value) {
+    const n = Math.max(0, Math.round(value));
+    if (n < 1000) return '¥' + n;
+    if (n < 1000000) return '¥' + Math.round(n / 1000) + 'K';
+    return '¥' + (Math.round(n / 100000) / 10) + 'M';
   }
 
   __mobileUiuxBuildHomeAiCardOverrides(aiComment) {

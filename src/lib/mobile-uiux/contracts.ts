@@ -52,6 +52,13 @@ export type MobileUiuxContextResponse = {
   accessibleClinics: Array<{ id: string; name: string }>;
 };
 
+export type MobileUiuxHomeClinicCard = {
+  clinicId: string;
+  name: string;
+  revenue: number;
+  visitCount: number;
+};
+
 export type MobileUiuxHomeResponse = {
   clinicId: string;
   date: string;
@@ -71,6 +78,9 @@ export type MobileUiuxHomeResponse = {
       status: 'submitted' | 'missing';
     }>;
   };
+  // manager/admin のみ: principal 解決済みスコープ内の院別 当日実績。
+  // 取得失敗・スコープ解決失敗時は省略 (fail-soft、閲覧専用の補足データ)
+  clinicCards?: MobileUiuxHomeClinicCard[];
 };
 
 export type MobileUiuxReservationsResponse = {

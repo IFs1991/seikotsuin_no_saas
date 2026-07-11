@@ -3308,6 +3308,169 @@ describe('patchMobileUiuxDcScript', () => {
         expect(component.state.nav).toEqual([{ scr: 'top' }]);
       });
 
+      describe('home role variant and clinic cards', () => {
+        function evaluateHomeComponent() {
+          const patched = patchMobileUiuxDcScript(
+            wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'store' };
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      isManager: this.state.role === 'manager',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      showClinicCards: true,
+      clinicCards: [{ name: 'sample-clinic' }],
+      showShortcuts: true
+    };
+  }
+}`),
+            { screen: 'home' }
+          );
+          const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+          return evaluatePatchedComponent(script);
+        }
+
+        const homeReadPayload = (extra: Record<string, unknown> = {}) => ({
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            clinicName: 'BFF 本町院',
+            dashboard: {
+              dailyData: {
+                revenue: 100000,
+                patients: 10,
+                insuranceRevenue: 30000,
+                privateRevenue: 70000,
+              },
+              alerts: [],
+            },
+            reservationSummary: { total: 5, unconfirmed: 1, cancelled: 0 },
+            dailyReportStatus: {
+              done: 1,
+              review: 0,
+              missing: 0,
+              rows: [{ name: '本日の日報', status: 'submitted' }],
+            },
+            ...extra,
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        });
+
+        it.each([
+          ['admin', 'manager'],
+          ['clinic_admin', 'store'],
+          ['manager', 'manager'],
+        ])('maps canonical %s to home dc role %s', (canonical, expectedDcRole) => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+
+          expect(component.state.role).toBe(expectedDcRole);
+        });
+
+        it('renders real clinic cards with aggregated KPIs for canonical manager', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+              { clinicId: 'c2', name: '駅前院', revenue: 96000, visitCount: 12 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const cards = vals.clinicCards as Array<Record<string, unknown>>;
+          const kpis = vals.kpis as Array<Record<string, unknown>>;
+
+          expect(vals.showClinicCards).toBe(true);
+          expect(vals.showShortcuts).toBe(false);
+          expect(vals.kpiTitle).toBe('エリアサマリ');
+          expect(cards).toHaveLength(2);
+          expect(cards[0]).toMatchObject({
+            initial: '本',
+            name: '本町院',
+            revenue: '¥184K',
+            visits: '21',
+            cancelRate: '—',
+            revDelta: '',
+          });
+          expect(cards[0].links).toEqual([]);
+          expect(kpis[0]).toMatchObject({ label: '本日の売上', value: '¥280,000', delta: '担当2院 合計' });
+          expect(kpis[1]).toMatchObject({ label: '本日の来院', value: '33', unit: '名' });
+          expect(vals.kpiSub).toBe('担当2院 · 本日合計');
+        });
+
+        it('labels the aggregate as 全社 for canonical admin', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+
+          expect(component.state.role).toBe('manager');
+          expect(vals.kpiTitle).toBe('全社サマリ');
+          expect(vals.attTitle).toBe('要注意院');
+          expect(vals.kpiSub).toBe('全1院 · 本日合計');
+          expect(vals.showClinicCards).toBe(true);
+        });
+
+        it('hides clinic cards for canonical clinic_admin even when the payload carries them', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+
+          expect(vals.showClinicCards).toBe(false);
+          expect(vals.kpiTitle).toBe('本日の数値');
+        });
+
+        it('hides clinic cards for canonical manager when the payload has none', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload());
+          const vals = component.renderVals();
+
+          expect(vals.showClinicCards).toBe(false);
+          expect(vals.kpiTitle).toBe('エリアサマリ');
+        });
+
+        it('formats compact yen values across scales', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: 'A院', revenue: 900, visitCount: 1 },
+              { clinicId: 'c2', name: 'B院', revenue: 45500, visitCount: 2 },
+              { clinicId: 'c3', name: 'C院', revenue: 1230000, visitCount: 3 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const cards = vals.clinicCards as Array<Record<string, unknown>>;
+
+          expect(cards.map(card => card.revenue)).toEqual(['¥900', '¥46K', '¥1.2M']);
+        });
+      });
+
       describe('settings shift stub (準備中)', () => {
         function evaluateShiftStubComponent() {
           const patched = patchMobileUiuxDcScript(
