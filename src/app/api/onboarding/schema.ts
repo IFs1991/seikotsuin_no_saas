@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { STAFF_INVITE_ROLE_VALUES } from '@/lib/constants/roles';
 
 // ================================================================
 // 共通定義
@@ -17,15 +18,6 @@ export const ONBOARDING_STEPS = [
   'invites',
   'seed',
   'completed',
-] as const;
-
-/** ロール定義 */
-export const ROLE_VALUES = [
-  'admin',
-  'clinic_admin',
-  'therapist',
-  'staff',
-  'manager',
 ] as const;
 
 // ================================================================
@@ -88,8 +80,12 @@ export type ClinicCreateDTO = z.infer<typeof clinicCreateSchema>;
 // ================================================================
 
 const inviteItemSchema = z.object({
-  email: z.string().email('有効なメールアドレスを入力してください'),
-  role: z.enum(ROLE_VALUES).default('staff'),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('有効なメールアドレスを入力してください'),
+  role: z.enum(STAFF_INVITE_ROLE_VALUES).default('staff'),
 });
 
 export const staffInviteSchema = z.object({
