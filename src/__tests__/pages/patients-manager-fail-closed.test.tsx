@@ -41,11 +41,14 @@ describe('manager patient list/detail fail-closed pages', () => {
     usePatientsListMock.mockReturnValue({
       patients: [],
       isLoading: false,
+      isLoadingMore: false,
+      hasMore: false,
       error: null,
       searchQuery: '',
       setSearchQuery: jest.fn(),
       createPatient: jest.fn(),
       updatePatient: jest.fn(),
+      loadMore: jest.fn(),
       refetch: jest.fn(),
     });
   });

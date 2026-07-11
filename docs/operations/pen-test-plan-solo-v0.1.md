@@ -35,7 +35,7 @@ Validate shadow operation safety and readiness for MVP beta by confirming tenant
 ## Tools
 
 - Browser DevTools for request/response inspection.
-- curl or Postman for manual API calls.
+- PowerShell `Invoke-RestMethod` or Postman for manual API calls.
 - OWASP ZAP baseline scan (optional, staging only).
 - Playwright for authz and tenant-boundary regression checks.
 

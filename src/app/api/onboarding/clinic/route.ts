@@ -12,6 +12,11 @@ import {
   getCurrentUser,
 } from '@/lib/supabase';
 import { clinicCreateSchema } from '../schema';
+import {
+  assertBusinessWriteGateConfiguration,
+  type BusinessWriteGateMode,
+} from '@/lib/billing/business-write';
+import { AppError } from '@/lib/error-handler';
 
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
 
@@ -180,6 +185,10 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
     const staffEmail = user.email?.trim() || `${user.id}@placeholder.local`;
+    const businessWriteGateMode: Exclude<
+      BusinessWriteGateMode,
+      'misconfigured'
+    > = assertBusinessWriteGateConfiguration();
 
     const eligibility = await verifyInitialOnboardingEligibility(
       adminClient,
@@ -233,7 +242,9 @@ export async function POST(request: NextRequest) {
         phone_number: phone_number ?? null,
         opening_date: opening_date ?? null,
         parent_id: null,
-        is_active: true,
+        is_active: businessWriteGateMode === 'bypass',
+        billing_activation_status:
+          businessWriteGateMode === 'enforce' ? 'pending_billing' : 'active',
       })
       .select('id')
       .single();
@@ -333,12 +344,19 @@ export async function POST(request: NextRequest) {
         data: {
           clinic_id: clinicId,
           next_step: 'invites',
+          requires_billing: businessWriteGateMode === 'enforce',
         },
       },
       { status: 201 }
     );
   } catch (error) {
     console.error('Clinic creation error:', error);
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { success: false, error: error.message, code: error.code },
+        { status: error.statusCode }
+      );
+    }
     return NextResponse.json(
       { success: false, error: 'クリニックの作成に失敗しました' },
       { status: 500 }

@@ -14,6 +14,7 @@ import {
   upsertDailyReport,
   validateDailyReportWriteScope,
 } from '@/lib/daily-reports/write-model';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/daily-reports';
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const payload = validationResult.data;
 
-    const { supabase } = await ensureClinicAccess(
+    const { supabase, permissions } = await ensureClinicAccess(
       request,
       PATH,
       payload.clinic_id,
@@ -121,6 +122,11 @@ export async function POST(request: NextRequest) {
         allowedRoles: Array.from(DAILY_REPORT_MUTATION_ROLES),
       }
     );
+
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: payload.clinic_id,
+    });
 
     const scope = await validateDailyReportWriteScope(supabase, payload);
     if (scope.ok === false) {
@@ -138,7 +144,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }
@@ -180,6 +186,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: clinicId,
+    });
+
     // DOD-09: 削除対象の日報がこのクリニックに属しているか確認
     const { data: report, error: fetchError } = await supabase
       .from('daily_reports')
@@ -215,7 +226,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(
-        { error: error.message },
+        { error: error.message, code: error.code },
         { status: error.statusCode }
       );
     }

@@ -2,6 +2,7 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 import { createScopedAdminContext } from '@/lib/supabase';
+import { NextRequest } from 'next/server';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -37,11 +38,7 @@ const templateId = '00000000-0000-0000-0000-0000000000c1';
 const userId = '00000000-0000-0000-0000-000000000001';
 
 const makeRequest = (url: string, init?: RequestInit) =>
-  ({
-    ...new Request(url, init),
-    method: init?.method ?? 'GET',
-    nextUrl: new URL(url),
-  }) as any;
+  new NextRequest(url, init);
 
 describe('GET /api/menu-templates', () => {
   beforeEach(() => {
@@ -220,9 +217,20 @@ describe('POST /api/menu-templates/import', () => {
     });
     const insertSelect = jest.fn().mockReturnValue({ single: insertSingle });
     const insert = jest.fn().mockReturnValue({ select: insertSelect });
+    const templateProfilesQuery = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+        Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    templateProfilesQuery.select.mockReturnValue(templateProfilesQuery);
+    templateProfilesQuery.eq.mockReturnValue(templateProfilesQuery);
     const from = jest.fn().mockImplementation((table: string) => {
       if (table === 'clinics') return clinicQuery;
       if (table === 'menu_templates') return templateQuery;
+      if (table === 'menu_template_billing_profiles') {
+        return templateProfilesQuery;
+      }
       if (table === 'menus') return { insert };
       return {};
     });

@@ -7,6 +7,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
+import { ERROR_CODES } from '@/lib/error-handler';
 import {
   ADMIN_USER_ROLE_VALUES,
   type AdminUserRole,
@@ -23,12 +24,21 @@ const AccountOnlyCreateSchema = z.object({
   clinic_id: z.string().uuid().nullable().optional(),
 });
 
+const AccountStatusUpdateSchema = z
+  .object({
+    user_id: z.string().uuid(),
+    is_active: z.boolean(),
+  })
+  .strict();
+
 type CreateAccountError = {
   message?: string | null;
 };
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const ACCOUNT_DEACTIVATION_BAN_DURATION = '876000h';
+const ACCOUNT_REACTIVATION_BAN_DURATION = 'none';
 const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
   'clinic_admin',
   'manager',
@@ -331,5 +341,223 @@ export async function POST(request: NextRequest) {
       userId: 'unknown',
     });
     return createErrorResponse('サーバーエラーが発生しました', 500);
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      allowedRoles: ADMIN_USERS_API_ROLES,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+
+    if (!processResult.success) {
+      return processResult.error;
+    }
+
+    const { auth, permissions, body } = processResult;
+    if (!isHqAdminActor(permissions)) {
+      return createErrorResponse(
+        '管理者権限が必要です',
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
+    const parsed = AccountStatusUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return createErrorResponse(
+        '入力値にエラーがあります',
+        400,
+        parsed.error.flatten(),
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    const targetUserId = parsed.data.user_id;
+    const nextIsActive = parsed.data.is_active;
+    if (!nextIsActive && targetUserId === auth.id) {
+      return createErrorResponse(
+        '自分自身のアカウントは停止できません',
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
+    const adminClient = createAdminClient();
+    const { data: currentProfile, error: profileReadError } = await adminClient
+      .from('profiles')
+      .select('user_id, is_active')
+      .eq('user_id', targetUserId)
+      .maybeSingle();
+
+    if (profileReadError) {
+      logError(profileReadError, {
+        endpoint: '/api/admin/users/accounts',
+        method: 'PATCH',
+        userId: auth.id,
+        params: { target_user_id: targetUserId, stage: 'read_profile' },
+      });
+      return createErrorResponse(
+        'アカウント状態の取得に失敗しました',
+        500,
+        undefined,
+        ERROR_CODES.INTERNAL_SERVER_ERROR
+      );
+    }
+
+    if (!currentProfile) {
+      return createErrorResponse(
+        '対象アカウントが見つかりません',
+        404,
+        undefined,
+        ERROR_CODES.RESOURCE_NOT_FOUND
+      );
+    }
+
+    const timestamp = new Date().toISOString();
+    if (!nextIsActive) {
+      const { data: disabledProfile, error: profileUpdateError } =
+        await adminClient
+          .from('profiles')
+          .update({ is_active: false, updated_at: timestamp })
+          .eq('user_id', targetUserId)
+          .select('user_id, is_active')
+          .maybeSingle();
+
+      if (profileUpdateError || !disabledProfile) {
+        logError(profileUpdateError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'PATCH',
+          userId: auth.id,
+          params: {
+            target_user_id: targetUserId,
+            stage: 'deactivate_profile',
+          },
+        });
+        return createErrorResponse(
+          'アカウントの停止に失敗しました',
+          500,
+          undefined,
+          ERROR_CODES.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      const { error: banError } = await adminClient.auth.admin.updateUserById(
+        targetUserId,
+        {
+          ban_duration: ACCOUNT_DEACTIVATION_BAN_DURATION,
+        }
+      );
+
+      if (banError) {
+        logError(banError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'PATCH',
+          userId: auth.id,
+          params: {
+            target_user_id: targetUserId,
+            stage: 'deactivate_auth_user',
+            profile_is_active: false,
+          },
+        });
+        return createErrorResponse(
+          'アカウントは停止されましたが、認証セッションの停止に失敗しました。再実行してください',
+          502,
+          undefined,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR
+        );
+      }
+    } else {
+      const { error: unbanError } = await adminClient.auth.admin.updateUserById(
+        targetUserId,
+        {
+          ban_duration: ACCOUNT_REACTIVATION_BAN_DURATION,
+        }
+      );
+
+      if (unbanError) {
+        logError(unbanError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'PATCH',
+          userId: auth.id,
+          params: {
+            target_user_id: targetUserId,
+            stage: 'reactivate_auth_user',
+          },
+        });
+        return createErrorResponse(
+          'アカウントの再有効化に失敗しました',
+          502,
+          undefined,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR
+        );
+      }
+
+      const { data: enabledProfile, error: profileUpdateError } =
+        await adminClient
+          .from('profiles')
+          .update({ is_active: true, updated_at: timestamp })
+          .eq('user_id', targetUserId)
+          .select('user_id, is_active')
+          .maybeSingle();
+
+      if (profileUpdateError || !enabledProfile) {
+        const { error: rebanError } =
+          await adminClient.auth.admin.updateUserById(targetUserId, {
+            ban_duration: ACCOUNT_DEACTIVATION_BAN_DURATION,
+          });
+        logError(profileUpdateError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'PATCH',
+          userId: auth.id,
+          params: {
+            target_user_id: targetUserId,
+            stage: 'reactivate_profile',
+            auth_reban_failed: Boolean(rebanError),
+          },
+        });
+        return createErrorResponse(
+          'アカウントの再有効化に失敗しました',
+          500,
+          undefined,
+          ERROR_CODES.INTERNAL_SERVER_ERROR
+        );
+      }
+    }
+
+    await AuditLogger.logAdminAction(
+      auth.id,
+      auth.email,
+      nextIsActive ? 'account_reactivate' : 'account_deactivate',
+      targetUserId,
+      {
+        user_id: targetUserId,
+        previous_is_active: currentProfile.is_active,
+        is_active: nextIsActive,
+      }
+    );
+
+    return createSuccessResponse({
+      user_id: targetUserId,
+      is_active: nextIsActive,
+      auth_ban_applied: !nextIsActive,
+    });
+  } catch (error) {
+    logError(error, {
+      endpoint: '/api/admin/users/accounts',
+      method: 'PATCH',
+      userId: 'unknown',
+    });
+    return createErrorResponse(
+      'サーバーエラーが発生しました',
+      500,
+      undefined,
+      ERROR_CODES.INTERNAL_SERVER_ERROR
+    );
   }
 }

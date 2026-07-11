@@ -1,7 +1,4 @@
 const insertMock = jest.fn();
-const fromMock = jest.fn(() => ({
-  insert: insertMock,
-}));
 const loggerErrorMock = jest.fn();
 const loggerWarnMock = jest.fn();
 
@@ -16,20 +13,15 @@ const {
 
 beforeEach(() => {
   insertMock.mockReset();
-  insertMock.mockResolvedValue({ error: null });
-  fromMock.mockClear();
+  insertMock.mockResolvedValue(undefined);
   loggerErrorMock.mockClear();
   loggerWarnMock.mockClear();
   setAuditLoggerDependencies({
-    createAdminClient: () =>
-      ({
-        from: fromMock,
-      }) as any,
-    createLogger: () =>
-      ({
-        error: loggerErrorMock,
-        warn: loggerWarnMock,
-      }) as any,
+    persistAuditLog: insertMock,
+    createLogger: () => ({
+      error: loggerErrorMock,
+      warn: loggerWarnMock,
+    }),
   });
 });
 
@@ -51,8 +43,7 @@ describe('AuditLogger - Type Safety Tests', () => {
       )
     ).resolves.toBeUndefined();
 
-    expect(fromMock).toHaveBeenCalledWith('audit_logs');
-    expect(insertMock).toHaveBeenCalledWith([
+    expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: AuditEventType.DATA_DELETE,
         user_id: 'test-user-id',
@@ -61,8 +52,8 @@ describe('AuditLogger - Type Safety Tests', () => {
         target_id: 'test-target-id',
         details: { deleted_data: { action: 'test' } },
         success: true,
-      }),
-    ]);
+      })
+    );
   });
 
   it('should handle optional target_id correctly', async () => {
@@ -90,14 +81,14 @@ describe('AuditLogger - Type Safety Tests', () => {
       )
     ).resolves.toBeUndefined();
 
-    expect(insertMock).toHaveBeenCalledWith([
+    expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({
         event_type: AuditEventType.UNAUTHORIZED_ACCESS,
         details: { attempted_resource: '/admin/test' },
         success: false,
         error_message: 'Unauthorized access attempt',
-      }),
-    ]);
+      })
+    );
     expect(loggerWarnMock).toHaveBeenCalledWith(
       'Unauthorized access attempt detected',
       expect.objectContaining({

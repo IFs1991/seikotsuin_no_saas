@@ -12,6 +12,8 @@ import {
   customersQuerySchema,
   customerInsertSchema,
   customerUpdateSchema,
+  decodeCustomerCursor,
+  encodeCustomerCursor,
   mapCustomerInsertToRow,
   mapCustomerUpdateToRow,
 } from './schema';
@@ -21,6 +23,7 @@ const MANAGER_CUSTOMER_ACCESS_DENIED_MESSAGE =
   'マネージャーは患者情報APIへアクセスできません。';
 const CUSTOMER_RESPONSE_COLUMNS =
   'id, name, phone, email, notes, custom_attributes';
+const CUSTOMER_LIST_RESPONSE_COLUMNS = `${CUSTOMER_RESPONSE_COLUMNS}, created_at, updated_at, consent_marketing, consent_reminder, line_user_id`;
 type CustomerResponseRow = {
   id: string;
   name: string;
@@ -28,6 +31,18 @@ type CustomerResponseRow = {
   email: string | null;
   notes: string | null;
   custom_attributes: Record<string, unknown> | null;
+};
+type CustomerListRow = CustomerResponseRow & {
+  created_at: string;
+  updated_at: string;
+  consent_marketing: boolean | null;
+  consent_reminder: boolean | null;
+  line_user_id: string | null;
+};
+
+type CustomerListResponse = {
+  items: ReturnType<typeof mapCustomerListRowToApi>[];
+  nextCursor: string | null;
 };
 
 type PostgresConstraintError = {
@@ -43,6 +58,17 @@ function mapCustomerRowToApi(row: CustomerResponseRow) {
     email: row.email ?? undefined,
     notes: row.notes ?? undefined,
     customAttributes: row.custom_attributes ?? undefined,
+  };
+}
+
+function mapCustomerListRowToApi(row: CustomerListRow) {
+  return {
+    ...mapCustomerRowToApi(row),
+    lineUserId: row.line_user_id ?? undefined,
+    consentMarketing: row.consent_marketing ?? false,
+    consentReminder: row.consent_reminder ?? false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -77,6 +103,8 @@ export async function GET(request: NextRequest) {
       clinic_id: request.nextUrl.searchParams.get('clinic_id'),
       q: request.nextUrl.searchParams.get('q') ?? undefined,
       id: request.nextUrl.searchParams.get('id') ?? undefined,
+      limit: request.nextUrl.searchParams.get('limit') ?? undefined,
+      cursor: request.nextUrl.searchParams.get('cursor') ?? undefined,
     });
     if (!parsedQuery.success) {
       return createErrorResponse(
@@ -85,7 +113,7 @@ export async function GET(request: NextRequest) {
         parsedQuery.error.flatten()
       );
     }
-    const { clinic_id, q, id } = parsedQuery.data;
+    const { clinic_id, q, id, limit, cursor: encodedCursor } = parsedQuery.data;
 
     const guard = await processApiRequest(request, {
       clinicId: clinic_id,
@@ -123,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('customers')
-      .select(CUSTOMER_RESPONSE_COLUMNS)
+      .select(CUSTOMER_LIST_RESPONSE_COLUMNS)
       .eq('clinic_id', clinic_id)
       .eq('is_deleted', false);
     if (q) {
@@ -133,18 +161,43 @@ export async function GET(request: NextRequest) {
         query = query.or(searchFilter);
       }
     }
+
+    if (encodedCursor) {
+      const cursor = decodeCustomerCursor(encodedCursor);
+      if (!cursor) {
+        return createErrorResponse('cursorが不正です', 400);
+      }
+
+      query = query.or(
+        `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`
+      );
+    }
+
     const { data, error } = await query
       .order('created_at', { ascending: false })
-      .limit(50);
+      .order('id', { ascending: false })
+      .limit(limit + 1);
 
     if (error) {
       throw normalizeSupabaseError(error, PATH);
     }
 
-    const mapped = ((data ?? []) as CustomerResponseRow[]).map(
-      mapCustomerRowToApi
-    );
-    return createSuccessResponse(mapped);
+    const rows = (data ?? []) as CustomerListRow[];
+    const hasNextPage = rows.length > limit;
+    const pageRows = hasNextPage ? rows.slice(0, limit) : rows;
+    const lastRow = pageRows.at(-1);
+    const nextCursor =
+      hasNextPage && lastRow
+        ? encodeCustomerCursor({
+            createdAt: lastRow.created_at,
+            id: lastRow.id,
+          })
+        : null;
+    const response: CustomerListResponse = {
+      items: pageRows.map(mapCustomerListRowToApi),
+      nextCursor,
+    };
+    return createSuccessResponse(response);
   } catch (error) {
     return handleRouteError(error, PATH);
   }

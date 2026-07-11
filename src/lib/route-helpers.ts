@@ -25,6 +25,7 @@ import {
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { normalizeRole } from '@/lib/constants/roles';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 // =========================================================
 // handleRouteError
@@ -64,7 +65,12 @@ export function handleRouteError(
     path,
   });
 
-  return createErrorResponse(apiError.message, statusCode, apiError);
+  return createErrorResponse(
+    apiError.message,
+    statusCode,
+    apiError,
+    apiError.code
+  );
 }
 
 // =========================================================
@@ -159,6 +165,11 @@ export async function processClinicScopedBody<T>(
     const guard = await ensureClinicAccess(request, path, clinicId, {
       requireClinicMatch: true,
       allowedRoles: options?.allowedRoles,
+    });
+
+    await ensureScopedBusinessWriteAccess({
+      permissions: guard.permissions,
+      targetClinicId: clinicId,
     });
 
     return {

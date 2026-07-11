@@ -64,6 +64,8 @@ type MockTableRow = {
 
 class SupabaseQueryMock {
   private rows: MockTableRow[];
+  private rangeStart = 0;
+  private rangeEnd = 999;
 
   constructor(rows: MockTableRow[]) {
     this.rows = rows;
@@ -102,12 +104,16 @@ class SupabaseQueryMock {
 
   // PostgREST の max_rows=1000 と同じく1ページ分だけ返す
   range(from: number, to: number) {
-    this.rows = this.rows.slice(from, to + 1);
+    this.rangeStart = from;
+    this.rangeEnd = to;
     return this;
   }
 
   returns<T>() {
-    return Promise.resolve({ data: this.rows.slice(0, 1000) as T, error: null });
+    return Promise.resolve({
+      data: this.rows.slice(this.rangeStart, this.rangeEnd + 1) as T,
+      error: null,
+    });
   }
 }
 
@@ -310,7 +316,7 @@ describe('GET /api/manager/staff-analysis', () => {
     mockAdminClient({ reservations: manyReservations });
 
     const response = await getAnalysis(
-      '/api/manager/staff-analysis?period=month'
+      '/api/manager/staff-analysis?period=custom&start_date=2026-06-01&end_date=2026-06-30'
     );
     const json = await response.json();
 

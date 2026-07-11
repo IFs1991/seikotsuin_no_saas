@@ -13,6 +13,7 @@ const mockResolveOutreachAttribution = jest.fn();
 const mockMarkOutreachRecipientBooked = jest.fn();
 const ORIGINAL_TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
 const ORIGINAL_TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const ORIGINAL_TURNSTILE_BYPASS = process.env.TURNSTILE_BYPASS_NON_PRODUCTION;
 const ORIGINAL_SENTRY_DSN = process.env.SENTRY_DSN;
 
 jest.mock('next/server', () => ({
@@ -458,6 +459,7 @@ describe('POST /api/public/reservations', () => {
     jest.clearAllMocks();
     restoreEnvValue('TURNSTILE_SECRET_KEY', undefined);
     restoreEnvValue('NEXT_PUBLIC_TURNSTILE_SITE_KEY', undefined);
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'true';
     restoreEnvValue('SENTRY_DSN', ORIGINAL_SENTRY_DSN);
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
       ok: false,
@@ -478,6 +480,10 @@ describe('POST /api/public/reservations', () => {
     restoreEnvValue(
       'NEXT_PUBLIC_TURNSTILE_SITE_KEY',
       ORIGINAL_TURNSTILE_SITE_KEY
+    );
+    restoreEnvValue(
+      'TURNSTILE_BYPASS_NON_PRODUCTION',
+      ORIGINAL_TURNSTILE_BYPASS
     );
     restoreEnvValue('SENTRY_DSN', ORIGINAL_SENTRY_DSN);
   });
@@ -648,6 +654,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('Turnstile有効時はsiteverify成功後に予約作成を継続する', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     const fetchMock = jest
@@ -690,6 +697,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('Turnstile有効時にトークン未送信なら400を返す', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     const fetchMock = jest.spyOn(global, 'fetch');
@@ -714,6 +722,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('Turnstile検証失敗時は400を返す', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     jest
@@ -745,7 +754,8 @@ describe('POST /api/public/reservations', () => {
     });
   });
 
-  it('Turnstile timeout時はfail-openで予約作成を継続しSentryへ通知する', async () => {
+  it('Turnstile timeout時は503 CAPTCHA_UNAVAILABLEを返しSentryへ通知する', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     process.env.SENTRY_DSN = 'https://public@example.com/1';
@@ -770,13 +780,19 @@ describe('POST /api/public/reservations', () => {
     const { captureException } = await import('@sentry/nextjs');
     const captureExceptionMock = jest.mocked(captureException);
 
-    expect(response.status).toBe(201);
-    expect(data.success).toBe(true);
+    expect(response.status).toBe(503);
+    expect(data).toEqual({
+      success: false,
+      error:
+        'スパム対策サービスを一時的に利用できません。時間をおいて再度お試しください。',
+      code: 'CAPTCHA_UNAVAILABLE',
+    });
     expect(captureExceptionMock).toHaveBeenCalledTimes(1);
     expect(captureExceptionMock.mock.calls[0]?.[0]).toBeInstanceOf(Error);
   });
 
   it('LINE IDトークン検証成功時はTurnstileを免除する', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
@@ -813,6 +829,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('LINE IDトークン検証失敗かつTurnstile未送信なら400 CAPTCHA_FAILEDを返す', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     mockVerifyLineIdTokenForClinic.mockResolvedValue({
@@ -846,6 +863,7 @@ describe('POST /api/public/reservations', () => {
   });
 
   it('LINE IDトークン検証失敗でもTurnstile成功時はweb予約として201を返す', async () => {
+    process.env.TURNSTILE_BYPASS_NON_PRODUCTION = 'false';
     process.env.TURNSTILE_SECRET_KEY = 'turnstile-secret';
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = 'turnstile-site-key';
     mockVerifyLineIdTokenForClinic.mockResolvedValue({

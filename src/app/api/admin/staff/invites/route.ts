@@ -15,19 +15,22 @@ import {
   logError,
 } from '@/lib/api-helpers';
 import { AuditLogger } from '@/lib/audit-logger';
-import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import {
+  ADMIN_UI_ROLES,
+  STAFF_INVITE_ROLE_VALUES,
+} from '@/lib/constants/roles';
 import { assertEnv } from '@/lib/env';
 import { createAdminClient } from '@/lib/supabase';
+import { getSafeAuthErrorLogData } from '@/lib/auth/safe-auth-logging';
+import {
+  createStaffInviteToken,
+  sendStaffInviteEmail,
+  StaffInviteDeliveryTimeoutError,
+} from '@/lib/auth/staff-invite';
 
 // ================================================================
 // Constants
 // ================================================================
-
-/**
- * inviteUserByEmail のタイムアウト時間（ミリ秒）
- * @see SI-02: 招待APIのタイムアウトガード
- */
-const INVITE_TIMEOUT_MS = 10000;
 
 /**
  * E2E_INVITE_MODE=skip が有効かどうかを判定
@@ -42,12 +45,13 @@ const isE2EInviteSkipMode =
 // Validation Schema
 // ================================================================
 
-// 招待可能なロールのみ許可（admin, clinic_adminは除外）
-const INVITABLE_ROLES = ['therapist', 'staff', 'manager'] as const;
-
 const StaffInviteRequestSchema = z.object({
-  email: z.string().email('有効なメールアドレスを入力してください'),
-  role: z.enum(INVITABLE_ROLES, {
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('有効なメールアドレスを入力してください'),
+  role: z.enum(STAFF_INVITE_ROLE_VALUES, {
     errorMap: () => ({ message: '無効なロールです' }),
   }),
   full_name: z.string().trim().min(1).max(255).optional(),
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { auth, permissions, body, supabase } = processResult;
@@ -111,67 +115,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ================================================================
-    // Supabase Auth で招待メール送信
-    // @see SI-02: タイムアウトガード
-    // @see SI-03: E2E専用スキップ
-    // ================================================================
-
-    let authData: { user: { id: string } } | null = null;
-
-    if (isE2EInviteSkipMode) {
-      // E2Eモード: inviteUserByEmail をスキップし、ダミーのuser idを生成
-      // staff_invites への INSERT のみで成功応答を返す
-      authData = null;
-    } else {
-      // 本番モード: inviteUserByEmail を呼び出す（タイムアウト付き）
-      const adminClient = createAdminClient();
-
-      // タイムアウト用のPromise
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('招待メール送信がタイムアウトしました'));
-        }, INVITE_TIMEOUT_MS);
-      });
-
-      try {
-        const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
-        const inviteResult = await Promise.race([
-          adminClient.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${appUrl}/admin/callback?invited=true`,
-          }),
-          timeoutPromise,
-        ]);
-
-        if (inviteResult.error) {
-          logError(inviteResult.error, {
-            endpoint: '/api/admin/staff/invites',
-            method: 'POST',
-            userId: auth.id,
-            params: { email, role, clinicId },
-          });
-          return createErrorResponse(
-            `招待メールの送信に失敗しました: ${inviteResult.error.message}`,
-            500
-          );
-        }
-
-        authData = inviteResult.data;
-      } catch (timeoutError) {
-        logError(timeoutError, {
-          endpoint: '/api/admin/staff/invites',
-          method: 'POST',
-          userId: auth.id,
-          params: { email, role, clinicId },
-        });
-        return createErrorResponse(
-          '招待メールの送信がタイムアウトしました。しばらく経ってから再度お試しください。',
-          504
-        );
-      }
-    }
-
-    // staff_invites テーブルに記録
+    // 受諾画面とメールの双方で同じ不透明トークンを使用する。
+    // メールを先に送ると、記録作成前にリンクが開かれる競合が起きるため先に記録する。
+    const inviteToken = createStaffInviteToken();
     const { data: inviteData, error: inviteError } = await supabase
       .from('staff_invites')
       .insert({
@@ -179,6 +125,7 @@ export async function POST(request: NextRequest) {
         email,
         role,
         created_by: auth.id,
+        token: inviteToken,
       })
       .select('id, email, role, created_at')
       .single();
@@ -202,19 +149,76 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('招待の記録に失敗しました', 500);
     }
 
-    // profiles にも事前作成（オプション、オンボーディングと同様）
-    if (authData?.user) {
-      await supabase.from('profiles').upsert(
-        {
-          user_id: authData.user.id,
+    if (!isE2EInviteSkipMode) {
+      const adminClient = createAdminClient();
+      const cleanupPendingInvite = async () => {
+        const { error: cleanupError } = await adminClient
+          .from('staff_invites')
+          .delete()
+          .eq('id', inviteData.id)
+          .eq('clinic_id', clinicId)
+          .eq('created_by', auth.id)
+          .is('accepted_at', null);
+
+        if (cleanupError) {
+          logError(cleanupError, {
+            endpoint: '/api/admin/staff/invites',
+            method: 'POST',
+            userId: auth.id,
+            params: { inviteId: inviteData.id, clinicId },
+          });
+        }
+      };
+
+      try {
+        const inviteResult = await sendStaffInviteEmail({
+          adminClient,
+          appUrl: assertEnv('NEXT_PUBLIC_APP_URL'),
           email,
-          full_name: full_name || email.split('@')[0],
-          clinic_id: clinicId,
-          role,
-          is_active: true,
-        },
-        { onConflict: 'user_id' }
-      );
+          token: inviteToken,
+          ...(full_name ? { metadata: { full_name } } : {}),
+        });
+
+        if (inviteResult.error) {
+          logError(getSafeAuthErrorLogData(inviteResult.error), {
+            endpoint: '/api/admin/staff/invites',
+            method: 'POST',
+            userId: auth.id,
+            params: { role, clinicId },
+          });
+          await cleanupPendingInvite();
+          return createErrorResponse(
+            '招待メールを送信できませんでした。しばらく経ってから再度お試しください。',
+            502,
+            undefined,
+            'INVITE_DELIVERY_FAILED'
+          );
+        }
+      } catch (deliveryError) {
+        logError(getSafeAuthErrorLogData(deliveryError), {
+          endpoint: '/api/admin/staff/invites',
+          method: 'POST',
+          userId: auth.id,
+          params: { role, clinicId },
+        });
+        await cleanupPendingInvite();
+
+        if (deliveryError instanceof StaffInviteDeliveryTimeoutError) {
+          return createErrorResponse(
+            '招待メールの送信がタイムアウトしました。しばらく経ってから再度お試しください。',
+            504,
+            undefined,
+            'INVITE_DELIVERY_TIMEOUT'
+          );
+        }
+
+        return createErrorResponse(
+          '招待メールを送信できませんでした。しばらく経ってから再度お試しください。',
+          502,
+          undefined,
+          'INVITE_DELIVERY_FAILED'
+        );
+      }
     }
 
     // 監査ログ記録（非ブロッキング）

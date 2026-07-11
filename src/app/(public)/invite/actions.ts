@@ -18,6 +18,10 @@ import {
   getEmailDomainLogData,
   getSafeAuthErrorLogData,
 } from '@/lib/auth/safe-auth-logging';
+import {
+  validateStaffInviteAccount,
+  type StaffInviteAccountValidation,
+} from '@/lib/auth/staff-invite';
 
 /**
  * @file actions.ts
@@ -39,6 +43,15 @@ interface InviteAcceptanceResult {
   error?: string;
   clinicId?: string;
 }
+
+type ValidatedInvite = {
+  invite: StaffInviteRow;
+  validation: Extract<StaffInviteAccountValidation, { success: true }>;
+};
+
+type InviteValidationResult =
+  | { success: true; value: ValidatedInvite }
+  | { success: false; error: string };
 
 function isRedirectLikeError(error: unknown): error is Error {
   if (error instanceof Error && error.message.startsWith('REDIRECT:')) {
@@ -97,50 +110,96 @@ async function fetchOpenInvite(
   return data;
 }
 
-async function acceptInviteForUser(
+async function validateOpenInviteForAccount(
+  adminClient: AdminClient,
   token: string,
-  userId: string
-): Promise<InviteAcceptanceResult> {
-  const adminClient = createAdminClient();
+  accountEmail: string | null | undefined
+): Promise<InviteValidationResult> {
   const invite = await fetchOpenInvite(adminClient, token);
-
   if (!invite) {
     return { success: false, error: '有効な招待が見つかりません' };
   }
 
+  const validation = validateStaffInviteAccount({
+    inviteEmail: invite.email,
+    inviteRole: invite.role,
+    accountEmail,
+  });
+
+  if (validation.success === false) {
+    if (validation.reason === 'invalid_role') {
+      log.warn('Rejected invite with non-invitable role', {
+        inviteId: invite.id,
+      });
+      return { success: false, error: 'この招待は無効です' };
+    }
+
+    return {
+      success: false,
+      error: '招待先メールアドレスと現在のアカウントが一致しません',
+    };
+  }
+
+  return {
+    success: true,
+    value: { invite, validation },
+  };
+}
+
+async function acceptInviteForUser(
+  token: string,
+  userId: string,
+  accountEmail: string | null | undefined
+): Promise<InviteAcceptanceResult> {
+  const adminClient = createAdminClient();
+  const validated = await validateOpenInviteForAccount(
+    adminClient,
+    token,
+    accountEmail
+  );
+  if (validated.success === false) {
+    return validated;
+  }
+
+  const { invite, validation } = validated.value;
   const now = new Date().toISOString();
 
-  const { error: inviteUpdateError } = await adminClient
-    .from('staff_invites')
-    .update({
-      accepted_at: now,
-      accepted_by: userId,
-      updated_at: now,
-    })
-    .eq('id', invite.id)
-    .is('accepted_at', null);
+  const { data: existingProfile, error: profileLookupError } = await adminClient
+    .from('profiles')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
 
-  if (inviteUpdateError) {
+  if (profileLookupError) {
     log.error(
-      'Invite accept update error',
-      getSafeAuthErrorLogData(inviteUpdateError)
+      'Invite profile lookup error',
+      getSafeAuthErrorLogData(profileLookupError)
     );
     return { success: false, error: '招待の受諾に失敗しました' };
   }
 
-  const { error: profileUpdateError } = await adminClient
-    .from('profiles')
-    .update({
-      clinic_id: invite.clinic_id,
-      role: invite.role,
-      updated_at: now,
-    })
-    .eq('user_id', userId);
+  const profileResult = existingProfile
+    ? await adminClient
+        .from('profiles')
+        .update({
+          clinic_id: invite.clinic_id,
+          role: validation.role,
+          updated_at: now,
+        })
+        .eq('user_id', userId)
+    : await adminClient.from('profiles').insert({
+        user_id: userId,
+        email: invite.email,
+        full_name: invite.email.split('@')[0],
+        clinic_id: invite.clinic_id,
+        role: validation.role,
+        is_active: true,
+      });
 
-  if (profileUpdateError) {
+  if (profileResult.error) {
     log.error(
       'Invite profile assignment error',
-      getSafeAuthErrorLogData(profileUpdateError)
+      getSafeAuthErrorLogData(profileResult.error)
     );
     return { success: false, error: '招待の受諾に失敗しました' };
   }
@@ -151,7 +210,7 @@ async function acceptInviteForUser(
       {
         staff_id: userId,
         clinic_id: invite.clinic_id,
-        role: invite.role,
+        role: validation.role,
         username: invite.email,
         hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
       },
@@ -164,6 +223,42 @@ async function acceptInviteForUser(
       getSafeAuthErrorLogData(permissionUpsertError)
     );
     return { success: false, error: '招待の受諾に失敗しました' };
+  }
+
+  const { data: claimedInvite, error: inviteUpdateError } = await adminClient
+    .from('staff_invites')
+    .update({
+      accepted_at: now,
+      accepted_by: userId,
+      updated_at: now,
+    })
+    .eq('id', invite.id)
+    .is('accepted_at', null)
+    .select('id, accepted_by')
+    .maybeSingle();
+
+  if (inviteUpdateError) {
+    log.error(
+      'Invite accept update error',
+      getSafeAuthErrorLogData(inviteUpdateError)
+    );
+    return { success: false, error: '招待の受諾に失敗しました' };
+  }
+
+  if (!claimedInvite) {
+    const { data: alreadyAccepted, error: acceptedLookupError } =
+      await adminClient
+        .from('staff_invites')
+        .select('accepted_by')
+        .eq('id', invite.id)
+        .maybeSingle();
+
+    if (acceptedLookupError || alreadyAccepted?.accepted_by !== userId) {
+      log.warn('Invite was claimed concurrently by another account', {
+        inviteId: invite.id,
+      });
+      return { success: false, error: 'この招待は既に受諾されています' };
+    }
   }
 
   return {
@@ -247,7 +342,7 @@ export async function acceptInvite(
       return { success: false, error: 'ログインが必要です' };
     }
 
-    const result = await acceptInviteForUser(token, user.id);
+    const result = await acceptInviteForUser(token, user.id, user.email);
     if (!result.success) {
       return {
         success: false,
@@ -300,6 +395,18 @@ export async function signupAndAcceptInvite(
     const sanitizedEmail = sanitizeAuthInput(parsed.data.email).toLowerCase();
     const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
+    const invitePreflight = await validateOpenInviteForAccount(
+      createAdminClient(),
+      token,
+      sanitizedEmail
+    );
+    if (invitePreflight.success === false) {
+      return {
+        success: false,
+        errors: { _form: [invitePreflight.error] },
+      };
+    }
+
     // 2. サインアップ
     const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
     const { error: signupError, data: signupData } = await supabase.auth.signUp(
@@ -347,7 +454,11 @@ export async function signupAndAcceptInvite(
         });
       }
 
-      const acceptResult = await acceptInviteForUser(token, signupData.user.id);
+      const acceptResult = await acceptInviteForUser(
+        token,
+        signupData.user.id,
+        signupData.user.email ?? sanitizedEmail
+      );
       if (!acceptResult.success) {
         log.warn('Accept invite after signup failed', {
           reason: acceptResult.error,
@@ -420,6 +531,18 @@ export async function loginAndAcceptInvite(
     const sanitizedEmail = sanitizeAuthInput(parsed.data.email).toLowerCase();
     const sanitizedPassword = sanitizeAuthInput(parsed.data.password);
 
+    const invitePreflight = await validateOpenInviteForAccount(
+      createAdminClient(),
+      token,
+      sanitizedEmail
+    );
+    if (invitePreflight.success === false) {
+      return {
+        success: false,
+        errors: { _form: [invitePreflight.error] },
+      };
+    }
+
     // 2. ログイン
     const { error: loginError, data: loginData } =
       await supabase.auth.signInWithPassword({
@@ -461,7 +584,11 @@ export async function loginAndAcceptInvite(
       userAgent
     );
 
-    const acceptResult = await acceptInviteForUser(token, loginData.user.id);
+    const acceptResult = await acceptInviteForUser(
+      token,
+      loginData.user.id,
+      loginData.user.email ?? sanitizedEmail
+    );
     if (!acceptResult.success) {
       log.warn('Accept invite after login failed', {
         reason: acceptResult.error,

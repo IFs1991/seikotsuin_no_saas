@@ -66,18 +66,37 @@ describe('SystemSettings', () => {
     process.env.NEXT_PUBLIC_BUILD_DATE = originalBuildDate;
   });
 
-  it('disables backup actions and shows Supabase guidance in pilot mode', () => {
+  it('does not render non-functional backup controls or unverified metrics', () => {
     render(<SystemSettings />);
 
     expect(
-      screen.getByText(/Supabase ダッシュボードで管理してください/)
+      screen.getByText(/このアプリからバックアップ設定の変更/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2.3 GB')).not.toBeInTheDocument();
+    expect(screen.queryByText('65%')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '今すぐバックアップ' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'バックアップから復元' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('explains that saved security values do not enforce provider settings', () => {
+    render(<SystemSettings />);
+
+    expect(
+      screen.getByText(/Supabase Auth のパスワード規則/)
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '今すぐバックアップ' })
-    ).toBeDisabled();
+      screen.getByRole('button', { name: '運用ポリシーを保存' })
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'バックアップから復元' })
-    ).toBeDisabled();
+      screen.getByText('MFA 必須化の運用方針を記録する')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'キャンセル' })
+    ).not.toBeInTheDocument();
   });
 
   it('renders system info from public build environment variables', () => {

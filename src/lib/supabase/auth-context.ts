@@ -4,6 +4,7 @@ import {
   canManageClinicSettingsWithCompat,
   normalizeRole,
 } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import type { Database } from '@/types/supabase';
 
 type SupabaseQueryClient = Pick<SupabaseClient<Database>, 'from'>;
@@ -36,6 +37,14 @@ export interface UserAuthAccessContext<
   clinicId: string | null;
   isActive: boolean;
   isAdmin: boolean;
+}
+
+export function assertActiveAccount(
+  accessContext: Pick<UserAuthAccessContext, 'isActive'>
+): void {
+  if (!accessContext.isActive) {
+    throw new AppError(ERROR_CODES.ACCOUNT_INACTIVE, undefined, 403);
+  }
 }
 
 async function selectOptionalSingle<T>(
@@ -147,7 +156,9 @@ export function buildUserAuthAccessContext<
     role,
     normalizedRole,
     clinicId: permissions?.clinic_id ?? null,
-    isActive: Boolean(profileStatus?.is_active ?? true),
+    // Account status is an authorization boundary. Missing or unreadable
+    // profile state must never grant access.
+    isActive: profileStatus?.is_active === true,
     isAdmin: canManageClinicSettingsWithCompat(normalizedRole),
   };
 }

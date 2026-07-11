@@ -139,13 +139,13 @@ export default function SecurityDashboardPage() {
 
             <div>
               <h4 className='font-medium text-gray-900 mb-2'>
-                コンプライアンス
+                対応状況の確認項目
               </h4>
               <ul className='space-y-1'>
-                <li>- 医療情報システム安全管理ガイドライン準拠</li>
-                <li>- 個人情報保護法対応</li>
-                <li>- セキュリティ監査ログ保存</li>
-                <li>- ISO 27001準拠設計</li>
+                <li>- 医療情報ガイドラインを踏まえた管理策の確認</li>
+                <li>- 個人情報保護法上の役割・運用の専門家確認</li>
+                <li>- セキュリティ監査ログの保存状況</li>
+                <li>- ISO 27001 認証状況は別途確認が必要</li>
               </ul>
             </div>
           </div>

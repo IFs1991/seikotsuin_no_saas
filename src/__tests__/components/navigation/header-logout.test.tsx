@@ -11,6 +11,7 @@ import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/',
 }));
 
 jest.mock('@/hooks/useAdminNotifications', () => ({

@@ -74,6 +74,7 @@ export async function DELETE(
       clinicId,
       requireClinicMatch: true,
       allowedRoles: Array.from(CLINIC_ADMIN_ROLES),
+      requireBusinessWriteAccess: true,
     });
     if (!auth.success) return auth.error;
 

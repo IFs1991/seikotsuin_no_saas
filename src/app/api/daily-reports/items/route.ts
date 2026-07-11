@@ -1417,6 +1417,7 @@ export async function DELETE(request: NextRequest) {
       clinicId: clinic_id,
       requireClinicMatch: true,
       allowedRoles: Array.from(DAILY_REPORT_DELETE_ROLES),
+      requireBusinessWriteAccess: true,
     });
     if (!auth.success) return auth.error;
 

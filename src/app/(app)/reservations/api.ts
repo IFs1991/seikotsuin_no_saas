@@ -37,6 +37,11 @@ export interface CustomerApiItem {
   customAttributes?: Record<string, unknown>;
 }
 
+interface CustomerApiPage {
+  items: CustomerApiItem[];
+  nextCursor: string | null;
+}
+
 class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -114,7 +119,8 @@ export const fetchCustomers = async (
     q: query,
   });
   const res = await fetch(`/api/customers?${params.toString()}`);
-  return handleJson<CustomerApiItem[]>(res);
+  const page = await handleJson<CustomerApiPage>(res);
+  return page.items;
 };
 
 export const createCustomer = async (payload: {

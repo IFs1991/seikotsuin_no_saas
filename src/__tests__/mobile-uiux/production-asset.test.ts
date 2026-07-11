@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { parse } from 'node-html-parser';
@@ -203,24 +204,46 @@ describe('mobile-uiux production assets', () => {
   );
 
   it('detects generated asset drift in --check mode', async () => {
-    const outputPath = getMobileUiuxProductionAssetPath('reservations');
-    const original = await readFile(outputPath, 'utf-8');
+    const outputRoot = await mkdtemp(
+      path.join(tmpdir(), 'mobile-uiux-production-assets-')
+    );
     let failed = false;
     let failureText = '';
 
     try {
-      await writeFile(outputPath, `${original}\n<!-- drift-test -->`, 'utf-8');
+      await Promise.all(
+        MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES.map(async resource => {
+          const sourceHtml = await readFile(
+            getMobileUiuxSourceAssetPath(resource),
+            'utf-8'
+          );
+          const content = buildMobileUiuxProductionAsset(resource, sourceHtml);
+          const driftSuffix =
+            resource === 'reservations' ? '\n<!-- drift-test -->' : '';
+          await writeFile(
+            path.join(outputRoot, `${resource}.dc.html`),
+            `${content}${driftSuffix}`,
+            'utf-8'
+          );
+        })
+      );
       await execFileAsync(
         process.execPath,
         ['scripts/mobile-uiux/generate-production-assets.ts', '--check'],
-        { cwd: process.cwd() }
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            MOBILE_UIUX_PRODUCTION_ASSET_ROOT: outputRoot,
+          },
+        }
       );
     } catch (error) {
       failed = true;
       const record = getRecord(error);
       failureText = String(record.stderr ?? record.stdout ?? record.message);
     } finally {
-      await writeFile(outputPath, original, 'utf-8');
+      await rm(outputRoot, { recursive: true, force: true });
     }
 
     expect(failed).toBe(true);

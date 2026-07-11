@@ -93,8 +93,9 @@ describe('MFASetupPage Component', () => {
       render(<MFASetupPage />);
 
       expect(
-        screen.getByText(/不正アクセスのリスクを99.9%削減/i)
+        screen.getByText(/パスワード漏えい時に追加の認証要素を要求/i)
       ).toBeInTheDocument();
+      expect(screen.queryByText(/99.9%/i)).not.toBeInTheDocument();
     });
   });
 

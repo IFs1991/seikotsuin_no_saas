@@ -3,7 +3,10 @@ type SentryInitModule = {
 };
 
 type SentryExceptionModule = {
-  captureException: (error: Error) => string | undefined;
+  captureException: (
+    error: Error,
+    context?: { tags?: Record<string, string> }
+  ) => string | undefined;
 };
 
 type SentryRequestErrorModule = {
@@ -11,6 +14,14 @@ type SentryRequestErrorModule = {
 };
 
 type SentryRuntime = 'client' | 'server' | 'edge';
+
+export type OperationalErrorContext = {
+  source: string;
+  operation?: string;
+  endpoint?: string;
+  reason?: string;
+  status?: number;
+};
 
 export function isSentryEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
   return typeof env.SENTRY_DSN === 'string' && env.SENTRY_DSN.length > 0;
@@ -60,6 +71,64 @@ export function createSentryTestEvent(
   return sentry.captureException(
     new Error(`Sentry test event from ${actorId}`)
   );
+}
+
+function createRedactedError(error: unknown): Error {
+  const candidateName = error instanceof Error ? error.name.trim() : '';
+  const errorName = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(candidateName)
+    ? candidateName
+    : 'UnknownError';
+  const redacted = new Error('Operational error details redacted');
+  redacted.name = errorName;
+
+  if (error instanceof Error && error.stack) {
+    const stackFrames = error.stack.split('\n').slice(1).join('\n');
+    if (stackFrames) {
+      redacted.stack = `${redacted.name}: ${redacted.message}\n${stackFrames}`;
+    }
+  }
+
+  return redacted;
+}
+
+function createOperationalErrorTags(
+  context: OperationalErrorContext
+): Record<string, string> {
+  return {
+    source: context.source,
+    ...(context.operation ? { operation: context.operation } : {}),
+    ...(context.endpoint ? { endpoint: context.endpoint } : {}),
+    ...(context.reason ? { reason: context.reason } : {}),
+    ...(context.status !== undefined
+      ? { status: context.status.toString() }
+      : {}),
+  };
+}
+
+export function captureRedactedException(
+  sentry: SentryExceptionModule,
+  error: unknown,
+  context: OperationalErrorContext
+): string | undefined {
+  return sentry.captureException(createRedactedError(error), {
+    tags: createOperationalErrorTags(context),
+  });
+}
+
+export async function captureOperationalError(
+  error: unknown,
+  context: OperationalErrorContext
+): Promise<void> {
+  if (!isSentryEnabled()) {
+    return;
+  }
+
+  try {
+    const sentry = await import('@sentry/nextjs');
+    captureRedactedException(sentry, error, context);
+  } catch {
+    // Monitoring must never replace the original application response.
+  }
 }
 
 export async function captureRequestError(

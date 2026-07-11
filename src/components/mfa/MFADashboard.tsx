@@ -403,12 +403,12 @@ export const MFADashboard: React.FC<MFADashboardProps> = ({
                 セキュリティ推奨事項
               </h4>
               <p className='text-yellow-700 mt-1 mb-3'>
-                多要素認証（MFA）を有効にすることで、不正アクセスのリスクを99.9%削減できます。
+                多要素認証（MFA）は、パスワード漏えい時の不正アクセスリスクを下げる追加対策です。すべての攻撃を防ぐものではありません。
               </p>
               <ul className='text-sm text-yellow-700 space-y-1'>
-                <li>• フィッシング攻撃からの保護</li>
-                <li>• パスワード漏洩時の二次防御</li>
-                <li>• 医療データへの不正アクセス防止</li>
+                <li>• パスワード漏えい時に追加の認証要素を要求</li>
+                <li>• 復旧コードと認証端末の安全な管理が必要</li>
+                <li>• フィッシング耐性は認証方式と運用に依存</li>
               </ul>
             </div>
           </div>

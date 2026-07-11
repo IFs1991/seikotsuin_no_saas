@@ -14,9 +14,13 @@ import { assertEnv } from '@/lib/env';
 import { staffInviteSchema } from '../schema';
 import {
   createAuthLog,
-  getEmailDomainLogData,
   getSafeAuthErrorLogData,
 } from '@/lib/auth/safe-auth-logging';
+import {
+  createStaffInviteToken,
+  sendStaffInviteEmail,
+  StaffInviteDeliveryTimeoutError,
+} from '@/lib/auth/staff-invite';
 
 const log = createAuthLog('OnboardingInvitesRoute');
 
@@ -77,70 +81,102 @@ export async function POST(request: NextRequest) {
     // 招待がある場合のみ処理
     if (invites.length > 0) {
       const adminClient = createAdminClient();
+      const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
 
       for (const invite of invites) {
+        const token = createStaffInviteToken();
         try {
-          const appUrl = assertEnv('NEXT_PUBLIC_APP_URL');
-          // 1. Supabase Auth で招待メール送信
-          const { data: authData, error: authError } =
-            await adminClient.auth.admin.inviteUserByEmail(invite.email, {
-              redirectTo: `${appUrl}/admin/callback?invited=true`,
-            });
-
-          if (authError) {
-            results.push({
-              email: invite.email,
-              success: false,
-              error: authError.message,
-            });
-            continue;
-          }
-
-          // 2. staff_invitesに記録
-          // RLS前提のため、service role(adminClient)ではなく
-          // リクエストユーザーのコンテキスト(supabase)で挿入する。
-          const { error: inviteError } = await supabase
+          // メールと受諾画面で同じトークンを使い、先にDBへ記録する。
+          const { data: inviteData, error: inviteError } = await supabase
             .from('staff_invites')
             .insert({
               clinic_id: state.clinic_id,
               email: invite.email,
               role: invite.role,
               created_by: user.id,
-            });
+              token,
+            })
+            .select('id')
+            .single();
 
-          if (inviteError) {
+          if (inviteError || !inviteData) {
             log.error(
               'Staff invite record error',
               getSafeAuthErrorLogData(inviteError)
             );
-            // 招待メールは送信済みなので成功扱い
+            results.push({
+              email: invite.email,
+              success: false,
+              error:
+                inviteError?.code === '23505'
+                  ? 'このメールアドレスには招待を送信済みです'
+                  : '招待を記録できませんでした',
+            });
+            continue;
           }
 
-          // 3. 招待されたユーザーのprofilesを事前作成（オプション）
-          if (authData?.user) {
-            await adminClient.from('profiles').upsert(
-              {
-                user_id: authData.user.id,
+          const cleanupPendingInvite = async () => {
+            const { error: cleanupError } = await adminClient
+              .from('staff_invites')
+              .delete()
+              .eq('id', inviteData.id)
+              .eq('clinic_id', state.clinic_id)
+              .eq('created_by', user.id)
+              .is('accepted_at', null);
+
+            if (cleanupError) {
+              log.error(
+                'Staff invite cleanup error',
+                getSafeAuthErrorLogData(cleanupError)
+              );
+            }
+          };
+
+          try {
+            const inviteResult = await sendStaffInviteEmail({
+              adminClient,
+              appUrl,
+              email: invite.email,
+              token,
+            });
+
+            if (inviteResult.error) {
+              log.error(
+                'Staff invite delivery error',
+                getSafeAuthErrorLogData(inviteResult.error)
+              );
+              await cleanupPendingInvite();
+              results.push({
                 email: invite.email,
-                full_name: invite.email.split('@')[0],
-                clinic_id: state.clinic_id,
-                role: invite.role,
-                is_active: true,
-              },
-              { onConflict: 'user_id' }
+                success: false,
+                error: '招待メールを送信できませんでした',
+              });
+              continue;
+            }
+          } catch (deliveryError) {
+            log.error(
+              'Staff invite delivery error',
+              getSafeAuthErrorLogData(deliveryError)
             );
+            await cleanupPendingInvite();
+            results.push({
+              email: invite.email,
+              success: false,
+              error:
+                deliveryError instanceof StaffInviteDeliveryTimeoutError
+                  ? '招待メールの送信がタイムアウトしました'
+                  : '招待メールを送信できませんでした',
+            });
+            continue;
           }
 
           results.push({ email: invite.email, success: true });
         } catch (error) {
-          log.error('Invite processing error', {
-            ...getEmailDomainLogData(invite.email),
-            ...getSafeAuthErrorLogData(error),
-          });
+          log.error('Invite processing error', getSafeAuthErrorLogData(error));
           results.push({
             email: invite.email,
             success: false,
-            error: 'Unknown error',
+            error: '招待を処理できませんでした',
           });
         }
       }

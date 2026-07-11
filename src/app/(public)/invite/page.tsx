@@ -307,6 +307,8 @@ function InvitePageContent() {
               name='email'
               value={email}
               onChange={e => setEmail(e.target.value)}
+              readOnly={Boolean(invite)}
+              aria-readonly={Boolean(invite)}
               placeholder='your@email.com'
               required
               className={`w-full ${clientErrors.email ? 'border-red-500' : ''}`}

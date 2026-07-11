@@ -281,6 +281,21 @@ const eslintConfig = [
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
+  // 商用境界では any を許容せず、API・認証・請求の型安全性をCIで維持する
+  {
+    files: [
+      'src/lib/api-helpers.ts',
+      'src/lib/route-helpers.ts',
+      'src/lib/auth/**/*.{ts,tsx}',
+      'src/lib/billing/**/*.{ts,tsx}',
+      'src/app/api/auth/**/*.{ts,tsx}',
+      'src/app/api/stripe/webhook/route.ts',
+      'src/app/api/webhooks/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
   // Jest セットアップは console を許容
   {
     files: ['jest.setup.js'],

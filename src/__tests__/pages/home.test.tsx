@@ -23,18 +23,18 @@ describe('LandingPage', () => {
     render(<LandingPage />);
 
     expect(
-      screen.getByText('整骨院・治療院向け業務管理SaaS')
+      screen.getByText(/5店舗以上の整骨院グループ向け本部管理OS/)
     ).toBeInTheDocument();
     expect(
-      screen.getByText('予約・患者・運営管理を一元化し、現場と管理をつなぐ')
+      screen.getByText(/本部の集計・確認・報告作業を減らし/)
     ).toBeInTheDocument();
   });
 
   it('スタッフログインと管理者ログインのCTAが表示される', () => {
     const { container } = render(<LandingPage />);
 
-    expect(screen.getByText('スタッフログイン')).toBeInTheDocument();
-    expect(screen.getByText('管理者ログイン')).toBeInTheDocument();
+    expect(screen.getAllByText('スタッフログイン').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('管理者ログイン').length).toBeGreaterThan(0);
     expect(container.querySelector('a[href="/login"]')).toBeInTheDocument();
     expect(
       container.querySelector('a[href="/admin/login"]')

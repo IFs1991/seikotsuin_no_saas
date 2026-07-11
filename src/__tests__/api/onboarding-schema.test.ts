@@ -186,6 +186,28 @@ describe('Onboarding Schemas', () => {
       expect(result.success).toBe(false);
     });
 
+    it.each(['admin', 'clinic_admin'])(
+      '招待経由で特権ロール %s を付与できない',
+      role => {
+        const result = staffInviteSchema.safeParse({
+          invites: [{ email: 'test@example.com', role }],
+        });
+
+        expect(result.success).toBe(false);
+      }
+    );
+
+    it('メールアドレスを保存前に正規化する', () => {
+      const result = staffInviteSchema.safeParse({
+        invites: [{ email: ' Staff@Example.com ', role: 'staff' }],
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.invites[0].email).toBe('staff@example.com');
+      }
+    });
+
     it('11件以上の招待を拒否する', () => {
       const invites = Array(11)
         .fill(null)

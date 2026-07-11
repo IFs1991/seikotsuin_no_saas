@@ -23,6 +23,7 @@ export const ERROR_CODES = {
   // 認証・認可エラー
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
+  ACCOUNT_INACTIVE: 'ACCOUNT_INACTIVE',
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
 
@@ -40,8 +41,11 @@ export const ERROR_CODES = {
   EXTERNAL_SERVICE_ERROR: 'EXTERNAL_SERVICE_ERROR',
   AI_SERVICE_ERROR: 'AI_SERVICE_ERROR',
   CAPTCHA_FAILED: 'CAPTCHA_FAILED',
+  CAPTCHA_UNAVAILABLE: 'CAPTCHA_UNAVAILABLE',
 
   // ビジネスロジックエラー
+  SUBSCRIPTION_INACTIVE: 'SUBSCRIPTION_INACTIVE',
+  BILLING_CONFIGURATION_ERROR: 'BILLING_CONFIGURATION_ERROR',
   CLINIC_NOT_FOUND: 'CLINIC_NOT_FOUND',
   PATIENT_NOT_FOUND: 'PATIENT_NOT_FOUND',
   STAFF_NOT_FOUND: 'STAFF_NOT_FOUND',
@@ -64,6 +68,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 
   [ERROR_CODES.UNAUTHORIZED]: '認証が必要です',
   [ERROR_CODES.FORBIDDEN]: 'アクセス権限がありません',
+  [ERROR_CODES.ACCOUNT_INACTIVE]:
+    'アカウントが無効化されています。管理者にお問い合わせください',
   [ERROR_CODES.INVALID_CREDENTIALS]: '認証情報が正しくありません',
   [ERROR_CODES.TOKEN_EXPIRED]: 'セッションが期限切れです',
 
@@ -78,7 +84,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   [ERROR_CODES.EXTERNAL_SERVICE_ERROR]: '外部サービスエラー',
   [ERROR_CODES.AI_SERVICE_ERROR]: 'AIサービスエラー',
   [ERROR_CODES.CAPTCHA_FAILED]: 'スパム対策の確認に失敗しました',
+  [ERROR_CODES.CAPTCHA_UNAVAILABLE]:
+    'スパム対策サービスを一時的に利用できません',
 
+  [ERROR_CODES.SUBSCRIPTION_INACTIVE]:
+    '契約状態により、この操作は現在利用できません',
+  [ERROR_CODES.BILLING_CONFIGURATION_ERROR]:
+    '課金設定を確認できないため、更新操作を一時停止しています',
   [ERROR_CODES.CLINIC_NOT_FOUND]: '店舗が見つかりません',
   [ERROR_CODES.PATIENT_NOT_FOUND]: '患者が見つかりません',
   [ERROR_CODES.STAFF_NOT_FOUND]: 'スタッフが見つかりません',
@@ -135,6 +147,8 @@ export function getErrorCodeFromStatus(status: number): string {
       return ERROR_CODES.VALIDATION_ERROR;
     case 401:
       return ERROR_CODES.UNAUTHORIZED;
+    case 402:
+      return ERROR_CODES.SUBSCRIPTION_INACTIVE;
     case 403:
       return ERROR_CODES.FORBIDDEN;
     case 404:
@@ -166,7 +180,12 @@ export function getStatusCodeFromErrorCode(code: string): number {
     case ERROR_CODES.TOKEN_EXPIRED:
       return 401;
     case ERROR_CODES.FORBIDDEN:
+    case ERROR_CODES.ACCOUNT_INACTIVE:
       return 403;
+    case ERROR_CODES.SUBSCRIPTION_INACTIVE:
+      return 402;
+    case ERROR_CODES.BILLING_CONFIGURATION_ERROR:
+      return 503;
     case ERROR_CODES.RESOURCE_NOT_FOUND:
     case ERROR_CODES.CLINIC_NOT_FOUND:
     case ERROR_CODES.PATIENT_NOT_FOUND:
@@ -176,6 +195,8 @@ export function getStatusCodeFromErrorCode(code: string): number {
     case ERROR_CODES.UNIQUE_CONSTRAINT_VIOLATION:
     case ERROR_CODES.DUPLICATE_DAILY_REPORT:
       return 409;
+    case ERROR_CODES.CAPTCHA_UNAVAILABLE:
+      return 503;
     case ERROR_CODES.NETWORK_ERROR:
     case ERROR_CODES.INTERNAL_SERVER_ERROR:
     case ERROR_CODES.DATABASE_CONNECTION_ERROR:
