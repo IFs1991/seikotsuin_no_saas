@@ -13,7 +13,10 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe('useReservationFormData', () => {
-  let fetchSpy: jest.SpyInstance<ReturnType<typeof fetch>, Parameters<typeof fetch>>;
+  let fetchSpy: jest.SpyInstance<
+    ReturnType<typeof fetch>,
+    Parameters<typeof fetch>
+  >;
 
   beforeEach(() => {
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(input => {
@@ -22,7 +25,20 @@ describe('useReservationFormData', () => {
       if (url.startsWith('/api/customers')) {
         return jsonResponse({
           success: true,
-          data: [{ id: 'customer-1', name: '山田 太郎', phone: '090' }],
+          data: {
+            items: [
+              {
+                id: 'customer-1',
+                name: '山田 太郎',
+                phone: '090',
+                consentMarketing: false,
+                consentReminder: true,
+                createdAt: '2026-07-10T00:00:00.000Z',
+                updatedAt: '2026-07-10T00:00:00.000Z',
+              },
+            ],
+            nextCursor: null,
+          },
         });
       }
 
@@ -79,7 +95,7 @@ describe('useReservationFormData', () => {
 
     const requestedUrls = fetchSpy.mock.calls.map(([input]) => String(input));
     expect(requestedUrls).toEqual([
-      '/api/customers?clinic_id=clinic-1',
+      '/api/customers?clinic_id=clinic-1&limit=100',
       '/api/menus?clinic_id=clinic-1',
       '/api/resources?clinic_id=clinic-1',
     ]);

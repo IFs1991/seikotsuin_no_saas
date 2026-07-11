@@ -63,7 +63,9 @@ describe('患者一覧ページ', () => {
     it('selected active clinicで患者一覧APIを取得する', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: async () => ({ data: mockCustomers }),
+        json: async () => ({
+          data: { items: mockCustomers, nextCursor: null },
+        }),
       });
 
       renderHook(() => usePatientsList(), {
