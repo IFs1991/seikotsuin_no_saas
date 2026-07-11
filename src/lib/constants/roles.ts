@@ -31,6 +31,15 @@ export const ADMIN_USER_ROLE_VALUES = [
 
 export type AdminUserRole = (typeof ADMIN_USER_ROLE_VALUES)[number];
 
+/** Roles that tenant administrators may grant through a staff invite. */
+export const STAFF_INVITE_ROLE_VALUES = [
+  'manager',
+  'therapist',
+  'staff',
+] as const satisfies readonly Role[];
+
+export type StaffInviteRole = (typeof STAFF_INVITE_ROLE_VALUES)[number];
+
 export const ROLE_LABELS = {
   admin: '本部管理者',
   clinic_admin: '店舗管理者',

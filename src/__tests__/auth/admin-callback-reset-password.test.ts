@@ -167,6 +167,34 @@ describe('/admin/callback reset-password contract', () => {
     );
   });
 
+  test('招待先のクエリを保持し、clinic 未設定でも受諾画面を優先する', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: null,
+      data: { user: { id: 'invited-user', email: 'staff@clinic.com' } },
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const token = '550e8400-e29b-41d4-a716-446655440000';
+    const next = encodeURIComponent(`/invite?token=${token}`);
+    const { GET } = await import('@/app/(public)/admin/callback/route');
+    const response = await GET(
+      new Request(
+        `http://localhost:3000/admin/callback?code=invite123&next=${next}`
+      )
+    );
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `http://localhost:3000/invite?token=${token}`
+    );
+    expect(mockResponseCookiesSet).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      `http://localhost:3000/invite?token=${token}`
+    );
+  });
+
   test('manager は clinic_id が null でも onboarding ではなく manager home に進む', async () => {
     mockExchangeCodeForSession.mockResolvedValue({
       error: null,

@@ -22,10 +22,15 @@ export async function GET(request: Request) {
 
   // セキュアなリダイレクト先を検証
   const safeRedirectUrl = getSafeRedirectUrl(nextParam, origin);
-  const safeRedirectPath = safeRedirectUrl
-    ? new URL(safeRedirectUrl).pathname
+  const parsedSafeRedirectUrl = safeRedirectUrl
+    ? new URL(safeRedirectUrl)
+    : null;
+  const safeRedirectPath = parsedSafeRedirectUrl?.pathname ?? null;
+  const safeRedirectTarget = parsedSafeRedirectUrl
+    ? `${parsedSafeRedirectUrl.pathname}${parsedSafeRedirectUrl.search}`
     : null;
   const isRecoveryRedirect = safeRedirectPath?.startsWith('/reset-password/');
+  const isInviteRedirect = safeRedirectPath === '/invite';
 
   if (code) {
     const supabase = await createClient();
@@ -49,14 +54,15 @@ export async function GET(request: Request) {
 
         // recovery フローだけは clinic_id 未設定より優先して通す
         let finalRedirectPath: string;
-        if (isRecoveryRedirect && safeRedirectPath) {
-          finalRedirectPath = safeRedirectPath;
+        if ((isRecoveryRedirect || isInviteRedirect) && safeRedirectTarget) {
+          finalRedirectPath = safeRedirectTarget;
         } else if (userRole === 'manager') {
-          finalRedirectPath = safeRedirectPath ?? getDefaultRedirect(userRole);
+          finalRedirectPath =
+            safeRedirectTarget ?? getDefaultRedirect(userRole);
         } else if (!hasClinic) {
           finalRedirectPath = '/onboarding';
-        } else if (safeRedirectPath) {
-          finalRedirectPath = safeRedirectPath;
+        } else if (safeRedirectTarget) {
+          finalRedirectPath = safeRedirectTarget;
         } else {
           finalRedirectPath = getDefaultRedirect(userRole);
         }
