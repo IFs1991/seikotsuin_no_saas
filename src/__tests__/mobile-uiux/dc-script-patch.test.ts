@@ -2808,7 +2808,7 @@ describe('patchMobileUiuxDcScript', () => {
       expect(JSON.stringify(afterVals)).not.toContain('@example.jp');
     });
 
-    it('falls back to a role label and generic initial when displayName is null on settings', () => {
+    it('falls back to the context role label and generic initial when displayName is null on settings', () => {
       const patched = patchMobileUiuxDcScript(
         wrapDcScript(`class Component extends DCLogic {
   ROLE_LABEL = { therapist: 'セラピスト' };
@@ -2826,6 +2826,37 @@ describe('patchMobileUiuxDcScript', () => {
       window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
         ...contextPayload,
         data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      // context の role.label がデザイン内 ROLE_LABEL より優先される
+      expect(afterVals.acctName).toBe('施術者');
+      expect(afterVals.acctInitial).toBe('・');
+      expect(afterVals.acctRoleLabel).toBe('施術者');
+    });
+
+    it('falls back to the design ROLE_LABEL when context has no role label on settings', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
+  renderVals() {
+    return { acctName: '佐藤 美咲', acctInitial: '美' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          displayName: null,
+          role: { canonical: 'therapist', label: '' },
+        },
       });
       const afterVals = component.renderVals();
 
@@ -2858,7 +2889,12 @@ describe('patchMobileUiuxDcScript', () => {
       expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
         contextPayload.data
       );
-      expect(afterVals).toEqual(beforeVals);
+      // ヘッダーのロールピルだけ実ロール名で上書きされ、他は不変
+      expect(afterVals.roleLabel).toBe('施術者');
+      expect({ ...afterVals, roleLabel: undefined }).toEqual({
+        ...beforeVals,
+        roleLabel: undefined,
+      });
     });
 
     const twoClinicContextPayload = {
@@ -3025,6 +3061,398 @@ describe('patchMobileUiuxDcScript', () => {
         '第二整骨院',
       ]);
       expect(serialized).not.toContain('本町ケア整骨院');
+    });
+
+    describe('canonical role injection', () => {
+      const roleContext = (canonical: string, label = 'ロール') => ({
+        ...contextPayload,
+        data: { ...contextPayload.data, role: { canonical, label } },
+      });
+
+      function evaluateReservationsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'therapist', selfOnly: true };
+  renderVals() {
+    const canWrite = this.state.role !== 'area';
+    return {
+      isReadOnly: !canWrite,
+      readonlyMsg: this.state.role === 'area'
+        ? '閲覧専用モード（エリアマネージャー）— 予約の作成・変更はできません'
+        : '他店舗閲覧',
+      showSelf: this.state.role === 'therapist'
+    };
+  }
+}`),
+          { screen: 'reservations' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      it.each([
+        ['admin', 'manager', false],
+        ['clinic_admin', 'manager', false],
+        ['manager', 'area', false],
+        ['therapist', 'therapist', true],
+        ['staff', 'staff', false],
+      ])(
+        'maps canonical %s to reservations dc role %s',
+        (canonical, expectedDcRole, expectedSelfOnly) => {
+          const { component, window } = evaluateReservationsComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+            'context',
+            roleContext(canonical)
+          );
+
+          expect(component.state.role).toBe(expectedDcRole);
+          expect(component.state.selfOnly).toBe(expectedSelfOnly);
+        }
+      );
+
+      it('gives canonical manager the read-only area variant on reservations', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+        const vals = component.renderVals();
+
+        expect(vals.isReadOnly).toBe(true);
+        expect(vals.readonlyMsg).toContain('エリアマネージャー');
+      });
+
+      it('keeps canonical clinic_admin write-capable on reservations', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+        const vals = component.renderVals();
+
+        expect(vals.isReadOnly).toBe(false);
+      });
+
+      it.each(['customer', 'unknown'])(
+        'leaves the reservations dc default untouched for unmapped role %s',
+        canonical => {
+          const { component, window } = evaluateReservationsComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+            'context',
+            roleContext(canonical)
+          );
+
+          expect(component.state.role).toBe('therapist');
+          expect(component.state.selfOnly).toBe(true);
+        }
+      );
+
+      it('leaves the reservations dc default untouched when context has no role', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+          ...contextPayload,
+          data: { ...contextPayload.data, role: undefined },
+        });
+
+        expect(component.state.role).toBe('therapist');
+      });
+
+      function evaluateDailyReportsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'therapist' };
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      showManager: this.state.role === 'manager',
+      canWrite: this.state.role !== 'manager'
+    };
+  }
+}`),
+          { screen: 'daily-reports' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      const dailyReportsReadPayload = {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: '2026-06-30',
+          endDate: '2026-06-30',
+          dailyReports: {
+            reports: [
+              {
+                id: 'report-1',
+                reportDate: '2026-06-30',
+                staffName: 'BFF 先生A',
+                totalPatients: 18,
+                newPatients: 3,
+                totalRevenue: 120000,
+                insuranceRevenue: 40000,
+                privateRevenue: 80000,
+                reportText: 'free text should not be rendered',
+                createdAt: '2026-06-30T10:00:00.000Z',
+              },
+            ],
+            summary: {
+              totalReports: 1,
+              averagePatients: 18,
+              averageRevenue: 120000,
+              totalRevenue: 120000,
+            },
+            monthlyTrends: [],
+          },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      };
+
+      it.each([
+        ['admin', 'store'],
+        ['clinic_admin', 'store'],
+        ['manager', 'manager'],
+        ['therapist', 'therapist'],
+        ['staff', 'staff'],
+      ])('maps canonical %s to daily-reports dc role %s', (canonical, expectedDcRole) => {
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+
+        expect(component.state.role).toBe(expectedDcRole);
+        expect(component.renderVals().showManager).toBe(
+          expectedDcRole === 'manager'
+        );
+      });
+
+      it('suppresses the standard-view submission banner for canonical manager on daily-reports', () => {
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', dailyReportsReadPayload);
+        const vals = component.renderVals();
+
+        expect(vals.todayUnsubmitted).toBe(false);
+        expect(vals.todaySubmittedFlag).toBe(false);
+        expect(vals.showManager).toBe(true);
+      });
+
+      it('keeps the submission banner intact for canonical therapist on daily-reports', () => {
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', dailyReportsReadPayload);
+        const vals = component.renderVals();
+
+        expect(vals.todayUnsubmitted).toBe(false);
+        expect(vals.todaySubmittedFlag).toBe(true);
+      });
+
+      function evaluateSettingsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト', staff: '受付スタッフ', clinic_admin: '院長', manager: 'エリアM', admin: '管理者' };
+  CATS = [
+    { id: 'account', g: 'アカウント', t: 'アカウント', s: 'プロフィール', icon: 'person', roles: 'all' },
+    { id: 'shift_self', g: 'シフト', t: 'シフト申請', s: '希望シフトの提出', icon: 'calendar', roles: ['therapist', 'staff'] },
+    { id: 'clinic', g: '院・サービス', t: '院・サービス設定', s: '院情報', icon: 'building', roles: ['manager', 'admin'] },
+    { id: 'reservation', g: '院・サービス', t: '予約・通知設定', s: '予約ルール', icon: 'bell', roles: ['manager', 'admin'] },
+    { id: 'data', g: 'システム', t: 'データ管理', s: 'エクスポート', icon: 'data', roles: ['admin'] }
+  ];
+  state = { role: 'therapist', nav: [{ scr: 'top' }] };
+  renderVals() {
+    const role = this.state.role;
+    const visible = this.CATS.filter(c => c.roles === 'all' || c.roles.indexOf(role) !== -1);
+    return { groups: visible.map(c => ({ id: c.id, title: c.t })) };
+  }
+}`),
+          { screen: 'settings' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      it.each([
+        ['admin', ['account', 'clinic', 'reservation', 'data']],
+        ['clinic_admin', ['account', 'clinic', 'reservation']],
+        ['manager', ['account', 'clinic', 'reservation']],
+        ['therapist', ['account', 'shift_self']],
+        ['staff', ['account', 'shift_self']],
+      ])('shows role-scoped settings categories for canonical %s', (canonical, expectedIds) => {
+        const { component, window } = evaluateSettingsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+        const vals = component.renderVals();
+        const groups = Array.isArray(vals.groups) ? vals.groups : [];
+
+        expect(component.state.role).toBe(canonical);
+        expect(groups.map(group => getRecord(group).id)).toEqual(expectedIds);
+      });
+
+      it('resets the settings nav stack only when the injected role differs', () => {
+        const { component, window } = evaluateSettingsComponent();
+        component.componentDidMount();
+        component.setState({ nav: [{ scr: 'top' }, { scr: 'account' }] });
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));
+        expect(component.state.nav).toEqual([{ scr: 'top' }, { scr: 'account' }]);
+
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
+        expect(component.state.role).toBe('admin');
+        expect(component.state.nav).toEqual([{ scr: 'top' }]);
+      });
+
+      describe('settings shift stub (準備中)', () => {
+        function evaluateShiftStubComponent() {
+          const patched = patchMobileUiuxDcScript(
+            wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  CATS = [
+    { id: 'account', g: 'アカウント', t: 'アカウント', s: 'プロフィール', icon: 'person', roles: 'all' },
+    { id: 'shift_self', g: 'シフト', t: 'シフト申請', s: '希望シフトの提出', icon: 'calendar', roles: ['therapist', 'staff'] },
+    { id: 'attendance', g: 'シフト', t: '出勤申請', s: '出退勤・残業・打刻修正の申請', icon: 'clock', roles: ['therapist', 'staff'] },
+    { id: 'shift_review', g: 'シフト', t: 'シフト確認', s: 'スタッフの希望を承認・差戻し', icon: 'check', roles: ['clinic_admin'] },
+    { id: 'shift_manage', g: 'シフト', t: 'シフト管理', s: '担当院の希望を承認・確定', icon: 'check', roles: ['manager', 'admin'] }
+  ];
+  state = {
+    role: 'therapist',
+    nav: [{ scr: 'top' }],
+    toast: '',
+    shiftReqs: [{ id: 1, status: 'draft' }],
+    shiftSubs: [{ id: 2, status: 'submitted' }],
+    attReqs: [{ id: 3, status: 'submitted' }]
+  };
+  push = (screen) => this.setState({ nav: this.state.nav.concat([screen]) });
+  toast = (m) => this.setState({ toast: m });
+  openCat = (cat) => () => {
+    if (cat.id === 'account') this.push({ scr: 'account' });
+    else if (cat.id === 'attendance') this.push({ scr: 'attendance' });
+    else if (cat.id === 'shift_self') this.push({ scr: 'shift', mode: 'self' });
+    else if (cat.id === 'shift_review') this.push({ scr: 'shift', mode: 'review' });
+    else if (cat.id === 'shift_manage') this.push({ scr: 'shift', mode: 'manager' });
+    else this.push({ scr: 'detail', cat: cat.id });
+  };
+  renderVals() {
+    const role = this.state.role;
+    const filtered = this.CATS.filter(c => c.roles === 'all' || c.roles.indexOf(role) !== -1);
+    const draftN = this.state.shiftReqs.filter(r => r.status === 'draft').length;
+    const badgeFor = (c) => {
+      if (c.id === 'shift_self' && draftN) return { badge: draftN + '件 下書き', badgeC: 'c', badgeB: 'b' };
+      return null;
+    };
+    return {
+      groups: [{
+        title: 'all',
+        rows: filtered.map(c => {
+          const b = badgeFor(c);
+          return { title: c.t, sub: c.s, onOpen: this.openCat(c), hasBadge: !!b, badge: b ? b.badge : '', badgeC: b ? b.badgeC : '', badgeB: b ? b.badgeB : '' };
+        })
+      }]
+    };
+  }
+}`),
+            { screen: 'settings' }
+          );
+          const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+          return evaluatePatchedComponent(script);
+        }
+
+        it('marks shift categories with a 準備中 badge and clears fake sample badges', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          const shiftRow = rows.find(row => row.title === 'シフト申請');
+          const attendanceRow = rows.find(row => row.title === '出勤申請');
+          const accountRow = rows.find(row => row.title === 'アカウント');
+
+          expect(shiftRow?.hasBadge).toBe(true);
+          expect(shiftRow?.badge).toBe('準備中');
+          expect(attendanceRow?.badge).toBe('準備中');
+          expect(accountRow?.hasBadge).toBe(false);
+          // 偽サンプル状態がクリアされ「n件 下書き」等は出ない
+          expect(component.state.shiftReqs).toEqual([]);
+          expect(component.state.shiftSubs).toEqual([]);
+          expect(component.state.attReqs).toEqual([]);
+          expect(JSON.stringify(vals)).not.toContain('下書き');
+        });
+
+        it('turns shift category taps into a 準備中 toast without navigating', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          for (const title of ['シフト申請', '出勤申請']) {
+            const row = rows.find(item => item.title === title);
+            (row?.onOpen as () => void)();
+          }
+
+          expect(component.state.nav).toEqual([{ scr: 'top' }]);
+          expect(component.state.toast).toBe('この機能は準備中です');
+        });
+
+        it('keeps non-shift category taps navigating as designed', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          const accountRow = rows.find(item => item.title === 'アカウント');
+          (accountRow?.onOpen as () => void)();
+
+          expect(component.state.nav).toEqual([{ scr: 'top' }, { scr: 'account' }]);
+          expect(component.state.toast).toBe('');
+        });
+
+        it('marks review/manage shift categories as 準備中 for clinic_admin and admin', () => {
+          const { component, window } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+            ...contextPayload,
+            data: { ...contextPayload.data, role: { canonical: 'clinic_admin', label: '店舗管理者' } },
+          });
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+          const reviewRow = rows.find(row => row.title === 'シフト確認');
+
+          expect(reviewRow?.badge).toBe('準備中');
+          (reviewRow?.onOpen as () => void)();
+          expect(component.state.nav).toEqual([{ scr: 'top' }]);
+          expect(component.state.toast).toBe('この機能は準備中です');
+        });
+      });
+
+      it('keeps patients dc role untouched after a context apply', () => {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'staff', pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { showManager: this.state.role === 'manager' };
+  }
+}`),
+          { screen: 'patients' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        const { component, window } = evaluatePatchedComponent(script);
+
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+
+        expect(component.state.role).toBe('staff');
+        expect(component.renderVals().showManager).toBe(false);
+      });
     });
   });
 });

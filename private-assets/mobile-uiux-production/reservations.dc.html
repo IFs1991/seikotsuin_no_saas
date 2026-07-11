@@ -75,6 +75,8 @@ body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
 body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
   background: var(--surface-2);
 }
+html[data-mobile-uiux-canonical-role="therapist"] [data-mobile-uiux-nav-target="home"] { display: none !important; }
+html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home"] { display: none !important; }
 </style></head>
 <body data-mobile-uiux-shell="production">
 <x-dc>
@@ -823,6 +825,23 @@ class Component extends DCLogic {
   }
 
 
+  __mobileUiuxCanonicalRole() {
+    const context = this.__mobileUiuxContext;
+    if (!context || typeof context !== 'object' || Array.isArray(context)) return null;
+    const role = context.role;
+    return role && typeof role === 'object' && !Array.isArray(role) && typeof role.canonical === 'string'
+      ? role.canonical
+      : null;
+  }
+
+  __mobileUiuxDcRoleForCanonical() {
+    const map = {"admin":"manager","clinic_admin":"manager","manager":"area","therapist":"therapist","staff":"staff"};
+    const canonical = this.__mobileUiuxCanonicalRole();
+    return canonical !== null && Object.prototype.hasOwnProperty.call(map, canonical)
+      ? map[canonical]
+      : null;
+  }
+
   renderVals() {
     const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
       ? this.__mobileUiuxOriginalRenderVals()
@@ -869,17 +888,23 @@ class Component extends DCLogic {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string') {
+          statePatch.role = dcRole;
+          statePatch.selfOnly = dcRole === 'therapist';
+        }
         const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
         if (contextClinics) {
           component.__mobileUiuxContextClinicList = contextClinics;
           component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
             ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
             : contextClinics;
-          if (typeof component.setState === 'function') {
-            component.setState({ __mobileUiuxHydratedAt: Date.now() });
-          } else if (typeof component.forceUpdate === 'function') {
-            component.forceUpdate();
-          }
+        }
+        if (typeof component.setState === 'function') {
+          component.setState(statePatch);
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
         }
         return false;
       }

@@ -428,6 +428,63 @@ function applyReplacements(
     );
 }
 
+// canonical ロール → 各画面のDC内部ロールキー。サーバー側 write allowlist と1:1で
+// 整合させる (予約: manager のみ書き込み不可 → 'area' 閲覧専用 / 日報: manager のみ
+// 不可 → 'manager' 閲覧ビュー)。マップ外・context 欠落時は null を返し DC 既定の
+// 最小権限バリアントに留まる (fail-closed)。
+const RESERVATIONS_DC_ROLE_BY_CANONICAL = {
+  admin: 'manager',
+  clinic_admin: 'manager',
+  manager: 'area',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const DAILY_REPORTS_DC_ROLE_BY_CANONICAL = {
+  admin: 'store',
+  clinic_admin: 'store',
+  manager: 'manager',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const SETTINGS_DC_ROLE_BY_CANONICAL = {
+  admin: 'admin',
+  clinic_admin: 'clinic_admin',
+  manager: 'manager',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const HOME_DC_ROLE_BY_CANONICAL = {
+  admin: 'manager',
+  clinic_admin: 'store',
+  manager: 'manager',
+} as const;
+
+function buildCanonicalRoleAdapterSource(
+  dcRoleByCanonical: Readonly<Record<string, string>>
+): string {
+  return `
+  __mobileUiuxCanonicalRole() {
+    const context = this.__mobileUiuxContext;
+    if (!context || typeof context !== 'object' || Array.isArray(context)) return null;
+    const role = context.role;
+    return role && typeof role === 'object' && !Array.isArray(role) && typeof role.canonical === 'string'
+      ? role.canonical
+      : null;
+  }
+
+  __mobileUiuxDcRoleForCanonical() {
+    const map = ${JSON.stringify(dcRoleByCanonical)};
+    const canonical = this.__mobileUiuxCanonicalRole();
+    return canonical !== null && Object.prototype.hasOwnProperty.call(map, canonical)
+      ? map[canonical]
+      : null;
+  }
+`;
+}
+
 function buildHydrationAdapterSource(
   screen: DcScriptPatchOptions['screen']
 ): string {
@@ -1056,7 +1113,7 @@ function buildHomeHydrationAdapterSource(): string {
 
 function buildReservationsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -1103,17 +1160,23 @@ function buildReservationsHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string') {
+          statePatch.role = dcRole;
+          statePatch.selfOnly = dcRole === 'therapist';
+        }
         const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
         if (contextClinics) {
           component.__mobileUiuxContextClinicList = contextClinics;
           component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
             ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
             : contextClinics;
-          if (typeof component.setState === 'function') {
-            component.setState({ __mobileUiuxHydratedAt: Date.now() });
-          } else if (typeof component.forceUpdate === 'function') {
-            component.forceUpdate();
-          }
+        }
+        if (typeof component.setState === 'function') {
+          component.setState(statePatch);
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
         }
         return false;
       }
@@ -2551,7 +2614,7 @@ function buildPatientsHydrationAdapterSource(): string {
 
 function buildSettingsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(SETTINGS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -2560,14 +2623,97 @@ function buildSettingsHydrationAdapterSource(): string {
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    const merged = hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return this.__mobileUiuxApplyShiftStubBadges(merged);
   }
 
   componentDidMount() {
+    this.__mobileUiuxPrimeSettingsCats();
+    this.__mobileUiuxPrimeShiftStubs();
     this.__mobileUiuxRegisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
+  }
+
+  // clinic_admin はサーバー側で設定 write が許可されている
+  // (ADMIN_SETTINGS_MUTATION_ROLES) ため、院・サービス系カテゴリを開放する
+  __mobileUiuxPrimeSettingsCats() {
+    if (!Array.isArray(this.CATS)) return;
+    for (const cat of this.CATS) {
+      if (!this.__mobileUiuxIsRecord(cat)) continue;
+      if (cat.id !== 'clinic' && cat.id !== 'reservation') continue;
+      if (Array.isArray(cat.roles) && cat.roles.indexOf('clinic_admin') === -1) {
+        cat.roles = cat.roles.concat(['clinic_admin']);
+      }
+    }
+  }
+
+  // シフト申請・出勤申請はバックエンド未実装。デザインのワークフロー画面は
+  // ローカル state だけで動く偽動作のため、カテゴリは見せつつタップは
+  // 「準備中」トーストに差し替え、偽の下書き/未確認バッジも根絶する。
+  __mobileUiuxPrimeShiftStubs() {
+    this.__mobileUiuxShiftStubIds = ['shift_self', 'attendance', 'shift_review', 'shift_manage'];
+    this.__mobileUiuxShiftStubTitles = [];
+    if (Array.isArray(this.CATS)) {
+      for (const cat of this.CATS) {
+        if (
+          this.__mobileUiuxIsRecord(cat) &&
+          this.__mobileUiuxShiftStubIds.indexOf(cat.id) !== -1 &&
+          typeof cat.t === 'string'
+        ) {
+          this.__mobileUiuxShiftStubTitles.push(cat.t);
+        }
+      }
+    }
+    const component = this;
+    const originalOpenCat = this.openCat;
+    if (typeof originalOpenCat === 'function') {
+      this.openCat = function(cat) {
+        if (
+          component.__mobileUiuxIsRecord(cat) &&
+          component.__mobileUiuxShiftStubIds.indexOf(cat.id) !== -1
+        ) {
+          return function() {
+            if (typeof component.toast === 'function') {
+              component.toast('この機能は準備中です');
+            }
+          };
+        }
+        return originalOpenCat(cat);
+      };
+    }
+    if (typeof this.setState === 'function') {
+      this.setState({ shiftReqs: [], shiftSubs: [], attReqs: [] });
+    }
+  }
+
+  __mobileUiuxApplyShiftStubBadges(vals) {
+    const titles = Array.isArray(this.__mobileUiuxShiftStubTitles)
+      ? this.__mobileUiuxShiftStubTitles
+      : [];
+    if (titles.length === 0 || !this.__mobileUiuxIsRecord(vals) || !Array.isArray(vals.groups)) {
+      return vals;
+    }
+    const groups = vals.groups.map(group => {
+      if (!this.__mobileUiuxIsRecord(group) || !Array.isArray(group.rows)) {
+        return group;
+      }
+      const rows = group.rows.map(row => {
+        if (!this.__mobileUiuxIsRecord(row) || titles.indexOf(row.title) === -1) {
+          return row;
+        }
+        return {
+          ...row,
+          hasBadge: true,
+          badge: '準備中',
+          badgeC: 'var(--fg-3)',
+          badgeB: 'var(--surface-3)'
+        };
+      });
+      return { ...group, rows };
+    });
+    return { ...vals, groups };
   }
 
   componentWillUnmount() {
@@ -2586,14 +2732,22 @@ function buildSettingsHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string' && dcRole !== component.state.role) {
+          // デザインの onRole と同じくロール変更時はカテゴリ一覧へ戻す
+          statePatch.role = dcRole;
+          statePatch.nav = [{ scr: 'top' }];
+        }
         const contextOverrides = component.__mobileUiuxBuildSettingsContextOverrides();
-        if (!contextOverrides) return false;
-        component.__mobileUiuxHydratedVals = {
-          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
-          ...contextOverrides
-        };
+        if (contextOverrides) {
+          component.__mobileUiuxHydratedVals = {
+            ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+            ...contextOverrides
+          };
+        }
         if (typeof component.setState === 'function') {
-          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          component.setState(statePatch);
         } else if (typeof component.forceUpdate === 'function') {
           component.forceUpdate();
         }
@@ -2634,11 +2788,18 @@ function buildSettingsHydrationAdapterSource(): string {
     const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
       ? context.displayName.trim()
       : null;
-    const roleLabel = this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
-      ? this.ROLE_LABEL[this.state.role]
-      : 'アカウント';
+    const contextRoleLabel = this.__mobileUiuxIsRecord(context.role) && typeof context.role.label === 'string' && context.role.label.trim().length > 0
+      ? context.role.label.trim()
+      : null;
+    const roleLabel = contextRoleLabel
+      || (this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
+        ? this.ROLE_LABEL[this.state.role]
+        : 'アカウント');
     overrides.acctName = displayName || roleLabel;
     overrides.acctInitial = displayName ? displayName.trim().charAt(0) : '・';
+    if (contextRoleLabel) {
+      overrides.acctRoleLabel = contextRoleLabel;
+    }
 
     let clinicName = null;
     if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
@@ -2690,6 +2851,19 @@ function buildSettingsHydrationAdapterSource(): string {
 function buildSettingsDetailHydrationAdapterSource(): string {
   return `
 
+  // DC の role キーは manager/admin のみで、許可ロール (admin/clinic_admin/manager)
+  // は全員 'manager' バリアント (担当院編集) を使う。ヘッダーの
+  // ロールピルだけは実ロール名を表示する。
+  __mobileUiuxContextRoleLabel() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context) || !this.__mobileUiuxIsRecord(context.role)) {
+      return null;
+    }
+    return typeof context.role.label === 'string' && context.role.label.trim().length > 0
+      ? context.role.label.trim()
+      : null;
+  }
+
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -2703,8 +2877,10 @@ function buildSettingsDetailHydrationAdapterSource(): string {
       state.clinicTab === 'hours' &&
       !state.menuSheet &&
       !state.clinicSheet;
+    const contextRoleLabel = this.__mobileUiuxContextRoleLabel();
     return {
       ...originalVals,
+      ...(contextRoleLabel ? { roleLabel: contextRoleLabel } : {}),
       showSaveBar,
       onSave: this.__mobileUiuxSaveSettings,
       saveLabel: this.state && this.state.saving ? '保存中…' : '保存'
@@ -3160,7 +3336,7 @@ function buildSettingsDetailHydrationAdapterSource(): string {
 
 function buildDailyReportsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -3235,6 +3411,10 @@ function buildDailyReportsHydrationAdapterSource(): string {
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
     if (screen === 'context') {
       this.__mobileUiuxStoreContext(payload);
+      const dcRole = this.__mobileUiuxDcRoleForCanonical();
+      if (typeof dcRole === 'string' && dcRole !== this.state.role && typeof this.setState === 'function') {
+        this.setState({ role: dcRole });
+      }
       return null;
     }
 
@@ -3271,10 +3451,14 @@ function buildDailyReportsHydrationAdapterSource(): string {
     const viewRows = this.__mobileUiuxBuildDailyReportViewRows(reports);
     const summary = this.__mobileUiuxBuildDailyReportSummary(data.dailyReports.summary, viewRows);
 
+    // manager は閲覧専用の分析ビュー — 標準バリアント用の未提出/提出済み
+    // バナーが漏れないよう常時 false に固定する
+    const readOnlyManager = this.__mobileUiuxCanonicalRole() === 'manager';
+
     return {
       todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
-      todayUnsubmitted: !todaySubmitted,
-      todaySubmittedFlag: todaySubmitted,
+      todayUnsubmitted: readOnlyManager ? false : !todaySubmitted,
+      todaySubmittedFlag: readOnlyManager ? false : todaySubmitted,
       todayCount: todayPatients,
       sumRevenue: this.yen(todayRevenue),
       sumPatients: todayPatients + '名',
