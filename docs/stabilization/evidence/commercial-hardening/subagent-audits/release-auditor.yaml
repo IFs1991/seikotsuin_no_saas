@@ -1,0 +1,87 @@
+agent: release_auditor
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: RELEASE-PROGRAM-BLOCK-001
+    severity: CRITICAL
+    category: SECURITY
+    evidence:
+      - docs/stabilization/commercial-hardening-pr00-audit.md:Outcome
+      - docs/stabilization/evidence/commercial-hardening/red-tests.md:PR-00-RED-evidence
+      - docs/stabilization/evidence/commercial-hardening/types-remote.sha256:1
+      - docs/stabilization/evidence/commercial-hardening/relation-preflight-before.csv:all-18-relations
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:summary
+    failure_mode: "PR-00 correctly inventories rather than remediates remote type drift, broad grants/defaults, function exposure, profile self-escalation, tenant-integrity gaps, non-atomic invite acceptance, and 117 unclassified mutations. Commercial deployment remains unsafe."
+    exploit_or_reproduction: "COMM-AUTH-001 completes authenticated profile self-escalation and cross-tenant clinic_settings access locally; other mapped RED contracts reproduce their assigned defects."
+    required_fix: "Complete PR-01 through PR-12 in order, obtain owner decisions and human approval, and require staging/restore evidence before any readiness claim."
+    blocking: false
+  - id: RELEASE-TEST-001
+    severity: HIGH
+    category: TEST
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:FAIL-UNRESOLVED
+      - docs/stabilization/evidence/commercial-hardening/subagent-audits/test-adequacy-auditor.yaml:TEST-CI-001
+      - src/__tests__/e2e/auth-login-flow.test.ts:login-redirect-expectation
+      - src/__tests__/e2e/happy-path.test.ts:login-redirect-expectation
+    failure_mode: "The exact DOD-11 command cannot be proven in this nested worktree because Jest discovers no tests after Next.js infers the parent checkout. A broader server run also has two unchanged login E2E failures outside DOD-11."
+    exploit_or_reproduction: "Run the exact non-E2E command in the nested worktree; separately run either unchanged login E2E file."
+    required_fix: "Require normal-root pull-request CI before merge and resolve the baseline login tests separately without weakening or skipping expectations."
+    blocking: false
+  - id: RELEASE-EVIDENCE-LIMITS-001
+    severity: HIGH
+    category: OPERATIONS
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:NOT-RUN-YET
+      - docs/stabilization/evidence/commercial-hardening/staging/README.md:Status
+      - docs/stabilization/evidence/commercial-hardening/restore-drill/README.md:Status
+      - docs/stabilization/evidence/commercial-hardening/audit-metadata.yaml:known_drift
+      - docs/stabilization/evidence/commercial-hardening/source-reference-inventory.json:limitations
+    failure_mode: "Clean replay, semantic remote-type diff, actual clinic_id NULL counts, transitive callers, DB tests, Playwright, staging, rollback exercise, and restore capability remain unverified."
+    exploit_or_reproduction: null
+    required_fix: "Capture replay/type evidence in PR-01, nullable-row evidence before PR-07, caller decisions in PR-04/10, and staging/restore qualification in PR-12."
+    blocking: false
+unverified:
+  - "The exact DOD-11 command in a normal root checkout and GitHub pull-request checks."
+  - "Clean replay of all 50 repository migrations and seeds."
+  - "Independent remote recapture and a retained semantic remote generated-type diff."
+  - "Supabase DB tests and Playwright."
+  - "Actual clinic_id NULL counts and uniquely derivable ownership."
+  - "Computed and transitive table, RPC, and function callers."
+  - "Staging, canary, production, rollback/forward-fix, monitoring, and restore drill."
+  - "Human review and the eight owner decisions."
+tests_observed:
+  - command: "normalized attached-spec versus repository-spec comparison"
+    result: PASS
+  - command: "git diff --check"
+    result: PASS
+  - command: "migration, rollback, DB-test, and lockfile scope diff"
+    result: PASS
+  - command: "commercial repository inventory drift checks"
+    result: PASS
+  - command: "npm run commercial:inventory:db:check"
+    result: PASS
+  - command: "npm run commercial:red:db"
+    result: PASS
+  - command: "npm run commercial:red:invite"
+    result: PASS
+  - command: "Node 24 lint, type checks, secret scan, and production build"
+    result: PASS
+  - command: "Node 24 client Jest project"
+    result: PASS
+  - command: "Node 24 broader server Jest project"
+    result: FAIL
+  - command: "exact DOD-11 command in nested worktree"
+    result: FAIL
+  - command: "fresh remote generated-type parity"
+    result: FAIL
+  - command: "supabase db reset and supabase test db"
+    result: NOT_RUN
+  - command: "Playwright, staging, rollback exercise, and restore drill"
+    result: NOT_RUN
+residual_risk:
+  - "No blocking defect remains in PR-00 inventory, deterministic generators, meaningful RED wrappers, provenance, or no-production-migration boundary."
+  - "All six stored audits conclude PASS_WITH_RISK for PR-00."
+  - "PR-00 is suitable to publish as an audit-and-RED branch, subject to pull-request CI and human review before merge."
+  - "Commercial release remains BLOCK until later PRs and release qualification complete."

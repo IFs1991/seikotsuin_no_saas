@@ -27,6 +27,7 @@ const sharedConfig = {
     '<rootDir>/.claude/worktrees/',
     '<rootDir>/TiramisuUI-UX/',
     '<rootDir>/src/__tests__/session-management/penetration-test-prep.ts',
+    '[\\\\/]src[\\\\/]__tests__[\\\\/]red-contracts[\\\\/]',
     '<rootDir>/src/__tests__/.*/mocks/.*',
   ],
   watchPathIgnorePatterns: [

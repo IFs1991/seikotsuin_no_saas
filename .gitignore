@@ -126,6 +126,7 @@ src/__tests__/e2e-playwright/storage/*.json
 /exports/
 *.csv
 *.backup
+!docs/stabilization/evidence/commercial-hardening/*.csv
 
 # Security sensitive files
 /certificates/

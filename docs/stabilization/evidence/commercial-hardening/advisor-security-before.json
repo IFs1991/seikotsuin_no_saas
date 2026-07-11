@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 1,
+  "capturedOn": "2026-07-11",
+  "projectRef": "qnanuoqveidwvacvbhqp",
+  "source": "Supabase get_advisors read-only API",
+  "type": "security",
+  "summary": {
+    "total": 17,
+    "byLevel": {
+      "INFO": 10,
+      "WARN": 7
+    },
+    "byLint": {
+      "rls_enabled_no_policy": 10,
+      "function_search_path_mutable": 1,
+      "extension_in_public": 1,
+      "anon_security_definer_function_executable": 2,
+      "authenticated_security_definer_function_executable": 2,
+      "auth_leaked_password_protection": 1
+    }
+  },
+  "lints": [
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.clinic_line_credentials\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "clinic_line_credentials",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_clinic_line_credentials"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.encryption_keys\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "encryption_keys",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_encryption_keys"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.internal_job_runs\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "internal_job_runs",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_internal_job_runs"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.line_message_outbox\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "line_message_outbox",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_line_message_outbox"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.master_categories\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "master_categories",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_master_categories"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.master_patient_types\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "master_patient_types",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_master_patient_types"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.master_payment_methods\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "master_payment_methods",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_master_payment_methods"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.menu_categories\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "menu_categories",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_menu_categories"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.treatment_menu_records\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "treatment_menu_records",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_treatment_menu_records"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "title": "RLS Enabled No Policy",
+      "level": "INFO",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Table \\`public.treatments\\` has RLS enabled, but no policies exist",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+      "metadata": {
+        "name": "treatments",
+        "type": "table",
+        "schema": "public"
+      },
+      "cacheKey": "rls_enabled_no_policy_public_treatments"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "title": "Function Search Path Mutable",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Function \\`public.normalize_customer_phone\\` has a role mutable search_path",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable",
+      "metadata": {
+        "name": "normalize_customer_phone",
+        "type": "function",
+        "schema": "public"
+      },
+      "cacheKey": "function_search_path_mutable_public_normalize_customer_phone_6c363019a763de39a9a188bf69b4f681"
+    },
+    {
+      "name": "extension_in_public",
+      "title": "Extension in Public",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Extension \\`btree_gist\\` is installed in the public schema. Move it to another schema.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public",
+      "metadata": {
+        "name": "btree_gist",
+        "type": "extension",
+        "schema": "public"
+      },
+      "cacheKey": "extension_in_public_btree_gist"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Function `public.update_reservation_notifications_updated_at()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/update_reservation_notifications_updated_at`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "update_reservation_notifications_updated_at",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cacheKey": "anon_security_definer_function_executable_public_update_reservation_notifications_updated_at_"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "title": "Public Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Function `public.validate_shift_requests_clinic_refs()` can be executed by the `anon` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/validate_shift_requests_clinic_refs`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable",
+      "metadata": {
+        "name": "validate_shift_requests_clinic_refs",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cacheKey": "anon_security_definer_function_executable_public_validate_shift_requests_clinic_refs_"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Function `public.update_reservation_notifications_updated_at()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/update_reservation_notifications_updated_at`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "update_reservation_notifications_updated_at",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cacheKey": "authenticated_security_definer_function_executable_public_update_reservation_notifications_updated_at_"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "title": "Signed-In Users Can Execute SECURITY DEFINER Function",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Function `public.validate_shift_requests_clinic_refs()` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/validate_shift_requests_clinic_refs`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable",
+      "metadata": {
+        "name": "validate_shift_requests_clinic_refs",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "",
+        "security_definer": true
+      },
+      "cacheKey": "authenticated_security_definer_function_executable_public_validate_shift_requests_clinic_refs_"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "title": "Leaked Password Protection Disabled",
+      "level": "WARN",
+      "facing": "EXTERNAL",
+      "categories": [
+        "SECURITY"
+      ],
+      "detail": "Supabase Auth prevents the use of compromised passwords by checking against HaveIBeenPwned.org. Enable this feature to enhance security.",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection",
+      "metadata": {
+        "type": "auth",
+        "entity": "Auth"
+      },
+      "cacheKey": "auth_leaked_password_protection"
+    }
+  ]
+}
