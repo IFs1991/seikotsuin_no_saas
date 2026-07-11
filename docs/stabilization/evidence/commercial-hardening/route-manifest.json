@@ -1,0 +1,5911 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/commercial-hardening/generate-mutating-route-inventory.mjs",
+  "sourceRoot": "src/app/api",
+  "policyStatus": "DRAFT_OBSERVED_FACTS_ONLY",
+  "summary": {
+    "scannedRouteFiles": 143,
+    "mutationRouteFiles": 91,
+    "mutationHandlers": 117,
+    "methodCounts": {
+      "POST": 74,
+      "PUT": 7,
+      "PATCH": 24,
+      "DELETE": 12
+    },
+    "unclassifiedHandlers": 117,
+    "sideEffectingGetCandidates": 4
+  },
+  "handlers": [
+    {
+      "id": "POST /api/admin/billing/checkout",
+      "route": "/api/admin/billing/checkout",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/billing/checkout/route.ts",
+        "line": 46,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/billing/checkout/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/billing/portal",
+      "route": "/api/admin/billing/portal",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/billing/portal/route.ts",
+        "line": 32,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/billing/portal/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/admin/billing/upgrade",
+      "route": "/api/admin/billing/upgrade",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/billing/upgrade/route.ts",
+        "line": 62,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/billing/upgrade/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/admin/chat",
+      "route": "/api/admin/chat",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/chat/route.ts",
+        "line": 309,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/chat/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/line-credentials",
+      "route": "/api/admin/line-credentials",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/line-credentials/route.ts",
+        "line": 285,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/line-credentials/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/managers/[managerUserId]/clinics",
+      "route": "/api/admin/managers/[managerUserId]/clinics",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
+        "line": 260,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/master-data",
+      "route": "/api/admin/master-data",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/master-data/route.ts",
+        "line": 19,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/master-data/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/master-data",
+      "route": "/api/admin/master-data",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/master-data/route.ts",
+        "line": 23,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/master-data/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "DELETE /api/admin/master-data",
+      "route": "/api/admin/master-data",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/admin/master-data/route.ts",
+        "line": 27,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/master-data/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/admin/master-data/import",
+      "route": "/api/admin/master-data/import",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/master-data/import/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/master-data/import/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/admin/master-data/rollback",
+      "route": "/api/admin/master-data/rollback",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/master-data/rollback/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/master-data/rollback/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/mobile-uiux/entitlements",
+      "route": "/api/admin/mobile-uiux/entitlements",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/mobile-uiux/entitlements/route.ts",
+        "line": 206,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/mobile-uiux/entitlements/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/monitoring/sentry-test",
+      "route": "/api/admin/monitoring/sentry-test",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/monitoring/sentry-test/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/monitoring/sentry-test/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/notifications",
+      "route": "/api/admin/notifications",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/notifications/route.ts",
+        "line": 200,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/notifications/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/rate-limit/reset",
+      "route": "/api/admin/rate-limit/reset",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/rate-limit/reset/route.ts",
+        "line": 24,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/rate-limit/reset/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [
+          "rate limit helper"
+        ],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/admin/rate-limit/whitelist",
+      "route": "/api/admin/rate-limit/whitelist",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/rate-limit/whitelist/route.ts",
+        "line": 36,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/rate-limit/whitelist/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [
+          "rate limit helper"
+        ],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/security/csp-violations",
+      "route": "/api/admin/security/csp-violations",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/security/csp-violations/route.ts",
+        "line": 182,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/security/csp-violations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/admin/security/events",
+      "route": "/api/admin/security/events",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/security/events/route.ts",
+        "line": 308,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/security/events/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/security/events",
+      "route": "/api/admin/security/events",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/security/events/route.ts",
+        "line": 170,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/security/events/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess",
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/security/sessions/terminate",
+      "route": "/api/admin/security/sessions/terminate",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/security/sessions/terminate/route.ts",
+        "line": 41,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/security/sessions/terminate/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/settings",
+      "route": "/api/admin/settings",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/settings/route.ts",
+        "line": 108,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/settings/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/staff/invites",
+      "route": "/api/admin/staff/invites",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/staff/invites/route.ts",
+        "line": 64,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/staff/invites/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/tables",
+      "route": "/api/admin/tables",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/tables/route.ts",
+        "line": 224,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/tables/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "PUT /api/admin/tables",
+      "route": "/api/admin/tables",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/admin/tables/route.ts",
+        "line": 321,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/tables/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/admin/tenants",
+      "route": "/api/admin/tenants",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/tenants/route.ts",
+        "line": 884,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/tenants/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createAdminClient",
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/tenants/[clinic_id]",
+      "route": "/api/admin/tenants/[clinic_id]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+        "line": 411,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/tenants/[clinic_id]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createAdminClient",
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/users",
+      "route": "/api/admin/users",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/users/route.ts",
+        "line": 545,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/users/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/users/[permission_id]",
+      "route": "/api/admin/users/[permission_id]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/users/[permission_id]/route.ts",
+        "line": 209,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/users/[permission_id]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/admin/users/accounts",
+      "route": "/api/admin/users/accounts",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/admin/users/accounts/route.ts",
+        "line": 137,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/users/accounts/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "PATCH /api/admin/users/accounts",
+      "route": "/api/admin/users/accounts",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/admin/users/accounts/route.ts",
+        "line": 347,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/admin/users/accounts/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/ai-comments",
+      "route": "/api/ai-comments",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/ai-comments/route.ts",
+        "line": 76,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/ai-comments/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/beta/backlog",
+      "route": "/api/beta/backlog",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/beta/backlog/route.ts",
+        "line": 137,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/backlog/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/beta/backlog",
+      "route": "/api/beta/backlog",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/beta/backlog/route.ts",
+        "line": 235,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/backlog/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "DELETE /api/beta/backlog",
+      "route": "/api/beta/backlog",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/beta/backlog/route.ts",
+        "line": 353,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/backlog/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/beta/feedback",
+      "route": "/api/beta/feedback",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/beta/feedback/route.ts",
+        "line": 133,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/feedback/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/beta/feedback",
+      "route": "/api/beta/feedback",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/beta/feedback/route.ts",
+        "line": 241,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/feedback/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/beta/metrics",
+      "route": "/api/beta/metrics",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/beta/metrics/route.ts",
+        "line": 120,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/beta/metrics/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "supabase.auth.getUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/blocks",
+      "route": "/api/blocks",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/blocks/route.ts",
+        "line": 127,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/blocks/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "DELETE /api/blocks",
+      "route": "/api/blocks",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/blocks/route.ts",
+        "line": 206,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/blocks/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/calendar/feed-tokens",
+      "route": "/api/calendar/feed-tokens",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/calendar/feed-tokens/route.ts",
+        "line": 165,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/calendar/feed-tokens/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "DELETE /api/calendar/feed-tokens",
+      "route": "/api/calendar/feed-tokens",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/calendar/feed-tokens/route.ts",
+        "line": 277,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/calendar/feed-tokens/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/care-episodes",
+      "route": "/api/care-episodes",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/care-episodes/route.ts",
+        "line": 94,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/care-episodes/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/care-episodes/[id]",
+      "route": "/api/care-episodes/[id]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/care-episodes/[id]/route.ts",
+        "line": 97,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/care-episodes/[id]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/care-episodes/recalculate-visit-stages",
+      "route": "/api/care-episodes/recalculate-visit-stages",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/care-episodes/recalculate-visit-stages/route.ts",
+        "line": 70,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/care-episodes/recalculate-visit-stages/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/chat",
+      "route": "/api/chat",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/chat/route.ts",
+        "line": 63,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/chat/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/customers",
+      "route": "/api/customers",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/customers/route.ts",
+        "line": 206,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/customers",
+      "route": "/api/customers",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/customers/route.ts",
+        "line": 241,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/customers/[customerId]/insurance-coverages",
+      "route": "/api/customers/[customerId]/insurance-coverages",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/customers/[customerId]/insurance-coverages/route.ts",
+        "line": 166,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/[customerId]/insurance-coverages/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/customers/[customerId]/insurance-coverages/[coverageId]",
+      "route": "/api/customers/[customerId]/insurance-coverages/[coverageId]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/customers/[customerId]/insurance-coverages/[coverageId]/route.ts",
+        "line": 65,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/customers/[customerId]/insurance-coverages/[coverageId]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/daily-reports",
+      "route": "/api/daily-reports",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/daily-reports/route.ts",
+        "line": 94,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "origin"
+      ]
+    },
+    {
+      "id": "DELETE /api/daily-reports",
+      "route": "/api/daily-reports",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/daily-reports/route.ts",
+        "line": 158,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/daily-reports/items",
+      "route": "/api/daily-reports/items",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/daily-reports/items/route.ts",
+        "line": 1118,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/daily-reports/items",
+      "route": "/api/daily-reports/items",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/daily-reports/items/route.ts",
+        "line": 1252,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/daily-reports/items",
+      "route": "/api/daily-reports/items",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/daily-reports/items/route.ts",
+        "line": 1400,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper",
+          "requireBusinessWriteAccess"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/daily-reports/items/[id]/care-episode",
+      "route": "/api/daily-reports/items/[id]/care-episode",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/daily-reports/items/[id]/care-episode/route.ts",
+        "line": 107,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/[id]/care-episode/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/daily-reports/items/[id]/pricing/confirm",
+      "route": "/api/daily-reports/items/[id]/pricing/confirm",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/daily-reports/items/[id]/pricing/confirm/route.ts",
+        "line": 51,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/[id]/pricing/confirm/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/daily-reports/items/[id]/tags",
+      "route": "/api/daily-reports/items/[id]/tags",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/daily-reports/items/[id]/tags/route.ts",
+        "line": 89,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/[id]/tags/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/daily-reports/items/[id]/tags/[tagCode]",
+      "route": "/api/daily-reports/items/[id]/tags/[tagCode]",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/daily-reports/items/[id]/tags/[tagCode]/route.ts",
+        "line": 49,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/daily-reports/items/[id]/tags/[tagCode]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper",
+          "requireBusinessWriteAccess"
+        ],
+        "validation": [
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/create-override",
+      "route": "/api/internal/billing/create-override",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/create-override/route.ts",
+        "line": 22,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/create-override/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/expire-overrides",
+      "route": "/api/internal/billing/expire-overrides",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/expire-overrides/route.ts",
+        "line": 9,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/expire-overrides/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/reconcile-tenant-quantity",
+      "route": "/api/internal/billing/reconcile-tenant-quantity",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/reconcile-tenant-quantity/route.ts",
+        "line": 20,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/reconcile-tenant-quantity/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/replay-webhook-event",
+      "route": "/api/internal/billing/replay-webhook-event",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/replay-webhook-event/route.ts",
+        "line": 19,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/replay-webhook-event/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/resync-subscription",
+      "route": "/api/internal/billing/resync-subscription",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/resync-subscription/route.ts",
+        "line": 47,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/resync-subscription/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/internal/billing/revoke-override",
+      "route": "/api/internal/billing/revoke-override",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/internal/billing/revoke-override/route.ts",
+        "line": 14,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/billing/revoke-override/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "requireBillingInternalRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/manager/rosters/assign",
+      "route": "/api/manager/rosters/assign",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/manager/rosters/assign/route.ts",
+        "line": 326,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/manager/rosters/assign/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/menu-templates",
+      "route": "/api/menu-templates",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/menu-templates/route.ts",
+        "line": 88,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/menu-templates",
+      "route": "/api/menu-templates",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/menu-templates/route.ts",
+        "line": 132,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/menu-templates",
+      "route": "/api/menu-templates",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/menu-templates/route.ts",
+        "line": 176,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper",
+          "requireBusinessWriteAccess"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/menu-templates/[id]/billing-profiles",
+      "route": "/api/menu-templates/[id]/billing-profiles",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/menu-templates/[id]/billing-profiles/route.ts",
+        "line": 137,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/[id]/billing-profiles/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/menu-templates/[id]/billing-profiles/[profileId]",
+      "route": "/api/menu-templates/[id]/billing-profiles/[profileId]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/menu-templates/[id]/billing-profiles/[profileId]/route.ts",
+        "line": 88,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/[id]/billing-profiles/[profileId]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/menu-templates/import",
+      "route": "/api/menu-templates/import",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/menu-templates/import/route.ts",
+        "line": 69,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menu-templates/import/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/menus",
+      "route": "/api/menus",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/menus/route.ts",
+        "line": 82,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menus/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/menus",
+      "route": "/api/menus",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/menus/route.ts",
+        "line": 107,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menus/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/menus",
+      "route": "/api/menus",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/menus/route.ts",
+        "line": 134,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menus/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext"
+        ],
+        "billing": [
+          "business write helper",
+          "requireBusinessWriteAccess"
+        ],
+        "validation": [],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/menus/[id]/billing-profiles",
+      "route": "/api/menus/[id]/billing-profiles",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/menus/[id]/billing-profiles/route.ts",
+        "line": 134,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menus/[id]/billing-profiles/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/menus/[id]/billing-profiles/[profileId]",
+      "route": "/api/menus/[id]/billing-profiles/[profileId]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/menus/[id]/billing-profiles/[profileId]/route.ts",
+        "line": 88,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/menus/[id]/billing-profiles/[profileId]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/mfa/backup-codes/regenerate",
+      "route": "/api/mfa/backup-codes/regenerate",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mfa/backup-codes/regenerate/route.ts",
+        "line": 19,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mfa/backup-codes/regenerate/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/mfa/disable",
+      "route": "/api/mfa/disable",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mfa/disable/route.ts",
+        "line": 19,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mfa/disable/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/mfa/setup/complete",
+      "route": "/api/mfa/setup/complete",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mfa/setup/complete/route.ts",
+        "line": 19,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mfa/setup/complete/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/mfa/setup/initiate",
+      "route": "/api/mfa/setup/initiate",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mfa/setup/initiate/route.ts",
+        "line": 14,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mfa/setup/initiate/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/mfa/verify",
+      "route": "/api/mfa/verify",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mfa/verify/route.ts",
+        "line": 24,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mfa/verify/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/mobile-uiux/daily-reports",
+      "route": "/api/mobile-uiux/daily-reports",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mobile-uiux/daily-reports/route.ts",
+        "line": 231,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mobile-uiux/daily-reports/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/mobile-uiux/reservations",
+      "route": "/api/mobile-uiux/reservations",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/mobile-uiux/reservations/route.ts",
+        "line": 462,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mobile-uiux/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/mobile-uiux/reservations",
+      "route": "/api/mobile-uiux/reservations",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/mobile-uiux/reservations/route.ts",
+        "line": 614,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mobile-uiux/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PUT /api/mobile-uiux/settings",
+      "route": "/api/mobile-uiux/settings",
+      "method": "PUT",
+      "source": {
+        "path": "src/app/api/mobile-uiux/settings/route.ts",
+        "line": 200,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/mobile-uiux/settings/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing"
+      ]
+    },
+    {
+      "id": "POST /api/onboarding/clinic",
+      "route": "/api/onboarding/clinic",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/onboarding/clinic/route.ts",
+        "line": 137,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/onboarding/clinic/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "getCurrentUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/onboarding/invites",
+      "route": "/api/onboarding/invites",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/onboarding/invites/route.ts",
+        "line": 27,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/onboarding/invites/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "getCurrentUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "insert",
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/onboarding/profile",
+      "route": "/api/onboarding/profile",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/onboarding/profile/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/onboarding/profile/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "getCurrentUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/onboarding/seed",
+      "route": "/api/onboarding/seed",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/onboarding/seed/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/onboarding/seed/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "getCurrentUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/outreach/campaigns",
+      "route": "/api/outreach/campaigns",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/outreach/campaigns/route.ts",
+        "line": 70,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/outreach/campaigns/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess",
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/outreach/campaigns/[id]/send",
+      "route": "/api/outreach/campaigns/[id]/send",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/outreach/campaigns/[id]/send/route.ts",
+        "line": 26,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/outreach/campaigns/[id]/send/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess",
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/patients",
+      "route": "/api/patients",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/patients/route.ts",
+        "line": 108,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/patients/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/patients",
+      "route": "/api/patients",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/patients/route.ts",
+        "line": 126,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/patients/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "DELETE /api/patients",
+      "route": "/api/patients",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/patients/route.ts",
+        "line": 144,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/patients/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/public/my-reservations",
+      "route": "/api/public/my-reservations",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/public/my-reservations/route.ts",
+        "line": 106,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/public/my-reservations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "verifyPublicLineMyPageAuth"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/public/reservations",
+      "route": "/api/public/reservations",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/public/reservations/route.ts",
+        "line": 82,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/public/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse",
+          "validation helper"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/public/reservations/[id]/cancel",
+      "route": "/api/public/reservations/[id]/cancel",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/public/reservations/[id]/cancel/route.ts",
+        "line": 59,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/public/reservations/[id]/cancel/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "verifyPublicLineMyPageAuth"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/reservations",
+      "route": "/api/reservations",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/reservations/route.ts",
+        "line": 610,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody",
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/reservations",
+      "route": "/api/reservations",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/reservations/route.ts",
+        "line": 756,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/reservations",
+      "route": "/api/reservations",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/reservations/route.ts",
+        "line": 958,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/reservations/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/resources",
+      "route": "/api/resources",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/resources/route.ts",
+        "line": 208,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/resources/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "PATCH /api/resources",
+      "route": "/api/resources",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/resources/route.ts",
+        "line": 226,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/resources/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "DELETE /api/resources",
+      "route": "/api/resources",
+      "method": "DELETE",
+      "source": {
+        "path": "src/app/api/resources/route.ts",
+        "line": 246,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/resources/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processApiRequest"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [
+          "business write helper",
+          "requireBusinessWriteAccess"
+        ],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [
+          "processApiRequest"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "validation"
+      ]
+    },
+    {
+      "id": "POST /api/revenue",
+      "route": "/api/revenue",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/revenue/route.ts",
+        "line": 574,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/revenue/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/revenue-estimates/recalculate",
+      "route": "/api/revenue-estimates/recalculate",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+        "line": 334,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/revenue-estimates/recalculate/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "processClinicScopedBody"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "createScopedAdminContext",
+          "processClinicScopedBody"
+        ],
+        "billing": [
+          "processClinicScopedBody"
+        ],
+        "validation": [
+          "processClinicScopedBody"
+        ],
+        "serviceRole": [
+          "createScopedAdminContext"
+        ],
+        "origin": [
+          "processClinicScopedBody"
+        ],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "delete",
+          "insert",
+          "update",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification"
+      ]
+    },
+    {
+      "id": "POST /api/security/csp-report",
+      "route": "/api/security/csp-report",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/security/csp-report/route.ts",
+        "line": 76,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/security/csp-report/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "getCurrentUser"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [
+          "validation helper"
+        ],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [
+          "rate limit helper"
+        ],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff",
+      "route": "/api/staff",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/route.ts",
+        "line": 394,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert",
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff/preferences",
+      "route": "/api/staff/preferences",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/preferences/route.ts",
+        "line": 163,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/preferences/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff/shift-request-periods",
+      "route": "/api/staff/shift-request-periods",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/shift-request-periods/route.ts",
+        "line": 115,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shift-request-periods/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/staff/shift-request-periods/[id]",
+      "route": "/api/staff/shift-request-periods/[id]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/staff/shift-request-periods/[id]/route.ts",
+        "line": 72,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shift-request-periods/[id]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff/shift-requests",
+      "route": "/api/staff/shift-requests",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/shift-requests/route.ts",
+        "line": 180,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shift-requests/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/staff/shift-requests/[id]",
+      "route": "/api/staff/shift-requests/[id]",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/staff/shift-requests/[id]/route.ts",
+        "line": 91,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shift-requests/[id]/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse",
+          "zod"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff/shift-requests/convert",
+      "route": "/api/staff/shift-requests/convert",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/shift-requests/convert/route.ts",
+        "line": 20,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shift-requests/convert/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "rpc"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "billing",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/staff/shifts",
+      "route": "/api/staff/shifts",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/staff/shifts/route.ts",
+        "line": 453,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shifts/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "insert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "origin"
+      ]
+    },
+    {
+      "id": "PATCH /api/staff/shifts",
+      "route": "/api/staff/shifts",
+      "method": "PATCH",
+      "source": {
+        "path": "src/app/api/staff/shifts/route.ts",
+        "line": 599,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/staff/shifts/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [
+          "business write helper"
+        ],
+        "validation": [
+          "safeParse"
+        ],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "update"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/stripe/webhook",
+      "route": "/api/stripe/webhook",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/stripe/webhook/route.ts",
+        "line": 15,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/stripe/webhook/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "stripe-signature"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [
+          "event claim"
+        ],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "POST /api/webhooks/resend",
+      "route": "/api/webhooks/resend",
+      "method": "POST",
+      "source": {
+        "path": "src/app/api/webhooks/resend/route.ts",
+        "line": 14,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/webhooks/resend/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "webhook-signature"
+        ],
+        "internalSecret": [],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [
+          "generic parse call"
+        ],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN",
+      "unknowns": [
+        "classification",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    }
+  ],
+  "sideEffectingGetCandidates": [
+    {
+      "id": "GET /api/ai-comments",
+      "route": "/api/ai-comments",
+      "method": "GET",
+      "source": {
+        "path": "src/app/api/ai-comments/route.ts",
+        "line": 8,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/ai-comments/route.ts"
+      },
+      "observed": {
+        "auth": [
+          "ensureClinicAccess"
+        ],
+        "internalSecret": [],
+        "clinicScope": [
+          "ensureClinicAccess"
+        ],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [
+          "upsert"
+        ],
+        "sideEffectCall": []
+      },
+      "hints": {
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
+        "validation": [],
+        "idempotency": [
+          "upsert call"
+        ]
+      },
+      "classification": "UNKNOWN_SIDE_EFFECT",
+      "unknowns": [
+        "sideEffectDecision",
+        "classification",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "GET /api/internal/process-email-outbox",
+      "route": "/api/internal/process-email-outbox",
+      "method": "GET",
+      "source": {
+        "path": "src/app/api/internal/process-email-outbox/route.ts",
+        "line": 12,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/process-email-outbox/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [
+          "CRON_SECRET",
+          "internal bearer comparison"
+        ],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": [
+          "processEmailOutbox"
+        ]
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN_SIDE_EFFECT",
+      "unknowns": [
+        "sideEffectDecision",
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "GET /api/internal/process-line-outbox",
+      "route": "/api/internal/process-line-outbox",
+      "method": "GET",
+      "source": {
+        "path": "src/app/api/internal/process-line-outbox/route.ts",
+        "line": 11,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/process-line-outbox/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [
+          "CRON_SECRET",
+          "internal bearer comparison"
+        ],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": [
+          "processLineOutbox"
+        ]
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN_SIDE_EFFECT",
+      "unknowns": [
+        "sideEffectDecision",
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    },
+    {
+      "id": "GET /api/internal/reservation-reminders",
+      "route": "/api/internal/reservation-reminders",
+      "method": "GET",
+      "source": {
+        "path": "src/app/api/internal/reservation-reminders/route.ts",
+        "line": 6,
+        "exportKind": "function"
+      },
+      "executionPath": {
+        "status": "RESOLVED",
+        "path": "src/app/api/internal/reservation-reminders/route.ts"
+      },
+      "observed": {
+        "auth": [],
+        "internalSecret": [
+          "CRON_SECRET",
+          "internal bearer comparison"
+        ],
+        "clinicScope": [],
+        "billing": [],
+        "validation": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
+        "origin": [],
+        "rateLimit": [],
+        "idempotency": [],
+        "writes": [],
+        "sideEffectCall": [
+          "processReservationReminders"
+        ]
+      },
+      "hints": {
+        "clinicScope": [],
+        "validation": [],
+        "idempotency": []
+      },
+      "classification": "UNKNOWN_SIDE_EFFECT",
+      "unknowns": [
+        "sideEffectDecision",
+        "classification",
+        "auth",
+        "clinicScope",
+        "billing",
+        "validation",
+        "origin"
+      ]
+    }
+  ]
+}

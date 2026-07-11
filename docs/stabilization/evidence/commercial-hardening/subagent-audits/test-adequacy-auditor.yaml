@@ -1,0 +1,83 @@
+agent: test_adequacy_auditor
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: TEST-CI-001
+    severity: MEDIUM
+    category: TEST
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:FAIL-UNRESOLVED
+      - package.json:scripts.test
+      - jest.config.js:createJestConfig
+    failure_mode: "The exact DOD-11/CI Jest command exits 1 with No tests found in the nested worktree because Next.js infers the parent checkout as its workspace root, so this environment does not prove the command in a normal root checkout."
+    exploit_or_reproduction: "Run npm run test -- --ci --testPathIgnorePatterns=e2e under the nested commercial-hardening worktree."
+    required_fix: "Run and retain the same command from a normal root checkout in pull-request CI; do not promote DOD-11 to PASS until it completes successfully."
+    blocking: false
+  - id: TEST-BASELINE-001
+    severity: MEDIUM
+    category: TEST
+    evidence:
+      - src/__tests__/e2e/auth-login-flow.test.ts:login-redirect-expectation
+      - src/__tests__/e2e/happy-path.test.ts:login-redirect-expectation
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:broader-server-Jest-result
+    failure_mode: "The broader server Jest run has two unchanged login E2E failures, leaving the repository-wide test baseline non-green even though they are outside DOD-11's non-E2E command."
+    exploit_or_reproduction: "Run the broader Node 24 server Jest project or either failing file individually."
+    required_fix: "Diagnose and repair the existing login regression independently; do not use it as DOD-11 evidence."
+    blocking: false
+unverified:
+  - "The exact DOD-11 command in a normal root checkout or GitHub pull-request runner."
+  - "Destructive migration replay/reset."
+  - "Supabase DB test suite."
+  - "Playwright."
+  - "Staging apply, production deployment, rollback exercise, and restore drill."
+  - "Independent refresh of remote database evidence during this final audit."
+tests_observed:
+  - command: "npm run commercial:red:invite"
+    result: PASS
+  - command: "npm run commercial:red:db"
+    result: PASS
+  - command: "npm run commercial:inventory:routes:check"
+    result: PASS
+  - command: "npm run commercial:inventory:tables:check"
+    result: PASS
+  - command: "npm run commercial:inventory:source:check"
+    result: PASS
+  - command: "npm run commercial:inventory:staff-ids:check"
+    result: PASS
+  - command: "npm run commercial:inventory:function-callers:check"
+    result: PASS
+  - command: "npm run commercial:inventory:db:check"
+    result: PASS
+  - command: "focused mutating-route-inventory server Jest"
+    result: PASS
+  - command: "Node 24.18.0 client Jest project"
+    result: PASS
+  - command: "Node 24.18.0 broader server Jest project"
+    result: FAIL
+  - command: "npm run test -- --ci --testPathIgnorePatterns=e2e"
+    result: FAIL
+  - command: "npm run lint"
+    result: PASS
+  - command: "npm run type-check"
+    result: PASS
+  - command: "npm run type-check:commercial"
+    result: PASS
+  - command: "npm run scan:secrets"
+    result: PASS
+  - command: "npm run build"
+    result: PASS
+  - command: "supabase db reset"
+    result: NOT_RUN
+  - command: "supabase test db"
+    result: NOT_RUN
+  - command: "npm run test:e2e:pw"
+    result: NOT_RUN
+  - command: "staging apply and restore drill"
+    result: NOT_RUN
+residual_risk:
+  - "The invite wrapper false-positive is resolved: the test emits its full marker only after a failed action leaves mutated state, and the wrapper requires that marker."
+  - "Normal Jest excludes the intentional RED directory with a root-independent path pattern."
+  - "Security, generated-type, integrity, route-classification, and atomic-invite targets remain RED for later PRs."
+  - "PR-00 is acceptable inventory and truthful RED evidence, not repository-wide green status or commercial readiness."

@@ -1,0 +1,89 @@
+agent: db_schema_explorer
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: PROGRAM-REPLAY-TYPES-001
+    severity: CRITICAL
+    category: MIGRATION
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/audit-metadata.yaml:known_drift.migration_version_sets
+      - docs/stabilization/evidence/commercial-hardening/migrations-local.txt:tail
+      - docs/stabilization/evidence/commercial-hardening/migrations-remote.txt:tail
+      - docs/stabilization/evidence/commercial-hardening/types-local.sha256:1
+      - docs/stabilization/evidence/commercial-hardening/types-remote.sha256:1
+    failure_mode: "Intentional later-PR program BLOCK, not a PR-00 defect: repository and remote have the same 50 migration version IDs, while local has 48; committed types match local but not remote."
+    exploit_or_reproduction: "Local lacks 20260707000100 and 20260707000200; remote parity raises COMM-TYPES-001."
+    required_fix: "PR-01 must replay all 50 migrations, regenerate and semantically diff types, and enforce parity in CI."
+    blocking: false
+  - id: PROGRAM-RLS-GRANT-001
+    severity: CRITICAL
+    category: SECURITY
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/tables-local-before.csv:master_categories-through-treatments
+      - docs/stabilization/evidence/commercial-hardening/tables-before.csv:master_categories-through-treatments
+      - scripts/commercial-hardening/red-contracts/01_exposed_tables_rls.sql:unsafe_tables
+      - scripts/commercial-hardening/red-contracts/02_default_client_privileges.sql:unsafe_defaults
+    failure_mode: "Intentional later-PR BLOCK: six shared/legacy tables have RLS disabled locally; remote enables RLS but has no policies for them."
+    exploit_or_reproduction: "commercial:red:db reproduces COMM-RLS-001 and COMM-GRANT-001."
+    required_fix: "PR-02/03 must establish reviewed Class C/E grants and policies with direct client negative tests."
+    blocking: false
+  - id: PROGRAM-TENANT-INTEGRITY-001
+    severity: CRITICAL
+    category: DATA_INTEGRITY
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/relation-preflight-before.csv:all-18-relations
+      - scripts/commercial-hardening/red-contracts/04_required_composite_fks.sql:required_with_delete_action
+      - scripts/commercial-hardening/red-contracts/05_parent_rehome_fixture.sql:parent-clinic-update
+      - docs/stabilization/evidence/commercial-hardening/staff-id-semantics-decisions.yaml:columns
+    failure_mode: "Intentional later-PR BLOCK: current rows have zero mismatch/orphan counts, but composite FKs are absent and five staff-ID mappings remain deliberately unresolved."
+    exploit_or_reproduction: "Every allowed parent rehome, including CASCADE, raises COMM-FK-002; only FK/check rejection is GREEN."
+    required_fix: "PR-05/06 must freeze referential actions, add validated composite FKs and negative tests, and retain BLOCK for unresolved ID semantics."
+    blocking: false
+  - id: BASE-JEST-LOGIN-001
+    severity: HIGH
+    category: TEST
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:FAIL-UNRESOLVED
+      - src/__tests__/e2e/auth-login-flow.test.ts:login-redirect-expectation
+      - src/__tests__/e2e/happy-path.test.ts:login-redirect-expectation
+    failure_mode: "Two unchanged login tests keep the broader server Jest project red. They are outside DOD-11's non-E2E command and are not caused by PR-00."
+    exploit_or_reproduction: "Tests expect redirect rejection while the unchanged action returns a system-error result."
+    required_fix: "Resolve separately without weakening or skipping the tests."
+    blocking: false
+unverified:
+  - "Clean 50-migration replay/reset."
+  - "Independent remote catalog recapture and retained semantic remote-type diff."
+  - "Supabase DB tests, Playwright, staging, rollback exercise, and restore drill."
+  - "Business ownership of staff-ID entries marked BLOCK."
+  - "Computed and transitive runtime callers."
+tests_observed:
+  - command: "git diff --name-only base -- supabase/migrations supabase/rollbacks"
+    result: PASS
+  - command: "git diff --check"
+    result: PASS
+  - command: "npm run commercial:inventory:db:check"
+    result: PASS
+  - command: "npm run commercial:inventory:staff-ids:check"
+    result: PASS
+  - command: "npm run commercial:red:db"
+    result: PASS
+  - command: "fixed-UUID fixture cleanup query"
+    result: PASS
+  - command: "fresh local generated-type parity"
+    result: PASS
+  - command: "fresh remote generated-type parity"
+    result: FAIL
+  - command: "broader server Jest project"
+    result: FAIL
+  - command: "clean 50-migration replay"
+    result: NOT_RUN
+  - command: "supabase test db"
+    result: NOT_RUN
+residual_risk:
+  - "No blocking PR-00 schema-inventory defect remains in the current files."
+  - "The historical 20260508000100 database-ledger name suffix differs from the repository basename; it must not be repaired by editing an applied migration."
+  - "Actual clinic_id NULL counts and uniquely derivable backfills remain mandatory PR-07 preflight evidence."
+  - "PR-05/06 must freeze current delete actions before removing old single-column constraints."
+  - "Later-PR security and integrity findings continue to block commercial release."

@@ -1,0 +1,90 @@
+agent: api_boundary_auditor
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: API-INV-001
+    severity: LOW
+    category: TEST
+    evidence:
+      - scripts/commercial-hardening/generate-mutating-route-inventory.mjs:listRouteFiles
+      - scripts/commercial-hardening/generate-mutating-route-inventory.mjs:collectHandler
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:summary
+      - src/__tests__/security/mutating-route-inventory.test.ts:mutating-route-inventory-suite
+    failure_mode: "None observed for the current repository snapshot."
+    exploit_or_reproduction: "Run the route inventory drift check and focused mutating-route-inventory test."
+    required_fix: "None for PR-00."
+    blocking: false
+  - id: API-EVID-001
+    severity: LOW
+    category: TEST
+    evidence:
+      - scripts/commercial-hardening/generate-mutating-route-inventory.mjs:collectEvidence
+      - scripts/commercial-hardening/generate-mutating-route-inventory.mjs:collectHints
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:policyStatus
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:handlers
+    failure_mode: "A later implementation could incorrectly treat a lexical helper-name observation as proof of authorization, billing, validation, origin, or idempotency."
+    exploit_or_reproduction: "Inspect observed and hint marker definitions; the verifier evaluates only explicit classification and stays fail-closed."
+    required_fix: "PR-10 must require reviewed classifications plus resolved wrappers or explicit policy metadata; lexical observations cannot directly pass classification."
+    blocking: false
+  - id: API-GET-001
+    severity: LOW
+    category: SECURITY
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:summary.sideEffectingGetCandidates
+      - docs/stabilization/evidence/commercial-hardening/route-manifest.json:sideEffectingGetCandidates
+      - docs/stabilization/commercial-hardening-pr00-audit.md:Design-clarifications-made-in-PR-00
+    failure_mode: "Heuristic detection can miss side effects hidden behind unrecognized imported helpers or external calls."
+    exploit_or_reproduction: "Review sideEffectingGetCandidates and write/side-effect markers in route-manifest.json."
+    required_fix: "PR-10 should maintain a reviewed exception ledger for side-effecting GET and prohibit new GET mutations."
+    blocking: false
+  - id: API-CALLER-001
+    severity: LOW
+    category: MIGRATION
+    evidence:
+      - scripts/commercial-hardening/generate-source-reference-inventory.mjs:collectLiteralCalls
+      - docs/stabilization/evidence/commercial-hardening/source-reference-inventory.json:summary
+      - scripts/commercial-hardening/generate-function-callers.mjs:top-level-generator
+      - docs/stabilization/evidence/commercial-hardening/function-callers-before.csv:header
+      - docs/stabilization/evidence/commercial-hardening/function-callers-local-before.csv:header
+    failure_mode: "Dynamic or transitive callers can remain absent and could be broken by later EXECUTE or signature changes."
+    exploit_or_reproduction: "Run source and function-caller checks, then inspect unknowns in function-callers CSVs."
+    required_fix: "PR-04 and PR-10 must resolve dynamic/transitive callers before changing exposed functions or declaring coverage complete."
+    blocking: false
+  - id: API-SCOPE-001
+    severity: LOW
+    category: OPERATIONS
+    evidence:
+      - docs/stabilization/commercial-hardening-pr00-audit.md:Scope
+      - src/app/api/AGENTS.md:API-mutation-boundary-rules
+    failure_mode: "None observed; PR-00 does not alter production route behavior."
+    exploit_or_reproduction: "Diff the base against runtime and migration paths."
+    required_fix: "None for PR-00."
+    blocking: false
+unverified:
+  - "Completeness of computed table/RPC names and transitive runtime/import call graphs."
+  - "Runtime correctness of auth, clinic scope, billing, validation, rate-limit, and idempotency helpers."
+  - "Completeness of side-effecting GET detection beyond known markers."
+  - "PR-10 classifications and later production remediation."
+tests_observed:
+  - command: "npm run commercial:inventory:routes:check"
+    result: PASS
+  - command: "npm run commercial:inventory:source:check"
+    result: PASS
+  - command: "npm run commercial:inventory:function-callers:check"
+    result: PASS
+  - command: "focused mutating-route-inventory Jest"
+    result: PASS
+  - command: "npm run commercial:red:routes"
+    result: FAIL
+  - command: "independent TypeScript export-to-manifest comparison"
+    result: PASS
+  - command: "manifest uniqueness, order, line, and evidence-bucket checks"
+    result: PASS
+  - command: "git diff --check"
+    result: PASS
+residual_risk:
+  - "All 117 mutation handlers remain deliberately UNKNOWN, so commercial release remains blocked until PR-10."
+  - "The four side-effecting GET candidates require explicit ownership and exception decisions."
+  - "Literal and lexical inventories are reliable discovery evidence, not runtime authorization or tenant-boundary proofs."
