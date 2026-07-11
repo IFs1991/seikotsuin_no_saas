@@ -2549,6 +2549,68 @@ describe('patchMobileUiuxDcScript', () => {
       expect(afterVals.scopeName).toBe('BFF 本町院');
     });
 
+    it('fails closed to an empty scopeName when defaultClinicId has no matching accessible clinic', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  renderVals() {
+    return { greeting: 'おはようございます、田中さん', scopeName: '本町ケア整骨院' };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          accessibleClinics: [{ id: 'c2', name: '第二整骨院' }],
+          defaultClinicId: 'c1',
+        },
+      });
+      const afterVals = component.renderVals();
+
+      expect(afterVals.scopeName).toBe('');
+      expect(JSON.stringify(afterVals)).not.toContain('本町ケア整骨院');
+    });
+
+    it('clears the sample scope switcher when context has no valid accessible clinics', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  NOW = 480;
+  CLINICS = [
+    { id: 'sample-1', name: '本町ケア整骨院' },
+    { id: 'sample-2', name: '駅前ケア整骨院' },
+  ];
+  renderVals() {
+    return {
+      scopeName: '本町ケア整骨院',
+      scopeOpts: this.CLINICS.map(c => ({ name: c.name }))
+    };
+  }
+}`),
+        { screen: 'home' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: { ...contextPayload.data, accessibleClinics: [] },
+      });
+      const vals = component.renderVals();
+      const serialized = JSON.stringify(vals);
+
+      expect(vals.scopeName).toBe('');
+      expect(vals.scopeOpts).toEqual([]);
+      expect(serialized).not.toContain('本町ケア整骨院');
+      expect(serialized).not.toContain('駅前ケア整骨院');
+    });
+
     it('falls back to a generic greeting when displayName is null', () => {
       const patched = patchMobileUiuxDcScript(
         wrapDcScript(`class Component extends DCLogic {
