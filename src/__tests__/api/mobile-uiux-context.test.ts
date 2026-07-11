@@ -127,10 +127,16 @@ function createContextLookupClient(options: {
 
   const clinicsBuilder = {
     select: jest.fn(() => clinicsBuilder),
-    in: jest.fn(async () => ({
-      data: options.clinics ?? [],
-      error: null,
-    })),
+    in: jest.fn(() => clinicsBuilder),
+    eq: jest.fn(() => clinicsBuilder),
+    then: (
+      onFulfilled: (value: unknown) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) =>
+      Promise.resolve({ data: options.clinics ?? [], error: null }).then(
+        onFulfilled,
+        onRejected
+      ),
   };
 
   return {
@@ -507,6 +513,40 @@ describe('GET /api/mobile-uiux/context', () => {
       'clinic-1',
       'clinic-2',
     ]);
+  });
+
+  it('falls back defaultClinicId to a clinic with a resolvable name', async () => {
+    const lookupClient = createContextLookupClient({
+      staffProfile: null,
+      clinics: [{ id: 'clinic-2', name: '第二整骨院' }],
+    });
+    createClientMock.mockResolvedValue(lookupClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.defaultClinicId).toBe('clinic-2');
+    expect(body.data.accessibleClinics).toEqual([
+      { id: 'clinic-2', name: '第二整骨院' },
+    ]);
+  });
+
+  it('keeps the scoped defaultClinicId when no clinic names resolve', async () => {
+    const lookupClient = createContextLookupClient({
+      staffProfile: null,
+      clinics: [],
+    });
+    createClientMock.mockResolvedValue(lookupClient);
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.defaultClinicId).toBe('clinic-1');
+    expect(body.data.accessibleClinics).toEqual([]);
   });
 
   it('returns null displayName when no staff profile row exists', async () => {

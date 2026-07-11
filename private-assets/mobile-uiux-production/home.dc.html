@@ -988,17 +988,22 @@ class Component extends DCLogic {
     const prefix = isAfternoon ? 'こんにちは' : 'おはようございます';
     overrides.greeting = displayName ? prefix + '、' + displayName + 'さん' : prefix;
 
+    let scopeName = '';
     if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
       const match = context.accessibleClinics.find(c => this.__mobileUiuxIsRecord(c) && c.id === context.defaultClinicId);
       if (match && typeof match.name === 'string' && match.name.trim().length > 0) {
-        overrides.scopeName = match.name.trim();
+        scopeName = match.name.trim();
       }
     }
+    overrides.scopeName = scopeName;
 
     const contextClinics = this.__mobileUiuxContextClinics(context);
     if (contextClinics) {
       this.CLINICS = contextClinics;
       overrides.scopeOpts = this.__mobileUiuxBuildHomeScopeOpts(contextClinics, context.defaultClinicId);
+    } else {
+      this.CLINICS = [];
+      overrides.scopeOpts = [];
     }
 
     return overrides;

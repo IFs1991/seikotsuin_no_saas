@@ -42,10 +42,16 @@ function createContextDataClient(options?: { clinicName?: string }) {
     if (table === 'clinics') {
       const builder = {
         select: jest.fn(() => builder),
-        in: jest.fn(async () => ({
-          data: [{ id: 'clinic-1', name: clinicName }],
-          error: null,
-        })),
+        in: jest.fn(() => builder),
+        eq: jest.fn(() => builder),
+        then: (
+          onFulfilled: (value: unknown) => unknown,
+          onRejected?: (reason: unknown) => unknown
+        ) =>
+          Promise.resolve({
+            data: [{ id: 'clinic-1', name: clinicName }],
+            error: null,
+          }).then(onFulfilled, onRejected),
       };
       return builder;
     }

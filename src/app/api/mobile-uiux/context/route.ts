@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
   }
 
   const contextClinicId = accessContext.clinicId;
-  const defaultClinicId =
+  const preferredClinicId =
     contextClinicId && rolloutDecision.clinicIds.includes(contextClinicId)
       ? contextClinicId
       : rolloutDecision.clinicIds[0];
@@ -123,6 +123,14 @@ export async function GET(request: NextRequest) {
     resolveStaffDisplayName(supabase, user.id),
     fetchClinicNames(supabase, rolloutDecision.clinicIds),
   ]);
+
+  // ヘッダ表示や店舗切替は accessibleClinics（名前解決済みの院）を正とするため、
+  // 名前が引けた院がある場合は defaultClinicId もその中から選ぶ
+  const defaultClinicId = accessibleClinics.some(
+    clinic => clinic.id === preferredClinicId
+  )
+    ? preferredClinicId
+    : (accessibleClinics[0]?.id ?? preferredClinicId);
 
   const data: MobileUiuxContextResponse = {
     role: {

@@ -19,8 +19,9 @@ function isClinicNameRow(value: unknown): value is MobileUiuxClinicName {
 
 /**
  * Fetches clinic id/name pairs for the given clinic ids, preserving the
- * order of clinicIds where possible. Ids without a matching row are
- * omitted. Fail-closed: empty input or any error resolves to [].
+ * order of clinicIds where possible. Only active clinics are returned,
+ * matching the PC accessible-clinics endpoint. Ids without a matching row
+ * are omitted. Fail-closed: empty input or any error resolves to [].
  */
 export async function fetchClinicNames(
   supabase: SupabaseClient,
@@ -34,7 +35,8 @@ export async function fetchClinicNames(
     const { data, error } = await supabase
       .from('clinics')
       .select('id,name')
-      .in('id', clinicIds);
+      .in('id', clinicIds)
+      .eq('is_active', true);
 
     if (error || !data) {
       return [];
