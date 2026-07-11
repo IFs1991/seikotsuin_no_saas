@@ -59,3 +59,12 @@ UI/UXに触れる変更（画面・フォーム・導線・コピー・スタイ
 - 主張にはrepoファイルパス + 該当する設定名・関数名・ポリシー名・ルート・テスト名を添える
 - 安定化タスクは `docs/stabilization/DoD-v0.1.md` のDoD項目に紐付ける
 - 実行していない検証を「実施済み」と報告しない。検証できなかった場合は、何を検証していないか・なぜかを明記する
+
+## 商用ハードニング・migration program
+
+- `docs/stabilization/spec-commercial-hardening-migration-v1.0.md` を実装正本とする
+- 本programはPR-00から依存順に実施し、複数PRを1本へ統合しない
+- DB/RLS/auth/billing変更はRED testを先に追加する
+- 実装後、read-only監査subagentを最低2つ走らせる
+- 実装者自身のレビューだけでPASSにしない
+- production DB・Auth設定・branch protection変更は人間承認が必要

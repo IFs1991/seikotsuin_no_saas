@@ -1,0 +1,3850 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/commercial-hardening/generate-source-reference-inventory.mjs",
+  "scope": "src runtime JS/TS, excluding __tests__ and generated types",
+  "limitations": [
+    "Literal .from() and .rpc() calls only; computed names and transitive client imports remain UNKNOWN.",
+    "clientModule records an explicit use-client directive, not the full import graph."
+  ],
+  "summary": {
+    "scannedSourceFiles": 605,
+    "catalogTables": 86,
+    "catalogTablesWithLiteralReferences": 69,
+    "literalRpcNames": 10
+  },
+  "tables": [
+    {
+      "name": "ai_comments",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/ai-comments/route.ts",
+          "line": 25,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/ai-comments/route.ts",
+          "line": 169,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/system/status/route.ts",
+          "line": 41,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 144,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "appointments",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "audit_logs",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/security/stats/route.ts",
+          "line": 89,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/audit-logger.ts",
+          "line": 45,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "beta_feedback",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 82,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 184,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 301,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "beta_usage_metrics",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 70,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 171,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "billing_audit_logs",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/billing/audit.ts",
+          "line": 81,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "billing_overrides",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 94,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 146,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 181,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 198,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 239,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/overrides.ts",
+          "line": 254,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "blocks",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 64,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 92,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 187,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 232,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 246,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 73,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 93,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 124,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 157,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 202,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 224,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/block-service.ts",
+          "line": 250,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-availability-service.ts",
+          "line": 736,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 451,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 627,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "calendar_feed_tokens",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/calendar/clinic/[token]/route.ts",
+          "line": 42,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/feed-tokens/route.ts",
+          "line": 246,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/feed-tokens/route.ts",
+          "line": 301,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
+          "line": 42,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "care_episodes",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/care-episodes/[id]/route.ts",
+          "line": 120,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/care-episodes/recalculate-visit-stages/route.ts",
+          "line": 84,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/care-episodes/route.ts",
+          "line": 130,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/care-episode/route.ts",
+          "line": 94,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "chat_messages",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 182,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 373,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 408,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/chat/route.ts",
+          "line": 116,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/chat/route.ts",
+          "line": 150,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "chat_sessions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 160,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 215,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/chat/route.ts",
+          "line": 265,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/chat/route.ts",
+          "line": 25,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/chat/route.ts",
+          "line": 98,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "clinic_feature_flags",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/line-credentials/route.ts",
+          "line": 177,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/line-credentials/route.ts",
+          "line": 203,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/mobile-uiux/entitlements/route.ts",
+          "line": 143,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/mobile-uiux/entitlements/route.ts",
+          "line": 248,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/gate.ts",
+          "line": 71,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/public-booking.ts",
+          "line": 42,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mobile-uiux/entitlements.ts",
+          "line": 159,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "clinic_line_credentials",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/line-credentials/route.ts",
+          "line": 159,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/line-credentials/route.ts",
+          "line": 339,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/gate.ts",
+          "line": 77,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/public-booking.ts",
+          "line": 47,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/token-manager.ts",
+          "line": 140,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/line/token-manager.ts",
+          "line": 175,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "clinic_settings",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/public/booking-form/route.ts",
+          "line": 57,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/admin-settings/service.ts",
+          "line": 275,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/admin-settings/service.ts",
+          "line": 301,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 407,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 430,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 160,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-availability-service.ts",
+          "line": 637,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 393,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 228,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 254,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "clinics",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/api/database/supabase-client.ts",
+          "line": 81,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 295,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/ai-insights/route.ts",
+          "line": 118,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/dashboard/route.ts",
+          "line": 82,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/dashboard/route.ts",
+          "line": 106,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 128,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 339,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 489,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 543,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 300,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 419,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 805,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 826,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 973,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/clinics/accessible/route.ts",
+          "line": 90,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/clinics/accessible/route.ts",
+          "line": 112,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/clinics/route.ts",
+          "line": 33,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/health/route.ts",
+          "line": 71,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/internal/billing/reconcile-tenant-quantity/route.ts",
+          "line": 54,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/helpers.ts",
+          "line": 32,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/settings-detail/route.ts",
+          "line": 144,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 238,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/system/status/route.ts",
+          "line": 37,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/auth/profile-read-model.ts",
+          "line": 30,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/admin.ts",
+          "line": 97,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/admin.ts",
+          "line": 141,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/business-write.ts",
+          "line": 135,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 531,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/tenant-activation.ts",
+          "line": 267,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mobile-uiux/clinic-names.ts",
+          "line": 36,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 346,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 182,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/scoped-admin.ts",
+          "line": 121,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/server.ts",
+          "line": 196,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "critical_incidents",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "csp_violations",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 39,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 44,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 51,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 57,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 65,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 70,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 77,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 84,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 116,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-stats/route.ts",
+          "line": 124,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-violations/route.ts",
+          "line": 67,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/csp-violations/route.ts",
+          "line": 238,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/security/csp-report/route.ts",
+          "line": 303,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "customer_insurance_coverages",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/customers/[customerId]/insurance-coverages/[coverageId]/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/[customerId]/insurance-coverages/route.ts",
+          "line": 133,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/[customerId]/insurance-coverages/route.ts",
+          "line": 213,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 436,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "customers",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/care-episodes/route.ts",
+          "line": 80,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/route.ts",
+          "line": 130,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/route.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/route.ts",
+          "line": 224,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/customers/route.ts",
+          "line": 259,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/exports/route.ts",
+          "line": 97,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 237,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 281,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 308,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 501,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 262,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 326,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 422,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 570,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 222,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 314,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 334,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 519,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 536,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 565,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 654,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_report_item_tag_definitions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/[id]/tags/route.ts",
+          "line": 76,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_report_item_tags",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/[id]/tags/[tagCode]/route.ts",
+          "line": 92,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/tags/route.ts",
+          "line": 135,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_report_items",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/care-episodes/recalculate-visit-stages/route.ts",
+          "line": 107,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/care-episodes/recalculate-visit-stages/route.ts",
+          "line": 133,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/care-episode/route.ts",
+          "line": 73,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/care-episode/route.ts",
+          "line": 160,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/tags/[tagCode]/route.ts",
+          "line": 36,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/[id]/tags/route.ts",
+          "line": 58,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 734,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 1051,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 1226,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 1379,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 1438,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/dashboard/route.ts",
+          "line": 66,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/staff-analysis/route.ts",
+          "line": 216,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/details/route.ts",
+          "line": 251,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 349,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 570,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 429,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_reports",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/api/database/supabase-client.ts",
+          "line": 101,
+          "clientModule": false
+        },
+        {
+          "path": "src/api/database/supabase-client.ts",
+          "line": 113,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/dashboard/route.ts",
+          "line": 192,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/dashboard/route.ts",
+          "line": 205,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 653,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 678,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 689,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/route.ts",
+          "line": 196,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/route.ts",
+          "line": 214,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/exports/route.ts",
+          "line": 142,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/daily-reports/overview/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/dashboard/route.ts",
+          "line": 46,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 423,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 435,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/daily-reports/read-model.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/daily-reports/read-model.ts",
+          "line": 200,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/daily-reports/write-model.ts",
+          "line": 37,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/daily-reports/write-model.ts",
+          "line": 88,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 135,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "email_logs",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/email/processor.ts",
+          "line": 121,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 105,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/webhook-handler.ts",
+          "line": 144,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "email_outbox",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/billing/notifications.ts",
+          "line": 70,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/enqueue-email.ts",
+          "line": 42,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/processor.ts",
+          "line": 99,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/processor.ts",
+          "line": 162,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/webhook-handler.ts",
+          "line": 114,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "encryption_keys",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "improvement_backlog",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 86,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 185,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 298,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 315,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 393,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "insurance_fee_items",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 246,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "insurance_fee_revision_diffs",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "insurance_fee_schedules",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 222,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "insurance_fee_source_snapshots",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "insurance_fee_sources",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "insurance_fee_warning_definitions",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "internal_job_runs",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 197,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 218,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "line_message_outbox",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-outbox.ts",
+          "line": 54,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 241,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 265,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 296,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 298,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 771,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_clinic_assignments",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/managers/route.ts",
+          "line": 112,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/daily-reports/overview/route.ts",
+          "line": 67,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/auth/manager-scope.ts",
+          "line": 53,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/auth/manager-scope.ts",
+          "line": 72,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/auth/manager-scope.ts",
+          "line": 107,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "master_categories",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "master_patient_types",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/onboarding/seed/route.ts",
+          "line": 127,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "master_payment_methods",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 713,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 1084,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/seed/route.ts",
+          "line": 112,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "menu_billing_profiles",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 472,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/import/route.ts",
+          "line": 139,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/[id]/billing-profiles/[profileId]/route.ts",
+          "line": 147,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/[id]/billing-profiles/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/[id]/billing-profiles/route.ts",
+          "line": 173,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "menu_categories",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "menu_template_billing_profiles",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/menu-templates/[id]/billing-profiles/[profileId]/route.ts",
+          "line": 147,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/[id]/billing-profiles/route.ts",
+          "line": 120,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/[id]/billing-profiles/route.ts",
+          "line": 176,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/import/route.ts",
+          "line": 118,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "menu_templates",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/menu-templates/import/route.ts",
+          "line": 90,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/route.ts",
+          "line": 66,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/route.ts",
+          "line": 120,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/route.ts",
+          "line": 161,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menu-templates/route.ts",
+          "line": 203,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "menus",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/menu-templates/import/route.ts",
+          "line": 109,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/route.ts",
+          "line": 65,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/route.ts",
+          "line": 96,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/route.ts",
+          "line": 121,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/menus/route.ts",
+          "line": 149,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 245,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/settings-detail/route.ts",
+          "line": 149,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/seed/route.ts",
+          "line": 77,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/public/menus/route.ts",
+          "line": 68,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 316,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 358,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 477,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 274,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-availability-service.ts",
+          "line": 660,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 291,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "mfa_setup_sessions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 102,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 140,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 182,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "mfa_usage_stats",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "notifications",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/notifications/route.ts",
+          "line": 123,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/notifications/route.ts",
+          "line": 156,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/notifications/route.ts",
+          "line": 230,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/notifications/route.ts",
+          "line": 256,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/events/route.ts",
+          "line": 393,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/notifications/route.ts",
+          "line": 33,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/notifications/route.ts",
+          "line": 57,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "onboarding_states",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 111,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 304,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/invites/route.ts",
+          "line": 65,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/invites/route.ts",
+          "line": 187,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/profile/route.ts",
+          "line": 98,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/seed/route.ts",
+          "line": 53,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/seed/route.ts",
+          "line": 141,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/status/route.ts",
+          "line": 24,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "patient_outreach_campaigns",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 459,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 652,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 684,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 856,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 939,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "patient_outreach_recipients",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 432,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 485,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 545,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 622,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 783,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 877,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 951,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 985,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "patients",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/clinic/analysis/route.ts",
+          "line": 61,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "profiles",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/(app)/admin/(protected)/session-management/page.tsx",
+          "line": 30,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/admin/actions.ts",
+          "line": 110,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/admin/actions.ts",
+          "line": 127,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/admin/actions.ts",
+          "line": 171,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/admin/callback/route.ts",
+          "line": 44,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 168,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 183,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 190,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 442,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 448,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 604,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/login/actions.ts",
+          "line": 161,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/login/actions.ts",
+          "line": 195,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/login/actions.ts",
+          "line": 214,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/login/actions.ts",
+          "line": 234,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/login/actions.ts",
+          "line": 253,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/managers/route.ts",
+          "line": 204,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 70,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/sessions/route.ts",
+          "line": 95,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 363,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 399,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 533,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 698,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 131,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 196,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 393,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 426,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 503,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 160,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 221,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 418,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 214,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 251,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 495,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 764,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 251,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 378,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 65,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 149,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 257,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 42,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 137,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 78,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 263,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/profile/route.ts",
+          "line": 58,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/profile/route.ts",
+          "line": 79,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/profile/route.ts",
+          "line": 82,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 471,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 180,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/notifications.ts",
+          "line": 22,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 260,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/auth-context.ts",
+          "line": 88,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/auth-context.ts",
+          "line": 99,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "registered_devices",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 90,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 527,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 552,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "reservation_history",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "reservation_notifications",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/line-processor.ts",
+          "line": 459,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 154,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "reservations",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 780,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 847,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/daily-reports/items/route.ts",
+          "line": 958,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/exports/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/clinic-comparison/route.ts",
+          "line": 69,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/staff-analysis/route.ts",
+          "line": 166,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 567,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 671,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 769,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 675,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 778,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 868,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/demand-forecast/route.ts",
+          "line": 81,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 143,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 239,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/outreach.ts",
+          "line": 901,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/reservations/conflict.ts",
+          "line": 37,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-availability-service.ts",
+          "line": 714,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 281,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 353,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-my-page-service.ts",
+          "line": 373,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 600,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 629,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 122,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 145,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 171,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 189,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 205,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 344,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 395,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 416,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 440,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 460,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 478,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 497,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 516,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 532,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "resources",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 373,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 383,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 547,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 708,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 138,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 156,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 129,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 222,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 212,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 273,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 317,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 337,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 388,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/blocks/route.ts",
+          "line": 160,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 129,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/candidates/route.ts",
+          "line": 133,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/staff-analysis/route.ts",
+          "line": 144,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/staff/route.ts",
+          "line": 49,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 252,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/settings-detail/route.ts",
+          "line": 155,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/public/resources/route.ts",
+          "line": 62,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 347,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 417,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 488,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 516,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 123,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 215,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 233,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 259,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 149,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 442,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-notifications.ts",
+          "line": 453,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/reservation-reminders.ts",
+          "line": 268,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-availability-service.ts",
+          "line": 680,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 313,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/public-reservation-service.ts",
+          "line": 338,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/reservation-service.ts",
+          "line": 713,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/staff/shift-requests/access.ts",
+          "line": 116,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "revenue_contexts",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "revenue_estimate_lines",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/revenue-estimates/details/route.ts",
+          "line": 296,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 485,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 544,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "revenue_estimate_overrides",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "revenue_estimate_warnings",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/revenue-estimates/details/route.ts",
+          "line": 302,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 490,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 553,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "revenue_estimates",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/revenue-estimates/details/route.ts",
+          "line": 275,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 382,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/revenue-estimates/recalculate/route.ts",
+          "line": 463,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "revenues",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/clinic/analysis/route.ts",
+          "line": 55,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "security_alerts",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/notifications/security-alerts.ts",
+          "line": 225,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/security-alerts.ts",
+          "line": 365,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "security_events",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/security/events/route.ts",
+          "line": 124,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/events/route.ts",
+          "line": 256,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/events/route.ts",
+          "line": 370,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 56,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 83,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 92,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 100,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 108,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 123,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/sessions/terminate/route.ts",
+          "line": 138,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/stats/route.ts",
+          "line": 77,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 220,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 232,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 243,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 254,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 312,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 411,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 391,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 238,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 283,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 361,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 637,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 899,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "session_policies",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 411,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 779,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "shift_request_audit_logs",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/lib/staff/shift-requests/access.ts",
+          "line": 228,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "shift_request_periods",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/staff/shift-request-periods/[id]/route.ts",
+          "line": 112,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-request-periods/[id]/route.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-request-periods/route.ts",
+          "line": 78,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-request-periods/route.ts",
+          "line": 81,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-request-periods/route.ts",
+          "line": 155,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/[id]/route.ts",
+          "line": 76,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/route.ts",
+          "line": 74,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "shift_requests",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 149,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 224,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/candidates/route.ts",
+          "line": 229,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/[id]/route.ts",
+          "line": 135,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/[id]/route.ts",
+          "line": 221,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/route.ts",
+          "line": 144,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/route.ts",
+          "line": 145,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shift-requests/route.ts",
+          "line": 279,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/api/database/supabase-client.ts",
+          "line": 90,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 351,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 368,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 391,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 540,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 685,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 703,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 130,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 211,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 121,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 195,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 254,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 213,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 266,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 338,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 381,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 778,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 94,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 216,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 327,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 441,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 141,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 432,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/daily-reports/write-model.ts",
+          "line": 62,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/notifications/email/reservation-enqueue.ts",
+          "line": 351,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_clinic_memberships",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/calendar/feed-tokens/route.ts",
+          "line": 108,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 182,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/candidates/route.ts",
+          "line": 166,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/candidates/route.ts",
+          "line": 197,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_invites",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 96,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 229,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 251,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/staff/invites/route.ts",
+          "line": 99,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/staff/invites/route.ts",
+          "line": 122,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/staff/invites/route.ts",
+          "line": 156,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/invites/route.ts",
+          "line": 91,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/invites/route.ts",
+          "line": 120,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_performance",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/dashboard/route.ts",
+          "line": 51,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 132,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_preferences",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/staff/preferences/route.ts",
+          "line": 64,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/preferences/route.ts",
+          "line": 220,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_profiles",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/calendar/feed-tokens/route.ts",
+          "line": 92,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 166,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mobile-uiux/identity.ts",
+          "line": 18,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_shifts",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/calendar/clinic/[token]/route.ts",
+          "line": 64,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
+          "line": 71,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 202,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/assign/route.ts",
+          "line": 474,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/candidates/route.ts",
+          "line": 259,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/rosters/route.ts",
+          "line": 166,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/manager/staff-analysis/route.ts",
+          "line": 192,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 224,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 259,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 354,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 504,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 557,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/shifts/route.ts",
+          "line": 638,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "stripe_webhook_events",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/internal/billing/replay-webhook-event/route.ts",
+          "line": 42,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 226,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 254,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 277,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 413,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "subscriptions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/billing/checkout/route.ts",
+          "line": 185,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/internal/billing/resync-subscription/route.ts",
+          "line": 35,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/admin.ts",
+          "line": 122,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 348,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 362,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 455,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 520,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 548,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 639,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 658,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 703,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/stripe-events.ts",
+          "line": 748,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/subscription-state.ts",
+          "line": 36,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/subscription-state.ts",
+          "line": 74,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/billing/tenant-activation.ts",
+          "line": 152,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "treatment_menu_records",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "treatments",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "user_mfa_settings",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 76,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 110,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 145,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 187,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 235,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/backup-codes.ts",
+          "line": 276,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 169,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 214,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 237,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 273,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/mfa/mfa-manager.ts",
+          "line": 315,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "user_permissions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 208,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
+          "line": 172,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/managers/route.ts",
+          "line": 173,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/[clinic_id]/route.ts",
+          "line": 403,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 371,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 560,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/tenants/route.ts",
+          "line": 738,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 169,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 194,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 202,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/[permission_id]/route.ts",
+          "line": 440,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 128,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 277,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 251,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 424,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 211,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 285,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 449,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 769,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 925,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/route.ts",
+          "line": 939,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 65,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/onboarding/clinic/route.ts",
+          "line": 280,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 452,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/resources/route.ts",
+          "line": 163,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/staff/shift-requests/access.ts",
+          "line": 184,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/staff/shift-requests/actor.ts",
+          "line": 68,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/auth-context.ts",
+          "line": 70,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "user_sessions",
+      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": [
+        {
+          "path": "src/app/api/admin/security/metrics/route.ts",
+          "line": 63,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/sessions/route.ts",
+          "line": 47,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/sessions/terminate/route.ts",
+          "line": 86,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/security/sessions/terminate/route.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/metrics/route.ts",
+          "line": 265,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 143,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 448,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 468,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 570,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/multi-device-manager.ts",
+          "line": 618,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 404,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/security-monitor.ts",
+          "line": 455,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 400,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 523,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 604,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 630,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 648,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 688,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 711,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 737,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 818,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/session-manager.ts",
+          "line": 836,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "visit_stage_definitions",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    },
+    {
+      "name": "visits",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
+    }
+  ],
+  "rpcReferences": [
+    {
+      "name": "activate_billable_store_if_capacity",
+      "calls": [
+        {
+          "path": "src/lib/billing/tenant-activation.ts",
+          "line": 285,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "confirm_daily_report_item_pricing",
+      "calls": [
+        {
+          "path": "src/app/api/daily-reports/items/[id]/pricing/confirm/route.ts",
+          "line": 78,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "convert_shift_requests",
+      "calls": [
+        {
+          "path": "src/app/api/staff/shift-requests/convert/route.ts",
+          "line": 58,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "get_hourly_visit_pattern",
+      "calls": [
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 161,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_patient_period_series",
+      "calls": [
+        {
+          "path": "src/lib/services/manager-patient-period-service.ts",
+          "line": 45,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_patient_period_totals",
+      "calls": [
+        {
+          "path": "src/lib/services/manager-patient-period-service.ts",
+          "line": 21,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_revenue_context_breakdown",
+      "calls": [
+        {
+          "path": "src/lib/services/manager-revenue-service.ts",
+          "line": 70,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_revenue_period_series",
+      "calls": [
+        {
+          "path": "src/lib/services/manager-revenue-service.ts",
+          "line": 46,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "manager_revenue_period_totals",
+      "calls": [
+        {
+          "path": "src/lib/services/manager-revenue-service.ts",
+          "line": 22,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "replace_manager_clinic_assignments",
+      "calls": [
+        {
+          "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
+          "line": 318,
+          "clientModule": false
+        }
+      ]
+    }
+  ],
+  "nonCatalogFromReferences": [
+    {
+      "name": "daily_report_revenue_breakdown_summary",
+      "calls": [
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 453,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_report_revenue_context_summary",
+      "calls": [
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 441,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_report_revenue_estimate_summary",
+      "calls": [
+        {
+          "path": "src/app/api/revenue/route.ts",
+          "line": 447,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "daily_revenue_summary",
+      "calls": [
+        {
+          "path": "src/api/gemini/ai-analysis-service.ts",
+          "line": 196,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/ai-comments/route.ts",
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/ai-comments/route.ts",
+          "line": 139,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/ai-comments/route.ts",
+          "line": 152,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/chat/route.ts",
+          "line": 133,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/admin/ai-insights.ts",
+          "line": 264,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 117,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/dashboard/read-model.ts",
+          "line": 153,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 60,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 162,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "patient_visit_summary",
+      "calls": [
+        {
+          "path": "src/api/gemini/ai-analysis-service.ts",
+          "line": 209,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/admin/ai-insights.ts",
+          "line": 270,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 120,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 185,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/patient-analysis-service.ts",
+          "line": 344,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/patient-analysis-service.ts",
+          "line": 365,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/patient-analysis-service.ts",
+          "line": 426,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "reservation_list_view",
+      "calls": [
+        {
+          "path": "src/app/api/manager/dashboard/route.ts",
+          "line": 93,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/home/route.ts",
+          "line": 66,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 307,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/mobile-uiux/reservations/route.ts",
+          "line": 430,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 568,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 695,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/reservations/route.ts",
+          "line": 928,
+          "clientModule": false
+        }
+      ]
+    },
+    {
+      "name": "staff_performance_summary",
+      "calls": [
+        {
+          "path": "src/api/gemini/ai-analysis-service.ts",
+          "line": 203,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/staff/route.ts",
+          "line": 128,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/admin/ai-insights.ts",
+          "line": 275,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 89,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/services/analytics-read-service.ts",
+          "line": 207,
+          "clientModule": false
+        }
+      ]
+    }
+  ]
+}

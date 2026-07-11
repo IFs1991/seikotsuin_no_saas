@@ -1,0 +1,75 @@
+agent: migration_safety_auditor
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: PROGRAM-REPLAY-TYPES-001
+    severity: CRITICAL
+    category: MIGRATION
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/migrations-local.txt:1
+      - docs/stabilization/evidence/commercial-hardening/migrations-remote.txt:1
+      - docs/stabilization/evidence/commercial-hardening/types-local.sha256:1
+      - docs/stabilization/evidence/commercial-hardening/types-remote.sha256:1
+    failure_mode: "Intentional program release BLOCK, not a PR-00 defect: the existing local stack is two migrations behind remote, and committed types differ from remote generation."
+    exploit_or_reproduction: "Local type verification passes at 48 migrations while remote verification raises COMM-TYPES-001."
+    required_fix: "PR-01 must perform a clean 50-migration replay, regenerate types with the pinned runtime/CLI, prove local/remote parity, and enforce it in required CI."
+    blocking: false
+  - id: PROGRAM-TENANT-INTEGRITY-001
+    severity: CRITICAL
+    category: DATA_INTEGRITY
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/relation-preflight-before.csv:1
+      - scripts/commercial-hardening/red-contracts/04_required_composite_fks.sql:31
+      - scripts/commercial-hardening/red-contracts/05_parent_rehome_fixture.sql:58
+    failure_mode: "Intentional program release BLOCK, not a PR-00 defect: current rows have zero observed mismatch/orphan counts, but required composite FKs and parent-rehome protection remain absent."
+    exploit_or_reproduction: "The fixed-UUID parent-rehome fixture creates a cross-clinic reservation relation and raises COMM-FK-002."
+    required_fix: "PR-05/06 must apply zero-result preflights, validated composite FKs, preserved delete actions, supporting indexes, and cross-tenant negative tests."
+    blocking: false
+  - id: PROGRAM-ID-SEMANTICS-001
+    severity: HIGH
+    category: DATA_INTEGRITY
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/staff-id-semantics-decisions.yaml:7
+    failure_mode: "Intentional fail-closed program BLOCK: four staff_id columns and the absent legacy staff.user_id mapping remain unresolved rather than being guessed."
+    exploit_or_reproduction: "Remote values either match multiple ID domains or have no rows; names and current single-column FKs do not prove semantic ownership."
+    required_fix: "Resolve each BLOCK with reviewed business semantics and runtime evidence before adding or changing related constraints."
+    blocking: false
+  - id: PROGRAM-RELEASE-QUALIFICATION-001
+    severity: HIGH
+    category: OPERATIONS
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/staging/README.md:3
+      - docs/stabilization/evidence/commercial-hardening/restore-drill/README.md:3
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:35
+    failure_mode: "Intentional program release BLOCK: migration replay, staging application, rollback exercise, and restore capability remain unverified."
+    exploit_or_reproduction: null
+    required_fix: "Complete PR-01 replay evidence and PR-12 staging/restore qualification before any commercial-readiness claim."
+    blocking: false
+unverified:
+  - "Clean migration and seed replay from zero were not run."
+  - "Only the remote generated-type hash is retained; the semantic type diff is not preserved in PR-00 evidence."
+  - "Future migration lock duration, statement duration, table-size assumptions, and maintenance-window thresholds remain unmeasured."
+  - "Dynamic/transitive runtime function callers remain explicitly unknown."
+  - "Supabase DB tests, Playwright, staging, and restore drill remain NOT_RUN."
+tests_observed:
+  - command: "git diff --name-only base -- supabase/migrations supabase/rollbacks supabase/tests"
+    result: PASS
+  - command: "git diff --check"
+    result: PASS
+  - command: "commercial inventory drift checks"
+    result: PASS
+  - command: "two consecutive local DB catalog checks"
+    result: PASS
+  - command: "fresh local generated-type parity"
+    result: PASS
+  - command: "fresh remote generated-type parity"
+    result: FAIL
+  - command: "npm run commercial:red:db"
+    result: PASS
+residual_risk:
+  - "No active PR-00 migration-safety implementation defect remains from the prior audit."
+  - "PR-00 correctly contains no production migration, rollback, or Supabase DB-test SQL change."
+  - "Both writing RED fixtures always raise inside a single statement, so their local database changes roll back."
+  - "Zero current relation mismatches are a snapshot, not an enforced invariant."

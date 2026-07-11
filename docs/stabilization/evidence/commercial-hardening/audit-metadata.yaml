@@ -1,0 +1,53 @@
+schema_version: 1
+program: commercial-hardening
+program_pr: PR-00
+captured_at: "2026-07-11T23:02:05+09:00"
+base_sha: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+head: WORKTREE_UNCOMMITTED
+branch: codex/commercial-hardening-pr00
+environment:
+  os: windows
+  dependency_install_node: 22.22.2
+  verification_node: 24.18.0
+  npm: 10.9.7
+  supabase_cli: 2.109.0
+targets:
+  repository:
+    kind: migration_files
+    migration_count: 50
+  local:
+    kind: existing_local_supabase
+    migration_count: 48
+    catalog_suffix: local-before
+  remote:
+    kind: supabase_project
+    project_ref: qnanuoqveidwvacvbhqp
+    region: ap-northeast-1
+    postgres: 17.6.1.104
+    migration_count: 50
+    catalog_suffix: before
+collection:
+  remote_catalog: read-only Supabase SQL API
+  remote_advisors: read-only Supabase advisor API
+  local_catalog: supabase db query --local
+  source_inventory: deterministic TypeScript/JavaScript AST and literal-call scans
+  cli_telemetry: disabled with SUPABASE_TELEMETRY_DISABLED and DO_NOT_TRACK
+safety:
+  production_schema_writes: false
+  production_data_writes: false
+  auth_setting_writes: false
+  destructive_local_commands: false
+  committed_generated_types_overwritten: false
+known_drift:
+  migration_count_delta: 2
+  migration_version_sets:
+    repository_vs_remote: MATCH_50_OF_50
+    local_missing_latest: 2
+  migration_name_mismatches:
+    - version: "20260508000100"
+      repository: fix_reservation_list_view_security_invoker
+      remote: fix_reservation_list_view_security_invoker.sql
+  local_types_match_committed: true
+  remote_types_match_committed: false
+  remote_types_sha256: a9966e899a80c2c2efc63ca3b97ebffbbab71fe2e5dc36daf26b5db77bd0f17e
+  local_types_sha256: 7dbf841ccb70f3c110346b5285994599434bbeaaef5dd5ca6d0d18bfd0f610ab

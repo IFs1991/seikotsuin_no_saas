@@ -1,0 +1,189 @@
+schema_version: 1
+generated_by: scripts/commercial-hardening/generate-staff-id-decisions.mjs
+limitations:
+  - "Runtime references are conservative literal table-call candidates; computed names and transitive column flow remain UNKNOWN."
+  - "ID equality can be coincidental and never overrides catalog/runtime semantic conflicts."
+columns:
+  - column: user_permissions.staff_id
+    semantic_owner: unknown
+    current_fk: "public.staff.id"
+    runtime_writers:
+      - "src/app/(public)/invite/actions.ts:acceptInviteForUser (column observed in symbol)"
+      - "src/app/api/admin/tenants/[clinic_id]/route.ts:enablePendingClinicAdminResources (column observed in symbol)"
+      - "src/app/api/admin/tenants/route.ts:enablePendingClinicAdminResources (column observed in symbol)"
+      - "src/app/api/admin/tenants/route.ts:rollbackCreatedClinicAdminResources (column observed in symbol)"
+      - "src/app/api/admin/tenants/route.ts:upsertClinicAdminPermission (column observed in symbol)"
+      - "src/app/api/admin/users/[permission_id]/route.ts:PATCH (column observed in symbol)"
+      - "src/app/api/admin/users/accounts/route.ts:POST (column observed in symbol)"
+      - "src/app/api/admin/users/accounts/route.ts:rollbackCreatedAccount (column observed in symbol)"
+      - "src/app/api/admin/users/route.ts:POST (column observed in symbol)"
+      - "src/app/api/admin/users/route.ts:createAccountPermission (column observed in symbol)"
+      - "src/app/api/admin/users/route.ts:rollbackCreatedAccount (column observed in symbol)"
+      - "src/app/api/onboarding/clinic/route.ts:POST (column observed in symbol)"
+    runtime_readers:
+      - "src/app/(public)/invite/actions.ts:acceptInviteForUser (table read; projection may be implicit)"
+      - "src/app/api/admin/managers/[managerUserId]/clinics/route.ts:fetchManagerPrimaryClinic (table read; projection may be implicit)"
+      - "src/app/api/admin/managers/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/[permission_id]/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/admin/users/[permission_id]/route.ts:deletePermission (table read; projection may be implicit)"
+      - "src/app/api/admin/users/[permission_id]/route.ts:loadExistingPermission (table read; projection may be implicit)"
+      - "src/app/api/admin/users/accounts/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/admin/users/candidates/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/candidates/route.ts:fetchUnassignedProfileCandidates (table read; projection may be implicit)"
+      - "src/app/api/admin/users/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/admin/users/route.ts:createAccountPermission (table read; projection may be implicit)"
+      - "src/app/api/onboarding/clinic/route.ts:verifyInitialOnboardingEligibility (table read; projection may be implicit)"
+      - "src/app/api/reservations/route.ts:ensureReservationStaffResource (table read; projection may be implicit)"
+      - "src/app/api/resources/route.ts:GET (table read; projection may be implicit)"
+      - "src/lib/staff/shift-requests/access.ts:resolveSubmittedForRole (table read; projection may be implicit)"
+      - "src/lib/staff/shift-requests/actor.ts:resolveActorStaffResourceId (table read; projection may be implicit)"
+      - "src/lib/supabase/auth-context.ts:fetchUserPermissionsRecord (table read; projection may be implicit)"
+    data_match_rate:
+      auth.users.id: 1.0000
+      profiles.user_id: 1.0000
+      staff.id: 1.0000
+      resources.id: 0.9000
+      staff_profiles.id: 0.0000
+    decision: BLOCK
+    rationale: "Current FK points to legacy staff.id while runtime writes use Auth user IDs; coincident ID matches do not prove ownership."
+  - column: staff_preferences.staff_id
+    semantic_owner: unknown
+    current_fk: "public.resources.id"
+    runtime_writers:
+      - "src/app/api/staff/preferences/route.ts:POST (column observed in symbol)"
+    runtime_readers:
+      - "src/app/api/staff/preferences/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/staff/preferences/route.ts:POST (table read; projection may be implicit)"
+    data_match_rate:
+      auth.users.id: UNKNOWN_NO_ROWS
+      profiles.user_id: UNKNOWN_NO_ROWS
+      staff.id: UNKNOWN_NO_ROWS
+      resources.id: UNKNOWN_NO_ROWS
+      staff_profiles.id: UNKNOWN_NO_ROWS
+    decision: BLOCK
+    rationale: "No remote rows exist; current resources.id FK and names alone are insufficient semantic proof."
+  - column: staff_shifts.staff_id
+    semantic_owner: unknown
+    current_fk: "public.resources.id"
+    runtime_writers:
+      - "src/app/api/manager/rosters/assign/route.ts:POST (column observed in symbol)"
+      - "src/app/api/staff/shifts/route.ts:PATCH (column observed in symbol)"
+      - "src/app/api/staff/shifts/route.ts:POST (column observed in symbol)"
+    runtime_readers:
+      - "src/app/api/calendar/clinic/[token]/route.ts:loadClinicShifts (table read; projection may be implicit)"
+      - "src/app/api/calendar/staff/[token]/route.ts:loadStaffShifts (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/assign/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/assign/route.ts:hasOverlappingShift (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/candidates/route.ts:fetchExistingShifts (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/route.ts:fetchRosterRows (table read; projection may be implicit)"
+      - "src/app/api/manager/staff-analysis/route.ts:fetchStaffShifts (table read; projection may be implicit)"
+      - "src/app/api/staff/shifts/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/staff/shifts/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/staff/shifts/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/staff/shifts/route.ts:hasOverlappingBulkShift (table read; projection may be implicit)"
+      - "src/app/api/staff/shifts/route.ts:hasOverlappingShift (table read; projection may be implicit)"
+    data_match_rate:
+      auth.users.id: 1.0000
+      profiles.user_id: 1.0000
+      staff.id: 1.0000
+      resources.id: 1.0000
+      staff_profiles.id: 0.0000
+    decision: BLOCK
+    rationale: "All 54 values match several ID domains; current resources.id FK is evidence but not enough to resolve every runtime writer."
+  - column: shift_requests.staff_id
+    semantic_owner: unknown
+    current_fk: "public.resources.id"
+    runtime_writers:
+      - "src/app/api/staff/shift-requests/[id]/route.ts:PATCH (column observed in symbol)"
+      - "src/app/api/staff/shift-requests/route.ts:POST (column observed in symbol)"
+    runtime_readers:
+      - "src/app/api/manager/rosters/assign/route.ts:hasBlockingShiftRequest (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/assign/route.ts:loadSourceRequest (table read; projection may be implicit)"
+      - "src/app/api/manager/rosters/candidates/route.ts:fetchShiftRequests (table read; projection may be implicit)"
+      - "src/app/api/staff/shift-requests/[id]/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/staff/shift-requests/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/staff/shift-requests/route.ts:POST (table read; projection may be implicit)"
+    data_match_rate:
+      auth.users.id: UNKNOWN_NO_ROWS
+      profiles.user_id: UNKNOWN_NO_ROWS
+      staff.id: UNKNOWN_NO_ROWS
+      resources.id: UNKNOWN_NO_ROWS
+      staff_profiles.id: UNKNOWN_NO_ROWS
+    decision: BLOCK
+    rationale: "No remote rows exist; the resources.id FK must be reconciled with Auth-user-facing runtime paths before adding constraints."
+  - column: profiles.user_id
+    semantic_owner: auth.users.id
+    current_fk: "auth.users.id"
+    runtime_writers:
+      - "src/app/(public)/admin/actions.ts:ensureProfileExists (column observed in symbol)"
+      - "src/app/(public)/admin/actions.ts:syncProfileAccess (column observed in symbol)"
+      - "src/app/(public)/invite/actions.ts:acceptInviteForUser (column observed in symbol)"
+      - "src/app/(public)/invite/actions.ts:loginAndAcceptInvite (column observed in symbol)"
+      - "src/app/(public)/invite/actions.ts:signupAndAcceptInvite (column observed in symbol)"
+      - "src/app/(public)/login/actions.ts:clinicLogin (column observed in symbol)"
+      - "src/app/api/admin/tenants/route.ts:rollbackCreatedClinicAdminResources (column observed in symbol)"
+      - "src/app/api/admin/tenants/route.ts:upsertClinicAdminBaseRecords (column observed in symbol)"
+      - "src/app/api/admin/users/accounts/route.ts:PATCH (column observed in symbol)"
+      - "src/app/api/admin/users/accounts/route.ts:POST (column observed in symbol)"
+      - "src/app/api/admin/users/accounts/route.ts:rollbackCreatedAccount (column observed in symbol)"
+      - "src/app/api/admin/users/route.ts:rollbackCreatedAccount (column observed in symbol)"
+      - "src/app/api/admin/users/route.ts:upsertCreatedAccountBaseRecords (column observed in symbol)"
+      - "src/app/api/beta/backlog/route.ts:DELETE (column observed in symbol)"
+      - "src/app/api/beta/backlog/route.ts:POST (column observed in symbol)"
+      - "src/app/api/beta/metrics/route.ts:POST (column observed in symbol)"
+      - "src/app/api/onboarding/clinic/route.ts:POST (column observed in symbol)"
+      - "src/app/api/onboarding/profile/route.ts:POST (column observed in symbol)"
+      - "src/app/api/reservations/route.ts:ensureReservationStaffResource (column observed in symbol)"
+    runtime_readers:
+      - "src/app/(app)/admin/(protected)/session-management/page.tsx:SessionManagementPage (table read; projection may be implicit)"
+      - "src/app/(public)/admin/actions.ts:ensureProfileExists (table read; projection may be implicit)"
+      - "src/app/(public)/admin/callback/route.ts:GET (operation-unknown)"
+      - "src/app/(public)/invite/actions.ts:acceptInviteForUser (table read; projection may be implicit)"
+      - "src/app/(public)/invite/actions.ts:signupAndAcceptInvite (table read; projection may be implicit)"
+      - "src/app/(public)/login/actions.ts:clinicLogin (table read; projection may be implicit)"
+      - "src/app/api/admin/managers/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/security/metrics/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/security/sessions/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/accounts/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/admin/users/candidates/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/candidates/route.ts:fetchProfileMatchedIds (table read; projection may be implicit)"
+      - "src/app/api/admin/users/candidates/route.ts:fetchUnassignedProfileCandidates (table read; projection may be implicit)"
+      - "src/app/api/admin/users/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/admin/users/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/beta/backlog/route.ts:DELETE (table read; projection may be implicit)"
+      - "src/app/api/beta/backlog/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/beta/backlog/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/beta/feedback/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/beta/feedback/route.ts:PATCH (table read; projection may be implicit)"
+      - "src/app/api/beta/feedback/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/beta/metrics/route.ts:GET (table read; projection may be implicit)"
+      - "src/app/api/beta/metrics/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/onboarding/clinic/route.ts:verifyInitialOnboardingEligibility (table read; projection may be implicit)"
+      - "src/app/api/onboarding/profile/route.ts:POST (table read; projection may be implicit)"
+      - "src/app/api/reservations/route.ts:ensureReservationStaffResource (table read; projection may be implicit)"
+      - "src/app/api/resources/route.ts:GET (table read; projection may be implicit)"
+      - "src/lib/billing/notifications.ts:fetchBillingAdminRecipients (table read; projection may be implicit)"
+      - "src/lib/session-manager.ts:resolveUserContext (table read; projection may be implicit)"
+      - "src/lib/supabase/auth-context.ts:fetchProfileStatus (table read; projection may be implicit)"
+    data_match_rate:
+      auth.users.id: 1.0000
+      profiles.user_id: 1.0000
+      staff.id: 0.9091
+      resources.id: 0.8182
+      staff_profiles.id: 0.0000
+    decision: KEEP
+    rationale: "Catalog FK and observed non-null values match auth.users.id; sensitive-column update authorization is a separate RED risk."
+  - column: staff.user_id
+    semantic_owner: unknown
+    current_fk: "COLUMN_ABSENT"
+    runtime_writers: []
+    runtime_readers: []
+    data_match_rate:
+      auth.users.id: UNKNOWN_NO_ROWS
+      profiles.user_id: UNKNOWN_NO_ROWS
+      staff.id: UNKNOWN_NO_ROWS
+      resources.id: UNKNOWN_NO_ROWS
+      staff_profiles.id: UNKNOWN_NO_ROWS
+    decision: BLOCK
+    rationale: "The legacy public.staff table has no user_id column; no equivalent mapping may be invented."

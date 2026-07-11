@@ -1,0 +1,48 @@
+agent: rls_red_team
+verdict: PASS_WITH_RISK
+scope:
+  base: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+  head: c12f7c13b0dca2c05e4ac7ced53b3bf9e665592e
+findings:
+  - id: BASE-JEST-LOGIN-001
+    severity: HIGH
+    category: TEST
+    evidence:
+      - docs/stabilization/evidence/commercial-hardening/green-tests.md:25
+      - src/__tests__/e2e/auth-login-flow.test.ts:login-redirect-expectation
+      - src/__tests__/e2e/happy-path.test.ts:login-redirect-expectation
+    failure_mode: "The broader server Jest project has two login redirect failures. The tests and login action are unchanged from origin/main; these E2E paths are outside DOD-11's documented non-E2E command and remain a separate baseline risk."
+    exploit_or_reproduction: "Each test fails individually because the unchanged login action returns a system-error result object instead of rejecting with a redirect."
+    required_fix: "Use a separate stabilization task to determine whether the login action, redirect test harness, or expected contract is wrong; do not weaken or skip the expectations in PR-00."
+    blocking: false
+unverified:
+  - "supabase db reset was NOT_RUN because destructive-operation approval was not given."
+  - "Supabase DB tests, Playwright, staging, canary, and restore drill are NOT_RUN."
+  - "No adversarial mutation was run against remote production; COMM-AUTH-001 reproduced the escalation only on local DB."
+  - "Final classification, billing, and service-role ordering for 117 mutation handlers remain UNKNOWN until PR-10."
+tests_observed:
+  - command: "git diff --check"
+    result: PASS
+  - command: "unchanged failing login tests and login actions versus origin/main"
+    result: PASS
+  - command: "lint, type checks, secret scan, and production build"
+    result: PASS
+  - command: "client Jest project"
+    result: PASS
+  - command: "server Jest project"
+    result: FAIL
+  - command: "normal server Jest discovery red-contract exclusion"
+    result: PASS
+  - command: "commercial inventory drift checks"
+    result: PASS
+  - command: "npm run commercial:red:db"
+    result: PASS
+  - command: "npm run commercial:red:invite"
+    result: PASS
+  - command: "fixed-UUID cleanup query across all six fixture tables"
+    result: PASS
+residual_risk:
+  - "No remaining blocking defect was found in PR-00 inventory, provenance, semantic decisions, caller/dependency mapping, behavioral RED contracts, or cleanup evidence."
+  - "COMM-AUTH-001 proves profiles self-escalation and cross-tenant clinic_settings access; commercial release remains blocked until PR-02/03."
+  - "JWT fallback, replay/grant/function exposure, composite integrity, staff-ID semantics, invite atomicity, and remote type drift remain assigned to later PRs."
+  - "Program findings do not block this no-production-migration PR-00, but they continue to block the overall commercial migration."

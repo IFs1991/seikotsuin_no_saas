@@ -1,0 +1,6 @@
+"column_name","current_fk_target","rows_checked","matches_auth_users","matches_profiles_user_id","matches_staff_id","matches_resources_id","matches_staff_profiles_id"
+"profiles.user_id","auth.users.id","11","11","11","10","9","0"
+"shift_requests.staff_id","public.resources.id","0","0","0","0","0","0"
+"staff_preferences.staff_id","public.resources.id","0","0","0","0","0","0"
+"staff_shifts.staff_id","public.resources.id","54","54","54","54","54","0"
+"user_permissions.staff_id","public.staff.id","10","10","10","10","9","0"
