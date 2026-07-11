@@ -1,12 +1,16 @@
 import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
 
 function buildSupabase(result: { data: unknown; error: unknown } | (() => never)) {
-  const inFn =
-    typeof result === 'function' ? jest.fn(result) : jest.fn(async () => result);
+  const resolved = typeof result === 'function' ? null : result;
 
   const builder = {
     select: jest.fn(() => builder),
-    in: inFn,
+    in: typeof result === 'function' ? jest.fn(result) : jest.fn(() => builder),
+    eq: jest.fn(() => builder),
+    then: (
+      onFulfilled: (value: unknown) => unknown,
+      onRejected?: (reason: unknown) => unknown
+    ) => Promise.resolve(resolved).then(onFulfilled, onRejected),
   };
 
   return {
@@ -57,6 +61,17 @@ describe('fetchClinicNames', () => {
     ]);
 
     expect(result).toEqual([{ id: 'clinic-1', name: 'Clinic One' }]);
+  });
+
+  it('filters to active clinics like the PC accessible-clinics endpoint', async () => {
+    const supabase = buildSupabase({
+      data: [{ id: 'clinic-1', name: 'Clinic One' }],
+      error: null,
+    });
+
+    await fetchClinicNames(supabase as any, ['clinic-1']);
+
+    expect(supabase.builder.eq).toHaveBeenCalledWith('is_active', true);
   });
 
   it('returns [] on query error (fail-closed)', async () => {
