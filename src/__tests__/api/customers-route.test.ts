@@ -10,7 +10,11 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { canAccessClinicScope, createScopedAdminContext } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
-import type { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
+import {
+  decodeCustomerCursor,
+  encodeCustomerCursor,
+} from '@/app/api/customers/schema';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -57,22 +61,27 @@ describe('GET /api/customers', () => {
 
   it('lists customers through scoped admin client after route-level scope guard', async () => {
     const userScopedSupabase = { from: jest.fn() };
-    const order = jest.fn().mockReturnValue({
-      limit: jest.fn().mockResolvedValue({
-        data: [
-          {
-            id: validId,
-            name: 'Persisted Customer',
-            phone: '090-0000-0000',
-            email: null,
-            notes: null,
-            custom_attributes: null,
-          },
-        ],
-        error: null,
-      }),
+    const limit = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: validId,
+          name: 'Persisted Customer',
+          phone: '090-0000-0000',
+          email: null,
+          notes: null,
+          custom_attributes: null,
+          created_at: '2026-07-10T00:00:00.000Z',
+          updated_at: '2026-07-10T00:00:00.000Z',
+          consent_marketing: false,
+          consent_reminder: true,
+          line_user_id: null,
+        },
+      ],
+      error: null,
     });
-    const eqDeleted = jest.fn().mockReturnValue({ order });
+    const orderById = jest.fn().mockReturnValue({ limit });
+    const orderByCreatedAt = jest.fn().mockReturnValue({ order: orderById });
+    const eqDeleted = jest.fn().mockReturnValue({ order: orderByCreatedAt });
     const eqClinic = jest.fn().mockReturnValue({ eq: eqDeleted });
     const select = jest.fn().mockReturnValue({ eq: eqClinic });
     const from = jest.fn().mockReturnValue({ select });
@@ -120,13 +129,112 @@ describe('GET /api/customers', () => {
     expect(assertClinicInScope).toHaveBeenCalledWith(validClinicId);
     expect(from).toHaveBeenCalledWith('customers');
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
-    expect(json.data).toEqual([
-      {
-        id: validId,
-        name: 'Persisted Customer',
-        phone: '090-0000-0000',
+    expect(orderByCreatedAt).toHaveBeenCalledWith('created_at', {
+      ascending: false,
+    });
+    expect(orderById).toHaveBeenCalledWith('id', { ascending: false });
+    expect(limit).toHaveBeenCalledWith(51);
+    expect(json.data).toEqual({
+      items: [
+        {
+          id: validId,
+          name: 'Persisted Customer',
+          phone: '090-0000-0000',
+          consentMarketing: false,
+          consentReminder: true,
+          createdAt: '2026-07-10T00:00:00.000Z',
+          updatedAt: '2026-07-10T00:00:00.000Z',
+        },
+      ],
+      nextCursor: null,
+    });
+  });
+
+  it('uses the opaque cursor with deterministic ordering and returns a next cursor', async () => {
+    const cursorPayload = {
+      createdAt: '2026-07-10T00:00:00.000Z',
+      id: validId,
+    };
+    const encodedCursor = encodeCustomerCursor(cursorPayload);
+    const nextId = '123e4567-e89b-12d3-a456-426614174002';
+    const limit = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: validId,
+          name: 'First Customer',
+          phone: '090-0000-0001',
+          email: null,
+          notes: null,
+          custom_attributes: null,
+          created_at: '2026-07-09T00:00:00.000Z',
+          updated_at: '2026-07-09T00:00:00.000Z',
+          consent_marketing: false,
+          consent_reminder: false,
+          line_user_id: null,
+        },
+        {
+          id: nextId,
+          name: 'Lookahead Customer',
+          phone: '090-0000-0002',
+          email: null,
+          notes: null,
+          custom_attributes: null,
+          created_at: '2026-07-08T00:00:00.000Z',
+          updated_at: '2026-07-08T00:00:00.000Z',
+          consent_marketing: false,
+          consent_reminder: false,
+          line_user_id: null,
+        },
+      ],
+      error: null,
+    });
+    const orderById = jest.fn().mockReturnValue({ limit });
+    const orderByCreatedAt = jest.fn().mockReturnValue({ order: orderById });
+    const cursorFilter = jest.fn().mockReturnValue({ order: orderByCreatedAt });
+    const eqDeleted = jest.fn().mockReturnValue({ or: cursorFilter });
+    const eqClinic = jest.fn().mockReturnValue({ eq: eqDeleted });
+    const select = jest.fn().mockReturnValue({ eq: eqClinic });
+    const from = jest.fn().mockReturnValue({ select });
+    const assertClinicInScope = jest.fn();
+    const permissions = {
+      role: 'clinic_admin',
+      clinic_id: validClinicId,
+      clinic_scope_ids: [validClinicId],
+    };
+
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth: {
+        id: 'user-1',
+        email: 'clinic-admin@example.com',
+        role: 'clinic_admin',
       },
-    ]);
+      permissions,
+      supabase: { from: jest.fn() },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from },
+      assertClinicInScope,
+    });
+
+    const { GET } = await import('@/app/api/customers/route');
+    const request = new NextRequest(
+      `http://localhost/api/customers?clinic_id=${validClinicId}&limit=1&cursor=${encodedCursor}`
+    );
+    const response = await GET(request);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(cursorFilter).toHaveBeenCalledWith(
+      `created_at.lt.${cursorPayload.createdAt},and(created_at.eq.${cursorPayload.createdAt},id.lt.${cursorPayload.id})`
+    );
+    expect(limit).toHaveBeenCalledWith(2);
+    expect(json.data.items).toHaveLength(1);
+    expect(json.data.items[0].id).toBe(validId);
+    expect(decodeCustomerCursor(json.data.nextCursor)).toEqual({
+      createdAt: '2026-07-09T00:00:00.000Z',
+      id: validId,
+    });
   });
 
   it('returns 403 for manager customer list access', async () => {

@@ -4,6 +4,37 @@ import type { Database, Json } from '@/types/supabase';
 type CustomerInsertRow = Database['public']['Tables']['customers']['Insert'];
 type CustomerUpdateRow = Database['public']['Tables']['customers']['Update'];
 
+const customerCursorPayloadSchema = z
+  .object({
+    createdAt: z.string().datetime({ offset: true }),
+    id: z.string().uuid(),
+  })
+  .strict();
+
+export type CustomerCursorPayload = z.infer<typeof customerCursorPayloadSchema>;
+
+export const DEFAULT_CUSTOMER_PAGE_SIZE = 50;
+export const MAX_CUSTOMER_PAGE_SIZE = 100;
+
+export function encodeCustomerCursor(payload: CustomerCursorPayload): string {
+  const parsed = customerCursorPayloadSchema.parse(payload);
+  return Buffer.from(JSON.stringify(parsed), 'utf8').toString('base64url');
+}
+
+export function decodeCustomerCursor(
+  value: string
+): CustomerCursorPayload | null {
+  try {
+    const decoded: unknown = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8')
+    );
+    const parsed = customerCursorPayloadSchema.safeParse(decoded);
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 検索クエリ用スキーマ
  * - 最大100文字
@@ -48,6 +79,22 @@ export const customersQuerySchema = z.object({
   clinic_id: z.string().uuid('有効なクリニックIDを指定してください'),
   q: searchQuerySchema,
   id: z.string().uuid('有効な顧客IDを指定してください').optional(),
+  limit: z.coerce
+    .number()
+    .int('limitは整数で指定してください')
+    .min(1, 'limitは1以上で指定してください')
+    .max(
+      MAX_CUSTOMER_PAGE_SIZE,
+      `limitは${MAX_CUSTOMER_PAGE_SIZE}以下で指定してください`
+    )
+    .default(DEFAULT_CUSTOMER_PAGE_SIZE),
+  cursor: z
+    .string()
+    .min(1, 'cursorを指定してください')
+    .max(512, 'cursorが長すぎます')
+    .regex(/^[A-Za-z0-9_-]+$/, 'cursorが不正です')
+    .refine(value => decodeCustomerCursor(value) !== null, 'cursorが不正です')
+    .optional(),
 });
 
 export const customerInsertSchema = z

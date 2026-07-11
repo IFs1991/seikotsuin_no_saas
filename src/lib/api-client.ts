@@ -98,6 +98,22 @@ type CustomerApiItem = {
   email?: string;
   notes?: string;
   customAttributes?: Record<string, unknown>;
+  lineUserId?: string;
+  consentMarketing?: boolean;
+  consentReminder?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type CustomerListQuery = {
+  q?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+type CustomerListApiPage = {
+  items: CustomerApiItem[];
+  nextCursor: string | null;
 };
 
 type ChatSendRequest = {
@@ -573,11 +589,15 @@ export const api = {
       apiClient.get<PatientAnalysisData>('/api/customers/analysis', {
         clinic_id: clinicId,
       }),
-    getList: (clinicId: string, q?: string) =>
-      apiClient.get<CustomerApiItem[]>('/api/customers', {
+    getList: (clinicId: string, query: string | CustomerListQuery = {}) => {
+      const normalizedQuery = typeof query === 'string' ? { q: query } : query;
+      return apiClient.get<CustomerListApiPage>('/api/customers', {
         clinic_id: clinicId,
-        ...(q && { q }),
-      }),
+        ...(normalizedQuery.q ? { q: normalizedQuery.q } : {}),
+        ...(normalizedQuery.limit ? { limit: normalizedQuery.limit } : {}),
+        ...(normalizedQuery.cursor ? { cursor: normalizedQuery.cursor } : {}),
+      });
+    },
     getById: (clinicId: string, id: string) =>
       apiClient.get<CustomerApiItem>('/api/customers', {
         clinic_id: clinicId,

@@ -59,11 +59,14 @@ function PatientsListContent() {
   const {
     patients,
     isLoading,
+    isLoadingMore,
+    hasMore,
     error,
     searchQuery,
     setSearchQuery,
     createPatient,
     updatePatient,
+    loadMore,
   } = usePatientsList();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -208,7 +211,24 @@ function PatientsListContent() {
                 <Loader2 className='h-8 w-8 animate-spin text-gray-400' />
               </div>
             ) : (
-              <PatientsTable patients={patients} onEdit={handleOpenEdit} />
+              <div className='space-y-4'>
+                <PatientsTable patients={patients} onEdit={handleOpenEdit} />
+                {hasMore && (
+                  <div className='flex justify-center'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => void loadMore()}
+                      disabled={isLoadingMore}
+                    >
+                      {isLoadingMore && (
+                        <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                      )}
+                      さらに読み込む
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

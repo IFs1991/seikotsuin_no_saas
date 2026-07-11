@@ -1,5 +1,7 @@
 import {
   customersQuerySchema,
+  decodeCustomerCursor,
+  encodeCustomerCursor,
   searchQuerySchema,
 } from '@/app/api/customers/schema';
 
@@ -62,6 +64,59 @@ describe('customersQuerySchema', () => {
       if (result.success) {
         expect(result.data.q).toBe('田中');
       }
+    });
+  });
+
+  describe('ページング', () => {
+    const clinicId = '550e8400-e29b-41d4-a716-446655440000';
+
+    it('limitを省略すると50件、最大100件まで受け入れる', () => {
+      const defaultResult = customersQuerySchema.safeParse({
+        clinic_id: clinicId,
+      });
+      expect(defaultResult.success).toBe(true);
+      if (defaultResult.success) {
+        expect(defaultResult.data.limit).toBe(50);
+      }
+
+      const maxResult = customersQuerySchema.safeParse({
+        clinic_id: clinicId,
+        limit: '100',
+      });
+      expect(maxResult.success).toBe(true);
+      if (maxResult.success) {
+        expect(maxResult.data.limit).toBe(100);
+      }
+    });
+
+    it('上限超過・小数・非数のlimitを拒否する', () => {
+      for (const limit of ['101', '1.5', 'not-a-number']) {
+        expect(
+          customersQuerySchema.safeParse({ clinic_id: clinicId, limit }).success
+        ).toBe(false);
+      }
+    });
+
+    it('不透明カーソルを往復し、改ざんされた値を拒否する', () => {
+      const cursorPayload = {
+        createdAt: '2026-07-10T01:02:03.000Z',
+        id: '123e4567-e89b-12d3-a456-426614174001',
+      };
+      const cursor = encodeCustomerCursor(cursorPayload);
+
+      expect(decodeCustomerCursor(cursor)).toEqual(cursorPayload);
+      expect(
+        customersQuerySchema.safeParse({
+          clinic_id: clinicId,
+          cursor,
+        }).success
+      ).toBe(true);
+      expect(
+        customersQuerySchema.safeParse({
+          clinic_id: clinicId,
+          cursor: `${cursor}tampered`,
+        }).success
+      ).toBe(false);
     });
   });
 });

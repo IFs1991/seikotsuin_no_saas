@@ -40,6 +40,10 @@ function isApiObjectResponse(value: unknown): value is ApiObjectResponse {
   return typeof value === 'object' && value !== null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function getApiErrorMessage(
   json: ApiObjectResponse | unknown,
   fallbackErrorMessage: string
@@ -60,6 +64,75 @@ async function parseArrayResponse<T>(
   }
 
   return Array.isArray(json.data) ? (json.data as T[]) : [];
+}
+
+function parseCustomer(value: unknown): Customer {
+  if (!isRecord(value)) {
+    throw new Error('顧客データの形式が不正です');
+  }
+
+  const { id, name, phone, createdAt, updatedAt } = value;
+  if (
+    typeof id !== 'string' ||
+    typeof name !== 'string' ||
+    typeof phone !== 'string' ||
+    typeof createdAt !== 'string' ||
+    typeof updatedAt !== 'string'
+  ) {
+    throw new Error('顧客データの形式が不正です');
+  }
+
+  const createdAtDate = new Date(createdAt);
+  const updatedAtDate = new Date(updatedAt);
+  if (
+    Number.isNaN(createdAtDate.getTime()) ||
+    Number.isNaN(updatedAtDate.getTime())
+  ) {
+    throw new Error('顧客データの日時形式が不正です');
+  }
+
+  const email = typeof value.email === 'string' ? value.email : undefined;
+  const lineUserId =
+    typeof value.lineUserId === 'string' ? value.lineUserId : undefined;
+  const customAttributes = isRecord(value.customAttributes)
+    ? value.customAttributes
+    : undefined;
+
+  return {
+    id,
+    name,
+    phone,
+    ...(email ? { email } : {}),
+    ...(lineUserId ? { lineUserId } : {}),
+    ...(customAttributes ? { customAttributes } : {}),
+    consentMarketing:
+      typeof value.consentMarketing === 'boolean'
+        ? value.consentMarketing
+        : false,
+    consentReminder:
+      typeof value.consentReminder === 'boolean'
+        ? value.consentReminder
+        : false,
+    createdAt: createdAtDate,
+    updatedAt: updatedAtDate,
+  };
+}
+
+async function parseCustomerPageResponse(
+  response: Response,
+  fallbackErrorMessage: string
+): Promise<Customer[]> {
+  const json: unknown = await response.json();
+
+  if (!isApiObjectResponse(json) || !response.ok || json.success !== true) {
+    throw new Error(getApiErrorMessage(json, fallbackErrorMessage));
+  }
+
+  if (!isRecord(json.data) || !Array.isArray(json.data.items)) {
+    throw new Error('顧客一覧のレスポンス形式が不正です');
+  }
+
+  return json.data.items.map(parseCustomer);
 }
 
 export function useReservationFormData(
@@ -112,12 +185,14 @@ export function useReservationFormData(
       try {
         const requestInit = { signal: controller.signal };
         const customersPromise = includeCustomers
-          ? fetch(`/api/customers?clinic_id=${clinicId}`, requestInit).then(
-              response =>
-                parseArrayResponse<Customer>(
-                  response,
-                  '顧客データの取得に失敗しました'
-                )
+          ? fetch(
+              `/api/customers?clinic_id=${clinicId}&limit=100`,
+              requestInit
+            ).then(response =>
+              parseCustomerPageResponse(
+                response,
+                '顧客データの取得に失敗しました'
+              )
             )
           : Promise.resolve<Customer[]>([]);
 
