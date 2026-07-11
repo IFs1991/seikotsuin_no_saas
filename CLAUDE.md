@@ -19,7 +19,7 @@ npm run lint / npm run lint:fix                      # ESLint（CIは lint:ci、
 npm run type-check                                   # tsc --noEmit
 
 # テスト（scripts/run-jest.mjs 経由。Windowsでは --runInBand 自動付与）
-npm run test -- --ci --testPathIgnorePatterns=e2e    # 単体テスト全体
+npm run test -- --ci --testPathIgnorePatterns e2e red-contracts  # 単体テスト全体(意図的RED suiteを除外)
 npm run test -- --runTestsByPath src/__tests__/lib/foo.test.ts   # 単一ファイル
 npm run test:pr05:focused                            # CI必須ゲートの9スイート回帰
 npm test -- --ci --testPathPattern="security|session-management" # セキュリティテスト
