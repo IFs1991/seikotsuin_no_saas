@@ -113,6 +113,10 @@ function getRecord(value: unknown): Record<string, unknown> {
 }
 
 describe('patchMobileUiuxDcScript', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it.each(SCREEN_RESOURCES)(
     'renames and delegates renderVals for the real %s fixture',
     async resource => {
@@ -288,6 +292,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('refreshes reservations when the date navigation changes', async () => {
+    // dateIndex が実時計 (JST今日) との比較で導出されるため固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   HOME = 'c1';
@@ -393,7 +399,368 @@ describe('patchMobileUiuxDcScript', () => {
     expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
   });
 
+  describe('daily-reports picked-date view', () => {
+    function evaluateDailyReportsComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  MENUS_DR = [];
+  state = { role: 'therapist', formOpen: false, editKey: null, items: [], todayItems: [] };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      todayLabel: 'sample-date',
+      todayUnsubmitted: true,
+      todaySubmittedFlag: false,
+      inputToday: () => {}
+    };
+  }
+}`),
+        { screen: 'daily-reports' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const singleDayPayload = (
+      date: string,
+      options: { submitted?: boolean; boot?: boolean } = {}
+    ) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: options.boot ? null : date,
+        endDate: options.boot ? null : date,
+        dailyReports: {
+          reports: options.submitted
+            ? [
+                {
+                  id: `report-${date}`,
+                  reportDate: date,
+                  staffName: 'BFF 先生',
+                  totalPatients: 12,
+                  newPatients: 2,
+                  totalRevenue: 90000,
+                  insuranceRevenue: 30000,
+                  privateRevenue: 60000,
+                  reportText: null,
+                  createdAt: `${date}T10:00:00.000Z`,
+                },
+              ]
+            : [],
+          summary: {
+            totalReports: options.submitted ? 1 : 0,
+            averagePatients: 12,
+            averageRevenue: 90000,
+            totalRevenue: 90000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+    });
+
+    it('suppresses the 本日 banners when viewing a picked non-today date', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todayLabel).toBe('7/1（水）');
+      expect(vals.todayUnsubmitted).toBe(false);
+      expect(vals.todaySubmittedFlag).toBe(false);
+      expect(vals.sumRevenue).toBe('¥90,000');
+    });
+
+    it('keeps the banners for a picked read of today', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('keeps boot-shaped reads (no start/end dates) unchanged', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true, boot: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('pins the report_date of an open form to the date it was opened for', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: false })
+      );
+      const inputToday = component.renderVals().inputToday as () => void;
+      inputToday();
+
+      // フォーム表示中にバックグラウンドで別日に切り替わる
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: false })
+      );
+
+      const payload = (
+        component as unknown as {
+          __mobileUiuxBuildDailyReportPayload: () => Record<string, unknown>;
+        }
+      ).__mobileUiuxBuildDailyReportPayload();
+
+      expect(payload.report_date).toBe('2026-07-10');
+    });
+  });
+
+  describe('reservations date picker and date scope', () => {
+    function evaluateDateScopeComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  HOME = 'c1';
+  DAYS = ['4/26（日）', '4/27（月）', '4/28（火）'];
+  STATUS = {
+    confirmed: { label: '確定', c: 'confirmed-c', b: 'confirmed-b' },
+    unconfirmed: { label: '未確定', c: 'unconfirmed-c', b: 'unconfirmed-b' },
+    cancelled: { label: 'キャンセル', c: 'cancelled-c', b: 'cancelled-b' },
+    noshow: { label: '無断', c: 'noshow-c', b: 'noshow-b' },
+    arrived: { label: '来院済み', c: 'arrived-c', b: 'arrived-b' }
+  };
+  state = { dateIndex: 1, appts: [], loading: false, role: 'staff', clinic: 'c1' };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  renderVals() {
+    const canWrite = this.state.role !== 'area';
+    return {
+      dateLabel: this.DAYS[this.state.dateIndex],
+      nextDate: this.nextDate,
+      prevDate: this.prevDate,
+      fabShow: canWrite,
+      isEmpty: this.state.appts.length === 0,
+      emptyTitle: this.state.dateIndex === 0 ? '過去の予約はありません' : '本日の予約はありません',
+      rows: this.state.appts.map(appt => ({ patient: appt.patient })),
+      isLoading: this.state.loading
+    };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const reservationsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    function setupBridge(
+      window: EvaluatedWindow,
+      payloadForDate: (date: string) => unknown
+    ) {
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async params => {
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+          'reservations',
+          payloadForDate(params.date ?? '')
+        );
+        return true;
+      });
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      return refreshReadData;
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
+    });
+
+    it('registers the date-picked hook on mount and unregisters on unmount', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      component.componentDidMount();
+
+      expect(typeof window.__MOBILE_UIUX_ON_DATE_PICKED__).toBe('function');
+
+      component.componentWillUnmount();
+      expect(window.__MOBILE_UIUX_ON_DATE_PICKED__).toBeUndefined();
+    });
+
+    it('jumps multiple days via the picked-date hook with a semantic dateIndex', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-05-05');
+
+      expect(refreshReadData).toHaveBeenCalledWith({ date: '2026-05-05' });
+      expect(component.state.dateIndex).toBe(2);
+    });
+
+    it('ignores picks for the currently viewed date and invalid values', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-27');
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('bad-value');
+
+      expect(refreshReadData).not.toHaveBeenCalled();
+    });
+
+    it('lets the arrows keep moving beyond one day from today', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      const vals = component.renderVals();
+      const nextDate = vals.nextDate as () => Promise<boolean>;
+
+      await nextDate();
+      await nextDate();
+      await nextDate();
+
+      expect(refreshReadData.mock.calls.map(call => call[0].date)).toEqual([
+        '2026-04-28',
+        '2026-04-29',
+        '2026-04-30',
+      ]);
+      expect(component.state.dateIndex).toBe(2);
+
+      const prevDate = component.renderVals().prevDate as () => Promise<boolean>;
+      await prevDate();
+      expect(refreshReadData).toHaveBeenLastCalledWith({ date: '2026-04-29' });
+    });
+
+    it('hides the new-reservation FAB on past dates only', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().fabShow).toBe(false);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+    });
+
+    it('keeps the FAB hidden while a past-date refresh is pending', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async () => false);
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-20');
+
+      expect(component.renderVals().fabShow).toBe(false);
+    });
+
+    it('labels the empty state by past/today/future', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().emptyTitle).toBe('過去の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().emptyTitle).toBe('本日の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().emptyTitle).toBe(
+        'この日の予約はまだありません'
+      );
+    });
+  });
+
   it('does not render previous reservations as the target date when refresh fails', async () => {
+    // 失敗時のフォールバックラベルは DAYS[dateIndex]、dateIndex は JST今日
+    // との比較で決まるため時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   HOME = 'c1';
@@ -467,6 +834,9 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges daily-reports hydration overrides after the original renderVals result', () => {
+    // 単日read (start=end) は今日以外だとバナー抑止されるため、
+    // フィクスチャ日付=今日になるよう時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   STATUS_DR = {
@@ -565,6 +935,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges home hydration overrides after the original renderVals result', () => {
+    // 選択日ラベル化により、フィクスチャ日付=今日でないと「本日」表記にならない
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   SEV = {
@@ -1438,6 +1810,7 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {
+    jest.useFakeTimers({ now: new Date('2026-07-01T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   STATUS_DR = {
@@ -3245,6 +3618,7 @@ describe('patchMobileUiuxDcScript', () => {
       });
 
       it('keeps the submission banner intact for canonical therapist on daily-reports', () => {
+        jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
         const { component, window } = evaluateDailyReportsComponent();
         component.componentDidMount();
         window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));
@@ -3378,6 +3752,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('renders real clinic cards with aggregated KPIs for canonical manager', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
@@ -3410,6 +3785,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('labels the aggregate as 全社 for canonical admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
@@ -3428,6 +3804,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('hides clinic cards for canonical clinic_admin even when the payload carries them', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
@@ -3451,6 +3828,36 @@ describe('patchMobileUiuxDcScript', () => {
 
           expect(vals.showClinicCards).toBe(false);
           expect(vals.kpiTitle).toBe('エリアサマリ');
+        });
+
+        it('labels home KPIs with the picked date when viewing another day', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const kpis = vals.kpis as Array<Record<string, unknown>>;
+
+          expect(vals.kpiSub).toBe('担当1院 · 6/30（火）合計');
+          expect(kpis[0].label).toBe('6/30（火）の売上');
+          expect(kpis[1].label).toBe('6/30（火）の来院');
+          expect(JSON.stringify(vals.kpis)).not.toContain('本日');
+        });
+
+        it('labels the single-clinic home KPIs with the picked date for clinic_admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload());
+          const vals = component.renderVals();
+
+          expect(vals.kpiTitle).toBe('6/30（火）の数値');
         });
 
         it('formats compact yen values across scales', () => {

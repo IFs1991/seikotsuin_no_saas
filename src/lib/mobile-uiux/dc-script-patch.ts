@@ -698,11 +698,15 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     // でも DC レイアウト都合で 'manager' になるため、表示文言の根拠にしない)
     const canonical = this.__mobileUiuxCanonicalRole();
     const role = canonical === 'admin' ? 'admin' : canonical === 'manager' ? 'manager' : 'store';
+    // 日付ピッカーで今日以外を表示中は「本日」を選択日ラベルに置き換える
+    const dayLabel = data.date === this.__mobileUiuxTodayJstDateKey()
+      ? '本日'
+      : this.__mobileUiuxFormatDateLabel(data.date);
     const overrides = {
       dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
-      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : '本日の数値',
-      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role),
-      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role),
+      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : dayLabel + 'の数値',
+      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role, dayLabel),
+      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role, dayLabel),
       // canonical admin も DC 'manager' レイアウトで描画されるため、注意
       // セクションは常に表示しタイトルだけロール別に切り替える
       showAttention: true,
@@ -750,10 +754,10 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
       const flat = 'var(--fg-3)';
       const dot = 'width:6px;height:6px;border-radius:50%;background:' + flat + ';flex:none;';
       const kpis = Array.isArray(overrides.kpis) ? overrides.kpis.slice() : [];
-      kpis[0] = { label: '本日の売上', value: this.__mobileUiuxYen(totals.revenue), unit: '', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
-      kpis[1] = { label: '本日の来院', value: String(totals.visits), unit: '名', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      kpis[0] = { label: dayLabel + 'の売上', value: this.__mobileUiuxYen(totals.revenue), unit: '', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      kpis[1] = { label: dayLabel + 'の来院', value: String(totals.visits), unit: '名', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
       overrides.kpis = kpis;
-      overrides.kpiSub = scopeLabel + ' · 本日合計';
+      overrides.kpiSub = scopeLabel + ' · ' + dayLabel + '合計';
       delete overrides.__mobileUiuxClinicTotals;
     }
 
@@ -927,7 +931,8 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
     };
   }
 
-  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
+  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role, dayLabel) {
+    const day = typeof dayLabel === 'string' && dayLabel.length > 0 ? dayLabel : '本日';
     const up = 'var(--s-cf)';
     const down = 'var(--s-ns)';
     const flat = 'var(--fg-3)';
@@ -940,8 +945,8 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
 
     if (role === 'manager') {
       return [
-        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
-        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
         { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
@@ -949,25 +954,42 @@ ${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
 
     if (role === 'admin') {
       return [
-        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
-        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
         { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
     return [
-      { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
       { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
-      { label: '本日の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
       { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
     ];
   }
 
-  __mobileUiuxBuildHomeKpiSub(data, role) {
+  __mobileUiuxBuildHomeKpiSub(data, role, dayLabel) {
     const scopeName = this.__mobileUiuxDisplayText(data.scopeName || data.clinicName, '');
-    const suffix = role === 'admin' ? '本日' : 'リアルタイム';
+    const day = typeof dayLabel === 'string' && dayLabel.length > 0 ? dayLabel : '本日';
+    const suffix = role === 'admin' ? day : day === '本日' ? 'リアルタイム' : day;
     return scopeName ? scopeName + ' · ' + suffix : suffix;
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
   }
 
   __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
@@ -1214,20 +1236,23 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
       cancelAppt: this.__mobileUiuxCancelReservation,
       submitForm: this.__mobileUiuxCreateReservation
     };
-    return hydratedVals
+    const mergedVals = hydratedVals
       ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
       : patchedVals;
+    return this.__mobileUiuxApplyDateScopeVals(mergedVals);
   }
 
   componentDidMount() {
     this.__mobileUiuxPrimeReservationWriteSources();
     this.__mobileUiuxRegisterReadHydration();
+    this.__mobileUiuxRegisterDatePickedHook();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
   }
 
   componentWillUnmount() {
+    this.__mobileUiuxUnregisterDatePickedHook();
     this.__mobileUiuxUnregisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
@@ -1387,19 +1412,103 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   setClinic = (clinicId) => () => this.__mobileUiuxRefreshReservationClinic(clinicId);
 
   async __mobileUiuxRefreshReservationDate(delta) {
-    const state = this.state && typeof this.state === 'object' ? this.state : {};
-    const currentIndex = typeof state.dateIndex === 'number' ? state.dateIndex : 1;
-    const nextIndex = Math.max(0, Math.min(2, currentIndex + delta));
-    if (nextIndex === currentIndex) return false;
-
+    // 旧実装は dateIndex 0..2 のクランプで今日±1日に制限していた。
+    // dateIndex は past/today/future の意味インデックスとして比較で導出する
     const currentDate = this.__mobileUiuxActiveHydratedDate();
     const nextDate = this.__mobileUiuxAddDays(currentDate, delta);
     if (!nextDate) return false;
 
     return this.__mobileUiuxRefreshReservationRead(
       { date: nextDate },
-      { dateIndex: nextIndex }
+      { dateIndex: this.__mobileUiuxDateIndexForDate(nextDate) }
     );
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
+  }
+
+  __mobileUiuxDateIndexForDate(dateKey) {
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today || typeof dateKey !== 'string' || dateKey.length === 0) return 1;
+    if (dateKey < today) return 0;
+    if (dateKey > today) return 2;
+    return 1;
+  }
+
+  __mobileUiuxHandleDatePicked(dateKey) {
+    if (typeof dateKey !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) return false;
+    if (dateKey === this.__mobileUiuxActiveHydratedDate()) return false;
+    return this.__mobileUiuxRefreshReservationRead(
+      { date: dateKey },
+      { dateIndex: this.__mobileUiuxDateIndexForDate(dateKey) }
+    );
+  }
+
+  __mobileUiuxRegisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxDatePickedOwner = owner;
+    const component = this;
+    const onDatePicked = function(dateKey) {
+      if (component.__mobileUiuxDatePickedOwner !== owner) return false;
+      return component.__mobileUiuxHandleDatePicked(dateKey);
+    };
+    onDatePicked.__mobileUiuxDatePickedOwner = owner;
+    window.__MOBILE_UIUX_ON_DATE_PICKED__ = onDatePicked;
+  }
+
+  __mobileUiuxUnregisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_ON_DATE_PICKED__ &&
+      window.__MOBILE_UIUX_ON_DATE_PICKED__.__mobileUiuxDatePickedOwner === this.__mobileUiuxDatePickedOwner
+    ) {
+      delete window.__MOBILE_UIUX_ON_DATE_PICKED__;
+    }
+    this.__mobileUiuxDatePickedOwner = null;
+  }
+
+  // 過去日では新規予約FABを隠し (未来日は canWrite のまま有効)、
+  // 空状態の文言を past/今日/未来で出し分ける。requested key を優先する
+  // ことで過去日への切替中 (pending/失敗) もFABが出ない
+  __mobileUiuxApplyDateScopeVals(vals) {
+    if (!this.__mobileUiuxIsRecord(vals)) return vals;
+    const requestedKey = this.__mobileUiuxRequestedHydratedKey;
+    const hydratedKey = this.__mobileUiuxHydratedKey;
+    const viewDate = this.__mobileUiuxIsRecord(requestedKey) && typeof requestedKey.date === 'string' && requestedKey.date.length > 0
+      ? requestedKey.date
+      : this.__mobileUiuxIsRecord(hydratedKey) && typeof hydratedKey.date === 'string'
+        ? hydratedKey.date
+        : '';
+    if (!viewDate) return vals;
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today) return vals;
+
+    const next = { ...vals };
+    if (viewDate < today) {
+      next.fabShow = false;
+    }
+    if (next.isEmpty === true) {
+      next.emptyTitle = viewDate < today
+        ? '過去の予約はありません'
+        : viewDate === today
+          ? '本日の予約はありません'
+          : 'この日の予約はまだありません';
+    }
+    return next;
   }
 
   async __mobileUiuxRefreshReservationClinic(clinicId) {
@@ -3537,11 +3646,19 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
     // manager は閲覧専用の分析ビュー — 標準バリアント用の未提出/提出済み
     // バナーが漏れないよう常時 false に固定する
     const readOnlyManager = this.__mobileUiuxCanonicalRole() === 'manager';
+    // 日付ピッカーの単日読み (start=end) で今日以外を見ているときは
+    // 「本日の日報は…」バナー (静的コピー) を抑止し、入力/編集は
+    // 今日専用の入口に保つ。boot 時は start/end が無いので挙動不変
+    const pickedDate = typeof data.startDate === 'string' && data.startDate === data.endDate
+      ? data.startDate
+      : '';
+    const notToday = pickedDate !== '' && pickedDate !== this.__mobileUiuxTodayJstDateKey();
+    const suppressBanners = readOnlyManager || notToday;
 
     return {
       todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
-      todayUnsubmitted: readOnlyManager ? false : !todaySubmitted,
-      todaySubmittedFlag: readOnlyManager ? false : todaySubmitted,
+      todayUnsubmitted: suppressBanners ? false : !todaySubmitted,
+      todaySubmittedFlag: suppressBanners ? false : todaySubmitted,
       todayCount: todayPatients,
       sumRevenue: this.yen(todayRevenue),
       sumPatients: todayPatients + '名',
@@ -3579,6 +3696,9 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
       ? this.__mobileUiuxHydratedVals
       : {};
     const formDate = typeof hydratedVals.todayLabel === 'string' ? hydratedVals.todayLabel : '';
+    // フォーム表示中に日付ピッカーで別日へ切り替わっても report_date が
+    // すり替わらないよう、開いた時点の日付キーをスナップショットする
+    this.__mobileUiuxFormReportDateKey = this.__mobileUiuxCurrentReportDateKey;
     const sourceItems = this.state && Array.isArray(this.state.todayItems) ? this.state.todayItems : [];
     const items = sourceItems.map((item) => ({ ...item }));
     if (typeof this.setState === 'function') {
@@ -3679,9 +3799,14 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
       return null;
     }
 
-    const reportDate = typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
-      ? this.__mobileUiuxCurrentReportDateKey
-      : this.__mobileUiuxTodayJstDateKey();
+    const snapshotDate = typeof this.__mobileUiuxFormReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxFormReportDateKey)
+      ? this.__mobileUiuxFormReportDateKey
+      : '';
+    const reportDate = snapshotDate
+      ? snapshotDate
+      : typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
+        ? this.__mobileUiuxCurrentReportDateKey
+        : this.__mobileUiuxTodayJstDateKey();
     if (!reportDate) return null;
 
     let totalRevenue = 0;

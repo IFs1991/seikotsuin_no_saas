@@ -212,6 +212,19 @@ function collectMobileUiuxProductionAssetViolations(
       violations.push(`missing role nav visibility rule for ${role}`);
     }
   }
+  const datePickerCount =
+    html.match(/(?<!\[)data-mobile-uiux-date-picker=/g)?.length ?? 0;
+  const expectedDatePickerCount =
+    resource === 'reservations' ||
+    resource === 'daily-reports' ||
+    resource === 'home'
+      ? 1
+      : 0;
+  if (datePickerCount !== expectedDatePickerCount) {
+    violations.push(
+      `expected ${expectedDatePickerCount} date picker annotations, found ${datePickerCount}`
+    );
+  }
   if (resource === 'settings') {
     if (!html.includes('この機能は準備中です')) {
       violations.push('missing shift stub toast message');

@@ -74,7 +74,13 @@ type BridgeElement = {
   tagName: string;
   dataset: Record<string, string>;
   textContent: string;
+  value: string;
   setAttribute: (name: string, value: string) => void;
+  addEventListener: (name: string, callback: () => void) => void;
+  elementListeners: Record<string, Array<() => void>>;
+  showPicker: jest.Mock<void, []>;
+  focus: jest.Mock<void, []>;
+  click: jest.Mock<void, []>;
 };
 
 type BridgeWindow = {
@@ -139,10 +145,13 @@ function buildElementWithTextChange(
   onTextChange?: () => void
 ): BridgeElement {
   const attributes: Record<string, string> = {};
+  const elementListeners: Record<string, Array<() => void>> = {};
   let textContent = '';
   return {
     tagName,
     dataset: {},
+    value: '',
+    elementListeners,
     get textContent() {
       return textContent;
     },
@@ -153,6 +162,13 @@ function buildElementWithTextChange(
     setAttribute(name: string, value: string) {
       attributes[name] = value;
     },
+    addEventListener(name: string, callback: () => void) {
+      elementListeners[name] = elementListeners[name] ?? [];
+      elementListeners[name].push(callback);
+    },
+    showPicker: jest.fn(),
+    focus: jest.fn(),
+    click: jest.fn(),
   };
 }
 
@@ -242,6 +258,21 @@ function buildNavElement(target: string): BridgeNavElement {
     },
     closest(selector) {
       return selector === '[data-mobile-uiux-nav-target]' ? element : null;
+    },
+  };
+  return element;
+}
+
+function buildDatePickerHostElement(resource: string): BridgeNavElement {
+  const element: BridgeNavElement = {
+    dataset: {
+      mobileUiuxDatePicker: resource,
+    },
+    getAttribute(name) {
+      return name === 'data-mobile-uiux-date-picker' ? resource : null;
+    },
+    closest(selector) {
+      return selector === '[data-mobile-uiux-date-picker]' ? element : null;
     },
   };
   return element;
@@ -1169,6 +1200,324 @@ describe('mobile-uiux bridge contract', () => {
       body: undefined,
     });
     expect(applyReadData).toHaveBeenCalledWith('home', reservationsPayload);
+  });
+
+  describe('date picker binding', () => {
+    const reservationsBootResponses = () => [
+      buildJsonResponse(200, contextPayload),
+      buildJsonResponse(200, {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          date: '2026-06-30',
+          timezone: 'Asia/Tokyo',
+          reservations: [],
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      }),
+      buildJsonResponse(200, settingsDetailReadPayload),
+    ];
+
+    function expectedJstToday(): string {
+      const shifted = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+    }
+
+    function findPickerInput(bodyNodes: BridgeElement[]): BridgeElement[] {
+      return bodyNodes.filter(node => node.tagName === 'input');
+    }
+
+    async function bootReservationsBridge() {
+      const script = buildMobileUiuxBridgeScript({
+        realDataEnabled: true,
+        manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+      });
+      const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+      const harness = buildBridgeWindow(
+        'reservations',
+        reservationsBootResponses(),
+        applyReadData
+      );
+      await runBridgeScript(script, harness.window);
+      return { ...harness, applyReadData };
+    }
+
+    it('creates one hidden date input and opens the native picker on tap', async () => {
+      const { window, listeners, bodyNodes } = await bootReservationsBridge();
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+
+      const inputs = findPickerInput(bodyNodes);
+      expect(inputs).toHaveLength(1);
+      const input = inputs[0];
+      expect(input.showPicker).toHaveBeenCalledTimes(1);
+      expect(input.value).toBe(expectedJstToday());
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+      expect(findPickerInput(bodyNodes)).toHaveLength(1);
+      expect(input.showPicker).toHaveBeenCalledTimes(2);
+      expect(window.document.documentElement.dataset.mobileUiuxBridge).toBe(
+        'hydrated'
+      );
+    });
+
+    it('seeds the picker with the current refreshed date', async () => {
+      const { window, listeners, bodyNodes } = await bootReservationsBridge();
+      window.fetch.mockResolvedValueOnce(
+        buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-07-01',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-07-01T00:00:00.000Z',
+        })
+      );
+      await window.MobileUiuxBridge?.refreshReadData({ date: '2026-07-01' });
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+
+      expect(findPickerInput(bodyNodes)[0].value).toBe('2026-07-01');
+    });
+
+    it('falls back to focus+click when showPicker throws', async () => {
+      const { listeners, bodyNodes } = await bootReservationsBridge();
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+      const input = findPickerInput(bodyNodes)[0];
+      input.showPicker.mockImplementation(() => {
+        throw new Error('showPicker unsupported');
+      });
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+
+      expect(input.focus).toHaveBeenCalledTimes(1);
+      expect(input.click).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispatches a picked date to the registered screen hook without fetching', async () => {
+      const { window, listeners, bodyNodes, calls } =
+        await bootReservationsBridge();
+      const hook = jest.fn();
+      window.__MOBILE_UIUX_ON_DATE_PICKED__ = hook;
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+      const input = findPickerInput(bodyNodes)[0];
+      const callCountBefore = calls.length;
+      input.value = '2026-07-05';
+      for (const listener of input.elementListeners.change ?? []) {
+        listener();
+      }
+
+      expect(hook).toHaveBeenCalledWith('2026-07-05');
+      expect(calls.length).toBe(callCountBefore);
+    });
+
+    it('falls back to refreshReadData when no hook is registered', async () => {
+      const { window, listeners, bodyNodes, calls } =
+        await bootReservationsBridge();
+      window.fetch.mockImplementationOnce(async (url, init) => {
+        calls.push({ url, method: init?.method ?? 'GET', body: init?.body });
+        return buildJsonResponse(200, {
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-07-05',
+            timezone: 'Asia/Tokyo',
+            reservations: [],
+          },
+          generatedAt: '2026-07-05T00:00:00.000Z',
+        });
+      });
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+      const input = findPickerInput(bodyNodes)[0];
+      input.value = '2026-07-05';
+      for (const listener of input.elementListeners.change ?? []) {
+        listener();
+      }
+      await Promise.resolve();
+
+      expect(
+        calls.filter(call => call.url.includes('date=2026-07-05'))
+      ).toHaveLength(1);
+    });
+
+    it('ignores invalid picked values', async () => {
+      const { window, listeners, bodyNodes, calls } =
+        await bootReservationsBridge();
+      const hook = jest.fn();
+      window.__MOBILE_UIUX_ON_DATE_PICKED__ = hook;
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildDatePickerHostElement('reservations'),
+      });
+      const input = findPickerInput(bodyNodes)[0];
+      const callCountBefore = calls.length;
+      input.value = 'not-a-date';
+      for (const listener of input.elementListeners.change ?? []) {
+        listener();
+      }
+
+      expect(hook).not.toHaveBeenCalled();
+      expect(calls.length).toBe(callCountBefore);
+    });
+
+    it('opens the picker via Enter/Space and ignores unrelated clicks', async () => {
+      const { listeners, bodyNodes } = await bootReservationsBridge();
+
+      dispatchBridgeEvent(listeners, 'click', {
+        target: buildNavElement('reservations'),
+      });
+      expect(findPickerInput(bodyNodes)).toHaveLength(0);
+
+      const preventDefault = jest.fn<void, []>();
+      dispatchBridgeEvent(listeners, 'keydown', {
+        key: 'Enter',
+        target: buildDatePickerHostElement('reservations'),
+        preventDefault,
+      });
+
+      const inputs = findPickerInput(bodyNodes);
+      expect(inputs).toHaveLength(1);
+      expect(inputs[0].showPicker).toHaveBeenCalledTimes(1);
+      expect(preventDefault).toHaveBeenCalled();
+    });
+  });
+
+  it('forwards the picked date to the home supplemental reservations read after a refresh', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const homePayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          aiComment: null,
+          revenueChartData: [],
+          heatmapData: [],
+          alerts: [],
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const reservationsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'home',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, homePayload('2026-06-30')),
+        buildJsonResponse(200, reservationsPayload('2026-06-30')),
+        buildJsonResponse(200, homePayload('2026-07-01')),
+        buildJsonResponse(200, reservationsPayload('2026-07-01')),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    // boot 時の補足readには日付が付かない (従来どおり)
+    const bootSupplemental = calls.filter(call =>
+      call.url.startsWith('/api/mobile-uiux/reservations')
+    );
+    expect(bootSupplemental).toHaveLength(1);
+    expect(bootSupplemental[0].url).not.toContain('date=');
+
+    await window.MobileUiuxBridge?.refreshReadData({ date: '2026-07-01' });
+
+    const refreshedSupplemental = calls.filter(
+      call =>
+        call.url.startsWith('/api/mobile-uiux/reservations') &&
+        call.url.includes('date=2026-07-01')
+    );
+    expect(refreshedSupplemental).toHaveLength(1);
+    expect(applyReadData).toHaveBeenCalledWith(
+      'home',
+      reservationsPayload('2026-07-01')
+    );
+  });
+
+  it('maps a picked date to start_date and end_date for daily-reports refreshes', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const dailyReportsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: date,
+        endDate: date,
+        dailyReports: { reports: [], summary: null, monthlyTrends: [] },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'daily-reports',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, dailyReportsPayload('2026-06-30')),
+        buildJsonResponse(200, settingsDetailReadPayload),
+        buildJsonResponse(200, dailyReportsPayload('2026-07-01')),
+        buildJsonResponse(200, settingsDetailReadPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    await window.MobileUiuxBridge?.refreshReadData({ date: '2026-07-01' });
+
+    const refreshCalls = calls.filter(call =>
+      call.url.includes('start_date=2026-07-01')
+    );
+    expect(refreshCalls).toHaveLength(1);
+    expect(refreshCalls[0].url).toContain('end_date=2026-07-01');
+    expect(refreshCalls[0].url).not.toMatch(/[?&]date=/);
+    // 設定系の補足readには日付を転送しない
+    const settingsCalls = calls.filter(call =>
+      call.url.startsWith('/api/mobile-uiux/settings-detail')
+    );
+    for (const call of settingsCalls) {
+      expect(call.url).not.toContain('2026-07-01');
+    }
   });
 
   it('does not break primary home hydration when the supplemental reservations fetch fails', async () => {
@@ -2816,7 +3165,7 @@ describe('mobile-uiux bridge route and response-time injection', () => {
     const rawHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="./support.js"></script></head>
-<body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
+<body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div>{{ dateLabel }}</div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
 </html>`;
     readFileMock.mockImplementation(async filePath => {
       if (String(filePath).includes('mobile-uiux-production')) {

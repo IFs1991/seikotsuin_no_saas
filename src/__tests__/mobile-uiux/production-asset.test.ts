@@ -131,6 +131,35 @@ describe('mobile-uiux production assets', () => {
     );
   });
 
+  it.each(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES)(
+    'annotates the %s asset date label exactly as expected',
+    async resource => {
+      const sourceHtml = await readFile(
+        getMobileUiuxSourceAssetPath(resource),
+        'utf-8'
+      );
+      const productionHtml = buildMobileUiuxProductionAsset(
+        resource,
+        sourceHtml
+      );
+
+      const matches =
+        productionHtml.match(/(?<!\[)data-mobile-uiux-date-picker=/g) ?? [];
+      const expected =
+        resource === 'reservations' ||
+        resource === 'daily-reports' ||
+        resource === 'home'
+          ? 1
+          : 0;
+      expect(matches).toHaveLength(expected);
+      if (expected === 1) {
+        expect(productionHtml).toContain(
+          `data-mobile-uiux-date-picker="${resource}"`
+        );
+      }
+    }
+  );
+
   it('keeps the generated assets in the production asset manifest', () => {
     expect(MOBILE_UIUX_PRODUCTION_ASSET_RESOURCES).toEqual([
       'home',
