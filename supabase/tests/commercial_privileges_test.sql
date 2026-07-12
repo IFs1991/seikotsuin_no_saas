@@ -1,5 +1,7 @@
 begin;
 
+set local search_path = pg_catalog, extensions, public, auth;
+
 select plan(40);
 
 select is(
