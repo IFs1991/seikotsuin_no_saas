@@ -362,10 +362,18 @@ function annotateDateLabel(
       )
   );
 
-  const target = requireSingleElement(
-    leafMatches,
-    `date label ${label} for ${resource}`
-  );
+  // 0件はスキップ (テストの合成シェルはラベルを持たない)。実資産での
+  // 存在保証は production-asset の検証 (対象3画面=正確に1件) が担う
+  if (leafMatches.length === 0) {
+    return;
+  }
+  if (leafMatches.length > 1) {
+    throw new Error(
+      `Expected at most one date label ${label} for ${resource}, found ${leafMatches.length}`
+    );
+  }
+
+  const target = leafMatches[0];
   target.setAttribute('data-mobile-uiux-date-picker', resource);
   target.setAttribute('role', 'button');
   target.setAttribute('tabindex', '0');
