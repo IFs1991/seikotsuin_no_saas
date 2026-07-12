@@ -21,6 +21,9 @@ export type MobileUiuxScreenManifestEntry = {
   endpoint: `/api/mobile-uiux/${string}`;
   requiresClinicId: boolean;
   defaultParams?: Readonly<Record<string, string>>;
+  // 選択日付 (readParams.date) を展開するクエリキー。省略時は ['date']。
+  // daily-reports は単日読みを start_date=end_date=date で表現する
+  dateParamKeys?: readonly string[];
 };
 
 export const MOBILE_UIUX_SCREEN_MANIFEST = {
@@ -43,6 +46,7 @@ export const MOBILE_UIUX_SCREEN_MANIFEST = {
     screen: 'daily-reports',
     endpoint: '/api/mobile-uiux/daily-reports',
     requiresClinicId: true,
+    dateParamKeys: ['start_date', 'end_date'],
   },
   settings: {
     screen: 'settings',
@@ -201,7 +205,7 @@ export function buildMobileUiuxBridgeScript(
   };
   const NAV_TARGETS_BY_ROLE = ${navTargetsByRoleJson};
   const SUPPLEMENTAL_READS_BY_SCREEN = {
-    home: [{ screen: "reservations", applyScreen: "home" }],
+    home: [{ screen: "reservations", applyScreen: "home", forwardDate: true }],
     reservations: [{ screen: "settings-detail" }],
     "daily-reports": [{ screen: "settings-detail" }],
     "settings-detail": [
@@ -383,9 +387,19 @@ export function buildMobileUiuxBridgeScript(
     if (isRecord(mergedParams)) {
       for (const key of Object.keys(mergedParams)) {
         const value = mergedParams[key];
-        if (typeof value === "string") {
-          params.push([key, value]);
+        if (typeof value !== "string") {
+          continue;
         }
+        if (key === "date") {
+          // 選択日付はエンドポイント毎のクエリキーへ展開する
+          // (daily-reports は start_date=end_date=date の単日読み)
+          const dateKeys = Array.isArray(entry.dateParamKeys) ? entry.dateParamKeys : ["date"];
+          for (const dateKey of dateKeys) {
+            params.push([dateKey, value]);
+          }
+          continue;
+        }
+        params.push([key, value]);
       }
     }
 
@@ -489,7 +503,7 @@ export function buildMobileUiuxBridgeScript(
     return Array.isArray(screens) ? screens : [];
   }
 
-  function startSupplementalReads(screen, contextData) {
+  function startSupplementalReads(screen, contextData, readParams) {
     const supplementalReads = getSupplementalReadScreens(screen);
     const fetches = [];
     for (const read of supplementalReads) {
@@ -502,7 +516,12 @@ export function buildMobileUiuxBridgeScript(
         continue;
       }
 
-      const readUrl = buildReadUrl(entry, contextData, read.params);
+      // forwardDate opt-in の補足readにだけ選択日付を転送する (boot 時は
+      // readParams が無いので従来どおり)。設定系の補足readへは転送しない
+      const overrideParams = read.forwardDate === true && isRecord(readParams) && isDateKey(readParams.date)
+        ? { ...(isRecord(read.params) ? read.params : {}), date: readParams.date }
+        : read.params;
+      const readUrl = buildReadUrl(entry, contextData, overrideParams);
       if (!readUrl) {
         continue;
       }
@@ -526,8 +545,8 @@ export function buildMobileUiuxBridgeScript(
     }
   }
 
-  async function hydrateSupplementalReadData(screen, contextData) {
-    await applySupplementalReads(startSupplementalReads(screen, contextData));
+  async function hydrateSupplementalReadData(screen, contextData, readParams) {
+    await applySupplementalReads(startSupplementalReads(screen, contextData, readParams));
   }
 
   function getAccessibleClinicIds() {
@@ -626,7 +645,7 @@ export function buildMobileUiuxBridgeScript(
     currentContext = request.contextData;
     currentReadParams = request.readParams;
     if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
-      await hydrateSupplementalReadData(request.screen, request.contextData);
+      await hydrateSupplementalReadData(request.screen, request.contextData, request.readParams);
     }
     return true;
   }

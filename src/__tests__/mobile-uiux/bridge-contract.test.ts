@@ -1171,6 +1171,125 @@ describe('mobile-uiux bridge contract', () => {
     expect(applyReadData).toHaveBeenCalledWith('home', reservationsPayload);
   });
 
+  it('forwards the picked date to the home supplemental reservations read after a refresh', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const homePayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        dashboard: {
+          dailyData: {
+            revenue: 245600,
+            patients: 32,
+            insuranceRevenue: 80600,
+            privateRevenue: 165000,
+          },
+          aiComment: null,
+          revenueChartData: [],
+          heatmapData: [],
+          alerts: [],
+        },
+        reservationSummary: { total: 41, unconfirmed: 7, cancelled: 3 },
+        dailyReportStatus: { done: 2, review: 1, missing: 4, rows: [] },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const reservationsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'home',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, homePayload('2026-06-30')),
+        buildJsonResponse(200, reservationsPayload('2026-06-30')),
+        buildJsonResponse(200, homePayload('2026-07-01')),
+        buildJsonResponse(200, reservationsPayload('2026-07-01')),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    // boot 時の補足readには日付が付かない (従来どおり)
+    const bootSupplemental = calls.filter(call =>
+      call.url.startsWith('/api/mobile-uiux/reservations')
+    );
+    expect(bootSupplemental).toHaveLength(1);
+    expect(bootSupplemental[0].url).not.toContain('date=');
+
+    await window.MobileUiuxBridge?.refreshReadData({ date: '2026-07-01' });
+
+    const refreshedSupplemental = calls.filter(
+      call =>
+        call.url.startsWith('/api/mobile-uiux/reservations') &&
+        call.url.includes('date=2026-07-01')
+    );
+    expect(refreshedSupplemental).toHaveLength(1);
+    expect(applyReadData).toHaveBeenCalledWith(
+      'home',
+      reservationsPayload('2026-07-01')
+    );
+  });
+
+  it('maps a picked date to start_date and end_date for daily-reports refreshes', async () => {
+    const script = buildMobileUiuxBridgeScript({
+      realDataEnabled: true,
+      manifest: MOBILE_UIUX_SCREEN_MANIFEST,
+    });
+    const dailyReportsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: date,
+        endDate: date,
+        dailyReports: { reports: [], summary: null, monthlyTrends: [] },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+    const applyReadData = jest.fn<boolean, [string, unknown]>(() => true);
+    const { window, calls } = buildBridgeWindow(
+      'daily-reports',
+      [
+        buildJsonResponse(200, contextPayload),
+        buildJsonResponse(200, dailyReportsPayload('2026-06-30')),
+        buildJsonResponse(200, settingsDetailReadPayload),
+        buildJsonResponse(200, dailyReportsPayload('2026-07-01')),
+        buildJsonResponse(200, settingsDetailReadPayload),
+      ],
+      applyReadData
+    );
+
+    await runBridgeScript(script, window);
+    await window.MobileUiuxBridge?.refreshReadData({ date: '2026-07-01' });
+
+    const refreshCalls = calls.filter(call =>
+      call.url.includes('start_date=2026-07-01')
+    );
+    expect(refreshCalls).toHaveLength(1);
+    expect(refreshCalls[0].url).toContain('end_date=2026-07-01');
+    expect(refreshCalls[0].url).not.toMatch(/[?&]date=/);
+    // 設定系の補足readには日付を転送しない
+    const settingsCalls = calls.filter(call =>
+      call.url.startsWith('/api/mobile-uiux/settings-detail')
+    );
+    for (const call of settingsCalls) {
+      expect(call.url).not.toContain('2026-07-01');
+    }
+  });
+
   it('does not break primary home hydration when the supplemental reservations fetch fails', async () => {
     const script = buildMobileUiuxBridgeScript({
       realDataEnabled: true,
@@ -2816,7 +2935,7 @@ describe('mobile-uiux bridge route and response-time injection', () => {
     const rawHtml = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="./support.js"></script></head>
-<body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
+<body><x-dc><helmet></helmet><div ref="{{ setRoot }}" style="min-height: 100vh; width: 100%;"><div style="width: 390px; height: 812px; border-radius: 56px;"><div data-screen-label="予約" style="height: 100%;"><div style="position: absolute; top: 13px; width: 108px; height: 30px; background: #000;"></div><div style="height: 50px; flex: none; justify-content: space-between;"></div><div>{{ dateLabel }}</div><div style="display: flex;"><div><span>ホーム</span></div><div><span>予約</span></div><div><span>患者</span></div><div><span>レポート</span></div><div><span>設定</span></div></div></div></div></div></x-dc><script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{}}">class Component extends DCLogic {}</script></body>
 </html>`;
     readFileMock.mockImplementation(async filePath => {
       if (String(filePath).includes('mobile-uiux-production')) {
