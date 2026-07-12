@@ -177,6 +177,7 @@ export function transformMobileUiuxHtml(
 
   removeFakeDeviceChrome(appScreen);
   annotateBottomNav(appScreen, options.resource);
+  annotateDateLabel(appScreen, options.resource);
   removeProductionOnlySampleBlocks(appScreen, options.resource);
   stageRoot.setAttribute('data-mobile-uiux-production-root', '');
 
@@ -326,6 +327,58 @@ function annotateBottomNav(
     item.element.setAttribute('tabindex', '0');
     item.element.setAttribute('aria-label', `${item.label}へ移動`);
   }
+}
+
+// ヘッダー日付ラベル (タップでネイティブ日付ピッカーを開く対象)。
+// transform 時点の生デザインHTMLには mustache 文字列がそのままテキストとして
+// 存在するため、テキスト完全一致でアノテートできる。日報のピルは
+// standard ビュー専用 (manager は期間タブでピル自体が無い)。
+const MOBILE_UIUX_DATE_LABEL_BY_RESOURCE: Partial<
+  Record<MobileUiuxScreenResource, string>
+> = {
+  reservations: '{{ dateLabel }}',
+  'daily-reports': '{{ todayLabel }}',
+  home: '{{ dateLabel }}',
+};
+
+function annotateDateLabel(
+  appScreen: HTMLElement,
+  resource: MobileUiuxScreenResource
+): void {
+  const label = MOBILE_UIUX_DATE_LABEL_BY_RESOURCE[resource];
+  if (!label) {
+    return;
+  }
+
+  // 祖先要素 (予約のピル行や日報の sc-if) も trim すると同じテキストに
+  // なるため、「一致する子孫を持たない」リーフ保持要素だけに絞る
+  const matches = walkElements(appScreen).filter(
+    element => element.text.trim() === label
+  );
+  const leafMatches = matches.filter(
+    element =>
+      !matches.some(candidate => candidate !== element && isAncestorOf(element, candidate))
+  );
+
+  const target = requireSingleElement(
+    leafMatches,
+    `date label ${label} for ${resource}`
+  );
+  target.setAttribute('data-mobile-uiux-date-picker', resource);
+  target.setAttribute('role', 'button');
+  target.setAttribute('tabindex', '0');
+  target.setAttribute('aria-label', '日付を選択');
+}
+
+function isAncestorOf(ancestor: HTMLElement, candidate: HTMLElement): boolean {
+  let current: Node | null = candidate.parentNode;
+  while (current) {
+    if (current === ancestor) {
+      return true;
+    }
+    current = current.parentNode;
+  }
+  return false;
 }
 
 function findBottomNavItems(appScreen: HTMLElement): NavItem[] {

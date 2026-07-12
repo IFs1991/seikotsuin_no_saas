@@ -109,7 +109,7 @@ html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home
             <div style="font-size: 11px; color: var(--fg-2); white-space: nowrap;">本町ケア整骨院 ・ JST</div>
           </div>
           <sc-if value="{{ showStandard }}" hint-placeholder-val="{{ true }}">
-            <div style="font-size: 13px; font-weight: 700; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 9px 14px;">{{ todayLabel }}</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--fg); background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 9px 14px;" data-mobile-uiux-date-picker="daily-reports" role="button" tabindex="0" aria-label="日付を選択">{{ todayLabel }}</div>
           </sc-if>
           <sc-if value="{{ showManager }}" hint-placeholder-val="{{ false }}">
             <div style="display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 3px;">
