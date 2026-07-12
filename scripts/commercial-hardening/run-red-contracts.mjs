@@ -9,16 +9,40 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const CONTRACT_ROOT = path.join(SCRIPT_DIR, 'red-contracts');
 
-const EXPECTED_MARKERS = new Map([
-  ['01_exposed_tables_rls.sql', 'RED COMM-RLS-001'],
-  ['02_default_client_privileges.sql', 'RED COMM-GRANT-001'],
-  ['03_private_function_execute.sql', 'RED COMM-FUNCTION-001'],
-  ['03b_function_search_path.sql', 'RED COMM-FUNCTION-002'],
-  ['04_required_composite_fks.sql', 'RED COMM-FK-001'],
-  ['05_parent_rehome_fixture.sql', 'RED COMM-FK-002'],
-  ['06_clinic_settings_policy.sql', 'RED COMM-RLS-002'],
-  ['07_atomic_staff_invite.sql', 'RED COMM-INVITE-001'],
-  ['08_profile_self_escalation.sql', 'RED COMM-AUTH-001'],
+const EXPECTED_CONTRACTS = new Map([
+  ['01_exposed_tables_rls.sql', { marker: 'RED COMM-RLS-001', outcome: 'red' }],
+  [
+    '02_default_client_privileges.sql',
+    { marker: 'RED COMM-GRANT-001', outcome: 'green' },
+  ],
+  [
+    '03_private_function_execute.sql',
+    { marker: 'RED COMM-FUNCTION-001', outcome: 'red' },
+  ],
+  [
+    '03b_function_search_path.sql',
+    { marker: 'RED COMM-FUNCTION-002', outcome: 'red' },
+  ],
+  [
+    '04_required_composite_fks.sql',
+    { marker: 'RED COMM-FK-001', outcome: 'red' },
+  ],
+  [
+    '05_parent_rehome_fixture.sql',
+    { marker: 'RED COMM-FK-002', outcome: 'red' },
+  ],
+  [
+    '06_clinic_settings_policy.sql',
+    { marker: 'RED COMM-RLS-002', outcome: 'red' },
+  ],
+  [
+    '07_atomic_staff_invite.sql',
+    { marker: 'RED COMM-INVITE-001', outcome: 'red' },
+  ],
+  [
+    '08_profile_self_escalation.sql',
+    { marker: 'RED COMM-AUTH-001', outcome: 'red' },
+  ],
 ]);
 
 if (
@@ -35,8 +59,8 @@ const files = readdirSync(CONTRACT_ROOT)
   .sort();
 const results = [];
 
-const unknownFiles = files.filter(file => !EXPECTED_MARKERS.has(file));
-const missingFiles = [...EXPECTED_MARKERS.keys()].filter(
+const unknownFiles = files.filter(file => !EXPECTED_CONTRACTS.has(file));
+const missingFiles = [...EXPECTED_CONTRACTS.keys()].filter(
   file => !files.includes(file)
 );
 if (unknownFiles.length > 0 || missingFiles.length > 0) {
@@ -49,7 +73,12 @@ if (unknownFiles.length > 0 || missingFiles.length > 0) {
 }
 
 for (const file of files) {
-  const expectedMarker = EXPECTED_MARKERS.get(file);
+  const expectedContract = EXPECTED_CONTRACTS.get(file);
+  if (!expectedContract) {
+    throw new Error('Missing expected contract for ' + file);
+  }
+
+  const { marker: expectedMarker, outcome: expectedOutcome } = expectedContract;
   const result = spawnSync(
     'supabase',
     [
@@ -78,27 +107,41 @@ for (const file of files) {
   if (result.error) throw result.error;
   const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
   const reproduced = result.status !== 0 && output.includes(expectedMarker);
-  const outcome =
-    result.status === 0
+  const matched =
+    expectedOutcome === 'green' ? result.status === 0 : reproduced;
+  const outcome = matched
+    ? expectedOutcome.toUpperCase() + ' matched'
+    : result.status === 0
       ? 'UNEXPECTED GREEN'
       : reproduced
-        ? 'RED reproduced'
+        ? 'UNEXPECTED RED'
         : 'CONTRACT ERROR';
   results.push({
     file,
     expectedMarker,
+    expectedOutcome,
+    matched,
     reproduced,
     status: result.status,
     signal: result.signal,
   });
-  console.log(outcome + ' - ' + file + ' - expected ' + expectedMarker);
+  console.log(
+    outcome +
+      ' - ' +
+      file +
+      ' - expected ' +
+      expectedOutcome.toUpperCase() +
+      ' (' +
+      expectedMarker +
+      ')'
+  );
 }
 
-const missingRed = results.filter(result => !result.reproduced);
-if (missingRed.length > 0) {
+const mismatches = results.filter(result => !result.matched);
+if (mismatches.length > 0) {
   console.error(
-    'RED contract verification failed: ' +
-      missingRed
+    'Commercial contract phase verification failed: ' +
+      mismatches
         .map(
           result =>
             result.file +
@@ -106,7 +149,9 @@ if (missingRed.length > 0) {
             String(result.status) +
             ', signal=' +
             String(result.signal) +
-            ', missing=' +
+            ', expected=' +
+            result.expectedOutcome +
+            ', marker=' +
             result.expectedMarker +
             ')'
         )
@@ -117,6 +162,6 @@ if (missingRed.length > 0) {
   console.log(
     'All ' +
       String(results.length) +
-      ' PR-00 contracts failed on the current implementation as expected.'
+      ' commercial contracts match the PR-02 phase expectations.'
   );
 }

@@ -34,7 +34,7 @@
         },
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 144,
+          "line": 145,
           "clientModule": false
         }
       ]
@@ -1085,7 +1085,7 @@
         },
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 135,
+          "line": 136,
           "clientModule": false
         }
       ]
@@ -1710,7 +1710,7 @@
       "calls": [
         {
           "path": "src/app/api/clinic/analysis/route.ts",
-          "line": 61,
+          "line": 77,
           "clientModule": false
         }
       ]
@@ -2504,7 +2504,7 @@
       "calls": [
         {
           "path": "src/app/api/clinic/analysis/route.ts",
-          "line": 55,
+          "line": 71,
           "clientModule": false
         }
       ]
@@ -3579,7 +3579,7 @@
       "calls": [
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 161,
+          "line": 162,
           "clientModule": false
         }
       ]
@@ -3711,17 +3711,17 @@
         },
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 117,
+          "line": 118,
           "clientModule": false
         },
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 126,
+          "line": 127,
           "clientModule": false
         },
         {
           "path": "src/lib/dashboard/read-model.ts",
-          "line": 153,
+          "line": 154,
           "clientModule": false
         },
         {

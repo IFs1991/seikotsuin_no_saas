@@ -64,6 +64,7 @@
     "commercial:inventory:db:remote": "node scripts/commercial-hardening/export-db-catalog.mjs --linked --label before",
     "commercial:inventory:db:remote:check": "node scripts/commercial-hardening/export-db-catalog.mjs --linked --label before --check",
     "commercial:red:db": "node scripts/commercial-hardening/run-red-contracts.mjs --local",
+    "commercial:verify:pr02:db": "node scripts/commercial-hardening/run-red-contracts.mjs --local",
     "commercial:red:routes": "node scripts/commercial-hardening/verify-route-classification.mjs",
     "commercial:red:types:local": "node scripts/commercial-hardening/verify-generated-types.mjs --local --write",
     "commercial:red:types:remote": "node scripts/commercial-hardening/verify-generated-types.mjs --linked --write",

@@ -7,6 +7,15 @@ begin
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public'
+      and c.relkind in ('r', 'p', 'v', 'm', 'S', 'f')
+      and not exists (
+        select 1
+        from pg_depend d
+        where d.classid = 'pg_class'::regclass
+          and d.objid = c.oid
+          and d.refclassid = 'pg_extension'::regclass
+          and d.deptype = 'e'
+      )
 
     union
 
@@ -14,6 +23,14 @@ begin
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
+      and not exists (
+        select 1
+        from pg_depend d
+        where d.classid = 'pg_proc'::regclass
+          and d.objid = p.oid
+          and d.refclassid = 'pg_extension'::regclass
+          and d.deptype = 'e'
+      )
   ),
   effective_global_function_defaults as (
     select
@@ -40,12 +57,13 @@ begin
       d.defaclobjtype::text as object_type,
       case when acl.grantee = 0 then 'PUBLIC' else grantee.rolname end as grantee,
       acl.privilege_type
-    from pg_default_acl d
+    from public_object_owners object_owner
+    join pg_default_acl d on d.defaclrole = object_owner.owner_oid
     left join pg_namespace n on n.oid = d.defaclnamespace
     join pg_roles owner_role on owner_role.oid = d.defaclrole
     cross join lateral aclexplode(d.defaclacl) acl
     left join pg_roles grantee on grantee.oid = acl.grantee
-    where coalesce(n.nspname, 'public') = 'public'
+    where n.nspname = 'public' or d.defaclnamespace = 0
   ),
   unsafe as (
     select *

@@ -15,6 +15,7 @@ import {
   createDashboardSupabaseReadModelClient,
   fetchDashboardReadModel,
 } from '@/lib/dashboard/read-model';
+import { createAdminClient } from '@/lib/supabase';
 
 const DASHBOARD_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
 
@@ -41,7 +42,7 @@ export async function GET(
       validator.add(uuidError.field, uuidError.message);
     }
 
-    if (validator.hasErrors()) {
+    if (!clinicId || validator.hasErrors()) {
       return NextResponse.json(
         { success: false, error: validator.getApiError() },
         { status: 400 }
@@ -52,9 +53,16 @@ export async function GET(
       allowedRoles: DASHBOARD_ALLOWED_ROLES,
     });
 
-    const resolvedClinicId = clinicId!;
+    const resolvedClinicId = clinicId;
+    // Clinic scope is proven above before service credentials are created.
+    // Only the legacy heatmap RPC receives this client; all canonical reads
+    // continue through the authenticated RLS client.
+    const legacyAnalyticsSupabase = createAdminClient();
     const dashboardData = await fetchDashboardReadModel({
-      supabase: createDashboardSupabaseReadModelClient(supabase),
+      supabase: createDashboardSupabaseReadModelClient(
+        supabase,
+        legacyAnalyticsSupabase
+      ),
       clinicId: resolvedClinicId,
     });
 

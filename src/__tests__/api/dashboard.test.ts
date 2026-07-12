@@ -6,6 +6,11 @@ import { ERROR_CODES, AppError } from '@/lib/error-handler';
 const ensureClinicAccessMock = jest.fn();
 const fetchDashboardReadModelMock = jest.fn();
 const createDashboardSupabaseReadModelClientMock = jest.fn();
+const createAdminClientMock = jest.fn();
+
+jest.mock('@/lib/supabase', () => ({
+  createAdminClient: (...args: unknown[]) => createAdminClientMock(...args),
+}));
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: (...args: unknown[]) => ensureClinicAccessMock(...args),
@@ -20,6 +25,7 @@ jest.mock('@/lib/dashboard/read-model', () => ({
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const scopedSupabase = { name: 'scoped-supabase' };
+const legacyAnalyticsSupabase = { name: 'legacy-analytics-supabase' };
 const dashboardReadModelClient = { name: 'dashboard-read-model-client' };
 const dashboardData = {
   dailyData: {
@@ -49,6 +55,7 @@ describe('GET /api/dashboard', () => {
     createDashboardSupabaseReadModelClientMock.mockReturnValue(
       dashboardReadModelClient
     );
+    createAdminClientMock.mockReturnValue(legacyAnalyticsSupabase);
     fetchDashboardReadModelMock.mockResolvedValue(dashboardData);
   });
 
@@ -70,7 +77,13 @@ describe('GET /api/dashboard', () => {
       '/api/dashboard',
       clinicId,
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
       }
     );
     expect(fetchDashboardReadModelMock).toHaveBeenCalledWith({
@@ -78,8 +91,10 @@ describe('GET /api/dashboard', () => {
       clinicId,
     });
     expect(createDashboardSupabaseReadModelClientMock).toHaveBeenCalledWith(
-      scopedSupabase
+      scopedSupabase,
+      legacyAnalyticsSupabase
     );
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns 403 when clinic scope validation fails', async () => {
@@ -97,6 +112,7 @@ describe('GET /api/dashboard', () => {
     expect(payload.success).toBe(false);
     expect(payload.error.code).toBe(ERROR_CODES.FORBIDDEN);
     expect(fetchDashboardReadModelMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
   it('returns 403 for customer role via the server-side dashboard role boundary', async () => {
@@ -118,7 +134,13 @@ describe('GET /api/dashboard', () => {
       '/api/dashboard',
       clinicId,
       {
-        allowedRoles: ['admin', 'clinic_admin', 'manager', 'therapist', 'staff'],
+        allowedRoles: [
+          'admin',
+          'clinic_admin',
+          'manager',
+          'therapist',
+          'staff',
+        ],
       }
     );
   });

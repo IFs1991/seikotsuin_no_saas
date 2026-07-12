@@ -26,7 +26,7 @@ import {
   summarizeReservationStatuses,
   type ReservationStatusRow,
 } from '@/lib/reservations/status';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import { createAdminClient, type SupabaseServerClient } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
 
@@ -182,9 +182,15 @@ export async function GET(request: NextRequest) {
     return buildRealDataDisabledResponse();
   }
 
+  // Clinic scope and entitlement are both proven before service credentials
+  // are created. The client is used only by the legacy heatmap RPC.
+  const legacyAnalyticsSupabase = createAdminClient();
   const [dashboard, reservationSummary, dailyReportStatus] = await Promise.all([
     fetchDashboardReadModel({
-      supabase: createDashboardSupabaseReadModelClient(access.supabase),
+      supabase: createDashboardSupabaseReadModelClient(
+        access.supabase,
+        legacyAnalyticsSupabase
+      ),
       clinicId,
       now: dateKeyToUtcMidnight(date),
     }),
