@@ -399,6 +399,151 @@ describe('patchMobileUiuxDcScript', () => {
     expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
   });
 
+  describe('daily-reports picked-date view', () => {
+    function evaluateDailyReportsComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  MENUS_DR = [];
+  state = { role: 'therapist', formOpen: false, editKey: null, items: [], todayItems: [] };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      todayLabel: 'sample-date',
+      todayUnsubmitted: true,
+      todaySubmittedFlag: false,
+      inputToday: () => {}
+    };
+  }
+}`),
+        { screen: 'daily-reports' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const singleDayPayload = (
+      date: string,
+      options: { submitted?: boolean; boot?: boolean } = {}
+    ) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: options.boot ? null : date,
+        endDate: options.boot ? null : date,
+        dailyReports: {
+          reports: options.submitted
+            ? [
+                {
+                  id: `report-${date}`,
+                  reportDate: date,
+                  staffName: 'BFF 先生',
+                  totalPatients: 12,
+                  newPatients: 2,
+                  totalRevenue: 90000,
+                  insuranceRevenue: 30000,
+                  privateRevenue: 60000,
+                  reportText: null,
+                  createdAt: `${date}T10:00:00.000Z`,
+                },
+              ]
+            : [],
+          summary: {
+            totalReports: options.submitted ? 1 : 0,
+            averagePatients: 12,
+            averageRevenue: 90000,
+            totalRevenue: 90000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+    });
+
+    it('suppresses the 本日 banners when viewing a picked non-today date', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todayLabel).toBe('7/1（水）');
+      expect(vals.todayUnsubmitted).toBe(false);
+      expect(vals.todaySubmittedFlag).toBe(false);
+      expect(vals.sumRevenue).toBe('¥90,000');
+    });
+
+    it('keeps the banners for a picked read of today', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('keeps boot-shaped reads (no start/end dates) unchanged', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true, boot: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('pins the report_date of an open form to the date it was opened for', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: false })
+      );
+      const inputToday = component.renderVals().inputToday as () => void;
+      inputToday();
+
+      // フォーム表示中にバックグラウンドで別日に切り替わる
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: false })
+      );
+
+      const payload = (
+        component as unknown as {
+          __mobileUiuxBuildDailyReportPayload: () => Record<string, unknown>;
+        }
+      ).__mobileUiuxBuildDailyReportPayload();
+
+      expect(payload.report_date).toBe('2026-07-10');
+    });
+  });
+
   describe('reservations date picker and date scope', () => {
     function evaluateDateScopeComponent() {
       const patched = patchMobileUiuxDcScript(
@@ -689,6 +834,9 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges daily-reports hydration overrides after the original renderVals result', () => {
+    // 単日read (start=end) は今日以外だとバナー抑止されるため、
+    // フィクスチャ日付=今日になるよう時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   STATUS_DR = {
@@ -1660,6 +1808,7 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {
+    jest.useFakeTimers({ now: new Date('2026-07-01T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   STATUS_DR = {
@@ -3467,6 +3616,7 @@ describe('patchMobileUiuxDcScript', () => {
       });
 
       it('keeps the submission banner intact for canonical therapist on daily-reports', () => {
+        jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
         const { component, window } = evaluateDailyReportsComponent();
         component.componentDidMount();
         window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));

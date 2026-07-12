@@ -3624,11 +3624,19 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
     // manager は閲覧専用の分析ビュー — 標準バリアント用の未提出/提出済み
     // バナーが漏れないよう常時 false に固定する
     const readOnlyManager = this.__mobileUiuxCanonicalRole() === 'manager';
+    // 日付ピッカーの単日読み (start=end) で今日以外を見ているときは
+    // 「本日の日報は…」バナー (静的コピー) を抑止し、入力/編集は
+    // 今日専用の入口に保つ。boot 時は start/end が無いので挙動不変
+    const pickedDate = typeof data.startDate === 'string' && data.startDate === data.endDate
+      ? data.startDate
+      : '';
+    const notToday = pickedDate !== '' && pickedDate !== this.__mobileUiuxTodayJstDateKey();
+    const suppressBanners = readOnlyManager || notToday;
 
     return {
       todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
-      todayUnsubmitted: readOnlyManager ? false : !todaySubmitted,
-      todaySubmittedFlag: readOnlyManager ? false : todaySubmitted,
+      todayUnsubmitted: suppressBanners ? false : !todaySubmitted,
+      todaySubmittedFlag: suppressBanners ? false : todaySubmitted,
       todayCount: todayPatients,
       sumRevenue: this.yen(todayRevenue),
       sumPatients: todayPatients + '名',
@@ -3666,6 +3674,9 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
       ? this.__mobileUiuxHydratedVals
       : {};
     const formDate = typeof hydratedVals.todayLabel === 'string' ? hydratedVals.todayLabel : '';
+    // フォーム表示中に日付ピッカーで別日へ切り替わっても report_date が
+    // すり替わらないよう、開いた時点の日付キーをスナップショットする
+    this.__mobileUiuxFormReportDateKey = this.__mobileUiuxCurrentReportDateKey;
     const sourceItems = this.state && Array.isArray(this.state.todayItems) ? this.state.todayItems : [];
     const items = sourceItems.map((item) => ({ ...item }));
     if (typeof this.setState === 'function') {
@@ -3766,9 +3777,14 @@ ${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
       return null;
     }
 
-    const reportDate = typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
-      ? this.__mobileUiuxCurrentReportDateKey
-      : this.__mobileUiuxTodayJstDateKey();
+    const snapshotDate = typeof this.__mobileUiuxFormReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxFormReportDateKey)
+      ? this.__mobileUiuxFormReportDateKey
+      : '';
+    const reportDate = snapshotDate
+      ? snapshotDate
+      : typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
+        ? this.__mobileUiuxCurrentReportDateKey
+        : this.__mobileUiuxTodayJstDateKey();
     if (!reportDate) return null;
 
     let totalRevenue = 0;
