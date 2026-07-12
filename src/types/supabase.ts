@@ -7,6 +7,11 @@ export type Json =
   | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: '14.5';
+  };
   public: {
     Tables: {
       ai_comments: {
@@ -3361,18 +3366,18 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'patient_outreach_recipients_booked_reservation_id_fkey';
-            columns: ['booked_reservation_id'];
+            foreignKeyName: 'patient_outreach_recipients_booked_reservation_clinic_fkey';
+            columns: ['booked_reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
-            foreignKeyName: 'patient_outreach_recipients_booked_reservation_id_fkey';
-            columns: ['booked_reservation_id'];
+            foreignKeyName: 'patient_outreach_recipients_booked_reservation_clinic_fkey';
+            columns: ['booked_reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservations';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'patient_outreach_recipients_campaign_clinic_fkey';
@@ -3382,18 +3387,18 @@ export type Database = {
             referencedColumns: ['id', 'clinic_id'];
           },
           {
-            foreignKeyName: 'patient_outreach_recipients_customer_id_fkey';
-            columns: ['customer_id'];
+            foreignKeyName: 'patient_outreach_recipients_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
-            foreignKeyName: 'patient_outreach_recipients_customer_id_fkey';
-            columns: ['customer_id'];
+            foreignKeyName: 'patient_outreach_recipients_customer_clinic_fkey';
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
         ];
       };
@@ -3852,11 +3857,11 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: 'reservations_campaign_id_fkey';
-            columns: ['campaign_id'];
+            foreignKeyName: 'reservations_campaign_clinic_fkey';
+            columns: ['campaign_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_outreach_campaigns';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_clinic_id_fkey';

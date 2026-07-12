@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  DO_NOT_TRACK: '1'
+  SUPABASE_TELEMETRY_DISABLED: '1'
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,7 +22,8 @@ concurrency:
 #
 #  quality            – lint / type-check / generated asset drift / secret scan
 #  build              – npm run build  (DOD-10)
-#  supabase-contract  – validates src/types/supabase.ts header  (DOD-12)
+#  supabase-contract  – auxiliary generated-file corruption check  (DOD-12)
+#  database-contract  – clean migration replay / pgTAP / complete type drift
 #  fixture-preflight  – static fixture UUID/email checks  (DOD-05)
 #  full-regression    – all non-E2E Jest suites  (DOD-11)
 #  test-security      – security/session regression suites
@@ -103,11 +108,10 @@ jobs:
           NEXT_PUBLIC_DEFAULT_TIMEZONE: 'Asia/Tokyo'
 
   # --------------------------------------------------------------------------
-  # 3. Supabase Types Contract  (DOD-12)
-  # Validates that the committed src/types/supabase.ts starts with the
-  # expected header. No Supabase CLI or local stack required.
-  # Full regeneration via `npm run supabase:types` is a follow-up task once
-  # a Supabase runner strategy is established.
+  # 3. Supabase Types Contract  (DOD-12, auxiliary)
+  # Retained during the branch-protection transition so the existing required
+  # check context does not become permanently pending. Database Contract is
+  # the authoritative schema/type drift gate.
   # --------------------------------------------------------------------------
   supabase-contract:
     name: Supabase Types Contract
@@ -131,7 +135,55 @@ jobs:
           "
 
   # --------------------------------------------------------------------------
-  # 4. Fixture Preflight – static checks only  (DOD-05)
+  # 4. Database Contract – clean replay / pgTAP / generated type drift
+  # --------------------------------------------------------------------------
+  database-contract:
+    name: Database Contract
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read pinned Supabase CLI version
+        id: supabase-cli-version
+        shell: bash
+        run: echo "version=$(node scripts/verify-supabase-cli-version.mjs --print)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: ${{ steps.supabase-cli-version.outputs.version }}
+
+      - name: Verify pinned Supabase CLI
+        run: npm run supabase:cli:verify
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Replay all migrations and seed from zero
+        run: supabase db reset --local
+
+      - name: Run database contract tests
+        run: supabase test db --local
+
+      - name: Verify generated Supabase types are current
+        run: |
+          npm run supabase:types
+          git diff --exit-code -- src/types/supabase.ts
+
+  # --------------------------------------------------------------------------
+  # 5. Fixture Preflight – static checks only  (DOD-05)
   # Validates UUID format, uniqueness, and email uniqueness in fixture
   # definitions. DB connectivity check is skipped (E2E_SKIP_DB_CHECK=1).
   # DB-connected preflight can be enabled in a scheduled/nightly job once
@@ -160,7 +212,7 @@ jobs:
           E2E_SKIP_DB_CHECK: '1'
 
   # --------------------------------------------------------------------------
-  # 5. Full Regression (DOD-11)
+  # 6. Full Regression (DOD-11)
   # --------------------------------------------------------------------------
   full-regression:
     name: Full Jest Regression
@@ -219,7 +271,7 @@ jobs:
   app-e2e:
     name: App E2E (Local Supabase + Chromium)
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: [quality, database-contract]
     timeout-minutes: 35
     steps:
       - name: Checkout
@@ -234,19 +286,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Read pinned Supabase CLI version
+        id: supabase-cli-version
+        shell: bash
+        run: echo "version=$(node scripts/verify-supabase-cli-version.mjs --print)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.84.2
-          github-token: ${{ github.token }}
+          version: ${{ steps.supabase-cli-version.outputs.version }}
+
+      - name: Verify pinned Supabase CLI
+        run: npm run supabase:cli:verify
 
       - name: Start local Supabase
         run: supabase start
-
-      - name: Verify generated Supabase types are current
-        run: |
-          npm run supabase:types
-          git diff --exit-code -- src/types/supabase.ts
 
       - name: Export local test environment
         run: |
