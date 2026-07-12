@@ -239,6 +239,7 @@ export function buildMobileUiuxBridgeScript(
   const inFlightReads = new Map();
   let fallbackStatusElement = null;
   let mutationStatusElement = null;
+  let datePickerInput = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -757,6 +758,115 @@ export function buildMobileUiuxBridgeScript(
     });
   }
 
+  function getJstTodayDateKey() {
+    const shifted = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const year = shifted.getUTCFullYear();
+    const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(shifted.getUTCDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
+  }
+
+  function ensureDatePickerInput() {
+    if (datePickerInput) {
+      return datePickerInput;
+    }
+    if (!document || typeof document.createElement !== "function") {
+      return null;
+    }
+    const input = document.createElement("input");
+    if (!input) {
+      return null;
+    }
+    if (typeof input.setAttribute === "function") {
+      input.setAttribute("type", "date");
+      input.setAttribute("tabindex", "-1");
+      input.setAttribute("aria-hidden", "true");
+      input.setAttribute("data-mobile-uiux-date-picker-input", "");
+      // showPicker() は描画済みの接続要素が必要なため display:none は不可
+      input.setAttribute("style", "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;border:0;padding:0;");
+    }
+    if (typeof input.addEventListener === "function") {
+      input.addEventListener("change", () => {
+        handleDatePicked(input.value);
+      });
+    }
+    if (document.body && typeof document.body.appendChild === "function") {
+      document.body.appendChild(input);
+    }
+    datePickerInput = input;
+    return input;
+  }
+
+  function openDatePicker() {
+    const input = ensureDatePickerInput();
+    if (!input) {
+      return;
+    }
+    input.value = isRecord(currentReadParams) && isDateKey(currentReadParams.date)
+      ? currentReadParams.date
+      : getJstTodayDateKey();
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+        return;
+      }
+    } catch (error) {
+      // showPicker 未対応/拒否時は focus+click にフォールバック
+    }
+    if (typeof input.focus === "function") {
+      input.focus();
+    }
+    if (typeof input.click === "function") {
+      input.click();
+    }
+  }
+
+  function handleDatePicked(value) {
+    if (!isDateKey(value)) {
+      return;
+    }
+    const hook = window.__MOBILE_UIUX_ON_DATE_PICKED__;
+    if (typeof hook === "function") {
+      hook(value);
+      return;
+    }
+    refreshReadData({ date: value });
+  }
+
+  function getDatePickerHost(event) {
+    const eventTarget = event && event.target;
+    if (!eventTarget || typeof eventTarget.closest !== "function") {
+      return null;
+    }
+    return eventTarget.closest("[data-mobile-uiux-date-picker]");
+  }
+
+  function bindDatePicker() {
+    if (!document || typeof document.addEventListener !== "function") {
+      return;
+    }
+
+    document.addEventListener("click", event => {
+      if (getDatePickerHost(event)) {
+        openDatePicker();
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      const key = event && event.key;
+      if (key !== "Enter" && key !== " " && key !== "Spacebar") {
+        return;
+      }
+      if (!getDatePickerHost(event)) {
+        return;
+      }
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      openDatePicker();
+    });
+  }
+
   function getInlineContextPayload() {
     const inline = window.__MOBILE_UIUX_CONTEXT__;
     return isSuccessPayload(inline) ? inline : null;
@@ -1063,6 +1173,7 @@ export function buildMobileUiuxBridgeScript(
   };
 
   bindBottomNavNavigation();
+  bindDatePicker();
 
   bootPromise = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);
