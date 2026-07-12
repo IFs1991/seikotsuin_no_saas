@@ -2,7 +2,7 @@
 
 整骨院・治療院向けのマルチテナント業務管理 SaaS です。Next.js 15 (App Router) と Supabase をベースに、予約、患者、日報、収益、スタッフ、管理設定、セキュリティ監視を 1 つのアプリで扱います。
 
-テナント境界は `clinic_id`。患者情報を扱う医療系システムのため、認可・RLS・テナント分離を最優先しています。現行バージョンは `0.1.0-pilot` で、主眼は新規機能追加ではなく `docs/stabilization/DoD-v0.1.md` に沿った**安定化**です。ローカル Supabase、Docker、Playwright、RLS の再現性を重視しています。
+テナント境界は `clinic_id`。患者情報を扱う医療系システムのため、認可・RLS・テナント分離を最優先しています。現行バージョンは `0.1.0-pilot` です。変更完了、パイロット出荷、一般商用出荷、顧客価値検証は、それぞれ独立した現行ゲートで判断します。
 
 ## 現在の実装範囲
 
@@ -151,14 +151,14 @@ npm run verify:supabase
 - Studio: `54333`
 - Inbucket: `54334`
 
-安定化 DoD では以下が基準です。
+歴史的な安定化 DoD では以下を基準としていました。
 
 - `supabase start`
 - `supabase status`
 - `supabase db push --local --dry-run`（スキーマ drift = diff ゼロが基準）
 - `npm run verify:supabase`
 
-詳細は [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md) を参照してください。
+詳細は歴史的証跡 [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md) を参照してください。現在の出荷判断には [リリースガバナンス索引](docs/releases/README.md) を使用します。
 
 ### Docker
 
@@ -226,7 +226,13 @@ npm run scan:secrets     # 機密スキャン（CI 必須）
 ## 運用ドキュメント
 
 - 作業規約（正本）: [AGENTS.md](AGENTS.md)
-- 安定化 DoD: [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md)
+- PR変更完了の正本: [docs/quality/change-dod-v1.0.md](docs/quality/change-dod-v1.0.md)
+- 有人パイロット出荷の正本: [docs/releases/pilot-release-gate-v1.0.md](docs/releases/pilot-release-gate-v1.0.md)
+- 一般商用出荷の正本: [docs/releases/commercial-release-qualification-v1.0.md](docs/releases/commercial-release-qualification-v1.0.md)
+- 顧客価値検証の正本: [docs/product/pilot-success-criteria-v1.0.md](docs/product/pilot-success-criteria-v1.0.md)
+- 現在状態: [docs/releases/current-gate-status.yaml](docs/releases/current-gate-status.yaml)
+- 歴史的安定化 DoD: [docs/stabilization/DoD-v0.1.md](docs/stabilization/DoD-v0.1.md)（現行リリース基準ではない）
+- 商用ハードニング実装仕様: [docs/stabilization/spec-commercial-hardening-migration-v1.0.md](docs/stabilization/spec-commercial-hardening-migration-v1.0.md)（実装計画。リリース判定の正本ではない）
 - 変更仕様書の置き場: `docs/stabilization/spec-*.md`
 - Runbook: [docs/operations/RUNBOOK.md](docs/operations/RUNBOOK.md)
 - 環境変数管理: [docs/operations/ENV_MANAGEMENT_POLICY.md](docs/operations/ENV_MANAGEMENT_POLICY.md)
