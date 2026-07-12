@@ -10,6 +10,7 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   api,
   isSuccessResponse,
@@ -526,22 +527,16 @@ function StandardDailyReportsView({
   return (
     <div className='bg-background min-h-screen py-8'>
       <div className='container mx-auto px-4'>
-        <Card className='w-full bg-card mb-8'>
-          <CardHeader className='bg-card'>
-            <CardTitle className='bg-card'>デジタル日報管理</CardTitle>
-            <CardDescription className='bg-card'>
-              本日の日報を入力・管理します。
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='bg-card'>
-            <div className='space-y-4'>
-              <p className='text-gray-600'>日報の入力・管理を行います</p>
-              <Link href='/daily-reports/input'>
-                <Button className='bg-blue-600 text-white'>日報を入力</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <PageHeader
+          className='mb-8'
+          title='日報管理'
+          description='毎日の施術内容と売上を記録・確認します。入力した日報はダッシュボードと収益分析に反映されます。'
+          actions={
+            <Link href='/daily-reports/input'>
+              <Button className='bg-blue-600 text-white'>日報を入力</Button>
+            </Link>
+          }
+        />
 
         {summary && (
           <Card className='w-full bg-card mb-8'>

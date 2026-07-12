@@ -6,6 +6,13 @@ import {
   fetchDashboardReadModel,
 } from '@/lib/dashboard/read-model';
 import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
+import {
+  evaluateMobileUiuxEnvRollout,
+  resolveMobileUiuxPrincipal,
+} from '@/lib/mobile-uiux/access';
+import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
+import { fetchManagerRevenuePeriodTotals } from '@/lib/services/manager-revenue-service';
+import { createAdminClient } from '@/lib/supabase';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
@@ -20,12 +27,39 @@ jest.mock('@/lib/daily-reports/read-model', () => ({
   fetchDailyReportsReadModel: jest.fn(),
 }));
 
+jest.mock('@/lib/mobile-uiux/access', () => ({
+  evaluateMobileUiuxEnvRollout: jest.fn(),
+  resolveMobileUiuxPrincipal: jest.fn(),
+}));
+
+jest.mock('@/lib/mobile-uiux/clinic-names', () => ({
+  fetchClinicNames: jest.fn(),
+}));
+
+jest.mock('@/lib/services/manager-revenue-service', () => ({
+  fetchManagerRevenuePeriodTotals: jest.fn(),
+}));
+
+jest.mock('@/lib/supabase', () => ({
+  createClient: jest.fn(),
+  createAdminClient: jest.fn(),
+}));
+
 const ensureClinicAccessMock = jest.mocked(ensureClinicAccess);
 const createDashboardSupabaseReadModelClientMock = jest.mocked(
   createDashboardSupabaseReadModelClient
 );
 const fetchDashboardReadModelMock = jest.mocked(fetchDashboardReadModel);
 const fetchDailyReportsReadModelMock = jest.mocked(fetchDailyReportsReadModel);
+const resolveMobileUiuxPrincipalMock = jest.mocked(resolveMobileUiuxPrincipal);
+const evaluateMobileUiuxEnvRolloutMock = jest.mocked(
+  evaluateMobileUiuxEnvRollout
+);
+const fetchClinicNamesMock = jest.mocked(fetchClinicNames);
+const fetchManagerRevenuePeriodTotalsMock = jest.mocked(
+  fetchManagerRevenuePeriodTotals
+);
+const createAdminClientMock = jest.mocked(createAdminClient);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const reservationRows = [
@@ -253,5 +287,164 @@ describe('GET /api/mobile-uiux/home', () => {
       })
     );
     expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(clinicId);
+  });
+
+  describe('clinicCards (manager/admin)', () => {
+    const secondClinicId = '223e4567-e89b-12d3-a456-426614174001';
+    const adminClient = { name: 'admin-client' };
+
+    function useRole(role: string) {
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: scopedSupabase,
+        user: { id: 'user-1', email: 'user@example.com' },
+        permissions: {
+          role,
+          clinic_id: clinicId,
+          clinic_scope_ids: [clinicId, secondClinicId],
+        },
+      } as never);
+    }
+
+    beforeEach(() => {
+      process.env.MOBILE_UIUX_ALLOWED_CLINIC_IDS = `${clinicId},${secondClinicId}`;
+      createAdminClientMock.mockReturnValue(adminClient as never);
+      resolveMobileUiuxPrincipalMock.mockResolvedValue({
+        allowed: true,
+        role: 'manager',
+        clinicIds: [clinicId, secondClinicId],
+      });
+      evaluateMobileUiuxEnvRolloutMock.mockReturnValue({
+        allowed: true,
+        role: 'manager',
+        clinicIds: [clinicId, secondClinicId],
+      });
+      fetchManagerRevenuePeriodTotalsMock.mockResolvedValue([
+        {
+          clinic_id: clinicId,
+          operating_revenue: 184000,
+          visit_count: 21,
+        } as never,
+      ]);
+      fetchClinicNamesMock.mockResolvedValue([
+        { id: clinicId, name: '本町院' },
+        { id: secondClinicId, name: '駅前院' },
+      ]);
+    });
+
+    it('returns per-clinic cards for manager scoped to principal-resolved clinic ids only', async () => {
+      useRole('manager');
+
+      const { GET } = await import('@/app/api/mobile-uiux/home/route');
+      const response = await GET(
+        buildRequest(`?clinic_id=${clinicId}&date=2026-06-12`)
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      // RPC (service_role) には principal 解決済みの clinic id 以外を渡さない
+      expect(resolveMobileUiuxPrincipalMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          permissions: expect.objectContaining({ role: 'manager' }),
+        })
+      );
+      expect(fetchManagerRevenuePeriodTotalsMock).toHaveBeenCalledTimes(1);
+      expect(fetchManagerRevenuePeriodTotalsMock).toHaveBeenCalledWith(
+        adminClient,
+        [clinicId, secondClinicId],
+        '2026-06-12',
+        '2026-06-12'
+      );
+      expect(fetchClinicNamesMock).toHaveBeenCalledWith(scopedSupabase, [
+        clinicId,
+        secondClinicId,
+      ]);
+      expect(payload.data.clinicCards).toEqual([
+        {
+          clinicId,
+          name: '本町院',
+          revenue: 184000,
+          visitCount: 21,
+        },
+        {
+          clinicId: secondClinicId,
+          name: '駅前院',
+          revenue: 0,
+          visitCount: 0,
+        },
+      ]);
+    });
+
+    it.each(['staff', 'therapist', 'clinic_admin'])(
+      'omits clinicCards and never calls the revenue RPC for %s',
+      async role => {
+        useRole(role);
+
+        const { GET } = await import('@/app/api/mobile-uiux/home/route');
+        const response = await GET(
+          buildRequest(`?clinic_id=${clinicId}&date=2026-06-12`)
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(resolveMobileUiuxPrincipalMock).not.toHaveBeenCalled();
+        expect(fetchManagerRevenuePeriodTotalsMock).not.toHaveBeenCalled();
+        expect(payload.data).not.toHaveProperty('clinicCards');
+      }
+    );
+
+    it('omits clinics whose name cannot be resolved (fail-closed)', async () => {
+      useRole('admin');
+      fetchClinicNamesMock.mockResolvedValue([
+        { id: clinicId, name: '本町院' },
+      ]);
+
+      const { GET } = await import('@/app/api/mobile-uiux/home/route');
+      const response = await GET(
+        buildRequest(`?clinic_id=${clinicId}&date=2026-06-12`)
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.data.clinicCards).toEqual([
+        { clinicId, name: '本町院', revenue: 184000, visitCount: 21 },
+      ]);
+    });
+
+    it('omits clinicCards when the principal resolution denies access', async () => {
+      useRole('manager');
+      resolveMobileUiuxPrincipalMock.mockResolvedValue({
+        allowed: false,
+        status: 403,
+        reason: 'clinic_scope_empty',
+      });
+
+      const { GET } = await import('@/app/api/mobile-uiux/home/route');
+      const response = await GET(
+        buildRequest(`?clinic_id=${clinicId}&date=2026-06-12`)
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(fetchManagerRevenuePeriodTotalsMock).not.toHaveBeenCalled();
+      expect(payload.data).not.toHaveProperty('clinicCards');
+    });
+
+    it('degrades to a card-less response when the revenue RPC fails', async () => {
+      useRole('manager');
+      fetchManagerRevenuePeriodTotalsMock.mockRejectedValue(
+        new Error('rpc unavailable')
+      );
+
+      const { GET } = await import('@/app/api/mobile-uiux/home/route');
+      const response = await GET(
+        buildRequest(`?clinic_id=${clinicId}&date=2026-06-12`)
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.data).not.toHaveProperty('clinicCards');
+      expect(payload.data.dashboard).toEqual(dashboardData);
+    });
   });
 });

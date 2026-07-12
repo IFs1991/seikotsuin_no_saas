@@ -139,7 +139,9 @@ describe('DashboardPage', () => {
   it('non-manager with clinic keeps the existing single clinic dashboard', () => {
     renderDashboard(createProfile({ role: 'staff' }));
 
-    expect(screen.getByText('メインダッシュボード')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'ダッシュボード' })
+    ).toBeInTheDocument();
     expect(screen.getByText('本日のリアルタイムデータ')).toBeInTheDocument();
     expect(mockedUseDashboard).toHaveBeenCalledWith(clinicId);
   });

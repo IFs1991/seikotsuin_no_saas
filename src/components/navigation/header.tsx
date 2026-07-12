@@ -5,11 +5,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import {
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  CircleUser,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UserProfile } from '@/types/user-profile';
 import { useSelectedClinic } from '@/providers/selected-clinic-context';
 import { getAdminMenuItemsForRole } from '@/lib/navigation/items';
-import { isTherapistRole } from '@/lib/constants/roles';
+import { getRoleLabel, isTherapistRole } from '@/lib/constants/roles';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { MobileUiuxEntryPrompt } from '@/components/mobile-uiux/mobile-entry-prompt';
 import tiramisuWordmark from '@/images/brand/tiramisu-wordmark.png';
@@ -225,6 +236,7 @@ export const Header = React.memo(function Header({
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [previewClinicId, setPreviewClinicId] = useState<string | null>(null);
+  const [switchedClinicId, setSwitchedClinicId] = useState<string | null>(null);
   const { selectedClinicId, setSelectedClinicId } = useSelectedClinic();
   const profileRole = profile?.role ?? null;
   const homeHref = isTherapistRole(profileRole) ? '/reservations' : '/';
@@ -312,12 +324,27 @@ export const Header = React.memo(function Header({
     (clinicId: string | null) => {
       setIsNotificationsOpen(false);
       setSelectedClinicId(clinicId);
-      if (clinicId) {
-        setPreviewClinicId(clinicId);
-      }
+      // 切替直後にモーダルを開くと操作の予測が崩れるため、
+      // 切替完了の通知だけを出し、予約プレビューは通知内から任意で開く
+      setSwitchedClinicId(clinicId);
     },
     [setSelectedClinicId]
   );
+
+  useEffect(() => {
+    if (!switchedClinicId) return;
+    const timer = window.setTimeout(() => setSwitchedClinicId(null), 8000);
+    return () => window.clearTimeout(timer);
+  }, [switchedClinicId]);
+
+  const handleDismissSwitchedNotice = useCallback(() => {
+    setSwitchedClinicId(null);
+  }, []);
+
+  const handleOpenPreviewFromNotice = useCallback(() => {
+    setPreviewClinicId(switchedClinicId);
+    setSwitchedClinicId(null);
+  }, [switchedClinicId]);
 
   const handleClosePreview = useCallback(() => {
     setPreviewClinicId(null);
@@ -342,7 +369,7 @@ export const Header = React.memo(function Header({
           className='text-white hover:bg-blue-700 md:hidden'
           aria-label='メニューを開閉'
         >
-          ☰
+          <Menu className='h-5 w-5' aria-hidden='true' />
         </Button>
         <button
           type='button'
@@ -361,8 +388,7 @@ export const Header = React.memo(function Header({
           <span className='text-left'>
             {profile && (
               <span className='block text-xs text-blue-200 mt-0.5'>
-                {profile.email ?? 'アカウント'}
-                {profile.role ? ` / ${profile.role}` : ''}
+                {getRoleLabel(profile.role)}
               </span>
             )}
           </span>
@@ -399,6 +425,7 @@ export const Header = React.memo(function Header({
               label={badgeLabel}
               variant='floating'
             />
+            <Bell className='mr-1 h-4 w-4' aria-hidden='true' />
             通知
           </Button>
           {isNotificationsOpen && (
@@ -421,10 +448,19 @@ export const Header = React.memo(function Header({
           <Button
             variant='ghost'
             onClick={handleSettingsClick}
-            className='flex items-center'
+            className='flex items-center text-white hover:bg-blue-700'
+            aria-expanded={showAdminMenu ? isAdminMenuOpen : undefined}
           >
+            <Settings className='mr-1 h-4 w-4' aria-hidden='true' />
             {showAdminMenu ? '管理メニュー' : '設定'}
-            <span className='ml-1'>{showAdminMenu ? '▾' : ''}</span>
+            {showAdminMenu && (
+              <ChevronDown
+                className={`ml-1 h-4 w-4 transition-transform duration-200 ${
+                  isAdminMenuOpen ? 'rotate-180' : ''
+                }`}
+                aria-hidden='true'
+              />
+            )}
           </Button>
 
           {showAdminMenu && isAdminMenuOpen && (
@@ -442,8 +478,16 @@ export const Header = React.memo(function Header({
           variant='ghost'
           onClick={onToggleDarkMode}
           className='text-white hover:bg-blue-700'
+          aria-label={
+            isDarkMode ? '明るい表示に切り替え' : '暗い表示に切り替え'
+          }
+          title={isDarkMode ? '明るい表示に切り替え' : '暗い表示に切り替え'}
         >
-          {isDarkMode ? '🌙' : '☀️'}
+          {isDarkMode ? (
+            <Moon className='h-4 w-4' aria-hidden='true' />
+          ) : (
+            <Sun className='h-4 w-4' aria-hidden='true' />
+          )}
         </Button>
 
         <div className='relative'>
@@ -451,7 +495,10 @@ export const Header = React.memo(function Header({
             variant='ghost'
             className='text-white hover:bg-blue-700'
             onClick={handleToggleUserMenu}
+            aria-expanded={isUserMenuOpen}
+            aria-haspopup='menu'
           >
+            <CircleUser className='mr-1 h-4 w-4' aria-hidden='true' />
             ユーザー
           </Button>
 
@@ -531,8 +578,17 @@ export const Header = React.memo(function Header({
                 className='w-full max-w-none'
               />
             )}
-            <Button variant='ghost' onClick={onToggleDarkMode}>
-              {isDarkMode ? '🌙 ダーク' : '☀️ ライト'}
+            <Button
+              variant='ghost'
+              onClick={onToggleDarkMode}
+              className='w-full justify-start'
+            >
+              {isDarkMode ? (
+                <Moon className='mr-2 h-4 w-4' aria-hidden='true' />
+              ) : (
+                <Sun className='mr-2 h-4 w-4' aria-hidden='true' />
+              )}
+              {isDarkMode ? '明るい表示に切り替え' : '暗い表示に切り替え'}
             </Button>
             {showAdminMenu && (
               <div className='rounded bg-blue-900/50 p-2 space-y-1'>
@@ -557,6 +613,42 @@ export const Header = React.memo(function Header({
             />
           </div>
         </>
+      )}
+
+      {switchedClinicId && (
+        <div
+          role='status'
+          className='fixed right-4 top-[4.5rem] z-50 flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-medical border border-border bg-card p-4 text-foreground shadow-medical-lg'
+        >
+          <div className='min-w-0 flex-1'>
+            <p className='text-sm font-medium'>
+              「
+              {displayClinics.find(clinic => clinic.id === switchedClinicId)
+                ?.name ?? '選択した店舗'}
+              」に切り替えました
+            </p>
+            <p className='mt-0.5 text-xs text-muted-foreground'>
+              画面のデータは選択した店舗の内容に変わります。
+            </p>
+            <Button
+              variant='outline'
+              size='sm'
+              className='mt-2'
+              onClick={handleOpenPreviewFromNotice}
+            >
+              <CalendarDays className='mr-1 h-4 w-4' aria-hidden='true' />
+              この店舗の予約状況を見る
+            </Button>
+          </div>
+          <button
+            type='button'
+            onClick={handleDismissSwitchedNotice}
+            aria-label='通知を閉じる'
+            className='inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600'
+          >
+            <X className='h-4 w-4' aria-hidden='true' />
+          </button>
+        </div>
       )}
 
       {previewClinicId && (

@@ -86,7 +86,7 @@ const BRIDGE_SCRIPT_TAG_BY_SCREEN: Record<MobileUiuxScreenResource, string> = {
 const MOBILE_UIUX_BRIDGE_SCRIPT_RE =
   /<script\b(?=[^>]*\bdata-mobile-uiux-bridge\b)/i;
 
-const MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE = {
+export const MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE = {
   admin: ['home', 'reservations', 'patients', 'daily-reports', 'settings'],
   clinic_admin: [
     'home',

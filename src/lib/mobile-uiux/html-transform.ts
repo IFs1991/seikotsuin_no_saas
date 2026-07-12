@@ -1,6 +1,9 @@
 import { HTMLElement, Node, NodeType, parse } from 'node-html-parser';
 
-import type { MobileUiuxScreenResource } from './bridge-manifest';
+import {
+  MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE,
+  type MobileUiuxScreenResource,
+} from './bridge-manifest';
 
 export type MobileUiuxHtmlShellMode = 'production' | 'preview';
 
@@ -21,6 +24,30 @@ const MOBILE_UIUX_NAV_REQUIRED_RESOURCES = [
   'settings',
   'settings-detail',
 ] as const satisfies readonly MobileUiuxScreenResource[];
+
+// ブリッジが boot 時に <html data-mobile-uiux-canonical-role="…"> を刻印する
+// (画面は initial-read=hydrated まで visibility:hidden のためフラッシュなし)。
+// ナビDOMノード自体は削除しない — 資産検証が5項目を要求する。
+function buildRoleNavVisibilityCss(): string {
+  const allTargets = Array.from(
+    new Set(Object.values(MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE).flat())
+  );
+
+  const rules: string[] = [];
+  for (const [role, allowedTargets] of Object.entries(
+    MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE
+  )) {
+    for (const target of allTargets) {
+      if (!(allowedTargets as readonly string[]).includes(target)) {
+        rules.push(
+          `html[data-mobile-uiux-canonical-role="${role}"] [data-mobile-uiux-nav-target="${target}"] { display: none !important; }`
+        );
+      }
+    }
+  }
+
+  return rules.join('\n');
+}
 
 const PRODUCTION_SHELL_STYLE = `
 <style data-mobile-uiux-production-shell>
@@ -93,6 +120,7 @@ body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
 body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
   background: var(--surface-2);
 }
+${buildRoleNavVisibilityCss()}
 </style>`;
 
 const LOCAL_REACT_RUNTIME_SCRIPT =

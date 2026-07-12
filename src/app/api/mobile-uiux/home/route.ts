@@ -1,18 +1,29 @@
 import { NextRequest } from 'next/server';
 
-import { ADMIN_USER_ROLE_VALUES } from '@/lib/constants/roles';
+import { ADMIN_USER_ROLE_VALUES, normalizeRole } from '@/lib/constants/roles';
 import {
   createDashboardSupabaseReadModelClient,
   fetchDashboardReadModel,
 } from '@/lib/dashboard/read-model';
 import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
 import { AppError } from '@/lib/error-handler';
-import type { MobileUiuxHomeResponse } from '@/lib/mobile-uiux/contracts';
+import { createLogger } from '@/lib/logger';
+import {
+  evaluateMobileUiuxEnvRollout,
+  resolveMobileUiuxPrincipal,
+} from '@/lib/mobile-uiux/access';
+import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
+import type {
+  MobileUiuxHomeClinicCard,
+  MobileUiuxHomeResponse,
+} from '@/lib/mobile-uiux/contracts';
 import { prefetchMobileUiuxClinicEntitlement } from '@/lib/mobile-uiux/entitlements';
 import {
   areMobileUiuxRealDataReadsEnabled,
   getMobileUiuxFlags,
+  type MobileUiuxFlags,
 } from '@/lib/mobile-uiux/flags';
+import { fetchManagerRevenuePeriodTotals } from '@/lib/services/manager-revenue-service';
 import {
   buildMobileUiuxFailure,
   buildMobileUiuxSuccess,
@@ -26,7 +37,11 @@ import {
   summarizeReservationStatuses,
   type ReservationStatusRow,
 } from '@/lib/reservations/status';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import {
+  createAdminClient,
+  type SupabaseServerClient,
+  type UserPermissions,
+} from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
 
@@ -36,6 +51,9 @@ export const dynamic = 'force-dynamic';
 const PATH = '/api/mobile-uiux/home';
 const JST_TIMEZONE = 'Asia/Tokyo' as const;
 const MOBILE_UIUX_READ_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
+const CLINIC_CARD_ROLES = ['manager', 'admin'] as const;
+
+const log = createLogger('MobileUiuxHome');
 
 type HomeReservationSummary = MobileUiuxHomeResponse['reservationSummary'];
 type HomeDailyReportStatus = MobileUiuxHomeResponse['dailyReportStatus'];
@@ -101,6 +119,72 @@ async function fetchHomeDailyReportStatus(params: {
       },
     ],
   };
+}
+
+/**
+ * manager/admin 向けの院別当日実績カード。RPC (service_role、p_clinic_ids を
+ * 無検証に信頼) には principal 解決済みの clinic id 以外を渡さない —
+ * これがテナント分離の唯一の保証。スコープ解決や取得に失敗した場合は
+ * null を返してカードを省略する (閲覧専用の補足データのため fail-soft)。
+ */
+async function fetchHomeClinicCards(params: {
+  supabase: SupabaseServerClient;
+  userId: string;
+  permissions: UserPermissions | null;
+  flags: MobileUiuxFlags;
+  date: string;
+}): Promise<MobileUiuxHomeClinicCard[] | null> {
+  try {
+    const principal = await resolveMobileUiuxPrincipal({
+      userId: params.userId,
+      permissions: params.permissions,
+      flags: params.flags,
+    });
+    if (principal.allowed === false) {
+      return null;
+    }
+
+    const rollout = evaluateMobileUiuxEnvRollout(principal, params.flags);
+    if (rollout.allowed === false || rollout.clinicIds.length === 0) {
+      return null;
+    }
+
+    const clinicIds = rollout.clinicIds;
+    const [totals, names] = await Promise.all([
+      fetchManagerRevenuePeriodTotals(
+        createAdminClient(),
+        clinicIds,
+        params.date,
+        params.date
+      ),
+      fetchClinicNames(params.supabase, clinicIds),
+    ]);
+
+    const nameById = new Map(names.map(clinic => [clinic.id, clinic.name]));
+    const totalsById = new Map(totals.map(row => [row.clinic_id, row]));
+
+    const cards: MobileUiuxHomeClinicCard[] = [];
+    for (const clinicId of clinicIds) {
+      const name = nameById.get(clinicId);
+      if (!name) {
+        continue;
+      }
+      const row = totalsById.get(clinicId);
+      cards.push({
+        clinicId,
+        name,
+        revenue: row ? Number(row.operating_revenue) || 0 : 0,
+        visitCount: row ? Number(row.visit_count) || 0 : 0,
+      });
+    }
+
+    return cards.length > 0 ? cards : null;
+  } catch (error) {
+    log.warn('Failed to build mobile home clinic cards', {
+      errorName: error instanceof Error ? error.name : null,
+    });
+    return null;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -182,23 +266,38 @@ export async function GET(request: NextRequest) {
     return buildRealDataDisabledResponse();
   }
 
-  const [dashboard, reservationSummary, dailyReportStatus] = await Promise.all([
-    fetchDashboardReadModel({
-      supabase: createDashboardSupabaseReadModelClient(access.supabase),
-      clinicId,
-      now: dateKeyToUtcMidnight(date),
-    }),
-    fetchHomeReservationSummary({
-      supabase: access.supabase,
-      clinicId,
-      date,
-    }),
-    fetchHomeDailyReportStatus({
-      supabase: access.supabase,
-      clinicId,
-      date,
-    }),
-  ]);
+  const role = normalizeRole(access.permissions?.role);
+  const clinicCardsPromise = CLINIC_CARD_ROLES.some(
+    cardRole => cardRole === role
+  )
+    ? fetchHomeClinicCards({
+        supabase: access.supabase,
+        userId: access.user.id,
+        permissions: access.permissions,
+        flags,
+        date,
+      })
+    : Promise.resolve(null);
+
+  const [dashboard, reservationSummary, dailyReportStatus, clinicCards] =
+    await Promise.all([
+      fetchDashboardReadModel({
+        supabase: createDashboardSupabaseReadModelClient(access.supabase),
+        clinicId,
+        now: dateKeyToUtcMidnight(date),
+      }),
+      fetchHomeReservationSummary({
+        supabase: access.supabase,
+        clinicId,
+        date,
+      }),
+      fetchHomeDailyReportStatus({
+        supabase: access.supabase,
+        clinicId,
+        date,
+      }),
+      clinicCardsPromise,
+    ]);
 
   const data: MobileUiuxHomeResponse = {
     clinicId,
@@ -207,6 +306,7 @@ export async function GET(request: NextRequest) {
     dashboard,
     reservationSummary,
     dailyReportStatus,
+    ...(clinicCards ? { clinicCards } : {}),
   };
 
   return buildMobileUiuxSuccess(data);

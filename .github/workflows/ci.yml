@@ -180,7 +180,10 @@ jobs:
         run: npm ci
 
       - name: Run full non-E2E regression suite
-        run: npm run test -- --ci --testPathIgnorePatterns=e2e
+        # CLIの --testPathIgnorePatterns は jest.config.js の除外リストを
+        # 丸ごと上書きするため、設定側で除外している意図的RED suite
+        # (src/__tests__/red-contracts/) もここで明示的に除外する
+        run: npm run test -- --ci --testPathIgnorePatterns e2e red-contracts
 
   # --------------------------------------------------------------------------
   # Security Tests — required merge gate.
@@ -250,10 +253,13 @@ jobs:
 
       - name: Export local test environment
         run: |
+          # supabase status -o env quotes values (KEY="value"); strip the
+          # quotes or they become part of the env var via GITHUB_ENV.
           supabase status -o env \
             --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
             --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
             --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
             >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
           echo "NEXT_PUBLIC_APP_ENV=e2e" >> "$GITHUB_ENV"

@@ -131,6 +131,27 @@ describe('transformMobileUiuxHtml', () => {
     expect(transformed).not.toContain('role="status"');
   });
 
+  it('hides role-forbidden bottom nav targets via canonical-role CSS', async () => {
+    const rawHtml = await readFixture('home');
+    const transformed = transformMobileUiuxHtml(rawHtml, {
+      mode: 'production',
+      resource: 'home',
+    });
+
+    for (const role of ['therapist', 'staff']) {
+      expect(transformed).toContain(
+        `html[data-mobile-uiux-canonical-role="${role}"] [data-mobile-uiux-nav-target="home"] { display: none !important; }`
+      );
+    }
+    for (const role of ['admin', 'clinic_admin', 'manager']) {
+      expect(transformed).not.toContain(
+        `html[data-mobile-uiux-canonical-role="${role}"]`
+      );
+    }
+    // ナビDOMノード自体は5項目のまま維持される
+    expect(getNavTargets(transformed)).toEqual(EXPECTED_NAV_TARGETS);
+  });
+
   it('loads the local React runtime before the DC support script', async () => {
     const rawHtml = await readFixture('home');
     const transformed = transformMobileUiuxHtml(rawHtml, {

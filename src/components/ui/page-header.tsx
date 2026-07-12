@@ -18,7 +18,7 @@ export interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const headerVariants = {
   variant: {
-    default: 'border-b border-gray-200 bg-white',
+    default: 'rounded-medical border border-border bg-card',
     medical: 'border-b border-medical-blue-200 bg-medical-blue-50',
     admin: 'border-b border-admin-200 bg-admin-50',
     patient: 'border-b border-blue-200 bg-blue-50',
@@ -86,15 +86,17 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
         {breadcrumb && breadcrumb.length > 0 && (
           <nav
             aria-label='breadcrumb'
-            className='flex items-center space-x-2 text-sm text-gray-600'
+            className='flex items-center space-x-2 text-sm text-muted-foreground'
           >
             {breadcrumb.map((item, index) => (
               <React.Fragment key={index}>
-                {index > 0 && <span className='text-gray-400'>/</span>}
+                {index > 0 && (
+                  <span className='text-muted-foreground/60'>/</span>
+                )}
                 {item.href ? (
                   <a
                     href={item.href}
-                    className='hover:text-gray-900 transition-colors'
+                    className='hover:text-foreground transition-colors'
                     aria-current={
                       index === breadcrumb.length - 1 ? 'page' : undefined
                     }
@@ -105,8 +107,8 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
                   <span
                     className={cn(
                       index === breadcrumb.length - 1
-                        ? 'text-gray-900 font-medium'
-                        : 'text-gray-600'
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground'
                     )}
                     aria-current={
                       index === breadcrumb.length - 1 ? 'page' : undefined
@@ -141,7 +143,7 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               <div className='flex items-center space-x-2'>
                 <h1
                   className={cn(
-                    'text-2xl font-semibold text-gray-900 truncate',
+                    'text-2xl font-semibold text-foreground truncate',
                     variant === 'emergency' && 'text-red-900 font-bold'
                   )}
                 >
@@ -155,7 +157,7 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
               </div>
 
               {description && (
-                <p className='mt-1 text-sm text-gray-600 line-clamp-2'>
+                <p className='mt-1 text-sm text-muted-foreground line-clamp-2'>
                   {description}
                 </p>
               )}
@@ -188,56 +190,3 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
 );
 
 PageHeader.displayName = 'PageHeader';
-
-// 使用例を示すサンプルコンポーネント（実装時は削除）
-export const PageHeaderExamples = () => {
-  return (
-    <div className='space-y-4 p-4'>
-      {/* 基本使用例 */}
-      <PageHeader
-        title='患者管理'
-        description='患者情報の登録・編集・検索を行います'
-        variant='medical'
-        breadcrumb={[{ label: 'ホーム', href: '/' }, { label: '患者管理' }]}
-        actions={<Button variant='medical-primary'>新規患者登録</Button>}
-      />
-
-      {/* 緊急時の例 */}
-      <PageHeader
-        title='緊急アラート'
-        description='システムで重要な問題が検出されました'
-        variant='emergency'
-        priority='urgent'
-        status='error'
-        statusMessage='即座に対応が必要です'
-        showBackButton
-        actions={
-          <Button variant='medical-urgent' size='emergency'>
-            対応開始
-          </Button>
-        }
-      />
-
-      {/* 管理者ページの例 */}
-      <PageHeader
-        title='セキュリティ設定'
-        description='システムセキュリティの管理と監視'
-        variant='admin'
-        priority='high'
-        breadcrumb={[
-          { label: 'ホーム', href: '/' },
-          { label: '管理者', href: '/admin' },
-          { label: 'セキュリティ設定' },
-        ]}
-        status='success'
-        statusMessage='すべてのセキュリティチェックが完了しています'
-        actions={
-          <>
-            <Button variant='admin-secondary'>設定エクスポート</Button>
-            <Button variant='admin-primary'>設定を保存</Button>
-          </>
-        }
-      />
-    </div>
-  );
-};
