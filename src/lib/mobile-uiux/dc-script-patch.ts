@@ -1214,20 +1214,23 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
       cancelAppt: this.__mobileUiuxCancelReservation,
       submitForm: this.__mobileUiuxCreateReservation
     };
-    return hydratedVals
+    const mergedVals = hydratedVals
       ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
       : patchedVals;
+    return this.__mobileUiuxApplyDateScopeVals(mergedVals);
   }
 
   componentDidMount() {
     this.__mobileUiuxPrimeReservationWriteSources();
     this.__mobileUiuxRegisterReadHydration();
+    this.__mobileUiuxRegisterDatePickedHook();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
   }
 
   componentWillUnmount() {
+    this.__mobileUiuxUnregisterDatePickedHook();
     this.__mobileUiuxUnregisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
@@ -1387,19 +1390,103 @@ ${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   setClinic = (clinicId) => () => this.__mobileUiuxRefreshReservationClinic(clinicId);
 
   async __mobileUiuxRefreshReservationDate(delta) {
-    const state = this.state && typeof this.state === 'object' ? this.state : {};
-    const currentIndex = typeof state.dateIndex === 'number' ? state.dateIndex : 1;
-    const nextIndex = Math.max(0, Math.min(2, currentIndex + delta));
-    if (nextIndex === currentIndex) return false;
-
+    // 旧実装は dateIndex 0..2 のクランプで今日±1日に制限していた。
+    // dateIndex は past/today/future の意味インデックスとして比較で導出する
     const currentDate = this.__mobileUiuxActiveHydratedDate();
     const nextDate = this.__mobileUiuxAddDays(currentDate, delta);
     if (!nextDate) return false;
 
     return this.__mobileUiuxRefreshReservationRead(
       { date: nextDate },
-      { dateIndex: nextIndex }
+      { dateIndex: this.__mobileUiuxDateIndexForDate(nextDate) }
     );
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
+  }
+
+  __mobileUiuxDateIndexForDate(dateKey) {
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today || typeof dateKey !== 'string' || dateKey.length === 0) return 1;
+    if (dateKey < today) return 0;
+    if (dateKey > today) return 2;
+    return 1;
+  }
+
+  __mobileUiuxHandleDatePicked(dateKey) {
+    if (typeof dateKey !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) return false;
+    if (dateKey === this.__mobileUiuxActiveHydratedDate()) return false;
+    return this.__mobileUiuxRefreshReservationRead(
+      { date: dateKey },
+      { dateIndex: this.__mobileUiuxDateIndexForDate(dateKey) }
+    );
+  }
+
+  __mobileUiuxRegisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxDatePickedOwner = owner;
+    const component = this;
+    const onDatePicked = function(dateKey) {
+      if (component.__mobileUiuxDatePickedOwner !== owner) return false;
+      return component.__mobileUiuxHandleDatePicked(dateKey);
+    };
+    onDatePicked.__mobileUiuxDatePickedOwner = owner;
+    window.__MOBILE_UIUX_ON_DATE_PICKED__ = onDatePicked;
+  }
+
+  __mobileUiuxUnregisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_ON_DATE_PICKED__ &&
+      window.__MOBILE_UIUX_ON_DATE_PICKED__.__mobileUiuxDatePickedOwner === this.__mobileUiuxDatePickedOwner
+    ) {
+      delete window.__MOBILE_UIUX_ON_DATE_PICKED__;
+    }
+    this.__mobileUiuxDatePickedOwner = null;
+  }
+
+  // 過去日では新規予約FABを隠し (未来日は canWrite のまま有効)、
+  // 空状態の文言を past/今日/未来で出し分ける。requested key を優先する
+  // ことで過去日への切替中 (pending/失敗) もFABが出ない
+  __mobileUiuxApplyDateScopeVals(vals) {
+    if (!this.__mobileUiuxIsRecord(vals)) return vals;
+    const requestedKey = this.__mobileUiuxRequestedHydratedKey;
+    const hydratedKey = this.__mobileUiuxHydratedKey;
+    const viewDate = this.__mobileUiuxIsRecord(requestedKey) && typeof requestedKey.date === 'string' && requestedKey.date.length > 0
+      ? requestedKey.date
+      : this.__mobileUiuxIsRecord(hydratedKey) && typeof hydratedKey.date === 'string'
+        ? hydratedKey.date
+        : '';
+    if (!viewDate) return vals;
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today) return vals;
+
+    const next = { ...vals };
+    if (viewDate < today) {
+      next.fabShow = false;
+    }
+    if (next.isEmpty === true) {
+      next.emptyTitle = viewDate < today
+        ? '過去の予約はありません'
+        : viewDate === today
+          ? '本日の予約はありません'
+          : 'この日の予約はまだありません';
+    }
+    return next;
   }
 
   async __mobileUiuxRefreshReservationClinic(clinicId) {

@@ -113,6 +113,10 @@ function getRecord(value: unknown): Record<string, unknown> {
 }
 
 describe('patchMobileUiuxDcScript', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it.each(SCREEN_RESOURCES)(
     'renames and delegates renderVals for the real %s fixture',
     async resource => {
@@ -288,6 +292,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('refreshes reservations when the date navigation changes', async () => {
+    // dateIndex が実時計 (JST今日) との比較で導出されるため固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   HOME = 'c1';
@@ -393,7 +399,223 @@ describe('patchMobileUiuxDcScript', () => {
     expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
   });
 
+  describe('reservations date picker and date scope', () => {
+    function evaluateDateScopeComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  HOME = 'c1';
+  DAYS = ['4/26（日）', '4/27（月）', '4/28（火）'];
+  STATUS = {
+    confirmed: { label: '確定', c: 'confirmed-c', b: 'confirmed-b' },
+    unconfirmed: { label: '未確定', c: 'unconfirmed-c', b: 'unconfirmed-b' },
+    cancelled: { label: 'キャンセル', c: 'cancelled-c', b: 'cancelled-b' },
+    noshow: { label: '無断', c: 'noshow-c', b: 'noshow-b' },
+    arrived: { label: '来院済み', c: 'arrived-c', b: 'arrived-b' }
+  };
+  state = { dateIndex: 1, appts: [], loading: false, role: 'staff', clinic: 'c1' };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  renderVals() {
+    const canWrite = this.state.role !== 'area';
+    return {
+      dateLabel: this.DAYS[this.state.dateIndex],
+      nextDate: this.nextDate,
+      prevDate: this.prevDate,
+      fabShow: canWrite,
+      isEmpty: this.state.appts.length === 0,
+      emptyTitle: this.state.dateIndex === 0 ? '過去の予約はありません' : '本日の予約はありません',
+      rows: this.state.appts.map(appt => ({ patient: appt.patient })),
+      isLoading: this.state.loading
+    };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const reservationsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    function setupBridge(
+      window: EvaluatedWindow,
+      payloadForDate: (date: string) => unknown
+    ) {
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async params => {
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+          'reservations',
+          payloadForDate(params.date ?? '')
+        );
+        return true;
+      });
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      return refreshReadData;
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
+    });
+
+    it('registers the date-picked hook on mount and unregisters on unmount', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      component.componentDidMount();
+
+      expect(typeof window.__MOBILE_UIUX_ON_DATE_PICKED__).toBe('function');
+
+      component.componentWillUnmount();
+      expect(window.__MOBILE_UIUX_ON_DATE_PICKED__).toBeUndefined();
+    });
+
+    it('jumps multiple days via the picked-date hook with a semantic dateIndex', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-05-05');
+
+      expect(refreshReadData).toHaveBeenCalledWith({ date: '2026-05-05' });
+      expect(component.state.dateIndex).toBe(2);
+    });
+
+    it('ignores picks for the currently viewed date and invalid values', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-27');
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('bad-value');
+
+      expect(refreshReadData).not.toHaveBeenCalled();
+    });
+
+    it('lets the arrows keep moving beyond one day from today', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      const vals = component.renderVals();
+      const nextDate = vals.nextDate as () => Promise<boolean>;
+
+      await nextDate();
+      await nextDate();
+      await nextDate();
+
+      expect(refreshReadData.mock.calls.map(call => call[0].date)).toEqual([
+        '2026-04-28',
+        '2026-04-29',
+        '2026-04-30',
+      ]);
+      expect(component.state.dateIndex).toBe(2);
+
+      const prevDate = component.renderVals().prevDate as () => Promise<boolean>;
+      await prevDate();
+      expect(refreshReadData).toHaveBeenLastCalledWith({ date: '2026-04-29' });
+    });
+
+    it('hides the new-reservation FAB on past dates only', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().fabShow).toBe(false);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+    });
+
+    it('keeps the FAB hidden while a past-date refresh is pending', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async () => false);
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-20');
+
+      expect(component.renderVals().fabShow).toBe(false);
+    });
+
+    it('labels the empty state by past/today/future', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().emptyTitle).toBe('過去の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().emptyTitle).toBe('本日の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().emptyTitle).toBe(
+        'この日の予約はまだありません'
+      );
+    });
+  });
+
   it('does not render previous reservations as the target date when refresh fails', async () => {
+    // 失敗時のフォールバックラベルは DAYS[dateIndex]、dateIndex は JST今日
+    // との比較で決まるため時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   HOME = 'c1';
