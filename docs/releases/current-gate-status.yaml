@@ -1,0 +1,128 @@
+schema_version: 1
+repository: IFs1991/seikotsuin_no_saas
+assessed_branch: codex/commercial-hardening-pr02
+assessed_commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+assessed_at: '2026-07-13T02:09:57.1001582+09:00'
+assessor: codex
+summary:
+  change_dod: PASS
+  pilot_release: NO_GO
+  commercial_release: NO_GO
+  pilot_success: NOT_VALIDATED
+items:
+  - id: CHANGE-DOCS-001
+    title: Layered release governance docs are internally validated
+    status: PASS
+    blocking: true
+    environment: local
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: codex
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence:
+      - type: command
+        reference: 'git diff --check; YAML parse; relative-link validation (working-tree docs-only change assessed against HEAD)'
+    residual_risk:
+      - 'The governance files are uncommitted, so the recorded HEAD does not yet contain them.'
+    notes: 'Docs-only scope; runtime Jest and Playwright are not required.'
+  - id: PILOT-CORE-001
+    title: Core clinical workflows verified end-to-end
+    status: NOT_RUN
+    blocking: true
+    environment: staging
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No current staging evidence for all login, reservation, patient, daily-report, and revenue-reflection workflows.'
+  - id: PILOT-SEC-001
+    title: Pilot tenant and authorization boundaries verified
+    status: NOT_RUN
+    blocking: true
+    environment: staging
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'PR-02 evidence includes privilege pgTAP but not the complete pilot A/B and role matrix in staging.'
+  - id: PILOT-OPS-001
+    title: Pilot launch and operational evidence complete
+    status: NOT_RUN
+    blocking: true
+    environment: production
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'Launch owners, target clinics, backup confirmation, alerts, and 24/72-hour review are not evidenced.'
+  - id: COMM-DB-001
+    title: Database contract qualification
+    status: PASS_WITH_RISK
+    blocking: true
+    environment: local
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence:
+      - type: file
+        reference: '../stabilization/evidence/commercial-hardening/pr01/README.md'
+      - type: file
+        reference: '../stabilization/evidence/commercial-hardening/pr02/README.md'
+    residual_risk:
+      - 'PR-02 phased DB runner, full replay, and staging migration apply remain NOT_RUN.'
+    notes: 'Local append-only and focused contracts exist; this cannot qualify commercial release. Mitigation owner and due date are unassigned.'
+  - id: COMM-TENANT-001
+    title: Complete tenant integrity invariant set
+    status: NOT_RUN
+    blocking: true
+    environment: staging
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'PR-03 and later hardening invariants are not evidenced complete on current HEAD.'
+  - id: COMM-BILL-001
+    title: Commercial billing path verified
+    status: NOT_RUN
+    blocking: true
+    environment: staging
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No current Checkout, webhook, Portal, cancellation, failure, concurrency, or cross-org evidence.'
+  - id: COMM-OPS-004
+    title: Restore drill and restored tenant isolation
+    status: NOT_RUN
+    blocking: true
+    environment: staging
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'The restore-drill README is a placeholder and is not execution evidence.'
+  - id: SUCCESS-VALIDATION-001
+    title: Pilot value and business hypotheses measured
+    status: NOT_RUN
+    blocking: true
+    environment: production
+    commit: bbe498bac5a9db89b1e674cc6b7c6b4a4c3305cb
+    owner: UNASSIGNED
+    verified_at: '2026-07-13T02:09:57.1001582+09:00'
+    expires_at: null
+    evidence: []
+    residual_risk: []
+    notes: 'No 30-day usage, time-saving, support-cost, payment, or retention evidence was found.'

@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Status: HISTORICAL / STABILIZATION ONLY**
+>
+> これは2026年3月時点のローカル開発・パイロット安定化DoDです。当時の12/12 PASSは歴史的証跡として保持しますが、現在のパイロット出荷または一般商用出荷の判断には単独で使用できません。現行の正本は [Change DoD](../quality/change-dod-v1.0.md)、[Pilot Release Gate](../releases/pilot-release-gate-v1.0.md)、[Commercial Release Qualification](../releases/commercial-release-qualification-v1.0.md)、[Pilot Success Criteria](../product/pilot-success-criteria-v1.0.md) です。現在状態は [Current Gate Status](../releases/current-gate-status.yaml) を参照してください。
+
 # Stabilization DoD v0.1 (Supabase/Docker/Playwright/RLS)
 
 This DoD is the minimum checklist to restore deterministic local dev + E2E.
