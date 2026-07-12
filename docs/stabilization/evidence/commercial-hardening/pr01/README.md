@@ -19,6 +19,8 @@
 - `src/types/supabase.ts` was regenerated from project `qnanuoqveidwvacvbhqp` using the pinned CLI.
 - The generated type delta contains the three expected composite foreign keys plus remote PostgREST runtime metadata.
 - `Database Contract` now performs start, zero-state reset, pgTAP, regeneration, and full-file type diff before `App E2E` may run.
+- `migration-history-baseline.sha256` freezes the filename and content hash of all 50 applied migrations. The verifier rejects deletion, rename, modification, duplicate versions, and insertion into frozen history while allowing later append-only versions.
+- `commercial:verify:types:local` is the normal local schema contract and excludes only the PostgREST runtime metadata preamble. The original `commercial:red:types:local` evidence command remains strict and unchanged.
 - The old `Supabase Types Contract` remains only as a transition check so an existing required context cannot become permanently pending.
 
 ## Database verification actually run
@@ -28,13 +30,16 @@
 - `supabase test db --local`: 4 files, 53 tests, all successful.
 - Remote generated types match the committed file exactly (`a9966e89...`).
 - Clean local schema matches the committed schema after explicitly excluding only `__InternalSupabase` runtime metadata. DB-only typegen reports no PostgREST version, while the target remote reports `14.5`; the committed remote metadata is preserved during local regeneration.
+- The focused PR-01 test now verifies the 50-entry baseline, append-only success, applied-migration content drift failure, CI history-gate ordering, and App E2E dependency.
 - A full local stack also completed all migrations and seed, but Realtime/Storage health checks exceeded this machine's resource envelope. That attempt is not reported as a successful full-stack start.
 
-## Not yet verified at this initial push
+## Not yet verified before the follow-up PR run
 
 - The CI-ephemeral `supabase db reset --local` result and GitHub `Database Contract` check.
 - Full Jest, Security Tests, Build, and App E2E for this branch.
 - GitHub branch protection. Applying it requires explicit human approval after the new check has appeared once.
+- A follow-up local build compiled successfully but could not complete page-data collection without environment variables; the retry stopped on local disk exhaustion (`ENOSPC`). GitHub `Build` remains the authoritative pending result.
+- A follow-up destructive reset was not run because `supabase db reset --local` requires separate explicit approval. The already-replayed isolated DB still passed all 53 pgTAP tests and the normalized local type contract.
 
 ## Residual risk
 

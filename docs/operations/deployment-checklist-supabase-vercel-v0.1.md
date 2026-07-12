@@ -36,9 +36,11 @@ remove it from branch protection; it is not a substitute for full type drift.
 - [ ] Validate the pinned CLI and full generated type contract:
   ```powershell
   npm run supabase:cli:verify
+  npm run commercial:verify:migrations
   npm run supabase:types
   git diff --exit-code -- src/types/supabase.ts
   ```
+- [ ] With local Supabase running: `npm run commercial:verify:types:local`
 - [ ] `$env:E2E_SKIP_DB_CHECK = '1'; npm run e2e:validate-fixtures`
 - [ ] `npm run test:pr05:focused`
 

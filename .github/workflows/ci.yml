@@ -168,6 +168,9 @@ jobs:
       - name: Verify pinned Supabase CLI
         run: npm run supabase:cli:verify
 
+      - name: Verify applied migration history is immutable
+        run: npm run commercial:verify:migrations
+
       - name: Start local Supabase
         run: supabase start
 

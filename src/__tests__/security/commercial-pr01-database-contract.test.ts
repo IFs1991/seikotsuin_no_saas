@@ -1,7 +1,15 @@
 /** @jest-environment node */
 
-import { readFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 
@@ -35,6 +43,15 @@ describe('commercial hardening PR-01 database contract', () => {
   });
 
   it('commits types generated from all 50 migrations', () => {
+    const baseline = readRepoFile(
+      'scripts/commercial-hardening/migration-history-baseline.sha256'
+    );
+    const baselineEntries = baseline
+      .split(/\r?\n/)
+      .filter(line => line.length > 0 && !line.startsWith('#'));
+
+    expect(baselineEntries).toHaveLength(50);
+
     const generatedTypes = readRepoFile('src/types/supabase.ts');
 
     expectCompositeRelationship(
@@ -64,6 +81,60 @@ describe('commercial hardening PR-01 database contract', () => {
     );
   });
 
+  it('rejects an edited applied migration and permits append-only migrations', () => {
+    const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'pr01-migrations-'));
+    const migrationsDir = path.join(fixtureRoot, 'migrations');
+    const manifestPath = path.join(fixtureRoot, 'baseline.sha256');
+    const scriptPath = path.join(
+      repoRoot,
+      'scripts/commercial-hardening/verify-migration-history.mjs'
+    );
+
+    try {
+      mkdirSync(migrationsDir);
+      const baselineFile = '20260707000200_applied.sql';
+      const appendedFile = '20260708000100_append_only.sql';
+      writeFileSync(path.join(migrationsDir, baselineFile), 'select 1;\n');
+      writeFileSync(path.join(migrationsDir, appendedFile), 'select 2;\n');
+      writeFileSync(
+        manifestPath,
+        '4a45092ccf992ea92250053a80b931b787924ba61648f420555511b84f10ab6c  ' +
+          baselineFile +
+          '\n'
+      );
+
+      const green = spawnSync(
+        process.execPath,
+        [
+          scriptPath,
+          '--migrations-dir',
+          migrationsDir,
+          '--manifest',
+          manifestPath,
+        ],
+        { encoding: 'utf8' }
+      );
+      expect(green.status).toBe(0);
+
+      writeFileSync(path.join(migrationsDir, baselineFile), 'select 3;\n');
+      const red = spawnSync(
+        process.execPath,
+        [
+          scriptPath,
+          '--migrations-dir',
+          migrationsDir,
+          '--manifest',
+          manifestPath,
+        ],
+        { encoding: 'utf8' }
+      );
+      expect(red.status).toBe(1);
+      expect(red.stderr).toContain('content changed');
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
+  });
+
   it('gates App E2E on a full database contract job', () => {
     const workflow = readRepoFile('.github/workflows/ci.yml');
     const databaseContractStart = workflow.indexOf('\n  database-contract:');
@@ -76,6 +147,7 @@ describe('commercial hardening PR-01 database contract', () => {
     const appE2e = workflow.slice(appE2eStart);
 
     expect(databaseContract).toContain('name: Database Contract');
+    expect(databaseContract).toContain('npm run commercial:verify:migrations');
     expect(databaseContract).toContain('supabase db reset --local');
     expect(databaseContract).toContain('supabase test db --local');
     expect(databaseContract).toContain('npm run supabase:types');
