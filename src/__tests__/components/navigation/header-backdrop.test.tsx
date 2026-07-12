@@ -50,7 +50,7 @@ describe('Header モバイルメニュー', () => {
 
     fireEvent.click(screen.getByText('メニュー'));
 
-    const backdrop = container.querySelector('[aria-hidden="true"]');
+    const backdrop = container.querySelector('div[aria-hidden="true"]');
     expect(backdrop).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe('Header モバイルメニュー', () => {
     expect(screen.getAllByText('ログアウト').length).toBeGreaterThan(0);
 
     const backdrop = container.querySelector(
-      '[aria-hidden="true"]'
+      'div[aria-hidden="true"]'
     ) as HTMLElement;
     fireEvent.click(backdrop);
 
@@ -88,7 +88,7 @@ describe('Header モバイルメニュー', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
 
     expect(
-      container.querySelector('[aria-hidden="true"]')
+      container.querySelector('div[aria-hidden="true"]')
     ).not.toBeInTheDocument();
   });
 });

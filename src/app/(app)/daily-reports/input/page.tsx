@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -17,9 +16,20 @@ import {
   CardContent,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle2, Save, Plus, Trash2 } from 'lucide-react';
 import { useUserProfileContext } from '@/providers/user-profile-context';
 import { useActiveClinicId } from '@/hooks/useActiveClinicId';
 import { toJSTDateString } from '@/lib/jst';
@@ -645,6 +655,11 @@ export default function DailyReportInputPage() {
   const [confirmingPricingItemId, setConfirmingPricingItemId] = useState<
     string | null
   >(null);
+  const [savedSummary, setSavedSummary] = useState<{
+    date: string;
+    patients: number;
+    revenue: number;
+  } | null>(null);
   const savedItemsRef = useRef<Map<string, DailyReportItem>>(new Map());
   const loadRequestIdRef = useRef(0);
 
@@ -1104,8 +1119,12 @@ export default function DailyReportInputPage() {
         return;
       }
 
-      alert('日報明細を保存しました');
-      router.push('/daily-reports');
+      // ピーク・エンド設計: 保存後は要約と次アクションを提示する（P11）
+      setSavedSummary({
+        date,
+        patients: totalPatients,
+        revenue: totalRevenue,
+      });
     } catch (error) {
       setFormError(
         error instanceof Error ? error.message : '日報の保存に失敗しました'
@@ -1117,6 +1136,12 @@ export default function DailyReportInputPage() {
 
   const totalRevenue = items.reduce((sum, item) => sum + item.fee, 0);
   const totalPatients = items.length;
+  const confirmedPricingCount = items.filter(
+    item =>
+      item.pricingSnapshotStatus === 'confirmed' ||
+      item.pricingSnapshotStatus === 'recalculated'
+  ).length;
+  const pendingPricingCount = totalPatients - confirmedPricingCount;
 
   const isSubmitDisabled = useMemo(() => {
     if (!hasClinic || isLoading || errorMessage) return true;
@@ -1200,29 +1225,52 @@ export default function DailyReportInputPage() {
           </Card>
         )}
 
-        <div className='flex items-center justify-between gap-4'>
-          <div className='flex items-center space-x-4'>
-            <Link href='/daily-reports'>
-              <Button variant='outline' size='sm'>
-                <ArrowLeft className='h-4 w-4 mr-2' />
-                戻る
-              </Button>
-            </Link>
-            <h1 className='text-2xl font-bold text-foreground'>日報入力</h1>
-          </div>
-          <Button
-            onClick={handleSubmit}
-            className='bg-blue-600 text-white'
-            disabled={isSubmitDisabled}
-          >
-            <Save className='h-4 w-4 mr-2' />
-            {isSavingReport ? '保存中...' : '保存'}
-          </Button>
-        </div>
+        <PageHeader
+          title='日報入力'
+          description='3つのステップで完了します: ①基本情報 → ②施術記録の確認 → ③保存'
+          showBackButton
+          onBack={() => router.push('/daily-reports')}
+          actions={
+            <Button
+              onClick={handleSubmit}
+              className='bg-blue-600 text-white'
+              disabled={isSubmitDisabled}
+            >
+              <Save className='h-4 w-4 mr-2' />
+              {isSavingReport ? '保存中...' : '保存'}
+            </Button>
+          }
+        />
+
+        {/* 目標勾配: 残り作業を具体的な件数で見せる（P05） */}
+        {!isLoadingItems && (
+          <Card>
+            <CardContent className='space-y-2 pt-6'>
+              <p className='text-sm font-medium text-foreground' role='status'>
+                {totalPatients === 0
+                  ? '本日の明細はまだありません。来院済みの予約があれば自動で表示されます。'
+                  : pendingPricingCount === 0
+                    ? `全${totalPatients}件の金額確定が完了しています。あとは下の「日報を保存する」だけです。`
+                    : `明細${totalPatients}件のうち、残り${pendingPricingCount}件の金額確定が必要です。`}
+              </p>
+              <Progress
+                value={confirmedPricingCount}
+                max={Math.max(totalPatients, 1)}
+                className='h-2'
+                aria-label='金額確定の進捗'
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
-            <CardTitle>基本情報</CardTitle>
+            <CardTitle className='flex items-center gap-1'>
+              ステップ1: 基本情報
+              <HelpHint title='基本情報'>
+                日付と担当スタッフを確認します。来院済みの予約は、同じ日付の明細に自動で反映されます。
+              </HelpHint>
+            </CardTitle>
             <CardDescription>
               来院済み予約は同日の明細に自動で反映されます
             </CardDescription>
@@ -1251,169 +1299,12 @@ export default function DailyReportInputPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>患者追加</CardTitle>
-            <CardDescription>
-              予約に紐づかない施術記録を手動で追加します
-            </CardDescription>
-          </CardHeader>
-          <CardContent className='space-y-4'>
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='patientName'>患者名</Label>
-                <Input
-                  id='patientName'
-                  placeholder='田中花子'
-                  value={newItem.patientName}
-                  onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      patientName: event.target.value,
-                    }))
-                  }
-                  disabled={isAddingItem}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='treatmentName'>施術内容</Label>
-                <Input
-                  id='treatmentName'
-                  placeholder='整体、マッサージ'
-                  value={newItem.treatmentName}
-                  onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      treatmentName: event.target.value,
-                    }))
-                  }
-                  disabled={isAddingItem}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='newPaymentMethod'>決済方法</Label>
-                <select
-                  id='newPaymentMethod'
-                  className='w-full h-10 px-3 border rounded bg-card'
-                  value={newItem.paymentMethodId}
-                  onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      paymentMethodId: event.target.value,
-                    }))
-                  }
-                  disabled={isAddingItem}
-                >
-                  <option value=''>未選択</option>
-                  {paymentMethods.map(method => (
-                    <option key={method.id} value={method.id}>
-                      {method.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
-              <div className='space-y-2'>
-                <Label htmlFor='duration'>施術時間（分）</Label>
-                <Input
-                  id='duration'
-                  type='number'
-                  min={0}
-                  value={newItem.durationMinutes || ''}
-                  onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      durationMinutes: Number(event.target.value),
-                    }))
-                  }
-                  disabled={isAddingItem}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='fee'>料金（円）</Label>
-                <Input
-                  id='fee'
-                  type='number'
-                  min={0}
-                  value={newItem.fee || ''}
-                  onChange={event =>
-                    setNewItem(prev => ({
-                      ...prev,
-                      fee: Number(event.target.value),
-                    }))
-                  }
-                  disabled={isAddingItem}
-                />
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='billingType'>区分</Label>
-                <select
-                  id='billingType'
-                  className='w-full h-10 px-3 border rounded bg-card'
-                  value={newItem.billingType}
-                  onChange={event =>
-                    setNewItem(prev => {
-                      const billingType = isBillingType(event.target.value)
-                        ? event.target.value
-                        : 'private';
-                      return {
-                        ...prev,
-                        billingType,
-                        revenueContextCode:
-                          deriveRevenueContextCodeFromBillingType(billingType),
-                      };
-                    })
-                  }
-                  disabled={isAddingItem}
-                >
-                  <option value='insurance'>保険診療</option>
-                  <option value='private'>自費診療</option>
-                </select>
-              </div>
-              <div className='space-y-2'>
-                <Label htmlFor='newRevenueContext'>売上文脈</Label>
-                <select
-                  id='newRevenueContext'
-                  className='w-full h-10 px-3 border rounded bg-card'
-                  value={newItem.revenueContextCode}
-                  onChange={event => {
-                    const revenueContextCode = isRevenueContextCode(
-                      event.target.value
-                    )
-                      ? event.target.value
-                      : 'private';
-                    setNewItem(prev => ({
-                      ...prev,
-                      revenueContextCode,
-                      billingType: deriveLegacyBillingType(revenueContextCode),
-                    }));
-                  }}
-                  disabled={isAddingItem}
-                >
-                  {SELECTABLE_REVENUE_CONTEXT_CODES.map(code => (
-                    <option key={code} value={code}>
-                      {REVENUE_CONTEXT_LABELS[code]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className='md:col-span-1 flex items-end'>
-                <Button
-                  onClick={addItem}
-                  className='w-full'
-                  disabled={isAddingItem}
-                >
-                  <Plus className='h-4 w-4 mr-2' />
-                  {isAddingItem ? '追加中...' : '追加'}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>施術記録一覧</CardTitle>
+            <CardTitle className='flex items-center gap-1'>
+              ステップ2: 施術記録の確認
+              <HelpHint title='施術記録の確認'>
+                各行の内容を確認してください。保険診療の行は負担割合を確認して「金額確定」を押すと、窓口負担と保険請求の金額が確定します。
+              </HelpHint>
+            </CardTitle>
             <CardDescription>
               本日の患者数: {totalPatients}名 | 合計売上: ¥
               {totalRevenue.toLocaleString()}
@@ -1795,21 +1686,203 @@ export default function DailyReportInputPage() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className='flex items-center gap-1'>
+              予約外の患者を追加（必要な場合のみ）
+              <HelpHint title='予約外の患者を追加'>
+                予約なしで来院された患者さんの施術記録を手動で追加します。予約から来院された分は自動で反映されるため、入力は不要です。
+              </HelpHint>
+            </CardTitle>
+            <CardDescription>
+              予約に紐づかない施術記録を手動で追加します
+            </CardDescription>
+          </CardHeader>
+          <CardContent className='space-y-4'>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='patientName'>患者名</Label>
+                <Input
+                  id='patientName'
+                  placeholder='田中花子'
+                  value={newItem.patientName}
+                  onChange={event =>
+                    setNewItem(prev => ({
+                      ...prev,
+                      patientName: event.target.value,
+                    }))
+                  }
+                  disabled={isAddingItem}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='treatmentName'>施術内容</Label>
+                <Input
+                  id='treatmentName'
+                  placeholder='整体、マッサージ'
+                  value={newItem.treatmentName}
+                  onChange={event =>
+                    setNewItem(prev => ({
+                      ...prev,
+                      treatmentName: event.target.value,
+                    }))
+                  }
+                  disabled={isAddingItem}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='newPaymentMethod'>決済方法</Label>
+                <select
+                  id='newPaymentMethod'
+                  className='w-full h-10 px-3 border rounded bg-card'
+                  value={newItem.paymentMethodId}
+                  onChange={event =>
+                    setNewItem(prev => ({
+                      ...prev,
+                      paymentMethodId: event.target.value,
+                    }))
+                  }
+                  disabled={isAddingItem}
+                >
+                  <option value=''>未選択</option>
+                  {paymentMethods.map(method => (
+                    <option key={method.id} value={method.id}>
+                      {method.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
+              <div className='space-y-2'>
+                <Label htmlFor='duration'>施術時間（分）</Label>
+                <Input
+                  id='duration'
+                  type='number'
+                  min={0}
+                  value={newItem.durationMinutes || ''}
+                  onChange={event =>
+                    setNewItem(prev => ({
+                      ...prev,
+                      durationMinutes: Number(event.target.value),
+                    }))
+                  }
+                  disabled={isAddingItem}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='fee'>料金（円）</Label>
+                <Input
+                  id='fee'
+                  type='number'
+                  min={0}
+                  value={newItem.fee || ''}
+                  onChange={event =>
+                    setNewItem(prev => ({
+                      ...prev,
+                      fee: Number(event.target.value),
+                    }))
+                  }
+                  disabled={isAddingItem}
+                />
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='billingType'>区分</Label>
+                <select
+                  id='billingType'
+                  className='w-full h-10 px-3 border rounded bg-card'
+                  value={newItem.billingType}
+                  onChange={event =>
+                    setNewItem(prev => {
+                      const billingType = isBillingType(event.target.value)
+                        ? event.target.value
+                        : 'private';
+                      return {
+                        ...prev,
+                        billingType,
+                        revenueContextCode:
+                          deriveRevenueContextCodeFromBillingType(billingType),
+                      };
+                    })
+                  }
+                  disabled={isAddingItem}
+                >
+                  <option value='insurance'>保険診療</option>
+                  <option value='private'>自費診療</option>
+                </select>
+              </div>
+              <div className='space-y-2'>
+                <Label htmlFor='newRevenueContext'>売上文脈</Label>
+                <select
+                  id='newRevenueContext'
+                  className='w-full h-10 px-3 border rounded bg-card'
+                  value={newItem.revenueContextCode}
+                  onChange={event => {
+                    const revenueContextCode = isRevenueContextCode(
+                      event.target.value
+                    )
+                      ? event.target.value
+                      : 'private';
+                    setNewItem(prev => ({
+                      ...prev,
+                      revenueContextCode,
+                      billingType: deriveLegacyBillingType(revenueContextCode),
+                    }));
+                  }}
+                  disabled={isAddingItem}
+                >
+                  {SELECTABLE_REVENUE_CONTEXT_CODES.map(code => (
+                    <option key={code} value={code}>
+                      {REVENUE_CONTEXT_LABELS[code]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='md:col-span-1 flex items-end'>
+                <Button
+                  onClick={addItem}
+                  className='w-full'
+                  disabled={isAddingItem}
+                >
+                  <Plus className='h-4 w-4 mr-2' />
+                  {isAddingItem ? '追加中...' : '追加'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {items.length > 0 && (
-          <Card className='bg-blue-50 border-blue-200'>
-            <CardContent className='pt-6'>
+          <Card className='bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900'>
+            <CardHeader>
+              <CardTitle className='flex items-center gap-1'>
+                ステップ3: 内容を確認して保存
+                <HelpHint title='内容を確認して保存'>
+                  1日の入力が終わったら保存してください。保存した内容はダッシュボードと収益分析に反映されます。
+                </HelpHint>
+              </CardTitle>
+              <CardDescription>
+                下の合計を確認して「日報を保存する」を押してください。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
               <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-center'>
                 <div>
                   <p className='text-2xl font-bold text-blue-600'>
                     {totalPatients}
                   </p>
-                  <p className='text-sm text-blue-800'>総患者数</p>
+                  <p className='text-sm text-blue-800 dark:text-blue-200'>
+                    総患者数
+                  </p>
                 </div>
                 <div>
                   <p className='text-2xl font-bold text-blue-600'>
                     {totalRevenue.toLocaleString()}
                   </p>
-                  <p className='text-sm text-blue-800'>総売上</p>
+                  <p className='text-sm text-blue-800 dark:text-blue-200'>
+                    総売上
+                  </p>
                 </div>
                 <div>
                   <p className='text-2xl font-bold text-blue-600'>
@@ -1820,13 +1893,69 @@ export default function DailyReportInputPage() {
                         ).toLocaleString()
                       : 0}
                   </p>
-                  <p className='text-sm text-blue-800'>平均単価</p>
+                  <p className='text-sm text-blue-800 dark:text-blue-200'>
+                    平均単価
+                  </p>
                 </div>
               </div>
+              {pendingPricingCount > 0 && (
+                <p className='text-sm text-amber-800 dark:text-amber-300'>
+                  金額未確定の明細が{pendingPricingCount}
+                  件あります。保険診療の行は「金額確定」を済ませてから保存すると集計が正確になります。
+                </p>
+              )}
+              <Button
+                onClick={handleSubmit}
+                size='lg'
+                className='w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto'
+                disabled={isSubmitDisabled}
+              >
+                <Save className='h-4 w-4 mr-2' />
+                {isSavingReport ? '保存中...' : '日報を保存する'}
+              </Button>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* 保存完了: 要約と次アクションで締める（P11 ピーク・エンド） */}
+      <Dialog
+        open={savedSummary !== null}
+        onOpenChange={open => {
+          if (!open) setSavedSummary(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className='flex items-center gap-2'>
+              <CheckCircle2
+                className='h-5 w-5 text-green-600'
+                aria-hidden='true'
+              />
+              日報を保存しました
+            </DialogTitle>
+            <DialogDescription>
+              {savedSummary
+                ? `${savedSummary.date} ・ 患者数 ${savedSummary.patients}名 ・ 合計売上 ¥${savedSummary.revenue.toLocaleString()}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <p className='text-sm text-muted-foreground'>
+            保存した内容はダッシュボードと収益分析に反映されます。内容はこの画面からいつでも修正できます。
+          </p>
+          <DialogFooter className='gap-2 sm:gap-2'>
+            <Button variant='outline' onClick={() => setSavedSummary(null)}>
+              続けて入力する
+            </Button>
+            <Button variant='outline' onClick={() => router.push('/dashboard')}>
+              ダッシュボードへ
+            </Button>
+            <Button onClick={() => router.push('/daily-reports')}>
+              日報一覧を見る
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

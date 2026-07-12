@@ -52,27 +52,28 @@ The four shared masters intentionally use permissive `TO authenticated FOR SELEC
 
 - Generic admin POST/PUT writes use service credentials only for global `menu_categories`, after `processApiRequest` has enforced the `admin`-only HQ role and the table/write allowlists. Tenant-owned `menus` and `resources` keep the authenticated RLS client.
 - Dashboard and mobile-home legacy heatmap execution creates a service client only after clinic-scope validation; canonical reads keep the authenticated RLS client. The migration first requires the existing function identity, then uses `CREATE OR REPLACE` to preserve its ACL identity while excluding a revenue whose clinic differs from the joined visit.
+- Mobile-home manager/admin clinic cards reuse that same post-authorization service client only after principal and rollout resolution; the revenue RPC receives only the resolved clinic IDs, while clinic-name reads retain the authenticated RLS client.
 - Clinic analysis reads legacy `revenues` with a service client only after `ensureClinicAccess(..., { requireClinicMatch: true })`, and retains the mandatory `clinic_id` predicate. `patients` and the staff-performance view remain on the authenticated client.
 - Existing cross-clinic E2E contracts now require SQLSTATE `42501` for authenticated direct access to `visits` and `revenues`.
 
 ## Tests and verification
 
-| Check                               | Result         | Evidence                                                                                                           |
-| ----------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| PR-02 focused Jest contracts        | PASS           | 10 suites / 58 tests, including migration, service-boundary, admin-routing, clinic-analysis, dashboard, and mobile |
-| PR-01 regression contract           | PASS           | `npm run test:commercial:pr01`: 2 suites / 8 tests                                                                 |
-| Route/source/table inventory checks | PASS           | `commercial:inventory:routes:check`, `commercial:inventory:source:check`, and `commercial:inventory:tables:check`  |
-| Append-only migration history       | PASS           | 50 frozen migrations and one appended migration                                                                    |
-| TypeScript                          | PASS           | `npm run type-check`                                                                                               |
-| ESLint                              | PASS           | `npm run lint`                                                                                                     |
-| Production build                    | PASS           | `npm run build`; Next.js compiled and generated 168 static pages, with non-blocking warnings outside PR-02 files   |
-| Secret scan                         | PASS           | `npm run scan:secrets`                                                                                             |
-| Independent read-only audits        | PASS_WITH_RISK | privilege/migration and application-boundary auditors found no remaining code blocker; DB execution risk remains   |
-| PostgreSQL pgTAP privilege contract | NOT_RUN        | `supabase/tests/commercial_privileges_test.sql` (40 assertions); local Docker daemon is unavailable                |
-| PR-02 phased DB contract runner     | NOT_RUN        | local Docker daemon is unavailable; runner expects 02 GREEN and the remaining PR-00 contracts RED                  |
-| Full Jest rerun                     | NOT_RUN        | the PR-02-caused failure from an earlier full run was fixed and its focused suite passed; full suite was not rerun |
-| Playwright / PostgREST A-to-B smoke | NOT_RUN        | requires a healthy local Supabase/browser environment                                                              |
-| Linked/production migration apply   | NOT_RUN        | explicitly out of scope without operator approval                                                                  |
+| Check                               | Result         | Evidence                                                                                                                                           |
+| ----------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR-02 focused Jest contracts        | PASS           | 10 suites / 66 tests after latest `main` integration, including migration, service-boundary, admin-routing, clinic-analysis, dashboard, and mobile |
+| PR-01 regression contract           | PASS           | `npm run test:commercial:pr01`: 2 suites / 8 tests                                                                                                 |
+| Route/source/table inventory checks | PASS           | `commercial:inventory:routes:check`, `commercial:inventory:source:check`, and `commercial:inventory:tables:check`                                  |
+| Append-only migration history       | PASS           | 50 frozen migrations and one appended migration                                                                                                    |
+| TypeScript                          | PASS           | `npm run type-check`                                                                                                                               |
+| ESLint                              | PASS           | `npm run lint`                                                                                                                                     |
+| Production build                    | PASS           | `npm run build`; Next.js compiled and generated 168 static pages, with non-blocking warnings outside PR-02 files                                   |
+| Secret scan                         | PASS           | `npm run scan:secrets`                                                                                                                             |
+| Independent read-only audits        | PASS_WITH_RISK | privilege/migration, application-boundary, and post-`main` integration auditors found no remaining code blocker; DB execution risk remains         |
+| PostgreSQL pgTAP privilege contract | NOT_RUN        | `supabase/tests/commercial_privileges_test.sql` (40 assertions); local Docker daemon is unavailable                                                |
+| PR-02 phased DB contract runner     | NOT_RUN        | local Docker daemon is unavailable; runner expects 02 GREEN and the remaining PR-00 contracts RED                                                  |
+| Full Jest rerun                     | NOT_RUN        | the PR-02-caused failure from an earlier full run was fixed and its focused suite passed; full suite was not rerun                                 |
+| Playwright / PostgREST A-to-B smoke | NOT_RUN        | requires a healthy local Supabase/browser environment                                                                                              |
+| Linked/production migration apply   | NOT_RUN        | explicitly out of scope without operator approval                                                                                                  |
 
 Only actually executed checks may be promoted from `NOT_RUN`.
 

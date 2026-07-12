@@ -75,6 +75,8 @@ body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status] {
 body[data-mobile-uiux-shell="production"] [data-mobile-uiux-mutation-status="pending"] {
   background: var(--surface-2);
 }
+html[data-mobile-uiux-canonical-role="therapist"] [data-mobile-uiux-nav-target="home"] { display: none !important; }
+html[data-mobile-uiux-canonical-role="staff"] [data-mobile-uiux-nav-target="home"] { display: none !important; }
 </style></head>
 <body data-mobile-uiux-shell="production">
 <x-dc>
@@ -853,6 +855,19 @@ class Component extends DCLogic {
   }
 
 
+  // DC の role キーは manager/admin のみで、許可ロール (admin/clinic_admin/manager)
+  // は全員 'manager' バリアント (担当院編集) を使う。ヘッダーの
+  // ロールピルだけは実ロール名を表示する。
+  __mobileUiuxContextRoleLabel() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context) || !this.__mobileUiuxIsRecord(context.role)) {
+      return null;
+    }
+    return typeof context.role.label === 'string' && context.role.label.trim().length > 0
+      ? context.role.label.trim()
+      : null;
+  }
+
   renderVals() {
     const originalResult = typeof this.__mobileUiuxOriginalRenderVals === 'function'
       ? this.__mobileUiuxOriginalRenderVals()
@@ -866,8 +881,10 @@ class Component extends DCLogic {
       state.clinicTab === 'hours' &&
       !state.menuSheet &&
       !state.clinicSheet;
+    const contextRoleLabel = this.__mobileUiuxContextRoleLabel();
     return {
       ...originalVals,
+      ...(contextRoleLabel ? { roleLabel: contextRoleLabel } : {}),
       showSaveBar,
       onSave: this.__mobileUiuxSaveSettings,
       saveLabel: this.state && this.state.saving ? '保存中…' : '保存'

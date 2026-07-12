@@ -4,6 +4,8 @@ import { NextRequest } from 'next/server';
 import { GET as getDashboard } from '@/app/api/dashboard/route';
 import { GET as getPatients } from '@/app/api/patients/route';
 import { GET as getDailyReports } from '@/app/api/daily-reports/route';
+import { addJSTCalendarDays } from '@/lib/jst';
+import { toJstDateKey } from '@/lib/manager-dashboard';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import type { PatientVisitSummaryRow } from '@/lib/services/patient-analysis-service';
@@ -304,10 +306,10 @@ function createDashboardSupabaseMock({
   aiComment: Record<string, unknown> | null;
   heatmap: Array<Record<string, unknown>>;
 }) {
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split('T')[0];
+  // ダッシュボードはJST日付キーで照会する (read-model の getDashboardDateKeys)。
+  // UTC日付で組むと JST 0時〜9時 (UTC 15時以降) にモックが空振りして落ちる
+  const today = toJstDateKey(new Date());
+  const yesterday = addJSTCalendarDays(today, -1);
 
   const supabase = {
     from: jest.fn((table: string) => {

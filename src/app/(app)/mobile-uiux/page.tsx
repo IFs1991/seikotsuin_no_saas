@@ -1,64 +1,17 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import {
-  ArrowLeft,
-  BarChart3,
-  CalendarDays,
-  ClipboardList,
-  ExternalLink,
-  Settings,
-  SlidersHorizontal,
-  Users,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 import { resolveMobileUiuxPrincipal } from '@/lib/mobile-uiux/access';
 import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/entitlements';
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
+import { filterMobileUiuxLauncherScreens } from '@/lib/mobile-uiux/launcher';
 import { DisplayModeLink } from '@/components/mobile-uiux/display-mode-link';
 import {
   createClient,
   getCurrentUser,
   getUserAccessContext,
 } from '@/lib/supabase';
-
-const screens = [
-  {
-    title: 'ホーム / ダッシュボード',
-    description: '本日の予約、KPI、日報状況を確認するモバイル画面です。',
-    href: '/mobile-uiux/screens/home',
-    icon: BarChart3,
-  },
-  {
-    title: '予約',
-    description: '予約タイムライン、担当者、予約詳細を確認する画面です。',
-    href: '/mobile-uiux/screens/reservations',
-    icon: CalendarDays,
-  },
-  {
-    title: '患者分析',
-    description: '患者セグメント、来院傾向、フォロー対象を確認する画面です。',
-    href: '/mobile-uiux/screens/patients',
-    icon: Users,
-  },
-  {
-    title: '日報',
-    description: '日報、売上、提出状況を確認する画面です。',
-    href: '/mobile-uiux/screens/daily-reports',
-    icon: ClipboardList,
-  },
-  {
-    title: '設定',
-    description: 'アカウント設定、申請、ヘルプ勤務を確認する画面です。',
-    href: '/mobile-uiux/screens/settings',
-    icon: Settings,
-  },
-  {
-    title: '設定詳細',
-    description: '院情報、施術メニュー、保険設定を確認する画面です。',
-    href: '/mobile-uiux/screens/settings-detail',
-    icon: SlidersHorizontal,
-  },
-] as const;
 
 function MobileUiuxUnavailablePage({
   title,
@@ -143,6 +96,8 @@ export default async function MobileUiuxPage() {
       />
     );
   }
+
+  const screens = filterMobileUiuxLauncherScreens(rolloutDecision.role);
 
   return (
     <main className='min-h-screen bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8'>

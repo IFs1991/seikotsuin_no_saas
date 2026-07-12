@@ -1,8 +1,29 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  BarChart3,
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
+  CircleDot,
+  ClipboardList,
+  CreditCard,
+  Home,
+  JapaneseYen,
+  MessageSquare,
+  Settings,
+  Sparkles,
+  Stethoscope,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -32,8 +53,41 @@ interface SidebarItemButtonProps {
   children: React.ReactNode;
 }
 
-const ACTIVE_MENU_CLASS = 'bg-primary-800';
-const INACTIVE_MENU_CLASS = 'hover:bg-primary-800';
+const ACTIVE_MENU_CLASS =
+  'bg-primary-800 border-l-4 border-white/70 font-semibold';
+const INACTIVE_MENU_CLASS =
+  'border-l-4 border-transparent hover:bg-primary-800';
+
+// メニューIDごとの視覚手がかり。折りたたみ時はアイコンのみで判別できるようにする
+const NAVIGATION_ICONS: Record<string, LucideIcon> = {
+  dashboard: Home,
+  'daily-reports': ClipboardList,
+  reservations: CalendarDays,
+  patients: Users,
+  revenue: JapaneseYen,
+  staff: UserCog,
+  'shift-requests': CalendarClock,
+  'ai-insights': Sparkles,
+  'manager-staff-analysis': UserCog,
+  admin: Home,
+  'admin-tenants': Building2,
+  'admin-billing': CreditCard,
+  'admin-users': Users,
+  'admin-managers': UserCog,
+  'admin-shift-requests': CalendarClock,
+  'admin-settings': Settings,
+  'multi-store': BarChart3,
+  'admin-chat': MessageSquare,
+  'clinic-shift-requests': CalendarClock,
+  'clinic-patients': Users,
+  'clinic-menu-settings': Stethoscope,
+  'manager-home': Home,
+  'manager-staff-list': Users,
+};
+
+function getNavigationIcon(itemId: string): LucideIcon {
+  return NAVIGATION_ICONS[itemId] ?? CircleDot;
+}
 
 function SidebarItemButton({
   item,
@@ -98,6 +152,18 @@ export const Sidebar = React.memo(function Sidebar({
     return getCurrentNavigationItemId(pathname, visibleItems);
   }, [navigationMode, pathname]);
 
+  // 現在ページを含む親メニューは自動で開き、現在地を見失わせない
+  useEffect(() => {
+    if (!currentMenuId) return;
+    const parent = primaryMenuItems.find(item =>
+      item.subItems?.some(subItem => subItem.id === currentMenuId)
+    );
+    if (!parent) return;
+    setOpenSubMenus(prev =>
+      prev.includes(parent.id) ? prev : [...prev, parent.id]
+    );
+  }, [currentMenuId, primaryMenuItems]);
+
   const toggleSubMenu = useCallback((menuId: string) => {
     setOpenSubMenus(prev =>
       prev.includes(menuId)
@@ -119,6 +185,8 @@ export const Sidebar = React.memo(function Sidebar({
   const renderMenuButton = useCallback(
     (item: NavigationItem) => {
       const hasSubItems = Boolean(item.subItems?.length);
+      const isSubMenuOpen = openSubMenuIds.has(item.id);
+      const Icon = getNavigationIcon(item.id);
       const handleClick: React.MouseEventHandler<HTMLButtonElement> = event => {
         if (hasSubItems && isExpanded) {
           event.preventDefault();
@@ -134,22 +202,30 @@ export const Sidebar = React.memo(function Sidebar({
           key={item.id}
           item={item}
           isActive={currentMenuId === item.id}
-          className='w-full mb-2 justify-start'
+          className={cn(
+            'w-full mb-2 min-h-11',
+            isExpanded ? 'justify-start' : 'justify-center px-0'
+          )}
           onClick={handleClick}
         >
-          <span
-            className={cn(
-              'mr-2 text-xs uppercase tracking-wide',
-              !isExpanded && 'hidden'
-            )}
-          >
-            ●
-          </span>
-          {isExpanded ? item.label : item.label.slice(0, 2)}
+          <Icon
+            className={cn('h-5 w-5 flex-shrink-0', isExpanded && 'mr-2')}
+            aria-hidden='true'
+          />
+          {isExpanded && <span className='flex-1 text-left'>{item.label}</span>}
+          {isExpanded && hasSubItems && (
+            <ChevronDown
+              className={cn(
+                'ml-1 h-4 w-4 flex-shrink-0 transition-transform duration-200',
+                isSubMenuOpen && 'rotate-180'
+              )}
+              aria-hidden='true'
+            />
+          )}
         </SidebarItemButton>
       );
     },
-    [currentMenuId, isExpanded, onClose, toggleSubMenu]
+    [currentMenuId, isExpanded, onClose, openSubMenuIds, toggleSubMenu]
   );
 
   return (
@@ -173,9 +249,18 @@ export const Sidebar = React.memo(function Sidebar({
         <Button
           onClick={handleToggleExpanded}
           variant='ghost'
-          className='text-white hover:bg-primary-800'
+          className={cn(
+            'text-white hover:bg-primary-800',
+            !isExpanded && 'mx-auto'
+          )}
+          aria-label={isExpanded ? 'メニューを折りたたむ' : 'メニューを広げる'}
+          title={isExpanded ? 'メニューを折りたたむ' : 'メニューを広げる'}
         >
-          {isExpanded ? '←' : '→'}
+          {isExpanded ? (
+            <ChevronsLeft className='h-5 w-5' aria-hidden='true' />
+          ) : (
+            <ChevronsRight className='h-5 w-5' aria-hidden='true' />
+          )}
         </Button>
       </div>
 
@@ -231,17 +316,32 @@ export const Sidebar = React.memo(function Sidebar({
                   管理セクション
                 </h2>
               )}
-              {adminSectionMenuItems.map(item => (
-                <SidebarItemButton
-                  key={item.id}
-                  item={item}
-                  isActive={currentMenuId === item.id}
-                  className='w-full mb-1 justify-start text-sm'
-                  onClick={handleCloseMenu}
-                >
-                  {isExpanded ? item.label : item.label.slice(0, 2)}
-                </SidebarItemButton>
-              ))}
+              {adminSectionMenuItems.map(item => {
+                const Icon = getNavigationIcon(item.id);
+                return (
+                  <SidebarItemButton
+                    key={item.id}
+                    item={item}
+                    isActive={currentMenuId === item.id}
+                    className={cn(
+                      'w-full mb-1 min-h-11 text-sm',
+                      isExpanded ? 'justify-start' : 'justify-center px-0'
+                    )}
+                    onClick={handleCloseMenu}
+                  >
+                    <Icon
+                      className={cn(
+                        'h-5 w-5 flex-shrink-0',
+                        isExpanded && 'mr-2'
+                      )}
+                      aria-hidden='true'
+                    />
+                    {isExpanded && (
+                      <span className='flex-1 text-left'>{item.label}</span>
+                    )}
+                  </SidebarItemButton>
+                );
+              })}
             </div>
           </div>
         )}

@@ -428,6 +428,63 @@ function applyReplacements(
     );
 }
 
+// canonical ロール → 各画面のDC内部ロールキー。サーバー側 write allowlist と1:1で
+// 整合させる (予約: manager のみ書き込み不可 → 'area' 閲覧専用 / 日報: manager のみ
+// 不可 → 'manager' 閲覧ビュー)。マップ外・context 欠落時は null を返し DC 既定の
+// 最小権限バリアントに留まる (fail-closed)。
+const RESERVATIONS_DC_ROLE_BY_CANONICAL = {
+  admin: 'manager',
+  clinic_admin: 'manager',
+  manager: 'area',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const DAILY_REPORTS_DC_ROLE_BY_CANONICAL = {
+  admin: 'store',
+  clinic_admin: 'store',
+  manager: 'manager',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const SETTINGS_DC_ROLE_BY_CANONICAL = {
+  admin: 'admin',
+  clinic_admin: 'clinic_admin',
+  manager: 'manager',
+  therapist: 'therapist',
+  staff: 'staff',
+} as const;
+
+const HOME_DC_ROLE_BY_CANONICAL = {
+  admin: 'manager',
+  clinic_admin: 'store',
+  manager: 'manager',
+} as const;
+
+function buildCanonicalRoleAdapterSource(
+  dcRoleByCanonical: Readonly<Record<string, string>>
+): string {
+  return `
+  __mobileUiuxCanonicalRole() {
+    const context = this.__mobileUiuxContext;
+    if (!context || typeof context !== 'object' || Array.isArray(context)) return null;
+    const role = context.role;
+    return role && typeof role === 'object' && !Array.isArray(role) && typeof role.canonical === 'string'
+      ? role.canonical
+      : null;
+  }
+
+  __mobileUiuxDcRoleForCanonical() {
+    const map = ${JSON.stringify(dcRoleByCanonical)};
+    const canonical = this.__mobileUiuxCanonicalRole();
+    return canonical !== null && Object.prototype.hasOwnProperty.call(map, canonical)
+      ? map[canonical]
+      : null;
+  }
+`;
+}
+
 function buildHydrationAdapterSource(
   screen: DcScriptPatchOptions['screen']
 ): string {
@@ -460,7 +517,7 @@ function buildHydrationAdapterSource(
 
 function buildHomeHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(HOME_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -495,14 +552,20 @@ function buildHomeHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string' && dcRole !== component.state.role) {
+          statePatch.role = dcRole;
+        }
         const contextOverrides = component.__mobileUiuxBuildHomeContextOverrides();
-        if (!contextOverrides) return false;
-        component.__mobileUiuxHydratedVals = {
-          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
-          ...contextOverrides
-        };
+        if (contextOverrides) {
+          component.__mobileUiuxHydratedVals = {
+            ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+            ...contextOverrides
+          };
+        }
         if (typeof component.setState === 'function') {
-          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          component.setState(statePatch);
         } else if (typeof component.forceUpdate === 'function') {
           component.forceUpdate();
         }
@@ -631,14 +694,23 @@ function buildHomeHydrationAdapterSource(): string {
     const reservationSummary = this.__mobileUiuxReservationSummary(data.reservationSummary);
     const reportStatus = this.__mobileUiuxDailyReportStatus(data.dailyReportStatus);
     const attentions = this.__mobileUiuxBuildHomeAttentions(data.attentions, dashboard.alerts);
-    const role = this.state && typeof this.state.role === 'string' ? this.state.role : 'store';
+    // ラベル/KPI構成は canonical role から導出する (state.role は canonical admin
+    // でも DC レイアウト都合で 'manager' になるため、表示文言の根拠にしない)
+    const canonical = this.__mobileUiuxCanonicalRole();
+    const role = canonical === 'admin' ? 'admin' : canonical === 'manager' ? 'manager' : 'store';
+    // 日付ピッカーで今日以外を表示中は「本日」を選択日ラベルに置き換える
+    const dayLabel = data.date === this.__mobileUiuxTodayJstDateKey()
+      ? '本日'
+      : this.__mobileUiuxFormatDateLabel(data.date);
     const overrides = {
       dateLabel: this.__mobileUiuxFormatDateLabel(data.date),
-      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : '本日の数値',
-      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role),
-      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role),
-      showAttention: role !== 'admin',
-      attTitle: role === 'manager' ? '今日の要確認' : '今日の要対応',
+      kpiTitle: role === 'admin' ? '全社サマリ' : role === 'manager' ? 'エリアサマリ' : dayLabel + 'の数値',
+      kpiSub: this.__mobileUiuxBuildHomeKpiSub(data, role, dayLabel),
+      kpis: this.__mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentions.length, role, dayLabel),
+      // canonical admin も DC 'manager' レイアウトで描画されるため、注意
+      // セクションは常に表示しタイトルだけロール別に切り替える
+      showAttention: true,
+      attTitle: role === 'manager' ? '今日の要確認' : role === 'admin' ? '要注意院' : '今日の要対応',
       attCount: attentions.length + '件',
       attentions
     };
@@ -665,12 +737,84 @@ function buildHomeHydrationAdapterSource(): string {
     const heatmapCardOverrides = this.__mobileUiuxBuildHomeHeatmapCardOverrides(dashboard.heatmapData);
     Object.assign(overrides, heatmapCardOverrides);
 
-    overrides.showClinicCards = false;
+    // タイムライン・経営シグナル・院別パフォーマンスはデータソースが
+    // ないため非表示のまま。デザインサンプルのショートカットグリッドも
+    // 偽動作のため常時オフ
     overrides.showEvents = false;
     overrides.showSignals = false;
     overrides.showPerfRows = false;
+    overrides.showShortcuts = false;
+
+    const clinicCardOverrides = this.__mobileUiuxBuildHomeClinicCardOverrides(data.clinicCards, role);
+    Object.assign(overrides, clinicCardOverrides);
+    if (clinicCardOverrides.showClinicCards) {
+      const totals = clinicCardOverrides.__mobileUiuxClinicTotals;
+      const clinicCount = clinicCardOverrides.clinicCards.length;
+      const scopeLabel = (role === 'admin' ? '全' : '担当') + clinicCount + '院';
+      const flat = 'var(--fg-3)';
+      const dot = 'width:6px;height:6px;border-radius:50%;background:' + flat + ';flex:none;';
+      const kpis = Array.isArray(overrides.kpis) ? overrides.kpis.slice() : [];
+      kpis[0] = { label: dayLabel + 'の売上', value: this.__mobileUiuxYen(totals.revenue), unit: '', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      kpis[1] = { label: dayLabel + 'の来院', value: String(totals.visits), unit: '名', delta: scopeLabel + ' 合計', deltaColor: flat, deltaDot: dot };
+      overrides.kpis = kpis;
+      overrides.kpiSub = scopeLabel + ' · ' + dayLabel + '合計';
+      delete overrides.__mobileUiuxClinicTotals;
+    }
 
     return overrides;
+  }
+
+  // 担当院カード: revenue/visitCount 以外 (前日比・キャンセル率) は
+  // 裏付けデータがないため空欄と '—' の正直なプレースホルダにする
+  __mobileUiuxBuildHomeClinicCardOverrides(clinicCards, role) {
+    if ((role !== 'manager' && role !== 'admin') || !Array.isArray(clinicCards)) {
+      return { showClinicCards: false };
+    }
+    const flat = 'var(--fg-3)';
+    const cards = [];
+    let totalRevenue = 0;
+    let totalVisits = 0;
+    for (const item of clinicCards) {
+      if (!this.__mobileUiuxIsRecord(item)) continue;
+      const name = this.__mobileUiuxDisplayText(item.name, '');
+      if (!name) continue;
+      const revenue = this.__mobileUiuxNumber(item.revenue);
+      const visits = this.__mobileUiuxNumber(item.visitCount);
+      totalRevenue += revenue;
+      totalVisits += visits;
+      cards.push({
+        initial: name.charAt(0),
+        name,
+        alert: '',
+        alertShow: false,
+        revenue: this.__mobileUiuxYenCompact(revenue),
+        revDelta: '',
+        revC: flat,
+        visits: String(visits),
+        visDelta: '',
+        visC: flat,
+        cancelRate: '—',
+        cancNote: '',
+        cancC: flat,
+        links: []
+      });
+    }
+    if (cards.length === 0) {
+      return { showClinicCards: false };
+    }
+    return {
+      showClinicCards: true,
+      clinicCards: cards,
+      __mobileUiuxClinicTotals: { revenue: totalRevenue, visits: totalVisits }
+    };
+  }
+
+  // デザインの '¥184K' 形式 (カードの3カラムグリッドで桁あふれしない幅)
+  __mobileUiuxYenCompact(value) {
+    const n = Math.max(0, Math.round(value));
+    if (n < 1000) return '¥' + n;
+    if (n < 1000000) return '¥' + Math.round(n / 1000) + 'K';
+    return '¥' + (Math.round(n / 100000) / 10) + 'M';
   }
 
   __mobileUiuxBuildHomeAiCardOverrides(aiComment) {
@@ -787,7 +931,8 @@ function buildHomeHydrationAdapterSource(): string {
     };
   }
 
-  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role) {
+  __mobileUiuxBuildHomeKpis(dailyData, reservationSummary, reportStatus, attentionCount, role, dayLabel) {
+    const day = typeof dayLabel === 'string' && dayLabel.length > 0 ? dayLabel : '本日';
     const up = 'var(--s-cf)';
     const down = 'var(--s-ns)';
     const flat = 'var(--fg-3)';
@@ -800,8 +945,8 @@ function buildHomeHydrationAdapterSource(): string {
 
     if (role === 'manager') {
       return [
-        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
-        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
         { label: '要確認', value: String(attentionCount), unit: '件', delta: reportStatus ? '日報要確認 ' + reportStatus.review : 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
@@ -809,25 +954,42 @@ function buildHomeHydrationAdapterSource(): string {
 
     if (role === 'admin') {
       return [
-        { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
-        { label: '本日の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+        { label: day + 'の来院', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
         { label: '日報提出', value: reportDone + ' / ' + reportTotal, unit: '院', delta: '未提出 ' + reportMissing + '院', deltaColor: reportMissing > 0 ? down : up, deltaDot: dot(reportMissing > 0 ? down : up) },
         { label: '要注意院', value: String(attentionCount), unit: '院', delta: 'BFF payload', deltaColor: attentionCount > 0 ? down : flat, deltaDot: dot(attentionCount > 0 ? down : flat) }
       ];
     }
 
     return [
-      { label: '本日の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の売上', value: this.__mobileUiuxYen(dailyData.revenue), unit: '', delta: '保険 ' + this.__mobileUiuxYen(dailyData.insuranceRevenue), deltaColor: flat, deltaDot: dot(flat) },
       { label: '来院数', value: String(dailyData.patients), unit: '名', delta: '予約 ' + reservationTotal + ' 中', deltaColor: flat, deltaDot: dot(flat) },
-      { label: '本日の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
+      { label: day + 'の予約', value: String(reservationTotal), unit: '件', delta: 'BFF payload', deltaColor: flat, deltaDot: dot(flat) },
       { label: '未確定予約', value: String(unconfirmed), unit: '件', delta: unconfirmed > 0 ? '要確認' : '確認済み', deltaColor: unconfirmed > 0 ? down : up, deltaDot: dot(unconfirmed > 0 ? down : up) }
     ];
   }
 
-  __mobileUiuxBuildHomeKpiSub(data, role) {
+  __mobileUiuxBuildHomeKpiSub(data, role, dayLabel) {
     const scopeName = this.__mobileUiuxDisplayText(data.scopeName || data.clinicName, '');
-    const suffix = role === 'admin' ? '本日' : 'リアルタイム';
+    const day = typeof dayLabel === 'string' && dayLabel.length > 0 ? dayLabel : '本日';
+    const suffix = role === 'admin' ? day : day === '本日' ? 'リアルタイム' : day;
     return scopeName ? scopeName + ' · ' + suffix : suffix;
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
   }
 
   __mobileUiuxBuildHomeAttentions(attentionPayload, alerts) {
@@ -1056,7 +1218,7 @@ function buildHomeHydrationAdapterSource(): string {
 
 function buildReservationsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(RESERVATIONS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -1074,20 +1236,23 @@ function buildReservationsHydrationAdapterSource(): string {
       cancelAppt: this.__mobileUiuxCancelReservation,
       submitForm: this.__mobileUiuxCreateReservation
     };
-    return hydratedVals
+    const mergedVals = hydratedVals
       ? { ...patchedVals, ...hydratedVals, submitForm: this.__mobileUiuxCreateReservation }
       : patchedVals;
+    return this.__mobileUiuxApplyDateScopeVals(mergedVals);
   }
 
   componentDidMount() {
     this.__mobileUiuxPrimeReservationWriteSources();
     this.__mobileUiuxRegisterReadHydration();
+    this.__mobileUiuxRegisterDatePickedHook();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
   }
 
   componentWillUnmount() {
+    this.__mobileUiuxUnregisterDatePickedHook();
     this.__mobileUiuxUnregisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_WILL_UNMOUNT_METHOD}();
@@ -1103,17 +1268,23 @@ function buildReservationsHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string') {
+          statePatch.role = dcRole;
+          statePatch.selfOnly = dcRole === 'therapist';
+        }
         const contextClinics = component.__mobileUiuxContextClinics(component.__mobileUiuxContext);
         if (contextClinics) {
           component.__mobileUiuxContextClinicList = contextClinics;
           component.CLINICS = Array.isArray(component.CLINICS) && component.CLINICS.length === 1
             ? component.__mobileUiuxUpsertClinic(contextClinics, component.CLINICS[0].id, component.CLINICS[0].name)
             : contextClinics;
-          if (typeof component.setState === 'function') {
-            component.setState({ __mobileUiuxHydratedAt: Date.now() });
-          } else if (typeof component.forceUpdate === 'function') {
-            component.forceUpdate();
-          }
+        }
+        if (typeof component.setState === 'function') {
+          component.setState(statePatch);
+        } else if (typeof component.forceUpdate === 'function') {
+          component.forceUpdate();
         }
         return false;
       }
@@ -1241,19 +1412,103 @@ function buildReservationsHydrationAdapterSource(): string {
   setClinic = (clinicId) => () => this.__mobileUiuxRefreshReservationClinic(clinicId);
 
   async __mobileUiuxRefreshReservationDate(delta) {
-    const state = this.state && typeof this.state === 'object' ? this.state : {};
-    const currentIndex = typeof state.dateIndex === 'number' ? state.dateIndex : 1;
-    const nextIndex = Math.max(0, Math.min(2, currentIndex + delta));
-    if (nextIndex === currentIndex) return false;
-
+    // 旧実装は dateIndex 0..2 のクランプで今日±1日に制限していた。
+    // dateIndex は past/today/future の意味インデックスとして比較で導出する
     const currentDate = this.__mobileUiuxActiveHydratedDate();
     const nextDate = this.__mobileUiuxAddDays(currentDate, delta);
     if (!nextDate) return false;
 
     return this.__mobileUiuxRefreshReservationRead(
       { date: nextDate },
-      { dateIndex: nextIndex }
+      { dateIndex: this.__mobileUiuxDateIndexForDate(nextDate) }
     );
+  }
+
+  __mobileUiuxTodayJstDateKey() {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(new Date());
+    const values = {};
+    for (const part of parts) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return values.year && values.month && values.day
+      ? values.year + '-' + values.month + '-' + values.day
+      : '';
+  }
+
+  __mobileUiuxDateIndexForDate(dateKey) {
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today || typeof dateKey !== 'string' || dateKey.length === 0) return 1;
+    if (dateKey < today) return 0;
+    if (dateKey > today) return 2;
+    return 1;
+  }
+
+  __mobileUiuxHandleDatePicked(dateKey) {
+    if (typeof dateKey !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dateKey)) return false;
+    if (dateKey === this.__mobileUiuxActiveHydratedDate()) return false;
+    return this.__mobileUiuxRefreshReservationRead(
+      { date: dateKey },
+      { dateIndex: this.__mobileUiuxDateIndexForDate(dateKey) }
+    );
+  }
+
+  __mobileUiuxRegisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    const owner = {};
+    this.__mobileUiuxDatePickedOwner = owner;
+    const component = this;
+    const onDatePicked = function(dateKey) {
+      if (component.__mobileUiuxDatePickedOwner !== owner) return false;
+      return component.__mobileUiuxHandleDatePicked(dateKey);
+    };
+    onDatePicked.__mobileUiuxDatePickedOwner = owner;
+    window.__MOBILE_UIUX_ON_DATE_PICKED__ = onDatePicked;
+  }
+
+  __mobileUiuxUnregisterDatePickedHook() {
+    if (typeof window === 'undefined') return;
+    if (
+      window.__MOBILE_UIUX_ON_DATE_PICKED__ &&
+      window.__MOBILE_UIUX_ON_DATE_PICKED__.__mobileUiuxDatePickedOwner === this.__mobileUiuxDatePickedOwner
+    ) {
+      delete window.__MOBILE_UIUX_ON_DATE_PICKED__;
+    }
+    this.__mobileUiuxDatePickedOwner = null;
+  }
+
+  // 過去日では新規予約FABを隠し (未来日は canWrite のまま有効)、
+  // 空状態の文言を past/今日/未来で出し分ける。requested key を優先する
+  // ことで過去日への切替中 (pending/失敗) もFABが出ない
+  __mobileUiuxApplyDateScopeVals(vals) {
+    if (!this.__mobileUiuxIsRecord(vals)) return vals;
+    const requestedKey = this.__mobileUiuxRequestedHydratedKey;
+    const hydratedKey = this.__mobileUiuxHydratedKey;
+    const viewDate = this.__mobileUiuxIsRecord(requestedKey) && typeof requestedKey.date === 'string' && requestedKey.date.length > 0
+      ? requestedKey.date
+      : this.__mobileUiuxIsRecord(hydratedKey) && typeof hydratedKey.date === 'string'
+        ? hydratedKey.date
+        : '';
+    if (!viewDate) return vals;
+    const today = this.__mobileUiuxTodayJstDateKey();
+    if (!today) return vals;
+
+    const next = { ...vals };
+    if (viewDate < today) {
+      next.fabShow = false;
+    }
+    if (next.isEmpty === true) {
+      next.emptyTitle = viewDate < today
+        ? '過去の予約はありません'
+        : viewDate === today
+          ? '本日の予約はありません'
+          : 'この日の予約はまだありません';
+    }
+    return next;
   }
 
   async __mobileUiuxRefreshReservationClinic(clinicId) {
@@ -2551,7 +2806,7 @@ function buildPatientsHydrationAdapterSource(): string {
 
 function buildSettingsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(SETTINGS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -2560,14 +2815,97 @@ function buildSettingsHydrationAdapterSource(): string {
     const hydratedVals = this.__mobileUiuxHydratedVals && typeof this.__mobileUiuxHydratedVals === 'object'
       ? this.__mobileUiuxHydratedVals
       : null;
-    return hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    const merged = hydratedVals ? { ...originalVals, ...hydratedVals } : originalVals;
+    return this.__mobileUiuxApplyShiftStubBadges(merged);
   }
 
   componentDidMount() {
+    this.__mobileUiuxPrimeSettingsCats();
+    this.__mobileUiuxPrimeShiftStubs();
     this.__mobileUiuxRegisterReadHydration();
     if (typeof this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD} === 'function') {
       return this.${ORIGINAL_COMPONENT_DID_MOUNT_METHOD}();
     }
+  }
+
+  // clinic_admin はサーバー側で設定 write が許可されている
+  // (ADMIN_SETTINGS_MUTATION_ROLES) ため、院・サービス系カテゴリを開放する
+  __mobileUiuxPrimeSettingsCats() {
+    if (!Array.isArray(this.CATS)) return;
+    for (const cat of this.CATS) {
+      if (!this.__mobileUiuxIsRecord(cat)) continue;
+      if (cat.id !== 'clinic' && cat.id !== 'reservation') continue;
+      if (Array.isArray(cat.roles) && cat.roles.indexOf('clinic_admin') === -1) {
+        cat.roles = cat.roles.concat(['clinic_admin']);
+      }
+    }
+  }
+
+  // シフト申請・出勤申請はバックエンド未実装。デザインのワークフロー画面は
+  // ローカル state だけで動く偽動作のため、カテゴリは見せつつタップは
+  // 「準備中」トーストに差し替え、偽の下書き/未確認バッジも根絶する。
+  __mobileUiuxPrimeShiftStubs() {
+    this.__mobileUiuxShiftStubIds = ['shift_self', 'attendance', 'shift_review', 'shift_manage'];
+    this.__mobileUiuxShiftStubTitles = [];
+    if (Array.isArray(this.CATS)) {
+      for (const cat of this.CATS) {
+        if (
+          this.__mobileUiuxIsRecord(cat) &&
+          this.__mobileUiuxShiftStubIds.indexOf(cat.id) !== -1 &&
+          typeof cat.t === 'string'
+        ) {
+          this.__mobileUiuxShiftStubTitles.push(cat.t);
+        }
+      }
+    }
+    const component = this;
+    const originalOpenCat = this.openCat;
+    if (typeof originalOpenCat === 'function') {
+      this.openCat = function(cat) {
+        if (
+          component.__mobileUiuxIsRecord(cat) &&
+          component.__mobileUiuxShiftStubIds.indexOf(cat.id) !== -1
+        ) {
+          return function() {
+            if (typeof component.toast === 'function') {
+              component.toast('この機能は準備中です');
+            }
+          };
+        }
+        return originalOpenCat(cat);
+      };
+    }
+    if (typeof this.setState === 'function') {
+      this.setState({ shiftReqs: [], shiftSubs: [], attReqs: [] });
+    }
+  }
+
+  __mobileUiuxApplyShiftStubBadges(vals) {
+    const titles = Array.isArray(this.__mobileUiuxShiftStubTitles)
+      ? this.__mobileUiuxShiftStubTitles
+      : [];
+    if (titles.length === 0 || !this.__mobileUiuxIsRecord(vals) || !Array.isArray(vals.groups)) {
+      return vals;
+    }
+    const groups = vals.groups.map(group => {
+      if (!this.__mobileUiuxIsRecord(group) || !Array.isArray(group.rows)) {
+        return group;
+      }
+      const rows = group.rows.map(row => {
+        if (!this.__mobileUiuxIsRecord(row) || titles.indexOf(row.title) === -1) {
+          return row;
+        }
+        return {
+          ...row,
+          hasBadge: true,
+          badge: '準備中',
+          badgeC: 'var(--fg-3)',
+          badgeB: 'var(--surface-3)'
+        };
+      });
+      return { ...group, rows };
+    });
+    return { ...vals, groups };
   }
 
   componentWillUnmount() {
@@ -2586,14 +2924,22 @@ function buildSettingsHydrationAdapterSource(): string {
       if (component.__mobileUiuxHydrationOwner !== owner) return false;
       if (screen === 'context') {
         component.__mobileUiuxStoreContext(payload);
+        const statePatch = { __mobileUiuxHydratedAt: Date.now() };
+        const dcRole = component.__mobileUiuxDcRoleForCanonical();
+        if (typeof dcRole === 'string' && dcRole !== component.state.role) {
+          // デザインの onRole と同じくロール変更時はカテゴリ一覧へ戻す
+          statePatch.role = dcRole;
+          statePatch.nav = [{ scr: 'top' }];
+        }
         const contextOverrides = component.__mobileUiuxBuildSettingsContextOverrides();
-        if (!contextOverrides) return false;
-        component.__mobileUiuxHydratedVals = {
-          ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
-          ...contextOverrides
-        };
+        if (contextOverrides) {
+          component.__mobileUiuxHydratedVals = {
+            ...(component.__mobileUiuxHydratedVals && typeof component.__mobileUiuxHydratedVals === 'object' ? component.__mobileUiuxHydratedVals : {}),
+            ...contextOverrides
+          };
+        }
         if (typeof component.setState === 'function') {
-          component.setState({ __mobileUiuxHydratedAt: Date.now() });
+          component.setState(statePatch);
         } else if (typeof component.forceUpdate === 'function') {
           component.forceUpdate();
         }
@@ -2634,11 +2980,18 @@ function buildSettingsHydrationAdapterSource(): string {
     const displayName = typeof context.displayName === 'string' && context.displayName.trim().length > 0
       ? context.displayName.trim()
       : null;
-    const roleLabel = this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
-      ? this.ROLE_LABEL[this.state.role]
-      : 'アカウント';
+    const contextRoleLabel = this.__mobileUiuxIsRecord(context.role) && typeof context.role.label === 'string' && context.role.label.trim().length > 0
+      ? context.role.label.trim()
+      : null;
+    const roleLabel = contextRoleLabel
+      || (this.state && typeof this.state.role === 'string' && this.ROLE_LABEL && this.ROLE_LABEL[this.state.role]
+        ? this.ROLE_LABEL[this.state.role]
+        : 'アカウント');
     overrides.acctName = displayName || roleLabel;
     overrides.acctInitial = displayName ? displayName.trim().charAt(0) : '・';
+    if (contextRoleLabel) {
+      overrides.acctRoleLabel = contextRoleLabel;
+    }
 
     let clinicName = null;
     if (Array.isArray(context.accessibleClinics) && typeof context.defaultClinicId === 'string') {
@@ -2690,6 +3043,19 @@ function buildSettingsHydrationAdapterSource(): string {
 function buildSettingsDetailHydrationAdapterSource(): string {
   return `
 
+  // DC の role キーは manager/admin のみで、許可ロール (admin/clinic_admin/manager)
+  // は全員 'manager' バリアント (担当院編集) を使う。ヘッダーの
+  // ロールピルだけは実ロール名を表示する。
+  __mobileUiuxContextRoleLabel() {
+    const context = this.__mobileUiuxContext;
+    if (!this.__mobileUiuxIsRecord(context) || !this.__mobileUiuxIsRecord(context.role)) {
+      return null;
+    }
+    return typeof context.role.label === 'string' && context.role.label.trim().length > 0
+      ? context.role.label.trim()
+      : null;
+  }
+
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -2703,8 +3069,10 @@ function buildSettingsDetailHydrationAdapterSource(): string {
       state.clinicTab === 'hours' &&
       !state.menuSheet &&
       !state.clinicSheet;
+    const contextRoleLabel = this.__mobileUiuxContextRoleLabel();
     return {
       ...originalVals,
+      ...(contextRoleLabel ? { roleLabel: contextRoleLabel } : {}),
       showSaveBar,
       onSave: this.__mobileUiuxSaveSettings,
       saveLabel: this.state && this.state.saving ? '保存中…' : '保存'
@@ -3160,7 +3528,7 @@ function buildSettingsDetailHydrationAdapterSource(): string {
 
 function buildDailyReportsHydrationAdapterSource(): string {
   return `
-
+${buildCanonicalRoleAdapterSource(DAILY_REPORTS_DC_ROLE_BY_CANONICAL)}
   renderVals() {
     const originalResult = typeof this.${ORIGINAL_RENDER_VALS_METHOD} === 'function'
       ? this.${ORIGINAL_RENDER_VALS_METHOD}()
@@ -3235,6 +3603,10 @@ function buildDailyReportsHydrationAdapterSource(): string {
   __mobileUiuxBuildHydratedOverrides(screen, payload) {
     if (screen === 'context') {
       this.__mobileUiuxStoreContext(payload);
+      const dcRole = this.__mobileUiuxDcRoleForCanonical();
+      if (typeof dcRole === 'string' && dcRole !== this.state.role && typeof this.setState === 'function') {
+        this.setState({ role: dcRole });
+      }
       return null;
     }
 
@@ -3271,10 +3643,22 @@ function buildDailyReportsHydrationAdapterSource(): string {
     const viewRows = this.__mobileUiuxBuildDailyReportViewRows(reports);
     const summary = this.__mobileUiuxBuildDailyReportSummary(data.dailyReports.summary, viewRows);
 
+    // manager は閲覧専用の分析ビュー — 標準バリアント用の未提出/提出済み
+    // バナーが漏れないよう常時 false に固定する
+    const readOnlyManager = this.__mobileUiuxCanonicalRole() === 'manager';
+    // 日付ピッカーの単日読み (start=end) で今日以外を見ているときは
+    // 「本日の日報は…」バナー (静的コピー) を抑止し、入力/編集は
+    // 今日専用の入口に保つ。boot 時は start/end が無いので挙動不変
+    const pickedDate = typeof data.startDate === 'string' && data.startDate === data.endDate
+      ? data.startDate
+      : '';
+    const notToday = pickedDate !== '' && pickedDate !== this.__mobileUiuxTodayJstDateKey();
+    const suppressBanners = readOnlyManager || notToday;
+
     return {
       todayLabel: this.__mobileUiuxFormatDateLabel(reportDate),
-      todayUnsubmitted: !todaySubmitted,
-      todaySubmittedFlag: todaySubmitted,
+      todayUnsubmitted: suppressBanners ? false : !todaySubmitted,
+      todaySubmittedFlag: suppressBanners ? false : todaySubmitted,
       todayCount: todayPatients,
       sumRevenue: this.yen(todayRevenue),
       sumPatients: todayPatients + '名',
@@ -3312,6 +3696,9 @@ function buildDailyReportsHydrationAdapterSource(): string {
       ? this.__mobileUiuxHydratedVals
       : {};
     const formDate = typeof hydratedVals.todayLabel === 'string' ? hydratedVals.todayLabel : '';
+    // フォーム表示中に日付ピッカーで別日へ切り替わっても report_date が
+    // すり替わらないよう、開いた時点の日付キーをスナップショットする
+    this.__mobileUiuxFormReportDateKey = this.__mobileUiuxCurrentReportDateKey;
     const sourceItems = this.state && Array.isArray(this.state.todayItems) ? this.state.todayItems : [];
     const items = sourceItems.map((item) => ({ ...item }));
     if (typeof this.setState === 'function') {
@@ -3412,9 +3799,14 @@ function buildDailyReportsHydrationAdapterSource(): string {
       return null;
     }
 
-    const reportDate = typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
-      ? this.__mobileUiuxCurrentReportDateKey
-      : this.__mobileUiuxTodayJstDateKey();
+    const snapshotDate = typeof this.__mobileUiuxFormReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxFormReportDateKey)
+      ? this.__mobileUiuxFormReportDateKey
+      : '';
+    const reportDate = snapshotDate
+      ? snapshotDate
+      : typeof this.__mobileUiuxCurrentReportDateKey === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(this.__mobileUiuxCurrentReportDateKey)
+        ? this.__mobileUiuxCurrentReportDateKey
+        : this.__mobileUiuxTodayJstDateKey();
     if (!reportDate) return null;
 
     let totalRevenue = 0;

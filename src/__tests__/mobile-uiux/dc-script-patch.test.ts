@@ -113,6 +113,10 @@ function getRecord(value: unknown): Record<string, unknown> {
 }
 
 describe('patchMobileUiuxDcScript', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it.each(SCREEN_RESOURCES)(
     'renames and delegates renderVals for the real %s fixture',
     async resource => {
@@ -288,6 +292,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('refreshes reservations when the date navigation changes', async () => {
+    // dateIndex が実時計 (JST今日) との比較で導出されるため固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   HOME = 'c1';
@@ -393,7 +399,368 @@ describe('patchMobileUiuxDcScript', () => {
     expect(JSON.stringify(vals)).not.toContain('BFF 当日患者');
   });
 
+  describe('daily-reports picked-date view', () => {
+    function evaluateDailyReportsComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  MENUS_DR = [];
+  state = { role: 'therapist', formOpen: false, editKey: null, items: [], todayItems: [] };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      todayLabel: 'sample-date',
+      todayUnsubmitted: true,
+      todaySubmittedFlag: false,
+      inputToday: () => {}
+    };
+  }
+}`),
+        { screen: 'daily-reports' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const singleDayPayload = (
+      date: string,
+      options: { submitted?: boolean; boot?: boolean } = {}
+    ) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        startDate: options.boot ? null : date,
+        endDate: options.boot ? null : date,
+        dailyReports: {
+          reports: options.submitted
+            ? [
+                {
+                  id: `report-${date}`,
+                  reportDate: date,
+                  staffName: 'BFF 先生',
+                  totalPatients: 12,
+                  newPatients: 2,
+                  totalRevenue: 90000,
+                  insuranceRevenue: 30000,
+                  privateRevenue: 60000,
+                  reportText: null,
+                  createdAt: `${date}T10:00:00.000Z`,
+                },
+              ]
+            : [],
+          summary: {
+            totalReports: options.submitted ? 1 : 0,
+            averagePatients: 12,
+            averageRevenue: 90000,
+            totalRevenue: 90000,
+          },
+          monthlyTrends: [],
+        },
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+    });
+
+    it('suppresses the 本日 banners when viewing a picked non-today date', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todayLabel).toBe('7/1（水）');
+      expect(vals.todayUnsubmitted).toBe(false);
+      expect(vals.todaySubmittedFlag).toBe(false);
+      expect(vals.sumRevenue).toBe('¥90,000');
+    });
+
+    it('keeps the banners for a picked read of today', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('keeps boot-shaped reads (no start/end dates) unchanged', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: true, boot: true })
+      );
+      const vals = component.renderVals();
+
+      expect(vals.todaySubmittedFlag).toBe(true);
+      expect(vals.todayUnsubmitted).toBe(false);
+    });
+
+    it('pins the report_date of an open form to the date it was opened for', () => {
+      const { component, window } = evaluateDailyReportsComponent();
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-10', { submitted: false })
+      );
+      const inputToday = component.renderVals().inputToday as () => void;
+      inputToday();
+
+      // フォーム表示中にバックグラウンドで別日に切り替わる
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'daily-reports',
+        singleDayPayload('2026-07-01', { submitted: false })
+      );
+
+      const payload = (
+        component as unknown as {
+          __mobileUiuxBuildDailyReportPayload: () => Record<string, unknown>;
+        }
+      ).__mobileUiuxBuildDailyReportPayload();
+
+      expect(payload.report_date).toBe('2026-07-10');
+    });
+  });
+
+  describe('reservations date picker and date scope', () => {
+    function evaluateDateScopeComponent() {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  HOME = 'c1';
+  DAYS = ['4/26（日）', '4/27（月）', '4/28（火）'];
+  STATUS = {
+    confirmed: { label: '確定', c: 'confirmed-c', b: 'confirmed-b' },
+    unconfirmed: { label: '未確定', c: 'unconfirmed-c', b: 'unconfirmed-b' },
+    cancelled: { label: 'キャンセル', c: 'cancelled-c', b: 'cancelled-b' },
+    noshow: { label: '無断', c: 'noshow-c', b: 'noshow-b' },
+    arrived: { label: '来院済み', c: 'arrived-c', b: 'arrived-b' }
+  };
+  state = { dateIndex: 1, appts: [], loading: false, role: 'staff', clinic: 'c1' };
+  initial(name) {
+    return name.trim().charAt(0);
+  }
+  openDetail = (id) => () => this.setState({ detailId: id });
+  renderVals() {
+    const canWrite = this.state.role !== 'area';
+    return {
+      dateLabel: this.DAYS[this.state.dateIndex],
+      nextDate: this.nextDate,
+      prevDate: this.prevDate,
+      fabShow: canWrite,
+      isEmpty: this.state.appts.length === 0,
+      emptyTitle: this.state.dateIndex === 0 ? '過去の予約はありません' : '本日の予約はありません',
+      rows: this.state.appts.map(appt => ({ patient: appt.patient })),
+      isLoading: this.state.loading
+    };
+  }
+}`),
+        { screen: 'reservations' }
+      );
+      const script = patched
+        .replace(/^<script[^>]*>/, '')
+        .replace(/<\/script>$/, '');
+      return evaluatePatchedComponent(script);
+    }
+
+    const reservationsPayload = (date: string) => ({
+      success: true,
+      data: {
+        clinicId: '11111111-1111-4111-8111-111111111111',
+        date,
+        timezone: 'Asia/Tokyo',
+        reservations: [],
+      },
+      generatedAt: `${date}T00:00:00.000Z`,
+    });
+
+    function setupBridge(
+      window: EvaluatedWindow,
+      payloadForDate: (date: string) => unknown
+    ) {
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async params => {
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+          'reservations',
+          payloadForDate(params.date ?? '')
+        );
+        return true;
+      });
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      return refreshReadData;
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
+    });
+
+    it('registers the date-picked hook on mount and unregisters on unmount', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      component.componentDidMount();
+
+      expect(typeof window.__MOBILE_UIUX_ON_DATE_PICKED__).toBe('function');
+
+      component.componentWillUnmount();
+      expect(window.__MOBILE_UIUX_ON_DATE_PICKED__).toBeUndefined();
+    });
+
+    it('jumps multiple days via the picked-date hook with a semantic dateIndex', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-05-05');
+
+      expect(refreshReadData).toHaveBeenCalledWith({ date: '2026-05-05' });
+      expect(component.state.dateIndex).toBe(2);
+    });
+
+    it('ignores picks for the currently viewed date and invalid values', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-27');
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('bad-value');
+
+      expect(refreshReadData).not.toHaveBeenCalled();
+    });
+
+    it('lets the arrows keep moving beyond one day from today', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      const vals = component.renderVals();
+      const nextDate = vals.nextDate as () => Promise<boolean>;
+
+      await nextDate();
+      await nextDate();
+      await nextDate();
+
+      expect(refreshReadData.mock.calls.map(call => call[0].date)).toEqual([
+        '2026-04-28',
+        '2026-04-29',
+        '2026-04-30',
+      ]);
+      expect(component.state.dateIndex).toBe(2);
+
+      const prevDate = component.renderVals().prevDate as () => Promise<boolean>;
+      await prevDate();
+      expect(refreshReadData).toHaveBeenLastCalledWith({ date: '2026-04-29' });
+    });
+
+    it('hides the new-reservation FAB on past dates only', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().fabShow).toBe(false);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().fabShow).toBe(true);
+    });
+
+    it('keeps the FAB hidden while a past-date refresh is pending', async () => {
+      const { component, window } = evaluateDateScopeComponent();
+      const refreshReadData = jest.fn<
+        Promise<boolean>,
+        [{ date?: string; clinicId?: string }]
+      >(async () => false);
+      (window as { MobileUiuxBridge?: unknown }).MobileUiuxBridge = {
+        refreshReadData,
+      };
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+
+      await window.__MOBILE_UIUX_ON_DATE_PICKED__?.('2026-04-20');
+
+      expect(component.renderVals().fabShow).toBe(false);
+    });
+
+    it('labels the empty state by past/today/future', () => {
+      const { component, window } = evaluateDateScopeComponent();
+      setupBridge(window, reservationsPayload);
+      component.componentDidMount();
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-26')
+      );
+      expect(component.renderVals().emptyTitle).toBe('過去の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-04-27')
+      );
+      expect(component.renderVals().emptyTitle).toBe('本日の予約はありません');
+
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+        'reservations',
+        reservationsPayload('2026-05-05')
+      );
+      expect(component.renderVals().emptyTitle).toBe(
+        'この日の予約はまだありません'
+      );
+    });
+  });
+
   it('does not render previous reservations as the target date when refresh fails', async () => {
+    // 失敗時のフォールバックラベルは DAYS[dateIndex]、dateIndex は JST今日
+    // との比較で決まるため時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-04-27T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   HOME = 'c1';
@@ -467,6 +834,9 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges daily-reports hydration overrides after the original renderVals result', () => {
+    // 単日read (start=end) は今日以外だとバナー抑止されるため、
+    // フィクスチャ日付=今日になるよう時計を固定する
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   STATUS_DR = {
@@ -565,6 +935,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges home hydration overrides after the original renderVals result', () => {
+    // 選択日ラベル化により、フィクスチャ日付=今日でないと「本日」表記にならない
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   SEV = {
@@ -1438,6 +1810,7 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('uses an explicit daily-reports missing fallback for valid empty BFF payloads', () => {
+    jest.useFakeTimers({ now: new Date('2026-07-01T03:00:00Z') });
     const patched = patchMobileUiuxDcScriptSource(
       `class Component extends DCLogic {
   STATUS_DR = {
@@ -2808,7 +3181,7 @@ describe('patchMobileUiuxDcScript', () => {
       expect(JSON.stringify(afterVals)).not.toContain('@example.jp');
     });
 
-    it('falls back to a role label and generic initial when displayName is null on settings', () => {
+    it('falls back to the context role label and generic initial when displayName is null on settings', () => {
       const patched = patchMobileUiuxDcScript(
         wrapDcScript(`class Component extends DCLogic {
   ROLE_LABEL = { therapist: 'セラピスト' };
@@ -2826,6 +3199,37 @@ describe('patchMobileUiuxDcScript', () => {
       window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
         ...contextPayload,
         data: { ...contextPayload.data, displayName: null },
+      });
+      const afterVals = component.renderVals();
+
+      // context の role.label がデザイン内 ROLE_LABEL より優先される
+      expect(afterVals.acctName).toBe('施術者');
+      expect(afterVals.acctInitial).toBe('・');
+      expect(afterVals.acctRoleLabel).toBe('施術者');
+    });
+
+    it('falls back to the design ROLE_LABEL when context has no role label on settings', () => {
+      const patched = patchMobileUiuxDcScript(
+        wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  state = { role: 'therapist' };
+  renderVals() {
+    return { acctName: '佐藤 美咲', acctInitial: '美' };
+  }
+}`),
+        { screen: 'settings' }
+      );
+      const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+      const { component, window } = evaluatePatchedComponent(script);
+
+      component.componentDidMount();
+      window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+        ...contextPayload,
+        data: {
+          ...contextPayload.data,
+          displayName: null,
+          role: { canonical: 'therapist', label: '' },
+        },
       });
       const afterVals = component.renderVals();
 
@@ -2858,7 +3262,12 @@ describe('patchMobileUiuxDcScript', () => {
       expect((component as unknown as { __mobileUiuxContext?: unknown }).__mobileUiuxContext).toEqual(
         contextPayload.data
       );
-      expect(afterVals).toEqual(beforeVals);
+      // ヘッダーのロールピルだけ実ロール名で上書きされ、他は不変
+      expect(afterVals.roleLabel).toBe('施術者');
+      expect({ ...afterVals, roleLabel: undefined }).toEqual({
+        ...beforeVals,
+        roleLabel: undefined,
+      });
     });
 
     const twoClinicContextPayload = {
@@ -3025,6 +3434,595 @@ describe('patchMobileUiuxDcScript', () => {
         '第二整骨院',
       ]);
       expect(serialized).not.toContain('本町ケア整骨院');
+    });
+
+    describe('canonical role injection', () => {
+      const roleContext = (canonical: string, label = 'ロール') => ({
+        ...contextPayload,
+        data: { ...contextPayload.data, role: { canonical, label } },
+      });
+
+      function evaluateReservationsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'therapist', selfOnly: true };
+  renderVals() {
+    const canWrite = this.state.role !== 'area';
+    return {
+      isReadOnly: !canWrite,
+      readonlyMsg: this.state.role === 'area'
+        ? '閲覧専用モード（エリアマネージャー）— 予約の作成・変更はできません'
+        : '他店舗閲覧',
+      showSelf: this.state.role === 'therapist'
+    };
+  }
+}`),
+          { screen: 'reservations' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      it.each([
+        ['admin', 'manager', false],
+        ['clinic_admin', 'manager', false],
+        ['manager', 'area', false],
+        ['therapist', 'therapist', true],
+        ['staff', 'staff', false],
+      ])(
+        'maps canonical %s to reservations dc role %s',
+        (canonical, expectedDcRole, expectedSelfOnly) => {
+          const { component, window } = evaluateReservationsComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+            'context',
+            roleContext(canonical)
+          );
+
+          expect(component.state.role).toBe(expectedDcRole);
+          expect(component.state.selfOnly).toBe(expectedSelfOnly);
+        }
+      );
+
+      it('gives canonical manager the read-only area variant on reservations', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+        const vals = component.renderVals();
+
+        expect(vals.isReadOnly).toBe(true);
+        expect(vals.readonlyMsg).toContain('エリアマネージャー');
+      });
+
+      it('keeps canonical clinic_admin write-capable on reservations', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+        const vals = component.renderVals();
+
+        expect(vals.isReadOnly).toBe(false);
+      });
+
+      it.each(['customer', 'unknown'])(
+        'leaves the reservations dc default untouched for unmapped role %s',
+        canonical => {
+          const { component, window } = evaluateReservationsComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.(
+            'context',
+            roleContext(canonical)
+          );
+
+          expect(component.state.role).toBe('therapist');
+          expect(component.state.selfOnly).toBe(true);
+        }
+      );
+
+      it('leaves the reservations dc default untouched when context has no role', () => {
+        const { component, window } = evaluateReservationsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+          ...contextPayload,
+          data: { ...contextPayload.data, role: undefined },
+        });
+
+        expect(component.state.role).toBe('therapist');
+      });
+
+      function evaluateDailyReportsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'therapist' };
+  STATUS_DR = {
+    submitted: { label: '提出済み', c: 'submitted-c', b: 'submitted-b' },
+    confirmed: { label: '確認済み', c: 'confirmed-c', b: 'confirmed-b' },
+    unsubmitted: { label: '未提出', c: 'missing-c', b: 'missing-b' },
+    needscheck: { label: '要確認', c: 'needs-c', b: 'needs-b' }
+  };
+  yen(n) {
+    return '¥' + Math.round(n).toLocaleString('ja-JP');
+  }
+  renderVals() {
+    return {
+      showManager: this.state.role === 'manager',
+      canWrite: this.state.role !== 'manager'
+    };
+  }
+}`),
+          { screen: 'daily-reports' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      const dailyReportsReadPayload = {
+        success: true,
+        data: {
+          clinicId: '11111111-1111-4111-8111-111111111111',
+          startDate: '2026-06-30',
+          endDate: '2026-06-30',
+          dailyReports: {
+            reports: [
+              {
+                id: 'report-1',
+                reportDate: '2026-06-30',
+                staffName: 'BFF 先生A',
+                totalPatients: 18,
+                newPatients: 3,
+                totalRevenue: 120000,
+                insuranceRevenue: 40000,
+                privateRevenue: 80000,
+                reportText: 'free text should not be rendered',
+                createdAt: '2026-06-30T10:00:00.000Z',
+              },
+            ],
+            summary: {
+              totalReports: 1,
+              averagePatients: 18,
+              averageRevenue: 120000,
+              totalRevenue: 120000,
+            },
+            monthlyTrends: [],
+          },
+        },
+        generatedAt: '2026-06-30T00:00:00.000Z',
+      };
+
+      it.each([
+        ['admin', 'store'],
+        ['clinic_admin', 'store'],
+        ['manager', 'manager'],
+        ['therapist', 'therapist'],
+        ['staff', 'staff'],
+      ])('maps canonical %s to daily-reports dc role %s', (canonical, expectedDcRole) => {
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+
+        expect(component.state.role).toBe(expectedDcRole);
+        expect(component.renderVals().showManager).toBe(
+          expectedDcRole === 'manager'
+        );
+      });
+
+      it('suppresses the standard-view submission banner for canonical manager on daily-reports', () => {
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', dailyReportsReadPayload);
+        const vals = component.renderVals();
+
+        expect(vals.todayUnsubmitted).toBe(false);
+        expect(vals.todaySubmittedFlag).toBe(false);
+        expect(vals.showManager).toBe(true);
+      });
+
+      it('keeps the submission banner intact for canonical therapist on daily-reports', () => {
+        jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
+        const { component, window } = evaluateDailyReportsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('daily-reports', dailyReportsReadPayload);
+        const vals = component.renderVals();
+
+        expect(vals.todayUnsubmitted).toBe(false);
+        expect(vals.todaySubmittedFlag).toBe(true);
+      });
+
+      function evaluateSettingsComponent() {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト', staff: '受付スタッフ', clinic_admin: '院長', manager: 'エリアM', admin: '管理者' };
+  CATS = [
+    { id: 'account', g: 'アカウント', t: 'アカウント', s: 'プロフィール', icon: 'person', roles: 'all' },
+    { id: 'shift_self', g: 'シフト', t: 'シフト申請', s: '希望シフトの提出', icon: 'calendar', roles: ['therapist', 'staff'] },
+    { id: 'clinic', g: '院・サービス', t: '院・サービス設定', s: '院情報', icon: 'building', roles: ['manager', 'admin'] },
+    { id: 'reservation', g: '院・サービス', t: '予約・通知設定', s: '予約ルール', icon: 'bell', roles: ['manager', 'admin'] },
+    { id: 'data', g: 'システム', t: 'データ管理', s: 'エクスポート', icon: 'data', roles: ['admin'] }
+  ];
+  state = { role: 'therapist', nav: [{ scr: 'top' }] };
+  renderVals() {
+    const role = this.state.role;
+    const visible = this.CATS.filter(c => c.roles === 'all' || c.roles.indexOf(role) !== -1);
+    return { groups: visible.map(c => ({ id: c.id, title: c.t })) };
+  }
+}`),
+          { screen: 'settings' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        return evaluatePatchedComponent(script);
+      }
+
+      it.each([
+        ['admin', ['account', 'clinic', 'reservation', 'data']],
+        ['clinic_admin', ['account', 'clinic', 'reservation']],
+        ['manager', ['account', 'clinic', 'reservation']],
+        ['therapist', ['account', 'shift_self']],
+        ['staff', ['account', 'shift_self']],
+      ])('shows role-scoped settings categories for canonical %s', (canonical, expectedIds) => {
+        const { component, window } = evaluateSettingsComponent();
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+        const vals = component.renderVals();
+        const groups = Array.isArray(vals.groups) ? vals.groups : [];
+
+        expect(component.state.role).toBe(canonical);
+        expect(groups.map(group => getRecord(group).id)).toEqual(expectedIds);
+      });
+
+      it('resets the settings nav stack only when the injected role differs', () => {
+        const { component, window } = evaluateSettingsComponent();
+        component.componentDidMount();
+        component.setState({ nav: [{ scr: 'top' }, { scr: 'account' }] });
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('therapist'));
+        expect(component.state.nav).toEqual([{ scr: 'top' }, { scr: 'account' }]);
+
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
+        expect(component.state.role).toBe('admin');
+        expect(component.state.nav).toEqual([{ scr: 'top' }]);
+      });
+
+      describe('home role variant and clinic cards', () => {
+        function evaluateHomeComponent() {
+          const patched = patchMobileUiuxDcScript(
+            wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'store' };
+  SEV = {
+    critical: { label: '要対応', c: 'critical-c', b: 'critical-b' },
+    warning: { label: '注意', c: 'warning-c', b: 'warning-b' },
+    info: { label: '情報', c: 'info-c', b: 'info-b' }
+  };
+  link(message) {
+    return () => message;
+  }
+  renderVals() {
+    return {
+      isManager: this.state.role === 'manager',
+      kpis: [{ label: 'sample-kpi', value: 'sample' }],
+      showClinicCards: true,
+      clinicCards: [{ name: 'sample-clinic' }],
+      showShortcuts: true
+    };
+  }
+}`),
+            { screen: 'home' }
+          );
+          const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+          return evaluatePatchedComponent(script);
+        }
+
+        const homeReadPayload = (extra: Record<string, unknown> = {}) => ({
+          success: true,
+          data: {
+            clinicId: '11111111-1111-4111-8111-111111111111',
+            date: '2026-06-30',
+            timezone: 'Asia/Tokyo',
+            clinicName: 'BFF 本町院',
+            dashboard: {
+              dailyData: {
+                revenue: 100000,
+                patients: 10,
+                insuranceRevenue: 30000,
+                privateRevenue: 70000,
+              },
+              alerts: [],
+            },
+            reservationSummary: { total: 5, unconfirmed: 1, cancelled: 0 },
+            dailyReportStatus: {
+              done: 1,
+              review: 0,
+              missing: 0,
+              rows: [{ name: '本日の日報', status: 'submitted' }],
+            },
+            ...extra,
+          },
+          generatedAt: '2026-06-30T00:00:00.000Z',
+        });
+
+        it.each([
+          ['admin', 'manager'],
+          ['clinic_admin', 'store'],
+          ['manager', 'manager'],
+        ])('maps canonical %s to home dc role %s', (canonical, expectedDcRole) => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext(canonical));
+
+          expect(component.state.role).toBe(expectedDcRole);
+        });
+
+        it('renders real clinic cards with aggregated KPIs for canonical manager', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+              { clinicId: 'c2', name: '駅前院', revenue: 96000, visitCount: 12 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const cards = vals.clinicCards as Array<Record<string, unknown>>;
+          const kpis = vals.kpis as Array<Record<string, unknown>>;
+
+          expect(vals.showClinicCards).toBe(true);
+          expect(vals.showShortcuts).toBe(false);
+          expect(vals.kpiTitle).toBe('エリアサマリ');
+          expect(cards).toHaveLength(2);
+          expect(cards[0]).toMatchObject({
+            initial: '本',
+            name: '本町院',
+            revenue: '¥184K',
+            visits: '21',
+            cancelRate: '—',
+            revDelta: '',
+          });
+          expect(cards[0].links).toEqual([]);
+          expect(kpis[0]).toMatchObject({ label: '本日の売上', value: '¥280,000', delta: '担当2院 合計' });
+          expect(kpis[1]).toMatchObject({ label: '本日の来院', value: '33', unit: '名' });
+          expect(vals.kpiSub).toBe('担当2院 · 本日合計');
+        });
+
+        it('labels the aggregate as 全社 for canonical admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+
+          expect(component.state.role).toBe('manager');
+          expect(vals.kpiTitle).toBe('全社サマリ');
+          expect(vals.attTitle).toBe('要注意院');
+          expect(vals.kpiSub).toBe('全1院 · 本日合計');
+          expect(vals.showClinicCards).toBe(true);
+        });
+
+        it('hides clinic cards for canonical clinic_admin even when the payload carries them', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+
+          expect(vals.showClinicCards).toBe(false);
+          expect(vals.kpiTitle).toBe('本日の数値');
+        });
+
+        it('hides clinic cards for canonical manager when the payload has none', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload());
+          const vals = component.renderVals();
+
+          expect(vals.showClinicCards).toBe(false);
+          expect(vals.kpiTitle).toBe('エリアサマリ');
+        });
+
+        it('labels home KPIs with the picked date when viewing another day', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const kpis = vals.kpis as Array<Record<string, unknown>>;
+
+          expect(vals.kpiSub).toBe('担当1院 · 6/30（火）合計');
+          expect(kpis[0].label).toBe('6/30（火）の売上');
+          expect(kpis[1].label).toBe('6/30（火）の来院');
+          expect(JSON.stringify(vals.kpis)).not.toContain('本日');
+        });
+
+        it('labels the single-clinic home KPIs with the picked date for clinic_admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload());
+          const vals = component.renderVals();
+
+          expect(vals.kpiTitle).toBe('6/30（火）の数値');
+        });
+
+        it('formats compact yen values across scales', () => {
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: 'A院', revenue: 900, visitCount: 1 },
+              { clinicId: 'c2', name: 'B院', revenue: 45500, visitCount: 2 },
+              { clinicId: 'c3', name: 'C院', revenue: 1230000, visitCount: 3 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const cards = vals.clinicCards as Array<Record<string, unknown>>;
+
+          expect(cards.map(card => card.revenue)).toEqual(['¥900', '¥46K', '¥1.2M']);
+        });
+      });
+
+      describe('settings shift stub (準備中)', () => {
+        function evaluateShiftStubComponent() {
+          const patched = patchMobileUiuxDcScript(
+            wrapDcScript(`class Component extends DCLogic {
+  ROLE_LABEL = { therapist: 'セラピスト' };
+  CATS = [
+    { id: 'account', g: 'アカウント', t: 'アカウント', s: 'プロフィール', icon: 'person', roles: 'all' },
+    { id: 'shift_self', g: 'シフト', t: 'シフト申請', s: '希望シフトの提出', icon: 'calendar', roles: ['therapist', 'staff'] },
+    { id: 'attendance', g: 'シフト', t: '出勤申請', s: '出退勤・残業・打刻修正の申請', icon: 'clock', roles: ['therapist', 'staff'] },
+    { id: 'shift_review', g: 'シフト', t: 'シフト確認', s: 'スタッフの希望を承認・差戻し', icon: 'check', roles: ['clinic_admin'] },
+    { id: 'shift_manage', g: 'シフト', t: 'シフト管理', s: '担当院の希望を承認・確定', icon: 'check', roles: ['manager', 'admin'] }
+  ];
+  state = {
+    role: 'therapist',
+    nav: [{ scr: 'top' }],
+    toast: '',
+    shiftReqs: [{ id: 1, status: 'draft' }],
+    shiftSubs: [{ id: 2, status: 'submitted' }],
+    attReqs: [{ id: 3, status: 'submitted' }]
+  };
+  push = (screen) => this.setState({ nav: this.state.nav.concat([screen]) });
+  toast = (m) => this.setState({ toast: m });
+  openCat = (cat) => () => {
+    if (cat.id === 'account') this.push({ scr: 'account' });
+    else if (cat.id === 'attendance') this.push({ scr: 'attendance' });
+    else if (cat.id === 'shift_self') this.push({ scr: 'shift', mode: 'self' });
+    else if (cat.id === 'shift_review') this.push({ scr: 'shift', mode: 'review' });
+    else if (cat.id === 'shift_manage') this.push({ scr: 'shift', mode: 'manager' });
+    else this.push({ scr: 'detail', cat: cat.id });
+  };
+  renderVals() {
+    const role = this.state.role;
+    const filtered = this.CATS.filter(c => c.roles === 'all' || c.roles.indexOf(role) !== -1);
+    const draftN = this.state.shiftReqs.filter(r => r.status === 'draft').length;
+    const badgeFor = (c) => {
+      if (c.id === 'shift_self' && draftN) return { badge: draftN + '件 下書き', badgeC: 'c', badgeB: 'b' };
+      return null;
+    };
+    return {
+      groups: [{
+        title: 'all',
+        rows: filtered.map(c => {
+          const b = badgeFor(c);
+          return { title: c.t, sub: c.s, onOpen: this.openCat(c), hasBadge: !!b, badge: b ? b.badge : '', badgeC: b ? b.badgeC : '', badgeB: b ? b.badgeB : '' };
+        })
+      }]
+    };
+  }
+}`),
+            { screen: 'settings' }
+          );
+          const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+          return evaluatePatchedComponent(script);
+        }
+
+        it('marks shift categories with a 準備中 badge and clears fake sample badges', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          const shiftRow = rows.find(row => row.title === 'シフト申請');
+          const attendanceRow = rows.find(row => row.title === '出勤申請');
+          const accountRow = rows.find(row => row.title === 'アカウント');
+
+          expect(shiftRow?.hasBadge).toBe(true);
+          expect(shiftRow?.badge).toBe('準備中');
+          expect(attendanceRow?.badge).toBe('準備中');
+          expect(accountRow?.hasBadge).toBe(false);
+          // 偽サンプル状態がクリアされ「n件 下書き」等は出ない
+          expect(component.state.shiftReqs).toEqual([]);
+          expect(component.state.shiftSubs).toEqual([]);
+          expect(component.state.attReqs).toEqual([]);
+          expect(JSON.stringify(vals)).not.toContain('下書き');
+        });
+
+        it('turns shift category taps into a 準備中 toast without navigating', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          for (const title of ['シフト申請', '出勤申請']) {
+            const row = rows.find(item => item.title === title);
+            (row?.onOpen as () => void)();
+          }
+
+          expect(component.state.nav).toEqual([{ scr: 'top' }]);
+          expect(component.state.toast).toBe('この機能は準備中です');
+        });
+
+        it('keeps non-shift category taps navigating as designed', () => {
+          const { component } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+
+          const accountRow = rows.find(item => item.title === 'アカウント');
+          (accountRow?.onOpen as () => void)();
+
+          expect(component.state.nav).toEqual([{ scr: 'top' }, { scr: 'account' }]);
+          expect(component.state.toast).toBe('');
+        });
+
+        it('marks review/manage shift categories as 準備中 for clinic_admin and admin', () => {
+          const { component, window } = evaluateShiftStubComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', {
+            ...contextPayload,
+            data: { ...contextPayload.data, role: { canonical: 'clinic_admin', label: '店舗管理者' } },
+          });
+          const vals = component.renderVals();
+          const groups = vals.groups as Array<Record<string, unknown>>;
+          const rows = groups[0].rows as Array<Record<string, unknown>>;
+          const reviewRow = rows.find(row => row.title === 'シフト確認');
+
+          expect(reviewRow?.badge).toBe('準備中');
+          (reviewRow?.onOpen as () => void)();
+          expect(component.state.nav).toEqual([{ scr: 'top' }]);
+          expect(component.state.toast).toBe('この機能は準備中です');
+        });
+      });
+
+      it('keeps patients dc role untouched after a context apply', () => {
+        const patched = patchMobileUiuxDcScript(
+          wrapDcScript(`class Component extends DCLogic {
+  state = { role: 'staff', pClinic: 'all', mClinic: 'all', mPeriod: 'month', detailClinic: null };
+  renderVals() {
+    return { showManager: this.state.role === 'manager' };
+  }
+}`),
+          { screen: 'patients' }
+        );
+        const script = patched.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        const { component, window } = evaluatePatchedComponent(script);
+
+        component.componentDidMount();
+        window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+
+        expect(component.state.role).toBe('staff');
+        expect(component.renderVals().showManager).toBe(false);
+      });
     });
   });
 });

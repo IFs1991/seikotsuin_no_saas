@@ -131,6 +131,70 @@ describe('transformMobileUiuxHtml', () => {
     expect(transformed).not.toContain('role="status"');
   });
 
+  it('hides role-forbidden bottom nav targets via canonical-role CSS', async () => {
+    const rawHtml = await readFixture('home');
+    const transformed = transformMobileUiuxHtml(rawHtml, {
+      mode: 'production',
+      resource: 'home',
+    });
+
+    for (const role of ['therapist', 'staff']) {
+      expect(transformed).toContain(
+        `html[data-mobile-uiux-canonical-role="${role}"] [data-mobile-uiux-nav-target="home"] { display: none !important; }`
+      );
+    }
+    for (const role of ['admin', 'clinic_admin', 'manager']) {
+      expect(transformed).not.toContain(
+        `html[data-mobile-uiux-canonical-role="${role}"]`
+      );
+    }
+    // ナビDOMノード自体は5項目のまま維持される
+    expect(getNavTargets(transformed)).toEqual(EXPECTED_NAV_TARGETS);
+  });
+
+  it.each([
+    ['reservations', '{{ dateLabel }}'],
+    ['daily-reports', '{{ todayLabel }}'],
+    ['home', '{{ dateLabel }}'],
+  ] as const)(
+    'annotates exactly one tappable date label on %s',
+    async (resource, label) => {
+      const transformed = transformMobileUiuxHtml(await readFixture(resource), {
+        mode: 'production',
+        resource,
+      });
+
+      const elements = parse(transformed).querySelectorAll(
+        '[data-mobile-uiux-date-picker]'
+      );
+      expect(elements).toHaveLength(1);
+      const element = elements[0];
+      expect(element.getAttribute('data-mobile-uiux-date-picker')).toBe(
+        resource
+      );
+      expect(element.getAttribute('role')).toBe('button');
+      expect(element.getAttribute('tabindex')).toBe('0');
+      expect(element.getAttribute('aria-label')).toBe('日付を選択');
+      expect(element.text.trim()).toBe(label);
+      // 日報はバナー ({{ todayLabel }} ・ …) ではなくヘッダーのピルであること
+      expect(element.text).not.toContain('・');
+    }
+  );
+
+  it.each(['patients', 'settings', 'settings-detail'] as const)(
+    'adds no date picker annotation on %s',
+    async resource => {
+      const transformed = transformMobileUiuxHtml(await readFixture(resource), {
+        mode: 'production',
+        resource,
+      });
+
+      expect(
+        parse(transformed).querySelectorAll('[data-mobile-uiux-date-picker]')
+      ).toHaveLength(0);
+    }
+  );
+
   it('loads the local React runtime before the DC support script', async () => {
     const rawHtml = await readFixture('home');
     const transformed = transformMobileUiuxHtml(rawHtml, {

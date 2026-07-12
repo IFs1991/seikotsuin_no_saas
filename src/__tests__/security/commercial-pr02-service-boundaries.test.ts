@@ -76,7 +76,33 @@ describe('commercial PR-02 service-role boundaries', () => {
     expect(serviceClientIndex).toBeGreaterThan(entitlementIndex);
   });
 
-  it('confines service credentials to the legacy heatmap RPC', () => {
+  it('scopes manager clinic-card RPCs before using the mobile service client', () => {
+    const source = readSource('src/app/api/mobile-uiux/home/route.ts');
+    const helper = sectionBetween(
+      source,
+      'async function fetchHomeClinicCards',
+      'export async function GET'
+    );
+    const principalIndex = helper.indexOf('await resolveMobileUiuxPrincipal');
+    const rolloutIndex = helper.indexOf('evaluateMobileUiuxEnvRollout');
+    const clinicIdsIndex = helper.indexOf(
+      'const clinicIds = rollout.clinicIds'
+    );
+    const revenueRpcIndex = helper.indexOf('fetchManagerRevenuePeriodTotals(');
+
+    expect(principalIndex).toBeGreaterThanOrEqual(0);
+    expect(rolloutIndex).toBeGreaterThan(principalIndex);
+    expect(clinicIdsIndex).toBeGreaterThan(rolloutIndex);
+    expect(revenueRpcIndex).toBeGreaterThan(clinicIdsIndex);
+    expect(helper).toContain(
+      'fetchManagerRevenuePeriodTotals(\n        params.analyticsSupabase,\n        clinicIds'
+    );
+    expect(helper).toContain('adminClient: params.analyticsSupabase');
+    expect(helper).not.toContain('createAdminClient()');
+    expect(source).toContain('analyticsSupabase: legacyAnalyticsSupabase');
+  });
+
+  it('confines dashboard read-model service credentials to the legacy heatmap RPC', () => {
     const source = readSource('src/lib/dashboard/read-model.ts');
 
     expect(source).toContain(

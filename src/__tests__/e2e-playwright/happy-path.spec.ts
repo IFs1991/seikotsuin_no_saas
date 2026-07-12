@@ -6,6 +6,6 @@ test('happy path: login -> daily reports page', async ({ page }) => {
 
   await page.goto('/daily-reports');
   await expect(
-    page.getByRole('heading', { name: 'デジタル日報管理' })
+    page.getByRole('heading', { name: '日報管理' })
   ).toBeVisible();
 });

@@ -155,8 +155,10 @@ function collectMobileUiuxProductionAssetViolations(
   const productionStyleCount =
     html.match(/<style\b(?=[^>]*\bdata-mobile-uiux-production-shell\b)/gi)
       ?.length ?? 0;
+  // ロール別ナビ非表示CSSのセレクタ([data-mobile-uiux-nav-target=…])は
+  // 数えず、DOM属性としての出現のみカウントする
   const navTargetCount =
-    html.match(/data-mobile-uiux-nav-target=/g)?.length ?? 0;
+    html.match(/(?<!\[)data-mobile-uiux-nav-target=/g)?.length ?? 0;
 
   if (!html.includes('<x-dc')) violations.push('missing <x-dc>');
   if (!html.includes('<helmet')) violations.push('missing <helmet>');
@@ -202,6 +204,33 @@ function collectMobileUiuxProductionAssetViolations(
   ]) {
     if (!html.includes(`data-mobile-uiux-nav-target="${target}"`)) {
       violations.push(`missing Bottom Nav target ${target}`);
+    }
+  }
+  for (const role of ['therapist', 'staff']) {
+    const selector = `html[data-mobile-uiux-canonical-role="${role}"] [data-mobile-uiux-nav-target="home"]`;
+    if (!html.includes(selector)) {
+      violations.push(`missing role nav visibility rule for ${role}`);
+    }
+  }
+  const datePickerCount =
+    html.match(/(?<!\[)data-mobile-uiux-date-picker=/g)?.length ?? 0;
+  const expectedDatePickerCount =
+    resource === 'reservations' ||
+    resource === 'daily-reports' ||
+    resource === 'home'
+      ? 1
+      : 0;
+  if (datePickerCount !== expectedDatePickerCount) {
+    violations.push(
+      `expected ${expectedDatePickerCount} date picker annotations, found ${datePickerCount}`
+    );
+  }
+  if (resource === 'settings') {
+    if (!html.includes('この機能は準備中です')) {
+      violations.push('missing shift stub toast message');
+    }
+    if (!html.includes("badge: '準備中'")) {
+      violations.push('missing shift stub badge');
     }
   }
   if (bridgeScriptCount !== 0) {

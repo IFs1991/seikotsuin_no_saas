@@ -21,6 +21,9 @@ export type MobileUiuxScreenManifestEntry = {
   endpoint: `/api/mobile-uiux/${string}`;
   requiresClinicId: boolean;
   defaultParams?: Readonly<Record<string, string>>;
+  // 選択日付 (readParams.date) を展開するクエリキー。省略時は ['date']。
+  // daily-reports は単日読みを start_date=end_date=date で表現する
+  dateParamKeys?: readonly string[];
 };
 
 export const MOBILE_UIUX_SCREEN_MANIFEST = {
@@ -43,6 +46,7 @@ export const MOBILE_UIUX_SCREEN_MANIFEST = {
     screen: 'daily-reports',
     endpoint: '/api/mobile-uiux/daily-reports',
     requiresClinicId: true,
+    dateParamKeys: ['start_date', 'end_date'],
   },
   settings: {
     screen: 'settings',
@@ -86,7 +90,7 @@ const BRIDGE_SCRIPT_TAG_BY_SCREEN: Record<MobileUiuxScreenResource, string> = {
 const MOBILE_UIUX_BRIDGE_SCRIPT_RE =
   /<script\b(?=[^>]*\bdata-mobile-uiux-bridge\b)/i;
 
-const MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE = {
+export const MOBILE_UIUX_BOTTOM_NAV_TARGETS_BY_ROLE = {
   admin: ['home', 'reservations', 'patients', 'daily-reports', 'settings'],
   clinic_admin: [
     'home',
@@ -201,7 +205,7 @@ export function buildMobileUiuxBridgeScript(
   };
   const NAV_TARGETS_BY_ROLE = ${navTargetsByRoleJson};
   const SUPPLEMENTAL_READS_BY_SCREEN = {
-    home: [{ screen: "reservations", applyScreen: "home" }],
+    home: [{ screen: "reservations", applyScreen: "home", forwardDate: true }],
     reservations: [{ screen: "settings-detail" }],
     "daily-reports": [{ screen: "settings-detail" }],
     "settings-detail": [
@@ -235,6 +239,7 @@ export function buildMobileUiuxBridgeScript(
   const inFlightReads = new Map();
   let fallbackStatusElement = null;
   let mutationStatusElement = null;
+  let datePickerInput = null;
 
   function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -383,9 +388,19 @@ export function buildMobileUiuxBridgeScript(
     if (isRecord(mergedParams)) {
       for (const key of Object.keys(mergedParams)) {
         const value = mergedParams[key];
-        if (typeof value === "string") {
-          params.push([key, value]);
+        if (typeof value !== "string") {
+          continue;
         }
+        if (key === "date") {
+          // 選択日付はエンドポイント毎のクエリキーへ展開する
+          // (daily-reports は start_date=end_date=date の単日読み)
+          const dateKeys = Array.isArray(entry.dateParamKeys) ? entry.dateParamKeys : ["date"];
+          for (const dateKey of dateKeys) {
+            params.push([dateKey, value]);
+          }
+          continue;
+        }
+        params.push([key, value]);
       }
     }
 
@@ -489,7 +504,7 @@ export function buildMobileUiuxBridgeScript(
     return Array.isArray(screens) ? screens : [];
   }
 
-  function startSupplementalReads(screen, contextData) {
+  function startSupplementalReads(screen, contextData, readParams) {
     const supplementalReads = getSupplementalReadScreens(screen);
     const fetches = [];
     for (const read of supplementalReads) {
@@ -502,7 +517,12 @@ export function buildMobileUiuxBridgeScript(
         continue;
       }
 
-      const readUrl = buildReadUrl(entry, contextData, read.params);
+      // forwardDate opt-in の補足readにだけ選択日付を転送する (boot 時は
+      // readParams が無いので従来どおり)。設定系の補足readへは転送しない
+      const overrideParams = read.forwardDate === true && isRecord(readParams) && isDateKey(readParams.date)
+        ? { ...(isRecord(read.params) ? read.params : {}), date: readParams.date }
+        : read.params;
+      const readUrl = buildReadUrl(entry, contextData, overrideParams);
       if (!readUrl) {
         continue;
       }
@@ -526,8 +546,8 @@ export function buildMobileUiuxBridgeScript(
     }
   }
 
-  async function hydrateSupplementalReadData(screen, contextData) {
-    await applySupplementalReads(startSupplementalReads(screen, contextData));
+  async function hydrateSupplementalReadData(screen, contextData, readParams) {
+    await applySupplementalReads(startSupplementalReads(screen, contextData, readParams));
   }
 
   function getAccessibleClinicIds() {
@@ -626,7 +646,7 @@ export function buildMobileUiuxBridgeScript(
     currentContext = request.contextData;
     currentReadParams = request.readParams;
     if (typeof window.__MOBILE_UIUX_APPLY_READ_DATA__ === "function") {
-      await hydrateSupplementalReadData(request.screen, request.contextData);
+      await hydrateSupplementalReadData(request.screen, request.contextData, request.readParams);
     }
     return true;
   }
@@ -735,6 +755,115 @@ export function buildMobileUiuxBridgeScript(
         event.preventDefault();
       }
       navigateToTarget(target);
+    });
+  }
+
+  function getJstTodayDateKey() {
+    const shifted = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const year = shifted.getUTCFullYear();
+    const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(shifted.getUTCDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
+  }
+
+  function ensureDatePickerInput() {
+    if (datePickerInput) {
+      return datePickerInput;
+    }
+    if (!document || typeof document.createElement !== "function") {
+      return null;
+    }
+    const input = document.createElement("input");
+    if (!input) {
+      return null;
+    }
+    if (typeof input.setAttribute === "function") {
+      input.setAttribute("type", "date");
+      input.setAttribute("tabindex", "-1");
+      input.setAttribute("aria-hidden", "true");
+      input.setAttribute("data-mobile-uiux-date-picker-input", "");
+      // showPicker() は描画済みの接続要素が必要なため display:none は不可
+      input.setAttribute("style", "position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0.01;border:0;padding:0;");
+    }
+    if (typeof input.addEventListener === "function") {
+      input.addEventListener("change", () => {
+        handleDatePicked(input.value);
+      });
+    }
+    if (document.body && typeof document.body.appendChild === "function") {
+      document.body.appendChild(input);
+    }
+    datePickerInput = input;
+    return input;
+  }
+
+  function openDatePicker() {
+    const input = ensureDatePickerInput();
+    if (!input) {
+      return;
+    }
+    input.value = isRecord(currentReadParams) && isDateKey(currentReadParams.date)
+      ? currentReadParams.date
+      : getJstTodayDateKey();
+    try {
+      if (typeof input.showPicker === "function") {
+        input.showPicker();
+        return;
+      }
+    } catch (error) {
+      // showPicker 未対応/拒否時は focus+click にフォールバック
+    }
+    if (typeof input.focus === "function") {
+      input.focus();
+    }
+    if (typeof input.click === "function") {
+      input.click();
+    }
+  }
+
+  function handleDatePicked(value) {
+    if (!isDateKey(value)) {
+      return;
+    }
+    const hook = window.__MOBILE_UIUX_ON_DATE_PICKED__;
+    if (typeof hook === "function") {
+      hook(value);
+      return;
+    }
+    refreshReadData({ date: value });
+  }
+
+  function getDatePickerHost(event) {
+    const eventTarget = event && event.target;
+    if (!eventTarget || typeof eventTarget.closest !== "function") {
+      return null;
+    }
+    return eventTarget.closest("[data-mobile-uiux-date-picker]");
+  }
+
+  function bindDatePicker() {
+    if (!document || typeof document.addEventListener !== "function") {
+      return;
+    }
+
+    document.addEventListener("click", event => {
+      if (getDatePickerHost(event)) {
+        openDatePicker();
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      const key = event && event.key;
+      if (key !== "Enter" && key !== " " && key !== "Spacebar") {
+        return;
+      }
+      if (!getDatePickerHost(event)) {
+        return;
+      }
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      openDatePicker();
     });
   }
 
@@ -1044,6 +1173,7 @@ export function buildMobileUiuxBridgeScript(
   };
 
   bindBottomNavNavigation();
+  bindDatePicker();
 
   bootPromise = boot().catch(() => {
     showFallback("unavailable", STATUS_MESSAGES.unavailable);

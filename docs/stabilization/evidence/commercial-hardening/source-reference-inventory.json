@@ -7,7 +7,7 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 605,
+    "scannedSourceFiles": 608,
     "catalogTables": 86,
     "catalogTablesWithLiteralReferences": 69,
     "literalRpcNames": 10
@@ -3786,7 +3786,7 @@
         },
         {
           "path": "src/app/api/mobile-uiux/home/route.ts",
-          "line": 66,
+          "line": 84,
           "clientModule": false
         },
         {
