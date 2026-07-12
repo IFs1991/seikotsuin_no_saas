@@ -935,6 +935,8 @@ describe('patchMobileUiuxDcScript', () => {
   });
 
   it('merges home hydration overrides after the original renderVals result', () => {
+    // 選択日ラベル化により、フィクスチャ日付=今日でないと「本日」表記にならない
+    jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
     const patched = patchMobileUiuxDcScript(
       wrapDcScript(`class Component extends DCLogic {
   SEV = {
@@ -3750,6 +3752,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('renders real clinic cards with aggregated KPIs for canonical manager', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
@@ -3782,6 +3785,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('labels the aggregate as 全社 for canonical admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('admin'));
@@ -3800,6 +3804,7 @@ describe('patchMobileUiuxDcScript', () => {
         });
 
         it('hides clinic cards for canonical clinic_admin even when the payload carries them', () => {
+          jest.useFakeTimers({ now: new Date('2026-06-30T03:00:00Z') });
           const { component, window } = evaluateHomeComponent();
           component.componentDidMount();
           window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
@@ -3823,6 +3828,36 @@ describe('patchMobileUiuxDcScript', () => {
 
           expect(vals.showClinicCards).toBe(false);
           expect(vals.kpiTitle).toBe('エリアサマリ');
+        });
+
+        it('labels home KPIs with the picked date when viewing another day', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('manager'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload({
+            clinicCards: [
+              { clinicId: 'c1', name: '本町院', revenue: 184000, visitCount: 21 },
+            ],
+          }));
+          const vals = component.renderVals();
+          const kpis = vals.kpis as Array<Record<string, unknown>>;
+
+          expect(vals.kpiSub).toBe('担当1院 · 6/30（火）合計');
+          expect(kpis[0].label).toBe('6/30（火）の売上');
+          expect(kpis[1].label).toBe('6/30（火）の来院');
+          expect(JSON.stringify(vals.kpis)).not.toContain('本日');
+        });
+
+        it('labels the single-clinic home KPIs with the picked date for clinic_admin', () => {
+          jest.useFakeTimers({ now: new Date('2026-07-10T03:00:00Z') });
+          const { component, window } = evaluateHomeComponent();
+          component.componentDidMount();
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('context', roleContext('clinic_admin'));
+          window.__MOBILE_UIUX_APPLY_READ_DATA__?.('home', homeReadPayload());
+          const vals = component.renderVals();
+
+          expect(vals.kpiTitle).toBe('6/30（火）の数値');
         });
 
         it('formats compact yen values across scales', () => {
