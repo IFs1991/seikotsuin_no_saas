@@ -69,7 +69,7 @@ The four shared masters intentionally use permissive `TO authenticated FOR SELEC
 | Production build                    | PASS           | `npm run build`; Next.js compiled and generated 168 static pages, with non-blocking warnings outside PR-02 files                                   |
 | Secret scan                         | PASS           | `npm run scan:secrets`                                                                                                                             |
 | Independent read-only audits        | PASS_WITH_RISK | privilege/migration, application-boundary, and post-`main` integration auditors found no remaining code blocker; DB execution risk remains         |
-| PostgreSQL pgTAP privilege contract | NOT_RUN        | `supabase/tests/commercial_privileges_test.sql` (40 assertions); local Docker daemon is unavailable                                                |
+| PostgreSQL pgTAP privilege contract | PASS           | `supabase test db supabase/tests/commercial_privileges_test.sql --linked`; 40/40 assertions passed                                                 |
 | PR-02 phased DB contract runner     | NOT_RUN        | local Docker daemon is unavailable; runner expects 02 GREEN and the remaining PR-00 contracts RED                                                  |
 | Full Jest rerun                     | NOT_RUN        | the PR-02-caused failure from an earlier full run was fixed and its focused suite passed; full suite was not rerun                                 |
 | Playwright / PostgREST A-to-B smoke | NOT_RUN        | requires a healthy local Supabase/browser environment                                                                                              |

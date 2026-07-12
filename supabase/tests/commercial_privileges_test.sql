@@ -2,6 +2,13 @@ begin;
 
 set local search_path = pg_catalog, extensions, public, auth;
 
+set local role postgres;
+
+grant usage on schema extensions
+  to session_user, anon, authenticated, service_role;
+
+reset role;
+
 select plan(40);
 
 select is(
@@ -741,6 +748,8 @@ select is(
   'legacy heatmap keeps SECURITY INVOKER and the fixed search_path'
 );
 
+set local role postgres;
+
 insert into public.master_categories (id, name, description)
 values (
   '00000000-0000-0000-0000-000000000202',
@@ -802,6 +811,7 @@ values
     900.00
   );
 
+reset role;
 set local role anon;
 
 select throws_ok(
