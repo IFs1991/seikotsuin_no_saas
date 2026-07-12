@@ -10,6 +10,13 @@ import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AuditLogger, getRequestInfo } from '@/lib/audit-logger';
 import type { PatientVisitSummaryRow } from '@/lib/services/patient-analysis-service';
 
+const mockCreateAdminClient = jest.fn();
+
+jest.mock('@/lib/supabase', () => ({
+  ...jest.requireActual('@/lib/supabase'),
+  createAdminClient: (...args: unknown[]) => mockCreateAdminClient(...args),
+}));
+
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
 }));
@@ -88,6 +95,7 @@ describe('API integration with Supabase staging data mocks', () => {
       aiComment,
       heatmap,
     });
+    mockCreateAdminClient.mockReturnValue(supabase);
 
     ensureClinicAccessMock.mockResolvedValue({
       supabase,
@@ -141,6 +149,7 @@ describe('API integration with Supabase staging data mocks', () => {
       aiComment: null,
       heatmap: [],
     });
+    mockCreateAdminClient.mockReturnValue(supabase);
 
     ensureClinicAccessMock.mockResolvedValue({
       supabase,

@@ -16,7 +16,7 @@ import {
   getTableConfig,
   isWritableTable,
 } from '@/lib/table-metadata';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import { createAdminClient, type SupabaseServerClient } from '@/lib/supabase';
 import { HQ_ROLES } from '@/lib/constants/roles';
 import type { TableConfig } from '@/types/admin';
 
@@ -71,7 +71,10 @@ export async function GET(request: NextRequest) {
       requireClinicMatch: false,
     });
     if (!processResult.success) {
-      return processResult.error!;
+      return (
+        processResult.error ??
+        createErrorResponse('認証情報の確認に失敗しました', 500)
+      );
     }
 
     const { auth, supabase } = processResult;
@@ -230,7 +233,10 @@ export async function POST(request: NextRequest) {
       requireClinicMatch: false,
     });
     if (!processResult.success) {
-      return processResult.error!;
+      return (
+        processResult.error ??
+        createErrorResponse('認証情報の確認に失敗しました', 500)
+      );
     }
 
     const { auth, body, supabase } = processResult;
@@ -278,9 +284,13 @@ export async function POST(request: NextRequest) {
 
     const supportedTableName = table_name as SupportedTableName;
     const insertRecord = validationResult.data as never;
+    // Only the global shared master needs service credentials. Tenant-owned
+    // menus/resources must retain the authenticated RLS boundary.
+    const writeSupabase =
+      table_name === 'menu_categories' ? createAdminClient() : supabase;
 
     // データベースに挿入
-    const { data: newRecord, error } = await supabase
+    const { data: newRecord, error } = await writeSupabase
       .from(supportedTableName)
       .insert([insertRecord])
       .select()
@@ -327,7 +337,10 @@ export async function PUT(request: NextRequest) {
       requireClinicMatch: false,
     });
     if (!processResult.success) {
-      return processResult.error!;
+      return (
+        processResult.error ??
+        createErrorResponse('認証情報の確認に失敗しました', 500)
+      );
     }
 
     const { auth, body, supabase } = processResult;
@@ -377,9 +390,13 @@ export async function PUT(request: NextRequest) {
 
     const supportedTableName = table_name as SupportedTableName;
     const updateRecord = validationResult.data as never;
+    // Only the global shared master needs service credentials. Tenant-owned
+    // menus/resources must retain the authenticated RLS boundary.
+    const writeSupabase =
+      table_name === 'menu_categories' ? createAdminClient() : supabase;
 
     // データベースを更新
-    const { data: updatedRecord, error } = await supabase
+    const { data: updatedRecord, error } = await writeSupabase
       .from(supportedTableName)
       .update(updateRecord)
       .eq('id', id)

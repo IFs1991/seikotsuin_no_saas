@@ -109,7 +109,8 @@ export type FetchDashboardReadModelParams = {
 };
 
 export function createDashboardSupabaseReadModelClient(
-  supabase: SupabaseServerClient
+  supabase: SupabaseServerClient,
+  legacyAnalyticsSupabase: SupabaseServerClient = supabase
 ): DashboardReadModelClient {
   return {
     dailyRevenue: async params => {
@@ -158,9 +159,12 @@ export function createDashboardSupabaseReadModelClient(
       return { data, error };
     },
     heatmap: async params => {
-      const { data, error } = await supabase.rpc('get_hourly_visit_pattern', {
-        clinic_uuid: params.clinicId,
-      });
+      const { data, error } = await legacyAnalyticsSupabase.rpc(
+        'get_hourly_visit_pattern',
+        {
+          clinic_uuid: params.clinicId,
+        }
+      );
       return { data, error };
     },
   };

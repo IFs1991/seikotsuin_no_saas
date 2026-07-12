@@ -129,6 +129,7 @@ async function fetchHomeDailyReportStatus(params: {
  */
 async function fetchHomeClinicCards(params: {
   supabase: SupabaseServerClient;
+  analyticsSupabase: SupabaseServerClient;
   userId: string;
   permissions: UserPermissions | null;
   flags: MobileUiuxFlags;
@@ -139,6 +140,7 @@ async function fetchHomeClinicCards(params: {
       userId: params.userId,
       permissions: params.permissions,
       flags: params.flags,
+      adminClient: params.analyticsSupabase,
     });
     if (principal.allowed === false) {
       return null;
@@ -152,7 +154,7 @@ async function fetchHomeClinicCards(params: {
     const clinicIds = rollout.clinicIds;
     const [totals, names] = await Promise.all([
       fetchManagerRevenuePeriodTotals(
-        createAdminClient(),
+        params.analyticsSupabase,
         clinicIds,
         params.date,
         params.date
@@ -266,12 +268,17 @@ export async function GET(request: NextRequest) {
     return buildRealDataDisabledResponse();
   }
 
+  // Clinic scope and entitlement are both proven before service credentials
+  // are created. Only the clinic-scoped analytics RPCs receive this client;
+  // canonical reads continue through the authenticated RLS client.
+  const legacyAnalyticsSupabase = createAdminClient();
   const role = normalizeRole(access.permissions?.role);
   const clinicCardsPromise = CLINIC_CARD_ROLES.some(
     cardRole => cardRole === role
   )
     ? fetchHomeClinicCards({
         supabase: access.supabase,
+        analyticsSupabase: legacyAnalyticsSupabase,
         userId: access.user.id,
         permissions: access.permissions,
         flags,
@@ -282,7 +289,10 @@ export async function GET(request: NextRequest) {
   const [dashboard, reservationSummary, dailyReportStatus, clinicCards] =
     await Promise.all([
       fetchDashboardReadModel({
-        supabase: createDashboardSupabaseReadModelClient(access.supabase),
+        supabase: createDashboardSupabaseReadModelClient(
+          access.supabase,
+          legacyAnalyticsSupabase
+        ),
         clinicId,
         now: dateKeyToUtcMidnight(date),
       }),

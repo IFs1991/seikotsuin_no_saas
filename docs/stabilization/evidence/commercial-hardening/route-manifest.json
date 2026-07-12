@@ -1061,7 +1061,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/tables/route.ts",
-        "line": 224,
+        "line": 227,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1076,7 +1076,9 @@
         "clinicScope": [],
         "billing": [],
         "validation": [],
-        "serviceRole": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
         "origin": [
           "processApiRequest"
         ],
@@ -1106,7 +1108,7 @@
       "method": "PUT",
       "source": {
         "path": "src/app/api/admin/tables/route.ts",
-        "line": 321,
+        "line": 331,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1121,7 +1123,9 @@
         "clinicScope": [],
         "billing": [],
         "validation": [],
-        "serviceRole": [],
+        "serviceRole": [
+          "createAdminClient"
+        ],
         "origin": [
           "processApiRequest"
         ],

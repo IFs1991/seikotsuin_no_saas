@@ -6,12 +6,24 @@ import {
   validation,
   ValidationErrorCollector,
 } from '@/lib/error-handler';
+import { createAdminClient } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 import type { AnalysisData } from '@/lib/ai/analysis-client';
 
 const PATH = '/api/clinic/analysis';
+
+type TherapistPerformanceRow = {
+  staff_name?: unknown;
+  average_satisfaction_score?: unknown;
+};
+
+function isTherapistPerformanceRow(
+  value: unknown
+): value is TherapistPerformanceRow {
+  return typeof value === 'object' && value !== null;
+}
 
 export async function GET(request: NextRequest) {
   const clinicId = request.nextUrl.searchParams.get('clinic_id');
@@ -28,7 +40,7 @@ export async function GET(request: NextRequest) {
     validator.add(uuidError.field, uuidError.message);
   }
 
-  if (validator.hasErrors()) {
+  if (!clinicId || validator.hasErrors()) {
     return createErrorResponse(
       'バリデーションエラー',
       400,
@@ -41,7 +53,11 @@ export async function GET(request: NextRequest) {
       requireClinicMatch: true,
     });
 
-    const resolvedClinicId = clinicId!;
+    const resolvedClinicId = clinicId;
+    // The guard above proves both authentication and clinic scope before a
+    // service client is created. Only the quarantined legacy revenue read uses
+    // this client, and the clinic_id predicate remains mandatory.
+    const legacyAnalyticsSupabase = createAdminClient();
 
     // 新規患者の判定基準: 過去30日以内に登録
     const thirtyDaysAgo = new Date(
@@ -51,7 +67,7 @@ export async function GET(request: NextRequest) {
     const analyticsService = new AnalyticsReadService(supabase);
 
     const [revenueRes, patientRes, therapistData] = await Promise.all([
-      supabase
+      legacyAnalyticsSupabase
         .from('revenues')
         .select('amount, created_at')
         .eq('clinic_id', resolvedClinicId)
@@ -94,10 +110,18 @@ export async function GET(request: NextRequest) {
           row.registration_date >= thirtyDaysAgo,
         created_at: row.created_at ?? '',
       })),
-      therapistData: therapistData.map(row => ({
-        staff_name: (row as any).staff_name ?? '',
-        performance_score: Number((row as any).average_satisfaction_score) || 0,
-      })),
+      therapistData: therapistData.map(row => {
+        const performanceRow = isTherapistPerformanceRow(row) ? row : {};
+
+        return {
+          staff_name:
+            typeof performanceRow.staff_name === 'string'
+              ? performanceRow.staff_name
+              : '',
+          performance_score:
+            Number(performanceRow.average_satisfaction_score) || 0,
+        };
+      }),
     };
 
     return createSuccessResponse(data);

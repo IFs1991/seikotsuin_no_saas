@@ -99,66 +99,36 @@ describeOrSkip('E2E-3: cross-clinic isolation (parent-scope model)', () => {
     }
   });
 
-  test('clinic A user can access only own visits', async () => {
+  test('clinic A user cannot directly access quarantined visits', async () => {
     const clinicAResult = await createClinicAClient();
-    const adminResult = await createAdminClient();
 
-    if (!clinicAResult || !adminResult) {
+    if (!clinicAResult) {
       console.warn('Test user authentication failed');
       return;
     }
 
-    const { data: permission } = await adminResult.client
-      .from('user_permissions')
-      .select('clinic_id')
-      .eq('staff_id', clinicAResult.userId)
-      .single();
-
-    if (!permission?.clinic_id) {
-      console.warn('Clinic ID not found');
-      return;
-    }
-
-    const { data: visits } = await clinicAResult.client
+    const { data: visits, error } = await clinicAResult.client
       .from('visits')
       .select('id, clinic_id');
 
-    if (visits && visits.length > 0) {
-      visits.forEach(visit => {
-        expect(visit.clinic_id).toBe(permission.clinic_id);
-      });
-    }
+    expect(visits).toBeNull();
+    expect(error?.code).toBe('42501');
   });
 
-  test('clinic A user can access only own revenues', async () => {
+  test('clinic A user cannot directly access quarantined revenues', async () => {
     const clinicAResult = await createClinicAClient();
-    const adminResult = await createAdminClient();
 
-    if (!clinicAResult || !adminResult) {
+    if (!clinicAResult) {
       console.warn('Test user authentication failed');
       return;
     }
 
-    const { data: permission } = await adminResult.client
-      .from('user_permissions')
-      .select('clinic_id')
-      .eq('staff_id', clinicAResult.userId)
-      .single();
-
-    if (!permission?.clinic_id) {
-      console.warn('Clinic ID not found');
-      return;
-    }
-
-    const { data: revenues } = await clinicAResult.client
+    const { data: revenues, error } = await clinicAResult.client
       .from('revenues')
       .select('id, clinic_id');
 
-    if (revenues && revenues.length > 0) {
-      revenues.forEach(revenue => {
-        expect(revenue.clinic_id).toBe(permission.clinic_id);
-      });
-    }
+    expect(revenues).toBeNull();
+    expect(error?.code).toBe('42501');
   });
 
   test('staff can access reservations within policy scope', async () => {

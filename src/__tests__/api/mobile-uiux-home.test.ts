@@ -80,6 +80,7 @@ const scopedSupabase = {
   name: 'scoped-supabase',
   from: jest.fn(() => reservationQuery),
 };
+const legacyAnalyticsSupabase = { name: 'legacy-analytics-supabase' };
 const dashboardReadModelClient = { name: 'dashboard-read-model-client' };
 const dashboardData = {
   dailyData: {
@@ -130,6 +131,7 @@ describe('GET /api/mobile-uiux/home', () => {
     createDashboardSupabaseReadModelClientMock.mockReturnValue(
       dashboardReadModelClient
     );
+    createAdminClientMock.mockReturnValue(legacyAnalyticsSupabase);
     fetchDashboardReadModelMock.mockResolvedValue(dashboardData);
     reservationQuery.returns.mockResolvedValue({
       data: reservationRows,
@@ -191,8 +193,10 @@ describe('GET /api/mobile-uiux/home', () => {
       }
     );
     expect(createDashboardSupabaseReadModelClientMock).toHaveBeenCalledWith(
-      scopedSupabase
+      scopedSupabase,
+      legacyAnalyticsSupabase
     );
+    expect(createAdminClientMock).toHaveBeenCalledTimes(1);
     expect(fetchDashboardReadModelMock).toHaveBeenCalledWith({
       supabase: dashboardReadModelClient,
       clinicId,
@@ -253,6 +257,7 @@ describe('GET /api/mobile-uiux/home', () => {
       error: { code: 'FORBIDDEN' },
     });
     expect(fetchDashboardReadModelMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       '[mobile-uiux] access denied',
       expect.objectContaining({
@@ -276,6 +281,7 @@ describe('GET /api/mobile-uiux/home', () => {
 
     expect(response.status).toBe(403);
     expect(ensureClinicAccessMock).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
       '[mobile-uiux] access denied',
       expect.objectContaining({
@@ -346,6 +352,7 @@ describe('GET /api/mobile-uiux/home', () => {
         expect.objectContaining({
           userId: 'user-1',
           permissions: expect.objectContaining({ role: 'manager' }),
+          adminClient,
         })
       );
       expect(fetchManagerRevenuePeriodTotalsMock).toHaveBeenCalledTimes(1);
