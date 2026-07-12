@@ -15,24 +15,39 @@ This is a practical checklist for local -> staging -> production. Use it to trac
 
 ### Required (must match CI required gates)
 
-CI required job names — all must be green before deploy:
-`quality` · `build` · `supabase-contract` · `fixture-preflight` · `focused-regression`
+CI required check display names — all must be green before deploy:
+
+- `Quality Checks`
+- `Build`
+- `Database Contract`
+- `Fixture Preflight (Static)`
+- `Full Jest Regression`
+- `Security Tests`
+- `App E2E (Local Supabase + Chromium)`
+
+`Supabase Types Contract` is a transition-only header corruption check. Keep it
+required until `Database Contract` has run successfully at least once, then
+remove it from branch protection; it is not a substitute for full type drift.
 
 - [ ] `npm run lint`
 - [ ] `npm run type-check`
 - [ ] `npm run scan:secrets`
 - [ ] `npm run build`
-- [ ] Validate supabase types header:
-  ```bash
-  node -e "const fs=require('fs');const v=fs.readFileSync('src/types/supabase.ts','utf8');const l=v.split('\n')[0].trim();if(l!=='export type Json ='){console.error(l);process.exit(1)}console.log('OK')"
+- [ ] Validate the pinned CLI and full generated type contract:
+  ```powershell
+  npm run supabase:cli:verify
+  npm run commercial:verify:migrations
+  npm run supabase:types
+  git diff --exit-code -- src/types/supabase.ts
   ```
-- [ ] `E2E_SKIP_DB_CHECK=1 npm run e2e:validate-fixtures`
+- [ ] With local Supabase running: `npm run commercial:verify:types:local`
+- [ ] `$env:E2E_SKIP_DB_CHECK = '1'; npm run e2e:validate-fixtures`
 - [ ] `npm run test:pr05:focused`
 
 ### Optional / Known Blockers
 
 - [ ] `npm run e2e:validate-fixtures` (with DB) — requires `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] `npm run test:e2e:pw -- --project=chromium` — **BLOCKED**: `spawn EPERM` on Windows (DOD-06/DOD-07). Deferred to follow-up PR.
+- [ ] `npm run test:e2e:pw -- --project=chromium` — CIのApp E2Eと同じ主要smokeを実行する場合は、ローカルfixtureと環境変数を先に準備する。
 
 Supabase (local) for DoD evidence:
 - [ ] `supabase start`
@@ -48,6 +63,21 @@ Supabase (local) for DoD evidence:
 
 Notes:
 - `supabase db reset --local`, `supabase db push --local`, and `supabase migration up` require explicit approval before running.
+
+### Branch protection transition (human approval required)
+
+1. PR上で新しい `Database Contract` が一度実行されるまで待つ。
+2. `main` の Settings → Branches / Rulesets で、上記display nameをrequired status checksへ追加する。
+3. `Require branches to be up to date`, review必須、stale approval破棄、conversation resolution、force-push禁止を有効にする。
+4. 赤い `Database Contract` または `App E2E` があるPRでmerge操作が無効になることを確認する。
+5. 新ゲートの動作確認後に限り、旧 `Supabase Types Contract` をrequiredから外す。
+6. 設定画面のスクリーンショットまたは次のread-only API出力を `docs/stabilization/evidence/commercial-hardening/pr01/` に保存する（tokenや個人情報は保存しない）。
+
+```powershell
+gh api repos/IFs1991/seikotsuin_no_saas/branches/main/protection
+```
+
+`Migration Safety Audit` と `Codex Detached Review` はcheck providerを実装してからrequired化する。存在しないcontextをrequiredにするとPRが永久pendingになる。
 
 
 ## 2. Staging Deploy (Supabase)

@@ -9,6 +9,12 @@ import { fileURLToPath } from 'node:url';
 
 import { format, resolveConfig } from 'prettier';
 
+import {
+  normalizePostgrestVersion,
+  readPostgrestVersion,
+} from '../lib/supabase-generated-types.mjs';
+import { assertPinnedSupabaseCliVersion } from '../verify-supabase-cli-version.mjs';
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const COMMITTED_TYPES = path.join(REPO_ROOT, 'src/types/supabase.ts');
@@ -20,6 +26,8 @@ const EVIDENCE_DIR = path.join(
 function parseArgs(argv) {
   let target = null;
   let projectId = null;
+  let cliCwd = REPO_ROOT;
+  let allowPostgrestVersionDrift = false;
   let write = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -28,25 +36,34 @@ function parseArgs(argv) {
       if (target) throw new Error('Choose exactly one database target');
       target = value;
     } else if (value === '--project-id') {
-      if (target || projectId) throw new Error('Choose exactly one database target');
+      if (target || projectId)
+        throw new Error('Choose exactly one database target');
       projectId = argv[++index];
       if (!projectId) throw new Error('--project-id requires a value');
     } else if (value === '--write') {
       write = true;
+    } else if (value === '--workdir') {
+      const workdir = argv[++index];
+      if (!workdir) throw new Error('--workdir requires a value');
+      cliCwd = path.resolve(workdir);
+    } else if (value === '--allow-postgrest-version-drift') {
+      allowPostgrestVersionDrift = true;
     } else {
       throw new Error(
-        'Usage: verify-generated-types.mjs (--local|--linked|--project-id <ref>) [--write]'
+        'Usage: verify-generated-types.mjs (--local|--linked|--project-id <ref>) [--workdir <path>] [--allow-postgrest-version-drift] [--write]'
       );
     }
   }
 
   if (!target && !projectId) {
     throw new Error(
-      'Usage: verify-generated-types.mjs (--local|--linked|--project-id <ref>) [--write]'
+      'Usage: verify-generated-types.mjs (--local|--linked|--project-id <ref>) [--workdir <path>] [--allow-postgrest-version-drift] [--write]'
     );
   }
   return {
     cliTarget: projectId ? ['--project-id', projectId] : [target],
+    cliCwd,
+    allowPostgrestVersionDrift,
     targetName: target === '--local' ? 'local' : 'remote',
     write,
   };
@@ -56,12 +73,20 @@ function sha256(content) {
   return createHash('sha256').update(content).digest('hex');
 }
 
-function generateTypes(cliTarget) {
+function generateTypes(cliTarget, cliCwd) {
   const result = spawnSync(
     'supabase',
-    ['gen', 'types', '--lang', 'typescript', ...cliTarget, '--schema', 'public'],
+    [
+      'gen',
+      'types',
+      '--lang',
+      'typescript',
+      ...cliTarget,
+      '--schema',
+      'public',
+    ],
     {
-      cwd: REPO_ROOT,
+      cwd: cliCwd,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -95,8 +120,9 @@ function generateTypes(cliTarget) {
 }
 
 const args = parseArgs(process.argv.slice(2));
+assertPinnedSupabaseCliVersion();
 const prettierConfig = (await resolveConfig(COMMITTED_TYPES)) ?? {};
-const generated = await format(generateTypes(args.cliTarget), {
+const generated = await format(generateTypes(args.cliTarget, args.cliCwd), {
   ...prettierConfig,
   filepath: COMMITTED_TYPES,
 });
@@ -119,6 +145,25 @@ if (args.write) {
 }
 
 if (generatedHash !== committedHash) {
+  const normalizedGenerated = normalizePostgrestVersion(generated);
+  const normalizedCommitted = normalizePostgrestVersion(committed);
+
+  if (
+    args.allowPostgrestVersionDrift &&
+    normalizedGenerated === normalizedCommitted
+  ) {
+    console.log(
+      'Generated ' +
+        args.targetName +
+        ' schema matches the committed types; only explicit PostgREST runtime metadata differs (' +
+        String(readPostgrestVersion(generated)) +
+        ' != ' +
+        String(readPostgrestVersion(committed)) +
+        ').'
+    );
+    process.exit(0);
+  }
+
   console.error(
     'RED COMM-TYPES-001: committed types differ from ' +
       args.targetName +
