@@ -33,13 +33,12 @@
 - The focused PR-01 test now verifies the 50-entry baseline, append-only success, applied-migration content drift failure, CI history-gate ordering, and App E2E dependency.
 - A full local stack also completed all migrations and seed, but Realtime/Storage health checks exceeded this machine's resource envelope. That attempt is not reported as a successful full-stack start.
 
-## Not yet verified before the follow-up PR run
+## Follow-up GitHub verification
 
-- The CI-ephemeral `supabase db reset --local` result and GitHub `Database Contract` check.
-- Full Jest, Security Tests, Build, and App E2E for this branch.
-- GitHub branch protection. Applying it requires explicit human approval after the new check has appeared once.
-- A follow-up local build compiled successfully but could not complete page-data collection without environment variables; the retry stopped on local disk exhaustion (`ENOSPC`). GitHub `Build` remains the authoritative pending result.
-- A follow-up destructive reset was not run because `supabase db reset --local` requires separate explicit approval. The already-replayed isolated DB still passed all 53 pgTAP tests and the normalized local type contract.
+- PR #86 run `29183263128` passed `Quality Checks`, `Build`, `Database Contract`, `Fixture Preflight (Static)`, `Full Jest Regression`, `Security Tests`, and `App E2E (Local Supabase + Chromium)`.
+- `Database Contract` passed the immutable-history check, CI-ephemeral `supabase db reset --local`, pgTAP, and complete generated-type diff.
+- A follow-up local build compiled successfully but could not complete page-data collection without environment variables; its retry stopped on local disk exhaustion (`ENOSPC`). The GitHub `Build` job passed and is the authoritative result.
+- GitHub branch protection is not yet configured. Applying it requires explicit human approval after the new check has appeared once.
 
 ## Residual risk
 
