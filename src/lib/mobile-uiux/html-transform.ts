@@ -357,7 +357,9 @@ function annotateDateLabel(
   );
   const leafMatches = matches.filter(
     element =>
-      !matches.some(candidate => candidate !== element && isAncestorOf(element, candidate))
+      !matches.some(
+        candidate => candidate !== element && isAncestorOf(element, candidate)
+      )
   );
 
   const target = requireSingleElement(
