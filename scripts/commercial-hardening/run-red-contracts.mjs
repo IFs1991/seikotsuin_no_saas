@@ -10,7 +10,10 @@ const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
 const CONTRACT_ROOT = path.join(SCRIPT_DIR, 'red-contracts');
 
 const EXPECTED_CONTRACTS = new Map([
-  ['01_exposed_tables_rls.sql', { marker: 'RED COMM-RLS-001', outcome: 'red' }],
+  [
+    '01_exposed_tables_rls.sql',
+    { marker: 'RED COMM-RLS-001', outcome: 'green' },
+  ],
   [
     '02_default_client_privileges.sql',
     { marker: 'RED COMM-GRANT-001', outcome: 'green' },
@@ -33,7 +36,7 @@ const EXPECTED_CONTRACTS = new Map([
   ],
   [
     '06_clinic_settings_policy.sql',
-    { marker: 'RED COMM-RLS-002', outcome: 'red' },
+    { marker: 'RED COMM-RLS-002', outcome: 'green' },
   ],
   [
     '07_atomic_staff_invite.sql',
@@ -41,7 +44,11 @@ const EXPECTED_CONTRACTS = new Map([
   ],
   [
     '08_profile_self_escalation.sql',
-    { marker: 'RED COMM-AUTH-001', outcome: 'red' },
+    { marker: 'RED COMM-AUTH-001', outcome: 'green' },
+  ],
+  [
+    '09_rls_policy_normalization.sql',
+    { marker: 'RED COMM-RLS-003', outcome: 'green' },
   ],
 ]);
 
@@ -162,6 +169,6 @@ if (mismatches.length > 0) {
   console.log(
     'All ' +
       String(results.length) +
-      ' commercial contracts match the PR-02 phase expectations.'
+      ' commercial contracts match the PR-03 phase expectations.'
   );
 }

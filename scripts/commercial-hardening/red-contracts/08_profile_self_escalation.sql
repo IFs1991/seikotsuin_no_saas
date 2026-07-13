@@ -1,3 +1,5 @@
+begin;
+
 do $commercial_red$
 declare
   actor_id constant uuid := 'f1000000-0000-4000-8000-000000000001';
@@ -84,7 +86,7 @@ begin
     get diagnostics cross_tenant_updates = row_count;
   exception
     when insufficient_privilege then
-      raise exception 'GREEN COMM-AUTH-001: sensitive self-update or cross-tenant settings access was denied';
+      null;
   end;
 
   if profile_updates = 1
@@ -93,9 +95,7 @@ begin
     raise exception 'RED COMM-AUTH-001: self profile privilege escalation reached cross-tenant clinic_settings';
   end if;
 
-  raise exception 'GREEN COMM-AUTH-001: exploit chain did not complete (profile=%, visible=%, update=%)',
-    profile_updates,
-    visible_settings,
-    cross_tenant_updates;
 end
 $commercial_red$;
+
+rollback;
