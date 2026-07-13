@@ -1,5 +1,3 @@
-begin;
-
 do $commercial_red$
 declare
   actor_id constant uuid := 'f1000000-0000-4000-8000-000000000001';
@@ -95,7 +93,23 @@ begin
     raise exception 'RED COMM-AUTH-001: self profile privilege escalation reached cross-tenant clinic_settings';
   end if;
 
+  -- Supabase CLI 2.109 executes query files as one prepared statement and
+  -- rejects a BEGIN/DO/ROLLBACK batch. Keep this contract single-statement and
+  -- remove its synthetic fixtures explicitly on the GREEN path. A RED or
+  -- unexpected exception rolls the whole DO statement back automatically.
+  execute 'reset role';
+
+  delete from public.clinic_settings
+  where clinic_id in (clinic_a, clinic_b)
+    and category = 'clinic_basic';
+
+  delete from public.profiles
+  where user_id = actor_id;
+
+  delete from auth.users
+  where id = actor_id;
+
+  delete from public.clinics
+  where id in (clinic_a, clinic_b);
 end
 $commercial_red$;
-
-rollback;

@@ -20,11 +20,11 @@ const EXPECTED_CONTRACTS = new Map([
   ],
   [
     '03_private_function_execute.sql',
-    { marker: 'RED COMM-FUNCTION-001', outcome: 'red' },
+    { marker: 'RED COMM-FUNCTION-001', outcome: 'green' },
   ],
   [
     '03b_function_search_path.sql',
-    { marker: 'RED COMM-FUNCTION-002', outcome: 'red' },
+    { marker: 'RED COMM-FUNCTION-002', outcome: 'green' },
   ],
   [
     '04_required_composite_fks.sql',
@@ -169,6 +169,6 @@ if (mismatches.length > 0) {
   console.log(
     'All ' +
       String(results.length) +
-      ' commercial contracts match the PR-03 phase expectations.'
+      ' commercial contracts match the PR-04 phase expectations.'
   );
 }
