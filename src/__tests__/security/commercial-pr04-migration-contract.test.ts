@@ -16,6 +16,8 @@ const EXTENSION_PREFLIGHT_PATH =
   'docs/stabilization/evidence/commercial-hardening/pr04/extension-preflight.md';
 const AUTH_RUNBOOK_PATH =
   'docs/operations/COMMERCIAL_PR04_LEAKED_PASSWORD_PROTECTION.md';
+const AUTH_PLAN_GATE_PATH =
+  'docs/stabilization/evidence/commercial-hardening/pr04/hosted-auth-plan-gate.md';
 const SUPABASE_CONFIG_PATH = 'supabase/config.toml';
 const SETUP_PATHS = [
   'docs/SETUP_VERCEL_SUPABASE.md',
@@ -250,6 +252,7 @@ describe('commercial PR-04 migration contract', () => {
       CLEAN_REPLAY_PATH,
       EXTENSION_PREFLIGHT_PATH,
       AUTH_RUNBOOK_PATH,
+      AUTH_PLAN_GATE_PATH,
     ]) {
       expect(fs.existsSync(path.resolve(process.cwd(), requiredPath))).toBe(
         true
@@ -279,6 +282,11 @@ describe('commercial PR-04 migration contract', () => {
     );
     expect(readRepositoryFile(CLEAN_REPLAY_PATH)).toContain(
       'Exact non-owner `app_private` EXECUTE matrix: 28 / 28'
+    );
+    const authPlanGate = readRepositoryFile(AUTH_PLAN_GATE_PATH);
+    expect(authPlanGate).toContain('`SKIPPED_PLAN_GATED`');
+    expect(authPlanGate.replace(/\s+/g, ' ')).toContain(
+      'No Hosted Auth configuration change was applied'
     );
   });
 

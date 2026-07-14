@@ -43,6 +43,8 @@ does not auto-apply the unrelated RLS remediation.
   post-replay boundary counts.
 - `hosted-db-after.md`: approved linked-project migration apply, exact remote
   ACL counts, and Security Advisor after-state.
+- `hosted-auth-plan-gate.md`: Supabase paid-plan rejection, confirmed no-change
+  outcome, user-approved skip, and reopen conditions.
 
 ## Expected catalog after replay
 
@@ -112,8 +114,12 @@ does not auto-apply the unrelated RLS remediation.
   `2.109.0`, while the installed CLI is `2.109.1`; the verifier correctly
   failed fast and neither the pin nor `src/types/supabase.ts` was changed.
 - Extension relocation: `DEFERRED`; Advisor warning remains a residual risk.
-- Hosted leaked-password protection: `NOT_APPLIED`; human approval required.
-- Auth E2E and hosted Auth-after verification: `UNVERIFIED`.
+- Hosted leaked-password protection: `SKIPPED_PLAN_GATED`. Supabase rejected
+  the authorized Dashboard update because the feature requires Pro or above;
+  no Auth configuration change was applied, and the user approved continuing
+  PR-04 with this explicit residual risk.
+- Auth E2E and hosted Auth-after verification: `NOT_RUN` because the setting
+  remained disabled.
 
 ### Trigger direct-call test limitation
 

@@ -143,10 +143,13 @@ hook, preserve the hardened boundary, and ship a reviewed forward-fix.
 
 ## Operations
 
-Hosted leaked-password protection remains `NOT_APPLIED` until an authorized
-operator follows
-`docs/operations/COMMERCIAL_PR04_LEAKED_PASSWORD_PROTECTION.md`. Before/after
-configuration evidence and login/reset/invite E2E are mandatory. No password,
+Hosted leaked-password protection is `SKIPPED_PLAN_GATED`. On 2026-07-14,
+Supabase rejected an authorized Dashboard attempt because the feature requires
+Pro or above; no Auth configuration change was applied, and the user approved
+continuing PR-04 with this explicit residual risk. Reopening the step requires
+a plan upgrade, fresh approval, and the before/after plus login/reset/invite
+verification in
+`docs/operations/COMMERCIAL_PR04_LEAKED_PASSWORD_PROTECTION.md`. No password,
 token, patient data, or secret may be stored as evidence.
 
 ## DoD mapping
@@ -165,9 +168,13 @@ token, patient data, or secret may be stored as evidence.
 
 - Clean local replay and all GREEN SQL evidence: `PASS` after explicit local
   reset approval.
-- Hosted function/default-ACL after state: `UNVERIFIED`.
+- Hosted function/default-ACL after state: `PASS` for the linked project; exact
+  post-apply ACL matrices and migration history were verified.
 - Hosted `btree_gist.extrelocatable` and dependency behavior: `UNVERIFIED`.
 - Extension relocation: `DEFERRED` to a separate reviewed migration.
-- Hosted leaked-password protection: `NOT_APPLIED`, approval required.
-- Auth login/reset/invite E2E and Advisor-after snapshot: `UNVERIFIED`.
-- Staging, production migration, canary, and 24h/72h review: `UNVERIFIED`.
+- Hosted leaked-password protection: `SKIPPED_PLAN_GATED`; Supabase requires
+  Pro or above, no change was applied, and the Advisor finding remains.
+- Auth login/reset/invite E2E: `NOT_RUN` because Auth configuration was
+  unchanged. Hosted Security Advisor after-state: `PASS_WITH_RESIDUALS`.
+- Linked hosted migration: `PASS`. Environment-specific staging/production
+  classification, canary, and 24h/72h review: `UNVERIFIED`.

@@ -2,11 +2,17 @@
 
 ## Status and authority
 
-- Current repository evidence status: `NOT_APPLIED`
+- Current repository evidence status: `SKIPPED_PLAN_GATED`
 - Target hosted project: `qnanuoqveidwvacvbhqp`
 - Production Auth changes require explicit human approval.
 - Do not run the PATCH step from an implementation or audit task without that
   approval.
+
+On 2026-07-14, an authorized Dashboard attempt was rejected by Supabase because
+leaked-password protection requires the Pro Plan or above. No Auth
+configuration change was applied. The user explicitly directed PR-04 to skip
+this paid-plan setting and continue. See
+`docs/stabilization/evidence/commercial-hardening/pr04/hosted-auth-plan-gate.md`.
 
 Supabase exposes this setting as `password_hibp_enabled`. It rejects newly set
 passwords known to the Have I Been Pwned Pwned Passwords service. Never record
@@ -38,9 +44,9 @@ $authConfig.password_hibp_enabled
 Expected before value from the 2026-07-11 Advisor snapshot: `False`. If the
 live value differs, stop and reconcile drift before making any change.
 
-## Approved change
+## Future approved change
 
-After explicit approval only:
+After a plan upgrade and fresh explicit approval only:
 
 ```powershell
 $body = @{ password_hibp_enabled = $true } | ConvertTo-Json

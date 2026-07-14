@@ -41,7 +41,8 @@ extension.
 
 ## Hosted Auth boundary
 
-This database apply did not modify Hosted Auth configuration. Leaked-password
-protection remains disabled and requires a separately approved Auth change and
-the login/reset/invite verification described in
+This database apply did not modify Hosted Auth configuration. A later,
+authorized Dashboard attempt was rejected by Supabase's Pro-or-above plan gate,
+so leaked-password protection remains disabled. The user approved skipping the
+paid-plan setting for PR-04. See `hosted-auth-plan-gate.md` and
 `docs/operations/COMMERCIAL_PR04_LEAKED_PASSWORD_PROTECTION.md`.
