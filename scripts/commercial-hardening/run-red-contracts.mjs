@@ -31,8 +31,12 @@ const EXPECTED_CONTRACTS = new Map([
     { marker: 'RED COMM-FK-001', outcome: 'red' },
   ],
   [
+    '04a_core_composite_fks.sql',
+    { marker: 'RED COMM-FK-003', outcome: 'green' },
+  ],
+  [
     '05_parent_rehome_fixture.sql',
-    { marker: 'RED COMM-FK-002', outcome: 'red' },
+    { marker: 'RED COMM-FK-002', outcome: 'green' },
   ],
   [
     '06_clinic_settings_policy.sql',
@@ -169,6 +173,6 @@ if (mismatches.length > 0) {
   console.log(
     'All ' +
       String(results.length) +
-      ' commercial contracts match the PR-04 phase expectations.'
+      ' commercial contracts match the current phase expectations.'
   );
 }

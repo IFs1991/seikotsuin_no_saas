@@ -116,30 +116,16 @@ describe('commercial PR-03 migration contract', () => {
     expect(rollback).toContain('reviewed forward-fix');
   });
 
-  it('advances only the PR-03 phase DB contracts to GREEN', () => {
+  it('keeps the PR-03-owned DB contracts GREEN', () => {
     const runner = readRepositoryFile(RUNNER_PATH);
 
     for (const file of [
-      '01_exposed_tables_rls.sql',
-      '02_default_client_privileges.sql',
       '06_clinic_settings_policy.sql',
       '08_profile_self_escalation.sql',
       '09_rls_policy_normalization.sql',
     ]) {
       expect(runner).toMatch(
         new RegExp(`${file.replace('.', '\\.')}[\\s\\S]*?outcome: 'green'`)
-      );
-    }
-
-    for (const file of [
-      '03_private_function_execute.sql',
-      '03b_function_search_path.sql',
-      '04_required_composite_fks.sql',
-      '05_parent_rehome_fixture.sql',
-      '07_atomic_staff_invite.sql',
-    ]) {
-      expect(runner).toMatch(
-        new RegExp(`${file.replace('.', '\\.')}[\\s\\S]*?outcome: 'red'`)
       );
     }
   });
