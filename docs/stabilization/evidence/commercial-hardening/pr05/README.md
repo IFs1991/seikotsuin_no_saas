@@ -17,7 +17,8 @@ resource column is `reservations.staff_id`; the program document's candidate
 - PR-00 recorded hosted evidence: reservation relations 21 rows, menu billing
   relation 1 row, all other core relations 0; all orphan and mismatch counts
   were 0.
-- No fresh hosted query or hosted mutation was performed for PR-05.
+- Hosted preflight and application were subsequently performed with explicit
+  operator approval; see `hosted-db-after.md`.
 
 Local relation-size snapshot before migration:
 
@@ -97,6 +98,13 @@ RI-trigger state, and RLS-enabled state.
 
 ## Hosted / production
 
-Not run. This branch does not authorize staging or production application.
-Fresh hosted row counts, relation sizes, lock timing, staged migration timing,
-canary observation, and hosted generated-type parity remain release gates.
+Applied successfully to the linked hosted main project on 2026-07-14 after
+explicit operator approval. Preflight proved PR-05 was the only pending
+migration and found zero data, lock, parent-key, or RLS blockers. Postflight
+proved exact migration history, seven composite FKs, 28 enabled RI triggers,
+three parent uniques, seven child indexes, 18 required non-null UUID columns,
+zero relationship violations, unchanged row counts, RLS continuity, and exact
+hosted generated-type parity. Full evidence is in `hosted-db-after.md`.
+
+This does not mark the separate PR-12 staging clone, canary, disaster-recovery,
+or production release-qualification gates complete.
