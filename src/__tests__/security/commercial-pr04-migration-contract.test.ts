@@ -58,19 +58,6 @@ const EXPECTED_AFTER_BOUNDARIES: Readonly<Record<string, string>> = {
     'true|search_path=public, auth, extensions|postgres;service_role',
 };
 
-const EXPECTED_PHASE_OUTCOMES = {
-  '01_exposed_tables_rls.sql': 'green',
-  '02_default_client_privileges.sql': 'green',
-  '03_private_function_execute.sql': 'green',
-  '03b_function_search_path.sql': 'green',
-  '04_required_composite_fks.sql': 'red',
-  '05_parent_rehome_fixture.sql': 'red',
-  '06_clinic_settings_policy.sql': 'green',
-  '07_atomic_staff_invite.sql': 'red',
-  '08_profile_self_escalation.sql': 'green',
-  '09_rls_policy_normalization.sql': 'green',
-} as const;
-
 interface FunctionBoundaryRow {
   schema: string;
   signature: string;
@@ -389,8 +376,11 @@ describe('commercial PR-04 migration contract', () => {
     expect(rollback).toContain('reviewed forward-fix');
   });
 
-  it('advances only the PR-04 function contracts to GREEN', () => {
+  it('keeps the PR-04 function contracts GREEN', () => {
     const runner = readRepositoryFile(RUNNER_PATH);
-    expect(parsePhaseOutcomes(runner)).toEqual(EXPECTED_PHASE_OUTCOMES);
+    const outcomes = parsePhaseOutcomes(runner);
+
+    expect(outcomes['03_private_function_execute.sql']).toBe('green');
+    expect(outcomes['03b_function_search_path.sql']).toBe('green');
   });
 });

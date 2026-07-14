@@ -190,12 +190,9 @@ describe('commercial PR-02 migration contract', () => {
     expect(redContract).toContain("d.refclassid = 'pg_extension'::regclass");
   });
 
-  it('expects only the remediated PR-02 DB contract to be GREEN', () => {
+  it('keeps the remediated PR-02 DB contract GREEN', () => {
     expect(runner).toMatch(
       /'02_default_client_privileges\.sql',[\s\S]*?outcome: 'green'/
-    );
-    expect(runner).toMatch(
-      /'03_private_function_execute\.sql',[\s\S]*?outcome: 'red'/
     );
   });
 });

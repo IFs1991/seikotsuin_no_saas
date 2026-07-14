@@ -1,5 +1,8 @@
 do $commercial_red$
+declare
+  rejected_constraint text;
 begin
+  begin
   insert into public.clinics (id, name)
   values
     ('f0000000-0000-4000-8000-000000000001', 'commercial-red-clinic-a'),
@@ -60,10 +63,22 @@ begin
     set clinic_id = 'f0000000-0000-4000-8000-000000000002'
     where id = 'f0000000-0000-4000-8000-000000000011';
   exception
-    when foreign_key_violation or check_violation then
-      raise exception 'GREEN COMM-FK-002: parent clinic rehome was rejected';
+    when foreign_key_violation then
+      get stacked diagnostics rejected_constraint = constraint_name;
+
+      if rejected_constraint <> 'reservations_customer_id_fkey' then
+        raise exception
+          'COMM-FK-002 contract error: unexpected rejecting constraint %',
+          rejected_constraint;
+      end if;
+      raise exception 'COMM-FK-002 fixture rollback'
+        using errcode = 'CF002';
   end;
 
   raise exception 'RED COMM-FK-002: parent clinic rehome was allowed';
+  exception
+    when sqlstate 'CF002' then
+      return;
+  end;
 end
 $commercial_red$;

@@ -616,17 +616,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'blocks_resource_id_fkey';
-            columns: ['resource_id'];
+            columns: ['resource_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'resources';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'blocks_resource_id_fkey';
-            columns: ['resource_id'];
+            columns: ['resource_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
-            referencedColumns: ['staff_id'];
+            referencedColumns: ['staff_id', 'clinic_id'];
           },
         ];
       };
@@ -751,17 +751,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'care_episodes_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'care_episodes_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
         ];
       };
@@ -1316,17 +1316,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'customer_insurance_coverages_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'customer_insurance_coverages_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
         ];
       };
@@ -2718,10 +2718,10 @@ export type Database = {
           },
           {
             foreignKeyName: 'menu_billing_profiles_menu_id_fkey';
-            columns: ['menu_id'];
+            columns: ['menu_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'menus';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'menu_billing_profiles_revenue_context_code_fkey';
@@ -3879,38 +3879,38 @@ export type Database = {
           },
           {
             foreignKeyName: 'reservations_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_menu_id_fkey';
-            columns: ['menu_id'];
+            columns: ['menu_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'menus';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
+            columns: ['staff_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'resources';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
+            columns: ['staff_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
-            referencedColumns: ['staff_id'];
+            referencedColumns: ['staff_id', 'clinic_id'];
           },
         ];
       };
@@ -6172,22 +6172,7 @@ export type Database = {
           total_reservations: number | null;
           total_revenue: number | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
-            isOneToOne: false;
-            referencedRelation: 'resources';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
-            isOneToOne: false;
-            referencedRelation: 'staff_performance_summary';
-            referencedColumns: ['staff_id'];
-          },
-        ];
+        Relationships: [];
       };
       daily_revenue_summary: {
         Row: {
@@ -6297,38 +6282,38 @@ export type Database = {
           },
           {
             foreignKeyName: 'reservations_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_menu_id_fkey';
-            columns: ['menu_id'];
+            columns: ['menu_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'menus';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
+            columns: ['staff_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'resources';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservations_staff_id_fkey';
-            columns: ['staff_id'];
+            columns: ['staff_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
-            referencedColumns: ['staff_id'];
+            referencedColumns: ['staff_id', 'clinic_id'];
           },
         ];
       };
