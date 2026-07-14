@@ -90,9 +90,10 @@ select ok(
     where schemaname = 'public'
       and tablename = 'shift_requests'
       and policyname = 'shift_requests_insert_scoped'
-      and with_check like '%staff_id = auth.uid%'
+      and with_check ~* 'staff_id\s*=\s*\(\s*SELECT\s+auth\.uid\(\)'
+      and with_check ~* 'submitted_by\s*=\s*\(\s*SELECT\s+auth\.uid\(\)'
   ),
-  'shift_requests insert policy self-scope requires staff_id = auth.uid()'
+  'shift_requests insert policy self-scope uses initplan auth.uid for staff and submitter'
 );
 
 select ok(

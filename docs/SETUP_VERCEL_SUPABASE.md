@@ -30,7 +30,7 @@ SaaS として動作させるための最小手順です。
      `redirectTo=${NEXT_PUBLIC_APP_URL}/admin/callback?next=/reset-password/{source}`
      を使うため、`NEXT_PUBLIC_APP_URL` と Supabase Auth の redirect allow-list が一致している必要がある
 2. Custom Access Token Hook を有効化
-   - `public.custom_access_token_hook`
+   - `app_private.custom_access_token_hook`
    - 根拠: `supabase/config.toml` の `[auth.hook.custom_access_token]`
 3. Auth Email 用の custom SMTP を有効化
    - Resend SMTP を利用する前提

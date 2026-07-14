@@ -1,6 +1,6 @@
 begin;
 
-set local search_path = pg_catalog, extensions, public, auth;
+set local search_path = pg_catalog, extensions, public;
 
 set local role postgres;
 
@@ -9,7 +9,7 @@ grant usage on schema extensions
 
 reset role;
 
-select plan(21);
+select plan(20);
 
 select is(
   (
@@ -153,7 +153,9 @@ select is(
           ('shift_requests', 'shift_requests_insert_scoped'),
           ('shift_requests', 'shift_requests_update_scoped')
       )
-      and concat_ws(' ', qual, with_check) ~* 'SELECT auth\.uid\(\)'
+      and position(
+        'SELECT auth.uid()' in concat_ws(' ', qual, with_check)
+      ) > 0
   ),
   7::bigint,
   'all seven newer auth.uid policies use initialization plans'
@@ -179,15 +181,27 @@ select lives_ok(
 reset role;
 set local role postgres;
 
-insert into public.clinics (id, name)
+insert into public.clinics (id, name, parent_id)
 values
   (
+    'f3030000-0000-4000-8000-000000000000',
+    '__commercial_pr03_root_a__',
+    null
+  ),
+  (
+    'f3030000-0000-4000-8000-0000000000ff',
+    '__commercial_pr03_root_b__',
+    null
+  ),
+  (
     'f3030000-0000-4000-8000-000000000001',
-    '__commercial_pr03_clinic_a__'
+    '__commercial_pr03_clinic_a__',
+    'f3030000-0000-4000-8000-000000000000'
   ),
   (
     'f3030000-0000-4000-8000-000000000002',
-    '__commercial_pr03_clinic_b__'
+    '__commercial_pr03_clinic_b__',
+    'f3030000-0000-4000-8000-0000000000ff'
   );
 
 insert into auth.users (
@@ -230,6 +244,23 @@ values (
   'Commercial PR03 Manager',
   'manager',
   true
+);
+
+insert into public.staff (
+  id,
+  clinic_id,
+  name,
+  role,
+  email,
+  password_hash
+)
+values (
+  'f3030000-0000-4000-8000-000000000010',
+  'f3030000-0000-4000-8000-000000000001',
+  'Commercial PR03 Manager',
+  'manager',
+  'commercial-pr03-manager@example.invalid',
+  'not-used'
 );
 
 insert into public.user_permissions (
