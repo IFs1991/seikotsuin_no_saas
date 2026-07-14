@@ -1519,10 +1519,10 @@ export type Database = {
           },
           {
             foreignKeyName: 'daily_report_item_tags_item_id_fkey';
-            columns: ['daily_report_item_id'];
+            columns: ['daily_report_item_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'daily_report_items';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_item_tags_tag_code_fkey';
@@ -1651,10 +1651,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'daily_report_items_care_episode_id_fkey';
-            columns: ['care_episode_id'];
+            columns: ['care_episode_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'care_episodes';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_clinic_id_fkey';
@@ -1672,45 +1672,45 @@ export type Database = {
           },
           {
             foreignKeyName: 'daily_report_items_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customers';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_customer_id_fkey';
-            columns: ['customer_id'];
+            columns: ['customer_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'patient_visit_summary';
-            referencedColumns: ['patient_id'];
+            referencedColumns: ['patient_id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_customer_insurance_coverage_id_fkey';
-            columns: ['customer_insurance_coverage_id'];
+            columns: ['customer_insurance_coverage_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'customer_insurance_coverages';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_daily_report_id_fkey';
-            columns: ['daily_report_id'];
+            columns: ['daily_report_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'daily_reports';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_menu_billing_profile_id_fkey';
-            columns: ['menu_billing_profile_id'];
+            columns: ['menu_billing_profile_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'menu_billing_profiles';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_menu_id_fkey';
-            columns: ['menu_id'];
+            columns: ['menu_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'menus';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_next_reservation_id_fkey';
@@ -1735,17 +1735,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'daily_report_items_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservations';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_revenue_context_code_fkey';
@@ -1756,17 +1756,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'daily_report_items_staff_resource_id_fkey';
-            columns: ['staff_resource_id'];
+            columns: ['staff_resource_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'resources';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_staff_resource_id_fkey';
-            columns: ['staff_resource_id'];
+            columns: ['staff_resource_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'staff_performance_summary';
-            referencedColumns: ['staff_id'];
+            referencedColumns: ['staff_id', 'clinic_id'];
           },
           {
             foreignKeyName: 'daily_report_items_visit_stage_code_fkey';
@@ -1779,7 +1779,7 @@ export type Database = {
       };
       daily_reports: {
         Row: {
-          clinic_id: string | null;
+          clinic_id: string;
           created_at: string | null;
           id: string;
           insurance_revenue: number | null;
@@ -1793,7 +1793,7 @@ export type Database = {
           updated_at: string | null;
         };
         Insert: {
-          clinic_id?: string | null;
+          clinic_id: string;
           created_at?: string | null;
           id?: string;
           insurance_revenue?: number | null;
@@ -1807,7 +1807,7 @@ export type Database = {
           updated_at?: string | null;
         };
         Update: {
-          clinic_id?: string | null;
+          clinic_id?: string;
           created_at?: string | null;
           id?: string;
           insurance_revenue?: number | null;
@@ -3651,17 +3651,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'reservation_history_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservation_history_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservations';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
         ];
       };
@@ -3729,17 +3729,17 @@ export type Database = {
           },
           {
             foreignKeyName: 'reservation_notifications_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservation_list_view';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
           {
             foreignKeyName: 'reservation_notifications_reservation_id_fkey';
-            columns: ['reservation_id'];
+            columns: ['reservation_id', 'clinic_id'];
             isOneToOne: false;
             referencedRelation: 'reservations';
-            referencedColumns: ['id'];
+            referencedColumns: ['id', 'clinic_id'];
           },
         ];
       };

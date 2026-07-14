@@ -28,15 +28,23 @@ const EXPECTED_CONTRACTS = new Map([
   ],
   [
     '04_required_composite_fks.sql',
-    { marker: 'RED COMM-FK-001', outcome: 'red' },
+    { marker: 'RED COMM-FK-001', outcome: 'green' },
   ],
   [
     '04a_core_composite_fks.sql',
     { marker: 'RED COMM-FK-003', outcome: 'green' },
   ],
   [
+    '04b_report_operational_composite_fks.sql',
+    { marker: 'RED COMM-FK-004', outcome: 'green' },
+  ],
+  [
     '05_parent_rehome_fixture.sql',
     { marker: 'RED COMM-FK-002', outcome: 'green' },
+  ],
+  [
+    '05b_report_parent_rehome_fixture.sql',
+    { marker: 'RED COMM-FK-005', outcome: 'green' },
   ],
   [
     '06_clinic_settings_policy.sql',
