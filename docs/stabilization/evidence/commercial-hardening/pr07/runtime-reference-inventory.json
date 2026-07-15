@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 2,
+  "generatedBy": "scripts/commercial-hardening/verify-legacy-quarantine.mjs",
+  "scope": "src runtime JS/TS variants plus E2E and connection scripts, excluding __tests__, legacy, generated types, and non-literal/computed database object names",
+  "scanSummary": {
+    "operationalFiles": [
+      "scripts/e2e/cleanup-e2e-data.mjs",
+      "scripts/e2e/fixtures.mjs",
+      "scripts/e2e/preflight.mjs",
+      "scripts/e2e/seed-e2e-data.mjs",
+      "scripts/e2e/validate-e2e-fixtures.mjs",
+      "scripts/verify-supabase-connection.mjs"
+    ]
+  },
+  "contract": {
+    "quarantinedTables": [
+      "appointments",
+      "revenues",
+      "treatment_menu_records",
+      "treatments",
+      "visits"
+    ],
+    "writeMethods": [
+      "delete",
+      "insert",
+      "update",
+      "upsert"
+    ],
+    "allowedTableReferences": [
+      {
+        "name": "revenues",
+        "path": "src/app/api/clinic/analysis/route.ts",
+        "methods": [
+          "eq",
+          "limit",
+          "order",
+          "select"
+        ]
+      }
+    ],
+    "allowedRpcReferences": [
+      {
+        "name": "get_hourly_visit_pattern",
+        "path": "src/lib/dashboard/read-model.ts",
+        "methods": []
+      }
+    ]
+  },
+  "tables": [
+    {
+      "name": "appointments",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE",
+      "references": []
+    },
+    {
+      "name": "revenues",
+      "status": "REVIEWED_READ_REFERENCE",
+      "references": [
+        {
+          "name": "revenues",
+          "path": "src/app/api/clinic/analysis/route.ts",
+          "line": 70,
+          "methods": [
+            "eq",
+            "limit",
+            "order",
+            "select"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "treatment_menu_records",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE",
+      "references": []
+    },
+    {
+      "name": "treatments",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE",
+      "references": []
+    },
+    {
+      "name": "visits",
+      "status": "NO_LITERAL_RUNTIME_REFERENCE",
+      "references": []
+    }
+  ],
+  "rpcReferences": [
+    {
+      "name": "get_hourly_visit_pattern",
+      "path": "src/lib/dashboard/read-model.ts",
+      "line": 162,
+      "methods": []
+    }
+  ],
+  "operationalScriptReferences": [],
+  "limitations": [
+    "Computed table or RPC names cannot be attributed to a catalog object statically.",
+    "The PR-07 SQL contract verifies only the reviewed get_hourly_visit_pattern(uuid) body; other database-side legacy dependencies and transitive callers remain a deletion-gate residual risk."
+  ]
+}

@@ -30,8 +30,8 @@ select is(
     from pg_policies
     where schemaname = 'public'
   ),
-  191::bigint,
-  'public policy count matches the reviewed PR-03 catalog'
+  182::bigint,
+  'public policy count matches the reviewed PR-07 quarantine catalog'
 );
 
 select is(

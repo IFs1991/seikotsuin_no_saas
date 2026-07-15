@@ -28,8 +28,6 @@ export const REQUIRED_TABLES = [
   'menus',
   'resources',
   'patients',
-  'visits',
-  'revenues',
   'user_sessions',
   'security_events',
   'audit_logs',

@@ -123,8 +123,6 @@ export async function cleanupE2EData() {
   // Required tables
   await deleteByClinic('clinic_settings');
   await deleteByClinic('blocks');
-  await deleteByClinic('revenues');
-  await deleteByClinic('visits');
   await deleteByClinic('patients');
   await deleteGeneratedCustomers();
   await deleteByClinic('security_events');

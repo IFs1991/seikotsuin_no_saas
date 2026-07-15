@@ -15,7 +15,11 @@ test.describe('Dashboard - 実データ表示', () => {
 
   test('dashboard renders core widgets', async ({ page }) => {
     await expect(
-      page.getByRole('heading', { name: 'メインダッシュボード' })
+      page.getByRole('heading', {
+        level: 1,
+        name: 'ダッシュボード',
+        exact: true,
+      })
     ).toBeVisible();
     await expect(page.getByText('本日のリアルタイムデータ')).toBeVisible();
     await expect(page.getByText('AI分析コメント')).toBeVisible();
@@ -37,30 +41,31 @@ test.describe('Dashboard - 実データ表示', () => {
     await expect(page.locator('.recharts-line')).toHaveCount(3);
   });
 
-  test('ヒートマップに曜日×時間帯のセルが描画される', async ({ page }) => {
+  test('来院データが無い場合はヒートマップの空状態が描画される', async ({
+    page,
+  }) => {
+    const heatmapHeading = page.getByRole('heading', {
+      level: 3,
+      name: '時間帯別混雑状況ヒートマップ',
+      exact: true,
+    });
+    const heatmapCard = heatmapHeading.locator(
+      'xpath=ancestor::div[@data-interactive="false"][1]'
+    );
+
     // ヒートマップカードが表示される
-    await expect(page.getByText('時間帯別混雑状況ヒートマップ')).toBeVisible();
+    await expect(heatmapHeading).toBeVisible();
 
     // 「準備中」ではなく実際のヒートマップが表示される
     await expect(
       page.getByText('ヒートマップ表示機能は準備中です')
     ).not.toBeVisible();
 
-    // ヒートマップのセルが存在する（data-testid="heatmap-cell"）
+    // PR07ではlegacy visitsへのE2E書き込みを禁止しているため、空状態を表示する
     await expect(
-      page.locator('[data-testid="heatmap-cell"]').first()
+      heatmapCard.getByText('データがありません', { exact: true })
     ).toBeVisible();
-
-    // 曜日ラベルが表示される
-    await expect(page.getByText('月', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('日', { exact: true }).first()).toBeVisible();
-  });
-
-  test('データが無い場合は空状態が表示される', async ({ page }) => {
-    // 空のクリニックでアクセスした場合の空状態表示を検証
-    // ※この場合、テストデータがないクリニックで確認が必要
-    // ここではデータがある場合に「データがありません」が表示されないことを確認
-    await expect(page.getByText('データがありません')).not.toBeVisible();
+    await expect(heatmapCard.getByTestId('heatmap-cell')).toHaveCount(0);
   });
 });
 

@@ -1,0 +1,7 @@
+object_kind,object_name,clinic_id_schema,target_rls,target_policy_count,target_public_acl,target_anon_acl,target_authenticated_acl,target_service_role_acl,runtime_reference,write_path_after_pr07,null_handling,data_action,verification_status
+table,appointments,UUID_NOT_NULL,ON,0,NONE,NONE,NONE,NONE,NONE,DENIED,NOT_APPLICABLE,PRESERVE_ALL_ROWS,PASS
+table,visits,UUID_NULLABLE,ON,0,NONE,NONE,NONE,SELECT_ONLY,DB_INTERNAL_VIA_get_hourly_visit_pattern,DENIED,ABORT_IF_NULL_REPAIR_SEPARATELY_NO_NOT_NULL,PRESERVE_ALL_ROWS,PASS
+table,revenues,UUID_NULLABLE,ON,0,NONE,NONE,NONE,SELECT_ONLY,src/app/api/clinic/analysis/route.ts_and_DB_INTERNAL_VIA_get_hourly_visit_pattern,DENIED,ABORT_IF_NULL_REPAIR_SEPARATELY_NO_NOT_NULL,PRESERVE_ALL_ROWS,PASS
+table,treatments,UUID_NOT_NULL,ON,0,NONE,NONE,NONE,NONE,NONE,DENIED,NOT_APPLICABLE,PRESERVE_ALL_ROWS,PASS
+table,treatment_menu_records,ABSENT,ON,0,NONE,NONE,NONE,NONE,NONE,DENIED,NO_TENANT_KEY_NO_BACKFILL,PRESERVE_ALL_ROWS,PASS
+function,get_hourly_visit_pattern(uuid),NOT_APPLICABLE,NOT_APPLICABLE,NOT_APPLICABLE,NONE,NONE,NONE,EXECUTE_ONLY,src/lib/dashboard/read-model.ts,READ_ONLY_SECURITY_INVOKER,NOT_APPLICABLE,NO_DATA_MUTATION,PASS
