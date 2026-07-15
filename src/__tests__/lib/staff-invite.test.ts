@@ -1,6 +1,7 @@
 import {
   buildStaffInviteRedirectUrl,
   createStaffInviteToken,
+  parseAtomicStaffInviteResult,
   sendStaffInviteEmail,
   StaffInviteDeliveryTimeoutError,
   type StaffInviteEmailClient,
@@ -50,6 +51,57 @@ describe('staff invite policy and delivery', () => {
         inviteRole: 'admin',
       })
     ).toEqual({ success: false, reason: 'invalid_role' });
+  });
+
+  it('parses a successful atomic invite response into the application model', () => {
+    expect(
+      parseAtomicStaffInviteResult({
+        success: true,
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+        role: 'therapist',
+        idempotent: true,
+      })
+    ).toEqual({
+      success: true,
+      clinicId: '11111111-1111-4111-8111-111111111111',
+      role: 'therapist',
+      idempotent: true,
+    });
+  });
+
+  it('parses known business failures and rejects malformed RPC responses', () => {
+    expect(
+      parseAtomicStaffInviteResult({
+        success: false,
+        error_code: 'INVITE_ALREADY_ACCEPTED',
+      })
+    ).toEqual({
+      success: false,
+      errorCode: 'INVITE_ALREADY_ACCEPTED',
+    });
+    expect(
+      parseAtomicStaffInviteResult({
+        success: true,
+        clinic_id: 'not-a-uuid',
+        role: 'staff',
+        idempotent: false,
+      })
+    ).toBeNull();
+    expect(
+      parseAtomicStaffInviteResult({
+        success: true,
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+        role: 'admin',
+        idempotent: false,
+      })
+    ).toBeNull();
+    expect(
+      parseAtomicStaffInviteResult({
+        success: false,
+        error_code: 'UNKNOWN_ERROR',
+      })
+    ).toBeNull();
+    expect(parseAtomicStaffInviteResult(null)).toBeNull();
   });
 
   it('creates an opaque UUID token and carries it through the auth callback', () => {

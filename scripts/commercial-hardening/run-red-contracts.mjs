@@ -56,7 +56,7 @@ const EXPECTED_CONTRACTS = new Map([
   ],
   [
     '07_atomic_staff_invite.sql',
-    { marker: 'RED COMM-INVITE-001', outcome: 'red' },
+    { marker: 'RED COMM-INVITE-001', outcome: 'green' },
   ],
   [
     '08_profile_self_escalation.sql',

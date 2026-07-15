@@ -12,8 +12,7 @@ const TEST_PATH = path.join(
   REPO_ROOT,
   'src/__tests__/red-contracts/invite-atomicity.red.test.ts'
 );
-const EXPECTED_MARKER =
-  'RED COMM-INVITE-003: PARTIAL_COMMIT_STATE_MISMATCH';
+const EXPECTED_MARKER = 'GREEN COMM-INVITE-003';
 const jestCli = require.resolve('jest/bin/jest');
 const result = spawnSync(
   process.execPath,
@@ -36,13 +35,11 @@ const result = spawnSync(
 
 if (result.error) throw result.error;
 const output = [result.stdout, result.stderr].filter(Boolean).join('\n');
-if (result.status !== 0 && output.includes(EXPECTED_MARKER)) {
-  console.log(
-    'RED reproduced - invite acceptance partially commits before a later write failure'
-  );
+if (result.status === 0 && output.includes(EXPECTED_MARKER)) {
+  console.log('GREEN verified - invite acceptance uses one atomic RPC');
 } else {
   console.error(
-    'Invite RED contract did not fail for the expected reason (status=' +
+    'Invite GREEN contract did not pass for the expected reason (status=' +
       String(result.status) +
       ', marker=' +
       String(output.includes(EXPECTED_MARKER)) +

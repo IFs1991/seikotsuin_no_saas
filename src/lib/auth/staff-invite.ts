@@ -26,6 +26,35 @@ export type StaffInviteAccountValidation =
       reason: 'email_mismatch' | 'invalid_role';
     };
 
+export const ATOMIC_STAFF_INVITE_ERROR_CODES = [
+  'INVITE_NOT_FOUND',
+  'INVITE_EXPIRED',
+  'INVITE_INVALID_ROLE',
+  'INVITE_EMAIL_MISMATCH',
+  'INVITE_ACCOUNT_NOT_FOUND',
+  'INVITE_ACCOUNT_EMAIL_MISMATCH',
+  'INVITE_ALREADY_ACCEPTED',
+  'INVITE_STATE_INVALID',
+] as const;
+
+export type AtomicStaffInviteErrorCode =
+  (typeof ATOMIC_STAFF_INVITE_ERROR_CODES)[number];
+
+export type AtomicStaffInviteResult =
+  | {
+      success: true;
+      clinicId: string;
+      role: StaffInviteRole;
+      idempotent: boolean;
+    }
+  | {
+      success: false;
+      errorCode: AtomicStaffInviteErrorCode;
+    };
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export class StaffInviteDeliveryTimeoutError extends Error {
   constructor() {
     super('Staff invite delivery timed out');
@@ -59,6 +88,57 @@ export function validateStaffInviteAccount(input: {
   }
 
   return { success: true, role: input.inviteRole };
+}
+
+function isAtomicStaffInviteErrorCode(
+  value: unknown
+): value is AtomicStaffInviteErrorCode {
+  return ATOMIC_STAFF_INVITE_ERROR_CODES.some(code => code === value);
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function parseAtomicStaffInviteResult(
+  value: unknown
+): AtomicStaffInviteResult | null {
+  if (!isUnknownRecord(value)) {
+    return null;
+  }
+
+  const record = value;
+  if (record.success === true) {
+    const role = record.role;
+    if (
+      typeof record.clinic_id !== 'string' ||
+      !UUID_PATTERN.test(record.clinic_id) ||
+      typeof role !== 'string' ||
+      !isStaffInviteRole(role) ||
+      typeof record.idempotent !== 'boolean'
+    ) {
+      return null;
+    }
+
+    return {
+      success: true,
+      clinicId: record.clinic_id,
+      role,
+      idempotent: record.idempotent,
+    };
+  }
+
+  if (
+    record.success === false &&
+    isAtomicStaffInviteErrorCode(record.error_code)
+  ) {
+    return {
+      success: false,
+      errorCode: record.error_code,
+    };
+  }
+
+  return null;
 }
 
 export function createStaffInviteToken(): string {
