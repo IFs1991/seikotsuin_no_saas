@@ -97,24 +97,6 @@ const PATIENT_IDS = [
   '00000000-0000-0000-0000-00000000b201',
   '00000000-0000-0000-0000-00000000b202',
 ];
-const VISIT_IDS = [
-  '00000000-0000-0000-0000-00000000a101',
-  '00000000-0000-0000-0000-00000000a102',
-  '00000000-0000-0000-0000-00000000a103',
-  '00000000-0000-0000-0000-00000000a104',
-  '00000000-0000-0000-0000-00000000a105',
-  '00000000-0000-0000-0000-00000000a106',
-  '00000000-0000-0000-0000-00000000a107',
-];
-const REVENUE_IDS = [
-  '00000000-0000-0000-0000-00000000a201',
-  '00000000-0000-0000-0000-00000000a202',
-  '00000000-0000-0000-0000-00000000a203',
-  '00000000-0000-0000-0000-00000000a204',
-  '00000000-0000-0000-0000-00000000a205',
-  '00000000-0000-0000-0000-00000000a206',
-  '00000000-0000-0000-0000-00000000a207',
-];
 const AI_COMMENT_ID = '00000000-0000-0000-0000-00000000a301';
 const SECURITY_EVENT_IDS = [
   '00000000-0000-0000-0000-00000000a401',
@@ -575,49 +557,6 @@ async function seedAnalyticsData() {
     .upsert(patients, { onConflict: 'id' });
   if (patientError) {
     throw new Error(`Patients upsert failed: ${patientError.message}`);
-  }
-
-  const visits = [];
-  const revenues = [];
-  for (let i = 0; i < 7; i += 1) {
-    const visitDate = addDays(today, -i);
-    const visitStart = new Date(visitDate);
-    visitStart.setHours(10, 0, 0, 0);
-    const revenueDate = visitDate.toISOString().split('T')[0];
-
-    visits.push({
-      id: VISIT_IDS[i],
-      clinic_id: CLINIC_A_ID,
-      patient_id: PATIENT_IDS[i % 3],
-      visit_date: visitStart.toISOString(),
-      therapist_id: null,
-      notes: 'E2E visit',
-    });
-
-    revenues.push({
-      id: REVENUE_IDS[i],
-      visit_id: VISIT_IDS[i],
-      clinic_id: CLINIC_A_ID,
-      patient_id: PATIENT_IDS[i % 3],
-      revenue_date: revenueDate,
-      amount: 5000 + i * 500,
-      insurance_revenue: 2000,
-      private_revenue: 3000 + i * 500,
-    });
-  }
-
-  const { error: visitError } = await supabase
-    .from('visits')
-    .upsert(visits, { onConflict: 'id' });
-  if (visitError) {
-    throw new Error(`Visits upsert failed: ${visitError.message}`);
-  }
-
-  const { error: revenueError } = await supabase
-    .from('revenues')
-    .upsert(revenues, { onConflict: 'id' });
-  if (revenueError) {
-    throw new Error(`Revenues upsert failed: ${revenueError.message}`);
   }
 
   const aiComment = {

@@ -51,6 +51,10 @@ const EXPECTED_CONTRACTS = new Map([
     { marker: 'RED COMM-RLS-002', outcome: 'green' },
   ],
   [
+    '06a_legacy_quarantine.sql',
+    { marker: 'RED COMM-LEGACY-001', outcome: 'green' },
+  ],
+  [
     '07_atomic_staff_invite.sql',
     { marker: 'RED COMM-INVITE-001', outcome: 'red' },
   ],

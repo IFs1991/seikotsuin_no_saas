@@ -112,26 +112,6 @@ async function checkConnection() {
       );
     }
 
-    // 3. 任意: revenues テーブル
-    let revenues = null;
-    try {
-      const { data, error } = await supabase
-        .from('revenues')
-        .select('id')
-        .limit(1);
-      if (error) {
-        console.warn(`⚠️ revenues table query warning: ${error.message}`);
-      } else {
-        revenues = data;
-        results.push('✅ revenues table reachable');
-      }
-    } catch (e) {
-      console.warn(
-        '⚠️ revenues table check skipped due to unexpected error:',
-        e
-      );
-    }
-
     // サマリ表示
     console.log('--- Supabase verification summary ---');
     results.forEach(line => console.log(line));
@@ -144,10 +124,6 @@ async function checkConnection() {
     if (patients && patients.length === 0) {
       console.warn('⚠️ patients table returned no rows.');
     }
-    if (revenues && revenues.length === 0) {
-      console.warn('⚠️ revenues table returned no rows.');
-    }
-
     console.log('✅ Supabase basic connectivity checks completed.');
   } catch (error) {
     console.error('❌ Supabase verification failed.');

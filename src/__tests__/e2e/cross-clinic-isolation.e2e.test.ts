@@ -17,8 +17,8 @@ import {
   validateTestEnvironment,
 } from './helpers/test-auth';
 
-const isTestEnvironmentReady = validateTestEnvironment();
-const describeOrSkip = isTestEnvironmentReady ? describe : describe.skip;
+const envValidation = validateTestEnvironment();
+const describeOrSkip = envValidation.shouldSkip ? describe.skip : describe;
 
 describeOrSkip('E2E-3: cross-clinic データ参照拒否（クリニック間隔離）', () => {
   describe('患者データの隔離', () => {

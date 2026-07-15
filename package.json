@@ -55,6 +55,7 @@
     "commercial:inventory:tables:check": "node scripts/commercial-hardening/generate-table-classification.mjs --check",
     "commercial:inventory:source": "node scripts/commercial-hardening/generate-source-reference-inventory.mjs --write",
     "commercial:inventory:source:check": "node scripts/commercial-hardening/generate-source-reference-inventory.mjs --check",
+    "commercial:verify:legacy-quarantine": "node scripts/commercial-hardening/verify-legacy-quarantine.mjs --check",
     "commercial:inventory:staff-ids": "node scripts/commercial-hardening/generate-staff-id-decisions.mjs --write",
     "commercial:inventory:staff-ids:check": "node scripts/commercial-hardening/generate-staff-id-decisions.mjs --check",
     "commercial:inventory:function-callers": "node scripts/commercial-hardening/generate-function-callers.mjs --label before --write && node scripts/commercial-hardening/generate-function-callers.mjs --label local-before --write",

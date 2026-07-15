@@ -857,15 +857,12 @@ select throws_ok(
   'authenticated cannot directly read a quarantined legacy table'
 );
 
-select throws_ok(
-  $query$
-    select *
-    from public.get_hourly_visit_pattern(
-      'f2020000-0000-4000-8000-000000000001'
-    )
-  $query$,
-  '42501',
-  null::text,
+select ok(
+  not has_function_privilege(
+    current_user,
+    'public.get_hourly_visit_pattern(uuid)',
+    'EXECUTE'
+  ),
   'authenticated cannot indirectly read quarantined legacy tables through the heatmap RPC'
 );
 

@@ -1,0 +1,11 @@
+scope,table_name,total_rows,null_clinic_rows,observed_date_jst,query_mode
+local,appointments,0,0,2026-07-15,aggregate_read_only
+local,revenues,0,0,2026-07-15,aggregate_read_only
+local,treatment_menu_records,0,NOT_APPLICABLE,2026-07-15,aggregate_read_only
+local,treatments,0,0,2026-07-15,aggregate_read_only
+local,visits,0,0,2026-07-15,aggregate_read_only
+linked,appointments,0,0,2026-07-15,aggregate_read_only
+linked,revenues,0,0,2026-07-15,aggregate_read_only
+linked,treatment_menu_records,0,NOT_APPLICABLE,2026-07-15,aggregate_read_only
+linked,treatments,0,0,2026-07-15,aggregate_read_only
+linked,visits,0,0,2026-07-15,aggregate_read_only
