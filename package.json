@@ -69,7 +69,8 @@
     "commercial:red:routes": "node scripts/commercial-hardening/verify-route-classification.mjs",
     "commercial:red:types:local": "node scripts/commercial-hardening/verify-generated-types.mjs --local --write",
     "commercial:red:types:remote": "node scripts/commercial-hardening/verify-generated-types.mjs --linked --write",
-    "commercial:red:invite": "node scripts/commercial-hardening/run-red-invite-contract.mjs"
+    "commercial:red:invite": "node scripts/commercial-hardening/run-red-invite-contract.mjs",
+    "commercial:verify:invite:local": "node scripts/commercial-hardening/verify-atomic-staff-invite.mjs --local"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

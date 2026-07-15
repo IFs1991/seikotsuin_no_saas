@@ -180,6 +180,9 @@ jobs:
       - name: Run database contract tests
         run: supabase test db --local
 
+      - name: Verify atomic staff invite concurrency
+        run: npm run commercial:verify:invite:local
+
       - name: Verify generated Supabase types are current
         run: |
           npm run supabase:types

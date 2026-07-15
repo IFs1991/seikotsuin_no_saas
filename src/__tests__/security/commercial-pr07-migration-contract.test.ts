@@ -105,9 +105,7 @@ function parsePhaseOutcomes(source: string): Record<string, 'red' | 'green'> {
 function expectNoLegacyDataOrDestructiveSchemaMutation(sql: string): void {
   for (const table of LEGACY_TABLES) {
     const relation = `(?:public\\.)?${table}`;
-    expect(sql).not.toMatch(
-      new RegExp(`\\binsert\\s+into\\s+${relation}\\b`)
-    );
+    expect(sql).not.toMatch(new RegExp(`\\binsert\\s+into\\s+${relation}\\b`));
     expect(sql).not.toMatch(
       new RegExp(`\\bupdate\\s+(?:only\\s+)?${relation}\\b`)
     );
@@ -289,11 +287,11 @@ describe('commercial PR-07 legacy quarantine migration contract', () => {
     );
   });
 
-  it('advances only PR-07 while keeping the PR-08 invite contract RED', () => {
+  it('keeps PR-07 green while promoting the PR-08 invite contract to GREEN', () => {
     const outcomes = parsePhaseOutcomes(readRepositoryFile(RUNNER_PATH));
 
     expect(outcomes['06a_legacy_quarantine.sql']).toBe('green');
-    expect(outcomes['07_atomic_staff_invite.sql']).toBe('red');
+    expect(outcomes['07_atomic_staff_invite.sql']).toBe('green');
   });
 
   it('verifies the exact read-only runtime reference inventory', () => {

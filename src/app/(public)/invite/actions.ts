@@ -19,7 +19,9 @@ import {
   getSafeAuthErrorLogData,
 } from '@/lib/auth/safe-auth-logging';
 import {
+  parseAtomicStaffInviteResult,
   validateStaffInviteAccount,
+  type AtomicStaffInviteErrorCode,
   type StaffInviteAccountValidation,
 } from '@/lib/auth/staff-invite';
 
@@ -30,7 +32,7 @@ import {
  */
 
 const GENERIC_AUTH_ERROR_MESSAGE = 'システムエラーが発生しました';
-const MANAGED_PASSWORD_PLACEHOLDER = 'managed_by_supabase';
+const GENERIC_INVITE_ACCEPTANCE_ERROR = '招待の受諾に失敗しました';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const log = createAuthLog('InviteActions');
@@ -82,6 +84,26 @@ function extractAuthFormValues(formData: FormData) {
 
 function isUuid(value: string) {
   return UUID_PATTERN.test(value);
+}
+
+function getInviteAcceptanceErrorMessage(
+  errorCode: AtomicStaffInviteErrorCode
+): string {
+  switch (errorCode) {
+    case 'INVITE_NOT_FOUND':
+    case 'INVITE_EXPIRED':
+      return '有効な招待が見つかりません';
+    case 'INVITE_INVALID_ROLE':
+      return 'この招待は無効です';
+    case 'INVITE_EMAIL_MISMATCH':
+    case 'INVITE_ACCOUNT_EMAIL_MISMATCH':
+      return '招待先メールアドレスと現在のアカウントが一致しません';
+    case 'INVITE_ALREADY_ACCEPTED':
+      return 'この招待は既に受諾されています';
+    case 'INVITE_ACCOUNT_NOT_FOUND':
+    case 'INVITE_STATE_INVALID':
+      return GENERIC_INVITE_ACCEPTANCE_ERROR;
+  }
 }
 
 async function fetchOpenInvite(
@@ -151,119 +173,53 @@ async function acceptInviteForUser(
   userId: string,
   accountEmail: string | null | undefined
 ): Promise<InviteAcceptanceResult> {
+  if (!isUuid(token)) {
+    return { success: false, error: '有効な招待が見つかりません' };
+  }
+
+  if (!isUuid(userId) || !accountEmail) {
+    return { success: false, error: GENERIC_INVITE_ACCEPTANCE_ERROR };
+  }
+
   const adminClient = createAdminClient();
-  const validated = await validateOpenInviteForAccount(
-    adminClient,
-    token,
-    accountEmail
-  );
-  if (validated.success === false) {
-    return validated;
-  }
+  const { data, error } = await adminClient.rpc('accept_staff_invite_atomic', {
+    p_token: token,
+    p_user_id: userId,
+    p_account_email: accountEmail,
+  });
 
-  const { invite, validation } = validated.value;
-  const now = new Date().toISOString();
-
-  const { data: existingProfile, error: profileLookupError } = await adminClient
-    .from('profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (profileLookupError) {
+  if (error) {
     log.error(
-      'Invite profile lookup error',
-      getSafeAuthErrorLogData(profileLookupError)
+      'Atomic invite acceptance RPC failed',
+      getSafeAuthErrorLogData(error)
     );
-    return { success: false, error: '招待の受諾に失敗しました' };
+    return {
+      success: false,
+      error:
+        error.code === 'PVI02'
+          ? '有効な招待が見つかりません'
+          : GENERIC_INVITE_ACCEPTANCE_ERROR,
+    };
   }
 
-  const profileResult = existingProfile
-    ? await adminClient
-        .from('profiles')
-        .update({
-          clinic_id: invite.clinic_id,
-          role: validation.role,
-          updated_at: now,
-        })
-        .eq('user_id', userId)
-    : await adminClient.from('profiles').insert({
-        user_id: userId,
-        email: invite.email,
-        full_name: invite.email.split('@')[0],
-        clinic_id: invite.clinic_id,
-        role: validation.role,
-        is_active: true,
-      });
-
-  if (profileResult.error) {
-    log.error(
-      'Invite profile assignment error',
-      getSafeAuthErrorLogData(profileResult.error)
-    );
-    return { success: false, error: '招待の受諾に失敗しました' };
+  const result = parseAtomicStaffInviteResult(data);
+  if (!result) {
+    log.error('Atomic invite acceptance returned an invalid result', {
+      hasResult: data !== null,
+    });
+    return { success: false, error: GENERIC_INVITE_ACCEPTANCE_ERROR };
   }
 
-  const { error: permissionUpsertError } = await adminClient
-    .from('user_permissions')
-    .upsert(
-      {
-        staff_id: userId,
-        clinic_id: invite.clinic_id,
-        role: validation.role,
-        username: invite.email,
-        hashed_password: MANAGED_PASSWORD_PLACEHOLDER,
-      },
-      { onConflict: 'staff_id' }
-    );
-
-  if (permissionUpsertError) {
-    log.error(
-      'Invite user permissions upsert error',
-      getSafeAuthErrorLogData(permissionUpsertError)
-    );
-    return { success: false, error: '招待の受諾に失敗しました' };
-  }
-
-  const { data: claimedInvite, error: inviteUpdateError } = await adminClient
-    .from('staff_invites')
-    .update({
-      accepted_at: now,
-      accepted_by: userId,
-      updated_at: now,
-    })
-    .eq('id', invite.id)
-    .is('accepted_at', null)
-    .select('id, accepted_by')
-    .maybeSingle();
-
-  if (inviteUpdateError) {
-    log.error(
-      'Invite accept update error',
-      getSafeAuthErrorLogData(inviteUpdateError)
-    );
-    return { success: false, error: '招待の受諾に失敗しました' };
-  }
-
-  if (!claimedInvite) {
-    const { data: alreadyAccepted, error: acceptedLookupError } =
-      await adminClient
-        .from('staff_invites')
-        .select('accepted_by')
-        .eq('id', invite.id)
-        .maybeSingle();
-
-    if (acceptedLookupError || alreadyAccepted?.accepted_by !== userId) {
-      log.warn('Invite was claimed concurrently by another account', {
-        inviteId: invite.id,
-      });
-      return { success: false, error: 'この招待は既に受諾されています' };
-    }
+  if (result.success === false) {
+    return {
+      success: false,
+      error: getInviteAcceptanceErrorMessage(result.errorCode),
+    };
   }
 
   return {
     success: true,
-    clinicId: invite.clinic_id,
+    clinicId: result.clinicId,
   };
 }
 
@@ -434,57 +390,54 @@ export async function signupAndAcceptInvite(
       };
     }
 
-    // 3. プロファイル作成を待つ（トリガーで自動作成される場合）
-    // もしくは手動で作成
-    if (signupData.user) {
-      // profiles にレコードがない場合は作成
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', signupData.user.id)
-        .single();
-
-      if (!existingProfile) {
-        await supabase.from('profiles').insert({
-          user_id: signupData.user.id,
-          email: sanitizedEmail,
-          full_name: sanitizedEmail.split('@')[0],
-          role: 'staff',
-          is_active: true,
-        });
-      }
-
-      const acceptResult = await acceptInviteForUser(
-        token,
-        signupData.user.id,
-        signupData.user.email ?? sanitizedEmail
-      );
-      if (!acceptResult.success) {
-        log.warn('Accept invite after signup failed', {
-          reason: acceptResult.error,
-        });
-        // サインアップは成功しているので、後で招待を受諾できるようにメッセージを返す
-        return {
-          success: true,
-          message:
-            'アカウントを作成しました。メールを確認してから再度招待リンクにアクセスしてください。',
-        };
-      }
-
-      log.info('Signup and invite accepted', {
-        hasUser: true,
-        hasClinic: Boolean(acceptResult.clinicId),
-      });
-
-      revalidatePath('/', 'layout');
-      redirect('/dashboard');
+    if (!signupData.session) {
+      return {
+        success: true,
+        message:
+          '確認メールを送信しました。メールを確認してからログインしてください。',
+      };
     }
 
-    return {
-      success: true,
-      message:
-        '確認メールを送信しました。メールを確認してからログインしてください。',
-    };
+    const {
+      data: { user: verifiedUser },
+      error: verifiedUserError,
+    } = await supabase.auth.getUser();
+
+    if (verifiedUserError || !verifiedUser?.email) {
+      log.error(
+        'Invite signup session verification failed',
+        getSafeAuthErrorLogData(verifiedUserError)
+      );
+      return {
+        success: false,
+        errors: { _form: [GENERIC_INVITE_ACCEPTANCE_ERROR] },
+      };
+    }
+
+    const acceptResult = await acceptInviteForUser(
+      token,
+      verifiedUser.id,
+      verifiedUser.email
+    );
+    if (!acceptResult.success) {
+      log.warn('Accept invite after signup failed', {
+        reason: acceptResult.error,
+      });
+      return {
+        success: false,
+        errors: {
+          _form: [acceptResult.error || GENERIC_INVITE_ACCEPTANCE_ERROR],
+        },
+      };
+    }
+
+    log.info('Signup and invite accepted', {
+      hasUser: true,
+      hasClinic: Boolean(acceptResult.clinicId),
+    });
+
+    revalidatePath('/', 'layout');
+    redirect('/dashboard');
   } catch (error) {
     if (isRedirectLikeError(error)) {
       throw error;
@@ -544,11 +497,10 @@ export async function loginAndAcceptInvite(
     }
 
     // 2. ログイン
-    const { error: loginError, data: loginData } =
-      await supabase.auth.signInWithPassword({
-        email: sanitizedEmail,
-        password: sanitizedPassword,
-      });
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: sanitizedEmail,
+      password: sanitizedPassword,
+    });
 
     if (loginError) {
       log.warn('Invite login failed', {
@@ -570,7 +522,16 @@ export async function loginAndAcceptInvite(
       };
     }
 
-    if (!loginData.user) {
+    const {
+      data: { user: verifiedUser },
+      error: verifiedUserError,
+    } = await supabase.auth.getUser();
+
+    if (verifiedUserError || !verifiedUser?.email) {
+      log.error(
+        'Invite login session verification failed',
+        getSafeAuthErrorLogData(verifiedUserError)
+      );
       return {
         success: false,
         errors: { _form: ['ログインに失敗しました'] },
@@ -578,16 +539,16 @@ export async function loginAndAcceptInvite(
     }
 
     await AuditLogger.logLogin(
-      loginData.user.id,
-      sanitizedEmail,
+      verifiedUser.id,
+      verifiedUser.email,
       ipAddress,
       userAgent
     );
 
     const acceptResult = await acceptInviteForUser(
       token,
-      loginData.user.id,
-      loginData.user.email ?? sanitizedEmail
+      verifiedUser.id,
+      verifiedUser.email
     );
     if (!acceptResult.success) {
       log.warn('Accept invite after login failed', {
@@ -603,7 +564,7 @@ export async function loginAndAcceptInvite(
     await supabase
       .from('profiles')
       .update({ last_login_at: new Date().toISOString() })
-      .eq('user_id', loginData.user.id);
+      .eq('user_id', verifiedUser.id);
 
     log.info('Login and invite accepted', {
       hasUser: true,

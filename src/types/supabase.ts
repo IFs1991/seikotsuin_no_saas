@@ -6349,6 +6349,10 @@ export type Database = {
     };
     Functions: {
       accept_invite: { Args: { invite_token: string }; Returns: Json };
+      accept_staff_invite_atomic: {
+        Args: { p_account_email: string; p_token: string; p_user_id: string };
+        Returns: Json;
+      };
       activate_billable_store_if_capacity: {
         Args: { p_clinic_id: string; p_org_root_clinic_id: string };
         Returns: {
