@@ -163,6 +163,7 @@ describe('GET /mobile-uiux/screens/[resource] inline context', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
   });
 
@@ -181,7 +182,10 @@ describe('GET /mobile-uiux/screens/[resource] inline context', () => {
     const payload = JSON.parse((match as RegExpMatchArray)[1]);
     expect(payload.success).toBe(true);
     expect(typeof payload.generatedAt).toBe('string');
-    expect(payload.data.role).toEqual({ canonical: 'staff', label: 'スタッフ' });
+    expect(payload.data.role).toEqual({
+      canonical: 'staff',
+      label: 'スタッフ',
+    });
     expect(payload.data.defaultClinicId).toBe('clinic-1');
     expect(payload.data.accessibleClinicIds).toEqual(['clinic-1']);
     expect(payload.data.displayMode).toBe('system');

@@ -12,6 +12,11 @@ const LOOKAHEAD_DAYS = 180;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+type ClinicStatusRow = {
+  id: string;
+  is_active: boolean | null;
+};
+
 function rangeStart(): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - LOOKBACK_DAYS);
@@ -56,6 +61,23 @@ async function loadFeedToken(
   return data;
 }
 
+async function isClinicActive(
+  adminClient: AdminClient,
+  clinicId: string
+): Promise<boolean> {
+  const { data, error } = await adminClient
+    .from('clinics')
+    .select('id, is_active')
+    .eq('id', clinicId)
+    .maybeSingle<ClinicStatusRow>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.is_active === true;
+}
+
 async function loadClinicShifts(
   adminClient: AdminClient,
   clinicId: string
@@ -74,7 +96,6 @@ async function loadClinicShifts(
       start_time,
       end_time,
       status,
-      notes,
       resources!staff_shifts_staff_id_fkey(id, name, clinic_id),
       clinics!staff_shifts_clinic_id_fkey(id, name)
     `
@@ -101,6 +122,10 @@ export async function GET(
   const feedToken = await loadFeedToken(adminClient, token);
 
   if (!feedToken) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
+  if (!(await isClinicActive(adminClient, feedToken.clinic_id))) {
     return new NextResponse('Not found', { status: 404 });
   }
 

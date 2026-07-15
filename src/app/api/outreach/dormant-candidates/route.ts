@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import {
+  createAuthorityUnavailableResponse,
   createErrorResponse,
   createSuccessResponse,
   logError,
@@ -47,6 +48,9 @@ export async function GET(request: NextRequest) {
 
     return createSuccessResponse(data);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     logError(error, {
       endpoint: PATH,
       method: 'GET',

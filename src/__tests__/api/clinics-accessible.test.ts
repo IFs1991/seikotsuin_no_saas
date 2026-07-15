@@ -21,7 +21,6 @@ jest.mock('@/lib/supabase', () => {
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
-const PARENT_SCOPE_FILTER = 'id.in.(parent-1),parent_id.in.(parent-1)';
 
 function createClinicsQueryMock(data: unknown[], error: unknown = null) {
   const query = {
@@ -93,7 +92,7 @@ describe('GET /api/clinics/accessible', () => {
     expect(clinicsQuery.eq).toHaveBeenCalledWith('is_active', true);
   });
 
-  it('TC-C08: HQ admin は admin/tenants と同じ parent_id スコープで子店舗を返す', async () => {
+  it('TC-C08: HQ admin は exact canonical scope に含まれる子店舗を返す', async () => {
     const clinics = [
       { id: 'parent-1', name: '本部', parent_id: null },
       { id: 'child-1', name: '新宿院', parent_id: 'parent-1' },
@@ -108,13 +107,13 @@ describe('GET /api/clinics/accessible', () => {
       permissions: {
         role: 'admin',
         clinic_id: 'parent-1',
-        clinic_scope_ids: ['parent-1'],
+        clinic_scope_ids: ['parent-1', 'child-1', 'child-2'],
       },
       supabase: { from: jest.fn() },
     });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
-      scopedClinicIds: ['parent-1'],
+      scopedClinicIds: ['parent-1', 'child-1', 'child-2'],
     });
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
@@ -124,7 +123,12 @@ describe('GET /api/clinics/accessible', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.or).toHaveBeenCalledWith(PARENT_SCOPE_FILTER);
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
+      'parent-1',
+      'child-1',
+      'child-2',
+    ]);
+    expect(clinicsQuery.or).not.toHaveBeenCalled();
     expect(body.data.clinics).toEqual([
       { id: 'child-1', name: '新宿院' },
       { id: 'child-2', name: '池袋院' },
@@ -149,7 +153,7 @@ describe('GET /api/clinics/accessible', () => {
     });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
-      scopedClinicIds: ['parent-1'],
+      scopedClinicIds: ['3d9f420f-6c5d-4a96-bf9e-fcb8c95f88e2'],
     });
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
@@ -202,7 +206,7 @@ describe('GET /api/clinics/accessible', () => {
       permissions: {
         role: 'clinic_admin',
         clinic_id: 'parent-1',
-        clinic_scope_ids: ['parent-1'],
+        clinic_scope_ids: ['3d9f420f-6c5d-4a96-bf9e-fcb8c95f88e2'],
       },
       supabase: { from },
     });
@@ -217,7 +221,7 @@ describe('GET /api/clinics/accessible', () => {
     expect(body.data.clinics[0].name).not.toBe(body.data.clinics[0].id);
   });
 
-  it('TC-C10: clinic_admin も parent_id スコープで子店舗を返す', async () => {
+  it('TC-C10: clinic_admin も exact canonical scope 内の子店舗を返す', async () => {
     const clinics = [
       { id: 'parent-1', name: '本部', parent_id: null },
       { id: 'child-1', name: '新宿院', parent_id: 'parent-1' },
@@ -236,13 +240,13 @@ describe('GET /api/clinics/accessible', () => {
       permissions: {
         role: 'clinic_admin',
         clinic_id: 'parent-1',
-        clinic_scope_ids: ['parent-1'],
+        clinic_scope_ids: ['parent-1', 'child-1', 'child-2'],
       },
       supabase: { from: jest.fn() },
     });
     createScopedAdminContextMock.mockReturnValue({
       client: { from },
-      scopedClinicIds: ['parent-1'],
+      scopedClinicIds: ['parent-1', 'child-1', 'child-2'],
     });
 
     const { GET } = await import('@/app/api/clinics/accessible/route');
@@ -252,7 +256,12 @@ describe('GET /api/clinics/accessible', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.or).toHaveBeenCalledWith(PARENT_SCOPE_FILTER);
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
+      'parent-1',
+      'child-1',
+      'child-2',
+    ]);
+    expect(clinicsQuery.or).not.toHaveBeenCalled();
     expect(body.data.clinics).toEqual([
       { id: 'child-1', name: '新宿院' },
       { id: 'child-2', name: '池袋院' },

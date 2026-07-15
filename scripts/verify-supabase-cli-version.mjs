@@ -26,8 +26,30 @@ export function readPinnedSupabaseCliVersion() {
   return version;
 }
 
+export function resolveSupabaseCliInvocation(args) {
+  const cliJavaScriptPath = process.env.SUPABASE_CLI_JS_PATH?.trim();
+  if (!cliJavaScriptPath) {
+    return { command: 'supabase', args };
+  }
+
+  if (
+    !path.isAbsolute(cliJavaScriptPath) ||
+    path.extname(cliJavaScriptPath).toLowerCase() !== '.js'
+  ) {
+    throw new Error(
+      'SUPABASE_CLI_JS_PATH must be an absolute JavaScript file path'
+    );
+  }
+
+  return {
+    command: process.execPath,
+    args: [cliJavaScriptPath, ...args],
+  };
+}
+
 export function readInstalledSupabaseCliVersion() {
-  return execFileSync('supabase', ['--version'], {
+  const invocation = resolveSupabaseCliInvocation(['--version']);
+  return execFileSync(invocation.command, invocation.args, {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     env: TELEMETRY_DISABLED_ENV,

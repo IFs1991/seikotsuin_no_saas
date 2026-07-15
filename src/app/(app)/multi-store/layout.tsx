@@ -6,10 +6,8 @@ import {
   getUserAccessContext,
   resolveScopedClinicIds,
 } from '@/lib/supabase';
-import {
-  canAccessAreaAnalyticsWithCompat,
-  isAreaManagerRole,
-} from '@/lib/constants/roles';
+import { canAccessAreaAnalyticsWithCompat } from '@/lib/constants/roles';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 
 export default async function MultiStoreLayout({
   children,
@@ -23,19 +21,22 @@ export default async function MultiStoreLayout({
     redirect('/login');
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase)
+  );
   const role = accessContext.normalizedRole;
-  const isAreaManager = isAreaManagerRole(role);
+  const canAccessArea = canAccessAreaAnalyticsWithCompat(role);
   const scopedClinicIds =
-    isAreaManager && accessContext.permissions
+    canAccessArea && accessContext.permissions
       ? resolveScopedClinicIds(accessContext.permissions)
       : null;
 
   if (
     !role ||
     !accessContext.isActive ||
-    !canAccessAreaAnalyticsWithCompat(role) ||
-    (isAreaManager && (!scopedClinicIds || scopedClinicIds.length === 0))
+    !canAccessArea ||
+    !scopedClinicIds ||
+    scopedClinicIds.length === 0
   ) {
     redirect('/unauthorized');
   }

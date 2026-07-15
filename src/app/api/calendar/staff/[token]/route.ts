@@ -12,6 +12,28 @@ const LOOKAHEAD_DAYS = 180;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
+type ClinicStatusRow = {
+  id: string;
+  is_active: boolean | null;
+};
+
+type StaffProfileStatusRow = {
+  id: string;
+  user_id: string | null;
+  is_active: boolean | null;
+};
+
+type LinkedProfileStatusRow = {
+  user_id: string;
+  is_active: boolean | null;
+};
+
+type StaffMembershipStatusRow = {
+  staff_profile_id: string;
+  clinic_id: string;
+  membership_type: string;
+};
+
 function rangeStart(): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - LOOKBACK_DAYS);
@@ -62,6 +84,68 @@ async function loadFeedToken(
   return data;
 }
 
+async function isFeedTargetActive(
+  adminClient: AdminClient,
+  staffProfileId: string,
+  clinicId: string
+): Promise<boolean> {
+  const [staffProfileResult, membershipResult, clinicResult] =
+    await Promise.all([
+      adminClient
+        .from('staff_profiles')
+        .select('id, user_id, is_active')
+        .eq('id', staffProfileId)
+        .maybeSingle<StaffProfileStatusRow>(),
+      adminClient
+        .from('staff_clinic_memberships')
+        .select('staff_profile_id, clinic_id, membership_type')
+        .eq('staff_profile_id', staffProfileId)
+        .eq('clinic_id', clinicId)
+        .neq('membership_type', 'blocked')
+        .maybeSingle<StaffMembershipStatusRow>(),
+      adminClient
+        .from('clinics')
+        .select('id, is_active')
+        .eq('id', clinicId)
+        .maybeSingle<ClinicStatusRow>(),
+    ]);
+
+  if (
+    staffProfileResult.error ||
+    membershipResult.error ||
+    clinicResult.error
+  ) {
+    throw (
+      staffProfileResult.error ?? membershipResult.error ?? clinicResult.error
+    );
+  }
+
+  const staffProfile = staffProfileResult.data;
+  if (
+    staffProfile?.is_active !== true ||
+    !membershipResult.data ||
+    clinicResult.data?.is_active !== true
+  ) {
+    return false;
+  }
+
+  if (!staffProfile.user_id) {
+    return true;
+  }
+
+  const { data: linkedProfile, error: linkedProfileError } = await adminClient
+    .from('profiles')
+    .select('user_id, is_active')
+    .eq('user_id', staffProfile.user_id)
+    .maybeSingle<LinkedProfileStatusRow>();
+
+  if (linkedProfileError) {
+    throw linkedProfileError;
+  }
+
+  return linkedProfile?.is_active === true;
+}
+
 async function loadStaffShifts(
   adminClient: AdminClient,
   staffProfileId: string,
@@ -81,7 +165,6 @@ async function loadStaffShifts(
       start_time,
       end_time,
       status,
-      notes,
       resources!staff_shifts_staff_id_fkey(id, name, clinic_id),
       clinics!staff_shifts_clinic_id_fkey(id, name)
     `
@@ -109,6 +192,15 @@ export async function GET(
   const feedToken = await loadFeedToken(adminClient, token);
 
   if (!feedToken) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
+  const targetIsActive = await isFeedTargetActive(
+    adminClient,
+    feedToken.staff_profile_id,
+    feedToken.clinic_id
+  );
+  if (!targetIsActive) {
     return new NextResponse('Not found', { status: 404 });
   }
 

@@ -32,6 +32,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/supabase', () => ({
+  ...jest.requireActual('@/lib/supabase'),
   createAdminClient: jest.fn(),
 }));
 
@@ -119,6 +120,7 @@ function mockManagerAuth(role = 'manager') {
 
 function mockAdminClient(params: {
   assignedClinic?: ClinicRow | null;
+  assignmentError?: unknown;
   reports?: DailyReportOverviewTestRow[];
 }) {
   const assignedClinic =
@@ -135,7 +137,7 @@ function mockAdminClient(params: {
           },
         }
       : null,
-    error: null,
+    error: params.assignmentError ?? null,
   });
   const reportsQuery = createQueryMock<DailyReportOverviewTestRow[]>({
     data: params.reports ?? [],
@@ -222,6 +224,28 @@ describe('GET /api/manager/daily-reports/overview', () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it('returns an information-free 503 when manager assignment authority is unavailable', async () => {
+    mockAdminClient({
+      assignmentError: {
+        code: 'PGRST500',
+        message: 'sensitive manager assignment lookup failure',
+      },
+    });
+
+    const response = await getOverview(
+      `http://localhost/api/manager/daily-reports/overview?clinic_id=${clinicId}&start_date=2026-06-08&end_date=2026-06-09`
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(body)).not.toContain('PGRST500');
+    expect(JSON.stringify(body)).not.toContain('sensitive');
   });
 
   it('rejects invalid date formats, reversed dates, and ranges over 93 days', async () => {

@@ -14,6 +14,7 @@ import type {
 import type { SelectableRevenueContextCode } from '@/lib/revenue-context';
 import { calculateCareEpisodeMetrics } from '@/lib/care-episode';
 import { REVENUE_ESTIMATE_DISCLAIMER } from '@/lib/revenue-estimate';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const PATH = '/api/revenue';
 
@@ -557,6 +558,9 @@ export async function GET(request: NextRequest) {
       data: responseData,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },

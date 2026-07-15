@@ -30,10 +30,7 @@ import {
   type ClinicListRow,
   type ScopedClinicLookupRow,
 } from '@/lib/admin/tenants';
-import {
-  buildClinicScopeOrFilter,
-  selectReservableAdminClinicRows,
-} from '@/lib/clinics/scope';
+import { selectReservableAdminClinicRows } from '@/lib/clinics/scope';
 import { countActiveChildClinics } from '@/lib/billing/admin';
 import {
   activateBillableStoreIfCapacity,
@@ -797,14 +794,10 @@ export async function GET(request: NextRequest) {
     }
 
     const adminSupabase = adminCtx.client;
-    const clinicScopeFilter = buildClinicScopeOrFilter(
-      adminCtx.scopedClinicIds
-    );
-
     let query = adminSupabase
       .from('clinics')
       .select(CLINIC_LIST_SELECT)
-      .or(clinicScopeFilter)
+      .in('id', adminCtx.scopedClinicIds)
       .order('created_at', { ascending: false });
 
     if (search) {
@@ -825,7 +818,7 @@ export async function GET(request: NextRequest) {
         adminSupabase
           .from('clinics')
           .select(CLINIC_HIERARCHY_SELECT)
-          .or(clinicScopeFilter),
+          .in('id', adminCtx.scopedClinicIds),
       ]);
 
     if (error || hierarchyError) {

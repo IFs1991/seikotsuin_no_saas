@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { getManagerDashboardDateKeys } from '@/lib/manager-dashboard';
 import { createAdminClient } from '@/lib/supabase';
 import type { ManagerDashboardResponse } from '@/types/manager-dashboard';
@@ -15,7 +15,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: jest.fn(),
+  resolveManagerAssignedClinicsWithinScope: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -24,7 +24,7 @@ jest.mock('@/lib/supabase', () => ({
 
 const processApiRequestMock = jest.mocked(processApiRequest);
 const resolveManagerAssignedClinicsMock = jest.mocked(
-  resolveManagerAssignedClinics
+  resolveManagerAssignedClinicsWithinScope
 );
 const createAdminClientMock = jest.mocked(createAdminClient);
 
@@ -267,7 +267,8 @@ describe('GET /api/manager/dashboard', () => {
     }
     expect(resolveManagerAssignedClinicsMock).toHaveBeenCalledWith(
       expect.any(Object),
-      'manager-user'
+      'manager-user',
+      [clinicB]
     );
     expect(dailyReportsQuery.in).toHaveBeenCalledWith('clinic_id', [clinicA]);
     expect(reviewSignalsQuery.in).toHaveBeenCalledWith('clinic_id', [clinicA]);

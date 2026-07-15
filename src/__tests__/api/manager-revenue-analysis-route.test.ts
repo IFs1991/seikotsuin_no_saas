@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { createAdminClient } from '@/lib/supabase';
 import {
   fetchManagerRevenueContextBreakdown,
@@ -39,7 +39,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: jest.fn(),
+  resolveManagerAssignedClinicsWithinScope: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -54,7 +54,7 @@ jest.mock('@/lib/services/manager-revenue-service', () => ({
 
 const processApiRequestMock = jest.mocked(processApiRequest);
 const resolveManagerAssignedClinicsMock = jest.mocked(
-  resolveManagerAssignedClinics
+  resolveManagerAssignedClinicsWithinScope
 );
 const createAdminClientMock = jest.mocked(createAdminClient);
 const fetchTotalsMock = jest.mocked(fetchManagerRevenuePeriodTotals);

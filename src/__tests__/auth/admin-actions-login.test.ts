@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 const mockRedirect = jest.fn((path: string) => {
   throw new Error(`REDIRECT:${path}`);
 });
+const mockCookieDelete = jest.fn();
+const mockCookieGetAll = jest.fn(() => [
+  { name: 'sb-project-auth-token.0', value: 'stale' },
+  { name: 'unrelated-cookie', value: 'keep' },
+]);
 
 jest.mock('next/navigation', () => ({
   redirect: (...args: unknown[]) => mockRedirect(...args),
@@ -14,6 +19,10 @@ jest.mock('next/cache', () => ({
 
 jest.mock('next/headers', () => ({
   headers: jest.fn(async () => new Headers()),
+  cookies: jest.fn(async () => ({
+    getAll: mockCookieGetAll,
+    delete: mockCookieDelete,
+  })),
 }));
 
 function createQueryBuilder(
@@ -78,6 +87,7 @@ jest.mock('@/lib/audit-logger', () => ({
 }));
 
 const { login } = require('@/app/(public)/admin/actions');
+const { clearRejectedAuthSession } = require('@/lib/auth/session-cleanup');
 
 describe('admin/actions login', () => {
   beforeEach(() => {
@@ -94,9 +104,55 @@ describe('admin/actions login', () => {
         },
       },
     });
+    mockSignOut.mockResolvedValue({ error: null });
   });
 
-  test('profiles 行が欠けていても inactive 扱いせず /onboarding に進める', async () => {
+  test('rejected session cleanup は signOut error 時も auth cookie を削除する', async () => {
+    mockSignOut.mockResolvedValue({ error: { message: 'signout failed' } });
+
+    const result = await clearRejectedAuthSession(
+      mockSupabaseClient,
+      async () => ({
+        getAll: mockCookieGetAll,
+        delete: mockCookieDelete,
+      })
+    );
+
+    expect(result).toEqual({
+      complete: true,
+      signOutError: { message: 'signout failed' },
+      cookieCleanupError: null,
+    });
+    expect(mockCookieGetAll).toHaveBeenCalledTimes(1);
+    expect(mockCookieDelete).toHaveBeenCalledWith('sb-project-auth-token.0');
+  });
+
+  test('profiles 行が欠けている場合は自動作成せずログインを拒否する', async () => {
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'admin',
+      normalizedRole: 'admin',
+      clinicId: 'clinic-1',
+      isActive: false,
+      isAdmin: true,
+    });
+
+    const formData = new FormData();
+    formData.append('email', 'owner@example.com');
+    formData.append('password', 'ValidPassword123!');
+
+    const result = await login(null, formData);
+
+    expect(result.success).toBe(false);
+    expect(mockAdminClient.from).not.toHaveBeenCalled();
+    expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  test('permission 行が欠けている場合は stale session を残さず拒否する', async () => {
     mockGetUserAccessContext.mockResolvedValue({
       permissions: null,
       role: null,
@@ -106,30 +162,32 @@ describe('admin/actions login', () => {
       isAdmin: false,
     });
 
-    const profileLookupBuilder = createQueryBuilder(null);
-    const profileInsertBuilder = createQueryBuilder({ id: 'profile-1' });
-    const profileBuilders = [profileLookupBuilder, profileInsertBuilder];
+    const formData = new FormData();
+    formData.append('email', 'owner@example.com');
+    formData.append('password', 'ValidPassword123!');
 
-    mockAdminClient.from.mockImplementation((table: string) => {
-      if (table === 'profiles') {
-        return profileBuilders.shift() ?? createQueryBuilder({});
-      }
+    const result = await login(null, formData);
 
-      return createQueryBuilder({});
-    });
+    expect(result.success).toBe(false);
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(mockAdminClient.from).not.toHaveBeenCalled();
+  });
+
+  test('authority lookup error は session を破棄して generic failure にする', async () => {
+    mockGetUserAccessContext.mockRejectedValue(
+      new Error('permission database unavailable')
+    );
 
     const formData = new FormData();
     formData.append('email', 'owner@example.com');
     formData.append('password', 'ValidPassword123!');
 
-    await expect(login(null, formData)).rejects.toThrow('REDIRECT:/onboarding');
-    expect(profileInsertBuilder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: 'user-1',
-        email: 'owner@example.com',
-      })
-    );
-    expect(mockSignOut).not.toHaveBeenCalled();
+    const result = await login(null, formData);
+
+    expect(result.success).toBe(false);
+    expect(result.errors?._form).toBeDefined();
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(mockAdminClient.from).not.toHaveBeenCalled();
   });
 
   test('admin 権限と clinic_id があれば admin dashboard に進める', async () => {
@@ -142,13 +200,11 @@ describe('admin/actions login', () => {
       isAdmin: true,
     });
 
-    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
     const profileSyncBuilder = createQueryBuilder({});
-    const profileBuilders = [profileLookupBuilder, profileSyncBuilder];
 
     mockAdminClient.from.mockImplementation((table: string) => {
       if (table === 'profiles') {
-        return profileBuilders.shift() ?? createQueryBuilder({});
+        return profileSyncBuilder;
       }
 
       return createQueryBuilder({});
@@ -168,23 +224,25 @@ describe('admin/actions login', () => {
     );
   });
 
-  test('admin 権限なら clinic_id が null でも admin dashboard に進める', async () => {
+  test('JWT subset で表示先が狭まっても DB primary clinic を profile mirror に保持する', async () => {
     mockGetUserAccessContext.mockResolvedValue({
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-primary',
+        clinic_scope_ids: ['clinic-subset'],
+      },
       role: 'admin',
       normalizedRole: 'admin',
-      clinicId: null,
+      clinicId: 'clinic-subset',
       isActive: true,
       isAdmin: true,
     });
 
-    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
     const profileSyncBuilder = createQueryBuilder({});
-    const profileBuilders = [profileLookupBuilder, profileSyncBuilder];
 
     mockAdminClient.from.mockImplementation((table: string) => {
       if (table === 'profiles') {
-        return profileBuilders.shift() ?? createQueryBuilder({});
+        return profileSyncBuilder;
       }
 
       return createQueryBuilder({});
@@ -199,27 +257,65 @@ describe('admin/actions login', () => {
       expect.objectContaining({
         email: 'owner@example.com',
         role: 'admin',
+        clinic_id: 'clinic-primary',
       })
+    );
+    expect(profileSyncBuilder.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: 'clinic-subset' })
     );
   });
 
-  test('manager は clinic_id が null でも onboarding ではなく manager home に進める', async () => {
+  test('admin の canonical scope が空なら session を破棄して拒否する', async () => {
     mockGetUserAccessContext.mockResolvedValue({
-      permissions: { role: 'manager', clinic_id: null },
-      role: 'manager',
-      normalizedRole: 'manager',
+      permissions: null,
+      role: null,
+      normalizedRole: null,
       clinicId: null,
       isActive: true,
       isAdmin: false,
     });
 
-    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
     const profileSyncBuilder = createQueryBuilder({});
-    const profileBuilders = [profileLookupBuilder, profileSyncBuilder];
 
     mockAdminClient.from.mockImplementation((table: string) => {
       if (table === 'profiles') {
-        return profileBuilders.shift() ?? createQueryBuilder({});
+        return profileSyncBuilder;
+      }
+
+      return createQueryBuilder({});
+    });
+
+    const formData = new FormData();
+    formData.append('email', 'owner@example.com');
+    formData.append('password', 'ValidPassword123!');
+
+    const result = await login(null, formData);
+
+    expect(result.success).toBe(false);
+    expect(result.errors?._form).toBeDefined();
+    expect(mockSignOut).toHaveBeenCalled();
+    expect(profileSyncBuilder.update).not.toHaveBeenCalled();
+  });
+
+  test('manager は primary clinic が null でも canonical assignment があれば manager home に進める', async () => {
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: null,
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'manager',
+      normalizedRole: 'manager',
+      clinicId: 'clinic-1',
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const profileSyncBuilder = createQueryBuilder({});
+
+    mockAdminClient.from.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return profileSyncBuilder;
       }
 
       return createQueryBuilder({});
@@ -248,15 +344,6 @@ describe('admin/actions login', () => {
       isAdmin: true,
     });
 
-    const profileLookupBuilder = createQueryBuilder({ id: 'profile-1' });
-    mockAdminClient.from.mockImplementation((table: string) => {
-      if (table === 'profiles') {
-        return profileLookupBuilder;
-      }
-
-      return createQueryBuilder({});
-    });
-
     const formData = new FormData();
     formData.append('email', 'owner@example.com');
     formData.append('password', 'ValidPassword123!');
@@ -268,5 +355,28 @@ describe('admin/actions login', () => {
       'アカウントが無効化されています。管理者にお問い合わせください'
     );
     expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  test('signOut が error を返しても Supabase auth cookie を強制失効する', async () => {
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: null,
+      role: null,
+      normalizedRole: null,
+      clinicId: null,
+      isActive: true,
+      isAdmin: false,
+    });
+    mockSignOut.mockResolvedValue({
+      error: { message: 'logout backend unavailable' },
+    });
+
+    const formData = new FormData();
+    formData.append('email', 'owner@example.com');
+    formData.append('password', 'ValidPassword123!');
+
+    const result = await login(null, formData);
+
+    expect(result.success).toBe(false);
+    expect(mockSignOut).toHaveBeenCalledTimes(1);
   });
 });

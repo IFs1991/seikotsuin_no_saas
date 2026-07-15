@@ -1,6 +1,11 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
-import { createClient, getCurrentUser } from '@/lib/supabase';
+import {
+  createClient,
+  getCurrentUser,
+  getUserAccessContext,
+} from '@/lib/supabase';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import { AppShell } from './app-shell';
 
 export default async function AppLayout({
@@ -13,6 +18,14 @@ export default async function AppLayout({
 
   if (!user) {
     redirect('/login');
+  }
+
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase, { user })
+  );
+
+  if (!accessContext.permissions || !accessContext.isActive) {
+    redirect('/unauthorized');
   }
 
   return <AppShell>{children}</AppShell>;

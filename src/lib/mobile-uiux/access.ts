@@ -3,17 +3,12 @@ import {
   normalizeRole,
   type AdminUserRole,
 } from '@/lib/constants/roles';
-import { resolveManagerAssignedClinicIds } from '@/lib/auth/manager-scope';
-import { createLogger } from '@/lib/logger';
 import {
-  createAdminClient,
   resolveScopedClinicIds,
   type SupabaseServerClient,
   type UserPermissions,
 } from '@/lib/supabase';
 import type { MobileUiuxFlags } from '@/lib/mobile-uiux/flags';
-
-const log = createLogger('MobileUiuxAccess');
 
 export type MobileUiuxPrincipalDecision =
   | {
@@ -96,60 +91,20 @@ export function evaluateMobileUiuxPrincipal(
 }
 
 /**
- * Async principal evaluation that resolves manager clinic scope from active
- * manager_clinic_assignments rows, matching resolveEffectiveClinicScope and
- * the RLS definition in app_private.can_access_clinic. Managers never fall
- * back to user_permissions.clinic_id / clinic_scope_ids (fail-closed).
+ * Async-compatible principal evaluation over the canonical access context.
+ * Manager assignments are resolved once in getUserPermissions, including the
+ * JWT intersection. Re-querying them here would widen a deliberately narrowed
+ * scope.
  */
-export async function resolveMobileUiuxPrincipal(params: {
+export function resolveMobileUiuxPrincipal(params: {
   userId: string;
   permissions: UserPermissions | null;
   flags: MobileUiuxFlags;
   adminClient?: Pick<SupabaseServerClient, 'from'>;
 }): Promise<MobileUiuxPrincipalDecision> {
-  const normalizedRole = normalizeRole(params.permissions?.role);
-
-  if (
-    !isAdminUserRole(normalizedRole) ||
-    !params.flags.allowedRoles.includes(normalizedRole)
-  ) {
-    return {
-      allowed: false,
-      status: 403,
-      reason: 'role_denied',
-    };
-  }
-
-  if (normalizedRole !== 'manager') {
-    return evaluateMobileUiuxPrincipal(params.permissions, params.flags);
-  }
-
-  let assignedClinicIds: string[] = [];
-  try {
-    assignedClinicIds = await resolveManagerAssignedClinicIds(
-      params.adminClient ?? createAdminClient(),
-      params.userId
-    );
-  } catch (error) {
-    log.warn('Failed to resolve manager clinic assignments', {
-      errorName: error instanceof Error ? error.name : null,
-    });
-    assignedClinicIds = [];
-  }
-
-  if (assignedClinicIds.length === 0) {
-    return {
-      allowed: false,
-      status: 403,
-      reason: 'clinic_scope_empty',
-    };
-  }
-
-  return {
-    allowed: true,
-    role: normalizedRole,
-    clinicIds: assignedClinicIds,
-  };
+  return Promise.resolve(
+    evaluateMobileUiuxPrincipal(params.permissions, params.flags)
+  );
 }
 
 export function evaluateMobileUiuxEnvRollout(

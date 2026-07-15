@@ -37,6 +37,18 @@ const mockUser = {
   id: 'test-user-id',
   email: 'test@example.com',
 };
+const mockGetUserAccessContext = jest.fn();
+const mockResolveScopedClinicIds = jest.fn(
+  (permissions: {
+    clinic_id: string | null;
+    clinic_scope_ids?: string[] | null;
+  }) =>
+    Array.isArray(permissions.clinic_scope_ids)
+      ? permissions.clinic_scope_ids
+      : permissions.clinic_id
+        ? [permissions.clinic_id]
+        : null
+);
 
 // Supabaseモジュールをモック
 jest.mock('@/lib/supabase', () => ({
@@ -45,6 +57,10 @@ jest.mock('@/lib/supabase', () => ({
   createAdminClient: jest.fn(() => mockSupabaseClient),
   getCurrentUser: jest.fn(() => Promise.resolve(mockUser)),
   getUserPermissions: jest.fn(),
+  getUserAccessContext: (...args: unknown[]) =>
+    mockGetUserAccessContext(...args),
+  resolveScopedClinicIds: (...args: unknown[]) =>
+    mockResolveScopedClinicIds(...args),
 }));
 
 // 環境変数参照をモック（assertEnv が空文字で落ちるのを防ぐ）
@@ -125,6 +141,16 @@ describe('Onboarding API Integration', () => {
     mockAdminSupabaseClient.from.mockReset();
     mockAdminSupabaseClient.rpc.mockReset();
     mockAdminSupabaseClient.auth.admin.inviteUserByEmail.mockReset();
+    mockGetUserAccessContext.mockReset();
+    mockResolveScopedClinicIds.mockClear();
+    mockGetUserAccessContext.mockResolvedValue({
+      isActive: true,
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+    });
 
     const supabaseModule = jest.requireMock('@/lib/supabase') as {
       createAdminClient: jest.Mock;
@@ -813,7 +839,11 @@ describe('Onboarding API Integration', () => {
   describe('POST /api/onboarding/seed', () => {
     test('seed route は menus テーブルに INSERT する（master_treatment_menus ではない）', async () => {
       const fromCalls: string[] = [];
-      const mockState = { clinic_id: 'clinic-1' };
+      const mockState = {
+        clinic_id: 'clinic-1',
+        current_step: 'seed',
+        metadata: {},
+      };
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
         fromCalls.push(table);
@@ -842,13 +872,17 @@ describe('Onboarding API Integration', () => {
       expect(fromCalls).not.toContain('master_treatment_menus');
     });
 
-    test('clinic claim が未反映でも admin client でマスタ投入できる', async () => {
-      const mockState = { clinic_id: 'clinic-1' };
+    test('canonical authority 確認後に admin client で院別メニューだけを投入する', async () => {
+      const mockState = {
+        clinic_id: 'clinic-1',
+        current_step: 'seed',
+        metadata: {},
+      };
       const stateLookupBuilder = createQueryBuilder(mockState);
-      const stateUpdateBuilder = createQueryBuilder({});
+      const stateUpdateBuilder = createQueryBuilder({
+        current_step: 'completed',
+      });
       const menuBuilder = createQueryBuilder({});
-      const paymentBuilder = createQueryBuilder({});
-      const patientBuilder = createQueryBuilder({});
       const stateBuilders = [stateLookupBuilder, stateUpdateBuilder];
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
@@ -864,12 +898,6 @@ describe('Onboarding API Integration', () => {
       mockAdminSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'menus') {
           return menuBuilder;
-        }
-        if (table === 'master_payment_methods') {
-          return paymentBuilder;
-        }
-        if (table === 'master_patient_types') {
-          return patientBuilder;
         }
         return createQueryBuilder({});
       });
@@ -907,29 +935,37 @@ describe('Onboarding API Integration', () => {
           created_by: 'test-user-id',
         })
       );
-      expect(paymentBuilder.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: '現金',
-          is_active: true,
-        }),
-        { onConflict: 'name' }
+      expect(mockGetUserAccessContext).toHaveBeenCalledWith(
+        'test-user-id',
+        mockSupabaseClient,
+        { user: mockUser }
       );
-      expect(patientBuilder.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: '初診',
-        }),
-        { onConflict: 'name' }
+      expect(mockAdminSupabaseClient.from).not.toHaveBeenCalledWith(
+        'master_payment_methods'
       );
-
-      const paymentPayload = paymentBuilder.upsert.mock.calls[0][0];
-      const patientPayload = patientBuilder.upsert.mock.calls[0][0];
-      expect(paymentPayload).not.toHaveProperty('clinic_id');
-      expect(patientPayload).not.toHaveProperty('clinic_id');
+      expect(mockAdminSupabaseClient.from).not.toHaveBeenCalledWith(
+        'master_patient_types'
+      );
+      expect(stateUpdateBuilder.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          current_step: 'completed',
+          metadata: {
+            seed_preferences: {
+              payment_methods: ['現金'],
+              patient_types: ['初診'],
+            },
+          },
+        })
+      );
     });
 
     test('menu INSERT が1件でも失敗した場合、onboarding_states を completed に更新しない', async () => {
       const fromCalls: string[] = [];
-      const mockState = { clinic_id: 'clinic-1' };
+      const mockState = {
+        clinic_id: 'clinic-1',
+        current_step: 'seed',
+        metadata: {},
+      };
       let menuInsertCount = 0;
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
@@ -976,7 +1012,11 @@ describe('Onboarding API Integration', () => {
     });
 
     test('成功時のレスポンスに menu_count を含む', async () => {
-      const mockState = { clinic_id: 'clinic-1' };
+      const mockState = {
+        clinic_id: 'clinic-1',
+        current_step: 'seed',
+        metadata: {},
+      };
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
         if (table === 'onboarding_states') {
@@ -1045,6 +1085,96 @@ describe('Onboarding API Integration', () => {
 
       const json = await response.json();
       expect(json.success).toBe(false);
+    });
+
+    test('tampered onboarding clinic が canonical scope 外なら service-role を作成しない', async () => {
+      mockSupabaseClient.from.mockReturnValue(
+        createQueryBuilder({
+          clinic_id: 'victim-clinic',
+          current_step: 'seed',
+          metadata: {},
+        })
+      );
+      mockGetUserAccessContext.mockResolvedValue({
+        isActive: true,
+        permissions: {
+          role: 'admin',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
+      });
+      const supabaseModule = jest.requireMock('@/lib/supabase') as {
+        createAdminClient: jest.Mock;
+      };
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const response = await POST(
+        createMockRequest('/api/onboarding/seed', {
+          method: 'POST',
+          body: {
+            treatment_menus: [{ name: '基本施術', price: 2000 }],
+          },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(supabaseModule.createAdminClient).not.toHaveBeenCalled();
+      expect(mockSupabaseClient.from).not.toHaveBeenCalledWith('menus');
+    });
+
+    test('inactive profile は canonical scope 内でも seed を実行できない', async () => {
+      mockSupabaseClient.from.mockReturnValue(
+        createQueryBuilder({
+          clinic_id: 'clinic-1',
+          current_step: 'seed',
+          metadata: {},
+        })
+      );
+      mockGetUserAccessContext.mockResolvedValue({
+        isActive: false,
+        permissions: {
+          role: 'admin',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
+      });
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const response = await POST(
+        createMockRequest('/api/onboarding/seed', {
+          method: 'POST',
+          body: {
+            treatment_menus: [{ name: '基本施術', price: 2000 }],
+          },
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(mockSupabaseClient.from).not.toHaveBeenCalledWith('menus');
+    });
+
+    test('seed 以外の onboarding step では再実行を拒否する', async () => {
+      mockSupabaseClient.from.mockReturnValue(
+        createQueryBuilder({
+          clinic_id: 'clinic-1',
+          current_step: 'completed',
+          metadata: {},
+        })
+      );
+      const { POST } = await import('@/app/api/onboarding/seed/route');
+
+      const response = await POST(
+        createMockRequest('/api/onboarding/seed', {
+          method: 'POST',
+          body: {
+            treatment_menus: [{ name: '基本施術', price: 2000 }],
+          },
+        })
+      );
+
+      expect(response.status).toBe(409);
+      expect(mockGetUserAccessContext).not.toHaveBeenCalled();
+      expect(mockSupabaseClient.from).not.toHaveBeenCalledWith('menus');
     });
   });
 

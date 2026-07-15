@@ -7,10 +7,10 @@
     "clientModule records an explicit use-client directive, not the full import graph."
   ],
   "summary": {
-    "scannedSourceFiles": 608,
+    "scannedSourceFiles": 611,
     "catalogTables": 86,
-    "catalogTablesWithLiteralReferences": 69,
-    "literalRpcNames": 10
+    "catalogTablesWithLiteralReferences": 68,
+    "literalRpcNames": 11
   },
   "tables": [
     {
@@ -19,12 +19,12 @@
       "calls": [
         {
           "path": "src/app/api/ai-comments/route.ts",
-          "line": 25,
+          "line": 26,
           "clientModule": false
         },
         {
           "path": "src/app/api/ai-comments/route.ts",
-          "line": 169,
+          "line": 176,
           "clientModule": false
         },
         {
@@ -50,7 +50,7 @@
       "calls": [
         {
           "path": "src/app/api/admin/security/stats/route.ts",
-          "line": 89,
+          "line": 92,
           "clientModule": false
         },
         {
@@ -66,17 +66,22 @@
       "calls": [
         {
           "path": "src/app/api/beta/feedback/route.ts",
-          "line": 82,
+          "line": 91,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/feedback/route.ts",
-          "line": 184,
+          "line": 186,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/feedback/route.ts",
-          "line": 301,
+          "line": 282,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/feedback/route.ts",
+          "line": 327,
           "clientModule": false
         }
       ]
@@ -87,12 +92,12 @@
       "calls": [
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 70,
+          "line": 86,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 171,
+          "line": 197,
           "clientModule": false
         }
       ]
@@ -150,27 +155,27 @@
       "calls": [
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 64,
+          "line": 52,
           "clientModule": false
         },
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 92,
+          "line": 80,
           "clientModule": false
         },
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 187,
+          "line": 175,
           "clientModule": false
         },
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 232,
+          "line": 220,
           "clientModule": false
         },
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 246,
+          "line": 234,
           "clientModule": false
         },
         {
@@ -231,22 +236,22 @@
       "calls": [
         {
           "path": "src/app/api/calendar/clinic/[token]/route.ts",
-          "line": 42,
+          "line": 47,
           "clientModule": false
         },
         {
           "path": "src/app/api/calendar/feed-tokens/route.ts",
-          "line": 246,
+          "line": 295,
           "clientModule": false
         },
         {
           "path": "src/app/api/calendar/feed-tokens/route.ts",
-          "line": 301,
+          "line": 361,
           "clientModule": false
         },
         {
           "path": "src/app/api/calendar/staff/[token]/route.ts",
-          "line": 42,
+          "line": 64,
           "clientModule": false
         }
       ]
@@ -298,12 +303,12 @@
         },
         {
           "path": "src/app/api/chat/route.ts",
-          "line": 116,
+          "line": 120,
           "clientModule": false
         },
         {
           "path": "src/app/api/chat/route.ts",
-          "line": 150,
+          "line": 154,
           "clientModule": false
         }
       ]
@@ -329,12 +334,12 @@
         },
         {
           "path": "src/app/api/chat/route.ts",
-          "line": 25,
+          "line": 26,
           "clientModule": false
         },
         {
           "path": "src/app/api/chat/route.ts",
-          "line": 98,
+          "line": 102,
           "clientModule": false
         }
       ]
@@ -483,7 +488,7 @@
         },
         {
           "path": "src/app/(public)/invite/actions.ts",
-          "line": 295,
+          "line": 251,
           "clientModule": false
         },
         {
@@ -493,12 +498,12 @@
         },
         {
           "path": "src/app/api/admin/dashboard/route.ts",
-          "line": 82,
+          "line": 84,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/dashboard/route.ts",
-          "line": 106,
+          "line": 108,
           "clientModule": false
         },
         {
@@ -533,37 +538,47 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 300,
+          "line": 297,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 419,
+          "line": 416,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 805,
+          "line": 798,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 826,
+          "line": 819,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 973,
+          "line": 966,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/clinic/[token]/route.ts",
+          "line": 69,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
+          "line": 107,
           "clientModule": false
         },
         {
           "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 90,
+          "line": 88,
           "clientModule": false
         },
         {
           "path": "src/app/api/clinics/accessible/route.ts",
-          "line": 112,
+          "line": 110,
           "clientModule": false
         },
         {
@@ -653,7 +668,12 @@
         },
         {
           "path": "src/lib/supabase/server.ts",
-          "line": 196,
+          "line": 368,
+          "clientModule": false
+        },
+        {
+          "path": "src/lib/supabase/server.ts",
+          "line": 402,
           "clientModule": false
         }
       ]
@@ -729,7 +749,7 @@
         },
         {
           "path": "src/app/api/security/csp-report/route.ts",
-          "line": 303,
+          "line": 312,
           "clientModule": false
         }
       ]
@@ -959,17 +979,17 @@
         },
         {
           "path": "src/app/api/manager/dashboard/route.ts",
-          "line": 66,
+          "line": 69,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/staff-analysis/route.ts",
-          "line": 216,
+          "line": 219,
           "clientModule": false
         },
         {
           "path": "src/app/api/revenue-estimates/details/route.ts",
-          "line": 251,
+          "line": 252,
           "clientModule": false
         },
         {
@@ -984,7 +1004,7 @@
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 429,
+          "line": 430,
           "clientModule": false
         }
       ]
@@ -1005,12 +1025,12 @@
         },
         {
           "path": "src/app/api/admin/dashboard/route.ts",
-          "line": 192,
+          "line": 198,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/dashboard/route.ts",
-          "line": 205,
+          "line": 211,
           "clientModule": false
         },
         {
@@ -1030,12 +1050,12 @@
         },
         {
           "path": "src/app/api/daily-reports/route.ts",
-          "line": 196,
+          "line": 204,
           "clientModule": false
         },
         {
           "path": "src/app/api/daily-reports/route.ts",
-          "line": 214,
+          "line": 222,
           "clientModule": false
         },
         {
@@ -1045,22 +1065,22 @@
         },
         {
           "path": "src/app/api/manager/daily-reports/overview/route.ts",
-          "line": 117,
+          "line": 140,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/dashboard/route.ts",
-          "line": 46,
+          "line": 49,
           "clientModule": false
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 423,
+          "line": 424,
           "clientModule": false
         },
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 435,
+          "line": 436,
           "clientModule": false
         },
         {
@@ -1153,27 +1173,32 @@
       "calls": [
         {
           "path": "src/app/api/beta/backlog/route.ts",
-          "line": 86,
+          "line": 114,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/backlog/route.ts",
-          "line": 185,
+          "line": 153,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/backlog/route.ts",
-          "line": 298,
+          "line": 257,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/backlog/route.ts",
-          "line": 315,
+          "line": 346,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/backlog/route.ts",
-          "line": 393,
+          "line": 413,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/beta/backlog/route.ts",
+          "line": 523,
           "clientModule": false
         }
       ]
@@ -1278,7 +1303,12 @@
       "calls": [
         {
           "path": "src/app/api/admin/managers/route.ts",
-          "line": 112,
+          "line": 126,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 478,
           "clientModule": false
         },
         {
@@ -1288,17 +1318,17 @@
         },
         {
           "path": "src/lib/auth/manager-scope.ts",
-          "line": 53,
+          "line": 55,
           "clientModule": false
         },
         {
           "path": "src/lib/auth/manager-scope.ts",
-          "line": 72,
+          "line": 74,
           "clientModule": false
         },
         {
           "path": "src/lib/auth/manager-scope.ts",
-          "line": 107,
+          "line": 109,
           "clientModule": false
         }
       ]
@@ -1310,14 +1340,8 @@
     },
     {
       "name": "master_patient_types",
-      "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
-      "calls": [
-        {
-          "path": "src/app/api/onboarding/seed/route.ts",
-          "line": 127,
-          "clientModule": false
-        }
-      ]
+      "status": "NO_LITERAL_RUNTIME_REFERENCE_OBSERVED",
+      "calls": []
     },
     {
       "name": "master_payment_methods",
@@ -1331,11 +1355,6 @@
         {
           "path": "src/app/api/daily-reports/items/route.ts",
           "line": 1084,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/onboarding/seed/route.ts",
-          "line": 112,
           "clientModule": false
         }
       ]
@@ -1474,7 +1493,7 @@
         },
         {
           "path": "src/app/api/onboarding/seed/route.ts",
-          "line": 77,
+          "line": 131,
           "clientModule": false
         },
         {
@@ -1566,7 +1585,7 @@
         },
         {
           "path": "src/app/api/admin/security/events/route.ts",
-          "line": 393,
+          "line": 397,
           "clientModule": false
         },
         {
@@ -1612,12 +1631,12 @@
         },
         {
           "path": "src/app/api/onboarding/seed/route.ts",
-          "line": 53,
+          "line": 61,
           "clientModule": false
         },
         {
           "path": "src/app/api/onboarding/seed/route.ts",
-          "line": 141,
+          "line": 168,
           "clientModule": false
         },
         {
@@ -1710,7 +1729,7 @@
       "calls": [
         {
           "path": "src/app/api/clinic/analysis/route.ts",
-          "line": 77,
+          "line": 81,
           "clientModule": false
         }
       ]
@@ -1720,88 +1739,38 @@
       "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
       "calls": [
         {
-          "path": "src/app/(app)/admin/(protected)/session-management/page.tsx",
-          "line": 30,
-          "clientModule": false
-        },
-        {
           "path": "src/app/(public)/admin/actions.ts",
-          "line": 110,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/admin/actions.ts",
-          "line": 127,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/admin/actions.ts",
-          "line": 171,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/admin/callback/route.ts",
-          "line": 44,
+          "line": 113,
           "clientModule": false
         },
         {
           "path": "src/app/(public)/invite/actions.ts",
-          "line": 168,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 183,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 190,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 442,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 448,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 604,
+          "line": 565,
           "clientModule": false
         },
         {
           "path": "src/app/(public)/login/actions.ts",
-          "line": 161,
+          "line": 219,
           "clientModule": false
         },
         {
           "path": "src/app/(public)/login/actions.ts",
-          "line": 195,
+          "line": 238,
           "clientModule": false
         },
         {
           "path": "src/app/(public)/login/actions.ts",
-          "line": 214,
+          "line": 258,
           "clientModule": false
         },
         {
           "path": "src/app/(public)/login/actions.ts",
-          "line": 234,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/login/actions.ts",
-          "line": 253,
+          "line": 277,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/managers/route.ts",
-          "line": 204,
+          "line": 283,
           "clientModule": false
         },
         {
@@ -1821,57 +1790,57 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 399,
+          "line": 396,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 533,
+          "line": 530,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 698,
+          "line": 695,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 131,
+          "line": 137,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 196,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 393,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 426,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 503,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 160,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/admin/users/candidates/route.ts",
           "line": 221,
           "clientModule": false
         },
         {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 429,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 529,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 606,
+          "clientModule": false
+        },
+        {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 418,
+          "line": 163,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 225,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/candidates/route.ts",
+          "line": 424,
           "clientModule": false
         },
         {
@@ -1895,42 +1864,7 @@
           "clientModule": false
         },
         {
-          "path": "src/app/api/beta/backlog/route.ts",
-          "line": 153,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/backlog/route.ts",
-          "line": 251,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/backlog/route.ts",
-          "line": 378,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/feedback/route.ts",
-          "line": 65,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/feedback/route.ts",
-          "line": 149,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/feedback/route.ts",
-          "line": 257,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/metrics/route.ts",
-          "line": 42,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/api/beta/metrics/route.ts",
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
           "line": 137,
           "clientModule": false
         },
@@ -1981,12 +1915,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 88,
-          "clientModule": false
-        },
-        {
-          "path": "src/lib/supabase/auth-context.ts",
-          "line": 99,
+          "line": 106,
           "clientModule": false
         }
       ]
@@ -2064,12 +1993,12 @@
         },
         {
           "path": "src/app/api/manager/clinic-comparison/route.ts",
-          "line": 69,
+          "line": 72,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/staff-analysis/route.ts",
-          "line": 166,
+          "line": 169,
           "clientModule": false
         },
         {
@@ -2104,12 +2033,12 @@
         },
         {
           "path": "src/app/api/staff/demand-forecast/route.ts",
-          "line": 81,
+          "line": 85,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 143,
+          "line": 137,
           "clientModule": false
         },
         {
@@ -2240,17 +2169,17 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 383,
+          "line": 380,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 547,
+          "line": 544,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 708,
+          "line": 705,
           "clientModule": false
         },
         {
@@ -2265,12 +2194,12 @@
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 129,
+          "line": 135,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 222,
+          "line": 247,
           "clientModule": false
         },
         {
@@ -2300,27 +2229,27 @@
         },
         {
           "path": "src/app/api/blocks/route.ts",
-          "line": 160,
+          "line": 148,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 129,
+          "line": 130,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/candidates/route.ts",
-          "line": 133,
+          "line": 134,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/staff-analysis/route.ts",
-          "line": 144,
+          "line": 147,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/staff/route.ts",
-          "line": 49,
+          "line": 52,
           "clientModule": false
         },
         {
@@ -2380,12 +2309,12 @@
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 149,
+          "line": 143,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 442,
+          "line": 439,
           "clientModule": false
         },
         {
@@ -2436,7 +2365,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue-estimates/details/route.ts",
-          "line": 296,
+          "line": 297,
           "clientModule": false
         },
         {
@@ -2462,7 +2391,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue-estimates/details/route.ts",
-          "line": 302,
+          "line": 303,
           "clientModule": false
         },
         {
@@ -2483,7 +2412,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue-estimates/details/route.ts",
-          "line": 275,
+          "line": 276,
           "clientModule": false
         },
         {
@@ -2504,7 +2433,7 @@
       "calls": [
         {
           "path": "src/app/api/clinic/analysis/route.ts",
-          "line": 71,
+          "line": 75,
           "clientModule": false
         }
       ]
@@ -2531,17 +2460,17 @@
       "calls": [
         {
           "path": "src/app/api/admin/security/events/route.ts",
-          "line": 124,
+          "line": 125,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/security/events/route.ts",
-          "line": 256,
+          "line": 260,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/security/events/route.ts",
-          "line": 370,
+          "line": 374,
           "clientModule": false
         },
         {
@@ -2581,27 +2510,27 @@
         },
         {
           "path": "src/app/api/admin/security/stats/route.ts",
-          "line": 77,
+          "line": 80,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 220,
+          "line": 246,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 232,
+          "line": 258,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 243,
+          "line": 269,
           "clientModule": false
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 254,
+          "line": 280,
           "clientModule": false
         },
         {
@@ -2720,17 +2649,17 @@
       "calls": [
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 149,
+          "line": 150,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 224,
+          "line": 225,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/candidates/route.ts",
-          "line": 229,
+          "line": 230,
           "clientModule": false
         },
         {
@@ -2781,47 +2710,47 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 391,
+          "line": 388,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 540,
+          "line": 537,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 685,
+          "line": 682,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 703,
+          "line": 700,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 130,
+          "line": 136,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 211,
+          "line": 236,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 121,
+          "line": 124,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 195,
+          "line": 198,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 254,
+          "line": 259,
           "clientModule": false
         },
         {
@@ -2876,7 +2805,7 @@
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 432,
+          "line": 429,
           "clientModule": false
         },
         {
@@ -2897,22 +2826,27 @@
       "calls": [
         {
           "path": "src/app/api/calendar/feed-tokens/route.ts",
-          "line": 108,
+          "line": 125,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
+          "line": 100,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 182,
+          "line": 183,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/candidates/route.ts",
-          "line": 166,
+          "line": 167,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/candidates/route.ts",
-          "line": 197,
+          "line": 198,
           "clientModule": false
         }
       ]
@@ -2923,32 +2857,22 @@
       "calls": [
         {
           "path": "src/app/(public)/invite/actions.ts",
-          "line": 96,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 229,
-          "clientModule": false
-        },
-        {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 251,
+          "line": 118,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/staff/invites/route.ts",
-          "line": 99,
+          "line": 104,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/staff/invites/route.ts",
-          "line": 122,
+          "line": 127,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/staff/invites/route.ts",
-          "line": 156,
+          "line": 161,
           "clientModule": false
         },
         {
@@ -2969,12 +2893,12 @@
       "calls": [
         {
           "path": "src/app/api/admin/dashboard/route.ts",
-          "line": 51,
+          "line": 53,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 132,
+          "line": 126,
           "clientModule": false
         }
       ]
@@ -2985,12 +2909,12 @@
       "calls": [
         {
           "path": "src/app/api/staff/preferences/route.ts",
-          "line": 64,
+          "line": 68,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/preferences/route.ts",
-          "line": 220,
+          "line": 227,
           "clientModule": false
         }
       ]
@@ -3001,12 +2925,17 @@
       "calls": [
         {
           "path": "src/app/api/calendar/feed-tokens/route.ts",
-          "line": 92,
+          "line": 109,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/calendar/staff/[token]/route.ts",
+          "line": 95,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 166,
+          "line": 167,
           "clientModule": false
         },
         {
@@ -3022,62 +2951,62 @@
       "calls": [
         {
           "path": "src/app/api/calendar/clinic/[token]/route.ts",
-          "line": 64,
+          "line": 86,
           "clientModule": false
         },
         {
           "path": "src/app/api/calendar/staff/[token]/route.ts",
-          "line": 71,
+          "line": 155,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 202,
+          "line": 203,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/assign/route.ts",
-          "line": 474,
+          "line": 476,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/candidates/route.ts",
-          "line": 259,
+          "line": 260,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/rosters/route.ts",
-          "line": 166,
+          "line": 167,
           "clientModule": false
         },
         {
           "path": "src/app/api/manager/staff-analysis/route.ts",
-          "line": 192,
+          "line": 195,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/shifts/route.ts",
-          "line": 224,
+          "line": 218,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/shifts/route.ts",
-          "line": 259,
+          "line": 253,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/shifts/route.ts",
-          "line": 354,
+          "line": 348,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/shifts/route.ts",
-          "line": 504,
+          "line": 501,
           "clientModule": false
         },
         {
           "path": "src/app/api/staff/shifts/route.ts",
-          "line": 557,
+          "line": 554,
           "clientModule": false
         },
         {
@@ -3275,18 +3204,13 @@
       "status": "LITERAL_RUNTIME_REFERENCE_OBSERVED",
       "calls": [
         {
-          "path": "src/app/(public)/invite/actions.ts",
-          "line": 208,
-          "clientModule": false
-        },
-        {
           "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
-          "line": 172,
+          "line": 239,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/managers/route.ts",
-          "line": 173,
+          "line": 203,
           "clientModule": false
         },
         {
@@ -3296,17 +3220,17 @@
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 371,
+          "line": 368,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 560,
+          "line": 557,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/tenants/route.ts",
-          "line": 738,
+          "line": 735,
           "clientModule": false
         },
         {
@@ -3326,27 +3250,32 @@
         },
         {
           "path": "src/app/api/admin/users/[permission_id]/route.ts",
-          "line": 440,
+          "line": 443,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 128,
+          "line": 134,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/accounts/route.ts",
-          "line": 277,
+          "line": 302,
+          "clientModule": false
+        },
+        {
+          "path": "src/app/api/admin/users/accounts/route.ts",
+          "line": 434,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 251,
+          "line": 256,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/candidates/route.ts",
-          "line": 424,
+          "line": 430,
           "clientModule": false
         },
         {
@@ -3371,12 +3300,12 @@
         },
         {
           "path": "src/app/api/admin/users/route.ts",
-          "line": 925,
+          "line": 931,
           "clientModule": false
         },
         {
           "path": "src/app/api/admin/users/route.ts",
-          "line": 939,
+          "line": 945,
           "clientModule": false
         },
         {
@@ -3411,7 +3340,7 @@
         },
         {
           "path": "src/lib/supabase/auth-context.ts",
-          "line": 70,
+          "line": 81,
           "clientModule": false
         }
       ]
@@ -3442,7 +3371,7 @@
         },
         {
           "path": "src/app/api/beta/metrics/route.ts",
-          "line": 265,
+          "line": 291,
           "clientModule": false
         },
         {
@@ -3545,6 +3474,16 @@
   ],
   "rpcReferences": [
     {
+      "name": "accept_staff_invite_atomic",
+      "calls": [
+        {
+          "path": "src/app/(public)/invite/actions.ts",
+          "line": 185,
+          "clientModule": false
+        }
+      ]
+    },
+    {
       "name": "activate_billable_store_if_capacity",
       "calls": [
         {
@@ -3639,7 +3578,7 @@
       "calls": [
         {
           "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
-          "line": 318,
+          "line": 473,
           "clientModule": false
         }
       ]
@@ -3651,7 +3590,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 453,
+          "line": 454,
           "clientModule": false
         }
       ]
@@ -3661,7 +3600,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 441,
+          "line": 442,
           "clientModule": false
         }
       ]
@@ -3671,7 +3610,7 @@
       "calls": [
         {
           "path": "src/app/api/revenue/route.ts",
-          "line": 447,
+          "line": 448,
           "clientModule": false
         }
       ]
@@ -3686,22 +3625,22 @@
         },
         {
           "path": "src/app/api/ai-comments/route.ts",
-          "line": 126,
+          "line": 133,
           "clientModule": false
         },
         {
           "path": "src/app/api/ai-comments/route.ts",
-          "line": 139,
+          "line": 146,
           "clientModule": false
         },
         {
           "path": "src/app/api/ai-comments/route.ts",
-          "line": 152,
+          "line": 159,
           "clientModule": false
         },
         {
           "path": "src/app/api/chat/route.ts",
-          "line": 133,
+          "line": 137,
           "clientModule": false
         },
         {
@@ -3781,12 +3720,12 @@
       "calls": [
         {
           "path": "src/app/api/manager/dashboard/route.ts",
-          "line": 93,
+          "line": 96,
           "clientModule": false
         },
         {
           "path": "src/app/api/mobile-uiux/home/route.ts",
-          "line": 84,
+          "line": 88,
           "clientModule": false
         },
         {
@@ -3826,7 +3765,7 @@
         },
         {
           "path": "src/app/api/staff/route.ts",
-          "line": 128,
+          "line": 122,
           "clientModule": false
         },
         {

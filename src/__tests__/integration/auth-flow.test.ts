@@ -13,7 +13,7 @@ import {
 } from '@jest/globals';
 
 const createProfileQueryBuilder = () => {
-  const builder: any = {
+  const builder = {
     select: jest.fn(),
     update: jest.fn(),
     eq: jest.fn(),
@@ -48,12 +48,15 @@ const createMockSupabaseClient = () => ({
 
 let mockSupabaseClient = createMockSupabaseClient();
 const getUserPermissionsMock = jest.fn();
+const getUserAccessContextMock = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   getServerClient: () => mockSupabaseClient,
   createClient: () => mockSupabaseClient,
   createAdminClient: () => mockSupabaseClient,
   getUserPermissions: (...args: unknown[]) => getUserPermissionsMock(...args),
+  getUserAccessContext: (...args: unknown[]) =>
+    getUserAccessContextMock(...args),
 }));
 
 const auditLoggerMocks = {
@@ -87,7 +90,9 @@ jest.mock('next/cache', () => ({
 }));
 
 jest.mock('next/navigation', () => ({
-  redirect: jest.fn(),
+  redirect: jest.fn((path: string) => {
+    throw new Error(`REDIRECT:${path}`);
+  }),
 }));
 
 // Mock console methods to avoid noise in tests
@@ -106,6 +111,14 @@ describe('Authentication Integration Tests', () => {
     getUserPermissionsMock.mockResolvedValue({
       role: 'staff',
       clinic_id: 'clinic-1',
+    });
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: { role: 'staff', clinic_id: 'clinic-1' },
+      role: 'staff',
+      normalizedRole: 'staff',
+      clinicId: 'clinic-1',
+      isActive: true,
+      isAdmin: false,
     });
     // Replace console methods with mocks
     global.console = { ...global.console, ...consoleMock };
@@ -156,6 +169,14 @@ describe('Authentication Integration Tests', () => {
         role: 'manager',
         clinic_id: null,
       });
+      getUserAccessContextMock.mockResolvedValue({
+        permissions: { role: 'manager', clinic_id: null },
+        role: 'manager',
+        normalizedRole: 'manager',
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
+      });
       mockSupabaseClient
         .from()
         .select()
@@ -181,6 +202,14 @@ describe('Authentication Integration Tests', () => {
       getUserPermissionsMock.mockResolvedValue({
         role: 'therapist',
         clinic_id: 'clinic-1',
+      });
+      getUserAccessContextMock.mockResolvedValue({
+        permissions: { role: 'therapist', clinic_id: 'clinic-1' },
+        role: 'therapist',
+        normalizedRole: 'therapist',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
       });
       mockSupabaseClient
         .from()
@@ -213,6 +242,14 @@ describe('Authentication Integration Tests', () => {
         getUserPermissionsMock.mockResolvedValue({
           role,
           clinic_id: 'clinic-1',
+        });
+        getUserAccessContextMock.mockResolvedValue({
+          permissions: { role, clinic_id: 'clinic-1' },
+          role,
+          normalizedRole: role,
+          clinicId: 'clinic-1',
+          isActive: true,
+          isAdmin: role === 'clinic_admin',
         });
         mockSupabaseClient
           .from()
@@ -270,6 +307,14 @@ describe('Authentication Integration Tests', () => {
         });
 
       mockSupabaseClient.auth.signOut.mockResolvedValue({ error: null });
+      getUserAccessContextMock.mockResolvedValue({
+        permissions: null,
+        role: null,
+        normalizedRole: null,
+        clinicId: null,
+        isActive: false,
+        isAdmin: false,
+      });
 
       const formData = new FormData();
       formData.append('email', 'inactive@example.com');

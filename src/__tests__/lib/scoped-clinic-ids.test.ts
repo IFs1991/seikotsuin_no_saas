@@ -18,7 +18,7 @@ describe('resolveScopedClinicIds', () => {
     ]);
   });
 
-  it('falls back to clinic_id when clinic_scope_ids is absent or empty', () => {
+  it('falls back when clinic_scope_ids is absent/null and preserves explicit empty scope', () => {
     const withoutScopeIds: UserPermissions = {
       role: 'staff',
       clinic_id: 'clinic-1',
@@ -28,19 +28,39 @@ describe('resolveScopedClinicIds', () => {
       clinic_id: 'clinic-1',
       clinic_scope_ids: [],
     };
+    const withNullScopeIds: UserPermissions = {
+      role: 'clinic_admin',
+      clinic_id: 'clinic-1',
+      clinic_scope_ids: null,
+    };
 
     expect(resolveScopedClinicIds(withoutScopeIds)).toEqual(['clinic-1']);
-    expect(resolveScopedClinicIds(withEmptyScopeIds)).toEqual(['clinic-1']);
+    expect(resolveScopedClinicIds(withNullScopeIds)).toEqual(['clinic-1']);
+    expect(resolveScopedClinicIds(withEmptyScopeIds)).toEqual([]);
   });
 
-  it('returns null when both clinic_scope_ids and clinic_id are missing', () => {
+  it('never falls a manager back to a stale primary clinic', () => {
     const permissions: UserPermissions = {
+      role: 'manager',
+      clinic_id: 'stale-primary',
+    };
+
+    expect(resolveScopedClinicIds(permissions)).toEqual([]);
+  });
+
+  it('distinguishes absent scope from an explicitly empty denied scope', () => {
+    const absentScope: UserPermissions = {
+      role: 'staff',
+      clinic_id: null,
+    };
+    const emptyScope: UserPermissions = {
       role: 'staff',
       clinic_id: null,
       clinic_scope_ids: [],
     };
 
-    expect(resolveScopedClinicIds(permissions)).toBeNull();
+    expect(resolveScopedClinicIds(absentScope)).toBeNull();
+    expect(resolveScopedClinicIds(emptyScope)).toEqual([]);
   });
 });
 

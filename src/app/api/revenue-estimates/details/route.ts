@@ -9,6 +9,7 @@ import { isSelectableRevenueContextCode } from '@/lib/revenue-context';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import type { RevenueEstimateAmountDetail } from '@/types/api';
 import type { Database } from '@/types/supabase';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const PATH = '/api/revenue-estimates/details';
 const DEFAULT_LIMIT = 25;
@@ -332,6 +333,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },

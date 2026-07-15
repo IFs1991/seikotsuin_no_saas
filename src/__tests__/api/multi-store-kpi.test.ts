@@ -185,9 +185,11 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(200);
-      expect(clinicsQuery.or).toHaveBeenCalledWith(
-        'id.in.(clinic-1,clinic-2),parent_id.in.(clinic-1,clinic-2)'
-      );
+      expect(clinicsQuery.in).toHaveBeenCalledWith('id', [
+        'clinic-1',
+        'clinic-2',
+      ]);
+      expect(clinicsQuery.or).not.toHaveBeenCalled();
     });
 
     it('manager は include_kpi=true の担当Clinic比較だけアクセス可能', async () => {
@@ -253,11 +255,11 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
         permissions: {
           role: 'manager',
           clinic_id: 'child-1',
-          clinic_scope_ids: ['parent-1'],
+          clinic_scope_ids: ['child-1'],
         },
         supabase: {},
       });
-      setupScopedAdmin(supabaseMock, ['parent-1']);
+      setupScopedAdmin(supabaseMock, ['child-1']);
 
       const { GET } = await import('@/app/api/admin/tenants/route');
       const request = new NextRequest(
@@ -267,16 +269,15 @@ describe('店舗比較分析API - GET /api/admin/tenants', () => {
       const payload = await response.json();
 
       expect(response.status).toBe(200);
-      expect(clinicsQuery.or).toHaveBeenCalledWith(
-        'id.in.(parent-1),parent_id.in.(parent-1)'
-      );
+      expect(clinicsQuery.in).toHaveBeenCalledWith('id', ['child-1']);
+      expect(clinicsQuery.or).not.toHaveBeenCalled();
       expect(clinicsQuery.eq).toHaveBeenCalledWith('is_active', true);
       expect(revenueQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
       expect(patientQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
       expect(staffQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
-      expect(payload.data.items.map((clinic: { id: string }) => clinic.id)).toEqual([
-        'child-1',
-      ]);
+      expect(
+        payload.data.items.map((clinic: { id: string }) => clinic.id)
+      ).toEqual(['child-1']);
       expect(payload.data.items[0].kpi.revenue).toBe(120000);
       expect(payload.data.items[0].kpi.patients).toBe(2);
     });

@@ -10,6 +10,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
+  createAuthorityUnavailableResponse,
   createErrorResponse,
   createSuccessResponse,
   logError,
@@ -207,6 +208,9 @@ export async function PATCH(request: NextRequest) {
         allowedRoles: Array.from(ADMIN_UI_ROLES),
       });
     } catch (error) {
+      const authorityUnavailable = createAuthorityUnavailableResponse(error);
+      if (authorityUnavailable) return authorityUnavailable;
+
       if (error instanceof AppError) {
         return createErrorResponse(
           error.message,

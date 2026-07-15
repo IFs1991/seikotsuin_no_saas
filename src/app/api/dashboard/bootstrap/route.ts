@@ -17,6 +17,7 @@ import {
   type DailyReportsReadModel,
 } from '@/lib/daily-reports/read-model';
 import { logPerf, nowMs } from '@/lib/performance/server-timing';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const PATH = '/api/dashboard/bootstrap';
 
@@ -102,6 +103,9 @@ export async function GET(request: NextRequest) {
     logPerf('dashboardBootstrap.total', tTotal, { clinicId });
     return NextResponse.json(response);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },

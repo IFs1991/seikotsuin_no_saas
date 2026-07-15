@@ -8,7 +8,11 @@ import { z } from 'zod';
 import { CSPConfig, type CSPViolationReport } from '@/lib/security/csp-config';
 import { cspRateLimiter } from '@/lib/rate-limiting/csp-rate-limiter';
 import { logger } from '@/lib/logger';
-import { createAdminClient, createClient } from '@/lib/supabase';
+import {
+  createAdminClient,
+  createClient,
+  resolveScopedClinicIds,
+} from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
 const MAX_CSP_REPORT_BODY_BYTES = 32 * 1024;
@@ -268,12 +272,17 @@ async function saveCSPViolationToDB(input: {
   // clinic_id を認証コンテキストから取得（未認証の場合は null）
   let clinicId: string | null = null;
   try {
-    const { getCurrentUser, getUserPermissions } =
+    const { getCurrentUser, getUserAccessContext } =
       await import('@/lib/supabase');
     const user = await getCurrentUser(supabase);
     if (user) {
-      const permissions = await getUserPermissions(user.id, supabase);
-      clinicId = permissions?.clinic_id ?? null;
+      const accessContext = await getUserAccessContext(user.id, supabase, {
+        user,
+      });
+      clinicId =
+        accessContext.isActive && accessContext.permissions
+          ? (resolveScopedClinicIds(accessContext.permissions)?.[0] ?? null)
+          : null;
     }
   } catch {
     // 未認証のCSPレポートは clinic_id = null で記録

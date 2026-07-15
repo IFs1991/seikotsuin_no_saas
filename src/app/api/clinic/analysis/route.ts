@@ -8,7 +8,11 @@ import {
 } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { createSuccessResponse, createErrorResponse } from '@/lib/api-helpers';
+import {
+  createAuthorityUnavailableResponse,
+  createSuccessResponse,
+  createErrorResponse,
+} from '@/lib/api-helpers';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 import type { AnalysisData } from '@/lib/ai/analysis-client';
 
@@ -126,6 +130,9 @@ export async function GET(request: NextRequest) {
 
     return createSuccessResponse(data);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return createErrorResponse(error.message, error.statusCode);
     }

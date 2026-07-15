@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import {
+  createAuthorityUnavailableResponse,
+  createErrorResponse,
+  createSuccessResponse,
+} from '@/lib/api-helpers';
 import { isAiInsightsEnabled } from '@/lib/feature-flags';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 
@@ -95,6 +99,9 @@ export async function GET(request: NextRequest) {
     const result = await requestAiInsights(input);
     return createSuccessResponse(result);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     console.error('AI insights GET error:', error);
     return createErrorResponse('AIインサイトの取得に失敗しました', 500);
   }

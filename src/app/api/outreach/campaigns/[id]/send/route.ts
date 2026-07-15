@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import {
+  createAuthorityUnavailableResponse,
   createErrorResponse,
   createSuccessResponse,
   logError,
@@ -83,6 +84,9 @@ export async function POST(
 
     return createSuccessResponse(data);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     logError(error, {
       endpoint: PATH,
       method: 'POST',

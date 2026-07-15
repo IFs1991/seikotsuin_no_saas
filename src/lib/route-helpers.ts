@@ -9,6 +9,8 @@ import type { ZodType } from 'zod';
 
 import {
   createErrorResponse,
+  createPublicAppErrorResponse,
+  isAuthorityUnavailableError,
   processApiRequest,
   type ApiErrorResponse,
   type ProcessApiOptions,
@@ -40,6 +42,11 @@ export function handleRouteError(
   error: unknown,
   path: string
 ): NextResponse<ApiErrorResponse> {
+  if (isAuthorityUnavailableError(error)) {
+    logError(error, { path });
+    return createPublicAppErrorResponse(error);
+  }
+
   let apiError;
   let statusCode = 500;
 
@@ -187,12 +194,7 @@ export async function processClinicScopedBody<T>(
     if (error instanceof AppError) {
       return {
         success: false,
-        error: createErrorResponse(
-          error.message,
-          error.statusCode,
-          undefined,
-          error.code
-        ),
+        error: createPublicAppErrorResponse(error),
       };
     }
 

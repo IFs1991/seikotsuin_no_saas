@@ -81,4 +81,34 @@ describe('processApiRequest account status', () => {
       code: ERROR_CODES.ACCOUNT_INACTIVE,
     });
   });
+
+  it('normalizes authority lookup failures without exposing database details', async () => {
+    const sensitiveMessage =
+      'permission query failed: service role credential must stay private';
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(ERROR_CODES.DATABASE_CONNECTION_ERROR, sensitiveMessage, 503)
+    );
+
+    const result = await processApiRequest(
+      new NextRequest('http://localhost/api/protected')
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error(
+        'Expected processApiRequest to reject unavailable authority'
+      );
+    }
+
+    expect(result.error.status).toBe(503);
+    const body: unknown = await result.error.json();
+    expect(body).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(body)).not.toContain(sensitiveMessage);
+    expect(JSON.stringify(body)).not.toContain(
+      ERROR_CODES.DATABASE_CONNECTION_ERROR
+    );
+  });
 });

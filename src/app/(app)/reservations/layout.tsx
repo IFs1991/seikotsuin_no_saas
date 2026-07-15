@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   getUserAccessContext,
 } from '@/lib/supabase';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 
 export default async function ReservationsLayout({
   children,
@@ -18,7 +19,13 @@ export default async function ReservationsLayout({
     redirect('/login');
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase)
+  );
+
+  if (!accessContext.permissions || !accessContext.isActive) {
+    redirect('/unauthorized');
+  }
 
   if (accessContext.normalizedRole === 'admin') {
     redirect('/admin');

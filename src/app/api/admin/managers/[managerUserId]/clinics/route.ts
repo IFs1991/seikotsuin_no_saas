@@ -9,10 +9,11 @@ import {
 import { AuditLogger } from '@/lib/audit-logger';
 import {
   type ManagerClinicAssignment,
+  resolveManagerAssignedClinicIds,
   resolveManagerAssignedClinics,
 } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient, resolveScopedClinicIds } from '@/lib/supabase';
 
 const ADMIN_MANAGER_API_ROLES = ['admin'] as const;
 const ENDPOINT = '/api/admin/managers/[managerUserId]/clinics';
@@ -39,6 +40,7 @@ type DatabaseErrorLike = {
   message?: string;
 };
 type ManagerPrimaryClinic = {
+  found: boolean;
   primary_clinic_id: string | null;
   primary_clinic_name: string | null;
 };
@@ -55,6 +57,21 @@ type ReplaceManagerAssignmentsRpcParams = {
   p_revoke_reason: string | null;
   p_primary_clinic_id?: string | null;
 };
+
+type ManagerAuthoritySnapshot = {
+  assigned_clinic_ids: string[];
+  primary: ManagerPrimaryClinic;
+};
+
+class ManagerAuthorityLookupError extends Error {
+  readonly originalError: unknown;
+
+  constructor(originalError: unknown) {
+    super('マネージャー権限情報の取得に失敗しました');
+    this.name = 'ManagerAuthorityLookupError';
+    this.originalError = originalError;
+  }
+}
 
 function readDatabaseError(error: unknown): DatabaseErrorLike {
   if (!error || typeof error !== 'object') {
@@ -147,6 +164,7 @@ function readClinicNameFromUnknown(clinics: unknown): string | null {
 function readPrimaryClinicFromRow(row: unknown): ManagerPrimaryClinic {
   if (!row || typeof row !== 'object') {
     return {
+      found: false,
       primary_clinic_id: null,
       primary_clinic_name: null,
     };
@@ -159,9 +177,58 @@ function readPrimaryClinicFromRow(row: unknown): ManagerPrimaryClinic {
   const clinics = 'clinics' in row ? row.clinics : null;
 
   return {
+    found: true,
     primary_clinic_id: clinicId,
     primary_clinic_name: clinicId ? readClinicNameFromUnknown(clinics) : null,
   };
+}
+
+async function fetchManagerAuthoritySnapshot(
+  adminClient: ReturnType<typeof createAdminClient>,
+  managerUserId: string
+): Promise<ManagerAuthoritySnapshot> {
+  try {
+    const [primary, assignedClinicIds] = await Promise.all([
+      fetchManagerPrimaryClinic(adminClient, managerUserId),
+      resolveManagerAssignedClinicIds(adminClient, managerUserId),
+    ]);
+
+    return {
+      assigned_clinic_ids: assignedClinicIds,
+      primary,
+    };
+  } catch (error) {
+    throw new ManagerAuthorityLookupError(error);
+  }
+}
+
+function isManagerAuthorityWithinActorScope(
+  snapshot: ManagerAuthoritySnapshot,
+  actorClinicIds: ReadonlySet<string>
+): boolean {
+  const primaryClinicId = snapshot.primary.primary_clinic_id;
+  if (!primaryClinicId && snapshot.assigned_clinic_ids.length === 0) {
+    return false;
+  }
+
+  if (primaryClinicId && !actorClinicIds.has(primaryClinicId)) {
+    return false;
+  }
+
+  return snapshot.assigned_clinic_ids.every(clinicId =>
+    actorClinicIds.has(clinicId)
+  );
+}
+
+async function fetchManagerAssignments(
+  adminClient: ReturnType<typeof createAdminClient>,
+  managerUserId: string
+): Promise<ManagerClinicAssignment[]> {
+  try {
+    return await resolveManagerAssignedClinics(adminClient, managerUserId);
+  } catch (error) {
+    throw new ManagerAuthorityLookupError(error);
+  }
 }
 
 async function fetchManagerPrimaryClinic(
@@ -199,6 +266,7 @@ function resolvePrimaryClinicFromAssignments(
 ): ManagerPrimaryClinic {
   if (!primaryClinicId) {
     return {
+      found: true,
       primary_clinic_id: null,
       primary_clinic_name: null,
     };
@@ -209,6 +277,7 @@ function resolvePrimaryClinicFromAssignments(
   );
 
   return {
+    found: true,
     primary_clinic_id: primaryClinicId,
     primary_clinic_name: assignment?.clinic_name ?? null,
   };
@@ -231,22 +300,69 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
+    const actorClinicIds = Array.from(
+      new Set(resolveScopedClinicIds(permissions) ?? [])
+    );
+    if (actorClinicIds.length === 0) {
+      return createErrorResponse('クリニックスコープが設定されていません', 403);
+    }
+
     const parsedManagerUserId = ManagerUserIdSchema.safeParse(managerUserId);
     if (!parsedManagerUserId.success) {
       return createErrorResponse('managerUserIdの形式が不正です', 400);
     }
 
     const adminClient = createAdminClient();
-    const assignments = await resolveManagerAssignedClinics(
+    const authoritySnapshot = await fetchManagerAuthoritySnapshot(
       adminClient,
       parsedManagerUserId.data
     );
+    if (!authoritySnapshot.primary.found) {
+      return createErrorResponse(
+        '対象ユーザーはmanagerロールではありません',
+        400
+      );
+    }
+    const actorClinicIdSet = new Set(actorClinicIds);
+    if (
+      !isManagerAuthorityWithinActorScope(authoritySnapshot, actorClinicIdSet)
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
+    const assignments = await fetchManagerAssignments(
+      adminClient,
+      parsedManagerUserId.data
+    );
+    if (
+      assignments.some(
+        assignment => !actorClinicIdSet.has(assignment.clinic_id)
+      )
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
 
     return createSuccessResponse({
       assignments,
       total: assignments.length,
     });
   } catch (error) {
+    if (error instanceof ManagerAuthorityLookupError) {
+      logError(error.originalError, {
+        endpoint: ENDPOINT,
+        method: 'GET',
+        userId: 'unknown',
+        params: { managerUserId },
+      });
+      return createErrorResponse(error.message, 503);
+    }
+
     logError(error, {
       endpoint: ENDPOINT,
       method: 'GET',
@@ -273,6 +389,13 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const { auth, body, permissions } = processResult;
     if (normalizeRole(permissions.role) !== 'admin') {
       return createErrorResponse('管理者権限が必要です', 403);
+    }
+
+    const actorClinicIds = Array.from(
+      new Set(resolveScopedClinicIds(permissions) ?? [])
+    );
+    if (actorClinicIds.length === 0) {
+      return createErrorResponse('クリニックスコープが設定されていません', 403);
     }
 
     const parsedManagerUserId = ManagerUserIdSchema.safeParse(managerUserId);
@@ -302,8 +425,40 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       );
     }
 
+    const actorClinicIdSet = new Set(actorClinicIds);
+    if (
+      clinicIds.some(clinicId => !actorClinicIdSet.has(clinicId)) ||
+      (requestedPrimaryClinicId !== undefined &&
+        requestedPrimaryClinicId !== null &&
+        !actorClinicIdSet.has(requestedPrimaryClinicId))
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
     const revokeReason = parsedBody.data.revoke_reason ?? null;
     const adminClient = createAdminClient();
+    const authoritySnapshot = await fetchManagerAuthoritySnapshot(
+      adminClient,
+      parsedManagerUserId.data
+    );
+    if (!authoritySnapshot.primary.found) {
+      return createErrorResponse(
+        '対象ユーザーはmanagerロールではありません',
+        400
+      );
+    }
+    if (
+      !isManagerAuthorityWithinActorScope(authoritySnapshot, actorClinicIdSet)
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
     const rpcParams: ReplaceManagerAssignmentsRpcParams = {
       p_actor_user_id: auth.id,
       p_clinic_ids: clinicIds,
@@ -331,17 +486,31 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       return createErrorResponse(mappedError.message, mappedError.status);
     }
 
-    const assignments = await resolveManagerAssignedClinics(
+    const assignments = await fetchManagerAssignments(
       adminClient,
       parsedManagerUserId.data
     );
-    const responsePrimaryClinic =
+    if (
+      assignments.some(
+        assignment => !actorClinicIdSet.has(assignment.clinic_id)
+      )
+    ) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+    const effectivePrimaryClinicId =
       requestedPrimaryClinicId === undefined
-        ? await fetchManagerPrimaryClinic(adminClient, parsedManagerUserId.data)
-        : resolvePrimaryClinicFromAssignments(
-            assignments,
-            requestedPrimaryClinicId
-          );
+        ? authoritySnapshot.primary.primary_clinic_id &&
+          clinicIds.includes(authoritySnapshot.primary.primary_clinic_id)
+          ? authoritySnapshot.primary.primary_clinic_id
+          : null
+        : requestedPrimaryClinicId;
+    const responsePrimaryClinic = resolvePrimaryClinicFromAssignments(
+      assignments,
+      effectivePrimaryClinicId
+    );
     const responseAssignments = assignments.map(toAssignedClinicResponse);
 
     void AuditLogger.logAdminAction(
@@ -365,6 +534,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       total: assignments.length,
     });
   } catch (error) {
+    if (error instanceof ManagerAuthorityLookupError) {
+      logError(error.originalError, {
+        endpoint: ENDPOINT,
+        method: 'PUT',
+        userId: 'unknown',
+        params: { managerUserId },
+      });
+      return createErrorResponse(error.message, 503);
+    }
+
     logError(error, {
       endpoint: ENDPOINT,
       method: 'PUT',

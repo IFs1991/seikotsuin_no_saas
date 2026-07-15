@@ -269,7 +269,7 @@
       "method": "PUT",
       "source": {
         "path": "src/app/api/admin/managers/[managerUserId]/clinics/route.ts",
-        "line": 260,
+        "line": 376,
         "exportKind": "function"
       },
       "executionPath": {
@@ -281,7 +281,9 @@
           "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
@@ -307,7 +309,6 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing"
       ]
     },
@@ -811,7 +812,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/security/events/route.ts",
-        "line": 308,
+        "line": 312,
         "exportKind": "function"
       },
       "executionPath": {
@@ -864,7 +865,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/admin/security/events/route.ts",
-        "line": 170,
+        "line": 171,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1010,7 +1011,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/staff/invites/route.ts",
-        "line": 64,
+        "line": 65,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1022,7 +1023,9 @@
           "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
@@ -1051,7 +1054,6 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing"
       ]
     },
@@ -1155,7 +1157,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/tenants/route.ts",
-        "line": 884,
+        "line": 877,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1376,7 +1378,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/admin/users/accounts/route.ts",
-        "line": 137,
+        "line": 143,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1427,7 +1429,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/admin/users/accounts/route.ts",
-        "line": 347,
+        "line": 372,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1475,7 +1477,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/ai-comments/route.ts",
-        "line": 76,
+        "line": 80,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1524,7 +1526,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/beta/backlog/route.ts",
-        "line": 137,
+        "line": 206,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1533,16 +1535,20 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
         ],
         "serviceRole": [],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1558,9 +1564,7 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
-        "billing",
-        "origin"
+        "billing"
       ]
     },
     {
@@ -1569,7 +1573,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/beta/backlog/route.ts",
-        "line": 235,
+        "line": 307,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1578,16 +1582,20 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
         ],
         "serviceRole": [],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1603,9 +1611,7 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
-        "billing",
-        "origin"
+        "billing"
       ]
     },
     {
@@ -1614,7 +1620,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/beta/backlog/route.ts",
-        "line": 353,
+        "line": 452,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1623,14 +1629,18 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [],
         "serviceRole": [],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1646,10 +1656,8 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing",
-        "validation",
-        "origin"
+        "validation"
       ]
     },
     {
@@ -1658,7 +1666,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/beta/feedback/route.ts",
-        "line": 133,
+        "line": 145,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1667,16 +1675,20 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
         ],
         "serviceRole": [],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1692,9 +1704,7 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
-        "billing",
-        "origin"
+        "billing"
       ]
     },
     {
@@ -1703,7 +1713,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/beta/feedback/route.ts",
-        "line": 241,
+        "line": 243,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1712,7 +1722,7 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
         "clinicScope": [],
@@ -1721,7 +1731,9 @@
           "safeParse"
         ],
         "serviceRole": [],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1730,7 +1742,9 @@
         "sideEffectCall": []
       },
       "hints": {
-        "clinicScope": [],
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
         "validation": [],
         "idempotency": []
       },
@@ -1738,8 +1752,7 @@
       "unknowns": [
         "classification",
         "clinicScope",
-        "billing",
-        "origin"
+        "billing"
       ]
     },
     {
@@ -1748,7 +1761,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/beta/metrics/route.ts",
-        "line": 120,
+        "line": 140,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1757,16 +1770,20 @@
       },
       "observed": {
         "auth": [
-          "supabase.auth.getUser"
+          "processApiRequest"
         ],
         "internalSecret": [],
         "clinicScope": [],
         "billing": [],
-        "validation": [],
+        "validation": [
+          "safeParse"
+        ],
         "serviceRole": [
           "createAdminClient"
         ],
-        "origin": [],
+        "origin": [
+          "processApiRequest"
+        ],
         "rateLimit": [],
         "idempotency": [],
         "writes": [
@@ -1785,9 +1802,7 @@
       "unknowns": [
         "classification",
         "clinicScope",
-        "billing",
-        "validation",
-        "origin"
+        "billing"
       ]
     },
     {
@@ -1796,7 +1811,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/blocks/route.ts",
-        "line": 127,
+        "line": 115,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1808,7 +1823,9 @@
           "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [],
         "serviceRole": [],
@@ -1830,7 +1847,6 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing",
         "validation"
       ]
@@ -1841,7 +1857,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/blocks/route.ts",
-        "line": 206,
+        "line": 194,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1853,7 +1869,9 @@
           "processApiRequest"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [],
         "serviceRole": [],
@@ -1875,7 +1893,6 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing",
         "validation"
       ]
@@ -1886,7 +1903,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/calendar/feed-tokens/route.ts",
-        "line": 165,
+        "line": 188,
         "exportKind": "function"
       },
       "executionPath": {
@@ -1934,7 +1951,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/calendar/feed-tokens/route.ts",
-        "line": 277,
+        "line": 337,
         "exportKind": "function"
       },
       "executionPath": {
@@ -2143,7 +2160,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/chat/route.ts",
-        "line": 63,
+        "line": 67,
         "exportKind": "function"
       },
       "executionPath": {
@@ -2402,7 +2419,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 94,
+        "line": 99,
         "exportKind": "function"
       },
       "executionPath": {
@@ -2448,7 +2465,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/daily-reports/route.ts",
-        "line": 158,
+        "line": 166,
         "exportKind": "function"
       },
       "executionPath": {
@@ -2461,7 +2478,8 @@
         ],
         "internalSecret": [],
         "clinicScope": [
-          "ensureClinicAccess"
+          "ensureClinicAccess",
+          "resolveScopedClinicIds"
         ],
         "billing": [
           "business write helper"
@@ -3146,7 +3164,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/manager/rosters/assign/route.ts",
-        "line": 326,
+        "line": 327,
         "exportKind": "function"
       },
       "executionPath": {
@@ -3988,7 +4006,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/mobile-uiux/daily-reports/route.ts",
-        "line": 231,
+        "line": 251,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4332,7 +4350,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/onboarding/seed/route.ts",
-        "line": 15,
+        "line": 23,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4341,10 +4359,13 @@
       },
       "observed": {
         "auth": [
-          "getCurrentUser"
+          "getCurrentUser",
+          "getUserAccessContext"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "safeParse"
@@ -4357,22 +4378,20 @@
         "idempotency": [],
         "writes": [
           "insert",
-          "update",
-          "upsert"
+          "update"
         ],
         "sideEffectCall": []
       },
       "hints": {
-        "clinicScope": [],
+        "clinicScope": [
+          "clinic_id query predicate"
+        ],
         "validation": [],
-        "idempotency": [
-          "upsert call"
-        ]
+        "idempotency": []
       },
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing",
         "origin"
       ]
@@ -4383,7 +4402,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/outreach/campaigns/route.ts",
-        "line": 70,
+        "line": 74,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4432,7 +4451,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/outreach/campaigns/[id]/send/route.ts",
-        "line": 26,
+        "line": 27,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4481,7 +4500,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/patients/route.ts",
-        "line": 108,
+        "line": 115,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4522,7 +4541,7 @@
       "method": "PATCH",
       "source": {
         "path": "src/app/api/patients/route.ts",
-        "line": 126,
+        "line": 133,
         "exportKind": "function"
       },
       "executionPath": {
@@ -4563,7 +4582,7 @@
       "method": "DELETE",
       "source": {
         "path": "src/app/api/patients/route.ts",
-        "line": 144,
+        "line": 151,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5035,7 +5054,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/revenue/route.ts",
-        "line": 574,
+        "line": 578,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5134,7 +5153,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/security/csp-report/route.ts",
-        "line": 76,
+        "line": 80,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5143,10 +5162,13 @@
       },
       "observed": {
         "auth": [
-          "getCurrentUser"
+          "getCurrentUser",
+          "getUserAccessContext"
         ],
         "internalSecret": [],
-        "clinicScope": [],
+        "clinicScope": [
+          "resolveScopedClinicIds"
+        ],
         "billing": [],
         "validation": [
           "validation helper"
@@ -5174,7 +5196,6 @@
       "classification": "UNKNOWN",
       "unknowns": [
         "classification",
-        "clinicScope",
         "billing",
         "origin"
       ]
@@ -5185,7 +5206,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/staff/route.ts",
-        "line": 394,
+        "line": 391,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5235,7 +5256,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/staff/preferences/route.ts",
-        "line": 163,
+        "line": 170,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5528,7 +5549,7 @@
       "method": "POST",
       "source": {
         "path": "src/app/api/staff/shifts/route.ts",
-        "line": 453,
+        "line": 450,
         "exportKind": "function"
       },
       "executionPath": {
@@ -5720,7 +5741,7 @@
       "method": "GET",
       "source": {
         "path": "src/app/api/ai-comments/route.ts",
-        "line": 8,
+        "line": 9,
         "exportKind": "function"
       },
       "executionPath": {

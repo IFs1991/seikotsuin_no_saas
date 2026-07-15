@@ -4,6 +4,7 @@ import path from 'node:path';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { createErrorResponse } from '@/lib/api-helpers';
+import { AppError } from '@/lib/error-handler';
 import {
   ADMIN_USER_ROLE_VALUES,
   normalizeRole,
@@ -48,6 +49,7 @@ import {
 
 const ASSET_ROOT = path.join(process.cwd(), 'private-assets', 'mobile-uiux');
 const HTML_CONTENT_TYPE = 'text/html; charset=utf-8';
+type MobileUiuxScreenErrorStatus = 401 | 403 | 404 | 500 | 503;
 
 const REACT_RUNTIME_MODULES = [
   {
@@ -227,7 +229,7 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function getErrorTitle(status: 401 | 403 | 404): string {
+function getErrorTitle(status: MobileUiuxScreenErrorStatus): string {
   switch (status) {
     case 401:
       return 'ログインが必要です';
@@ -235,11 +237,15 @@ function getErrorTitle(status: 401 | 403 | 404): string {
       return 'アクセス権限がありません';
     case 404:
       return 'ページを表示できません';
+    case 500:
+      return '画面を表示できません';
+    case 503:
+      return 'ただいま利用できません';
   }
 }
 
 function buildMobileUiuxHtmlErrorPage(input: {
-  status: 401 | 403 | 404;
+  status: MobileUiuxScreenErrorStatus;
   message: string;
 }): string {
   const title = getErrorTitle(input.status);
@@ -299,7 +305,7 @@ function buildMobileUiuxHtmlErrorPage(input: {
 }
 
 function createScreenErrorResponse(input: {
-  status: 401 | 403 | 404;
+  status: MobileUiuxScreenErrorStatus;
   message: string;
   contentType: string;
 }) {
@@ -509,7 +515,32 @@ export async function handleMobileUiuxScreenRequest(
     });
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase, { user });
+  let accessContext: Awaited<ReturnType<typeof getUserAccessContext>>;
+  try {
+    accessContext = await getUserAccessContext(user.id, supabase, { user });
+  } catch (error) {
+    const status =
+      error instanceof AppError && error.statusCode === 503 ? 503 : 500;
+    return createScreenErrorResponse({
+      message:
+        status === 503
+          ? '認証情報を確認できません。時間をおいて再度お試しください'
+          : 'モバイル画面の認証処理に失敗しました',
+      status,
+      contentType: definition.contentType,
+    });
+  }
+
+  if (!accessContext.isActive || !accessContext.permissions) {
+    return createScreenErrorResponse({
+      message: !accessContext.isActive
+        ? 'アカウントが無効化されています'
+        : 'このモバイル UI/UX へのアクセス権限がありません',
+      status: 403,
+      contentType: definition.contentType,
+    });
+  }
+
   const normalizedRole = normalizeRole(accessContext.permissions?.role);
   const scopedClinicCount = accessContext.permissions
     ? (resolveScopedClinicIds(accessContext.permissions)?.length ?? 0)

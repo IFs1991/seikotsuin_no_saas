@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import {
+  createAuthorityUnavailableResponse,
+  createErrorResponse,
+  createSuccessResponse,
+} from '@/lib/api-helpers';
 import type { Database } from '@/types/supabase';
 import {
   AppError,
@@ -10,12 +14,7 @@ import {
   logError,
 } from '@/lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
-import {
-  STAFF_ROLES,
-  canAccessCrossClinicWithCompat,
-  isAreaManagerRole,
-  type Role,
-} from '@/lib/constants/roles';
+import { STAFF_ROLES, type Role } from '@/lib/constants/roles';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shifts';
@@ -117,17 +116,12 @@ function normalizeResource(
 }
 
 function resolveShiftDataClinicId(
-  permissions: { role: string; clinic_id: string | null },
+  _permissions: { role: string; clinic_id: string | null },
   requestedClinicId: string
 ) {
-  if (
-    canAccessCrossClinicWithCompat(permissions.role) ||
-    isAreaManagerRole(permissions.role)
-  ) {
-    return requestedClinicId;
-  }
-
-  return permissions.clinic_id;
+  // ensureClinicAccess has already proven the requested clinic against the
+  // canonical DB/JWT intersection for every role.
+  return requestedClinicId;
 }
 
 // クエリパラメータのスキーマ
@@ -341,7 +335,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    // DOD-09: テナント境界の明示 - Manager は検証済み requested clinic、その他は permissions.clinic_id に限定
+    // DOD-09: ensureClinicAccessで検証済みのrequested clinicに限定
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
     const clinic_id = resolveShiftDataClinicId(permissions, queryClinicId);
 
@@ -419,6 +413,9 @@ export async function GET(request: NextRequest) {
       total: formattedShifts.length,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError;
     let statusCode = 500;
 
@@ -565,6 +562,9 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(data, 201);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError;
     let statusCode = 500;
 
@@ -648,6 +648,9 @@ export async function PATCH(request: NextRequest) {
 
     return createSuccessResponse(data);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError;
     let statusCode = 500;
 

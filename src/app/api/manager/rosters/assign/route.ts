@@ -6,8 +6,9 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import type {
@@ -356,9 +357,10 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
     const adminClient = createAdminClient();
-    const assignments = await resolveManagerAssignedClinics(
+    const assignments = await resolveManagerAssignedClinicsWithinScope(
       adminClient,
-      authResult.auth.id
+      authResult.auth.id,
+      authResult.permissions.clinic_scope_ids ?? []
     );
     const clinic = assignments.find(
       assignment => assignment.clinic_id === dto.clinic_id
@@ -500,6 +502,16 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       userId: 'unknown',
     });
+    if (
+      error instanceof AppError &&
+      error.code === ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE &&
+      error.statusCode === 503
+    ) {
+      return createErrorResponse(
+        '認証情報を確認できません。時間をおいて再度お試しください',
+        503
+      );
+    }
     return createErrorResponse('ロスター配置の作成に失敗しました', 500);
   }
 }

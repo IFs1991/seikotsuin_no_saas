@@ -26,19 +26,31 @@ const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 
 function createQueryMock(result: unknown[]) {
+  let rows = [...result];
   const query = {
     select: jest.fn(),
+    eq: jest.fn(),
     in: jest.fn(),
     or: jest.fn(),
     order: jest.fn(),
-    returns: jest.fn().mockResolvedValue({
-      data: result,
-      error: null,
-    }),
+    returns: jest.fn(() => Promise.resolve({ data: rows, error: null })),
   };
 
   query.select.mockReturnValue(query);
-  query.in.mockReturnValue(query);
+  query.eq.mockReturnValue(query);
+  query.in.mockImplementation((column: string, values: readonly string[]) => {
+    if (column === 'id') {
+      rows = rows.filter(
+        row =>
+          typeof row === 'object' &&
+          row !== null &&
+          'id' in row &&
+          typeof row.id === 'string' &&
+          values.includes(row.id)
+      );
+    }
+    return query;
+  });
   query.or.mockReturnValue(query);
   query.order.mockReturnValue(query);
 
@@ -50,7 +62,7 @@ describe('GET /api/admin/dashboard', () => {
     jest.clearAllMocks();
   });
 
-  it('scopes HQ admin dashboard metrics to child tenant clinics only', async () => {
+  it('does not re-expand a canonical root-only JWT subset to child clinics', async () => {
     const clinicsQuery = createQueryMock([
       {
         id: 'parent-1',
@@ -111,20 +123,11 @@ describe('GET /api/admin/dashboard', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.or).toHaveBeenCalledWith(
-      'id.in.(parent-1),parent_id.in.(parent-1)'
-    );
-    expect(reportsQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
-    expect(staffQuery.in).toHaveBeenCalledWith('clinic_id', ['child-1']);
-    expect(body.data.clinicsData).toEqual([
-      {
-        id: 'child-1',
-        name: '梅田院',
-        totalRevenue: 100000,
-        totalPatientCount: 10,
-        averagePerformanceScore: 4.5,
-      },
-    ]);
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', ['parent-1']);
+    expect(clinicsQuery.or).not.toHaveBeenCalled();
+    expect(reportsQuery.in).not.toHaveBeenCalled();
+    expect(staffQuery.in).not.toHaveBeenCalled();
+    expect(body.data.clinicsData).toEqual([]);
   });
 
   it('scopes manager dashboard metrics to the resolved area clinic IDs only', async () => {
@@ -203,9 +206,8 @@ describe('GET /api/admin/dashboard', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.or).toHaveBeenCalledWith(
-      'id.in.(child-1,child-2),parent_id.in.(child-1,child-2)'
-    );
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', ['child-1', 'child-2']);
+    expect(clinicsQuery.or).not.toHaveBeenCalled();
     expect(reportsQuery.in).toHaveBeenCalledWith('clinic_id', [
       'child-1',
       'child-2',
@@ -214,10 +216,9 @@ describe('GET /api/admin/dashboard', () => {
       'child-1',
       'child-2',
     ]);
-    expect(body.data.clinicsData.map((clinic: { id: string }) => clinic.id)).toEqual([
-      'child-1',
-      'child-2',
-    ]);
+    expect(
+      body.data.clinicsData.map((clinic: { id: string }) => clinic.id)
+    ).toEqual(['child-1', 'child-2']);
   });
 
   it('fails closed when manager dashboard scope is not configured', async () => {
@@ -242,5 +243,50 @@ describe('GET /api/admin/dashboard', () => {
 
     expect(response.status).toBe(403);
     expect(body.success).toBe(false);
+  });
+
+  it('uses a valid JWT subset instead of the DB primary for clinic admin defaults', async () => {
+    const clinicsQuery = createQueryMock([
+      {
+        id: 'child-subset',
+        name: 'JWT subset院',
+        parent_id: 'parent-1',
+        is_active: true,
+      },
+    ]);
+    const reportsQuery = createQueryMock([]);
+    const staffQuery = createQueryMock([]);
+    const userClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'clinics') return clinicsQuery;
+        if (table === 'daily_reports') return reportsQuery;
+        if (table === 'staff_performance') return staffQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'clinic-admin-1',
+        email: 'admin@example.com',
+        role: 'clinic_admin',
+      },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'child-primary',
+        clinic_scope_ids: ['child-subset'],
+      },
+      supabase: userClient,
+    });
+
+    const { GET } = await import('@/app/api/admin/dashboard/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/admin/dashboard')
+    );
+
+    expect(response.status).toBe(200);
+    expect(clinicsQuery.eq).toHaveBeenCalledWith('id', 'child-subset');
+    expect(clinicsQuery.eq).not.toHaveBeenCalledWith('id', 'child-primary');
   });
 });

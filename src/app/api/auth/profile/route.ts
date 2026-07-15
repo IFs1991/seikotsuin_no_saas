@@ -5,6 +5,12 @@ import {
   buildProfileResponse,
   fetchClinicName,
 } from '@/lib/auth/profile-read-model';
+import { AppError } from '@/lib/error-handler';
+
+const ACCOUNT_INACTIVE_MESSAGE =
+  'アカウントが無効化されています。管理者にお問い合わせください';
+const AUTHORITY_UNAVAILABLE_MESSAGE =
+  '認証情報を確認できません。時間をおいて再度お試しください';
 
 export async function GET() {
   try {
@@ -26,6 +32,15 @@ export async function GET() {
       user,
     });
     logPerf('auth.profile.getUserAccessContext', tAccess);
+
+    if (!accessContext.isActive) {
+      return createErrorResponse(ACCOUNT_INACTIVE_MESSAGE, 403);
+    }
+
+    if (!accessContext.permissions) {
+      return createErrorResponse('アクセス権限がありません', 403);
+    }
+
     const clinicId = accessContext.clinicId;
     const tClinic = nowMs();
     const clinicName = await fetchClinicName(clinicId);
@@ -40,6 +55,10 @@ export async function GET() {
     logPerf('auth.profile.total', tTotal);
     return createSuccessResponse(response);
   } catch (error) {
+    if (error instanceof AppError && error.statusCode === 503) {
+      return createErrorResponse(AUTHORITY_UNAVAILABLE_MESSAGE, 503);
+    }
+
     console.error('Failed to fetch profile', error);
     return createErrorResponse('プロフィール情報の取得に失敗しました', 500);
   }

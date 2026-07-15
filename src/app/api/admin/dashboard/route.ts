@@ -13,12 +13,14 @@ import {
   type StaffPerformanceAggregateRow,
 } from '@/lib/admin/dashboard';
 import { isAreaManagerRole, type AdminUserRole } from '@/lib/constants/roles';
-import type { SupabaseServerClient } from '@/lib/supabase';
+import {
+  resolveScopedClinicIds,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
 import {
   createScopedAdminContext,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
-import { buildClinicScopeOrFilter } from '@/lib/clinics/scope';
 
 type ClinicRow = ClinicDashboardRow & {
   is_active?: boolean | null;
@@ -81,7 +83,7 @@ async function fetchScopedChildClinicRows(
   const { data, error } = await supabase
     .from('clinics')
     .select(DASHBOARD_CLINIC_SELECT)
-    .or(buildClinicScopeOrFilter(scopedClinicIds))
+    .in('id', scopedClinicIds)
     .order('name')
     .returns<ClinicRow[]>();
 
@@ -170,10 +172,14 @@ export async function GET(request: NextRequest) {
         }
         throw error;
       }
-    } else if (permissions.clinic_id) {
+    } else {
+      const defaultClinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
+      if (!defaultClinicId) {
+        return createSuccessResponse(createEmptyAdminDashboardPayload());
+      }
       const rows = await fetchSingleClinicRow(
         supabase,
-        permissions.clinic_id,
+        defaultClinicId,
         auth.id
       );
       if (rows instanceof Response) {

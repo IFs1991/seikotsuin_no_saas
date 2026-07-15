@@ -20,7 +20,7 @@ import {
   STAFF_INVITE_ROLE_VALUES,
 } from '@/lib/constants/roles';
 import { assertEnv } from '@/lib/env';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient, resolveScopedClinicIds } from '@/lib/supabase';
 import { getSafeAuthErrorLogData } from '@/lib/auth/safe-auth-logging';
 import {
   createStaffInviteToken,
@@ -46,6 +46,7 @@ const isE2EInviteSkipMode =
 // ================================================================
 
 const StaffInviteRequestSchema = z.object({
+  clinic_id: z.string().uuid('クリニックIDの形式が不正です'),
   email: z
     .string()
     .trim()
@@ -86,12 +87,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, role, full_name } = parsed.data;
+    const { clinic_id: clinicId, email, role, full_name } = parsed.data;
 
-    // clinic_id取得（permissions.clinic_idから）
-    const clinicId = permissions.clinic_id;
-    if (!clinicId) {
-      return createErrorResponse('クリニック情報が見つかりません', 400);
+    // A multi-clinic canonical scope has no safe implicit write target. The
+    // caller must name the clinic and it must be in the DB/JWT intersection.
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+    if (!scopedClinicIds?.includes(clinicId)) {
+      return createErrorResponse(
+        'このクリニックへのアクセス権がありません',
+        403
+      );
     }
 
     // 重複チェック（既に招待済みまたは登録済み）

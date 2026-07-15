@@ -16,12 +16,16 @@ import {
   fetchDashboardReadModel,
 } from '@/lib/dashboard/read-model';
 import { createAdminClient } from '@/lib/supabase';
+import {
+  createAuthorityUnavailableResponse,
+  type ApiErrorResponse,
+} from '@/lib/api-helpers';
 
 const DASHBOARD_ALLOWED_ROLES = ADMIN_USER_ROLE_VALUES;
 
 export async function GET(
   request: NextRequest
-): Promise<NextResponse<ApiResponse<DashboardData>>> {
+): Promise<NextResponse<ApiResponse<DashboardData> | ApiErrorResponse>> {
   const path = '/api/dashboard';
 
   try {
@@ -73,6 +77,9 @@ export async function GET(
 
     return NextResponse.json(response);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError: ApiError;
     let statusCode = 500;
 

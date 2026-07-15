@@ -335,7 +335,10 @@ export async function PATCH(
           userId: auth.id,
           params: { permission_id, stage: 'manager_assignment_guard' },
         });
-        return createErrorResponse('担当店舗情報の確認に失敗しました', 500);
+        return createErrorResponse(
+          '認証情報を確認できません。時間をおいて再度お試しください',
+          503
+        );
       }
     }
 

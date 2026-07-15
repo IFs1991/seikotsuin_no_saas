@@ -1,4 +1,6 @@
 import { normalizeRole } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { logger } from '@/lib/logger';
 import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 
 export type ManagerClinicAssignment = {
@@ -138,9 +140,46 @@ export async function resolveManagerAssignedClinics(
   return assignments;
 }
 
+/**
+ * Resolve an actor's active assignments without exceeding the canonical
+ * clinic scope already produced by getUserPermissions.
+ */
+export async function resolveManagerAssignedClinicsWithinScope(
+  adminClient: Pick<SupabaseServerClient, 'from'>,
+  managerUserId: string,
+  canonicalClinicIds: readonly string[]
+): Promise<ManagerClinicAssignment[]> {
+  if (canonicalClinicIds.length === 0) {
+    return [];
+  }
+
+  let assignments: ManagerClinicAssignment[];
+
+  try {
+    assignments = await resolveManagerAssignedClinics(
+      adminClient,
+      managerUserId
+    );
+  } catch (error) {
+    logger.error('Manager assignment authority lookup failed', error, {
+      userId: managerUserId,
+      operation: 'resolveManagerAssignedClinicsWithinScope',
+    });
+
+    throw new AppError(
+      ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+      undefined,
+      503
+    );
+  }
+  const canonicalClinicIdSet = new Set(canonicalClinicIds);
+
+  return assignments.filter(assignment =>
+    canonicalClinicIdSet.has(assignment.clinic_id)
+  );
+}
+
 export async function resolveEffectiveClinicScope({
-  adminClient,
-  userId,
   permissions,
 }: {
   adminClient: Pick<SupabaseServerClient, 'from'>;
@@ -150,18 +189,15 @@ export async function resolveEffectiveClinicScope({
   const role = normalizeRole(permissions.role);
 
   if (role === 'manager') {
-    const assignedClinicIds = await resolveManagerAssignedClinicIds(
-      adminClient,
-      userId
-    );
-
     return {
       source: 'manager_assignments',
-      clinicIds: assignedClinicIds,
+      clinicIds: Array.isArray(permissions.clinic_scope_ids)
+        ? permissions.clinic_scope_ids
+        : [],
     };
   }
 
-  if (permissions.clinic_scope_ids?.length) {
+  if (Array.isArray(permissions.clinic_scope_ids)) {
     return {
       source: 'clinic_scope_ids',
       clinicIds: permissions.clinic_scope_ids,

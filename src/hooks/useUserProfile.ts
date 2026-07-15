@@ -5,7 +5,6 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import { useOptionalUserProfileContext } from '@/providers/user-profile-context';
 import type { UserProfile } from '@/types/user-profile';
-import { CLINIC_ADMIN_ROLES, type Role } from '@/lib/constants/roles';
 import { logger } from '@/lib/logger';
 
 interface ProfileState {
@@ -14,36 +13,16 @@ interface ProfileState {
   error: string | null;
 }
 
-// Q4決定: isAdmin に manager を含める（統一）
-// @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-// CLINIC_ADMIN_ROLES = admin, clinic_admin, manager
-const ADMIN_ROLES = CLINIC_ADMIN_ROLES;
 const PROFILE_FETCH_TIMEOUT_MS = 8000;
 const SESSION_FETCH_TIMEOUT_MS = 2000;
 
 export const resolveTrustedRole = (
-  user: Pick<User, 'app_metadata'>
-): string | null => {
-  const appMeta = user.app_metadata as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  const roleCandidate = appMeta?.user_role ?? appMeta?.role ?? null;
-
-  return typeof roleCandidate === 'string' ? roleCandidate : null;
-};
+  _user: Pick<User, 'app_metadata'>
+): string | null => null;
 
 export const resolveTrustedClinicId = (
-  user: Pick<User, 'app_metadata'>
-): string | null => {
-  const appMeta = user.app_metadata as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  const clinicCandidate = appMeta?.clinic_id ?? null;
-
-  return typeof clinicCandidate === 'string' ? clinicCandidate : null;
-};
+  _user: Pick<User, 'app_metadata'>
+): string | null => null;
 
 const buildProfileFromUser = (user: User): UserProfile => {
   const role = resolveTrustedRole(user);
@@ -55,8 +34,8 @@ const buildProfileFromUser = (user: User): UserProfile => {
     role,
     clinicId,
     clinicName: null,
-    isActive: true,
-    isAdmin: role ? ADMIN_ROLES.has(role as Role) : false,
+    isActive: false,
+    isAdmin: false,
   };
 };
 

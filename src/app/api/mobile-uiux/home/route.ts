@@ -44,6 +44,10 @@ import {
 } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { getJstDateUtcRange, toJstDateKey } from '@/lib/manager-dashboard';
+import {
+  AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE,
+  isAuthorityUnavailableError,
+} from '@/lib/api-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -223,6 +227,14 @@ export async function GET(request: NextRequest) {
       allowedRoles: Array.from(MOBILE_UIUX_READ_ALLOWED_ROLES),
     });
   } catch (error) {
+    if (isAuthorityUnavailableError(error)) {
+      return buildMobileUiuxFailure(
+        503,
+        'INTERNAL',
+        AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE
+      );
+    }
+
     if (error instanceof AppError) {
       if (error.statusCode === 403) {
         logMobileUiuxClinicScopeDenied({

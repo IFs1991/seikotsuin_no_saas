@@ -70,7 +70,9 @@
     "commercial:red:types:local": "node scripts/commercial-hardening/verify-generated-types.mjs --local --write",
     "commercial:red:types:remote": "node scripts/commercial-hardening/verify-generated-types.mjs --linked --write",
     "commercial:red:invite": "node scripts/commercial-hardening/run-red-invite-contract.mjs",
-    "commercial:verify:invite:local": "node scripts/commercial-hardening/verify-atomic-staff-invite.mjs --local"
+    "commercial:verify:invite:local": "node scripts/commercial-hardening/verify-atomic-staff-invite.mjs --local",
+    "commercial:verify:pr09:auth:local": "node scripts/commercial-hardening/verify-pr09-auth-integration.mjs --local",
+    "commercial:verify:pr09:rollback-guard:local": "node scripts/commercial-hardening/verify-pr09-rollback-guard-negative.mjs --local"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

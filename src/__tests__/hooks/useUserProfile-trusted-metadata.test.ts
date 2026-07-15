@@ -3,7 +3,7 @@ import {
   resolveTrustedRole,
 } from '@/hooks/useUserProfile';
 
-describe('useUserProfile trusted metadata fallback', () => {
+describe('useUserProfile metadata fallback', () => {
   it('does not derive role or clinic scope from user-editable metadata', () => {
     const userWithUntrustedMetadata = {
       app_metadata: {},
@@ -18,15 +18,15 @@ describe('useUserProfile trusted metadata fallback', () => {
     expect(resolveTrustedClinicId(userWithUntrustedMetadata)).toBeNull();
   });
 
-  it('accepts server-controlled app_metadata claims', () => {
-    const userWithTrustedMetadata = {
+  it('does not treat stale app_metadata as current role or clinic authority', () => {
+    const userWithStaleMetadata = {
       app_metadata: {
         user_role: 'clinic_admin',
         clinic_id: 'clinic-1',
       },
     };
 
-    expect(resolveTrustedRole(userWithTrustedMetadata)).toBe('clinic_admin');
-    expect(resolveTrustedClinicId(userWithTrustedMetadata)).toBe('clinic-1');
+    expect(resolveTrustedRole(userWithStaleMetadata)).toBeNull();
+    expect(resolveTrustedClinicId(userWithStaleMetadata)).toBeNull();
   });
 });

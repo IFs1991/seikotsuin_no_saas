@@ -60,7 +60,11 @@ describe('/mobile-uiux/screens/[resource] error responses', () => {
         clinic_id: 'clinic-1',
         clinic_scope_ids: ['clinic-1'],
       },
+      role: 'staff',
+      normalizedRole: 'staff',
       clinicId: 'clinic-1',
+      isActive: true,
+      isAdmin: false,
     });
   });
 
@@ -92,7 +96,11 @@ describe('/mobile-uiux/screens/[resource] error responses', () => {
         clinic_id: null,
         clinic_scope_ids: [],
       },
+      role: 'staff',
+      normalizedRole: 'staff',
       clinicId: null,
+      isActive: true,
+      isAdmin: false,
     });
 
     const response = await requestScreen('home');
@@ -122,6 +130,28 @@ describe('/mobile-uiux/screens/[resource] error responses', () => {
     expect(body).toContain('data-mobile-uiux-error-page');
     expect(body).toContain('ページを表示できません');
     expect(body).toContain('モバイル UI/UX は無効です');
+    expect(readFileMock).not.toHaveBeenCalled();
+  });
+
+  it('returns HTML 403 before reading an asset for an inactive account', async () => {
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'staff',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'staff',
+      normalizedRole: 'staff',
+      clinicId: 'clinic-1',
+      isActive: false,
+      isAdmin: false,
+    });
+
+    const response = await requestScreen('home');
+    const body = await response.text();
+
+    expect(response.status).toBe(403);
+    expect(body).toContain('アカウントが無効化されています');
     expect(readFileMock).not.toHaveBeenCalled();
   });
 
@@ -161,7 +191,11 @@ describe('/mobile-uiux/screens/[resource] error responses', () => {
         clinic_id: null,
         clinic_scope_ids: [],
       },
+      role: 'staff',
+      normalizedRole: 'staff',
       clinicId: null,
+      isActive: true,
+      isAdmin: false,
     });
 
     const response = await requestScreen('mobile-bridge.js');

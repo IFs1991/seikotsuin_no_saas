@@ -59,7 +59,7 @@
         {
           "name": "revenues",
           "path": "src/app/api/clinic/analysis/route.ts",
-          "line": 70,
+          "line": 74,
           "methods": [
             "eq",
             "limit",

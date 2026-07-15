@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { createErrorResponse, createSuccessResponse } from '@/lib/api-helpers';
+import {
+  createAuthorityUnavailableResponse,
+  createErrorResponse,
+  createSuccessResponse,
+} from '@/lib/api-helpers';
 import {
   AppError,
   createApiError,
@@ -134,6 +138,9 @@ export async function GET(request: NextRequest) {
       total: formattedPreferences.length,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError;
     let statusCode = 500;
 
@@ -228,6 +235,9 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(data, 201);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     let apiError;
     let statusCode = 500;
 

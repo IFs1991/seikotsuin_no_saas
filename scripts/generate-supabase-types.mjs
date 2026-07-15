@@ -12,7 +12,10 @@ import path from 'node:path';
 import { format, resolveConfig } from 'prettier';
 
 import { preserveCommittedPostgrestVersion } from './lib/supabase-generated-types.mjs';
-import { assertPinnedSupabaseCliVersion } from './verify-supabase-cli-version.mjs';
+import {
+  assertPinnedSupabaseCliVersion,
+  resolveSupabaseCliInvocation,
+} from './verify-supabase-cli-version.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
 const OUTPUT_FILE = path.join(REPO_ROOT, 'src/types/supabase.ts');
@@ -56,22 +59,26 @@ try {
     `[supabase:types] Generating types with Supabase CLI ${cliVersion}...`
   );
 
-  const raw = execFileSync(
-    'supabase',
-    ['gen', 'types', 'typescript', ...cliTarget, '--schema', 'public'],
-    {
-      cwd: cliCwd,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        DO_NOT_TRACK: '1',
-        SUPABASE_TELEMETRY_DISABLED: '1',
-      },
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 300_000,
-      windowsHide: true,
-    }
-  );
+  const invocation = resolveSupabaseCliInvocation([
+    'gen',
+    'types',
+    'typescript',
+    ...cliTarget,
+    '--schema',
+    'public',
+  ]);
+  const raw = execFileSync(invocation.command, invocation.args, {
+    cwd: cliCwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DO_NOT_TRACK: '1',
+      SUPABASE_TELEMETRY_DISABLED: '1',
+    },
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 300_000,
+    windowsHide: true,
+  });
 
   // Filter: keep only lines that are part of the TypeScript type definition
   const lines = raw.split('\n');

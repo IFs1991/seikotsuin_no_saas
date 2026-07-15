@@ -7,9 +7,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient, createClient } from '@/lib/supabase';
+import {
+  canAccessClinicScope,
+  createAdminClient,
+  resolveScopedClinicIds,
+  type SupabaseServerClient,
+} from '@/lib/supabase';
+import { processApiRequest } from '@/lib/api-helpers';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+
+const METRICS_ADMIN_ROLES = ['admin'] as const;
 
 // メトリクス取得パラメータスキーマ
 const metricsQuerySchema = z.object({
@@ -18,35 +26,28 @@ const metricsQuerySchema = z.object({
   periodEnd: z.string().optional(),
 });
 
+const metricsRecordSchema = z.object({
+  clinicId: z.string().min(1),
+  periodStart: z.string().min(1),
+  periodEnd: z.string().min(1),
+});
+
 /**
  * GET /api/beta/metrics
  * ベータ利用状況メトリクスの取得
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized metrics access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      requireClinicMatch: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // プロフィール取得
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('clinic_id, role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
-    }
+    const { auth, permissions, supabase } = processResult;
 
     // クエリパラメータ検証
     const queryParams = {
@@ -64,6 +65,21 @@ export async function GET(request: NextRequest) {
     }
 
     const { clinicId, periodStart, periodEnd } = validation.data;
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+
+    if (!scopedClinicIds || scopedClinicIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic scope required' },
+        { status: 403 }
+      );
+    }
+
+    if (clinicId && !canAccessClinicScope(permissions, clinicId)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     // クエリ構築
     let query = supabase
@@ -71,11 +87,12 @@ export async function GET(request: NextRequest) {
       .select('*, clinics(id, name)')
       .order('period_start', { ascending: false });
 
-    // 管理者以外は自分のクリニックのみ
-    if (profile.role !== 'admin') {
-      query = query.eq('clinic_id', profile.clinic_id);
-    } else if (clinicId) {
+    // Every role, including admin, is constrained to the canonical DB/JWT
+    // intersection returned by processApiRequest.
+    if (clinicId) {
       query = query.eq('clinic_id', clinicId);
+    } else {
+      query = query.in('clinic_id', scopedClinicIds);
     }
 
     // 期間フィルター
@@ -89,7 +106,10 @@ export async function GET(request: NextRequest) {
     const { data: metrics, error } = await query;
 
     if (error) {
-      logger.error('Failed to fetch beta metrics', { error, userId: user.id });
+      logger.error('Failed to fetch beta metrics', {
+        error,
+        userId: auth.id,
+      });
       return NextResponse.json(
         { error: 'Failed to fetch metrics' },
         { status: 500 }
@@ -97,7 +117,7 @@ export async function GET(request: NextRequest) {
     }
 
     logger.info('Beta metrics fetched successfully', {
-      userId: user.id,
+      userId: auth.id,
       count: metrics?.length || 0,
     });
 
@@ -119,42 +139,47 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const adminSupabase = createAdminClient();
-
-    // 認証チェック（システムまたは管理者のみ）
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized metrics recording attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      allowedRoles: Array.from(METRICS_ADMIN_ROLES),
+      requireBody: true,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // 管理者権限チェック
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, body, permissions, supabase } = processResult;
 
-    if (!profile || profile.role !== 'admin') {
-      logger.warn('Non-admin metrics recording attempt', { userId: user.id });
+    if (permissions.role !== 'admin') {
+      logger.warn('Non-admin metrics recording attempt', {
+        userId: auth.id,
+      });
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
       );
     }
 
-    // リクエストボディ取得
-    const body = await request.json();
-    const { clinicId, periodStart, periodEnd } = body;
-
-    if (!clinicId || !periodStart || !periodEnd) {
+    const validation = metricsRecordSchema.safeParse(body);
+    if (!validation.success) {
       return NextResponse.json(
         { error: 'Missing required fields: clinicId, periodStart, periodEnd' },
         { status: 400 }
+      );
+    }
+
+    const { clinicId, periodStart, periodEnd } = validation.data;
+
+    // createAdminClient bypasses RLS, so the target must be authorized before
+    // the privileged client is even created. Admin has no global bypass here.
+    if (!canAccessClinicScope(permissions, clinicId)) {
+      logger.warn('Out-of-scope metrics recording attempt', {
+        userId: auth.id,
+      });
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
       );
     }
 
@@ -167,6 +192,7 @@ export async function POST(request: NextRequest) {
     );
 
     // メトリクス保存
+    const adminSupabase = createAdminClient();
     const { data: savedMetrics, error: insertError } = await adminSupabase
       .from('beta_usage_metrics')
       .insert({
@@ -182,7 +208,7 @@ export async function POST(request: NextRequest) {
       logger.error('Failed to insert beta metrics', {
         error: insertError,
         clinicId,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to record metrics' },
@@ -191,7 +217,7 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Beta metrics recorded successfully', {
-      userId: user.id,
+      userId: auth.id,
       clinicId,
       metricsId: savedMetrics.id,
     });
@@ -210,7 +236,7 @@ export async function POST(request: NextRequest) {
  * メトリクス計算関数
  */
 async function calculateMetrics(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseServerClient,
   clinicId: string,
   periodStart: string,
   periodEnd: string

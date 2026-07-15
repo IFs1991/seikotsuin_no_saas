@@ -10,6 +10,9 @@ import AdminLayout from '@/app/(app)/admin/(protected)/layout';
 import AppLayout from '@/app/(app)/layout';
 import MultiStoreLayout from '@/app/(app)/multi-store/layout';
 import ReservationsLayout from '@/app/(app)/reservations/layout';
+import { GET as getAuthorityUnavailable } from '@/app/auth/authority-unavailable/route';
+import { AUTHORITY_UNAVAILABLE_PATH } from '@/lib/auth/authority-unavailable';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 jest.mock('next/navigation', () => ({
   redirect: jest.fn((path: string) => {
@@ -30,7 +33,7 @@ jest.mock('@/lib/supabase', () => ({
       clinic_scope_ids?: string[];
       clinic_id: string | null;
     }) => {
-      if (permissions.clinic_scope_ids?.length) {
+      if (Array.isArray(permissions.clinic_scope_ids)) {
         return permissions.clinic_scope_ids;
       }
 
@@ -40,7 +43,9 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 const mockRedirect = redirect as jest.MockedFunction<typeof redirect>;
-const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreateClient = createClient as jest.MockedFunction<
+  typeof createClient
+>;
 const mockGetCurrentUser = getCurrentUser as jest.MockedFunction<
   typeof getCurrentUser
 >;
@@ -49,6 +54,14 @@ const mockGetUserAccessContext = getUserAccessContext as jest.MockedFunction<
 >;
 const mockHeaders = headers as jest.MockedFunction<typeof headers>;
 const mockAdminGetUser = jest.fn();
+
+function createAuthorityUnavailableError(): AppError {
+  return new AppError(
+    ERROR_CODES.DATABASE_CONNECTION_ERROR,
+    'sensitive authority backend detail',
+    503
+  );
+}
 
 describe('App route guards', () => {
   const supabaseClient = {} as Awaited<ReturnType<typeof createClient>>;
@@ -85,10 +98,75 @@ describe('App route guards', () => {
 
     test('認証済みなら AppShell に委譲する', async () => {
       mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'staff', clinic_id: 'clinic-1' },
+        role: 'staff',
+        normalizedRole: 'staff',
+        clinicId: 'clinic-1',
+        isActive: true,
+        isAdmin: false,
+      });
 
       const rendered = await AppLayout({ children: <div>protected</div> });
 
       expect(rendered).toBeDefined();
+      expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    test('inactive account は /unauthorized にリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: { role: 'staff', clinic_id: 'clinic-1' },
+        role: 'staff',
+        normalizedRole: 'staff',
+        clinicId: 'clinic-1',
+        isActive: false,
+        isAdmin: false,
+      });
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('permission missing は /unauthorized にリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: null,
+        role: null,
+        normalizedRole: null,
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
+      });
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('authority backend failure は情報を含まない 503 導線へリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(
+        AppLayout({ children: <div>protected</div> })
+      ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+    });
+
+    test('authority 503 以外の例外は専用 503 導線へ変換しない', async () => {
+      const unexpectedError = new Error('unexpected layout failure');
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockRejectedValueOnce(unexpectedError);
+
+      await expect(AppLayout({ children: <div>protected</div> })).rejects.toBe(
+        unexpectedError
+      );
       expect(mockRedirect).not.toHaveBeenCalled();
     });
   });
@@ -160,10 +238,14 @@ describe('App route guards', () => {
       expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
     });
 
-    test('HQ かつ active なら描画する', async () => {
+    test('admin の canonical scope が明示的に空なら /unauthorized にリダイレクト', async () => {
       mockGetCurrentUser.mockResolvedValue(user);
       mockGetUserAccessContext.mockResolvedValue({
-        permissions: { role: 'admin', clinic_id: null },
+        permissions: {
+          role: 'admin',
+          clinic_id: null,
+          clinic_scope_ids: [],
+        },
         role: 'admin',
         normalizedRole: 'admin',
         clinicId: null,
@@ -171,12 +253,39 @@ describe('App route guards', () => {
         isAdmin: true,
       });
 
-      const rendered = await MultiStoreLayout({
-        children: <div>multi-store</div>,
+      await expect(
+        MultiStoreLayout({ children: <div>multi-store</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('permission missing は /unauthorized にリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: null,
+        role: null,
+        normalizedRole: null,
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
       });
 
-      expect(rendered).toBeDefined();
-      expect(mockRedirect).not.toHaveBeenCalled();
+      await expect(
+        MultiStoreLayout({ children: <div>multi-store</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('authority backend failure は情報を含まない 503 導線へリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(
+        MultiStoreLayout({ children: <div>multi-store</div> })
+      ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
     });
   });
 
@@ -188,9 +297,9 @@ describe('App route guards', () => {
         error: null,
       });
 
-      await expect(
-        AdminLayout({ children: <div>admin</div> })
-      ).rejects.toThrow('NEXT_REDIRECT:/admin/login');
+      await expect(AdminLayout({ children: <div>admin</div> })).rejects.toThrow(
+        'NEXT_REDIRECT:/admin/login'
+      );
       expect(mockRedirect).toHaveBeenCalledWith('/admin/login');
     });
 
@@ -216,7 +325,9 @@ describe('App route guards', () => {
 
     test('manager は /admin の担当エリア管理ホームを描画できる', async () => {
       mockCreateClient.mockResolvedValue(adminSupabaseClient);
-      mockHeaders.mockResolvedValue(new Headers({ 'x-current-path': '/admin' }));
+      mockHeaders.mockResolvedValue(
+        new Headers({ 'x-current-path': '/admin' })
+      );
       mockGetUserAccessContext.mockResolvedValue({
         permissions: { role: 'manager', clinic_id: 'clinic-1' },
         role: 'manager',
@@ -275,6 +386,35 @@ describe('App route guards', () => {
       expect(rendered).toBeDefined();
       expect(mockRedirect).not.toHaveBeenCalled();
     });
+
+    test('inactive account は /unauthorized にリダイレクト', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: null,
+        role: null,
+        normalizedRole: null,
+        clinicId: null,
+        isActive: false,
+        isAdmin: false,
+      });
+
+      await expect(AdminLayout({ children: <div>admin</div> })).rejects.toThrow(
+        'NEXT_REDIRECT:/unauthorized'
+      );
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('authority backend failure は情報を含まない 503 導線へリダイレクト', async () => {
+      mockCreateClient.mockResolvedValue(adminSupabaseClient);
+      mockGetUserAccessContext.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(AdminLayout({ children: <div>admin</div> })).rejects.toThrow(
+        `NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`
+      );
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+    });
   });
 
   describe('ReservationsLayout', () => {
@@ -290,10 +430,14 @@ describe('App route guards', () => {
     test('admin は /admin にリダイレクト', async () => {
       mockGetCurrentUser.mockResolvedValue(user);
       mockGetUserAccessContext.mockResolvedValue({
-        permissions: { role: 'admin', clinic_id: null },
+        permissions: {
+          role: 'admin',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
         role: 'admin',
         normalizedRole: 'admin',
-        clinicId: null,
+        clinicId: 'clinic-1',
         isActive: true,
         isAdmin: true,
       });
@@ -321,6 +465,45 @@ describe('App route guards', () => {
 
       expect(rendered).toBeDefined();
       expect(mockRedirect).not.toHaveBeenCalled();
+    });
+
+    test('permission missing は /unauthorized にリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockResolvedValue({
+        permissions: null,
+        role: null,
+        normalizedRole: null,
+        clinicId: null,
+        isActive: true,
+        isAdmin: false,
+      });
+
+      await expect(
+        ReservationsLayout({ children: <div>reservations</div> })
+      ).rejects.toThrow('NEXT_REDIRECT:/unauthorized');
+      expect(mockRedirect).toHaveBeenCalledWith('/unauthorized');
+    });
+
+    test('authority backend failure は情報を含まない 503 導線へリダイレクト', async () => {
+      mockGetCurrentUser.mockResolvedValue(user);
+      mockGetUserAccessContext.mockRejectedValueOnce(
+        createAuthorityUnavailableError()
+      );
+
+      await expect(
+        ReservationsLayout({ children: <div>reservations</div> })
+      ).rejects.toThrow(`NEXT_REDIRECT:${AUTHORITY_UNAVAILABLE_PATH}`);
+      expect(mockRedirect).toHaveBeenCalledWith(AUTHORITY_UNAVAILABLE_PATH);
+    });
+  });
+
+  describe('Authority unavailable route', () => {
+    test('最終レスポンスは本文なし・no-store の 503', async () => {
+      const response = getAuthorityUnavailable();
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      await expect(response.text()).resolves.toBe('');
     });
   });
 });
