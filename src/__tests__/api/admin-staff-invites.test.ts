@@ -44,6 +44,8 @@ jest.mock('@/lib/auth/staff-invite', () => {
 import { POST } from '@/app/api/admin/staff/invites/route';
 
 const CLINIC_ID = '11111111-1111-4111-8111-111111111111';
+const ROOT_CLINIC_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const SUBSET_CLINIC_ID = '33333333-3333-4333-8333-333333333333';
 const INVITE_ID = '22222222-2222-4222-8222-222222222222';
 const TOKEN = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -112,6 +114,7 @@ describe('POST /api/admin/staff/invites', () => {
       auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
       permissions: { role: 'clinic_admin', clinic_id: CLINIC_ID },
       body: {
+        clinic_id: CLINIC_ID,
         email: ' Staff@Example.com ',
         role: 'staff',
         full_name: 'Test Staff',
@@ -142,6 +145,119 @@ describe('POST /api/admin/staff/invites', () => {
     });
   });
 
+  it('stores the invite in the canonical JWT subset clinic', async () => {
+    const { client, insert } = createUserClient();
+    createAdminClientMock.mockReturnValue(
+      createAdminClientWithCleanup().client
+    );
+    sendStaffInviteEmailMock.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    });
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: CLINIC_ID,
+        clinic_scope_ids: [SUBSET_CLINIC_ID],
+      },
+      body: {
+        clinic_id: SUBSET_CLINIC_ID,
+        email: 'staff@example.com',
+        role: 'staff',
+        full_name: 'Test Staff',
+      },
+      supabase: client,
+    });
+
+    const response = await POST(
+      new NextRequest('https://app.example.com/api/admin/staff/invites', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: SUBSET_CLINIC_ID })
+    );
+    expect(insert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: CLINIC_ID })
+    );
+  });
+
+  it('uses the explicit target instead of the first or primary clinic in a full scope', async () => {
+    const { client, insert } = createUserClient();
+    createAdminClientMock.mockReturnValue(
+      createAdminClientWithCleanup().client
+    );
+    sendStaffInviteEmailMock.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    });
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: CLINIC_ID,
+        clinic_scope_ids: [ROOT_CLINIC_ID, CLINIC_ID, SUBSET_CLINIC_ID],
+      },
+      body: {
+        clinic_id: SUBSET_CLINIC_ID,
+        email: 'staff@example.com',
+        role: 'staff',
+      },
+      supabase: client,
+    });
+
+    const response = await POST(
+      new NextRequest('https://app.example.com/api/admin/staff/invites', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: SUBSET_CLINIC_ID })
+    );
+    expect(insert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: ROOT_CLINIC_ID })
+    );
+    expect(insert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ clinic_id: CLINIC_ID })
+    );
+  });
+
+  it('rejects an explicit target outside the canonical JWT subset', async () => {
+    const { client, insert } = createUserClient();
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: CLINIC_ID,
+        clinic_scope_ids: [SUBSET_CLINIC_ID],
+      },
+      body: {
+        clinic_id: CLINIC_ID,
+        email: 'staff@example.com',
+        role: 'staff',
+      },
+      supabase: client,
+    });
+
+    const response = await POST(
+      new NextRequest('https://app.example.com/api/admin/staff/invites', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(insert).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
   it('removes the pending record and returns a stable error when delivery fails', async () => {
     const { client } = createUserClient();
     const cleanup = createAdminClientWithCleanup();
@@ -154,7 +270,11 @@ describe('POST /api/admin/staff/invites', () => {
       success: true,
       auth: { id: 'user-1', email: 'admin@example.com', role: 'clinic_admin' },
       permissions: { role: 'clinic_admin', clinic_id: CLINIC_ID },
-      body: { email: 'staff@example.com', role: 'staff' },
+      body: {
+        clinic_id: CLINIC_ID,
+        email: 'staff@example.com',
+        role: 'staff',
+      },
       supabase: client,
     });
 

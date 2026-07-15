@@ -19,9 +19,13 @@ jest.mock('@/lib/audit-logger', () => ({
   },
 }));
 
-jest.mock('@/lib/supabase', () => ({
-  createAdminClient: jest.fn(),
-}));
+jest.mock('@/lib/supabase', () => {
+  const actual = jest.requireActual('@/lib/supabase');
+  return {
+    ...actual,
+    createAdminClient: jest.fn(),
+  };
+});
 
 const processApiRequestMock = jest.mocked(processApiRequest);
 const createAdminClientMock = jest.mocked(createAdminClient);
@@ -30,10 +34,12 @@ const logAdminActionMock = jest.mocked(AuditLogger.logAdminAction);
 
 const ADMIN_ID = '11111111-1111-4111-8111-111111111111';
 const TARGET_ID = '22222222-2222-4222-8222-222222222222';
+const CLINIC_ID = '33333333-3333-4333-8333-333333333333';
 
 type ProfileStatus = {
   user_id: string;
   is_active: boolean;
+  clinic_id?: string;
 };
 
 type QueryResult = {
@@ -74,7 +80,8 @@ function createAdminProcessResult(body: unknown) {
     },
     permissions: {
       role: 'admin',
-      clinic_id: null,
+      clinic_id: CLINIC_ID,
+      clinic_scope_ids: [CLINIC_ID],
     },
     supabase: {},
     body,
@@ -114,10 +121,20 @@ function createAdminClientMockValue({
       },
     },
     from: jest.fn((table: string) => {
-      if (table !== 'profiles') {
-        throw new Error(`Unexpected table: ${table}`);
+      if (table === 'profiles') {
+        return profileQuery;
       }
-      return profileQuery;
+      if (table === 'user_permissions') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { role: 'staff', clinic_id: CLINIC_ID },
+            error: null,
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
     }),
   };
 
@@ -136,8 +153,22 @@ describe('PATCH /api/admin/users/accounts', () => {
     const { adminClient, profileQuery, updateUserById } =
       createAdminClientMockValue({
         queryResults: [
-          { data: { user_id: TARGET_ID, is_active: true }, error: null },
-          { data: { user_id: TARGET_ID, is_active: false }, error: null },
+          {
+            data: {
+              user_id: TARGET_ID,
+              is_active: true,
+              clinic_id: CLINIC_ID,
+            },
+            error: null,
+          },
+          {
+            data: {
+              user_id: TARGET_ID,
+              is_active: false,
+              clinic_id: CLINIC_ID,
+            },
+            error: null,
+          },
         ],
       });
     createAdminClientMock.mockReturnValue(adminClient);
@@ -180,7 +211,14 @@ describe('PATCH /api/admin/users/accounts', () => {
     const { adminClient, profileQuery, updateUserById } =
       createAdminClientMockValue({
         queryResults: [
-          { data: { user_id: TARGET_ID, is_active: false }, error: null },
+          {
+            data: {
+              user_id: TARGET_ID,
+              is_active: false,
+              clinic_id: CLINIC_ID,
+            },
+            error: null,
+          },
           { data: { user_id: TARGET_ID, is_active: true }, error: null },
         ],
       });
@@ -210,8 +248,22 @@ describe('PATCH /api/admin/users/accounts', () => {
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(body));
     const { adminClient } = createAdminClientMockValue({
       queryResults: [
-        { data: { user_id: TARGET_ID, is_active: true }, error: null },
-        { data: { user_id: TARGET_ID, is_active: false }, error: null },
+        {
+          data: {
+            user_id: TARGET_ID,
+            is_active: true,
+            clinic_id: CLINIC_ID,
+          },
+          error: null,
+        },
+        {
+          data: {
+            user_id: TARGET_ID,
+            is_active: false,
+            clinic_id: CLINIC_ID,
+          },
+          error: null,
+        },
       ],
       authErrors: [{ message: 'auth unavailable' }],
     });
@@ -237,7 +289,14 @@ describe('PATCH /api/admin/users/accounts', () => {
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(body));
     const { adminClient, updateUserById } = createAdminClientMockValue({
       queryResults: [
-        { data: { user_id: TARGET_ID, is_active: false }, error: null },
+        {
+          data: {
+            user_id: TARGET_ID,
+            is_active: false,
+            clinic_id: CLINIC_ID,
+          },
+          error: null,
+        },
         { data: null, error: { message: 'profile write failed' } },
       ],
       authErrors: [null, null],
@@ -268,5 +327,31 @@ describe('PATCH /api/admin/users/accounts', () => {
     expect(response.status).toBe(403);
     expect(payload.code).toBe(ERROR_CODES.FORBIDDEN);
     expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an account whose clinic authority extends outside the actor scope', async () => {
+    const body = { user_id: TARGET_ID, is_active: false };
+    processApiRequestMock.mockResolvedValue(createAdminProcessResult(body));
+    const { adminClient, updateUserById } = createAdminClientMockValue({
+      queryResults: [
+        {
+          data: {
+            user_id: TARGET_ID,
+            is_active: true,
+            clinic_id: '44444444-4444-4444-8444-444444444444',
+          },
+          error: null,
+        },
+      ],
+    });
+    createAdminClientMock.mockReturnValue(adminClient);
+
+    const { PATCH } = await import('@/app/api/admin/users/accounts/route');
+    const response = await PATCH(createRequest(body));
+    const payload = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(updateUserById).not.toHaveBeenCalled();
   });
 });

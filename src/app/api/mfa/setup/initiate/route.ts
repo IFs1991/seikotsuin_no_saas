@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const scopedClinicIds = resolveScopedClinicIds(result.permissions);
-    const clinicId = result.permissions.clinic_id ?? scopedClinicIds?.[0];
+    const clinicId = scopedClinicIds?.[0];
     if (!clinicId || !scopedClinicIds?.includes(clinicId)) {
       return createErrorResponse('院へのアクセス権がありません', 403);
     }

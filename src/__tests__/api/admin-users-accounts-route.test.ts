@@ -18,14 +18,19 @@ jest.mock('@/lib/audit-logger', () => ({
   },
 }));
 
-jest.mock('@/lib/supabase', () => ({
-  createAdminClient: jest.fn(),
-}));
+jest.mock('@/lib/supabase', () => {
+  const actual = jest.requireActual('@/lib/supabase');
+  return {
+    ...actual,
+    createAdminClient: jest.fn(),
+  };
+});
 
 const processApiRequestMock = jest.mocked(processApiRequest);
 const createAdminClientMock = jest.mocked(createAdminClient);
 const logErrorMock = jest.mocked(logError);
 const logAdminActionMock = jest.mocked(AuditLogger.logAdminAction);
+const ADMIN_CLINIC_ID = '33333333-3333-4333-8333-333333333333';
 
 type TableName = 'profiles' | 'user_permissions' | 'staff' | 'resources';
 type TableQuery = {
@@ -62,7 +67,8 @@ const createAdminProcessResult = (body: unknown) => ({
   },
   permissions: {
     role: 'admin',
-    clinic_id: null,
+    clinic_id: ADMIN_CLINIC_ID,
+    clinic_scope_ids: [ADMIN_CLINIC_ID],
   },
   supabase: {},
   body,
@@ -195,6 +201,7 @@ describe('POST /api/admin/users/accounts', () => {
       full_name: '山田 太郎',
       email: 'YAMADA@example.com',
       password: 'SafePass123!',
+      clinic_id: ADMIN_CLINIC_ID,
     };
     const createdUserId = '22222222-2222-4222-8222-222222222222';
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
@@ -228,7 +235,7 @@ describe('POST /api/admin/users/accounts', () => {
         user_id: createdUserId,
         email: 'yamada@example.com',
         full_name: '山田 太郎',
-        clinic_id: null,
+        clinic_id: ADMIN_CLINIC_ID,
         role: 'staff',
         is_active: true,
       }),
@@ -244,7 +251,7 @@ describe('POST /api/admin/users/accounts', () => {
       permission_status: 'unassigned',
       permission_id: null,
       role: null,
-      clinic_id: null,
+      clinic_id: ADMIN_CLINIC_ID,
     });
     expect(JSON.stringify(body)).not.toContain('SafePass123!');
   });
@@ -254,6 +261,7 @@ describe('POST /api/admin/users/accounts', () => {
       full_name: '山田 太郎',
       email: 'yamada@example.com',
       password: 'SafePass123!',
+      clinic_id: ADMIN_CLINIC_ID,
     };
     processApiRequestMock.mockResolvedValue(
       createClinicAdminProcessResult(payload)
@@ -273,6 +281,7 @@ describe('POST /api/admin/users/accounts', () => {
       full_name: '山田 太郎',
       email: 'yamada@example.com',
       password: 'SafePass123!',
+      clinic_id: ADMIN_CLINIC_ID,
     };
     processApiRequestMock.mockResolvedValue(createManagerProcessResult(payload));
 
@@ -291,11 +300,30 @@ describe('POST /api/admin/users/accounts', () => {
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
+  it('rejects an out-of-scope target clinic before creating the service-role client', async () => {
+    const payload = {
+      full_name: '他院 太郎',
+      email: 'outside@example.com',
+      password: 'SafePass123!',
+      clinic_id: '44444444-4444-4444-8444-444444444444',
+    };
+    processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
+
+    const { POST } = await import('@/app/api/admin/users/accounts/route');
+    const response = await POST(createRequest(payload));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
   it('maps duplicate email to a safe 400 error', async () => {
     const payload = {
       full_name: '山田 太郎',
       email: 'duplicate@example.com',
       password: 'SafePass123!',
+      clinic_id: ADMIN_CLINIC_ID,
     };
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
     const { adminClient } = createAdminClientMockValue({
@@ -317,6 +345,7 @@ describe('POST /api/admin/users/accounts', () => {
       full_name: '山田 太郎',
       email: 'rollback@example.com',
       password: 'SafePass123!',
+      clinic_id: ADMIN_CLINIC_ID,
     };
     const createdUserId = '22222222-2222-4222-8222-222222222222';
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
@@ -343,6 +372,7 @@ describe('POST /api/admin/users/accounts', () => {
       full_name: '山田 太郎',
       email: 'escape@example.com',
       password,
+      clinic_id: ADMIN_CLINIC_ID,
     };
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
     const { adminClient } = createAdminClientMockValue();
@@ -373,12 +403,12 @@ describe('POST /api/admin/users/accounts', () => {
         email: 'escape@example.com',
         permission_status: 'unassigned',
         role: null,
-        clinic_id: null,
+        clinic_id: ADMIN_CLINIC_ID,
       }
     );
   });
 
-  it('optionally grants a role during account-only creation without requiring clinic', async () => {
+  it('rejects role assignment without a target clinic before privileged access', async () => {
     const payload = {
       full_name: '未所属 管理者',
       email: 'role-only@example.com',
@@ -386,48 +416,18 @@ describe('POST /api/admin/users/accounts', () => {
       role: 'manager',
       clinic_id: null,
     };
-    const createdUserId = '22222222-2222-4222-8222-222222222222';
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
-    const { adminClient, profileQuery, sideEffectQueries } =
-      createAdminClientMockValue({ createdUserId });
-    createAdminClientMock.mockReturnValue(adminClient);
 
     const { POST } = await import('@/app/api/admin/users/accounts/route');
     const response = await POST(createRequest(payload));
     const body = await response.json();
 
-    expect(response.status).toBe(201);
-    expect(profileQuery.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user_id: createdUserId,
-        clinic_id: null,
-        role: 'manager',
-      }),
-      { onConflict: 'user_id' }
-    );
-    expect(sideEffectQueries.get('staff')?.upsert).not.toHaveBeenCalled();
-    expect(sideEffectQueries.get('resources')?.upsert).not.toHaveBeenCalled();
-    expect(sideEffectQueries.get('user_permissions')?.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        staff_id: createdUserId,
-        role: 'manager',
-        clinic_id: null,
-        username: 'role-only@example.com',
-      }),
-      { onConflict: 'staff_id' }
-    );
-    expect(body.data).toEqual(
-      expect.objectContaining({
-        id: createdUserId,
-        permission_status: 'assigned',
-        permission_id: '11111111-1111-4111-8111-111111111111',
-        role: 'manager',
-        clinic_id: null,
-      })
-    );
+    expect(response.status).toBe(403);
+    expect(body.error).toBe('対象クリニックへのアクセス権がありません');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it('normalizes manager role clinic_id to null during account-only creation', async () => {
+  it('retains the scoped primary clinic for a manager account', async () => {
     const payload = {
       full_name: 'エリア 管理者',
       email: 'area-manager@example.com',
@@ -449,18 +449,18 @@ describe('POST /api/admin/users/accounts', () => {
     expect(profileQuery.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: createdUserId,
-        clinic_id: null,
+        clinic_id: ADMIN_CLINIC_ID,
         role: 'manager',
       }),
       { onConflict: 'user_id' }
     );
-    expect(sideEffectQueries.get('staff')?.upsert).not.toHaveBeenCalled();
-    expect(sideEffectQueries.get('resources')?.upsert).not.toHaveBeenCalled();
+    expect(sideEffectQueries.get('staff')?.upsert).toHaveBeenCalled();
+    expect(sideEffectQueries.get('resources')?.upsert).toHaveBeenCalled();
     expect(sideEffectQueries.get('user_permissions')?.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         staff_id: createdUserId,
         role: 'manager',
-        clinic_id: null,
+        clinic_id: ADMIN_CLINIC_ID,
         username: 'area-manager@example.com',
       }),
       { onConflict: 'staff_id' }
@@ -468,7 +468,7 @@ describe('POST /api/admin/users/accounts', () => {
     expect(body.data).toEqual(
       expect.objectContaining({
         role: 'manager',
-        clinic_id: null,
+        clinic_id: ADMIN_CLINIC_ID,
       })
     );
   });

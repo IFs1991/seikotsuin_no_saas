@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   getUserAccessContext,
 } from '@/lib/supabase';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 const mockLoggerError = jest.fn();
 
@@ -224,6 +225,73 @@ describe('GET /api/mobile-uiux/context', () => {
       },
     });
     expect(getUserAccessContextMock).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 before resolving a mobile principal for an inactive account', async () => {
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: {
+        role: 'clinic_admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'clinic_admin',
+      normalizedRole: 'clinic_admin',
+      clinicId: 'clinic-1',
+      isActive: false,
+      isAdmin: true,
+    });
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({
+      success: false,
+      error: { code: 'FORBIDDEN' },
+    });
+  });
+
+  it('returns 403 without throwing when the active profile has no permission row', async () => {
+    getUserAccessContextMock.mockResolvedValue({
+      permissions: null,
+      role: null,
+      normalizedRole: null,
+      clinicId: null,
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toMatchObject({
+      success: false,
+      error: { code: 'FORBIDDEN' },
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[mobile-uiux] access denied',
+      expect.objectContaining({ scopedClinicCount: 0 })
+    );
+  });
+
+  it('maps an authority lookup failure to a safe 503 response', async () => {
+    getUserAccessContextMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.DATABASE_CONNECTION_ERROR,
+        'internal database detail',
+        503
+      )
+    );
+
+    const { GET } = await import('@/app/api/mobile-uiux/context/route');
+    const response = await GET(buildRequest());
+    const bodyText = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(bodyText).not.toContain('internal database detail');
   });
 
   it('logs flag_disabled when the mobile UIUX env gate is off', async () => {

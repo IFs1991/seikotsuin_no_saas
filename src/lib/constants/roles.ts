@@ -55,7 +55,8 @@ export const ADMIN_USER_ROLE_OPTIONS = ADMIN_USER_ROLE_VALUES.map(value => ({
 }));
 
 /**
- * HQ roles - can access cross-clinic data and admin features
+ * HQ UI roles. Data access remains limited to the canonical DB/JWT clinic
+ * scope; membership in this set never grants an unbounded global scope.
  */
 export const HQ_ROLES: ReadonlySet<Role> = new Set(['admin']);
 
@@ -68,7 +69,8 @@ export const ADMIN_UI_ROLES: ReadonlySet<Role> = new Set([
 ]);
 
 /**
- * Cross-clinic roles - can view data across clinics (HQ view)
+ * Roles that may view more than one clinic inside their canonical hierarchy.
+ * This set is a feature flag only, not an authorization boundary.
  */
 export const CROSS_CLINIC_ROLES: ReadonlySet<Role> = new Set(['admin']);
 
@@ -136,7 +138,7 @@ export function isRole(role: string | null | undefined): role is Role {
 }
 
 /**
- * Check if role has HQ (headquarters) privileges
+ * Check if role has HQ UI features. This does not bypass clinic scope.
  */
 export function isHQRole(role: string | null | undefined): boolean {
   return isRole(role) && HQ_ROLES.has(role);
@@ -164,7 +166,7 @@ export function canAccessAdminUI(role: string | null | undefined): boolean {
 }
 
 /**
- * Check if role can access cross-clinic data
+ * Check if role may use cross-clinic UI inside canonical clinic scope.
  */
 export function canAccessCrossClinic(role: string | null | undefined): boolean {
   return isRole(role) && CROSS_CLINIC_ROLES.has(role);
@@ -246,7 +248,7 @@ export function canAccessAdminUIWithCompat(
 }
 
 /**
- * Check if role can access cross-clinic data (with compatibility mapping)
+ * Check if role may use scoped cross-clinic UI (with compatibility mapping).
  */
 export function canAccessCrossClinicWithCompat(
   role: string | null | undefined

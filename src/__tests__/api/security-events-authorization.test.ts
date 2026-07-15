@@ -2,16 +2,20 @@ import { PATCH } from '@/app/api/admin/security/events/route';
 import { NextRequest } from 'next/server';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
-jest.mock('@/lib/api-helpers', () => ({
-  processApiRequest: jest.fn(),
-  createSuccessResponse: jest.fn(
-    data => new Response(JSON.stringify(data), { status: 200 })
-  ),
-  createErrorResponse: jest.fn(
-    (msg, status) => new Response(JSON.stringify({ error: msg }), { status })
-  ),
-  logError: jest.fn(),
-}));
+jest.mock('@/lib/api-helpers', () => {
+  const actual = jest.requireActual('@/lib/api-helpers');
+  return {
+    ...actual,
+    processApiRequest: jest.fn(),
+    createSuccessResponse: jest.fn(
+      data => new Response(JSON.stringify(data), { status: 200 })
+    ),
+    createErrorResponse: jest.fn(
+      (msg, status) => new Response(JSON.stringify({ error: msg }), { status })
+    ),
+    logError: jest.fn(),
+  };
+});
 
 jest.mock('@/lib/audit-logger', () => ({
   AuditLogger: {
@@ -194,7 +198,11 @@ describe('PATCH /api/admin/security/events - クリニック認可', () => {
     processApiRequest.mockResolvedValue({
       success: true,
       auth: { id: ADMIN_ID, email: 'admin@test.com' },
-      body: { clinic_id: CLINIC_ID, id: nonExistentEventId, status: 'resolved' },
+      body: {
+        clinic_id: CLINIC_ID,
+        id: nonExistentEventId,
+        status: 'resolved',
+      },
     });
     ensureClinicAccess.mockResolvedValue({
       supabase: mockSupabase,

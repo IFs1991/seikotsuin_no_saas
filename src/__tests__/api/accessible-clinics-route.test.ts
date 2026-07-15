@@ -5,8 +5,9 @@ import {
   createScopedAdminContext,
   resolveScopedClinicIds,
 } from '@/lib/supabase';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
-const mockResolveManagerAssignedClinics = jest.fn();
+const mockResolveManagerAssignedClinicsWithinScope = jest.fn();
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -18,8 +19,8 @@ jest.mock('@/lib/api-helpers', () => {
 });
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: (...args: unknown[]) =>
-    mockResolveManagerAssignedClinics(...args),
+  resolveManagerAssignedClinicsWithinScope: (...args: unknown[]) =>
+    mockResolveManagerAssignedClinicsWithinScope(...args),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -46,11 +47,11 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     const permissions = {
       role: 'manager',
       clinic_id: 'clinic-a',
-      clinic_scope_ids: ['stale-jwt-clinic'],
+      clinic_scope_ids: ['clinic-a', 'clinic-b'],
     };
 
     createAdminClientMock.mockReturnValue(adminClient);
-    mockResolveManagerAssignedClinics.mockResolvedValue([
+    mockResolveManagerAssignedClinicsWithinScope.mockResolvedValue([
       {
         id: 'assignment-b',
         manager_user_id: 'manager-1',
@@ -93,9 +94,10 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
       ],
       currentClinicId: 'clinic-b',
     });
-    expect(mockResolveManagerAssignedClinics).toHaveBeenCalledWith(
+    expect(mockResolveManagerAssignedClinicsWithinScope).toHaveBeenCalledWith(
       adminClient,
-      'manager-1'
+      'manager-1',
+      ['clinic-a', 'clinic-b']
     );
     expect(adminClient.from).not.toHaveBeenCalled();
     expect(resolveScopedClinicIdsMock).not.toHaveBeenCalled();
@@ -109,11 +111,11 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     const permissions = {
       role: 'manager',
       clinic_id: null,
-      clinic_scope_ids: [],
+      clinic_scope_ids: ['clinic-a'],
     };
 
     createAdminClientMock.mockReturnValue(adminClient);
-    mockResolveManagerAssignedClinics.mockResolvedValue([
+    mockResolveManagerAssignedClinicsWithinScope.mockResolvedValue([
       {
         id: 'assignment-a',
         manager_user_id: 'manager-1',
@@ -151,11 +153,11 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     const permissions = {
       role: 'manager',
       clinic_id: 'primary-clinic',
-      clinic_scope_ids: ['stale-jwt-clinic'],
+      clinic_scope_ids: [],
     };
 
     createAdminClientMock.mockReturnValue(adminClient);
-    mockResolveManagerAssignedClinics.mockResolvedValue([]);
+    mockResolveManagerAssignedClinicsWithinScope.mockResolvedValue([]);
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
@@ -174,9 +176,10 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
       clinics: [],
       currentClinicId: null,
     });
-    expect(mockResolveManagerAssignedClinics).toHaveBeenCalledWith(
+    expect(mockResolveManagerAssignedClinicsWithinScope).toHaveBeenCalledWith(
       adminClient,
-      'manager-1'
+      'manager-1',
+      []
     );
     expect(resolveScopedClinicIdsMock).not.toHaveBeenCalled();
     expect(createScopedAdminContextMock).not.toHaveBeenCalled();
@@ -189,7 +192,7 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
     const permissions = {
       role: 'manager',
       clinic_id: 'primary-clinic',
-      clinic_scope_ids: ['jwt-clinic'],
+      clinic_scope_ids: [],
     };
 
     createAdminClientMock.mockReturnValue(adminClient);
@@ -197,7 +200,7 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
       'primary-clinic',
       'jwt-clinic',
     ]);
-    mockResolveManagerAssignedClinics.mockResolvedValue([]);
+    mockResolveManagerAssignedClinicsWithinScope.mockResolvedValue([]);
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
@@ -217,9 +220,101 @@ describe('GET /api/clinics/accessible manager assignment scope', () => {
       currentClinicId: null,
     });
     expect(resolveScopedClinicIdsMock).not.toHaveBeenCalled();
-    expect(mockResolveManagerAssignedClinics).toHaveBeenCalledWith(
+    expect(mockResolveManagerAssignedClinicsWithinScope).toHaveBeenCalledWith(
       adminClient,
-      'manager-1'
+      'manager-1',
+      []
     );
+  });
+
+  it('returns an information-free 503 when manager authority cannot be resolved', async () => {
+    const adminClient = {
+      from: jest.fn(),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+    mockResolveManagerAssignedClinicsWithinScope.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+        undefined,
+        503
+      )
+    );
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'manager-1', email: 'manager@example.com', role: 'manager' },
+      permissions: {
+        role: 'manager',
+        clinic_id: null,
+        clinic_scope_ids: ['clinic-a'],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+  });
+
+  it('does not re-expand an admin canonical root-only JWT subset to child clinics', async () => {
+    let clinicRows = [
+      { id: 'root-clinic', name: '本部', parent_id: null, is_active: true },
+      {
+        id: 'child-clinic',
+        name: '子院',
+        parent_id: 'root-clinic',
+        is_active: true,
+      },
+    ];
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      in: jest.fn(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      returns: jest.fn(() =>
+        Promise.resolve({ data: clinicRows, error: null })
+      ),
+    };
+    query.in.mockImplementation((column: string, values: readonly string[]) => {
+      if (column === 'id') {
+        clinicRows = clinicRows.filter(row => values.includes(row.id));
+      }
+      return query;
+    });
+    const adminClient = { from: jest.fn(() => query) };
+
+    resolveScopedClinicIdsMock.mockReturnValue(['root-clinic']);
+    createScopedAdminContextMock.mockReturnValue({
+      client: adminClient,
+      scopedClinicIds: ['root-clinic'],
+      assertClinicInScope: jest.fn(),
+    });
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'root-clinic',
+        clinic_scope_ids: ['root-clinic'],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const { GET } = await import('@/app/api/clinics/accessible/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/clinics/accessible')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(query.in).toHaveBeenCalledWith('id', ['root-clinic']);
+    expect(body.data).toEqual({ clinics: [], currentClinicId: null });
   });
 });

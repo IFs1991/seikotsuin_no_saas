@@ -13,6 +13,7 @@ import {
 import { fetchClinicNames } from '@/lib/mobile-uiux/clinic-names';
 import { fetchManagerRevenuePeriodTotals } from '@/lib/services/manager-revenue-service';
 import { createAdminClient } from '@/lib/supabase';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
@@ -271,6 +272,34 @@ describe('GET /api/mobile-uiux/home', () => {
     const logText = JSON.stringify(warnSpy.mock.calls);
     expect(logText).not.toContain(clinicId);
     expect(logText).not.toContain('staff@example.com');
+  });
+
+  it('returns a sanitized mobile 503 when DB authority is unavailable', async () => {
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.DATABASE_CONNECTION_ERROR,
+        'sensitive authority query failed',
+        503,
+        { databaseCode: '42P01' }
+      )
+    );
+
+    const { GET } = await import('@/app/api/mobile-uiux/home/route');
+    const response = await GET(buildRequest(`?clinic_id=${clinicId}`));
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload).toEqual({
+      success: false,
+      error: {
+        code: 'INTERNAL',
+        message: '認証情報を確認できません。時間をおいて再度お試しください',
+      },
+    });
+    expect(JSON.stringify(payload)).not.toContain('DATABASE_CONNECTION_ERROR');
+    expect(JSON.stringify(payload)).not.toContain('42P01');
+    expect(JSON.stringify(payload)).not.toContain('sensitive');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
   it('fails closed when real data is disabled', async () => {

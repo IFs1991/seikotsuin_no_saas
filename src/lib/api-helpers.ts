@@ -44,6 +44,27 @@ export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 const isProduction = () => process.env.NODE_ENV === 'production';
 
+export const AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE =
+  '認証情報を確認できません。時間をおいて再度お試しください';
+
+/**
+ * DB-first authority resolution failed before access could be proven.
+ * Keep this check centralized so routes cannot accidentally expose the
+ * underlying database message, internal error code, or diagnostic details.
+ */
+export function isAuthorityUnavailableError(
+  error: unknown
+): error is AppError & {
+  code: typeof ERROR_CODES.DATABASE_CONNECTION_ERROR;
+  statusCode: 503;
+} {
+  return (
+    error instanceof AppError &&
+    error.code === ERROR_CODES.DATABASE_CONNECTION_ERROR &&
+    error.statusCode === 503
+  );
+}
+
 /**
  * 管理者認証・認可チェック
  * ADMIN_UI_ROLES (admin, clinic_admin) を持つユーザーのみ許可
@@ -80,7 +101,9 @@ export async function verifyAdminAuth(
     if (error instanceof AppError) {
       return {
         success: false,
-        error: error.message,
+        error: isAuthorityUnavailableError(error)
+          ? AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE
+          : error.message,
       };
     }
 
@@ -202,6 +225,35 @@ export function createErrorResponse(
   if (code !== undefined) response.code = code;
 
   return NextResponse.json(response, { status });
+}
+
+/**
+ * Project an AppError to the public API envelope.
+ * Authority lookup failures deliberately omit code/details; other AppError
+ * responses retain their existing public behavior.
+ */
+export function createPublicAppErrorResponse(
+  error: AppError
+): NextResponse<ApiErrorResponse> {
+  if (isAuthorityUnavailableError(error)) {
+    return createErrorResponse(AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE, 503);
+  }
+
+  return createErrorResponse(
+    error.message,
+    error.statusCode,
+    undefined,
+    error.code
+  );
+}
+
+/** Return a fail-closed public 503 only for authority lookup failures. */
+export function createAuthorityUnavailableResponse(
+  error: unknown
+): NextResponse<ApiErrorResponse> | null {
+  return isAuthorityUnavailableError(error)
+    ? createErrorResponse(AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE, 503)
+    : null;
 }
 
 /**
@@ -380,12 +432,7 @@ export async function processApiRequest(
     if (error instanceof AppError) {
       return {
         success: false,
-        error: createErrorResponse(
-          error.message,
-          error.statusCode,
-          undefined,
-          error.code
-        ),
+        error: createPublicAppErrorResponse(error),
       };
     }
 

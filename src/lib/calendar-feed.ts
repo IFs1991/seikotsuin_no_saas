@@ -26,7 +26,6 @@ export type CalendarIcsShiftRow = {
   start_time: string;
   end_time: string;
   status: string;
-  notes: string | null;
   resources:
     | {
         id: string;
@@ -112,9 +111,7 @@ function eventDescription(
   feedType: CalendarFeedType
 ) {
   if (feedType === 'clinic') {
-    return row.notes
-      ? `Tiramisu confirmed shift / ${row.notes}`
-      : 'Tiramisu confirmed shift';
+    return 'Tiramisu confirmed shift';
   }
   return row.assignment_type === 'help'
     ? '所属：別院 / Tiramisu confirmed shift'

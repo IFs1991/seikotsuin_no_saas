@@ -11,6 +11,7 @@ import {
   fetchClinicNameWithClient,
 } from '@/lib/auth/profile-read-model';
 import { fetchDailyReportsReadModel } from '@/lib/daily-reports/read-model';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(),
@@ -169,5 +170,33 @@ describe('GET /api/dashboard/bootstrap', () => {
     expect(response.status).toBe(403);
     expect(payload).toEqual({ error: 'clinic_id could not be resolved' });
     expect(ensureClinicAccessMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a sanitized 503 when DB authority cannot be resolved', async () => {
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.DATABASE_CONNECTION_ERROR,
+        'sensitive authority query failed',
+        503,
+        { databaseCode: '42P01' }
+      )
+    );
+
+    const { GET } = await import('@/app/api/dashboard/bootstrap/route');
+    const request = new NextRequest(
+      'http://localhost/api/dashboard/bootstrap?clinic_id=clinic-requested'
+    );
+
+    const response = await GET(request);
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(payload)).not.toContain('DATABASE_CONNECTION_ERROR');
+    expect(JSON.stringify(payload)).not.toContain('42P01');
+    expect(JSON.stringify(payload)).not.toContain('sensitive');
   });
 });

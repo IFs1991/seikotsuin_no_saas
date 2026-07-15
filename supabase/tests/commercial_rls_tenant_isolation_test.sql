@@ -30,8 +30,8 @@ select is(
     from pg_policies
     where schemaname = 'public'
   ),
-  182::bigint,
-  'public policy count matches the reviewed PR-07 quarantine catalog'
+  179::bigint,
+  'public policy count matches the reviewed PR-07 catalog after PR-09 retires three global admin policies'
 );
 
 select is(
@@ -145,10 +145,6 @@ select is(
           ),
           ('calendar_feed_tokens', 'calendar_feed_tokens_select_scoped'),
           ('staff_profiles', 'staff_profiles_select_scoped'),
-          (
-            'staff_clinic_memberships',
-            'staff_clinic_memberships_select_scoped'
-          ),
           ('shift_requests', 'shift_requests_select_scoped'),
           ('shift_requests', 'shift_requests_insert_scoped'),
           ('shift_requests', 'shift_requests_update_scoped')
@@ -157,8 +153,8 @@ select is(
         'SELECT auth.uid()' in concat_ws(' ', qual, with_check)
       ) > 0
   ),
-  7::bigint,
-  'all seven newer auth.uid policies use initialization plans'
+  6::bigint,
+  'all six retained auth.uid policies use initialization plans'
 );
 
 set local role anon;
@@ -216,18 +212,31 @@ insert into auth.users (
   aud,
   role
 )
-values (
-  'f3030000-0000-4000-8000-000000000010',
-  'commercial-pr03-manager@example.invalid',
-  extensions.crypt('synthetic-not-a-secret', extensions.gen_salt('bf')),
-  now(),
-  '{"provider":"email","providers":["email"]}'::jsonb,
-  '{}'::jsonb,
-  now(),
-  now(),
-  'authenticated',
-  'authenticated'
-);
+values
+  (
+    'f3030000-0000-4000-8000-000000000010',
+    'commercial-pr03-manager@example.invalid',
+    extensions.crypt('synthetic-not-a-secret', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    'authenticated',
+    'authenticated'
+  ),
+  (
+    'f3030000-0000-4000-8000-000000000020',
+    'commercial-pr09-clinic-admin@example.invalid',
+    extensions.crypt('synthetic-not-a-secret', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now(),
+    'authenticated',
+    'authenticated'
+  );
 
 insert into public.profiles (
   user_id,
@@ -237,14 +246,23 @@ insert into public.profiles (
   role,
   is_active
 )
-values (
-  'f3030000-0000-4000-8000-000000000010',
-  'f3030000-0000-4000-8000-000000000001',
-  'commercial-pr03-manager@example.invalid',
-  'Commercial PR03 Manager',
-  'manager',
-  true
-);
+values
+  (
+    'f3030000-0000-4000-8000-000000000010',
+    'f3030000-0000-4000-8000-000000000001',
+    'commercial-pr03-manager@example.invalid',
+    'Commercial PR03 Manager',
+    'manager',
+    true
+  ),
+  (
+    'f3030000-0000-4000-8000-000000000020',
+    'f3030000-0000-4000-8000-000000000000',
+    'commercial-pr09-clinic-admin@example.invalid',
+    'Commercial PR09 Clinic Admin',
+    'clinic_admin',
+    true
+  );
 
 insert into public.staff (
   id,
@@ -254,14 +272,23 @@ insert into public.staff (
   email,
   password_hash
 )
-values (
-  'f3030000-0000-4000-8000-000000000010',
-  'f3030000-0000-4000-8000-000000000001',
-  'Commercial PR03 Manager',
-  'manager',
-  'commercial-pr03-manager@example.invalid',
-  'not-used'
-);
+values
+  (
+    'f3030000-0000-4000-8000-000000000010',
+    'f3030000-0000-4000-8000-000000000001',
+    'Commercial PR03 Manager',
+    'manager',
+    'commercial-pr03-manager@example.invalid',
+    'not-used'
+  ),
+  (
+    'f3030000-0000-4000-8000-000000000020',
+    'f3030000-0000-4000-8000-000000000000',
+    'Commercial PR09 Clinic Admin',
+    'clinic_admin',
+    'commercial-pr09-clinic-admin@example.invalid',
+    'not-used'
+  );
 
 insert into public.user_permissions (
   staff_id,
@@ -270,13 +297,21 @@ insert into public.user_permissions (
   role,
   clinic_id
 )
-values (
-  'f3030000-0000-4000-8000-000000000010',
-  'commercial-pr03-manager',
-  'not-used',
-  'manager',
-  'f3030000-0000-4000-8000-000000000001'
-);
+values
+  (
+    'f3030000-0000-4000-8000-000000000010',
+    'commercial-pr03-manager',
+    'not-used',
+    'manager',
+    'f3030000-0000-4000-8000-000000000001'
+  ),
+  (
+    'f3030000-0000-4000-8000-000000000020',
+    'commercial-pr09-clinic-admin',
+    'not-used',
+    'clinic_admin',
+    'f3030000-0000-4000-8000-000000000000'
+  );
 
 insert into public.clinic_settings (clinic_id, category, settings)
 values

@@ -23,6 +23,7 @@ import {
   getUserAccessContext,
   resolveScopedClinicIds,
 } from '@/lib/supabase';
+import { AppError } from '@/lib/error-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,93 +58,121 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = await createClient();
-  const user = await getCurrentUser(supabase);
+  try {
+    const supabase = await createClient();
+    const user = await getCurrentUser(supabase);
 
-  if (!user) {
-    return buildMobileUiuxFailure(401, 'UNAUTHORIZED', '認証が必要です');
-  }
+    if (!user) {
+      return buildMobileUiuxFailure(401, 'UNAUTHORIZED', '認証が必要です');
+    }
 
-  const accessContext = await getUserAccessContext(user.id, supabase, {
-    user,
-  });
-  const principalDecision = await resolveMobileUiuxPrincipal({
-    userId: user.id,
-    permissions: accessContext.permissions,
-    flags,
-  });
-
-  if (principalDecision.allowed === false) {
-    logMobileUiuxDeniedAccess({
-      reasonCode: mapMobileUiuxPrincipalDeniedReason(principalDecision.reason),
-      role: normalizeRole(accessContext.permissions?.role),
-      allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
-      writeTarget: 'context',
-      featureFlagEnabled: flags.enabled,
+    const accessContext = await getUserAccessContext(user.id, supabase, {
+      user,
     });
+
+    if (!accessContext.isActive) {
+      return buildMobileUiuxFailure(
+        403,
+        'FORBIDDEN',
+        'アカウントが無効化されています'
+      );
+    }
+    const principalDecision = await resolveMobileUiuxPrincipal({
+      userId: user.id,
+      permissions: accessContext.permissions,
+      flags,
+    });
+
+    if (principalDecision.allowed === false) {
+      logMobileUiuxDeniedAccess({
+        reasonCode: mapMobileUiuxPrincipalDeniedReason(
+          principalDecision.reason
+        ),
+        role: normalizeRole(accessContext.permissions?.role),
+        allowedClinicCount: flags.allowedClinicIds.length,
+        scopedClinicCount: accessContext.permissions
+          ? (resolveScopedClinicIds(accessContext.permissions)?.length ?? 0)
+          : 0,
+        writeTarget: 'context',
+        featureFlagEnabled: flags.enabled,
+      });
+      return buildMobileUiuxFailure(
+        principalDecision.status,
+        'FORBIDDEN',
+        'このモバイル UI/UX へのアクセス権限がありません'
+      );
+    }
+
+    const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
+      supabase,
+      principal: principalDecision,
+      flags,
+    });
+
+    if (rolloutDecision.allowed === false) {
+      logMobileUiuxDeniedAccess({
+        reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
+        role: normalizeRole(accessContext.permissions?.role),
+        allowedClinicCount: flags.allowedClinicIds.length,
+        scopedClinicCount: accessContext.permissions
+          ? (resolveScopedClinicIds(accessContext.permissions)?.length ?? 0)
+          : 0,
+        writeTarget: 'context',
+        featureFlagEnabled: rolloutDecision.publicFlags.enabled,
+      });
+      return buildMobileUiuxFailure(
+        rolloutDecision.status,
+        'FORBIDDEN',
+        'このモバイル UI/UX へのアクセス権限がありません'
+      );
+    }
+
+    const contextClinicId = accessContext.clinicId;
+    const preferredClinicId =
+      contextClinicId && rolloutDecision.clinicIds.includes(contextClinicId)
+        ? contextClinicId
+        : rolloutDecision.clinicIds[0];
+
+    const [displayName, accessibleClinics] = await Promise.all([
+      resolveStaffDisplayName(supabase, user.id),
+      fetchClinicNames(supabase, rolloutDecision.clinicIds),
+    ]);
+
+    // ヘッダ表示や店舗切替は accessibleClinics（名前解決済みの院）を正とするため、
+    // 名前が引けた院がある場合は defaultClinicId もその中から選ぶ
+    const defaultClinicId = accessibleClinics.some(
+      clinic => clinic.id === preferredClinicId
+    )
+      ? preferredClinicId
+      : (accessibleClinics[0]?.id ?? preferredClinicId);
+
+    const data: MobileUiuxContextResponse = {
+      role: {
+        canonical: rolloutDecision.role,
+        label: ROLE_LABELS[rolloutDecision.role],
+      },
+      defaultClinicId,
+      accessibleClinicIds: rolloutDecision.clinicIds,
+      displayMode: resolveDisplayMode(request),
+      flags: rolloutDecision.publicFlags,
+      displayName,
+      accessibleClinics,
+    };
+
+    return buildMobileUiuxSuccess(data);
+  } catch (error) {
+    if (error instanceof AppError && error.statusCode === 503) {
+      return buildMobileUiuxFailure(
+        503,
+        'INTERNAL',
+        '認証情報を確認できません。時間をおいて再度お試しください'
+      );
+    }
+
     return buildMobileUiuxFailure(
-      principalDecision.status,
-      'FORBIDDEN',
-      'このモバイル UI/UX へのアクセス権限がありません'
+      500,
+      'INTERNAL',
+      'モバイル UI/UX 情報の取得に失敗しました'
     );
   }
-
-  const rolloutDecision = await resolveMobileUiuxRolloutWithEntitlements({
-    supabase,
-    principal: principalDecision,
-    flags,
-  });
-
-  if (rolloutDecision.allowed === false) {
-    logMobileUiuxDeniedAccess({
-      reasonCode: mapMobileUiuxRolloutDeniedReason(rolloutDecision.reason),
-      role: normalizeRole(accessContext.permissions?.role),
-      allowedClinicCount: flags.allowedClinicIds.length,
-      scopedClinicCount:
-        resolveScopedClinicIds(accessContext.permissions)?.length ?? 0,
-      writeTarget: 'context',
-      featureFlagEnabled: rolloutDecision.publicFlags.enabled,
-    });
-    return buildMobileUiuxFailure(
-      rolloutDecision.status,
-      'FORBIDDEN',
-      'このモバイル UI/UX へのアクセス権限がありません'
-    );
-  }
-
-  const contextClinicId = accessContext.clinicId;
-  const preferredClinicId =
-    contextClinicId && rolloutDecision.clinicIds.includes(contextClinicId)
-      ? contextClinicId
-      : rolloutDecision.clinicIds[0];
-
-  const [displayName, accessibleClinics] = await Promise.all([
-    resolveStaffDisplayName(supabase, user.id),
-    fetchClinicNames(supabase, rolloutDecision.clinicIds),
-  ]);
-
-  // ヘッダ表示や店舗切替は accessibleClinics（名前解決済みの院）を正とするため、
-  // 名前が引けた院がある場合は defaultClinicId もその中から選ぶ
-  const defaultClinicId = accessibleClinics.some(
-    clinic => clinic.id === preferredClinicId
-  )
-    ? preferredClinicId
-    : (accessibleClinics[0]?.id ?? preferredClinicId);
-
-  const data: MobileUiuxContextResponse = {
-    role: {
-      canonical: rolloutDecision.role,
-      label: ROLE_LABELS[rolloutDecision.role],
-    },
-    defaultClinicId,
-    accessibleClinicIds: rolloutDecision.clinicIds,
-    displayMode: resolveDisplayMode(request),
-    flags: rolloutDecision.publicFlags,
-    displayName,
-    accessibleClinics,
-  };
-
-  return buildMobileUiuxSuccess(data);
 }

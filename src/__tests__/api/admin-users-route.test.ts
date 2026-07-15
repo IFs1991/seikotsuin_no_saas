@@ -109,7 +109,10 @@ function createMaybeSingleQuery<T extends QueryRow>(
   return query;
 }
 
-function createActiveAssignmentQuery(data: { id: string } | null) {
+function createActiveAssignmentQuery(
+  data: { id: string } | null,
+  error: unknown = null
+) {
   const query = {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
@@ -117,7 +120,7 @@ function createActiveAssignmentQuery(data: { id: string } | null) {
     limit: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({
       data,
-      error: null,
+      error,
     }),
   };
 
@@ -657,7 +660,7 @@ describe('GET /api/admin/users', () => {
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it('creates a manager account without clinic-scoped staff records', async () => {
+  it('creates a manager account with a scoped primary clinic', async () => {
     const clinicId = '33333333-3333-4333-8333-333333333333';
     const createdUserId = '22222222-2222-4222-8222-222222222222';
     const permissionId = '11111111-1111-4111-8111-111111111111';
@@ -671,7 +674,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
@@ -695,7 +699,7 @@ describe('GET /api/admin/users', () => {
           id: permissionId,
           staff_id: createdUserId,
           role: 'manager',
-          clinic_id: null,
+          clinic_id: clinicId,
           username: 'yamada@example.com',
           clinics: null,
           created_at: '2026-04-30T00:00:00.000Z',
@@ -757,12 +761,12 @@ describe('GET /api/admin/users', () => {
       },
     });
     expect(adminClient.from).toHaveBeenCalledWith('profiles');
-    expect(adminClient.from).not.toHaveBeenCalledWith('staff');
-    expect(adminClient.from).not.toHaveBeenCalledWith('resources');
+    expect(adminClient.from).toHaveBeenCalledWith('staff');
+    expect(adminClient.from).toHaveBeenCalledWith('resources');
     expect(baseUpsertQuery.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: createdUserId,
-        clinic_id: null,
+        clinic_id: clinicId,
         full_name: '山田 太郎',
         role: 'manager',
       }),
@@ -771,7 +775,7 @@ describe('GET /api/admin/users', () => {
     expect(permissionWriteQuery.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         staff_id: createdUserId,
-        clinic_id: null,
+        clinic_id: clinicId,
         role: 'manager',
         username: 'yamada@example.com',
       }),
@@ -782,7 +786,7 @@ describe('GET /api/admin/users', () => {
         id: permissionId,
         user_id: createdUserId,
         role: 'manager',
-        clinic_id: null,
+        clinic_id: clinicId,
         profile_email: 'yamada@example.com',
         profile_name: '山田 太郎',
       })
@@ -795,7 +799,7 @@ describe('GET /api/admin/users', () => {
       {
         user_id: createdUserId,
         role: 'manager',
-        clinic_id: null,
+        clinic_id: clinicId,
       }
     );
   });
@@ -814,7 +818,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
@@ -828,6 +833,7 @@ describe('GET /api/admin/users', () => {
     const profileQuery = createMaybeSingleQuery({
       email: 'profile-only@example.com',
       full_name: '未付与 太郎',
+      clinic_id: clinicId,
     });
     const existingPermissionQuery = createMaybeSingleQuery(null);
     const staffLookupQuery = createMaybeSingleQuery(null);
@@ -915,7 +921,8 @@ describe('GET /api/admin/users', () => {
     );
   });
 
-  it('assigns admin role to a profile-only account without staff or resources', async () => {
+  it('assigns a scoped admin role without staff or resources', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
     const userId = '22222222-2222-4222-8222-222222222222';
     const permissionId = '11111111-1111-4111-8111-111111111111';
 
@@ -928,13 +935,14 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
         user_id: userId,
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
         candidate_source: 'profile',
       },
     });
@@ -942,6 +950,7 @@ describe('GET /api/admin/users', () => {
     const profileQuery = createMaybeSingleQuery({
       email: 'profile-only@example.com',
       full_name: '未付与 太郎',
+      clinic_id: clinicId,
     });
     const existingPermissionQuery = createMaybeSingleQuery(null);
     const staffLookupQuery = createMaybeSingleQuery(null);
@@ -949,7 +958,7 @@ describe('GET /api/admin/users', () => {
       permissionId,
       userId,
       role: 'admin',
-      clinicId: null,
+      clinicId,
     });
 
     const tableQueries = {
@@ -977,7 +986,7 @@ describe('GET /api/admin/users', () => {
         body: JSON.stringify({
           user_id: userId,
           role: 'admin',
-          clinic_id: null,
+          clinic_id: clinicId,
           candidate_source: 'profile',
         }),
       })
@@ -988,12 +997,13 @@ describe('GET /api/admin/users', () => {
       expect.objectContaining({
         staff_id: userId,
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
       })
     );
   });
 
-  it('allows hq admin to assign a non-admin role without clinic', async () => {
+  it('rejects a non-admin role assignment without a target clinic', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
     const userId = '22222222-2222-4222-8222-222222222222';
     const permissionId = '11111111-1111-4111-8111-111111111111';
 
@@ -1006,7 +1016,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
@@ -1061,17 +1072,11 @@ describe('GET /api/admin/users', () => {
       })
     );
 
-    expect(response.status).toBe(201);
-    expect(permissionWriteQuery.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        staff_id: userId,
-        role: 'manager',
-        clinic_id: null,
-      })
-    );
+    expect(response.status).toBe(403);
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it('normalizes manager permission assignment clinic_id to null', async () => {
+  it('retains manager permission assignment clinic_id as its primary clinic', async () => {
     const submittedClinicId = '33333333-3333-4333-8333-333333333333';
     const userId = '22222222-2222-4222-8222-222222222222';
     const permissionId = '11111111-1111-4111-8111-111111111111';
@@ -1085,7 +1090,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: submittedClinicId,
+        clinic_scope_ids: [submittedClinicId],
       },
       supabase: {},
       body: {
@@ -1099,21 +1105,24 @@ describe('GET /api/admin/users', () => {
     const profileQuery = createMaybeSingleQuery({
       email: 'manager@example.com',
       full_name: '未所属 マネージャー',
+      clinic_id: submittedClinicId,
     });
     const existingPermissionQuery = createMaybeSingleQuery(null);
     const staffLookupQuery = createMaybeSingleQuery(null);
+    const staffUpsertQuery = createUpsertQuery();
+    const resourceUpsertQuery = createUpsertQuery();
     const permissionWriteQuery = createPermissionWriteQuery({
       permissionId,
       userId,
       role: 'manager',
-      clinicId: null,
+      clinicId: submittedClinicId,
     });
 
     const tableQueries = {
       profiles: [profileQuery],
       user_permissions: [existingPermissionQuery, permissionWriteQuery],
-      staff: [staffLookupQuery],
-      resources: [],
+      staff: [staffLookupQuery, staffUpsertQuery],
+      resources: [resourceUpsertQuery],
     };
     const adminClient = {
       from: jest.fn((table: keyof typeof tableQueries) => {
@@ -1145,10 +1154,11 @@ describe('GET /api/admin/users', () => {
       expect.objectContaining({
         staff_id: userId,
         role: 'manager',
-        clinic_id: null,
+        clinic_id: submittedClinicId,
       })
     );
-    expect(adminClient.from).not.toHaveBeenCalledWith('resources');
+    expect(staffUpsertQuery.upsert).toHaveBeenCalled();
+    expect(resourceUpsertQuery.upsert).toHaveBeenCalled();
   });
 
   it('active assignmentが残る既存manager権限のdowngradeを409で拒否する', async () => {
@@ -1164,7 +1174,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
@@ -1240,6 +1251,96 @@ describe('GET /api/admin/users', () => {
     expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 
+  it('manager assignment authority errorは情報非開示503で書込み前に停止する', async () => {
+    const clinicId = '33333333-3333-4333-8333-333333333333';
+    const userId = '22222222-2222-4222-8222-222222222222';
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      permissions: {
+        role: 'admin',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+      supabase: {},
+      body: {
+        user_id: userId,
+        clinic_id: clinicId,
+        role: 'therapist',
+      },
+    });
+
+    const profileQuery = createMaybeSingleQuery({
+      email: 'manager@example.com',
+      full_name: '担当 太郎',
+      clinic_id: clinicId,
+    });
+    const existingPermissionQuery = createMaybeSingleQuery({
+      id: '11111111-1111-4111-8111-111111111111',
+      username: 'manager@example.com',
+      role: 'manager',
+      clinic_id: clinicId,
+    });
+    const staffLookupQuery = createMaybeSingleQuery({
+      id: userId,
+      clinic_id: clinicId,
+    });
+    const assignmentQuery = createActiveAssignmentQuery(null, {
+      code: 'PGRST500',
+      message: 'sensitive assignment error',
+    });
+    const permissionWriteQuery = createPermissionWriteQuery({
+      permissionId: '55555555-5555-4555-8555-555555555555',
+      userId,
+      role: 'therapist',
+      clinicId,
+    });
+    const tableQueries = {
+      profiles: [profileQuery],
+      user_permissions: [existingPermissionQuery, permissionWriteQuery],
+      staff: [staffLookupQuery],
+      resources: [],
+      manager_clinic_assignments: [assignmentQuery],
+    };
+    createAdminClientMock.mockReturnValue({
+      from: jest.fn((table: keyof typeof tableQueries) => {
+        const query = tableQueries[table]?.shift();
+        if (!query) {
+          throw new Error(`Unexpected table query: ${table}`);
+        }
+        return query;
+      }),
+    });
+
+    const { POST } = await import('@/app/api/admin/users/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: userId,
+          clinic_id: clinicId,
+          role: 'therapist',
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(body)).not.toContain('PGRST500');
+    expect(JSON.stringify(body)).not.toContain('sensitive');
+    expect(permissionWriteQuery.insert).not.toHaveBeenCalled();
+    expect(logAdminActionMock).not.toHaveBeenCalled();
+  });
+
   it('rejects clinic_admin assignment without clinic scope target', async () => {
     const clinicId = '33333333-3333-4333-8333-333333333333';
 
@@ -1294,7 +1395,8 @@ describe('GET /api/admin/users', () => {
       },
       permissions: {
         role: 'admin',
-        clinic_id: null,
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
       },
       supabase: {},
       body: {
@@ -1308,6 +1410,7 @@ describe('GET /api/admin/users', () => {
     const profileQuery = createMaybeSingleQuery({
       email: 'profile-only@example.com',
       full_name: '未付与 太郎',
+      clinic_id: clinicId,
     });
     const existingPermissionQuery = createMaybeSingleQuery(null);
     const staffLookupQuery = createMaybeSingleQuery(null);

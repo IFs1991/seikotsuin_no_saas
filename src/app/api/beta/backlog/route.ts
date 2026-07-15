@@ -9,9 +9,25 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import {
+  canAccessClinicScope,
+  resolveScopedClinicIds,
+  type SupabaseServerClient,
+  type UserPermissions,
+} from '@/lib/supabase';
+import { processApiRequest } from '@/lib/api-helpers';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+
+const BACKLOG_ADMIN_ROLES = ['admin'] as const;
+
+type BacklogScopeRow = {
+  affected_clinics: string[] | null;
+};
+
+type BacklogPatchScopeRow = BacklogScopeRow & {
+  started_at: string | null;
+};
 
 // バリデーションスキーマ
 const backlogCreateSchema = z.object({
@@ -56,35 +72,88 @@ const backlogUpdateSchema = z.object({
   assignedTo: z.string().uuid().optional(),
 });
 
+function resolveAffectedClinicsForCreate(
+  permissions: UserPermissions,
+  requestedClinicIds: readonly string[] | undefined
+): string[] | null {
+  const candidateClinicIds =
+    requestedClinicIds && requestedClinicIds.length > 0
+      ? Array.from(new Set(requestedClinicIds))
+      : (resolveScopedClinicIds(permissions)?.slice(0, 1) ?? []);
+
+  if (
+    candidateClinicIds.length === 0 ||
+    candidateClinicIds.some(
+      clinicId => !canAccessClinicScope(permissions, clinicId)
+    )
+  ) {
+    return null;
+  }
+
+  return candidateClinicIds;
+}
+
+function canManageBacklogScope(
+  permissions: UserPermissions,
+  affectedClinicIds: readonly string[] | null
+): affectedClinicIds is readonly string[] {
+  return Boolean(
+    affectedClinicIds &&
+    affectedClinicIds.length > 0 &&
+    affectedClinicIds.every(clinicId =>
+      canAccessClinicScope(permissions, clinicId)
+    )
+  );
+}
+
+async function loadBacklogScope(
+  supabase: SupabaseServerClient,
+  id: string
+): Promise<{ data: BacklogScopeRow | null; error: unknown }> {
+  return await supabase
+    .from('improvement_backlog')
+    .select('affected_clinics')
+    .eq('id', id)
+    .maybeSingle<BacklogScopeRow>();
+}
+
 /**
  * GET /api/beta/backlog
  * 改善バックログの取得
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized backlog access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      requireClinicMatch: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
+
+    const { auth, permissions, supabase } = processResult;
 
     // クエリパラメータ
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const category = searchParams.get('category');
     const milestone = searchParams.get('milestone');
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+
+    if (!scopedClinicIds || scopedClinicIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic scope required' },
+        { status: 403 }
+      );
+    }
 
     // クエリ構築
     let query = supabase
       .from('improvement_backlog')
       .select('*')
+      .overlaps('affected_clinics', scopedClinicIds)
+      .containedBy('affected_clinics', scopedClinicIds)
       .order('priority', { ascending: true })
       .order('created_at', { ascending: false });
 
@@ -107,7 +176,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       logger.error('Failed to fetch improvement backlog', {
         error,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to fetch backlog' },
@@ -116,7 +185,7 @@ export async function GET(request: NextRequest) {
     }
 
     logger.info('Improvement backlog fetched successfully', {
-      userId: user.id,
+      userId: auth.id,
       count: backlog?.length || 0,
     });
 
@@ -136,27 +205,20 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized backlog creation attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      allowedRoles: Array.from(BACKLOG_ADMIN_ROLES),
+      requireBody: true,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // 管理者権限チェック
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, body, permissions, supabase } = processResult;
 
-    if (!profile || profile.role !== 'admin') {
-      logger.warn('Non-admin backlog creation attempt', { userId: user.id });
+    if (permissions.role !== 'admin') {
+      logger.warn('Non-admin backlog creation attempt', { userId: auth.id });
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -164,13 +226,12 @@ export async function POST(request: NextRequest) {
     }
 
     // リクエストボディ検証
-    const body = await request.json();
     const validation = backlogCreateSchema.safeParse(body);
 
     if (!validation.success) {
       logger.warn('Invalid backlog creation', {
         errors: validation.error.errors,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Invalid input', details: validation.error.errors },
@@ -179,6 +240,17 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validation.data;
+    const affectedClinics = resolveAffectedClinicsForCreate(
+      permissions,
+      data.affectedClinics
+    );
+
+    if (!affectedClinics) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     // バックログアイテム作成
     const { data: newBacklog, error: insertError } = await supabase
@@ -191,11 +263,11 @@ export async function POST(request: NextRequest) {
         estimated_effort: data.estimatedEffort,
         business_value: data.businessValue,
         related_feedback_ids: data.relatedFeedbackIds || [],
-        affected_clinics: data.affectedClinics || [],
+        affected_clinics: affectedClinics,
         milestone: data.milestone,
         assigned_to: data.assignedTo,
         status: 'backlog',
-        created_by: user.id,
+        created_by: auth.id,
       })
       .select()
       .single();
@@ -203,7 +275,7 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       logger.error('Failed to insert backlog item', {
         error: insertError,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to create backlog item' },
@@ -212,7 +284,7 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Backlog item created successfully', {
-      userId: user.id,
+      userId: auth.id,
       backlogId: newBacklog.id,
       category: data.category,
       priority: data.priority,
@@ -234,27 +306,20 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized backlog update attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      allowedRoles: Array.from(BACKLOG_ADMIN_ROLES),
+      requireBody: true,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // 管理者権限チェック
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, body, permissions, supabase } = processResult;
 
-    if (!profile || profile.role !== 'admin') {
-      logger.warn('Non-admin backlog update attempt', { userId: user.id });
+    if (permissions.role !== 'admin') {
+      logger.warn('Non-admin backlog update attempt', { userId: auth.id });
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -262,13 +327,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     // リクエストボディ検証
-    const body = await request.json();
     const validation = backlogUpdateSchema.safeParse(body);
 
     if (!validation.success) {
       logger.warn('Invalid backlog update', {
         errors: validation.error.errors,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Invalid input', details: validation.error.errors },
@@ -277,6 +341,46 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { id, ...updates } = validation.data;
+
+    const { data: existingBacklog, error: scopeError } = await supabase
+      .from('improvement_backlog')
+      .select('affected_clinics, started_at')
+      .eq('id', id)
+      .maybeSingle<BacklogPatchScopeRow>();
+
+    if (scopeError) {
+      logger.error('Failed to resolve backlog clinic scope', {
+        error: scopeError,
+        backlogId: id,
+        userId: auth.id,
+      });
+      return NextResponse.json(
+        { error: 'Failed to update backlog item' },
+        { status: 500 }
+      );
+    }
+
+    if (!existingBacklog) {
+      return NextResponse.json(
+        { error: 'Backlog item not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!canManageBacklogScope(permissions, existingBacklog.affected_clinics)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
+
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+    if (!scopedClinicIds || scopedClinicIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic scope required' },
+        { status: 403 }
+      );
+    }
 
     // 更新データ構築
     const updateData: Record<string, unknown> = {};
@@ -294,13 +398,7 @@ export async function PATCH(request: NextRequest) {
 
     // ステータスが'in_progress'に変更された場合、started_atを設定
     if (updates.status === 'in_progress') {
-      const { data: existingBacklog } = await supabase
-        .from('improvement_backlog')
-        .select('started_at')
-        .eq('id', id)
-        .single();
-
-      if (!existingBacklog?.started_at) {
+      if (!existingBacklog.started_at) {
         updateData.started_at = new Date().toISOString();
       }
     }
@@ -315,6 +413,7 @@ export async function PATCH(request: NextRequest) {
       .from('improvement_backlog')
       .update(updateData)
       .eq('id', id)
+      .containedBy('affected_clinics', scopedClinicIds)
       .select()
       .single();
 
@@ -322,7 +421,7 @@ export async function PATCH(request: NextRequest) {
       logger.error('Failed to update backlog item', {
         error: updateError,
         backlogId: id,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to update backlog item' },
@@ -331,7 +430,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     logger.info('Backlog item updated successfully', {
-      userId: user.id,
+      userId: auth.id,
       backlogId: id,
       updates,
     });
@@ -352,7 +451,6 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -363,27 +461,59 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized backlog deletion attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      allowedRoles: Array.from(BACKLOG_ADMIN_ROLES),
+      requireClinicMatch: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // 管理者権限チェック
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, permissions, supabase } = processResult;
 
-    if (!profile || profile.role !== 'admin') {
-      logger.warn('Non-admin backlog deletion attempt', { userId: user.id });
+    if (permissions.role !== 'admin') {
+      logger.warn('Non-admin backlog deletion attempt', { userId: auth.id });
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    const { data: existingBacklog, error: scopeError } = await loadBacklogScope(
+      supabase,
+      id
+    );
+
+    if (scopeError) {
+      logger.error('Failed to resolve backlog clinic scope', {
+        error: scopeError,
+        backlogId: id,
+        userId: auth.id,
+      });
+      return NextResponse.json(
+        { error: 'Failed to delete backlog item' },
+        { status: 500 }
+      );
+    }
+
+    if (!existingBacklog) {
+      return NextResponse.json(
+        { error: 'Backlog item not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!canManageBacklogScope(permissions, existingBacklog.affected_clinics)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
+
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+    if (!scopedClinicIds || scopedClinicIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic scope required' },
         { status: 403 }
       );
     }
@@ -392,13 +522,14 @@ export async function DELETE(request: NextRequest) {
     const { error: deleteError } = await supabase
       .from('improvement_backlog')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .containedBy('affected_clinics', scopedClinicIds);
 
     if (deleteError) {
       logger.error('Failed to delete backlog item', {
         error: deleteError,
         backlogId: id,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to delete backlog item' },
@@ -407,7 +538,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     logger.info('Backlog item deleted successfully', {
-      userId: user.id,
+      userId: auth.id,
       backlogId: id,
     });
 

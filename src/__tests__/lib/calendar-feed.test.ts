@@ -19,7 +19,6 @@ function shift(
     start_time: '2026-07-01T06:00:00.000Z',
     end_time: '2026-07-01T13:30:00.000Z',
     status: 'confirmed',
-    notes: null,
     resources: { id: 'staff-a', name: '佐藤 太郎', clinic_id: 'clinic-home' },
     clinics: { id: 'clinic-a', name: '道玄坂院' },
     ...overrides,
@@ -61,5 +60,21 @@ describe('calendar-feed utilities', () => {
     });
 
     expect(ics).toContain('SUMMARY:佐藤 太郎 15:00-22:30 ヘルプ');
+  });
+
+  it('never exposes a private shift note in an ICS description', () => {
+    const shiftWithPrivateNote = {
+      ...shift(),
+      notes: 'PRIVATE: patient-specific staffing context',
+    };
+    const ics = buildCalendarIcs({
+      feedName: '院ロスター',
+      feedType: 'clinic',
+      shifts: [shiftWithPrivateNote],
+      generatedAt: new Date('2026-06-26T00:00:00.000Z'),
+    });
+
+    expect(ics).not.toContain('patient-specific staffing context');
+    expect(ics).toContain('DESCRIPTION:Tiramisu confirmed shift');
   });
 });

@@ -30,6 +30,7 @@ jest.mock('@/lib/supabase', () => ({
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
+const ADMIN_SCOPE_IDS = ['clinic-1'];
 
 type ManagerScopeMockInput = {
   permissions: {
@@ -83,7 +84,11 @@ describe('GET /api/admin/users/candidates', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ADMIN_SCOPE_IDS,
+      },
       supabase: {},
     });
 
@@ -166,7 +171,11 @@ describe('GET /api/admin/users/candidates', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ADMIN_SCOPE_IDS,
+      },
       supabase: {},
     });
 
@@ -179,6 +188,8 @@ describe('GET /api/admin/users/candidates', () => {
         email: 'profile-only@example.com',
         full_name: '未付与 太郎',
         is_active: true,
+        clinic_id: 'clinic-1',
+        clinics: { name: '新宿院' },
       },
     ]);
     const unassignedPermissionsQuery = createListQuery([]);
@@ -214,6 +225,10 @@ describe('GET /api/admin/users/candidates', () => {
       'is_active',
       true
     );
+    expect(unassignedProfilesQuery.in).toHaveBeenCalledWith(
+      'clinic_id',
+      ADMIN_SCOPE_IDS
+    );
     expect(unassignedProfilesQuery.or).toHaveBeenCalledWith(
       'full_name.ilike.%profile%,email.ilike.%profile%'
     );
@@ -228,8 +243,8 @@ describe('GET /api/admin/users/candidates', () => {
         user_id: 'profile-only-1',
         email: 'profile-only@example.com',
         full_name: '未付与 太郎',
-        clinic_id: null,
-        clinic_name: null,
+        clinic_id: 'clinic-1',
+        clinic_name: '新宿院',
         staff_role: null,
         current_role: null,
         permission_id: null,
@@ -244,7 +259,11 @@ describe('GET /api/admin/users/candidates', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ADMIN_SCOPE_IDS,
+      },
       supabase: {},
     });
 
@@ -337,7 +356,11 @@ describe('GET /api/admin/users/candidates', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ADMIN_SCOPE_IDS,
+      },
       supabase: {},
     });
 
@@ -348,18 +371,21 @@ describe('GET /api/admin/users/candidates', () => {
         email: 'active@example.com',
         full_name: '有効 太郎',
         is_active: true,
+        clinic_id: 'clinic-1',
       },
       {
         user_id: 'inactive-1',
         email: 'inactive@example.com',
         full_name: '無効 花子',
         is_active: false,
+        clinic_id: 'clinic-1',
       },
       {
         user_id: 'permitted-1',
         email: 'permitted@example.com',
         full_name: '権限 済',
         is_active: true,
+        clinic_id: 'clinic-1',
       },
     ]);
     const unassignedPermissionsQuery = createListQuery([

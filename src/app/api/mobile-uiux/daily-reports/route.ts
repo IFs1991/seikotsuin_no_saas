@@ -39,6 +39,10 @@ import {
 } from '@/lib/mobile-uiux/route-utils';
 import { processClinicScopedBody } from '@/lib/route-helpers';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import {
+  AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE,
+  isAuthorityUnavailableError,
+} from '@/lib/api-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -75,6 +79,14 @@ function getOptionalDateKey(value: string | null, field: string) {
 }
 
 function buildAccessError(error: unknown) {
+  if (isAuthorityUnavailableError(error)) {
+    return buildMobileUiuxFailure(
+      503,
+      'INTERNAL',
+      AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE
+    );
+  }
+
   if (error instanceof AppError) {
     return buildMobileUiuxFailure(
       error.statusCode,
@@ -117,6 +129,14 @@ function canUseWriteRoutes(flags: MobileUiuxFlags): boolean {
 }
 
 function buildScopedBodyFailure(status: number) {
+  if (status === 503) {
+    return buildMobileUiuxFailure(
+      503,
+      'INTERNAL',
+      AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE
+    );
+  }
+
   if (status === 400) {
     return buildMobileUiuxFailure(
       400,

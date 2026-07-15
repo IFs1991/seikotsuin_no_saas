@@ -99,10 +99,10 @@ const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
 ]);
 
 function resolvePermissionClinicId(
-  role: AdminUserRole,
+  _role: AdminUserRole,
   clinicId: string | null | undefined
 ): string | null {
-  return role === 'admin' || role === 'manager' ? null : (clinicId ?? null);
+  return clinicId ?? null;
 }
 
 const mapCreateAccountErrorMessage = (error?: { message?: string | null }) => {
@@ -762,7 +762,7 @@ export async function POST(request: NextRequest) {
 
     const profilePromise = adminSupabase
       .from('profiles')
-      .select('email, full_name')
+      .select('email, full_name, clinic_id')
       .eq('user_id', user_id)
       .maybeSingle();
     const existingPermissionPromise = adminSupabase
@@ -821,7 +821,10 @@ export async function POST(request: NextRequest) {
         return createErrorResponse('対象スタッフの確認に失敗しました', 500);
       }
 
-      if (!staff) {
+      const isScopedProfileCandidate =
+        assignData.candidate_source === 'profile' &&
+        profile.clinic_id === targetClinicId;
+      if (!staff && !isScopedProfileCandidate) {
         return createErrorResponse(
           '対象ユーザーは選択クリニックのスタッフではありません',
           403
@@ -885,7 +888,10 @@ export async function POST(request: NextRequest) {
           userId: auth.id,
           params: { user_id, role, stage: 'manager_assignment_guard' },
         });
-        return createErrorResponse('担当店舗情報の確認に失敗しました', 500);
+        return createErrorResponse(
+          '認証情報を確認できません。時間をおいて再度お試しください',
+          503
+        );
       }
     }
 

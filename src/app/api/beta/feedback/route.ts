@@ -8,9 +8,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { canAccessClinicScope, resolveScopedClinicIds } from '@/lib/supabase';
+import { processApiRequest } from '@/lib/api-helpers';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+
+const FEEDBACK_ADMIN_ROLES = ['admin'] as const;
+
+type FeedbackScopeRow = {
+  clinic_id: string;
+};
 
 // バリデーションスキーマ
 const feedbackSubmitSchema = z.object({
@@ -47,35 +54,37 @@ const feedbackUpdateSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized feedback access attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      requireClinicMatch: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // プロフィール取得
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('clinic_id, role')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
-    }
+    const { auth, permissions, supabase } = processResult;
 
     // クエリパラメータ
     const clinicId = searchParams.get('clinicId');
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
     const category = searchParams.get('category');
+    const scopedClinicIds = resolveScopedClinicIds(permissions);
+
+    if (!scopedClinicIds || scopedClinicIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic scope required' },
+        { status: 403 }
+      );
+    }
+
+    if (clinicId && !canAccessClinicScope(permissions, clinicId)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     // クエリ構築
     let query = supabase
@@ -83,11 +92,11 @@ export async function GET(request: NextRequest) {
       .select('*')
       .order('created_at', { ascending: false });
 
-    // 管理者以外は自分のクリニックのみ
-    if (profile.role !== 'admin') {
-      query = query.eq('clinic_id', profile.clinic_id);
-    } else if (clinicId) {
+    // Admin is also limited to the canonical DB/JWT scope.
+    if (clinicId) {
       query = query.eq('clinic_id', clinicId);
+    } else {
+      query = query.in('clinic_id', scopedClinicIds);
     }
 
     // フィルター適用
@@ -104,7 +113,10 @@ export async function GET(request: NextRequest) {
     const { data: feedback, error } = await query;
 
     if (error) {
-      logger.error('Failed to fetch beta feedback', { error, userId: user.id });
+      logger.error('Failed to fetch beta feedback', {
+        error,
+        userId: auth.id,
+      });
       return NextResponse.json(
         { error: 'Failed to fetch feedback' },
         { status: 500 }
@@ -112,7 +124,7 @@ export async function GET(request: NextRequest) {
     }
 
     logger.info('Beta feedback fetched successfully', {
-      userId: user.id,
+      userId: auth.id,
       count: feedback?.length || 0,
     });
 
@@ -132,40 +144,32 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized feedback submission attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      requireBody: true,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // プロフィール取得
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('clinic_id')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, body, permissions, supabase } = processResult;
+    const targetClinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
 
-    if (!profile || !profile.clinic_id) {
+    if (!targetClinicId || !canAccessClinicScope(permissions, targetClinicId)) {
       return NextResponse.json(
-        { error: 'Profile or clinic not found' },
-        { status: 404 }
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
       );
     }
 
     // リクエストボディ検証
-    const body = await request.json();
     const validation = feedbackSubmitSchema.safeParse(body);
 
     if (!validation.success) {
       logger.warn('Invalid feedback submission', {
         errors: validation.error.errors,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Invalid input', details: validation.error.errors },
@@ -175,16 +179,14 @@ export async function POST(request: NextRequest) {
 
     const data = validation.data;
 
-    // ユーザー情報取得
-    const { data: userData } = await supabase.auth.getUser();
-    const userName = userData?.user?.email?.split('@')[0] || 'Unknown User';
+    const userName = auth.email.split('@')[0] || 'Unknown User';
 
     // フィードバック登録
     const { data: newFeedback, error: insertError } = await supabase
       .from('beta_feedback')
       .insert({
-        clinic_id: profile.clinic_id,
-        user_id: user.id,
+        clinic_id: targetClinicId,
+        user_id: auth.id,
         user_name: userName,
         category: data.category,
         severity: data.severity,
@@ -209,7 +211,7 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       logger.error('Failed to insert beta feedback', {
         error: insertError,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to submit feedback' },
@@ -218,7 +220,7 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Beta feedback submitted successfully', {
-      userId: user.id,
+      userId: auth.id,
       feedbackId: newFeedback.id,
       category: data.category,
       severity: data.severity,
@@ -240,27 +242,20 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    // 認証チェック
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      logger.warn('Unauthorized feedback update attempt');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const processResult = await processApiRequest(request, {
+      allowedRoles: Array.from(FEEDBACK_ADMIN_ROLES),
+      requireBody: true,
+      requireClinicMatch: false,
+      sanitizeInputValues: false,
+    });
+    if (!processResult.success) {
+      return processResult.error;
     }
 
-    // 管理者権限チェック
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    const { auth, body, permissions, supabase } = processResult;
 
-    if (!profile || profile.role !== 'admin') {
-      logger.warn('Non-admin feedback update attempt', { userId: user.id });
+    if (permissions.role !== 'admin') {
+      logger.warn('Non-admin feedback update attempt', { userId: auth.id });
       return NextResponse.json(
         { error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -268,13 +263,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     // リクエストボディ検証
-    const body = await request.json();
     const validation = feedbackUpdateSchema.safeParse(body);
 
     if (!validation.success) {
       logger.warn('Invalid feedback update', {
         errors: validation.error.errors,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Invalid input', details: validation.error.errors },
@@ -283,6 +277,38 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { id, ...updates } = validation.data;
+
+    const { data: targetFeedback, error: targetError } = await supabase
+      .from('beta_feedback')
+      .select('clinic_id')
+      .eq('id', id)
+      .maybeSingle<FeedbackScopeRow>();
+
+    if (targetError) {
+      logger.error('Failed to resolve beta feedback scope', {
+        error: targetError,
+        feedbackId: id,
+        userId: auth.id,
+      });
+      return NextResponse.json(
+        { error: 'Failed to update feedback' },
+        { status: 500 }
+      );
+    }
+
+    if (!targetFeedback) {
+      return NextResponse.json(
+        { error: 'Feedback not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!canAccessClinicScope(permissions, targetFeedback.clinic_id)) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     // 更新データ構築
     const updateData: Record<string, unknown> = {};
@@ -301,6 +327,7 @@ export async function PATCH(request: NextRequest) {
       .from('beta_feedback')
       .update(updateData)
       .eq('id', id)
+      .eq('clinic_id', targetFeedback.clinic_id)
       .select()
       .single();
 
@@ -308,7 +335,7 @@ export async function PATCH(request: NextRequest) {
       logger.error('Failed to update beta feedback', {
         error: updateError,
         feedbackId: id,
-        userId: user.id,
+        userId: auth.id,
       });
       return NextResponse.json(
         { error: 'Failed to update feedback' },
@@ -317,7 +344,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     logger.info('Beta feedback updated successfully', {
-      userId: user.id,
+      userId: auth.id,
       feedbackId: id,
       updates,
     });

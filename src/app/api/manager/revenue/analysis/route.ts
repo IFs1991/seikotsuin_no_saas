@@ -5,8 +5,9 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 import {
   buildManagerRevenueAnalysis,
@@ -25,7 +26,9 @@ const PATH = '/api/manager/revenue/analysis';
 const MANAGER_REVENUE_ALLOWED_ROLES = ['manager'] as const;
 
 function toAssignedClinic(
-  assignment: Awaited<ReturnType<typeof resolveManagerAssignedClinics>>[number]
+  assignment: Awaited<
+    ReturnType<typeof resolveManagerAssignedClinicsWithinScope>
+  >[number]
 ): ManagerRevenueAssignedClinic {
   return {
     id: assignment.clinic_id,
@@ -56,9 +59,10 @@ export async function GET(request: NextRequest) {
     }
 
     const adminClient = createAdminClient();
-    const assignments = await resolveManagerAssignedClinics(
+    const assignments = await resolveManagerAssignedClinicsWithinScope(
       adminClient,
-      authResult.auth.id
+      authResult.auth.id,
+      authResult.permissions.clinic_scope_ids ?? []
     );
     const assignedClinics = assignments.map(toAssignedClinic);
     const assignedClinicIds = assignedClinics.map(clinic => clinic.id);
@@ -160,6 +164,16 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       userId: 'unknown',
     });
+    if (
+      error instanceof AppError &&
+      error.code === ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE &&
+      error.statusCode === 503
+    ) {
+      return createErrorResponse(
+        '認証情報を確認できません。時間をおいて再度お試しください',
+        503
+      );
+    }
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
 }

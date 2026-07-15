@@ -6,8 +6,9 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { fetchAllRows } from '@/lib/manager-fetch';
 import { createAdminClient } from '@/lib/supabase';
 import type {
@@ -28,7 +29,7 @@ const ROSTER_MAX_DAYS = 93;
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 type ManagerAssignment = Awaited<
-  ReturnType<typeof resolveManagerAssignedClinics>
+  ReturnType<typeof resolveManagerAssignedClinicsWithinScope>
 >[number];
 
 type RosterResource = {
@@ -296,9 +297,10 @@ export async function GET(request: NextRequest) {
 
     const { clinic_id: clinicId, start, end } = parsedQuery.data;
     const adminClient = createAdminClient();
-    const assignments = await resolveManagerAssignedClinics(
+    const assignments = await resolveManagerAssignedClinicsWithinScope(
       adminClient,
-      authResult.auth.id
+      authResult.auth.id,
+      authResult.permissions.clinic_scope_ids ?? []
     );
     const clinics = assignments.map(toAssignedClinic);
     const requestedClinic = clinics.find(clinic => clinic.id === clinicId);
@@ -328,6 +330,16 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       userId: 'unknown',
     });
+    if (
+      error instanceof AppError &&
+      error.code === ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE &&
+      error.statusCode === 503
+    ) {
+      return createErrorResponse(
+        '認証情報を確認できません。時間をおいて再度お試しください',
+        503
+      );
+    }
     return createErrorResponse('ロスターの取得に失敗しました', 500);
   }
 }

@@ -36,27 +36,32 @@ const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const createAdminClientMock = createAdminClient as jest.Mock;
 const SCOPED_CLINIC_IDS = ['clinic-1', 'clinic-2'] as const;
-const CLINIC_SCOPE_OR_FILTER =
-  'id.in.(clinic-1,clinic-2),parent_id.in.(clinic-1,clinic-2)';
 
-function createListQueryMock(result: unknown[]) {
+function createListQueryMock(result: Array<Record<string, unknown>>) {
+  let rows = [...result];
   const query = {
     select: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     ilike: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    or: jest.fn().mockReturnThis(),
+    in: jest.fn(),
     returns: jest.fn().mockReturnThis(),
     then(
       resolve: (value: { data: unknown[]; error: null }) => unknown,
       reject?: (reason: unknown) => unknown
     ) {
-      return Promise.resolve({ data: result, error: null }).then(
-        resolve,
-        reject
-      );
+      return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
     },
   };
+
+  query.in.mockImplementation((column: string, values: readonly string[]) => {
+    if (column === 'id') {
+      rows = rows.filter(
+        row => typeof row.id === 'string' && values.includes(row.id)
+      );
+    }
+    return query;
+  });
 
   return query;
 }
@@ -87,7 +92,7 @@ describe('Admin tenants access alignment', () => {
     jest.clearAllMocks();
   });
 
-  it('GET /api/admin/tenants scopes list by clinic_scope_ids and scoped parent_id for HQ admin', async () => {
+  it('GET /api/admin/tenants does not re-expand exact canonical scope by parent_id', async () => {
     const clinics = [
       {
         id: 'clinic-1',
@@ -136,7 +141,8 @@ describe('Admin tenants access alignment', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(clinicsQuery.or).toHaveBeenCalledWith(CLINIC_SCOPE_OR_FILTER);
+    expect(clinicsQuery.in).toHaveBeenCalledTimes(2);
+    expect(clinicsQuery.in).toHaveBeenCalledWith('id', [...SCOPED_CLINIC_IDS]);
     expect(body.data.items).toEqual([
       expect.objectContaining({
         id: 'clinic-1',
@@ -144,14 +150,6 @@ describe('Admin tenants access alignment', () => {
         parent_id: null,
         parent_name: null,
         clinic_type: 'hq',
-        child_count: 1,
-      }),
-      expect.objectContaining({
-        id: 'clinic-new-child',
-        name: 'New Child Clinic',
-        parent_id: 'clinic-1',
-        parent_name: 'Scope Clinic',
-        clinic_type: 'child',
         child_count: 0,
       }),
     ]);

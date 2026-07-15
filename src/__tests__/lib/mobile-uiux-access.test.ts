@@ -133,11 +133,29 @@ function createAssignmentsAdminClient(clinicIds: string[]) {
 }
 
 describe('resolveMobileUiuxPrincipal (manager scope)', () => {
-  it('resolves manager clinic scope from active manager_clinic_assignments', async () => {
+  it('uses the canonical manager scope and never re-expands assignments', async () => {
     const adminClient = createAssignmentsAdminClient([
       'clinic-m1',
       'clinic-m2',
     ]);
+
+    const decision = await resolveMobileUiuxPrincipal({
+      userId: 'manager-1',
+      permissions: buildPermissions('manager', ['clinic-m2']),
+      flags: BASE_FLAGS,
+      adminClient,
+    });
+
+    expect(decision).toEqual({
+      allowed: true,
+      role: 'manager',
+      clinicIds: ['clinic-m2'],
+    });
+    expect(adminClient.from).not.toHaveBeenCalled();
+  });
+
+  it('denies an explicit empty canonical scope even if DB assignments exist', async () => {
+    const adminClient = createAssignmentsAdminClient(['clinic-a']);
 
     const decision = await resolveMobileUiuxPrincipal({
       userId: 'manager-1',
@@ -147,27 +165,11 @@ describe('resolveMobileUiuxPrincipal (manager scope)', () => {
     });
 
     expect(decision).toEqual({
-      allowed: true,
-      role: 'manager',
-      clinicIds: ['clinic-m1', 'clinic-m2'],
-    });
-  });
-
-  it('denies manager without active assignments even if permissions carry clinic scope', async () => {
-    const adminClient = createAssignmentsAdminClient([]);
-
-    const decision = await resolveMobileUiuxPrincipal({
-      userId: 'manager-1',
-      permissions: buildPermissions('manager', ['clinic-a']),
-      flags: BASE_FLAGS,
-      adminClient,
-    });
-
-    expect(decision).toEqual({
       allowed: false,
       status: 403,
       reason: 'clinic_scope_empty',
     });
+    expect(adminClient.from).not.toHaveBeenCalled();
   });
 
   it('denies manager by role before querying assignments when excluded from allowed roles', async () => {
@@ -206,24 +208,25 @@ describe('resolveMobileUiuxPrincipal (manager scope)', () => {
     expect(adminClient.from).not.toHaveBeenCalled();
   });
 
-  it('fails closed when the assignment lookup throws', async () => {
+  it('does not touch a secondary assignment client after canonical resolution', async () => {
     const adminClient = {
       from: jest.fn(() => {
         throw new Error('db down');
       }),
     };
 
-    const decision = await resolveMobileUiuxPrincipal({
-      userId: 'manager-1',
-      permissions: buildPermissions('manager', ['clinic-a']),
-      flags: BASE_FLAGS,
-      adminClient,
+    await expect(
+      resolveMobileUiuxPrincipal({
+        userId: 'manager-1',
+        permissions: buildPermissions('manager', ['clinic-a']),
+        flags: BASE_FLAGS,
+        adminClient,
+      })
+    ).resolves.toEqual({
+      allowed: true,
+      role: 'manager',
+      clinicIds: ['clinic-a'],
     });
-
-    expect(decision).toEqual({
-      allowed: false,
-      status: 403,
-      reason: 'clinic_scope_empty',
-    });
+    expect(adminClient.from).not.toHaveBeenCalled();
   });
 });

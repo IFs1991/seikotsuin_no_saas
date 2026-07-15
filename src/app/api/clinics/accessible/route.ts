@@ -18,13 +18,11 @@ import {
   type SupabaseServerClient,
 } from '@/lib/supabase';
 import {
-  resolveManagerAssignedClinics,
+  resolveManagerAssignedClinicsWithinScope,
   type ManagerClinicAssignment,
 } from '@/lib/auth/manager-scope';
-import {
-  buildClinicScopeOrFilter,
-  selectReservableAdminClinicRows,
-} from '@/lib/clinics/scope';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { selectReservableAdminClinicRows } from '@/lib/clinics/scope';
 
 type AccessibleClinicRow = {
   id: string;
@@ -89,7 +87,7 @@ async function fetchScopedAdminClinics(
   const { data, error } = await supabase
     .from('clinics')
     .select(ACCESSIBLE_ADMIN_CLINIC_SELECT)
-    .or(buildClinicScopeOrFilter(scopedClinicIds))
+    .in('id', scopedClinicIds)
     .eq('is_active', true)
     .order('name', { ascending: true })
     .returns<AccessibleClinicRow[]>();
@@ -141,9 +139,10 @@ export async function GET(request: NextRequest) {
       let managerAssignments: ManagerClinicAssignment[];
 
       try {
-        managerAssignments = await resolveManagerAssignedClinics(
+        managerAssignments = await resolveManagerAssignedClinicsWithinScope(
           adminClient,
-          auth.id
+          auth.id,
+          permissions.clinic_scope_ids ?? []
         );
       } catch (error) {
         logError(error, {
@@ -151,6 +150,16 @@ export async function GET(request: NextRequest) {
           method: 'GET',
           userId: auth.id,
         });
+        if (
+          error instanceof AppError &&
+          error.code === ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE &&
+          error.statusCode === 503
+        ) {
+          return createErrorResponse(
+            '認証情報を確認できません。時間をおいて再度お試しください',
+            503
+          );
+        }
         return createErrorResponse(
           '利用可能なクリニック一覧の取得に失敗しました',
           500

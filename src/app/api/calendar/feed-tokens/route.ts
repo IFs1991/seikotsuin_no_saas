@@ -6,8 +6,9 @@ import {
   logError,
   processApiRequest,
 } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import {
   createCalendarFeedToken,
   hashCalendarFeedToken,
@@ -23,6 +24,7 @@ const TOKEN_ALLOWED_ROLES = [
   'therapist',
   'staff',
 ] as const;
+const CLINIC_FEED_MANAGER_ROLES = new Set(['admin', 'clinic_admin', 'manager']);
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -60,9 +62,14 @@ const revokeTokenSchema = z.object({
 
 async function getManagerClinicIds(
   adminClient: AdminClient,
-  userId: string
+  userId: string,
+  canonicalClinicIds: readonly string[]
 ): Promise<Set<string>> {
-  const assignments = await resolveManagerAssignedClinics(adminClient, userId);
+  const assignments = await resolveManagerAssignedClinicsWithinScope(
+    adminClient,
+    userId,
+    canonicalClinicIds
+  );
   return new Set(assignments.map(assignment => assignment.clinic_id));
 }
 
@@ -70,18 +77,28 @@ async function canManageClinicFeed(input: {
   adminClient: AdminClient;
   userId: string;
   role: string | null;
-  permissionClinicId: string | null;
+  canonicalClinicIds: readonly string[];
   clinicId: string;
 }): Promise<boolean> {
-  if (input.role === 'admin') {
-    return true;
+  if (!input.canonicalClinicIds.includes(input.clinicId)) {
+    return false;
   }
+
+  if (!input.role || !CLINIC_FEED_MANAGER_ROLES.has(input.role)) {
+    return false;
+  }
+
   if (input.role === 'manager') {
-    return (await getManagerClinicIds(input.adminClient, input.userId)).has(
-      input.clinicId
-    );
+    return (
+      await getManagerClinicIds(
+        input.adminClient,
+        input.userId,
+        input.canonicalClinicIds
+      )
+    ).has(input.clinicId);
   }
-  return input.permissionClinicId === input.clinicId;
+
+  return input.role === 'admin' || input.role === 'clinic_admin';
 }
 
 async function loadStaffProfile(
@@ -121,15 +138,19 @@ async function canManageStaffFeed(input: {
   adminClient: AdminClient;
   userId: string;
   role: string | null;
-  permissionClinicId: string | null;
+  canonicalClinicIds: readonly string[];
   staffProfileId: string;
   clinicId: string;
 }): Promise<boolean> {
+  if (!input.canonicalClinicIds.includes(input.clinicId)) {
+    return false;
+  }
+
   const profile = await loadStaffProfile(
     input.adminClient,
     input.staffProfileId
   );
-  if (!profile || profile.is_active === false) {
+  if (!profile || profile.is_active !== true) {
     return false;
   }
 
@@ -147,19 +168,21 @@ async function canManageStaffFeed(input: {
   if (profile.user_id === input.userId) {
     return true;
   }
+
   if (input.role === 'admin') {
     return true;
   }
 
-  if (input.role === 'manager') {
-    const clinicIds = await getManagerClinicIds(
-      input.adminClient,
-      input.userId
-    );
-    return clinicIds.has(input.clinicId);
+  if (input.role !== 'manager') {
+    return false;
   }
 
-  return input.permissionClinicId === input.clinicId;
+  const clinicIds = await getManagerClinicIds(
+    input.adminClient,
+    input.userId,
+    input.canonicalClinicIds
+  );
+  return clinicIds.has(input.clinicId);
 }
 
 export async function POST(request: NextRequest) {
@@ -191,22 +214,21 @@ export async function POST(request: NextRequest) {
 
     const dto = parsedBody.data;
     const role = normalizeRole(authResult.permissions.role);
-    const adminClient = createAdminClient();
     const targetClinicId = dto.clinic_id ?? null;
     const targetStaffProfileId = dto.staff_profile_id ?? null;
+    const canonicalClinicIds = authResult.permissions.clinic_scope_ids ?? [];
 
     if (dto.feed_type === 'clinic') {
       if (!targetClinicId || targetStaffProfileId) {
         return createErrorResponse('院用feedの対象指定が不正です', 400);
       }
-      const allowed = await canManageClinicFeed({
-        adminClient,
-        userId: authResult.auth.id,
-        role,
-        permissionClinicId: authResult.permissions.clinic_id,
-        clinicId: targetClinicId,
-      });
-      if (!allowed) {
+      if (!canonicalClinicIds.includes(targetClinicId)) {
+        return createErrorResponse(
+          'このクリニックへのアクセス権がありません',
+          403
+        );
+      }
+      if (!role || !CLINIC_FEED_MANAGER_ROLES.has(role)) {
         return createErrorResponse(
           'このクリニックへのアクセス権がありません',
           403
@@ -216,11 +238,38 @@ export async function POST(request: NextRequest) {
       if (!targetStaffProfileId || !targetClinicId) {
         return createErrorResponse('スタッフ用feedの対象指定が不正です', 400);
       }
+      if (!canonicalClinicIds.includes(targetClinicId)) {
+        return createErrorResponse(
+          'このスタッフへのアクセス権がありません',
+          403
+        );
+      }
+    }
+
+    // Scope is fixed from the authenticated DB authority before any
+    // service-role read or write is allowed.
+    const adminClient = createAdminClient();
+
+    if (dto.feed_type === 'clinic') {
+      const allowed = await canManageClinicFeed({
+        adminClient,
+        userId: authResult.auth.id,
+        role,
+        canonicalClinicIds,
+        clinicId: targetClinicId,
+      });
+      if (!allowed) {
+        return createErrorResponse(
+          'このクリニックへのアクセス権がありません',
+          403
+        );
+      }
+    } else {
       const allowed = await canManageStaffFeed({
         adminClient,
         userId: authResult.auth.id,
         role,
-        permissionClinicId: authResult.permissions.clinic_id,
+        canonicalClinicIds,
         staffProfileId: targetStaffProfileId,
         clinicId: targetClinicId,
       });
@@ -265,6 +314,17 @@ export async function POST(request: NextRequest) {
       201
     );
   } catch (error) {
+    if (
+      error instanceof AppError &&
+      error.code === ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE &&
+      error.statusCode === 503
+    ) {
+      return createErrorResponse(
+        '認証情報を確認できません。時間をおいて再度お試しください',
+        503
+      );
+    }
+
     logError(error, {
       endpoint: PATH,
       method: 'POST',

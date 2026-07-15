@@ -8,7 +8,7 @@ import {
   sanitizeAuthInput,
   type AuthResponse,
 } from '@/lib/schemas/auth';
-import { getServerClient, getUserPermissions } from '@/lib/supabase';
+import { getServerClient, getUserAccessContext } from '@/lib/supabase';
 import { AuditLogger, getRequestInfoFromHeaders } from '@/lib/audit-logger';
 import {
   createAuthLog,
@@ -20,6 +20,7 @@ import {
   isHQRole,
   isTherapistRole,
 } from '@/lib/constants/roles';
+import { clearRejectedAuthSession } from '@/lib/auth/session-cleanup';
 
 /**
  * @file actions.ts
@@ -92,6 +93,7 @@ export async function clinicLogin(
   const supabase = await getServerClient();
   const headerList = await headers();
   const { ipAddress, userAgent } = getRequestInfoFromHeaders(headerList);
+  let signedIn = false;
 
   try {
     // 1. 入力値の検証とサニタイズ
@@ -152,27 +154,49 @@ export async function clinicLogin(
       };
     }
 
+    signedIn = true;
+
     // 3. ユーザー権限の確認（user_permissions を単一ソースとして使用）
     // @spec docs/stabilization/spec-auth-role-alignment-v0.1.md
-    const permissions = await getUserPermissions(data.user.id, supabase);
+    const accessContext = await getUserAccessContext(data.user.id, supabase, {
+      user: data.user,
+    });
+    const permissions = accessContext.permissions;
 
-    // is_active は profiles テーブルから取得
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_active')
-      .eq('user_id', data.user.id)
-      .single();
-
-    const isActive = !profileError && profileData?.is_active === true;
-
-    // is_active チェック
-    if (!isActive) {
-      await supabase.auth.signOut();
+    // Missing/inactive profile is intentionally classified as an inactive
+    // account before the masked permission context is inspected.
+    if (!accessContext.isActive) {
+      const cleanup = await clearRejectedAuthSession(supabase);
+      signedIn = !cleanup.complete;
+      if (cleanup.signOutError) {
+        log.error(
+          'Clinic login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
       return {
         success: false,
         errors: {
           password: [INACTIVE_ACCOUNT_MESSAGE],
           _form: [INACTIVE_ACCOUNT_MESSAGE],
+        },
+      };
+    }
+
+    if (!permissions) {
+      const cleanup = await clearRejectedAuthSession(supabase);
+      signedIn = !cleanup.complete;
+      if (cleanup.signOutError) {
+        log.error(
+          'Clinic login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
+      return {
+        success: false,
+        errors: {
+          password: [GENERIC_AUTH_ERROR_MESSAGE],
+          _form: [GENERIC_AUTH_ERROR_MESSAGE],
         },
       };
     }
@@ -268,6 +292,22 @@ export async function clinicLogin(
   } catch (error) {
     if (isRedirectLikeError(error)) {
       throw error;
+    }
+    if (signedIn) {
+      const cleanup = await clearRejectedAuthSession(supabase);
+      if (cleanup.signOutError) {
+        log.error(
+          'Clinic login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
+      if (cleanup.cookieCleanupError) {
+        log.error(
+          'Clinic login auth cookie cleanup error',
+          getSafeAuthErrorLogData(cleanup.cookieCleanupError)
+        );
+      }
+      signedIn = !cleanup.complete;
     }
     log.error('Clinic login error', getSafeAuthErrorLogData(error));
     return {

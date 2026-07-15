@@ -13,7 +13,10 @@ import {
   normalizePostgrestVersion,
   readPostgrestVersion,
 } from '../lib/supabase-generated-types.mjs';
-import { assertPinnedSupabaseCliVersion } from '../verify-supabase-cli-version.mjs';
+import {
+  assertPinnedSupabaseCliVersion,
+  resolveSupabaseCliInvocation,
+} from '../verify-supabase-cli-version.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
@@ -74,30 +77,27 @@ function sha256(content) {
 }
 
 function generateTypes(cliTarget, cliCwd) {
-  const result = spawnSync(
-    'supabase',
-    [
-      'gen',
-      'types',
-      '--lang',
-      'typescript',
-      ...cliTarget,
-      '--schema',
-      'public',
-    ],
-    {
-      cwd: cliCwd,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        DO_NOT_TRACK: '1',
-        SUPABASE_TELEMETRY_DISABLED: '1',
-      },
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 300_000,
-      windowsHide: true,
-    }
-  );
+  const invocation = resolveSupabaseCliInvocation([
+    'gen',
+    'types',
+    '--lang',
+    'typescript',
+    ...cliTarget,
+    '--schema',
+    'public',
+  ]);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: cliCwd,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      DO_NOT_TRACK: '1',
+      SUPABASE_TELEMETRY_DISABLED: '1',
+    },
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: 300_000,
+    windowsHide: true,
+  });
 
   if (result.error) throw result.error;
   if (result.status !== 0) {

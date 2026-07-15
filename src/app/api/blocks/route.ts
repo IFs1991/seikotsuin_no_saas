@@ -10,11 +10,8 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '@/lib/api-helpers';
-import {
-  STAFF_ROLES,
-  CLINIC_ADMIN_ROLES,
-  isHQRole,
-} from '@/lib/constants/roles';
+import { STAFF_ROLES, CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
+import { resolveScopedClinicIds } from '@/lib/supabase';
 
 // ===== GET: Block一覧取得 =====
 export async function GET(request: NextRequest) {
@@ -35,23 +32,14 @@ export async function GET(request: NextRequest) {
   const resourceId = searchParams.get('resourceId');
   const requestedClinicId = searchParams.get('clinic_id');
 
-  // DOD-09: テナント境界の強制
-  // HQロール以外は自分のclinic_idのみ参照可能
-  let clinicId: string | null;
-  if (isHQRole(permissions.role)) {
-    // HQロールはリクエストされたclinic_idまたは全クリニック参照可能
-    clinicId = requestedClinicId;
-  } else {
-    // 非HQロールは自分のclinic_idのみ
-    clinicId = permissions.clinic_id;
-    // リクエストされたclinic_idが自分のものと異なる場合は拒否
-    if (requestedClinicId && requestedClinicId !== permissions.clinic_id) {
-      return createErrorResponse(
-        '他のクリニックのデータにはアクセスできません',
-        403
-      );
-    }
+  const scopedClinicIds = resolveScopedClinicIds(permissions) ?? [];
+  if (requestedClinicId && !scopedClinicIds.includes(requestedClinicId)) {
+    return createErrorResponse(
+      '他のクリニックのデータにはアクセスできません',
+      403
+    );
   }
+  const clinicId = requestedClinicId ?? scopedClinicIds[0] ?? null;
 
   if (!clinicId) {
     return createErrorResponse('clinic_idは必須です', 400);
@@ -136,7 +124,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { supabase, auth, permissions, body } = result;
-  const clinicId = permissions.clinic_id;
+  const clinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
 
   if (!clinicId) {
     return createErrorResponse('clinic_idは必須です', 400);
@@ -216,7 +204,7 @@ export async function DELETE(request: NextRequest) {
   const { supabase, permissions } = result;
   const { searchParams } = new URL(request.url);
   const blockId = searchParams.get('id');
-  const clinicId = permissions.clinic_id;
+  const clinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
 
   if (!blockId) {
     return createErrorResponse('Block IDは必須です', 400);

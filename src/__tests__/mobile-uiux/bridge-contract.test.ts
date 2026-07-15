@@ -446,9 +446,9 @@ describe('mobile-uiux bridge contract', () => {
       });
 
       expect(window.MobileUiuxBridge?.canNavigateToTarget('home')).toBe(false);
-      expect(
-        window.MobileUiuxBridge?.canNavigateToTarget('reservations')
-      ).toBe(true);
+      expect(window.MobileUiuxBridge?.canNavigateToTarget('reservations')).toBe(
+        true
+      );
       expect(window.location.assign).not.toHaveBeenCalledWith(
         '/mobile-uiux/screens/home'
       );
@@ -3083,6 +3083,7 @@ describe('mobile-uiux bridge route and response-time injection', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
   });
 

@@ -7,21 +7,22 @@ import { cookies } from 'next/headers';
 import { assertEnv } from '@/lib/env';
 import {
   canAccessAdminUIWithCompat,
-  canManageClinicSettingsWithCompat,
+  isRole,
+  normalizeRole,
 } from '@/lib/constants/roles';
-import { logError } from '@/lib/error-handler';
+import { AppError, ERROR_CODES, logError } from '@/lib/error-handler';
 import {
   buildClinicScopeOrFilter,
   mergeScopedClinicHierarchyIds,
   type ClinicScopeRow,
 } from '@/lib/clinics/scope';
+import { resolveManagerAssignedClinicIds } from '@/lib/auth/manager-scope';
 import type { Database } from '@/types/supabase';
 import {
   buildUserAuthAccessContext,
   assertActiveAccount,
   fetchProfileStatus,
   fetchUserPermissionsRecord,
-  resolvePermissionRecord,
   type UserAuthAccessContext,
 } from './auth-context';
 import { logPerf, nowMs } from '@/lib/performance/server-timing';
@@ -132,13 +133,18 @@ export interface UserPermissions {
    * Parent-scope: Array of clinic IDs user can access (sibling clinics under same parent).
    * @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
    */
-  clinic_scope_ids?: string[];
+  clinic_scope_ids?: string[] | null;
 }
 
 export type UserAccessContext = UserAuthAccessContext<UserPermissions>;
 
 export interface UserAccessContextOptions {
+  /**
+   * Caller-provided user data is retained for API compatibility only. It must
+   * never replace the authenticated subject returned by auth.getUser().
+   */
   user?: User | null;
+  /** JWT claims used only to narrow the database-approved clinic scope. */
   session?: Session | null;
 }
 
@@ -149,8 +155,15 @@ export interface UserAccessContextOptions {
 export function resolveScopedClinicIds(
   permissions: UserPermissions
 ): string[] | null {
-  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 0) {
+  if (Array.isArray(permissions.clinic_scope_ids)) {
     return permissions.clinic_scope_ids;
+  }
+
+  // Manager authority is assignment-derived and canonicalized by
+  // getUserPermissions. Missing/malformed canonical scope must never fall
+  // back to a stale primary clinic.
+  if (normalizeRole(permissions.role) === 'manager') {
+    return [];
   }
 
   if (permissions.clinic_id) {
@@ -160,36 +173,229 @@ export function resolveScopedClinicIds(
   return null;
 }
 
-async function resolveHierarchicalClinicScopeIds(
+function normalizeAuthorityError(error: unknown): {
+  error: Error;
+  metadata: Record<string, unknown>;
+} {
+  if (error instanceof Error) {
+    return { error, metadata: {} };
+  }
+
+  if (isRecord(error)) {
+    const message =
+      typeof error.message === 'string' && error.message.trim().length > 0
+        ? error.message
+        : 'Authority lookup failed';
+    const metadata: Record<string, unknown> = {};
+
+    if (typeof error.code === 'string') {
+      metadata.authorityErrorCode = error.code;
+    }
+    if (typeof error.details === 'string') {
+      metadata.authorityErrorDetails = error.details;
+    }
+    if (typeof error.hint === 'string') {
+      metadata.authorityErrorHint = error.hint;
+    }
+
+    return { error: new Error(message), metadata };
+  }
+
+  return { error: new Error(String(error)), metadata: {} };
+}
+
+function throwAuthorityUnavailable(
+  error: unknown,
+  context: Record<string, unknown>
+): never {
+  const normalizedError = normalizeAuthorityError(error);
+  logError(normalizedError.error, {
+    ...context,
+    ...normalizedError.metadata,
+  });
+  throw new AppError(ERROR_CODES.DATABASE_CONNECTION_ERROR, undefined, 503);
+}
+
+type JwtClinicScopeClaim =
+  | { status: 'absent' }
+  | { status: 'valid'; clinicIds: string[] }
+  | { status: 'malformed' };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const UUID_CLAIM_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuidClaimValue(value: unknown): value is string {
+  return typeof value === 'string' && UUID_CLAIM_PATTERN.test(value);
+}
+
+function parseJwtClinicScopeValue(value: unknown): JwtClinicScopeClaim {
+  if (value === undefined) {
+    return { status: 'absent' };
+  }
+
+  if (!Array.isArray(value) || !value.every(isUuidClaimValue)) {
+    return { status: 'malformed' };
+  }
+
+  return {
+    status: 'valid',
+    clinicIds: Array.from(new Set(value)),
+  };
+}
+
+function decodeJwtPayload(accessToken: string): Record<string, unknown> | null {
+  const encodedPayload = accessToken.split('.')[1];
+  if (!encodedPayload) {
+    return null;
+  }
+
+  const normalized = encodedPayload.replace(/-/g, '+').replace(/_/g, '/');
+  const paddingLength = normalized.length % 4;
+  const padded =
+    normalized + (paddingLength ? '='.repeat(4 - paddingLength) : '');
+
+  try {
+    const payload: unknown = JSON.parse(atob(padded));
+    return isRecord(payload) ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function readJwtClinicScopeClaim(
+  session: Session | null,
+  authenticatedUserId: string
+): JwtClinicScopeClaim {
+  if (!session?.access_token) {
+    return { status: 'malformed' };
+  }
+
+  const payload = decodeJwtPayload(session.access_token);
+  if (!payload || payload.sub !== authenticatedUserId) {
+    return { status: 'malformed' };
+  }
+
+  // session.user is reconstructed from the cookie and is not an authority
+  // source. getCurrentUser() has just verified this access token remotely;
+  // bind its signed payload to that subject before reading attenuation claims.
+  const appMetadata = isRecord(payload.app_metadata)
+    ? payload.app_metadata
+    : null;
+  const appMetadataClaim = parseJwtClinicScopeValue(
+    appMetadata?.clinic_scope_ids
+  );
+  if (appMetadataClaim.status !== 'absent') {
+    return appMetadataClaim;
+  }
+
+  return parseJwtClinicScopeValue(payload.clinic_scope_ids);
+}
+
+function applyJwtClinicScopeIntersection(
+  databaseClinicIds: readonly string[],
+  claim: JwtClinicScopeClaim,
+  userId: string
+): string[] {
+  if (claim.status === 'absent') {
+    return [...databaseClinicIds];
+  }
+
+  if (claim.status === 'malformed') {
+    logError(new Error('Malformed JWT clinic scope claim'), {
+      operation: 'applyJwtClinicScopeIntersection',
+      eventType: 'jwt_scope_malformed',
+      userId,
+      databaseScopeCount: databaseClinicIds.length,
+    });
+    return [];
+  }
+
+  const databaseScope = new Set(databaseClinicIds);
+  const exceedsDatabaseAuthority = claim.clinicIds.some(
+    clinicId => !databaseScope.has(clinicId)
+  );
+
+  if (exceedsDatabaseAuthority) {
+    logError(new Error('JWT clinic scope exceeds database authority'), {
+      operation: 'applyJwtClinicScopeIntersection',
+      eventType: 'jwt_scope_exceeds_db_authority',
+      userId,
+      databaseScopeCount: databaseClinicIds.length,
+      jwtScopeCount: claim.clinicIds.length,
+    });
+  }
+
+  const jwtScope = new Set(claim.clinicIds);
+  return databaseClinicIds.filter(clinicId => jwtScope.has(clinicId));
+}
+
+async function resolveDatabaseClinicScopeIds(
   adminClient: SupabaseServerClient,
   userId: string,
   permissions: UserPermissions
-): Promise<string[] | undefined> {
-  const scopedClinicIds = resolveScopedClinicIds(permissions);
-  if (
-    !scopedClinicIds ||
-    scopedClinicIds.length === 0 ||
-    !canManageClinicSettingsWithCompat(permissions.role)
-  ) {
-    return permissions.clinic_scope_ids;
+): Promise<string[]> {
+  const normalizedRole = normalizeRole(permissions.role);
+
+  if (normalizedRole === 'manager') {
+    try {
+      return await resolveManagerAssignedClinicIds(adminClient, userId);
+    } catch (error) {
+      throwAuthorityUnavailable(error, {
+        operation: 'resolveManagerAssignedClinicIds',
+        userId,
+        role: permissions.role,
+      });
+    }
   }
 
-  if (permissions.clinic_scope_ids && permissions.clinic_scope_ids.length > 1) {
-    return permissions.clinic_scope_ids;
+  if (!isRole(normalizedRole)) {
+    return [];
   }
+
+  if (!permissions.clinic_id) {
+    return [];
+  }
+
+  if (normalizedRole !== 'admin' && normalizedRole !== 'clinic_admin') {
+    return [permissions.clinic_id];
+  }
+
+  const primaryClinicResult = await adminClient
+    .from('clinics')
+    .select('id, parent_id')
+    .eq('id', permissions.clinic_id)
+    .maybeSingle<ClinicScopeRow>();
+
+  if (primaryClinicResult.error) {
+    throwAuthorityUnavailable(primaryClinicResult.error, {
+      operation: 'resolveClinicAuthorityRoot',
+      userId,
+      role: permissions.role,
+      clinicId: permissions.clinic_id,
+    });
+  }
+
+  if (!primaryClinicResult.data) {
+    return [];
+  }
+
+  const rootClinicId =
+    primaryClinicResult.data.parent_id ?? primaryClinicResult.data.id;
 
   let clinicScopeFilter: string;
   try {
-    clinicScopeFilter = buildClinicScopeOrFilter(scopedClinicIds);
+    clinicScopeFilter = buildClinicScopeOrFilter([rootClinicId]);
   } catch (error) {
-    logError(error instanceof Error ? error : new Error(String(error)), {
+    throwAuthorityUnavailable(error, {
       operation: 'resolveHierarchicalClinicScopeIds',
       userId,
       role: permissions.role,
       clinicId: permissions.clinic_id,
-      scopedClinicIds,
     });
-    return permissions.clinic_scope_ids;
   }
 
   const { data, error } = await adminClient
@@ -199,111 +405,61 @@ async function resolveHierarchicalClinicScopeIds(
     .returns<ClinicScopeRow[]>();
 
   if (error) {
-    logError(error instanceof Error ? error : new Error(String(error)), {
+    throwAuthorityUnavailable(error, {
       operation: 'resolveHierarchicalClinicScopeIds',
       userId,
       role: permissions.role,
       clinicId: permissions.clinic_id,
-      scopedClinicIds,
     });
-    return permissions.clinic_scope_ids;
   }
 
-  return mergeScopedClinicHierarchyIds(scopedClinicIds, data ?? []);
+  return mergeScopedClinicHierarchyIds([rootClinicId], data ?? []);
 }
 
-async function getUserPermissionsUncached(
-  userId: string,
-  supabase: SupabaseServerClient,
-  options: UserAccessContextOptions = {}
+async function getDatabasePermissionsUncached(
+  userId: string
 ): Promise<UserPermissions | null> {
   const tTotal = nowMs();
-  // Use Service Role to bypass RLS for reading user's own permissions.
-  // This is safe because:
-  // 1. This function is only called server-side after authentication
-  // 2. It only reads the authenticated user's own permission data
-  // 3. RLS on user_permissions table can cause performance issues during auth flow
+  // Service role is limited to the already-validated subject's authority rows.
   const adminClient = createAdminClient();
   const tPermissions = nowMs();
-  const permissionsData = await fetchUserPermissionsRecord(adminClient, userId);
+  const permissionLookup = await fetchUserPermissionsRecord(
+    adminClient,
+    userId
+  );
   logPerf('supabase.permissions.fetchUserPermissionsRecord', tPermissions, {
     userId,
   });
 
-  // Try to get clinic_scope_ids from JWT claims (set by custom_access_token_hook)
-  // @see docs/stabilization/spec-rls-tenant-boundary-v0.1.md
-  // Use normal client for JWT session access (not RLS-protected)
-  let currentUser: User | null = null;
-  if (options.user?.id === userId) {
-    currentUser = options.user;
-  } else {
-    const tCurrentUser = nowMs();
-    const currentUserCandidate = await getCurrentUser(supabase);
-    logPerf('supabase.permissions.getCurrentUser', tCurrentUser, { userId });
-    currentUser =
-      currentUserCandidate && currentUserCandidate.id === userId
-        ? currentUserCandidate
-        : null;
+  if (permissionLookup.status === 'error') {
+    throwAuthorityUnavailable(permissionLookup.error, {
+      operation: 'fetchUserPermissionsRecord',
+      userId,
+    });
   }
 
-  const permissions = resolvePermissionRecord(permissionsData, currentUser);
-
-  if (!permissions) {
+  if (permissionLookup.status === 'missing') {
     return null;
   }
 
-  let clinic_scope_ids: string[] | undefined = permissions.clinic_scope_ids;
-  try {
-    let session: Session | null = null;
-    if (options.session?.user?.id === userId) {
-      session = options.session;
-    } else {
-      const tSession = nowMs();
-      const result = await supabase.auth.getSession();
-      logPerf('supabase.permissions.getSession', tSession, { userId });
-      session =
-        result.data.session?.user?.id === userId ? result.data.session : null;
-    }
-
-    const scopeIdsFromMetadata = session?.user?.app_metadata?.clinic_scope_ids;
-    let scopeIdsFromJwt: unknown = scopeIdsFromMetadata;
-
-    if (!Array.isArray(scopeIdsFromJwt)) {
-      const accessToken = session?.access_token;
-      if (accessToken) {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
-        scopeIdsFromJwt = payload?.clinic_scope_ids;
-      }
-    }
-
-    if (Array.isArray(scopeIdsFromJwt)) {
-      clinic_scope_ids = scopeIdsFromJwt;
-    }
-  } catch {
-    // JWT parsing failed, fall back to single clinic_id
-  }
-
   const tHierarchy = nowMs();
-  const expandedClinicScopeIds = await resolveHierarchicalClinicScopeIds(
+  const databaseClinicScopeIds = await resolveDatabaseClinicScopeIds(
     adminClient,
     userId,
-    {
-      ...permissions,
-      clinic_scope_ids,
-    }
+    permissionLookup.value
   );
   logPerf(
     'supabase.permissions.resolveHierarchicalClinicScopeIds',
     tHierarchy,
     {
       userId,
-      count: expandedClinicScopeIds?.length ?? 0,
+      count: databaseClinicScopeIds.length,
     }
   );
 
   const result = {
-    ...permissions,
-    clinic_scope_ids: expandedClinicScopeIds,
+    ...permissionLookup.value,
+    clinic_scope_ids: databaseClinicScopeIds,
   };
   logPerf('supabase.permissions.total', tTotal, { userId });
 
@@ -316,6 +472,19 @@ export async function getUserPermissions(
   options: UserAccessContextOptions = {}
 ): Promise<UserPermissions | null> {
   const supabase = client ?? (await getServerClient());
+
+  // Subject binding is checked on every call, even when DB authority is
+  // request-cached. This prevents a reused client from inheriting authority
+  // after its authenticated subject changes. options.user is deliberately not
+  // accepted as proof of identity because it is caller-provided state.
+  const tCurrentUser = nowMs();
+  const currentUser = await getCurrentUser(supabase);
+  logPerf('supabase.permissions.getCurrentUser', tCurrentUser, { userId });
+
+  if (!currentUser || currentUser.id !== userId) {
+    return null;
+  }
+
   let cachedPermissionsByUser = userPermissionsRequestCache.get(supabase);
 
   if (!cachedPermissionsByUser) {
@@ -323,22 +492,53 @@ export async function getUserPermissions(
     userPermissionsRequestCache.set(supabase, cachedPermissionsByUser);
   }
 
-  const cachedPermissions = cachedPermissionsByUser.get(userId);
-  if (cachedPermissions) {
-    return cachedPermissions;
+  let databasePermissionsPromise = cachedPermissionsByUser.get(userId);
+  if (!databasePermissionsPromise) {
+    databasePermissionsPromise = getDatabasePermissionsUncached(userId).catch(
+      error => {
+        cachedPermissionsByUser.delete(userId);
+        throw error;
+      }
+    );
+    cachedPermissionsByUser.set(userId, databasePermissionsPromise);
   }
 
-  const permissionsPromise = getUserPermissionsUncached(
-    userId,
-    supabase,
-    options
-  ).catch(error => {
-    cachedPermissionsByUser.delete(userId);
-    throw error;
-  });
-  cachedPermissionsByUser.set(userId, permissionsPromise);
+  const databasePermissions = await databasePermissionsPromise;
+  if (!databasePermissions) {
+    return null;
+  }
 
-  return permissionsPromise;
+  let session: Session | null = null;
+
+  if (Object.prototype.hasOwnProperty.call(options, 'session')) {
+    session = options.session ?? null;
+  } else {
+    const tSession = nowMs();
+    const sessionResult = await supabase.auth.getSession();
+    logPerf('supabase.permissions.getSession', tSession, { userId });
+
+    if (sessionResult.error) {
+      throwAuthorityUnavailable(sessionResult.error, {
+        operation: 'getAuthoritySession',
+        userId,
+      });
+    }
+
+    session = sessionResult.data.session;
+  }
+
+  const clinicScopeClaim = readJwtClinicScopeClaim(session, currentUser.id);
+
+  const clinic_scope_ids = applyJwtClinicScopeIntersection(
+    databasePermissions.clinic_scope_ids ?? [],
+    clinicScopeClaim,
+    userId
+  );
+
+  return {
+    ...databasePermissions,
+    clinic_scope_ids,
+  };
 }
 
 /**
@@ -360,10 +560,20 @@ export async function getUserAccessContext(
   options: UserAccessContextOptions = {}
 ): Promise<UserAccessContext> {
   const supabase = client ?? (await getServerClient());
-  const [permissions, profileStatus] = await Promise.all([
+  const [permissions, profileLookup] = await Promise.all([
     getUserPermissions(userId, supabase, options),
     fetchProfileStatus(supabase, userId),
   ]);
+
+  if (profileLookup.status === 'error') {
+    throwAuthorityUnavailable(profileLookup.error, {
+      operation: 'fetchProfileStatus',
+      userId,
+    });
+  }
+
+  const profileStatus =
+    profileLookup.status === 'found' ? profileLookup.value : null;
 
   return buildUserAuthAccessContext(permissions, profileStatus);
 }

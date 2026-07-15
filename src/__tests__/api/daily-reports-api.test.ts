@@ -1,4 +1,5 @@
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
@@ -111,5 +112,38 @@ describe('POST /api/daily-reports', () => {
       'total_patients以下'
     );
     expect(ensureClinicAccessMock).not.toHaveBeenCalled();
+  });
+
+  it('returns a sanitized 503 without the internal DB error code', async () => {
+    ensureClinicAccessMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.DATABASE_CONNECTION_ERROR,
+        'sensitive authority query failed',
+        503,
+        { databaseCode: '42P01' }
+      )
+    );
+
+    const response = await postHandler(
+      createRequest({
+        clinic_id: '11111111-1111-4111-8111-111111111111',
+        report_date: '2025-01-01',
+        total_patients: 10,
+        new_patients: 2,
+        total_revenue: 30000,
+        insurance_revenue: 12000,
+        private_revenue: 18000,
+      })
+    );
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(payload)).not.toContain('DATABASE_CONNECTION_ERROR');
+    expect(JSON.stringify(payload)).not.toContain('42P01');
+    expect(JSON.stringify(payload)).not.toContain('sensitive');
   });
 });

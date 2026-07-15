@@ -22,6 +22,10 @@ import {
 } from '@/lib/mobile-uiux/route-utils';
 import { generatePatientAnalysis } from '@/lib/services/patient-analysis-service';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import {
+  AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE,
+  isAuthorityUnavailableError,
+} from '@/lib/api-helpers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +39,14 @@ function isValidAnalysisType(value: string): boolean {
 }
 
 function buildAccessError(error: unknown) {
+  if (isAuthorityUnavailableError(error)) {
+    return buildMobileUiuxFailure(
+      503,
+      'INTERNAL',
+      AUTHORITY_UNAVAILABLE_PUBLIC_MESSAGE
+    );
+  }
+
   if (error instanceof AppError) {
     return buildMobileUiuxFailure(
       error.statusCode,

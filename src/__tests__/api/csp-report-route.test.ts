@@ -36,11 +36,26 @@ const mockSupabase = {
   from: jest.fn(() => mockBuilder),
 };
 
+const mockGetCurrentUser = jest.fn(() => Promise.resolve(null));
+const mockGetUserAccessContext = jest.fn();
+
 jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(() => mockSupabase),
   createAdminClient: jest.fn(() => mockSupabase),
-  getCurrentUser: jest.fn(() => Promise.resolve(null)),
-  getUserPermissions: jest.fn(),
+  getCurrentUser: (...args: unknown[]) => mockGetCurrentUser(...args),
+  getUserAccessContext: (...args: unknown[]) =>
+    mockGetUserAccessContext(...args),
+  resolveScopedClinicIds: jest.fn(
+    (permissions: {
+      clinic_id: string | null;
+      clinic_scope_ids?: string[] | null;
+    }) =>
+      Array.isArray(permissions.clinic_scope_ids)
+        ? permissions.clinic_scope_ids
+        : permissions.clinic_id
+          ? [permissions.clinic_id]
+          : null
+  ),
 }));
 
 jest.mock('@/lib/security/csp-config', () => ({
@@ -104,6 +119,11 @@ describe('POST /api/security/csp-report', () => {
     jest.clearAllMocks();
     insertPayloads.length = 0;
     process.env.NODE_ENV = originalNodeEnv;
+    mockGetCurrentUser.mockResolvedValue(null);
+    mockGetUserAccessContext.mockResolvedValue({
+      isActive: false,
+      permissions: null,
+    });
   });
 
   it('accepts a valid CSP report and inserts a bounded typed payload', async () => {
@@ -139,6 +159,70 @@ describe('POST /api/security/csp-report', () => {
       })
     );
     expect(insertPayloads[0]).not.toHaveProperty('ignored');
+  });
+
+  it('uses the canonical JWT subset for an authenticated service-role insert', async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: 'user-1' });
+    mockGetUserAccessContext.mockResolvedValue({
+      isActive: true,
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-primary',
+        clinic_scope_ids: ['clinic-subset'],
+      },
+    });
+    const { POST } = await import('@/app/api/security/csp-report/route');
+
+    const response = await POST(
+      createRequest(
+        JSON.stringify({
+          'csp-report': {
+            'document-uri': 'https://example.com/page',
+            'violated-directive': 'script-src',
+            'blocked-uri': 'https://evil.example/script.js',
+          },
+        })
+      )
+    );
+
+    expect(response.status).toBe(204);
+    expect(insertPayloads).toHaveLength(1);
+    expect(insertPayloads[0]).toEqual(
+      expect.objectContaining({ clinic_id: 'clinic-subset' })
+    );
+    expect(insertPayloads[0]).not.toEqual(
+      expect.objectContaining({ clinic_id: 'clinic-primary' })
+    );
+  });
+
+  it('does not attribute an inactive profile CSP report to a clinic', async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: 'inactive-user' });
+    mockGetUserAccessContext.mockResolvedValue({
+      isActive: false,
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-primary',
+        clinic_scope_ids: ['clinic-primary'],
+      },
+    });
+    const { POST } = await import('@/app/api/security/csp-report/route');
+
+    const response = await POST(
+      createRequest(
+        JSON.stringify({
+          'csp-report': {
+            'document-uri': 'https://example.com/page',
+            'violated-directive': 'script-src',
+            'blocked-uri': 'https://evil.example/script.js',
+          },
+        })
+      )
+    );
+
+    expect(response.status).toBe(204);
+    expect(insertPayloads[0]).toEqual(
+      expect.objectContaining({ clinic_id: null })
+    );
   });
 
   it('rejects invalid JSON before inserting', async () => {

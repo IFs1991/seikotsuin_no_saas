@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import type { SupabaseServerClient } from '@/lib/supabase';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const PATH = '/api/ai-comments';
 
@@ -58,6 +59,9 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },
@@ -101,6 +105,9 @@ export async function POST(request: NextRequest) {
       data: generatedComment,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { ADMIN_UI_ROLES, type Role } from '@/lib/constants/roles';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const PATH = '/api/chat';
 
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
       data: sessions,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },
@@ -170,6 +174,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 import type { ManagerRosterAssignResponse } from '@/types/manager-rosters';
 
@@ -14,7 +15,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: jest.fn(),
+  resolveManagerAssignedClinicsWithinScope: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -22,8 +23,8 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 const processApiRequestMock = jest.mocked(processApiRequest);
-const resolveManagerAssignedClinicsMock = jest.mocked(
-  resolveManagerAssignedClinics
+const resolveManagerAssignedClinicsWithinScopeMock = jest.mocked(
+  resolveManagerAssignedClinicsWithinScope
 );
 const createAdminClientMock = jest.mocked(createAdminClient);
 
@@ -270,7 +271,7 @@ describe('POST /api/manager/rosters/assign', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAuth();
-    resolveManagerAssignedClinicsMock.mockResolvedValue([
+    resolveManagerAssignedClinicsWithinScopeMock.mockResolvedValue([
       {
         id: 'assignment-a',
         manager_user_id: 'manager-user',
@@ -348,5 +349,31 @@ describe('POST /api/manager/rosters/assign', () => {
 
     expect(response.status).toBe(409);
     expect(isErrorPayload(json)).toBe(true);
+  });
+
+  it('returns an information-free 503 before writes when assignment authority lookup fails', async () => {
+    resolveManagerAssignedClinicsWithinScopeMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+        'manager assignment table details',
+        503
+      )
+    );
+
+    const response = await postAssign({
+      clinic_id: clinicA,
+      staff_id: staffA,
+      time_preset: 'afternoon',
+      start_time: '2026-07-01T06:00:00.000Z',
+      end_time: '2026-07-01T13:30:00.000Z',
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(json).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(json)).not.toContain('assignment');
   });
 });

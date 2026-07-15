@@ -3,9 +3,12 @@ import {
   assertClinicInEffectiveScope,
   resolveEffectiveClinicScope,
   resolveManagerAssignedClinics,
+  resolveManagerAssignedClinicsWithinScope,
   resolveManagerAssignedClinicIds,
   type EffectiveClinicScope,
 } from '@/lib/auth/manager-scope';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { logger } from '@/lib/logger';
 import type { SupabaseServerClient, UserPermissions } from '@/lib/supabase';
 
 type AssignmentRow = {
@@ -133,8 +136,111 @@ describe('resolveManagerAssignedClinics', () => {
   });
 });
 
+describe('resolveManagerAssignedClinicsWithinScope', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function createClinicAssignmentsClient() {
+    const result = {
+      data: [
+        {
+          id: 'assignment-a',
+          manager_user_id: 'manager-1',
+          clinic_id: 'clinic-a',
+          assigned_at: '2026-06-04T00:00:00.000Z',
+          revoked_at: null,
+          clinics: { id: 'clinic-a', name: 'A院', is_active: true },
+        },
+        {
+          id: 'assignment-b',
+          manager_user_id: 'manager-1',
+          clinic_id: 'clinic-b',
+          assigned_at: '2026-06-04T00:00:00.000Z',
+          revoked_at: null,
+          clinics: { id: 'clinic-b', name: 'B院', is_active: true },
+        },
+      ],
+      error: null,
+    };
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      returns: jest.fn().mockResolvedValue(result),
+    };
+    const client = {
+      from: jest.fn(() => query),
+    } as Pick<SupabaseServerClient, 'from'>;
+
+    return { client, query };
+  }
+
+  it('filters full DB assignments to the canonical JWT-intersected subset', async () => {
+    const { client } = createClinicAssignmentsClient();
+
+    await expect(
+      resolveManagerAssignedClinicsWithinScope(client, 'manager-1', [
+        'clinic-b',
+      ])
+    ).resolves.toEqual([expect.objectContaining({ clinic_id: 'clinic-b' })]);
+  });
+
+  it('returns an explicit empty scope without issuing a service-role query', async () => {
+    const { client } = createClinicAssignmentsClient();
+
+    await expect(
+      resolveManagerAssignedClinicsWithinScope(client, 'manager-1', [])
+    ).resolves.toEqual([]);
+    expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it('normalizes assignment detail lookup failures to an information-free 503', async () => {
+    const rawFailure = {
+      code: 'PGRST301',
+      message: 'manager assignment table details',
+      details: 'original Supabase failure',
+      hint: null,
+    };
+    const loggerErrorSpy = jest
+      .spyOn(logger, 'error')
+      .mockImplementation(() => undefined);
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      returns: jest.fn().mockResolvedValue({
+        data: null,
+        error: rawFailure,
+      }),
+    };
+    const client = {
+      from: jest.fn(() => query),
+    } as Pick<SupabaseServerClient, 'from'>;
+
+    await expect(
+      resolveManagerAssignedClinicsWithinScope(client, 'manager-1', [
+        'clinic-a',
+      ])
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+      message: '担当院の権限情報を確認できません',
+      statusCode: 503,
+    } satisfies Partial<AppError>);
+
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Manager assignment authority lookup failed',
+      rawFailure,
+      {
+        userId: 'manager-1',
+        operation: 'resolveManagerAssignedClinicsWithinScope',
+      }
+    );
+  });
+});
+
 describe('resolveEffectiveClinicScope', () => {
-  it('uses manager assignments even when clinic_id and JWT scope are stale', async () => {
+  it('uses the canonical manager scope without re-expanding assignments', async () => {
     const { client } = createAssignmentClient({
       data: [{ clinic_id: 'assigned-clinic' }],
       error: null,
@@ -153,16 +259,20 @@ describe('resolveEffectiveClinicScope', () => {
       })
     ).resolves.toEqual({
       source: 'manager_assignments',
-      clinicIds: ['assigned-clinic'],
+      clinicIds: ['jwt-clinic'],
     });
+    expect(client.from).not.toHaveBeenCalled();
   });
 
-  it('returns an empty manager scope when no active assignments exist', async () => {
-    const { client } = createAssignmentClient({ data: [], error: null });
+  it('preserves an explicitly empty canonical manager scope', async () => {
+    const { client } = createAssignmentClient({
+      data: [{ clinic_id: 'assigned-clinic' }],
+      error: null,
+    });
     const permissions: UserPermissions = {
       role: 'manager',
       clinic_id: 'primary-clinic',
-      clinic_scope_ids: ['jwt-clinic'],
+      clinic_scope_ids: [],
     };
 
     await expect(
@@ -175,6 +285,7 @@ describe('resolveEffectiveClinicScope', () => {
       source: 'manager_assignments',
       clinicIds: [],
     });
+    expect(client.from).not.toHaveBeenCalled();
   });
 
   it('preserves clinic_scope_ids behavior for non-manager roles', async () => {

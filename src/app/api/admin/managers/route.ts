@@ -6,7 +6,7 @@ import {
   processApiRequest,
 } from '@/lib/api-helpers';
 import { normalizeRole } from '@/lib/constants/roles';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient, resolveScopedClinicIds } from '@/lib/supabase';
 
 const ADMIN_MANAGER_API_ROLES = ['admin'] as const;
 const ENDPOINT = '/api/admin/managers';
@@ -51,8 +51,15 @@ type AssignmentClinicRelation =
 type ManagerAssignmentQueryRow = {
   id: string;
   manager_user_id: string;
+  clinic_id: string;
   assigned_at: string;
   clinics: AssignmentClinicRelation;
+};
+
+type ManagerAssignmentScopeResult = {
+  assignmentsByManager: Map<string, AssignedClinic[]>;
+  managerUserIdsWithAssignments: Set<string>;
+  outOfScopeManagerUserIds: Set<string>;
 };
 
 type AssignedClinic = {
@@ -101,21 +108,27 @@ function readActiveAssignmentClinic(
 
 async function fetchActiveAssignmentsByManager(
   adminClient: Pick<AdminClient, 'from'>,
-  managerUserIds: readonly string[]
-): Promise<Map<string, AssignedClinic[]>> {
+  managerUserIds: readonly string[],
+  actorClinicIds: ReadonlySet<string>
+): Promise<ManagerAssignmentScopeResult> {
   const assignmentsByManager = new Map<string, AssignedClinic[]>();
+  const managerUserIdsWithAssignments = new Set<string>();
+  const outOfScopeManagerUserIds = new Set<string>();
   if (managerUserIds.length === 0) {
-    return assignmentsByManager;
+    return {
+      assignmentsByManager,
+      managerUserIdsWithAssignments,
+      outOfScopeManagerUserIds,
+    };
   }
 
   const { data, error } = await adminClient
     .from('manager_clinic_assignments')
     .select(
-      'id, manager_user_id, assigned_at, clinics!inner(id, name, is_active)'
+      'id, manager_user_id, clinic_id, assigned_at, clinics(id, name, is_active)'
     )
     .in('manager_user_id', managerUserIds)
     .is('revoked_at', null)
-    .eq('clinics.is_active', true)
     .returns<ManagerAssignmentQueryRow[]>();
 
   if (error) {
@@ -123,6 +136,11 @@ async function fetchActiveAssignmentsByManager(
   }
 
   for (const row of data ?? []) {
+    managerUserIdsWithAssignments.add(row.manager_user_id);
+    if (!actorClinicIds.has(row.clinic_id)) {
+      outOfScopeManagerUserIds.add(row.manager_user_id);
+    }
+
     const clinic = readActiveAssignmentClinic(row.clinics);
     if (!clinic) {
       continue;
@@ -149,7 +167,11 @@ async function fetchActiveAssignmentsByManager(
     );
   }
 
-  return assignmentsByManager;
+  return {
+    assignmentsByManager,
+    managerUserIdsWithAssignments,
+    outOfScopeManagerUserIds,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -168,6 +190,14 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('管理者権限が必要です', 403);
     }
 
+    const actorClinicIds = Array.from(
+      new Set(resolveScopedClinicIds(permissions) ?? [])
+    );
+    if (actorClinicIds.length === 0) {
+      return createErrorResponse('クリニックスコープが設定されていません', 403);
+    }
+
+    const actorClinicIdSet = new Set(actorClinicIds);
     const adminClient = createAdminClient();
     const { data, error } = await adminClient
       .from('user_permissions')
@@ -182,15 +212,64 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         userId: auth.id,
       });
-      return createErrorResponse('マネージャー一覧の取得に失敗しました', 500);
+      return createErrorResponse(
+        'マネージャー権限情報の取得に失敗しました',
+        503
+      );
     }
 
-    const permissionRows = (data ?? []).filter(
+    const managerPermissionRows = (data ?? []).filter(
       (row): row is ManagerPermissionRow & { staff_id: string } =>
         typeof row.staff_id === 'string'
     );
-    const managerUserIds = Array.from(
+    const outOfScopePrimaryManagerUserIds = new Set(
+      managerPermissionRows
+        .filter(
+          row => row.clinic_id !== null && !actorClinicIdSet.has(row.clinic_id)
+        )
+        .map(row => row.staff_id)
+    );
+    const permissionRows = managerPermissionRows.filter(
+      row => !outOfScopePrimaryManagerUserIds.has(row.staff_id)
+    );
+    const candidateManagerUserIds = Array.from(
       new Set(permissionRows.map(row => row.staff_id))
+    );
+
+    if (candidateManagerUserIds.length === 0) {
+      return createSuccessResponse({
+        managers: [],
+        total: 0,
+      });
+    }
+
+    let assignmentScopeResult: ManagerAssignmentScopeResult;
+    try {
+      assignmentScopeResult = await fetchActiveAssignmentsByManager(
+        adminClient,
+        candidateManagerUserIds,
+        actorClinicIdSet
+      );
+    } catch (error) {
+      logError(error, {
+        endpoint: ENDPOINT,
+        method: 'GET',
+        userId: auth.id,
+      });
+      return createErrorResponse(
+        'マネージャー担当範囲の取得に失敗しました',
+        503
+      );
+    }
+
+    const scopedPermissionRows = permissionRows.filter(
+      row =>
+        !assignmentScopeResult.outOfScopeManagerUserIds.has(row.staff_id) &&
+        (row.clinic_id !== null ||
+          assignmentScopeResult.managerUserIdsWithAssignments.has(row.staff_id))
+    );
+    const managerUserIds = Array.from(
+      new Set(scopedPermissionRows.map(row => row.staff_id))
     );
 
     if (managerUserIds.length === 0) {
@@ -206,10 +285,7 @@ export async function GET(request: NextRequest) {
       .in('user_id', managerUserIds)
       .returns<ProfileRow[]>();
 
-    const [profileResult, assignmentsByManager] = await Promise.all([
-      profileQuery,
-      fetchActiveAssignmentsByManager(adminClient, managerUserIds),
-    ]);
+    const profileResult = await profileQuery;
 
     if (profileResult.error) {
       logError(profileResult.error, {
@@ -228,9 +304,10 @@ export async function GET(request: NextRequest) {
       profilesByUserId.set(profile.user_id, profile);
     }
 
-    const managers: ManagerListItem[] = permissionRows.map(row => {
+    const managers: ManagerListItem[] = scopedPermissionRows.map(row => {
       const profile = profilesByUserId.get(row.staff_id);
-      const assignedClinics = assignmentsByManager.get(row.staff_id) ?? [];
+      const assignedClinics =
+        assignmentScopeResult.assignmentsByManager.get(row.staff_id) ?? [];
 
       return {
         user_id: row.staff_id,

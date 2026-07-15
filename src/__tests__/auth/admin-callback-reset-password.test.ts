@@ -28,24 +28,44 @@ jest.mock('@/lib/auth/password-recovery-intent', () => ({
 }));
 
 const mockExchangeCodeForSession = jest.fn();
-const mockMaybeSingle = jest.fn();
-const mockEq = jest.fn(() => ({ maybeSingle: mockMaybeSingle }));
-const mockSelect = jest.fn(() => ({ eq: mockEq }));
+const mockGetUserAccessContext = jest.fn();
+const mockClearRejectedAuthSession = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
   createClient: jest.fn(async () => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
     },
-    from: jest.fn(() => ({
-      select: mockSelect,
-    })),
   })),
+  getUserAccessContext: (...args: unknown[]) =>
+    mockGetUserAccessContext(...args),
+}));
+
+jest.mock('@/lib/auth/session-cleanup', () => ({
+  clearRejectedAuthSession: (...args: unknown[]) =>
+    mockClearRejectedAuthSession(...args),
 }));
 
 describe('/admin/callback reset-password contract', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: {
+        role: 'staff',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'staff',
+      normalizedRole: 'staff',
+      clinicId: 'clinic-1',
+      isActive: true,
+      isAdmin: false,
+    });
+    mockClearRejectedAuthSession.mockResolvedValue({
+      complete: true,
+      signOutError: null,
+      cookieCleanupError: null,
+    });
   });
 
   test('next=/reset-password/admin を安全に通す', async () => {
@@ -53,11 +73,6 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'user-1', email: 'admin@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: { role: 'admin', clinic_id: 'clinic-1' },
-      error: null,
-    });
-
     const { GET } = await import('@/app/(public)/admin/callback/route');
     const response = await GET(
       new Request(
@@ -80,6 +95,7 @@ describe('/admin/callback reset-password contract', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/reset-password/admin'
     );
+    expect(mockGetUserAccessContext).not.toHaveBeenCalled();
   });
 
   test('clinic_id が null の admin でも reset-password/admin を優先する', async () => {
@@ -87,11 +103,6 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'user-1', email: 'admin@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: { role: 'admin', clinic_id: null },
-      error: null,
-    });
-
     const { GET } = await import('@/app/(public)/admin/callback/route');
     const response = await GET(
       new Request(
@@ -112,11 +123,6 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'user-2', email: 'staff@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: { role: 'staff', clinic_id: 'clinic-1' },
-      error: null,
-    });
-
     const { GET } = await import('@/app/(public)/admin/callback/route');
     const response = await GET(
       new Request(
@@ -146,11 +152,6 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'user-3', email: 'staff@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: { role: 'staff', clinic_id: 'clinic-1' },
-      error: null,
-    });
-
     const { GET } = await import('@/app/(public)/admin/callback/route');
     const response = await GET(
       new Request(
@@ -172,11 +173,6 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'invited-user', email: 'staff@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: null,
-      error: null,
-    });
-
     const token = '550e8400-e29b-41d4-a716-446655440000';
     const next = encodeURIComponent(`/invite?token=${token}`);
     const { GET } = await import('@/app/(public)/admin/callback/route');
@@ -193,6 +189,7 @@ describe('/admin/callback reset-password contract', () => {
     expect(response.headers.get('location')).toBe(
       `http://localhost:3000/invite?token=${token}`
     );
+    expect(mockGetUserAccessContext).not.toHaveBeenCalled();
   });
 
   test('manager は clinic_id が null でも onboarding ではなく manager home に進む', async () => {
@@ -200,9 +197,17 @@ describe('/admin/callback reset-password contract', () => {
       error: null,
       data: { user: { id: 'manager-1', email: 'manager@clinic.com' } },
     });
-    mockMaybeSingle.mockResolvedValue({
-      data: { role: 'manager', clinic_id: null },
-      error: null,
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: {
+        role: 'manager',
+        clinic_id: null,
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'manager',
+      normalizedRole: 'manager',
+      clinicId: 'clinic-1',
+      isActive: true,
+      isAdmin: false,
     });
 
     const { GET } = await import('@/app/(public)/admin/callback/route');
@@ -213,6 +218,80 @@ describe('/admin/callback reset-password contract', () => {
     expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/manager');
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/manager'
+    );
+  });
+
+  test('通常callbackは permission missing を拒否して session を破棄する', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: null,
+      data: { user: { id: 'missing-user', email: 'missing@clinic.com' } },
+    });
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: null,
+      role: null,
+      normalizedRole: null,
+      clinicId: null,
+      isActive: true,
+      isAdmin: false,
+    });
+
+    const { GET } = await import('@/app/(public)/admin/callback/route');
+    const response = await GET(
+      new Request('http://localhost:3000/admin/callback?code=missing123')
+    );
+
+    expect(mockClearRejectedAuthSession).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/admin/login?error=auth_failed'
+    );
+  });
+
+  test('通常callbackは inactive profile を拒否して session を破棄する', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: null,
+      data: { user: { id: 'inactive-user', email: 'inactive@clinic.com' } },
+    });
+    mockGetUserAccessContext.mockResolvedValue({
+      permissions: {
+        role: 'admin',
+        clinic_id: 'clinic-1',
+        clinic_scope_ids: ['clinic-1'],
+      },
+      role: 'admin',
+      normalizedRole: 'admin',
+      clinicId: 'clinic-1',
+      isActive: false,
+      isAdmin: true,
+    });
+
+    const { GET } = await import('@/app/(public)/admin/callback/route');
+    const response = await GET(
+      new Request('http://localhost:3000/admin/callback?code=inactive123')
+    );
+
+    expect(mockClearRejectedAuthSession).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/admin/login?error=auth_failed'
+    );
+  });
+
+  test('通常callbackは authority lookup error 時も session を破棄する', async () => {
+    mockExchangeCodeForSession.mockResolvedValue({
+      error: null,
+      data: { user: { id: 'error-user', email: 'error@clinic.com' } },
+    });
+    mockGetUserAccessContext.mockRejectedValue(
+      new Error('permission database unavailable')
+    );
+
+    const { GET } = await import('@/app/(public)/admin/callback/route');
+    const response = await GET(
+      new Request('http://localhost:3000/admin/callback?code=error123')
+    );
+
+    expect(mockClearRejectedAuthSession).toHaveBeenCalledTimes(1);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/admin/login?error=auth_failed'
     );
   });
 });

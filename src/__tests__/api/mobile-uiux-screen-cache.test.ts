@@ -120,6 +120,7 @@ describe('GET /mobile-uiux/screens/[resource] cache headers', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
   });
 
@@ -159,7 +160,8 @@ describe('GET /mobile-uiux/screens/[resource] cache headers', () => {
 
   it('returns 200 when If-None-Match does not match the JavaScript asset ETag', async () => {
     const response = await callMobileScreen('support.js', {
-      'if-none-match': '"0000000000000000000000000000000000000000000000000000000000000000"',
+      'if-none-match':
+        '"0000000000000000000000000000000000000000000000000000000000000000"',
     });
 
     expect(response.status).toBe(200);
@@ -235,6 +237,7 @@ describe('GET /mobile-uiux/screens/[resource] cache headers', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('reservations', {

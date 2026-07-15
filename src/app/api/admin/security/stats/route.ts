@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { createLogger } from '@/lib/logger';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { resolveScopedClinicIds } from '@/lib/supabase';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
 
 const log = createLogger('SecurityStatsAPI');
 
@@ -62,7 +64,8 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const resolvedClinicId = clinicId ?? permissions.clinic_id ?? undefined;
+    const resolvedClinicId =
+      clinicId ?? resolveScopedClinicIds(permissions)?.[0] ?? undefined;
 
     if (!resolvedClinicId) {
       return NextResponse.json(
@@ -172,6 +175,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     log.error('セキュリティ統計取得で例外が発生', error);
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     return NextResponse.json(
       {
         error: 'セキュリティ統計の取得に失敗しました',

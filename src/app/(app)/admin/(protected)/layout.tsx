@@ -2,6 +2,7 @@ import React from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient, getUserAccessContext } from '@/lib/supabase';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import {
   ADMIN_ROUTE_PATH_HEADER,
   AREA_MANAGER_ADMIN_DEFAULT_PATH,
@@ -23,7 +24,9 @@ export default async function AdminLayout({
     redirect('/admin/login');
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase)
+  );
   const isActive = accessContext.isActive;
   const role = accessContext.normalizedRole;
   const headerList = await headers();

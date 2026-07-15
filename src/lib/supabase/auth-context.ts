@@ -21,12 +21,22 @@ type AppMetadataCarrier = {
 export interface AuthPermissionRecord {
   role: string;
   clinic_id: string | null;
-  clinic_scope_ids?: string[];
+  clinic_scope_ids?: string[] | null;
 }
 
 export interface ProfileStatusRow {
   is_active: boolean | null;
 }
+
+export type PermissionLookupResult =
+  | { status: 'found'; value: AuthPermissionRecord }
+  | { status: 'missing' }
+  | { status: 'error'; error: unknown };
+
+export type ProfileStatusLookupResult =
+  | { status: 'found'; value: ProfileStatusRow }
+  | { status: 'missing' }
+  | { status: 'error'; error: unknown };
 
 export interface UserAuthAccessContext<
   TPermissions extends AuthPermissionRecord = AuthPermissionRecord,
@@ -64,82 +74,60 @@ async function selectOptionalSingle<T>(
 export async function fetchUserPermissionsRecord(
   supabase: SupabaseQueryClient,
   userId: string
-): Promise<AuthPermissionRecord | null> {
-  const { data, error } = await selectOptionalSingle<AuthPermissionRecord>(
-    supabase
-      .from('user_permissions')
-      .select('role, clinic_id')
-      .eq('staff_id', userId) as unknown as SingleRowQuery<AuthPermissionRecord>
-  );
+): Promise<PermissionLookupResult> {
+  try {
+    const { data, error } = await selectOptionalSingle<AuthPermissionRecord>(
+      supabase
+        .from('user_permissions')
+        .select('role, clinic_id')
+        .eq('staff_id', userId)
+    );
 
-  if (data || !error) {
-    return data as AuthPermissionRecord | null;
+    if (error) {
+      return { status: 'error', error };
+    }
+
+    if (!data) {
+      return { status: 'missing' };
+    }
+
+    return { status: 'found', value: data };
+  } catch (error) {
+    return { status: 'error', error };
   }
-
-  return null;
 }
 
 export async function fetchProfileStatus(
   supabase: SupabaseQueryClient,
   userId: string
-): Promise<ProfileStatusRow | null> {
-  const byUserId = await selectOptionalSingle<ProfileStatusRow>(
-    supabase
-      .from('profiles')
-      .select('is_active')
-      .eq('user_id', userId) as unknown as SingleRowQuery<ProfileStatusRow>
-  );
+): Promise<ProfileStatusLookupResult> {
+  try {
+    const byUserId = await selectOptionalSingle<ProfileStatusRow>(
+      supabase.from('profiles').select('is_active').eq('user_id', userId)
+    );
 
-  if (byUserId.data || !byUserId.error) {
-    return (byUserId.data as ProfileStatusRow | null) ?? null;
+    if (byUserId.error) {
+      return { status: 'error', error: byUserId.error };
+    }
+
+    if (byUserId.data) {
+      return { status: 'found', value: byUserId.data };
+    }
+
+    // profiles.user_id is the only authoritative Auth-subject relation.
+    // A row whose unrelated primary key happens to equal the subject must not
+    // revive a missing or inactive account.
+    return { status: 'missing' };
+  } catch (error) {
+    return { status: 'error', error };
   }
-
-  const byId = await selectOptionalSingle<ProfileStatusRow>(
-    supabase
-      .from('profiles')
-      .select('is_active')
-      .eq('id', userId) as unknown as SingleRowQuery<ProfileStatusRow>
-  );
-
-  if (byId.data || !byId.error) {
-    return (byId.data as ProfileStatusRow | null) ?? null;
-  }
-
-  return null;
 }
 
 export function resolvePermissionRecord(
   permissionsRecord: AuthPermissionRecord | null,
-  user: AppMetadataCarrier
+  _user?: AppMetadataCarrier
 ): AuthPermissionRecord | null {
-  if (permissionsRecord) {
-    return permissionsRecord;
-  }
-
-  const appMetadata = (user?.app_metadata ?? {}) as Record<string, unknown>;
-  const roleFromJwt =
-    typeof appMetadata.user_role === 'string'
-      ? appMetadata.user_role
-      : typeof appMetadata.role === 'string'
-        ? appMetadata.role
-        : null;
-  const clinicIdFromJwt =
-    typeof appMetadata.clinic_id === 'string' ? appMetadata.clinic_id : null;
-  const clinicScopeIds =
-    Array.isArray(appMetadata.clinic_scope_ids) &&
-    appMetadata.clinic_scope_ids.every(id => typeof id === 'string')
-      ? (appMetadata.clinic_scope_ids as string[])
-      : undefined;
-
-  if (!roleFromJwt) {
-    return null;
-  }
-
-  return {
-    role: roleFromJwt,
-    clinic_id: clinicIdFromJwt,
-    clinic_scope_ids: clinicScopeIds,
-  };
+  return permissionsRecord;
 }
 
 export function buildUserAuthAccessContext<
@@ -148,17 +136,34 @@ export function buildUserAuthAccessContext<
   permissions: TPermissions | null,
   profileStatus?: ProfileStatusRow | null
 ): UserAuthAccessContext<TPermissions> {
-  const role = permissions?.role ?? null;
+  const isActive = profileStatus?.is_active === true;
+  const hasExplicitEmptyScope =
+    Array.isArray(permissions?.clinic_scope_ids) &&
+    permissions.clinic_scope_ids.length === 0;
+  const activePermissions =
+    isActive && !hasExplicitEmptyScope ? permissions : null;
+  const role = activePermissions?.role ?? null;
   const normalizedRole = normalizeRole(role);
+  const canonicalClinicIds = Array.isArray(activePermissions?.clinic_scope_ids)
+    ? activePermissions.clinic_scope_ids
+    : null;
+  const primaryClinicId = activePermissions?.clinic_id ?? null;
+  const clinicId = canonicalClinicIds
+    ? primaryClinicId && canonicalClinicIds.includes(primaryClinicId)
+      ? primaryClinicId
+      : (canonicalClinicIds[0] ?? null)
+    : primaryClinicId;
 
   return {
-    permissions,
+    permissions: activePermissions,
     role,
     normalizedRole,
-    clinicId: permissions?.clinic_id ?? null,
+    // A JWT scope claim may narrow the DB scope away from the primary clinic.
+    // Never expose a default clinic outside the canonical intersection.
+    clinicId,
     // Account status is an authorization boundary. Missing or unreadable
     // profile state must never grant access.
-    isActive: profileStatus?.is_active === true,
+    isActive,
     isAdmin: canManageClinicSettingsWithCompat(normalizedRole),
   };
 }

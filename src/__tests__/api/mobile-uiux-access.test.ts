@@ -197,6 +197,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
   });
 
@@ -242,6 +243,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
     const warnSpy = jest
       .spyOn(console, 'warn')
@@ -289,6 +291,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('reservations');
@@ -344,6 +347,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('patients');
@@ -362,6 +366,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: null,
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('home');
@@ -380,6 +385,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: [],
       },
       clinicId: null,
+      isActive: true,
     });
 
     const response = await callMobileScreen('home');
@@ -422,6 +428,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
           clinic_scope_ids: ['clinic-1'],
         },
         clinicId: 'clinic-1',
+        isActive: true,
       });
 
       const response = await callMobileScreen(resource);
@@ -466,6 +473,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('home');
@@ -568,7 +576,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
     ).toBe(false);
   });
 
-  it('allows manager whose clinic scope comes only from manager_clinic_assignments', async () => {
+  it('allows a manager only from the canonical access-context scope', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
     createAdminClientMock.mockReturnValue(
       createManagerAssignmentsClient(['clinic-1'])
@@ -577,26 +585,31 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
       permissions: {
         role: 'manager',
         clinic_id: null,
-        clinic_scope_ids: [],
+        clinic_scope_ids: ['clinic-1'],
       },
       clinicId: null,
+      isActive: true,
     });
 
     const response = await callMobileScreen('home');
 
     expect(response.status).toBe(200);
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
-  it('denies manager without active assignments even if permissions carry clinic scope', async () => {
+  it('denies an empty canonical manager scope even if assignments are available', async () => {
     process.env.MOBILE_UIUX_ENABLED = 'true';
-    createAdminClientMock.mockReturnValue(createManagerAssignmentsClient([]));
+    createAdminClientMock.mockReturnValue(
+      createManagerAssignmentsClient(['clinic-1'])
+    );
     getUserAccessContextMock.mockResolvedValue({
       permissions: {
         role: 'manager',
         clinic_id: 'clinic-1',
-        clinic_scope_ids: ['clinic-1'],
+        clinic_scope_ids: [],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
 
     const response = await callMobileScreen('home');
@@ -604,6 +617,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
 
     expect(response.status).toBe(403);
     expect(body).toContain('このモバイル UI/UX へのアクセス権限がありません');
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
   it('prefers the generated home production asset for authorized manager access', async () => {
@@ -620,6 +634,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
     const productionAsset = `<!DOCTYPE html>
 <html>
@@ -662,6 +677,7 @@ describe('GET /mobile-uiux/screens/[resource] production gate', () => {
         clinic_scope_ids: ['clinic-1'],
       },
       clinicId: 'clinic-1',
+      isActive: true,
     });
     const productionAsset = `<!DOCTYPE html>
 <html>

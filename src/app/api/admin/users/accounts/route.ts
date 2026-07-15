@@ -14,7 +14,13 @@ import {
 } from '@/lib/constants/roles';
 import { emailSchema, passwordSchema } from '@/lib/schemas/auth';
 import { createAdminClient } from '@/lib/supabase';
-import { ADMIN_USERS_API_ROLES, isHqAdminActor } from '../access';
+import {
+  ADMIN_USERS_API_ROLES,
+  ADMIN_USERS_ACCESS_MESSAGES,
+  canAccessResolvedScopedAdminUsersClinic,
+  getScopedAdminUsersClinicIds,
+  isHqAdminActor,
+} from '../access';
 
 const AccountOnlyCreateSchema = z.object({
   full_name: z.string().trim().min(1).max(255),
@@ -46,10 +52,10 @@ const BOOKABLE_STAFF_RESOURCE_ROLES = new Set<AdminUserRole>([
 ]);
 
 function resolvePermissionClinicId(
-  role: AdminUserRole | null,
+  _role: AdminUserRole | null,
   clinicId: string | null | undefined
 ): string | null {
-  return role === 'admin' || role === 'manager' ? null : (clinicId ?? null);
+  return clinicId ?? null;
 }
 
 const mapCreateAccountErrorMessage = (error?: CreateAccountError | null) => {
@@ -166,6 +172,25 @@ export async function POST(request: NextRequest) {
     const password = parsed.data.password;
     const role = parsed.data.role ?? null;
     const clinicId = resolvePermissionClinicId(role, parsed.data.clinic_id);
+    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    if (!scopedClinicIds?.length) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
+    if (!canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinicId)) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
     const adminClient = createAdminClient();
 
     const { data: authData, error: createUserError } =
@@ -388,23 +413,50 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const adminClient = createAdminClient();
-    const { data: currentProfile, error: profileReadError } = await adminClient
-      .from('profiles')
-      .select('user_id, is_active')
-      .eq('user_id', targetUserId)
-      .maybeSingle();
+    const scopedClinicIds = getScopedAdminUsersClinicIds(permissions);
+    if (!scopedClinicIds?.length) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
 
-    if (profileReadError) {
-      logError(profileReadError, {
+    const adminClient = createAdminClient();
+    const [profileResult, permissionResult] = await Promise.all([
+      adminClient
+        .from('profiles')
+        .select('user_id, is_active, clinic_id')
+        .eq('user_id', targetUserId)
+        .maybeSingle(),
+      adminClient
+        .from('user_permissions')
+        .select('clinic_id, role')
+        .eq('staff_id', targetUserId)
+        .maybeSingle(),
+    ]);
+    const currentProfile = profileResult.data;
+    const profileReadError = profileResult.error;
+    const currentPermission = permissionResult.data;
+    const permissionReadError = permissionResult.error;
+
+    if (profileReadError || permissionReadError) {
+      const authorityReadError = profileReadError ?? permissionReadError;
+      logError(authorityReadError, {
         endpoint: '/api/admin/users/accounts',
         method: 'PATCH',
         userId: auth.id,
-        params: { target_user_id: targetUserId, stage: 'read_profile' },
+        params: {
+          target_user_id: targetUserId,
+          stage: profileReadError
+            ? 'read_profile_authority'
+            : 'read_permission_authority',
+        },
       });
       return createErrorResponse(
-        'アカウント状態の取得に失敗しました',
-        500,
+        'アカウント権限の取得に失敗しました',
+        503,
         undefined,
         ERROR_CODES.INTERNAL_SERVER_ERROR
       );
@@ -416,6 +468,57 @@ export async function PATCH(request: NextRequest) {
         404,
         undefined,
         ERROR_CODES.RESOURCE_NOT_FOUND
+      );
+    }
+
+    let assignmentClinicIds: string[] = [];
+    if (currentPermission?.role === 'manager') {
+      const { data: assignmentRows, error: assignmentReadError } =
+        await adminClient
+          .from('manager_clinic_assignments')
+          .select('clinic_id')
+          .eq('manager_user_id', targetUserId)
+          .is('revoked_at', null);
+
+      if (assignmentReadError) {
+        logError(assignmentReadError, {
+          endpoint: '/api/admin/users/accounts',
+          method: 'PATCH',
+          userId: auth.id,
+          params: {
+            target_user_id: targetUserId,
+            stage: 'read_manager_assignment_authority',
+          },
+        });
+        return createErrorResponse(
+          'アカウント権限の取得に失敗しました',
+          503,
+          undefined,
+          ERROR_CODES.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      assignmentClinicIds = (assignmentRows ?? []).map(row => row.clinic_id);
+    }
+
+    const targetClinicIds = Array.from(
+      new Set(
+        [
+          currentProfile.clinic_id,
+          currentPermission?.clinic_id ?? null,
+          ...assignmentClinicIds,
+        ].filter((clinicId): clinicId is string => typeof clinicId === 'string')
+      )
+    );
+    if (
+      targetClinicIds.length === 0 ||
+      targetClinicIds.some(clinicId => !scopedClinicIds.includes(clinicId))
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
       );
     }
 

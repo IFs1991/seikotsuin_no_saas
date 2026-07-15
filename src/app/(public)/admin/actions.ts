@@ -23,6 +23,7 @@ import {
   getEmailDomainLogData,
   getSafeAuthErrorLogData,
 } from '@/lib/auth/safe-auth-logging';
+import { clearRejectedAuthSession } from '@/lib/auth/session-cleanup';
 
 const INACTIVE_ACCOUNT_MESSAGE =
   'アカウントが無効化されています。管理者にお問い合わせください';
@@ -79,65 +80,6 @@ function extractAuthFormValues(formData: FormData) {
   };
 }
 
-function resolveProfileName(
-  email: string,
-  metadata: Record<string, unknown> | null | undefined
-) {
-  const metadataName =
-    typeof metadata?.full_name === 'string'
-      ? metadata.full_name.trim()
-      : typeof metadata?.name === 'string'
-        ? metadata.name.trim()
-        : '';
-
-  if (metadataName) {
-    return metadataName;
-  }
-
-  return email.split('@')[0] || '管理者';
-}
-
-async function ensureProfileExists(user: {
-  id: string;
-  email?: string | null;
-  user_metadata?: Record<string, unknown> | null;
-}) {
-  const adminClient = createAdminClient();
-  const profileEmail =
-    user.email?.trim().toLowerCase() || `${user.id}@placeholder.local`;
-
-  const { data: existingProfile, error: lookupError } = await adminClient
-    .from('profiles')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  if (lookupError) {
-    log.error('Profile bootstrap lookup error', {
-      ...getSafeAuthErrorLogData(lookupError),
-      hasUser: true,
-    });
-    return;
-  }
-
-  if (existingProfile) {
-    return;
-  }
-
-  const { error: insertError } = await adminClient.from('profiles').insert({
-    user_id: user.id,
-    email: profileEmail,
-    full_name: resolveProfileName(profileEmail, user.user_metadata),
-  });
-
-  if (insertError) {
-    log.error('Profile bootstrap insert error', {
-      ...getSafeAuthErrorLogData(insertError),
-      hasUser: true,
-    });
-  }
-}
-
 async function syncProfileAccess(
   userId: string,
   email: string,
@@ -188,6 +130,7 @@ export async function login(
   const supabase = await getServerClient();
   const headerList = await headers();
   const { ipAddress, userAgent } = getRequestInfoFromHeaders(headerList);
+  let signedIn = false;
 
   try {
     // 1. 入力値の検証とサニタイズ
@@ -251,14 +194,23 @@ export async function login(
       };
     }
 
-    await ensureProfileExists(data.user);
+    signedIn = true;
 
     // 5. 認可コンテキストを user_permissions/profile の整合済み導線で解決
-    const accessContext = await getUserAccessContext(data.user.id, supabase);
+    const accessContext = await getUserAccessContext(data.user.id, supabase, {
+      user: data.user,
+    });
     const effectiveRole = accessContext.normalizedRole ?? accessContext.role;
 
     if (!accessContext.isActive) {
-      await supabase.auth.signOut();
+      const cleanup = await clearRejectedAuthSession(supabase);
+      signedIn = !cleanup.complete;
+      if (cleanup.signOutError) {
+        log.error(
+          'Admin login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
       return {
         success: false,
         errors: {
@@ -268,11 +220,29 @@ export async function login(
       };
     }
 
+    if (!accessContext.permissions) {
+      const cleanup = await clearRejectedAuthSession(supabase);
+      signedIn = !cleanup.complete;
+      if (cleanup.signOutError) {
+        log.error(
+          'Admin login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
+      return {
+        success: false,
+        errors: {
+          password: [GENERIC_AUTH_ERROR_MESSAGE],
+          _form: [GENERIC_AUTH_ERROR_MESSAGE],
+        },
+      };
+    }
+
     await syncProfileAccess(
       data.user.id,
       sanitizedEmail,
-      effectiveRole,
-      accessContext.clinicId
+      accessContext.permissions.role,
+      accessContext.permissions.clinic_id
     );
 
     await AuditLogger.logLogin(
@@ -301,6 +271,22 @@ export async function login(
   } catch (error) {
     if (isRedirectLikeError(error)) {
       throw error;
+    }
+    if (signedIn) {
+      const cleanup = await clearRejectedAuthSession(supabase);
+      if (cleanup.signOutError) {
+        log.error(
+          'Admin login session cleanup error',
+          getSafeAuthErrorLogData(cleanup.signOutError)
+        );
+      }
+      if (cleanup.cookieCleanupError) {
+        log.error(
+          'Admin login auth cookie cleanup error',
+          getSafeAuthErrorLogData(cleanup.cookieCleanupError)
+        );
+      }
+      signedIn = !cleanup.complete;
     }
     log.error('Admin login error', getSafeAuthErrorLogData(error));
     return {

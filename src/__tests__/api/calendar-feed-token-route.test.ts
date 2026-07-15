@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 
 jest.mock('@/lib/api-helpers', () => ({
@@ -13,7 +14,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: jest.fn(),
+  resolveManagerAssignedClinicsWithinScope: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -21,8 +22,8 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 const processApiRequestMock = jest.mocked(processApiRequest);
-const resolveManagerAssignedClinicsMock = jest.mocked(
-  resolveManagerAssignedClinics
+const resolveManagerAssignedClinicsWithinScopeMock = jest.mocked(
+  resolveManagerAssignedClinicsWithinScope
 );
 const createAdminClientMock = jest.mocked(createAdminClient);
 
@@ -184,7 +185,7 @@ describe('POST /api/calendar/feed-tokens', () => {
     jest.clearAllMocks();
     mockAuth();
     tokenQuery = new CalendarFeedTokenQueryMock();
-    resolveManagerAssignedClinicsMock.mockResolvedValue([
+    resolveManagerAssignedClinicsWithinScopeMock.mockResolvedValue([
       {
         id: 'assignment-a',
         manager_user_id: 'manager-user',
@@ -239,7 +240,67 @@ describe('POST /api/calendar/feed-tokens', () => {
       feed_type: 'clinic',
       label: '池袋院ロスター',
     });
+    expect(resolveManagerAssignedClinicsWithinScopeMock).toHaveBeenCalledWith(
+      expect.any(Object),
+      'manager-user',
+      [clinicA]
+    );
   });
+
+  it('rejects an admin clinic feed outside canonical scope before creating a service client', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'admin-user',
+        email: 'admin@example.com',
+        role: 'admin',
+      },
+      permissions: {
+        role: 'admin',
+        clinic_id: clinicA,
+        clinic_scope_ids: [clinicA],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const response = await postToken({
+      feed_type: 'clinic',
+      clinic_id: clinicB,
+    });
+
+    expect(response.status).toBe(403);
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+    expect(tokenQuery.inserted).toBeNull();
+  });
+
+  it.each(['therapist', 'staff'] as const)(
+    'denies a %s clinic feed before creating a service client',
+    async role => {
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: {
+          id: `${role}-user`,
+          email: `${role}@example.com`,
+          role,
+        },
+        permissions: {
+          role,
+          clinic_id: clinicA,
+          clinic_scope_ids: [clinicA],
+        },
+        supabase: { from: jest.fn() },
+      });
+
+      const response = await postToken({
+        feed_type: 'clinic',
+        clinic_id: clinicA,
+      });
+
+      expect(response.status).toBe(403);
+      expect(createAdminClientMock).not.toHaveBeenCalled();
+      expect(tokenQuery.inserted).toBeNull();
+    }
+  );
 
   it('requires clinic_id for staff feed tokens', async () => {
     const response = await postToken({
@@ -271,6 +332,93 @@ describe('POST /api/calendar/feed-tokens', () => {
       label: '池袋院 個人シフト',
     });
     expect(json.data.clinic_id).toBe(clinicA);
+  });
+
+  it('allows a therapist to issue only their own staff feed', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: {
+        id: 'staff-user',
+        email: 'therapist@example.com',
+        role: 'therapist',
+      },
+      permissions: {
+        role: 'therapist',
+        clinic_id: clinicA,
+        clinic_scope_ids: [clinicA],
+      },
+      supabase: { from: jest.fn() },
+    });
+
+    const response = await postToken({
+      feed_type: 'staff',
+      staff_profile_id: staffProfileA,
+      clinic_id: clinicA,
+    });
+
+    expect(response.status).toBe(201);
+    expect(tokenQuery.inserted).toMatchObject({
+      clinic_id: clinicA,
+      staff_profile_id: staffProfileA,
+      feed_type: 'staff',
+      created_by: 'staff-user',
+    });
+  });
+
+  it.each(['therapist', 'staff', 'clinic_admin'] as const)(
+    'denies a %s feed for a different staff profile',
+    async role => {
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: {
+          id: `${role}-other-user`,
+          email: `${role}@example.com`,
+          role,
+        },
+        permissions: {
+          role,
+          clinic_id: clinicA,
+          clinic_scope_ids: [clinicA],
+        },
+        supabase: { from: jest.fn() },
+      });
+
+      const response = await postToken({
+        feed_type: 'staff',
+        staff_profile_id: staffProfileA,
+        clinic_id: clinicA,
+      });
+
+      expect(response.status).toBe(403);
+      expect(tokenQuery.inserted).toBeNull();
+    }
+  );
+
+  it('fails closed when the target staff active state is unknown', async () => {
+    createAdminClientMock.mockReturnValue({
+      from: (table: string) => {
+        if (table === 'staff_profiles') {
+          return new StaffProfileQueryMock({
+            id: staffProfileA,
+            user_id: 'staff-user',
+            is_active: null,
+          });
+        }
+        if (table === 'calendar_feed_tokens') {
+          return tokenQuery;
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    });
+
+    const response = await postToken({
+      feed_type: 'staff',
+      staff_profile_id: staffProfileA,
+      clinic_id: clinicA,
+    });
+
+    expect(response.status).toBe(403);
+    expect(tokenQuery.inserted).toBeNull();
   });
 
   it('denies staff feed tokens for clinics outside manager assignment', async () => {
@@ -308,6 +456,30 @@ describe('POST /api/calendar/feed-tokens', () => {
 
     expect(response.status).toBe(403);
     expect(json.success).toBe(false);
+    expect(tokenQuery.inserted).toBeNull();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it('returns an information-free 503 when manager assignment authority is unavailable', async () => {
+    resolveManagerAssignedClinicsWithinScopeMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+        undefined,
+        503
+      )
+    );
+
+    const response = await postToken({
+      feed_type: 'clinic',
+      clinic_id: clinicA,
+    });
+    const json = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(json).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
     expect(tokenQuery.inserted).toBeNull();
   });
 });

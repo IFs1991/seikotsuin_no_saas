@@ -7,6 +7,7 @@ import { resolveMobileUiuxRolloutWithEntitlements } from '@/lib/mobile-uiux/enti
 import { getMobileUiuxFlags } from '@/lib/mobile-uiux/flags';
 import { filterMobileUiuxLauncherScreens } from '@/lib/mobile-uiux/launcher';
 import { DisplayModeLink } from '@/components/mobile-uiux/display-mode-link';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import {
   createClient,
   getCurrentUser,
@@ -66,7 +67,14 @@ export default async function MobileUiuxPage() {
     redirect('/login?redirectTo=/mobile-uiux');
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase, { user });
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase, { user })
+  );
+
+  if (!accessContext.isActive || !accessContext.permissions) {
+    redirect('/unauthorized');
+  }
+
   const principalDecision = await resolveMobileUiuxPrincipal({
     userId: user.id,
     permissions: accessContext.permissions,

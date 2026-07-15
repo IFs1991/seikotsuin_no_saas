@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { processApiRequest } from '@/lib/api-helpers';
-import { resolveManagerAssignedClinics } from '@/lib/auth/manager-scope';
+import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-scope';
+import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
 import type { ManagerAssignedClinicsResponse } from '@/types/manager-assigned-clinics';
 
@@ -14,7 +15,7 @@ jest.mock('@/lib/api-helpers', () => ({
 }));
 
 jest.mock('@/lib/auth/manager-scope', () => ({
-  resolveManagerAssignedClinics: jest.fn(),
+  resolveManagerAssignedClinicsWithinScope: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -22,8 +23,8 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 const processApiRequestMock = jest.mocked(processApiRequest);
-const resolveManagerAssignedClinicsMock = jest.mocked(
-  resolveManagerAssignedClinics
+const resolveManagerAssignedClinicsWithinScopeMock = jest.mocked(
+  resolveManagerAssignedClinicsWithinScope
 );
 const createAdminClientMock = jest.mocked(createAdminClient);
 
@@ -89,7 +90,7 @@ describe('GET /api/manager/assigned-clinics', () => {
     jest.clearAllMocks();
     mockAuth();
     createAdminClientMock.mockReturnValue({ from: jest.fn(), rpc: jest.fn() });
-    resolveManagerAssignedClinicsMock.mockResolvedValue([
+    resolveManagerAssignedClinicsWithinScopeMock.mockResolvedValue([
       {
         id: 'assignment-a',
         manager_user_id: 'manager-user',
@@ -135,9 +136,10 @@ describe('GET /api/manager/assigned-clinics', () => {
     if (!isSuccessPayload(json)) {
       throw new Error('expected success payload');
     }
-    expect(resolveManagerAssignedClinicsMock).toHaveBeenCalledWith(
+    expect(resolveManagerAssignedClinicsWithinScopeMock).toHaveBeenCalledWith(
       expect.any(Object),
-      'manager-user'
+      'manager-user',
+      [clinicB]
     );
     expect(json.data.clinics).toEqual([{ id: clinicA, name: '池袋院' }]);
     expect(json.data.clinics).not.toContainEqual({
@@ -148,7 +150,7 @@ describe('GET /api/manager/assigned-clinics', () => {
   });
 
   it('returns empty clinics when manager has no assignments and does not fallback to permission or JWT clinic scope', async () => {
-    resolveManagerAssignedClinicsMock.mockResolvedValue([]);
+    resolveManagerAssignedClinicsWithinScopeMock.mockResolvedValue([]);
 
     const response = await getAssignedClinics();
     const json = await response.json();
@@ -159,5 +161,44 @@ describe('GET /api/manager/assigned-clinics', () => {
       throw new Error('expected success payload');
     }
     expect(json.data.clinics).toEqual([]);
+  });
+
+  it('returns an information-free 503 when assignment authority lookup is unavailable', async () => {
+    resolveManagerAssignedClinicsWithinScopeMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.MANAGER_SCOPE_AUTHORITY_UNAVAILABLE,
+        'manager assignment table details',
+        503
+      )
+    );
+
+    const response = await getAssignedClinics();
+    const json = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(json).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(json)).not.toContain('assignment');
+  });
+
+  it('preserves the existing 500 handling for unrelated downstream failures', async () => {
+    resolveManagerAssignedClinicsWithinScopeMock.mockRejectedValue(
+      new AppError(
+        ERROR_CODES.DATABASE_CONNECTION_ERROR,
+        'unrelated downstream failure',
+        503
+      )
+    );
+
+    const response = await getAssignedClinics();
+    const json = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(json).toEqual({
+      success: false,
+      error: 'サーバーエラーが発生しました',
+    });
   });
 });

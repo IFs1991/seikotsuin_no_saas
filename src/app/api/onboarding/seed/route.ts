@@ -9,8 +9,16 @@ import {
   createAdminClient,
   getServerClient,
   getCurrentUser,
+  getUserAccessContext,
+  resolveScopedClinicIds,
 } from '@/lib/supabase';
+import { normalizeRole } from '@/lib/constants/roles';
+import { AppError } from '@/lib/error-handler';
 import { seedMasterSchema } from '../schema';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,11 +57,19 @@ export async function POST(request: NextRequest) {
     }
 
     // オンボーディング状態からclinic_idを取得
-    const { data: state } = await supabase
+    const { data: state, error: stateLookupError } = await supabase
       .from('onboarding_states')
-      .select('clinic_id')
+      .select('clinic_id, current_step, metadata')
       .eq('user_id', user.id)
       .single();
+
+    if (stateLookupError) {
+      console.error('Onboarding state lookup error:', stateLookupError);
+      return NextResponse.json(
+        { success: false, error: 'オンボーディング状態の取得に失敗しました' },
+        { status: 500 }
+      );
+    }
 
     if (!state?.clinic_id) {
       return NextResponse.json(
@@ -62,11 +78,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (state.current_step !== 'seed') {
+      return NextResponse.json(
+        { success: false, error: '初期設定を実行できる段階ではありません' },
+        { status: 409 }
+      );
+    }
+
+    let accessContext;
+    try {
+      accessContext = await getUserAccessContext(user.id, supabase, { user });
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode === 503) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: '認証情報を確認できません。時間をおいて再度お試しください',
+          },
+          { status: 503 }
+        );
+      }
+      throw error;
+    }
+
+    const canonicalClinicIds = accessContext.permissions
+      ? resolveScopedClinicIds(accessContext.permissions)
+      : null;
+    if (
+      !accessContext.isActive ||
+      !accessContext.permissions ||
+      normalizeRole(accessContext.permissions.role) !== 'admin' ||
+      !canonicalClinicIds?.includes(state.clinic_id)
+    ) {
+      return NextResponse.json(
+        { success: false, error: '初期設定を実行する権限がありません' },
+        { status: 403 }
+      );
+    }
+
     const { treatment_menus, payment_methods, patient_types } = parsed.data;
 
     const clinicId = state.clinic_id;
-    // DOD-08: clinic 作成直後は JWT の clinic claim が未更新なことがあるため、
-    // 自分の onboarding_state で clinic_id を確定したうえで service_role で投入する。
+    // The service-role client is created only after authenticated subject,
+    // active profile, DB role, canonical scope, and workflow-step checks pass.
     const adminClient = createAdminClient();
 
     // 施術メニュー投入（all-or-nothing: 1件でも失敗したら中断）
@@ -107,47 +161,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 支払方法投入
-    for (const method of payment_methods) {
-      const { error } = await adminClient.from('master_payment_methods').upsert(
-        {
-          name: method,
-          is_active: true,
-        },
-        { onConflict: 'name' }
-      );
-
-      if (error) {
-        console.error('Payment method insert error:', error);
-      }
-    }
-
-    // 患者タイプ投入
-    for (const type of patient_types) {
-      const { error } = await adminClient.from('master_patient_types').upsert(
-        {
-          name: type,
-        },
-        { onConflict: 'name' }
-      );
-
-      if (error) {
-        console.error('Patient type insert error:', error);
-      }
-    }
-
-    // オンボーディング完了
-    const { error: stateError } = await supabase
+    // Payment/patient preferences are tenant onboarding input. Persist them on
+    // the caller-owned state instead of mutating globally shared master rows.
+    const existingMetadata = isRecord(state.metadata) ? state.metadata : {};
+    const { data: completedState, error: stateError } = await supabase
       .from('onboarding_states')
       .update({
         current_step: 'completed',
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        metadata: {
+          ...existingMetadata,
+          seed_preferences: {
+            payment_methods,
+            patient_types,
+          },
+        },
       })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('clinic_id', clinicId)
+      .eq('current_step', 'seed')
+      .select('current_step')
+      .maybeSingle();
 
-    if (stateError) {
+    if (stateError || !completedState) {
       console.error('Onboarding completion error:', stateError);
+      return NextResponse.json(
+        { success: false, error: 'オンボーディングの完了に失敗しました' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

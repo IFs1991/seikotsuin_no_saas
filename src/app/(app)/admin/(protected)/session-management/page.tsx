@@ -4,41 +4,36 @@
  */
 
 import React from 'react';
-import { createClient } from '@/lib/supabase';
+import {
+  createClient,
+  getCurrentUser,
+  getUserAccessContext,
+} from '@/lib/supabase';
 import { redirect } from 'next/navigation';
 import { SessionManager } from '@/components/session/SessionManager';
-import type { Database } from '@/types/supabase';
-
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
-type SessionProfile = Pick<ProfileRow, 'clinic_id' | 'role'>;
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 
 export default async function SessionManagementPage() {
   const supabase = await createClient();
 
-  // ユーザー認証確認
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
-  if (error || !user) {
+  if (!user) {
     redirect('/admin/login?redirectTo=/admin/session-management');
   }
 
-  // ユーザープロファイル取得
-  const profileResponse = await supabase
-    .from('profiles')
-    .select('clinic_id, role')
-    .eq('user_id', user.id)
-    .maybeSingle();
-
-  const profile = profileResponse.data as SessionProfile | null;
-
-  if (profileResponse.error || !profile) {
-    redirect('/admin/login?error=profile_not_found');
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase, { user })
+  );
+  if (!accessContext.permissions || !accessContext.isActive) {
+    redirect('/unauthorized');
   }
 
-  if (!profile.clinic_id) {
+  const clinicId =
+    accessContext.clinicId ??
+    accessContext.permissions.clinic_scope_ids?.[0] ??
+    null;
+  if (!clinicId || !accessContext.normalizedRole) {
     redirect('/admin/login?error=clinic_not_assigned');
   }
 
@@ -63,7 +58,7 @@ export default async function SessionManagementPage() {
 
           <div className='text-right text-sm text-gray-500'>
             <p>ログインユーザー: {displayName}</p>
-            <p>権限: {profile.role}</p>
+            <p>権限: {accessContext.normalizedRole}</p>
           </div>
         </div>
       </div>
@@ -71,8 +66,8 @@ export default async function SessionManagementPage() {
       {/* セッションマネージャーコンポーネント */}
       <SessionManager
         userId={user.id}
-        clinicId={profile.clinic_id}
-        userRole={profile.role}
+        clinicId={clinicId}
+        userRole={accessContext.normalizedRole}
       />
     </div>
   );

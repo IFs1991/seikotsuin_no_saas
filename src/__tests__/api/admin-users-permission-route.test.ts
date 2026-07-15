@@ -58,7 +58,10 @@ type ManagerScopeMockInput = {
   };
 };
 
-function createActiveAssignmentQuery(data: { id: string } | null) {
+function createActiveAssignmentQuery(
+  data: { id: string } | null,
+  error: unknown = null
+) {
   const query = {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
@@ -66,7 +69,7 @@ function createActiveAssignmentQuery(data: { id: string } | null) {
     limit: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn().mockResolvedValue({
       data,
-      error: null,
+      error,
     }),
   };
 
@@ -77,6 +80,11 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
   const permissionId = '11111111-1111-4111-8111-111111111111';
   const userId = '22222222-2222-4222-8222-222222222222';
   const clinicId = '33333333-3333-4333-8333-333333333333';
+  const adminPermissions = {
+    role: 'admin',
+    clinic_id: clinicId,
+    clinic_scope_ids: [clinicId],
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -150,7 +158,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: userScopedSupabase,
       body: {
         role: 'manager',
@@ -267,7 +275,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         role: 'therapist',
@@ -336,7 +344,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         revoke: true,
@@ -420,7 +428,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         role: 'staff',
@@ -488,7 +496,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         role: 'therapist',
@@ -517,6 +525,65 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     expect(assignmentQuery.is).toHaveBeenCalledWith('revoked_at', null);
     expect(assignmentQuery.limit).toHaveBeenCalledWith(1);
     expect(updateQuery.update).not.toHaveBeenCalled();
+    expect(logAdminActionMock).not.toHaveBeenCalled();
+  });
+
+  it('manager assignment authority errorは情報非開示503で更新前に停止する', async () => {
+    const existingQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: {
+          id: permissionId,
+          staff_id: userId,
+          role: 'manager',
+          clinic_id: clinicId,
+          username: 'manager@example.com',
+        },
+        error: null,
+      }),
+    };
+    const assignmentQuery = createActiveAssignmentQuery(null, {
+      code: 'PGRST500',
+      message: 'sensitive assignment error',
+    });
+    const adminClient = {
+      from: jest.fn((table: string) => {
+        if (table === 'user_permissions') return existingQuery;
+        if (table === 'manager_clinic_assignments') return assignmentQuery;
+        throw new Error(`Unexpected table: ${table}`);
+      }),
+    };
+    createAdminClientMock.mockReturnValue(adminClient);
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: adminPermissions,
+      supabase: {},
+      body: {
+        role: 'therapist',
+        clinic_id: clinicId,
+      },
+    });
+
+    const { PATCH } =
+      await import('@/app/api/admin/users/[permission_id]/route');
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/users/${permissionId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: 'therapist', clinic_id: clinicId }),
+      }),
+      { params: { permission_id: permissionId } }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body).toEqual({
+      success: false,
+      error: '認証情報を確認できません。時間をおいて再度お試しください',
+    });
+    expect(JSON.stringify(body)).not.toContain('PGRST500');
+    expect(JSON.stringify(body)).not.toContain('sensitive');
     expect(logAdminActionMock).not.toHaveBeenCalled();
   });
 
@@ -555,7 +622,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         revoke: true,
@@ -637,7 +704,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     processApiRequestMock.mockResolvedValue({
       success: true,
       auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
-      permissions: { role: 'admin', clinic_id: null },
+      permissions: adminPermissions,
       supabase: {},
       body: {
         role: 'therapist',

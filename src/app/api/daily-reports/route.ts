@@ -15,6 +15,8 @@ import {
   validateDailyReportWriteScope,
 } from '@/lib/daily-reports/write-model';
 import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
+import { resolveScopedClinicIds } from '@/lib/supabase';
 
 const PATH = '/api/daily-reports';
 const DAILY_REPORT_DELETE_ROLES = ['admin', 'clinic_admin'] as const;
@@ -78,6 +80,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -142,6 +147,9 @@ export async function POST(request: NextRequest) {
       data,
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -167,7 +175,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // DOD-09: テナント境界の強制 - permissions.clinic_id を取得
+    // DOD-09: canonical DB/JWT intersectionから削除対象院を取得
     const { supabase, permissions } = await ensureClinicAccess(
       request,
       PATH,
@@ -178,7 +186,7 @@ export async function DELETE(request: NextRequest) {
       }
     );
 
-    const clinicId = permissions.clinic_id;
+    const clinicId = resolveScopedClinicIds(permissions)?.[0] ?? null;
     if (!clinicId) {
       return NextResponse.json(
         { error: 'clinic_id is required' },
@@ -224,6 +232,9 @@ export async function DELETE(request: NextRequest) {
       message: 'Report deleted successfully',
     });
   } catch (error) {
+    const authorityUnavailable = createAuthorityUnavailableResponse(error);
+    if (authorityUnavailable) return authorityUnavailable;
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message, code: error.code },

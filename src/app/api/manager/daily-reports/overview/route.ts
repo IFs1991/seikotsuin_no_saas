@@ -11,7 +11,7 @@ import {
   parseManagerOverviewQuery,
   type ManagerDailyReportOverviewRow,
 } from '@/lib/manager-daily-reports';
-import { createAdminClient } from '@/lib/supabase';
+import { canAccessClinicScope, createAdminClient } from '@/lib/supabase';
 
 const PATH = '/api/manager/daily-reports/overview';
 const MANAGER_OVERVIEW_ALLOWED_ROLES = ['manager'] as const;
@@ -99,12 +99,35 @@ export async function GET(request: NextRequest) {
       return createErrorResponse(parsedQuery.message, 400);
     }
 
+    if (
+      !canAccessClinicScope(authResult.permissions, parsedQuery.query.clinicId)
+    ) {
+      return createErrorResponse(
+        'このクリニックへのアクセス権がありません',
+        403
+      );
+    }
+
     const adminClient = createAdminClient();
-    const assignedClinic = await fetchAssignedClinic(
-      adminClient,
-      authResult.auth.id,
-      parsedQuery.query.clinicId
-    );
+    let assignedClinic: ClinicRow | null;
+    try {
+      assignedClinic = await fetchAssignedClinic(
+        adminClient,
+        authResult.auth.id,
+        parsedQuery.query.clinicId
+      );
+    } catch (error) {
+      logError(error, {
+        endpoint: PATH,
+        method: 'GET',
+        userId: authResult.auth.id,
+        params: { stage: 'manager_assignment_authority' },
+      });
+      return createErrorResponse(
+        '認証情報を確認できません。時間をおいて再度お試しください',
+        503
+      );
+    }
 
     if (!assignedClinic) {
       return createErrorResponse(

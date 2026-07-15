@@ -254,8 +254,9 @@ describe('Role Consistency (DoD-08)', () => {
     expect(ADMIN_UI_ROLES.has('manager')).toBe(false);
   });
 
-  it('HQ_ROLES (admin only) can have clinic_id = null', () => {
-    // Only admin is HQ role
+  it('HQ_ROLES identifies UI capability without implying global clinic scope', () => {
+    // Only admin has HQ UI capability; authorization still requires canonical
+    // clinic scope at the data boundary.
     expect(HQ_ROLES.has('admin')).toBe(true);
     expect(HQ_ROLES.has('clinic_admin')).toBe(false);
     expect(HQ_ROLES.has('manager')).toBe(false);

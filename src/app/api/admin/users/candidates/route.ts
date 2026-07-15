@@ -38,7 +38,8 @@ const StaffCandidateSearchSchema = z.object({
 });
 
 const STAFF_SELECT = 'id, email, name, clinic_id, role, clinics(name)';
-const PROFILE_SELECT = 'user_id, email, full_name, is_active';
+const PROFILE_SELECT =
+  'user_id, email, full_name, is_active, clinic_id, clinics(name)';
 const PERMISSION_SELECT = 'id, staff_id, role, clinic_id, clinics(name)';
 const STAFF_CANDIDATE_SOURCE: CandidateSource = 'staff';
 const PROFILE_CANDIDATE_SOURCE: CandidateSource = 'profile';
@@ -62,6 +63,8 @@ type ProfileCandidateRow = {
   email: string;
   full_name: string | null;
   is_active: boolean;
+  clinic_id: string | null;
+  clinics?: ClinicRelation;
 };
 
 type ProfileSearchRow = Pick<ProfileCandidateRow, 'user_id'>;
@@ -211,16 +214,18 @@ const fetchStaffCandidatesByIds = async (
 const fetchUnassignedProfileCandidates = async (
   adminSupabase: SupabaseServerClient,
   search: string,
-  limit: number
+  limit: number,
+  scopedClinicIds: readonly string[]
 ): Promise<QueryResult<UserPermissionCandidate[]>> => {
-  if (limit <= 0) {
+  if (limit <= 0 || scopedClinicIds.length === 0) {
     return { data: [], error: null };
   }
 
   let query = adminSupabase
     .from('profiles')
     .select(PROFILE_SELECT)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .in('clinic_id', [...scopedClinicIds]);
 
   if (search) {
     query = query.or(buildIlikeOrFilter(['full_name', 'email'], search));
@@ -274,8 +279,8 @@ const fetchUnassignedProfileCandidates = async (
       user_id: profile.user_id,
       email: profile.email,
       full_name: profile.full_name || profile.email,
-      clinic_id: null,
-      clinic_name: null,
+      clinic_id: profile.clinic_id,
+      clinic_name: readClinicName(profile.clinics),
       staff_role: null,
       current_role: null,
       permission_id: null,
@@ -391,7 +396,8 @@ export async function GET(request: NextRequest) {
       const unassignedResult = await fetchUnassignedProfileCandidates(
         adminSupabase,
         search,
-        limit
+        limit,
+        scopedClinicIds ?? []
       );
 
       if (unassignedResult.error) {
@@ -505,7 +511,8 @@ export async function GET(request: NextRequest) {
       unassignedResult = await fetchUnassignedProfileCandidates(
         adminSupabase,
         search,
-        remainingUnassignedLimit
+        remainingUnassignedLimit,
+        scopedClinicIds ?? []
       );
     }
 

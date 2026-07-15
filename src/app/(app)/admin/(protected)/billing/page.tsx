@@ -14,6 +14,7 @@ import {
   fetchBillingSubscription,
   resolveOrgRootClinicForBilling,
 } from '@/lib/billing/admin';
+import { withAuthorityUnavailableRedirect } from '@/lib/auth/authority-unavailable';
 import { createClient, getUserAccessContext } from '@/lib/supabase';
 import {
   createScopedAdminContext,
@@ -30,7 +31,9 @@ export default async function AdminBillingPage() {
     redirect('/admin/login');
   }
 
-  const accessContext = await getUserAccessContext(user.id, supabase);
+  const accessContext = await withAuthorityUnavailableRedirect(() =>
+    getUserAccessContext(user.id, supabase)
+  );
   const permissions = accessContext.permissions;
 
   if (!permissions || accessContext.normalizedRole !== 'admin') {
