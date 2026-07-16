@@ -105,7 +105,9 @@ function resolvePermissionClinicId(
   return clinicId ?? null;
 }
 
-const mapCreateAccountErrorMessage = (error?: { message?: string | null }) => {
+const mapCreateAccountErrorMessage = (
+  error?: { message?: string | null } | null
+) => {
   const normalizedMessage = error?.message?.toLowerCase();
   if (
     normalizedMessage?.includes('already') ||
@@ -205,13 +207,30 @@ const buildCreatedPermissionRow = ({
 
 async function rollbackCreatedAccount(
   adminClient: AdminClient,
-  userId: string
+  userId: string,
+  clinicId: string
 ) {
   await Promise.allSettled([
-    adminClient.from('user_permissions').delete().eq('staff_id', userId),
-    adminClient.from('resources').delete().eq('id', userId),
-    adminClient.from('staff').delete().eq('id', userId),
-    adminClient.from('profiles').delete().eq('user_id', userId),
+    adminClient
+      .from('user_permissions')
+      .delete()
+      .eq('staff_id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('resources')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('staff')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('profiles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('clinic_id', clinicId),
   ]);
 
   await adminClient.auth.admin.deleteUser(userId);
@@ -331,11 +350,20 @@ async function syncAssignedStaffResource({
 
 async function rollbackPromotedProfileRecords(
   adminClient: AdminClient,
-  userId: string
+  userId: string,
+  clinicId: string
 ) {
   await Promise.allSettled([
-    adminClient.from('resources').delete().eq('id', userId),
-    adminClient.from('staff').delete().eq('id', userId),
+    adminClient
+      .from('resources')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('staff')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
   ]);
 }
 
@@ -362,37 +390,46 @@ async function syncProfileOnlyClinicRecords({
 
   const timestamp = new Date().toISOString();
   const fullName = name?.trim() || email;
-  const persistenceInput: CreatedAccountPersistenceInput = {
-    adminClient,
-    actorUserId,
-    createdUserId: targetUserId,
-    fullName,
-    email,
-    role,
-    clinicId,
-    timestamp,
-  };
 
   const [staffFailure, resourceFailure] = await Promise.all([
     resolveAccountWriteFailure(
       'upsert_staff',
       'スタッフ情報の同期に失敗しました',
-      adminClient
-        .from('staff')
-        .upsert(buildCreatedStaffRow(persistenceInput), { onConflict: 'id' })
+      adminClient.from('staff').upsert(
+        {
+          id: targetUserId,
+          clinic_id: clinicId,
+          name: fullName,
+          role,
+          email,
+          password_hash: MANAGED_PASSWORD_PLACEHOLDER,
+          is_therapist: role === 'therapist',
+          updated_at: timestamp,
+        },
+        { onConflict: 'id' }
+      )
     ),
     resolveAccountWriteFailure(
       'upsert_resources',
       'スタッフリソースの同期に失敗しました',
-      adminClient
-        .from('resources')
-        .upsert(buildCreatedResourceRow(persistenceInput), { onConflict: 'id' })
+      adminClient.from('resources').upsert(
+        buildStaffResourceRow({
+          actorUserId,
+          staffId: targetUserId,
+          clinicId,
+          name: fullName,
+          email,
+          role,
+          timestamp,
+        }),
+        { onConflict: 'id' }
+      )
     ),
   ]);
 
   const writeFailure = staffFailure ?? resourceFailure;
   if (writeFailure) {
-    await rollbackPromotedProfileRecords(adminClient, targetUserId);
+    await rollbackPromotedProfileRecords(adminClient, targetUserId, clinicId);
     return writeFailure;
   }
 
@@ -412,7 +449,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { permissions, auth } = processResult;
@@ -551,7 +588,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { auth, permissions, body } = processResult;
@@ -578,46 +615,42 @@ export async function POST(request: NextRequest) {
       const { full_name, email, password, role } = parsed.data;
       const clinic_id = resolvePermissionClinicId(role, parsed.data.clinic_id);
 
-      let adminSupabase: AdminClient | null = null;
-      if (isScopedAdminUsersActor(permissions)) {
-        if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
-          return createErrorResponse(
-            getAdminUsersRoleForbiddenMessage(permissions),
-            403
-          );
-        }
-
-        if (!clinic_id) {
-          return createErrorResponse(
-            ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-            403
-          );
-        }
-
-        adminSupabase = createAdminClient();
-        const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
-          adminClient: adminSupabase,
-          actorUserId: auth.id,
-          permissions,
-        });
-        if (!scopedClinicIds?.length) {
-          return createErrorResponse(
-            ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
-            403
-          );
-        }
-
-        if (
-          !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinic_id)
-        ) {
-          return createErrorResponse(
-            ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-            403
-          );
-        }
+      if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
+        return createErrorResponse(
+          getAdminUsersRoleForbiddenMessage(permissions),
+          403
+        );
       }
 
-      adminSupabase ??= createAdminClient();
+      if (!clinic_id) {
+        return createErrorResponse(
+          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+          403
+        );
+      }
+
+      const adminSupabase = createAdminClient();
+      const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+        adminClient: adminSupabase,
+        actorUserId: auth.id,
+        permissions,
+      });
+      if (!scopedClinicIds?.length) {
+        return createErrorResponse(
+          ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+          403
+        );
+      }
+
+      if (
+        !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinic_id)
+      ) {
+        return createErrorResponse(
+          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+          403
+        );
+      }
+
       const { data: authData, error: createUserError } =
         await adminSupabase.auth.admin.createUser({
           email,
@@ -656,7 +689,7 @@ export async function POST(request: NextRequest) {
       const baseRecordFailure =
         await upsertCreatedAccountBaseRecords(persistenceInput);
       if (baseRecordFailure) {
-        await rollbackCreatedAccount(adminSupabase, createdUserId);
+        await rollbackCreatedAccount(adminSupabase, createdUserId, clinic_id);
         logError(baseRecordFailure.error, {
           endpoint: '/api/admin/users',
           method: 'POST',
@@ -668,7 +701,7 @@ export async function POST(request: NextRequest) {
 
       const result = await createAccountPermission(persistenceInput);
       if (result.error) {
-        await rollbackCreatedAccount(adminSupabase, createdUserId);
+        await rollbackCreatedAccount(adminSupabase, createdUserId, clinic_id);
         logError(result.error, {
           endpoint: '/api/admin/users',
           method: 'POST',
@@ -715,50 +748,41 @@ export async function POST(request: NextRequest) {
       assignData.clinic_id
     );
 
-    let scopedClinicIds: string[] | null = null;
-    let adminSupabase: AdminClient | null = null;
-    if (isScopedAdminUsersActor(permissions)) {
-      if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
-        return createErrorResponse(
-          getAdminUsersRoleForbiddenMessage(permissions),
-          403
-        );
-      }
-
-      if (!targetClinicId) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-          403
-        );
-      }
-
-      adminSupabase = createAdminClient();
-      scopedClinicIds = await resolveScopedAdminUsersClinicIds({
-        adminClient: adminSupabase,
-        actorUserId: auth.id,
-        permissions,
-      });
-      if (!scopedClinicIds?.length) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
-          403
-        );
-      }
-
-      if (
-        !canAccessResolvedScopedAdminUsersClinic(
-          scopedClinicIds,
-          targetClinicId
-        )
-      ) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-          403
-        );
-      }
+    if (!canAdminUsersActorManagePermissionRole(permissions, role)) {
+      return createErrorResponse(
+        getAdminUsersRoleForbiddenMessage(permissions),
+        403
+      );
     }
 
-    adminSupabase ??= createAdminClient();
+    if (!targetClinicId) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403
+      );
+    }
+
+    const adminSupabase = createAdminClient();
+    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      permissions,
+    });
+    if (!scopedClinicIds?.length) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
+        403
+      );
+    }
+
+    if (
+      !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, targetClinicId)
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403
+      );
+    }
 
     const profilePromise = adminSupabase
       .from('profiles')
@@ -770,19 +794,12 @@ export async function POST(request: NextRequest) {
       .select('id, hashed_password, username, role, clinic_id')
       .eq('staff_id', user_id)
       .maybeSingle();
-    const staffPromise =
-      role === 'admin' || !targetClinicId
-        ? Promise.resolve({ data: null, error: null })
-        : (() => {
-            const staffQuery = adminSupabase
-              .from('staff')
-              .select('id, clinic_id')
-              .eq('id', user_id);
-
-            return isScopedAdminUsersActor(permissions)
-              ? staffQuery.eq('clinic_id', targetClinicId).maybeSingle()
-              : staffQuery.maybeSingle();
-          })();
+    const staffPromise = adminSupabase
+      .from('staff')
+      .select('id, clinic_id')
+      .eq('id', user_id)
+      .eq('clinic_id', targetClinicId)
+      .maybeSingle();
 
     const [
       { data: profile, error: profileError },
@@ -810,26 +827,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (isScopedAdminUsersActor(permissions)) {
-      if (staffError) {
-        logError(staffError, {
-          endpoint: '/api/admin/users',
-          method: 'POST',
-          userId: auth.id,
-          params: { user_id, clinic_id: targetClinicId },
-        });
-        return createErrorResponse('対象スタッフの確認に失敗しました', 500);
-      }
+    if (staffError) {
+      logError(staffError, {
+        endpoint: '/api/admin/users',
+        method: 'POST',
+        userId: auth.id,
+        params: { user_id, clinic_id: targetClinicId },
+      });
+      return createErrorResponse('対象スタッフの確認に失敗しました', 500);
+    }
 
-      const isScopedProfileCandidate =
-        assignData.candidate_source === 'profile' &&
-        profile.clinic_id === targetClinicId;
-      if (!staff && !isScopedProfileCandidate) {
-        return createErrorResponse(
-          '対象ユーザーは選択クリニックのスタッフではありません',
-          403
-        );
-      }
+    const isScopedProfileCandidate =
+      assignData.candidate_source === 'profile' &&
+      profile.clinic_id === targetClinicId;
+    if (!staff && !isScopedProfileCandidate) {
+      return createErrorResponse(
+        '対象ユーザーは選択クリニックのスタッフではありません',
+        403
+      );
     }
 
     if (existingError) {
@@ -846,7 +861,7 @@ export async function POST(request: NextRequest) {
       : null;
     const username = profile.email;
 
-    if (isScopedAdminUsersActor(permissions) && existingPermission) {
+    if (existingPermission) {
       const existing = existingPermission as ExistingPermissionRow;
       if (
         !canAccessResolvedScopedAdminUsersClinic(
@@ -958,7 +973,11 @@ export async function POST(request: NextRequest) {
 
     if (result.error) {
       if (shouldPromoteProfileOnly) {
-        await rollbackPromotedProfileRecords(adminSupabase, user_id);
+        await rollbackPromotedProfileRecords(
+          adminSupabase,
+          user_id,
+          targetClinicId
+        );
       }
 
       logError(result.error, {

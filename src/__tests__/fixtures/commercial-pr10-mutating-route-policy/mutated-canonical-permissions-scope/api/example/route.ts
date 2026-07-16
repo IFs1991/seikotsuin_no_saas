@@ -1,0 +1,15 @@
+import { processApiRequest } from '@/lib/api-helpers';
+
+const store = { insert: () => undefined };
+
+export async function POST(request: Request): Promise<Response> {
+  const auth = await processApiRequest(request);
+  if (!auth.success) return auth.error;
+  const clinicIds = auth.permissions.clinic_scope_ids ?? [];
+  clinicIds.push('attacker-clinic');
+  if (!clinicIds.includes('attacker-clinic')) {
+    return new Response(null, { status: 403 });
+  }
+  store.insert();
+  return new Response(null, { status: 204 });
+}

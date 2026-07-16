@@ -17,6 +17,7 @@ import {
   mapMenuUpdateToRow,
   type MenuRow,
 } from './schema';
+import { normalizeMenuOptions } from '@/app/api/menu-options';
 import { CLINIC_ADMIN_ROLES, normalizeRole } from '@/lib/constants/roles';
 
 const PATH = '/api/menus';
@@ -87,11 +88,16 @@ export async function POST(request: NextRequest) {
     });
     if (!result.success) return result.error;
 
-    const insertPayload = mapMenuInsertToRow(result.dto, result.auth.id);
-    const supabase = createMenuScopedClient(
-      result.permissions,
-      result.dto.clinic_id
-    );
+    const dto = {
+      ...result.dto,
+      isActive: result.dto.isActive ?? true,
+      options:
+        result.dto.options === undefined
+          ? undefined
+          : normalizeMenuOptions(result.dto.options),
+    };
+    const insertPayload = mapMenuInsertToRow(dto, result.auth.id);
+    const supabase = createMenuScopedClient(result.permissions, dto.clinic_id);
     const { data, error } = await supabase
       .from('menus')
       .insert(insertPayload)
@@ -112,16 +118,20 @@ export async function PATCH(request: NextRequest) {
     });
     if (!result.success) return result.error;
 
-    const updatePayload = mapMenuUpdateToRow(result.dto);
-    const supabase = createMenuScopedClient(
-      result.permissions,
-      result.dto.clinic_id
-    );
+    const dto = {
+      ...result.dto,
+      options:
+        result.dto.options === undefined
+          ? undefined
+          : normalizeMenuOptions(result.dto.options),
+    };
+    const updatePayload = mapMenuUpdateToRow(dto);
+    const supabase = createMenuScopedClient(result.permissions, dto.clinic_id);
     const { data, error } = await supabase
       .from('menus')
       .update(updatePayload)
-      .eq('id', result.dto.id)
-      .eq('clinic_id', result.dto.clinic_id)
+      .eq('id', dto.id)
+      .eq('clinic_id', dto.clinic_id)
       .select(MENU_RESPONSE_COLUMNS)
       .single();
     if (error) throw normalizeSupabaseError(error, PATH);

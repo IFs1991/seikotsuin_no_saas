@@ -1,19 +1,19 @@
 import type { UserPermissions } from '@/lib/supabase';
+import type { SupabaseServerClient } from '@/lib/supabase/server';
 import {
   createScopedAdminContext,
   createPublicClinicContext,
+  resolveChildClinicInScope,
   ScopeNotConfiguredError,
   ScopeAccessError,
   ClinicNotFoundError,
   ClinicInactiveError,
 } from '@/lib/supabase/scoped-admin';
-import {
-  ScopeAccessError as ManagerScopeAccessError,
-} from '@/lib/auth/manager-scope';
+import { ScopeAccessError as ManagerScopeAccessError } from '@/lib/auth/manager-scope';
 
 // Shared mock admin client used via DI
 const mockFrom = jest.fn();
-const mockAdminClient = { from: mockFrom } as any;
+const mockAdminClient = { from: mockFrom } as SupabaseServerClient;
 
 // ──────────────────────────────────────────────
 // createScopedAdminContext (authenticated admin APIs)
@@ -54,9 +54,9 @@ describe('createScopedAdminContext', () => {
       clinic_scope_ids: [],
     };
 
-    expect(() => createScopedAdminContext(permissions, mockAdminClient)).toThrow(
-      ScopeNotConfiguredError
-    );
+    expect(() =>
+      createScopedAdminContext(permissions, mockAdminClient)
+    ).toThrow(ScopeNotConfiguredError);
   });
 
   describe('assertClinicInScope', () => {
@@ -101,6 +101,101 @@ describe('createScopedAdminContext', () => {
         ScopeAccessError
       );
     });
+  });
+});
+
+// ──────────────────────────────────────────────
+// resolveChildClinicInScope (new child proof)
+// ──────────────────────────────────────────────
+describe('resolveChildClinicInScope', () => {
+  const parentClinicId = 'clinic-parent';
+  const childClinicId = 'clinic-child';
+  const permissions: UserPermissions = {
+    role: 'admin',
+    clinic_id: parentClinicId,
+    clinic_scope_ids: [parentClinicId],
+  };
+
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  function setupChildClinicQuery(result: {
+    data: { id: string } | null;
+    error: unknown;
+  }) {
+    const chain = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue(result),
+    };
+    mockFrom.mockReturnValue(chain);
+    return chain;
+  }
+
+  it('returns the child id only after proving its expected parent', async () => {
+    const query = setupChildClinicQuery({
+      data: { id: childClinicId },
+      error: null,
+    });
+    const context = createScopedAdminContext(permissions, mockAdminClient);
+    const assertClinicInScope = jest.spyOn(context, 'assertClinicInScope');
+
+    await expect(
+      resolveChildClinicInScope(context, childClinicId, parentClinicId)
+    ).resolves.toBe(childClinicId);
+
+    expect(assertClinicInScope).toHaveBeenCalledWith(parentClinicId);
+    expect(mockFrom).toHaveBeenCalledWith('clinics');
+    expect(query.select).toHaveBeenCalledWith('id');
+    expect(query.eq).toHaveBeenNthCalledWith(1, 'id', childClinicId);
+    expect(query.eq).toHaveBeenNthCalledWith(2, 'parent_id', parentClinicId);
+  });
+
+  it('fails before database access when the parent is outside scope', async () => {
+    const context = createScopedAdminContext(permissions, mockAdminClient);
+
+    await expect(
+      resolveChildClinicInScope(
+        context,
+        childClinicId,
+        'clinic-parent-outside-scope'
+      )
+    ).rejects.toThrow(ScopeAccessError);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on a database error', async () => {
+    setupChildClinicQuery({
+      data: null,
+      error: { message: 'database unavailable' },
+    });
+    const context = createScopedAdminContext(permissions, mockAdminClient);
+
+    await expect(
+      resolveChildClinicInScope(context, childClinicId, parentClinicId)
+    ).rejects.toThrow(ScopeAccessError);
+  });
+
+  it('fails closed when the child lookup returns no row', async () => {
+    setupChildClinicQuery({ data: null, error: null });
+    const context = createScopedAdminContext(permissions, mockAdminClient);
+
+    await expect(
+      resolveChildClinicInScope(context, childClinicId, parentClinicId)
+    ).rejects.toThrow(ScopeAccessError);
+  });
+
+  it('fails closed when the returned id does not match the requested child', async () => {
+    setupChildClinicQuery({
+      data: { id: 'clinic-different-child' },
+      error: null,
+    });
+    const context = createScopedAdminContext(permissions, mockAdminClient);
+
+    await expect(
+      resolveChildClinicInScope(context, childClinicId, parentClinicId)
+    ).rejects.toThrow(ScopeAccessError);
   });
 });
 

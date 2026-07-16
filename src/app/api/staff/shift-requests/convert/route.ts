@@ -10,6 +10,7 @@ import {
   normalizeShiftRequestRole,
 } from '@/lib/staff/shift-requests/access';
 import { shiftRequestConvertSchema } from '@/lib/staff/shift-requests/schema';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shift-requests/convert';
 
@@ -51,6 +52,10 @@ export async function POST(request: NextRequest) {
       }
     );
     assertShiftRequestConversionRole(permissions);
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: dto.clinic_id,
+    });
     const actorRole =
       normalizeShiftRequestRole(permissions.role) ?? permissions.role;
 
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await adminClient.rpc('convert_shift_requests', {
       p_clinic_id: dto.clinic_id,
       p_period_id: dto.period_id,
-      p_request_ids: dto.mode === 'selected' ? requestIds : null,
+      p_request_ids: dto.mode === 'selected' ? requestIds : undefined,
       p_mode: dto.mode,
       p_actor_user_id: user.id,
       p_actor_role: actorRole,

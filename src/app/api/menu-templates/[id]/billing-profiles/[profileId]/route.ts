@@ -53,7 +53,8 @@ const profileUpdateSchema = z
     isActive: z.boolean().optional(),
     isDeleted: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .transform(data => ({ ...data, clinic_id: data.owner_clinic_id }));
 
 function createScopedProfileClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
@@ -141,12 +142,12 @@ export async function PATCH(
 
     const supabase = createScopedProfileClient(
       result.permissions,
-      dto.owner_clinic_id
+      dto.clinic_id
     );
     const { data, error } = await supabase
       .from('menu_template_billing_profiles')
       .update(updatePayload)
-      .eq('owner_clinic_id', dto.owner_clinic_id)
+      .eq('owner_clinic_id', dto.clinic_id)
       .eq('menu_template_id', parsedTemplateId.data)
       .eq('id', parsedProfileId.data)
       .select(PROFILE_SELECT)

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { processApiRequest } from '@/lib/api-helpers';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import { canAccessClinicScope } from '@/lib/supabase';
 
 // クエリパラメータのスキーマ
 const QuerySchema = z.object({
@@ -229,6 +230,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json(
         { error: 'clinic_id は必須です' },
         { status: 400 }
+      );
+    }
+
+    if (!canAccessClinicScope(auth.permissions, clinicId)) {
+      return NextResponse.json(
+        { error: 'このクリニックへのアクセス権がありません' },
+        { status: 403 }
       );
     }
 

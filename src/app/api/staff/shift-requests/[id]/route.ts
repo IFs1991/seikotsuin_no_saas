@@ -25,6 +25,7 @@ import type {
   ShiftRequestUpdate,
 } from '@/lib/staff/shift-requests/types';
 import type { Json } from '@/types/supabase';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shift-requests/[id]';
 const SHIFT_REQUEST_SELECT =
@@ -130,6 +131,11 @@ export async function PATCH(
         requireClinicMatch: true,
       }
     );
+
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: dto.clinic_id,
+    });
 
     const { data: existingData, error: existingError } = await supabase
       .from('shift_requests')

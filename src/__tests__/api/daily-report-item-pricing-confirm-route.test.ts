@@ -68,13 +68,15 @@ describe('POST /api/daily-reports/items/[id]/pricing/confirm', () => {
       assertClinicInScope,
     });
 
-    const { POST } = await import(
-      '@/app/api/daily-reports/items/[id]/pricing/confirm/route'
-    );
+    const { POST } =
+      await import('@/app/api/daily-reports/items/[id]/pricing/confirm/route');
     const response = await POST(
-      new NextRequest(`http://localhost/api/daily-reports/items/${itemId}/pricing/confirm`, {
-        method: 'POST',
-      }),
+      new NextRequest(
+        `http://localhost/api/daily-reports/items/${itemId}/pricing/confirm`,
+        {
+          method: 'POST',
+        }
+      ),
       { params: Promise.resolve({ id: itemId }) }
     );
     const body = await response.json();
@@ -86,11 +88,11 @@ describe('POST /api/daily-reports/items/[id]/pricing/confirm', () => {
       { allowedRoles: Array.from(STAFF_ROLES) }
     );
     expect(assertClinicInScope).toHaveBeenCalledWith(clinicId);
+    // SQL default-null parameters are omitted when the caller supplies no value.
     expect(rpc).toHaveBeenCalledWith('confirm_daily_report_item_pricing', {
       p_clinic_id: clinicId,
       p_daily_report_item_id: itemId,
       p_patient_burden_rate_override: 30,
-      p_manual_estimated_amount: null,
       p_update_customer_coverage: true,
       p_confirmation_note: '保険証確認済み',
       p_actor_user_id: 'user-1',
@@ -115,9 +117,8 @@ describe('POST /api/daily-reports/items/[id]/pricing/confirm', () => {
       assertClinicInScope: jest.fn(),
     });
 
-    const { POST } = await import(
-      '@/app/api/daily-reports/items/[id]/pricing/confirm/route'
-    );
+    const { POST } =
+      await import('@/app/api/daily-reports/items/[id]/pricing/confirm/route');
     const response = await POST(
       new NextRequest(
         'http://localhost/api/daily-reports/items/not-a-uuid/pricing/confirm',
@@ -142,13 +143,15 @@ describe('POST /api/daily-reports/items/[id]/pricing/confirm', () => {
       assertClinicInScope: jest.fn(),
     });
 
-    const { POST } = await import(
-      '@/app/api/daily-reports/items/[id]/pricing/confirm/route'
-    );
+    const { POST } =
+      await import('@/app/api/daily-reports/items/[id]/pricing/confirm/route');
     const response = await POST(
-      new NextRequest(`http://localhost/api/daily-reports/items/${itemId}/pricing/confirm`, {
-        method: 'POST',
-      }),
+      new NextRequest(
+        `http://localhost/api/daily-reports/items/${itemId}/pricing/confirm`,
+        {
+          method: 'POST',
+        }
+      ),
       { params: Promise.resolve({ id: itemId }) }
     );
 

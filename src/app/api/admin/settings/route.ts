@@ -32,6 +32,7 @@ import {
   validateAdminSettingsMutationBody,
   validateAdminSettingsMutationSettings,
 } from '@/lib/admin-settings/service';
+import { canAccessClinicScope } from '@/lib/supabase';
 
 const STAFF_ROLE_LIST = Array.from(STAFF_ROLES);
 const CLINIC_ADMIN_ROLE_LIST = Array.from(ADMIN_SETTINGS_MUTATION_ROLES);
@@ -137,6 +138,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const envelope = envelopeValidation.payload;
+    if (!canAccessClinicScope(permissions, envelope.clinic_id)) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
     if (!canManageAdminSettingsCategory(permissions.role, envelope.category)) {
       return createErrorResponse(
         'この設定カテゴリへのアクセス権がありません',
@@ -154,6 +162,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const { payload } = settingsValidation;
+    if (!canAccessClinicScope(permissions, payload.clinic_id)) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+
     const writeResult = await upsertAdminSettings(supabase, payload, auth.id);
     if (writeResult.success === false) {
       return createErrorResponse(writeResult.message, 500);

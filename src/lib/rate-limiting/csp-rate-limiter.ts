@@ -138,8 +138,8 @@ export class CSPRateLimiter {
       // TTLを設定（メモリリーク防止）
       pipeline.expire(key, Math.ceil(this.config.windowMs / 1000) + 60);
 
-      const results = await pipeline.exec();
-      const currentRequests = results[2][1] as number;
+      const results = await pipeline.exec<[number, number, number, number]>();
+      const currentRequests = results[2];
 
       // レート制限チェック
       if (currentRequests > this.config.maxRequests) {

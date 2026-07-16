@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
     } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = error;
+      apiError = normalizeSupabaseError(error, PATH);
     } else {
       apiError = createApiError(
         ERROR_CODES.INTERNAL_SERVER_ERROR,

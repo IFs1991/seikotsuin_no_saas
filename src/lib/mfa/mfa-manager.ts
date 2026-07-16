@@ -350,7 +350,6 @@ export class MFAManager {
       return await qrcode.toDataURL(otpauthUrl, {
         errorCorrectionLevel: 'M',
         type: 'image/png',
-        quality: 0.92,
         margin: 1,
         width: 256,
         color: {

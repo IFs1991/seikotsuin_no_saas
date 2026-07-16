@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server';
 const mockProcessApiRequest = jest.fn();
 const mockLogError = jest.fn();
 const mockCreateScopedAdminContext = jest.fn();
+const mockResolveChildClinicInScope = jest.fn();
 const mockCreateAdminClient = jest.fn();
 const mockResolveOrgRootClinicForBilling = jest.fn();
 const mockFetchBillingSubscription = jest.fn();
@@ -21,6 +22,7 @@ const mockActivateBillableStoreIfCapacity = jest.fn();
 const mockIsTenantBillingGuardActive = jest.fn();
 const mockMarkClinicBillingActivationFailed = jest.fn();
 const mockLogAdminAction = jest.fn();
+const mockUpgradeSingleToGroupSubscription = jest.fn();
 
 jest.mock('@/lib/api-helpers', () => ({
   createErrorResponse: (
@@ -56,7 +58,16 @@ jest.mock('@/lib/billing/config', () => ({
       storeAddon: 'price_store',
     },
   }),
+  isBillingUpgradeEnabled: () => true,
 }));
+
+jest.mock('@/lib/billing/upgrade', () => {
+  const actual = jest.requireActual('@/lib/billing/upgrade');
+  return {
+    ...actual,
+    upgradeSingleToGroupSubscription: mockUpgradeSingleToGroupSubscription,
+  };
+});
 
 jest.mock('@/lib/billing/admin', () => ({
   countActiveChildClinics: mockCountActiveChildClinics,
@@ -82,6 +93,8 @@ jest.mock('@/lib/env', () => ({
 
 jest.mock('@/lib/supabase/scoped-admin', () => ({
   createScopedAdminContext: mockCreateScopedAdminContext,
+  resolveChildClinicInScope: mockResolveChildClinicInScope,
+  ScopeAccessError: class ScopeAccessError extends Error {},
   ScopeNotConfiguredError: class ScopeNotConfiguredError extends Error {},
 }));
 
@@ -276,6 +289,78 @@ describe('billing admin audit events', () => {
       })
     );
   });
+
+  test('upgrade route reasserts the resolved billing root clinic scope', async () => {
+    const adminClient = { from: jest.fn() };
+    const assertClinicInScope = jest.fn();
+    mockAdminAuth();
+    mockCreateScopedAdminContext.mockReturnValue({
+      client: adminClient,
+      scopedClinicIds: ['root-clinic-1'],
+      assertClinicInScope,
+    });
+    mockResolveOrgRootClinicForBilling.mockResolvedValue({
+      id: 'root-clinic-1',
+      name: 'Root Clinic',
+    });
+    mockFetchBillingSubscription.mockResolvedValue({
+      org_root_clinic_id: 'root-clinic-1',
+      stripe_subscription_id: 'sub_upgrade',
+    });
+    mockCountActiveChildClinics.mockResolvedValue(2);
+    mockUpgradeSingleToGroupSubscription.mockResolvedValue({
+      orgRootClinicId: 'root-clinic-1',
+      billingState: 'active',
+      snapshot: {
+        planCode: 'group',
+        stripeSubscriptionId: 'sub_upgrade',
+        includedStoreQuantity: 1,
+        paidExtraStoreQuantity: 1,
+      },
+    });
+
+    const { POST } = await import('@/app/api/admin/billing/upgrade/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/billing/upgrade', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(assertClinicInScope).toHaveBeenCalledWith('root-clinic-1');
+    expect(mockUpgradeSingleToGroupSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  test('upgrade route rejects a resolved billing root outside current scope', async () => {
+    const adminClient = { from: jest.fn() };
+    const { ScopeAccessError: MockScopeAccessError } = jest.requireMock<{
+      ScopeAccessError: new () => Error;
+    }>('@/lib/supabase/scoped-admin');
+    mockAdminAuth();
+    mockCreateScopedAdminContext.mockReturnValue({
+      client: adminClient,
+      scopedClinicIds: ['root-clinic-1'],
+      assertClinicInScope: jest.fn(() => {
+        throw new MockScopeAccessError();
+      }),
+    });
+    mockResolveOrgRootClinicForBilling.mockResolvedValue({
+      id: 'outside-root-clinic',
+      name: 'Outside Root Clinic',
+    });
+
+    const { POST } = await import('@/app/api/admin/billing/upgrade/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/billing/upgrade', {
+        method: 'POST',
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockFetchBillingSubscription).not.toHaveBeenCalled();
+    expect(mockCountActiveChildClinics).not.toHaveBeenCalled();
+    expect(mockUpgradeSingleToGroupSubscription).not.toHaveBeenCalled();
+  });
 });
 
 describe('Stripe billing event audit logs', () => {
@@ -377,6 +462,9 @@ describe('Stripe billing event audit logs', () => {
 describe('admin tenant billing audit events', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockResolveChildClinicInScope.mockImplementation(
+      async (_context: unknown, childClinicId: string) => childClinicId
+    );
     mockWriteBillingAuditLog.mockResolvedValue(undefined);
     mockIsTenantBillingGuardActive.mockReturnValue(true);
     mockCountActiveChildClinics.mockResolvedValue(5);
@@ -464,9 +552,11 @@ describe('admin tenant billing audit events', () => {
       name: 'Child Clinic',
       parent_id: rootClinicId,
     });
+    const assertClinicInScope = jest.fn();
     mockCreateScopedAdminContext.mockReturnValue({
       client: scopedAdminClient,
       scopedClinicIds: [rootClinicId],
+      assertClinicInScope,
     });
     mockCreateAdminClient.mockReturnValue({
       auth: {
@@ -493,6 +583,7 @@ describe('admin tenant billing audit events', () => {
     );
 
     expect(response.status).toBe(202);
+    expect(assertClinicInScope).toHaveBeenCalledWith(rootClinicId);
     const eventTypes = mockWriteBillingAuditLog.mock.calls.map(call => {
       const input = call[0] as {
         audit: {

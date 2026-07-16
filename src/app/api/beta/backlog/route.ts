@@ -76,10 +76,12 @@ function resolveAffectedClinicsForCreate(
   permissions: UserPermissions,
   requestedClinicIds: readonly string[] | undefined
 ): string[] | null {
-  const candidateClinicIds =
-    requestedClinicIds && requestedClinicIds.length > 0
-      ? Array.from(new Set(requestedClinicIds))
-      : (resolveScopedClinicIds(permissions)?.slice(0, 1) ?? []);
+  let candidateClinicIds: string[];
+  if (requestedClinicIds && requestedClinicIds.length > 0) {
+    candidateClinicIds = Array.from(new Set(requestedClinicIds));
+  } else {
+    candidateClinicIds = resolveScopedClinicIds(permissions)?.slice(0, 1) ?? [];
+  }
 
   if (
     candidateClinicIds.length === 0 ||
@@ -251,6 +253,16 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+    if (
+      affectedClinics.some(
+        clinicId => !canAccessClinicScope(permissions, clinicId)
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     // バックログアイテム作成
     const { data: newBacklog, error: insertError } = await supabase
@@ -373,6 +385,16 @@ export async function PATCH(request: NextRequest) {
         { status: 403 }
       );
     }
+    if (
+      existingBacklog.affected_clinics.some(
+        clinicId => !canAccessClinicScope(permissions, clinicId)
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     const scopedClinicIds = resolveScopedClinicIds(permissions);
     if (!scopedClinicIds || scopedClinicIds.length === 0) {
@@ -413,7 +435,7 @@ export async function PATCH(request: NextRequest) {
       .from('improvement_backlog')
       .update(updateData)
       .eq('id', id)
-      .containedBy('affected_clinics', scopedClinicIds)
+      .eq('affected_clinics', existingBacklog.affected_clinics)
       .select()
       .single();
 
@@ -509,6 +531,16 @@ export async function DELETE(request: NextRequest) {
         { status: 403 }
       );
     }
+    if (
+      existingBacklog.affected_clinics.some(
+        clinicId => !canAccessClinicScope(permissions, clinicId)
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'Forbidden: Clinic access denied' },
+        { status: 403 }
+      );
+    }
 
     const scopedClinicIds = resolveScopedClinicIds(permissions);
     if (!scopedClinicIds || scopedClinicIds.length === 0) {
@@ -523,7 +555,7 @@ export async function DELETE(request: NextRequest) {
       .from('improvement_backlog')
       .delete()
       .eq('id', id)
-      .containedBy('affected_clinics', scopedClinicIds);
+      .eq('affected_clinics', existingBacklog.affected_clinics);
 
     if (deleteError) {
       logger.error('Failed to delete backlog item', {

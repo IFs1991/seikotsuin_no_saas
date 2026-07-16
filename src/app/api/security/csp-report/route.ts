@@ -450,12 +450,12 @@ async function notifyHighSeverityViolation(
       id: violation.id,
       severity,
       violated_directive: violation.violated_directive,
-      blocked_uri: violation.blocked_uri,
+      blocked_uri: violation.blocked_uri ?? '',
       document_uri: violation.document_uri,
-      threat_score: violation.threat_score,
+      threat_score: violation.threat_score ?? 0,
       client_ip: clientIp,
-      user_agent: violation.user_agent,
-      created_at: violation.created_at,
+      user_agent: violation.user_agent ?? undefined,
+      created_at: violation.created_at ?? new Date().toISOString(),
     });
 
     if (result.success) {

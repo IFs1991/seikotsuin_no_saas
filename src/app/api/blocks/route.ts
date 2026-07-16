@@ -12,6 +12,8 @@ import {
 } from '@/lib/api-helpers';
 import { STAFF_ROLES, CLINIC_ADMIN_ROLES } from '@/lib/constants/roles';
 import { resolveScopedClinicIds } from '@/lib/supabase';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import { AppError } from '@/lib/error-handler';
 
 // ===== GET: Block一覧取得 =====
 export async function GET(request: NextRequest) {
@@ -143,6 +145,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: clinicId,
+    });
+
     // リソースがこのクリニックに属しているか確認
     const { data: resource, error: resourceError } = await supabase
       .from('resources')
@@ -184,6 +191,11 @@ export async function POST(request: NextRequest) {
 
     return createSuccessResponse(data, 201, 'Block作成に成功しました');
   } catch (error) {
+    if (error instanceof AppError) {
+      return createErrorResponse(error.message, error.statusCode, {
+        code: error.code,
+      });
+    }
     console.error('Blocks POST error:', error);
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }
@@ -215,6 +227,11 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: clinicId,
+    });
+
     // 削除対象のBlockがこのクリニックに属しているか確認
     const { data: block, error: fetchError } = await supabase
       .from('blocks')
@@ -231,7 +248,11 @@ export async function DELETE(request: NextRequest) {
       return createErrorResponse('このBlockへのアクセス権限がありません', 403);
     }
 
-    const { error } = await supabase.from('blocks').delete().eq('id', blockId);
+    const { error } = await supabase
+      .from('blocks')
+      .delete()
+      .eq('id', blockId)
+      .eq('clinic_id', clinicId);
 
     if (error) {
       console.error('Block deletion error:', error);
@@ -244,6 +265,11 @@ export async function DELETE(request: NextRequest) {
       'Block削除に成功しました'
     );
   } catch (error) {
+    if (error instanceof AppError) {
+      return createErrorResponse(error.message, error.statusCode, {
+        code: error.code,
+      });
+    }
     console.error('Blocks DELETE error:', error);
     return createErrorResponse('サーバーエラーが発生しました', 500);
   }

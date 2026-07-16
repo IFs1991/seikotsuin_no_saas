@@ -91,6 +91,7 @@ type MutationQuery = {
   insert?: jest.Mock;
   delete?: jest.Mock;
   single?: jest.Mock;
+  then?: jest.Mock;
 };
 
 function createMaybeSingleQuery<T extends QueryRow>(
@@ -134,12 +135,20 @@ function createUpsertQuery(error: unknown = null): MutationQuery {
 }
 
 function createDeleteQuery(): MutationQuery {
+  const terminalResult = { error: null };
   const query: MutationQuery = {
     delete: jest.fn(),
-    eq: jest.fn().mockResolvedValue({ error: null }),
+    eq: jest.fn(),
+    then: jest.fn(
+      (
+        resolve: (value: typeof terminalResult) => unknown,
+        reject?: (reason: unknown) => unknown
+      ) => Promise.resolve(terminalResult).then(resolve, reject)
+    ),
   };
 
   query.delete?.mockReturnValue(query);
+  query.eq?.mockReturnValue(query);
 
   return query;
 }
@@ -1463,7 +1472,11 @@ describe('GET /api/admin/users', () => {
     expect(body.error).toBe('スタッフリソースの同期に失敗しました');
     expect(permissionWriteQuery.insert).not.toHaveBeenCalled();
     expect(resourceDeleteQuery.delete).toHaveBeenCalled();
+    expect(resourceDeleteQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourceDeleteQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(staffDeleteQuery.delete).toHaveBeenCalled();
+    expect(staffDeleteQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(staffDeleteQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
   });
 
   it('rejects clinic_admin assignment to a profile-only account', async () => {

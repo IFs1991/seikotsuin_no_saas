@@ -64,7 +64,7 @@ type ClinicHierarchyRow = {
   id: string;
   name: string;
   parent_id: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
 };
 type HierarchyValidationResult =
   | {
@@ -243,7 +243,7 @@ async function validateHierarchyChange(
     };
   }
 
-  if (!parentClinic.is_active) {
+  if (parentClinic.is_active !== true) {
     return {
       success: false,
       errorResponse: createErrorResponse(

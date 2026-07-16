@@ -3,6 +3,7 @@ import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import type { SupabaseServerClient } from '@/lib/supabase';
 import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/ai-comments';
 
@@ -20,7 +21,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { supabase } = await ensureClinicAccess(request, PATH, clinicId);
+    const { supabase, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      clinicId
+    );
 
     const { data, error } = await supabase
       .from('ai_comments')
@@ -34,6 +39,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!data) {
+      await ensureScopedBusinessWriteAccess({
+        permissions,
+        targetClinicId: clinicId,
+      });
       const generatedComment = await generateDailyComment(
         supabase,
         clinicId,
@@ -82,15 +91,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { clinic_id, date } = body;
 
-    if (!clinic_id) {
+    if (typeof clinic_id !== 'string' || clinic_id.length === 0) {
       return NextResponse.json(
         { error: 'clinic_id is required' },
         { status: 400 }
       );
     }
 
-    const { supabase } = await ensureClinicAccess(request, PATH, clinic_id, {
-      allowedRoles: ['manager'],
+    const { supabase, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      clinic_id,
+      {
+        allowedRoles: ['manager'],
+      }
+    );
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: clinic_id,
     });
 
     const commentDate = date || new Date().toISOString().split('T')[0];

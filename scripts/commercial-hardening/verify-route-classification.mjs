@@ -3,22 +3,26 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildInventory } from './generate-mutating-route-inventory.mjs';
+import { verifyMutatingRoutes } from './verify-mutating-routes.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '../..');
-const inventory = buildInventory(path.join(REPO_ROOT, 'src/app/api'));
-const unknown = inventory.handlers.filter(
-  handler => handler.classification === 'UNKNOWN'
-);
+const { inventory, verification } = await verifyMutatingRoutes({
+  sourceRoot: path.join(REPO_ROOT, 'src/app/api'),
+  policy: path.join(REPO_ROOT, 'src/lib/security/mutating-route-policy.ts'),
+});
 
-if (unknown.length > 0) {
-  console.error(
-    'RED COMM-ROUTE-001: ' +
-      String(unknown.length) +
-      ' mutating handlers remain unclassified'
-  );
+if (verification.errors.length > 0) {
+  for (const error of verification.errors) {
+    console.error(error.code + ': ' + error.message);
+  }
   process.exitCode = 1;
 } else {
-  console.log('All mutating handlers have an explicit classification.');
+  console.log(
+    String(inventory.handlers.length) + ' mutating handlers classified'
+  );
+  console.log(
+    String(inventory.sideEffectingGetCandidates.length) +
+      ' side-effecting GET handlers classified'
+  );
 }

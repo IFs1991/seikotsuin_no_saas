@@ -3,6 +3,11 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { createScopedAdminContext } from '@/lib/supabase/scoped-admin';
 import { AnalyticsReadService } from '@/lib/services/analytics-read-service';
 import { ADMIN_UI_ROLES } from '@/lib/constants/roles';
+import {
+  createScopedAdminChatSession,
+  resolveScopedAdminChatSessionId,
+} from '@/lib/chat/scoped-session';
+import { ScopeAccessError } from '@/lib/auth/manager-scope';
 
 jest.mock('@/lib/api-helpers', () => {
   const actual = jest.requireActual('@/lib/api-helpers');
@@ -25,9 +30,24 @@ jest.mock('@/lib/services/analytics-read-service', () => ({
   AnalyticsReadService: jest.fn(),
 }));
 
+jest.mock('@/lib/chat/scoped-session', () => {
+  const actual = jest.requireActual('@/lib/chat/scoped-session');
+  return {
+    ...actual,
+    createScopedAdminChatSession: jest.fn(),
+    resolveScopedAdminChatSessionId: jest.fn(),
+  };
+});
+
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
 const AnalyticsReadServiceMock = AnalyticsReadService as jest.Mock;
+const createScopedAdminChatSessionMock = jest.mocked(
+  createScopedAdminChatSession
+);
+const resolveScopedAdminChatSessionIdMock = jest.mocked(
+  resolveScopedAdminChatSessionId
+);
 const CLINIC_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_CLINIC_ID = '22222222-2222-4222-8222-222222222222';
 const SESSION_ID = '33333333-3333-4333-8333-333333333333';
@@ -92,7 +112,20 @@ describe('GET /api/admin/chat', () => {
   });
 
   it('uses ADMIN_UI_ROLES and returns only current user multi-clinic admin sessions', async () => {
-    const listQuery = createListQueryMock([{ id: SESSION_ID }]);
+    const contextData = {
+      mode: 'multi_clinic',
+      clinic_id: null,
+      scoped_clinic_ids: [CLINIC_ID, OTHER_CLINIC_ID],
+    };
+    const listQuery = createListQueryMock([
+      {
+        id: SESSION_ID,
+        user_id: 'auth-user-1',
+        clinic_id: null,
+        is_admin_session: true,
+        context_data: contextData,
+      },
+    ]);
     const messageQuery = createListQueryMock([
       {
         id: 'message-1',
@@ -141,6 +174,10 @@ describe('GET /api/admin/chat', () => {
     expect(body.data).toEqual([
       {
         id: SESSION_ID,
+        user_id: 'auth-user-1',
+        clinic_id: null,
+        is_admin_session: true,
+        context_data: contextData,
         chat_messages: [
           {
             id: 'message-1',
@@ -152,6 +189,39 @@ describe('GET /api/admin/chat', () => {
         ],
       },
     ]);
+  });
+
+  it('rejects a stored multi-clinic session after its clinic scope is narrowed', async () => {
+    const listQuery = createListQueryMock([
+      {
+        id: SESSION_ID,
+        user_id: 'auth-user-1',
+        clinic_id: null,
+        is_admin_session: true,
+        context_data: {
+          mode: 'multi_clinic',
+          clinic_id: null,
+          scoped_clinic_ids: [CLINIC_ID, OTHER_CLINIC_ID],
+        },
+      },
+    ]);
+    const client = { from: jest.fn().mockReturnValue(listQuery) };
+    mockAuth();
+    createScopedAdminContextMock.mockReturnValue({
+      client,
+      scopedClinicIds: [CLINIC_ID],
+      assertClinicInScope: jest.fn(),
+    });
+
+    const { GET } = await import('@/app/api/admin/chat/route');
+    const response = await GET(
+      new NextRequest('http://localhost/api/admin/chat')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.success).toBe(false);
+    expect(client.from).toHaveBeenCalledTimes(1);
   });
 
   it('asserts clinic scope when clinic_id is specified', async () => {
@@ -177,6 +247,16 @@ describe('GET /api/admin/chat', () => {
 describe('POST /api/admin/chat', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    createScopedAdminChatSessionMock.mockImplementation(async input => ({
+      id: SESSION_ID,
+      user_id: input.userId,
+      clinic_id: input.clinicId,
+      is_admin_session: true,
+      context_data: input.contextData,
+    }));
+    resolveScopedAdminChatSessionIdMock.mockImplementation(
+      async input => input.sessionId
+    );
     AnalyticsReadServiceMock.mockImplementation(() => ({
       fetchMultiClinicKPI: jest.fn().mockResolvedValue(
         new Map([
@@ -211,15 +291,6 @@ describe('POST /api/admin/chat', () => {
   });
 
   it('creates a multi-clinic admin session with auth user id and clinic_id null', async () => {
-    const sessionInsertQuery = createInsertQueryMock({
-      id: SESSION_ID,
-      user_id: 'auth-user-1',
-      clinic_id: null,
-      is_admin_session: true,
-      context_data: {
-        scoped_clinic_ids: [CLINIC_ID, OTHER_CLINIC_ID],
-      },
-    });
     const userMessageInsertQuery = createInsertQueryMock({
       id: 'message-user-1',
       sender: 'user',
@@ -231,7 +302,6 @@ describe('POST /api/admin/chat', () => {
     const client = {
       from: jest
         .fn()
-        .mockReturnValueOnce(sessionInsertQuery)
         .mockReturnValueOnce(userMessageInsertQuery)
         .mockReturnValueOnce(aiMessageInsertQuery),
     };
@@ -252,16 +322,16 @@ describe('POST /api/admin/chat', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(sessionInsertQuery.insert).toHaveBeenCalledWith({
-      user_id: 'auth-user-1',
-      clinic_id: null,
-      context_data: {
+    expect(createScopedAdminChatSessionMock).toHaveBeenCalledWith({
+      context: expect.objectContaining({ client }),
+      userId: 'auth-user-1',
+      clinicId: null,
+      contextData: {
         mode: 'multi_clinic',
         clinic_id: null,
         scoped_clinic_ids: [CLINIC_ID, OTHER_CLINIC_ID],
         period_days: 30,
       },
-      is_admin_session: true,
     });
     expect(userMessageInsertQuery.insert).toHaveBeenCalledWith({
       session_id: SESSION_ID,
@@ -283,12 +353,6 @@ describe('POST /api/admin/chat', () => {
   });
 
   it('asserts clinic scope and creates clinic-specific admin session', async () => {
-    const sessionInsertQuery = createInsertQueryMock({
-      id: SESSION_ID,
-      user_id: 'auth-user-1',
-      clinic_id: CLINIC_ID,
-      is_admin_session: true,
-    });
     const userMessageInsertQuery = createInsertQueryMock({});
     const aiMessageInsertQuery = createInsertQueryMock({});
     const assertClinicInScope = jest.fn();
@@ -297,7 +361,6 @@ describe('POST /api/admin/chat', () => {
       client: {
         from: jest
           .fn()
-          .mockReturnValueOnce(sessionInsertQuery)
           .mockReturnValueOnce(userMessageInsertQuery)
           .mockReturnValueOnce(aiMessageInsertQuery),
       },
@@ -314,10 +377,10 @@ describe('POST /api/admin/chat', () => {
     );
 
     expect(assertClinicInScope).toHaveBeenCalledWith(CLINIC_ID);
-    expect(sessionInsertQuery.insert).toHaveBeenCalledWith(
+    expect(createScopedAdminChatSessionMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        clinic_id: CLINIC_ID,
-        context_data: expect.objectContaining({
+        clinicId: CLINIC_ID,
+        contextData: expect.objectContaining({
           mode: 'clinic',
           scoped_clinic_ids: [CLINIC_ID],
         }),
@@ -369,6 +432,56 @@ describe('POST /api/admin/chat', () => {
         session_id: SESSION_ID,
       })
     );
+    expect(resolveScopedAdminChatSessionIdMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: SESSION_ID,
+        userId: 'auth-user-1',
+        requestedClinicId: null,
+      })
+    );
+  });
+
+  it('returns 403 when the scoped session resolver rejects the session', async () => {
+    const sessionQuery = createSingleQueryMock({
+      id: SESSION_ID,
+      user_id: 'auth-user-1',
+      clinic_id: null,
+      is_admin_session: true,
+      context_data: {
+        mode: 'multi_clinic',
+        clinic_id: null,
+        scoped_clinic_ids: [CLINIC_ID],
+        period_days: 30,
+      },
+    });
+    const messageInsertMock = jest.fn();
+    mockAuth({ message: '改善提案', session_id: SESSION_ID });
+    createScopedAdminContextMock.mockReturnValue({
+      client: {
+        from: jest
+          .fn()
+          .mockReturnValueOnce(sessionQuery)
+          .mockReturnValue({ insert: messageInsertMock }),
+      },
+      scopedClinicIds: [CLINIC_ID],
+      assertClinicInScope: jest.fn(),
+    });
+    resolveScopedAdminChatSessionIdMock.mockRejectedValueOnce(
+      new ScopeAccessError()
+    );
+
+    const { POST } = await import('@/app/api/admin/chat/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: '改善提案', session_id: SESSION_ID }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.success).toBe(false);
+    expect(messageInsertMock).not.toHaveBeenCalled();
   });
 
   it('rejects existing session owned by another user', async () => {

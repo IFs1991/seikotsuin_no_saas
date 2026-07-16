@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const clinicId = state.clinic_id;
 
     const { invites } = parsed.data;
     const results: Array<{ email: string; success: boolean; error?: string }> =
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
           const { data: inviteData, error: inviteError } = await supabase
             .from('staff_invites')
             .insert({
-              clinic_id: state.clinic_id,
+              clinic_id: clinicId,
               email: invite.email,
               role: invite.role,
               created_by: user.id,
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
               .from('staff_invites')
               .delete()
               .eq('id', inviteData.id)
-              .eq('clinic_id', state.clinic_id)
+              .eq('clinic_id', clinicId)
               .eq('created_by', user.id)
               .is('accepted_at', null);
 

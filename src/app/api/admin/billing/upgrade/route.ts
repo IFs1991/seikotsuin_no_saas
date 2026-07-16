@@ -21,6 +21,7 @@ import {
 } from '@/lib/billing/upgrade';
 import {
   createScopedAdminContext,
+  ScopeAccessError,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
 
@@ -99,6 +100,18 @@ export async function POST(request: NextRequest) {
       client: adminCtx.client,
       scopedClinicIds: adminCtx.scopedClinicIds,
     });
+    try {
+      adminCtx.assertClinicInScope(orgRootClinic.id);
+    } catch (error) {
+      if (error instanceof ScopeAccessError) {
+        return createErrorResponse(
+          '請求対象の本部テナントへのアクセス権がありません',
+          403
+        );
+      }
+      throw error;
+    }
+
     const [subscription, activeBillableStoreCount] = await Promise.all([
       fetchBillingSubscription({
         client: adminCtx.client,

@@ -233,6 +233,8 @@ export async function enqueueReservationChange(
       return;
     }
 
+    if (!customer?.email) return;
+
     await enqueueEmail(
       supabase,
       {

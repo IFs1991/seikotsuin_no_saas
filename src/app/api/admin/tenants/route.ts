@@ -11,6 +11,8 @@ import { AuditLogger } from '@/lib/audit-logger';
 import { createAdminClient } from '@/lib/supabase';
 import {
   createScopedAdminContext,
+  resolveChildClinicInScope,
+  ScopeAccessError,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
 import { isAreaManagerRole, type Role } from '@/lib/constants/roles';
@@ -139,7 +141,7 @@ type CreateClinicAdminResourcesResult =
       errorResponse: Response;
     };
 type ParentClinicRow = ScopedClinicLookupRow & {
-  is_active: boolean;
+  is_active: boolean | null;
 };
 type ParentValidationResult =
   | {
@@ -306,7 +308,7 @@ async function validateParentClinic(
     };
   }
 
-  if (!parentClinic.is_active) {
+  if (parentClinic.is_active !== true) {
     return {
       success: false,
       errorResponse: createErrorResponse(
@@ -348,7 +350,7 @@ function createBillingActivationPlanErrorResponse(
   }
 }
 
-function mapCreateUserErrorMessage(error?: { message?: string | null }) {
+function mapCreateUserErrorMessage(error?: { message?: string | null } | null) {
   const normalizedMessage = error?.message?.toLowerCase();
   if (
     normalizedMessage?.includes('already') ||
@@ -362,12 +364,14 @@ function mapCreateUserErrorMessage(error?: { message?: string | null }) {
 
 async function rollbackCreatedClinicAdminResources(
   adminClient: AdminClient,
-  userId: string
+  userId: string,
+  clinicId: string
 ) {
   const { error: deletePermissionError } = await adminClient
     .from('user_permissions')
     .delete()
-    .eq('staff_id', userId);
+    .eq('staff_id', userId)
+    .eq('clinic_id', clinicId);
   if (deletePermissionError) {
     logTenantRollbackError(
       deletePermissionError,
@@ -379,7 +383,8 @@ async function rollbackCreatedClinicAdminResources(
   const { error: deleteResourceError } = await adminClient
     .from('resources')
     .delete()
-    .eq('id', userId);
+    .eq('id', userId)
+    .eq('clinic_id', clinicId);
   if (deleteResourceError) {
     logTenantRollbackError(deleteResourceError, userId, 'rollback_resources');
   }
@@ -387,7 +392,8 @@ async function rollbackCreatedClinicAdminResources(
   const { error: deleteStaffError } = await adminClient
     .from('staff')
     .delete()
-    .eq('id', userId);
+    .eq('id', userId)
+    .eq('clinic_id', clinicId);
   if (deleteStaffError) {
     logTenantRollbackError(deleteStaffError, userId, 'rollback_staff');
   }
@@ -395,7 +401,8 @@ async function rollbackCreatedClinicAdminResources(
   const { error: deleteProfileError } = await adminClient
     .from('profiles')
     .delete()
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .eq('clinic_id', clinicId);
   if (deleteProfileError) {
     logTenantRollbackError(deleteProfileError, userId, 'rollback_profiles');
   }
@@ -410,17 +417,26 @@ async function rollbackCreatedClinicAdminResources(
 async function rollbackCreatedClinicRecord(
   adminClient: AdminClient,
   clinicId: string,
+  parentClinicId: string,
   userId: string
 ) {
-  const { error: deleteClinicError } = await adminClient
+  const { data: deletedClinic, error: deleteClinicError } = await adminClient
     .from('clinics')
     .delete()
-    .eq('id', clinicId);
+    .eq('id', clinicId)
+    .eq('parent_id', parentClinicId)
+    .select('id')
+    .maybeSingle();
 
-  if (deleteClinicError) {
-    logTenantRollbackError(deleteClinicError, userId, 'rollback_clinic', {
+  if (deleteClinicError || !deletedClinic) {
+    const rollbackError =
+      deleteClinicError ??
+      new Error('Scoped clinic rollback did not delete a row');
+    logTenantRollbackError(rollbackError, userId, 'rollback_clinic', {
       clinicId,
+      parentClinicId,
     });
+    throw rollbackError;
   }
 }
 
@@ -615,7 +631,11 @@ async function createClinicAdminResources({
     message: string,
     stage: string
   ): Promise<CreateClinicAdminResourcesResult> => {
-    await rollbackCreatedClinicAdminResources(adminClient, createdUserId);
+    await rollbackCreatedClinicAdminResources(
+      adminClient,
+      createdUserId,
+      clinicId
+    );
     logTenantPostError(error, endpointUserId, {
       clinic_name: clinicName,
       clinic_id: clinicId,
@@ -902,12 +922,17 @@ export async function POST(request: NextRequest) {
     }
 
     const normalizedInput = normalizeClinicCreateInput(parsed.data);
+    const parentClinicId = normalizedInput.clinic.parent_id;
 
     let adminCtx;
     try {
       adminCtx = createScopedAdminContext(permissions);
+      adminCtx.assertClinicInScope(parentClinicId);
     } catch (e) {
-      if (e instanceof ScopeNotConfiguredError) {
+      if (
+        e instanceof ScopeNotConfiguredError ||
+        e instanceof ScopeAccessError
+      ) {
         return createErrorResponse(e.message, 403);
       }
       throw e;
@@ -962,16 +987,53 @@ export async function POST(request: NextRequest) {
       normalizedInput.clinic.billing_activation_error = null;
     }
 
+    const clinicInsert = {
+      name: normalizedInput.clinic.name,
+      address: normalizedInput.clinic.address,
+      phone_number: normalizedInput.clinic.phone_number,
+      is_active: normalizedInput.clinic.is_active,
+      parent_id: parentClinicId,
+      billing_activation_status:
+        normalizedInput.clinic.billing_activation_status,
+      billing_activation_requested_at:
+        normalizedInput.clinic.billing_activation_requested_at,
+      billing_activated_at: normalizedInput.clinic.billing_activated_at,
+      billing_activation_failed_at:
+        normalizedInput.clinic.billing_activation_failed_at,
+      billing_activation_error: normalizedInput.clinic.billing_activation_error,
+    };
     const { data, error } = await adminSupabase
       .from('clinics')
-      .insert(normalizedInput.clinic)
+      .insert(clinicInsert)
       .select(CLINIC_LIST_SELECT)
       .single();
 
-    if (error) {
+    if (error || !data) {
       logTenantPostError(error, auth.id, {
         name: normalizedInput.clinic.name,
         login_email: normalizedInput.loginEmail,
+      });
+      return createErrorResponse('クリニックの作成に失敗しました', 500);
+    }
+
+    let childClinicId: string;
+    try {
+      childClinicId = await resolveChildClinicInScope(
+        adminCtx,
+        data.id,
+        parentClinicId
+      );
+    } catch (scopeResolutionError) {
+      await rollbackCreatedClinicRecord(
+        serviceAdminClient,
+        data.id,
+        parentClinicId,
+        auth.id
+      );
+      logTenantPostError(scopeResolutionError, auth.id, {
+        clinic_id: data.id,
+        parent_clinic_id: parentClinicId,
+        stage: 'resolve_child_clinic_scope',
       });
       return createErrorResponse('クリニックの作成に失敗しました', 500);
     }
@@ -983,7 +1045,7 @@ export async function POST(request: NextRequest) {
     ) {
       const requestId = request.headers.get('x-request-id');
       const tenantAuditMetadata = {
-        child_clinic_id: data.id,
+        child_clinic_id: childClinicId,
         child_clinic_name: data.name,
         parent_clinic_id: normalizedInput.clinic.parent_id,
         stripe_subscription_id:
@@ -1041,7 +1103,7 @@ export async function POST(request: NextRequest) {
       const adminAccountResult = await createClinicAdminResources({
         adminClient: serviceAdminClient,
         endpointUserId: auth.id,
-        clinicId: data.id,
+        clinicId: childClinicId,
         clinicName: normalizedInput.clinic.name,
         clinicAdminName:
           normalizedInput.loginFullName ??
@@ -1052,7 +1114,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (adminAccountResult.success === false) {
-        await rollbackCreatedClinicRecord(serviceAdminClient, data.id, auth.id);
+        await rollbackCreatedClinicRecord(
+          serviceAdminClient,
+          childClinicId,
+          parentClinicId,
+          auth.id
+        );
         return adminAccountResult.errorResponse;
       }
 
@@ -1093,7 +1160,7 @@ export async function POST(request: NextRequest) {
               },
               requestId,
               metadata: {
-                child_clinic_id: data.id,
+                child_clinic_id: childClinicId,
                 stripe_subscription_id:
                   tenantBillingSubscription.stripe_subscription_id,
                 stripe_store_subscription_item_id:
@@ -1125,7 +1192,7 @@ export async function POST(request: NextRequest) {
               },
               requestId,
               metadata: {
-                child_clinic_id: data.id,
+                child_clinic_id: childClinicId,
                 stripe_subscription_id:
                   tenantBillingSubscription.stripe_subscription_id,
                 stripe_store_subscription_item_id:
@@ -1144,7 +1211,7 @@ export async function POST(request: NextRequest) {
               : 'Stripe store add-on quantity update failed';
           await markClinicBillingActivationFailed({
             client: adminSupabase,
-            clinicId: data.id,
+            clinicId: childClinicId,
             errorMessage,
           });
           responseStatus = 202;
@@ -1157,7 +1224,7 @@ export async function POST(request: NextRequest) {
             error_code: 'stripe_quantity_update_failed',
           };
           logTenantPostError(stripeError, auth.id, {
-            clinic_id: data.id,
+            clinic_id: childClinicId,
             stage: 'stripe_store_addon_quantity_update',
           });
         }
@@ -1165,13 +1232,13 @@ export async function POST(request: NextRequest) {
         const activationResult = await activateBillableStoreIfCapacity({
           client: adminSupabase,
           orgRootClinicId: normalizedInput.clinic.parent_id,
-          clinicId: data.id,
+          clinicId: childClinicId,
         });
 
         if (activationResult.success) {
           const enabledAdminAccount = await enablePendingClinicAdminResources({
             adminClient: serviceAdminClient,
-            clinicId: data.id,
+            clinicId: childClinicId,
           });
           adminAccount = enabledAdminAccount ?? adminAccount;
           responseClinic.is_active = true;
@@ -1192,7 +1259,7 @@ export async function POST(request: NextRequest) {
       auth.id,
       auth.email,
       'clinic_create',
-      data.id,
+      childClinicId,
       {
         name: normalizedInput.clinic.name,
         parent_id: normalizedInput.clinic.parent_id,

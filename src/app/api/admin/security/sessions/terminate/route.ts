@@ -92,11 +92,15 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('指定されたセッションが見つかりません', 404);
     }
 
+    const scopedClinicId = session.clinic_id;
+    if (!scopedClinicId) {
+      return createErrorResponse(
+        '対象セッションへのアクセス権がありません',
+        403
+      );
+    }
     try {
-      if (!session.clinic_id) {
-        throw new ScopeAccessError();
-      }
-      adminCtx.assertClinicInScope(session.clinic_id);
+      adminCtx.assertClinicInScope(scopedClinicId);
     } catch (e) {
       if (e instanceof ScopeAccessError) {
         return createErrorResponse(
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // セッションを終了（revokeフラグを立てる）
-    const { error: updateError } = await adminSupabase
+    const { data: terminatedSession, error: updateError } = await adminSupabase
       .from('user_sessions')
       .update({
         is_active: false,
@@ -122,22 +126,31 @@ export async function POST(request: NextRequest) {
         revoked_by: auth.id,
         revoked_reason: reason || 'admin_terminated',
       })
-      .eq('id', sessionId);
+      .eq('id', sessionId)
+      .eq('clinic_id', scopedClinicId)
+      .eq('is_active', true)
+      .select('id')
+      .maybeSingle();
 
-    if (updateError) {
-      logError(updateError, {
-        endpoint: '/api/admin/security/sessions/terminate',
-        method: 'POST',
-        userId: auth.id,
-        params: { sessionId },
-      });
+    if (updateError || !terminatedSession) {
+      logError(
+        updateError ??
+          new Error('Scoped session termination did not update a row'),
+        {
+          endpoint: '/api/admin/security/sessions/terminate',
+          method: 'POST',
+          userId: auth.id,
+          params: { sessionId },
+        }
+      );
       return createErrorResponse('セッションの終了に失敗しました', 500);
     }
 
     // セキュリティイベントを記録
+    adminCtx.assertClinicInScope(scopedClinicId);
     await adminSupabase.from('security_events').insert({
       user_id: session.user_id,
-      clinic_id: session.clinic_id,
+      clinic_id: scopedClinicId,
       session_id: sessionId,
       event_type: 'session_terminated_by_admin',
       event_category: 'session_management',

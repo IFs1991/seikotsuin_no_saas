@@ -59,7 +59,8 @@ const profileCreateSchema = z
     effectiveTo: z.string().regex(DATE_PATTERN).nullable().optional(),
     isActive: z.boolean().default(true),
   })
-  .strict();
+  .strict()
+  .transform(data => ({ ...data, clinic_id: data.owner_clinic_id }));
 
 function createScopedProfileClient(
   permissions: Parameters<typeof createScopedAdminContext>[0],
@@ -153,7 +154,7 @@ export async function POST(
 
     const dto = result.dto;
     const insertPayload: ProfileInsert = {
-      owner_clinic_id: dto.owner_clinic_id,
+      owner_clinic_id: dto.clinic_id,
       menu_template_id: parsedTemplateId.data,
       revenue_context_code: dto.revenueContextCode,
       calculation_method: dto.calculationMethod,
@@ -169,7 +170,7 @@ export async function POST(
     };
     const supabase = createScopedProfileClient(
       result.permissions,
-      dto.owner_clinic_id
+      dto.clinic_id
     );
 
     const { data, error } = await supabase

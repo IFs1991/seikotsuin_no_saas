@@ -58,6 +58,24 @@ export interface ScopedAdminContext {
   assertClinicInScope(clinicId: string): void;
 }
 
+export async function resolveChildClinicInScope(
+  context: ScopedAdminContext,
+  childClinicId: string,
+  expectedParentClinicId: string
+): Promise<string> {
+  context.assertClinicInScope(expectedParentClinicId);
+  const { data, error } = await context.client
+    .from('clinics')
+    .select('id')
+    .eq('id', childClinicId)
+    .eq('parent_id', expectedParentClinicId)
+    .single();
+  if (error || !data || data.id !== childClinicId) {
+    throw new ScopeAccessError();
+  }
+  return childClinicId;
+}
+
 /**
  * Create a scoped admin context for authenticated admin operations.
  *

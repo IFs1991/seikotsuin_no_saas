@@ -15,6 +15,7 @@ import {
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { canManageClinicSettingsWithCompat } from '@/lib/constants/roles';
 import type { Database } from '@/types/supabase';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/preferences';
 type StaffPreferenceInsert =
@@ -148,7 +149,7 @@ export async function GET(request: NextRequest) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
     } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = error;
+      apiError = normalizeSupabaseError(error, PATH);
     } else {
       apiError = createApiError(
         ERROR_CODES.INTERNAL_SERVER_ERROR,
@@ -222,6 +223,11 @@ export async function POST(request: NextRequest) {
     if (!canManageClinicSettingsWithCompat(permissions.role)) {
       return createErrorResponse('希望登録は管理者経由で依頼してください', 403);
     }
+
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: dto.clinic_id,
+    });
 
     const { data, error } = await supabase
       .from('staff_preferences')
