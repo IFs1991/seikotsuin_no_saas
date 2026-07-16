@@ -39,6 +39,7 @@ type TableQuery = {
   single: jest.Mock;
   delete: jest.Mock;
   eq: jest.Mock;
+  then: jest.Mock;
 };
 type DeleteUserMock = jest.Mock;
 type CreateUserMock = jest.Mock;
@@ -125,6 +126,7 @@ const createAdminClientMockValue = ({
     upsertError: { message: string } | null = null,
     singleData: { id: string } | null = null
   ): TableQuery => {
+    const terminalResult = { error: null };
     const query: TableQuery = {
       upsert: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -133,8 +135,15 @@ const createAdminClientMockValue = ({
         error: upsertError,
       }),
       delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
+      eq: jest.fn(),
+      then: jest.fn(
+        (
+          resolve: (value: typeof terminalResult) => unknown,
+          reject?: (reason: unknown) => unknown
+        ) => Promise.resolve(terminalResult).then(resolve, reject)
+      ),
     };
+    query.eq.mockReturnValue(query);
     query.upsert.mockResolvedValue({ error: upsertError });
     return query;
   };
@@ -241,7 +250,9 @@ describe('POST /api/admin/users/accounts', () => {
       }),
       { onConflict: 'user_id' }
     );
-    expect(sideEffectQueries.get('user_permissions')?.upsert).not.toHaveBeenCalled();
+    expect(
+      sideEffectQueries.get('user_permissions')?.upsert
+    ).not.toHaveBeenCalled();
     expect(sideEffectQueries.get('staff')?.upsert).not.toHaveBeenCalled();
     expect(sideEffectQueries.get('resources')?.upsert).not.toHaveBeenCalled();
     expect(body.data).toEqual({
@@ -283,7 +294,9 @@ describe('POST /api/admin/users/accounts', () => {
       password: 'SafePass123!',
       clinic_id: ADMIN_CLINIC_ID,
     };
-    processApiRequestMock.mockResolvedValue(createManagerProcessResult(payload));
+    processApiRequestMock.mockResolvedValue(
+      createManagerProcessResult(payload)
+    );
 
     const { POST } = await import('@/app/api/admin/users/accounts/route');
     const response = await POST(createRequest(payload));
@@ -349,7 +362,7 @@ describe('POST /api/admin/users/accounts', () => {
     };
     const createdUserId = '22222222-2222-4222-8222-222222222222';
     processApiRequestMock.mockResolvedValue(createAdminProcessResult(payload));
-    const { adminClient } = createAdminClientMockValue({
+    const { adminClient, sideEffectQueries } = createAdminClientMockValue({
       createdUserId,
       profileError: { message: 'profile write failed' },
     });
@@ -364,6 +377,32 @@ describe('POST /api/admin/users/accounts', () => {
     expect(adminClient.auth.admin.deleteUser).toHaveBeenCalledWith(
       createdUserId
     );
+    expect(sideEffectQueries.get('profiles')?.eq).toHaveBeenCalledWith(
+      'user_id',
+      createdUserId
+    );
+    expect(sideEffectQueries.get('profiles')?.eq).toHaveBeenCalledWith(
+      'clinic_id',
+      ADMIN_CLINIC_ID
+    );
+    expect(sideEffectQueries.get('user_permissions')?.eq).toHaveBeenCalledWith(
+      'staff_id',
+      createdUserId
+    );
+    expect(sideEffectQueries.get('user_permissions')?.eq).toHaveBeenCalledWith(
+      'clinic_id',
+      ADMIN_CLINIC_ID
+    );
+    for (const table of ['staff', 'resources'] as const) {
+      expect(sideEffectQueries.get(table)?.eq).toHaveBeenCalledWith(
+        'id',
+        createdUserId
+      );
+      expect(sideEffectQueries.get(table)?.eq).toHaveBeenCalledWith(
+        'clinic_id',
+        ADMIN_CLINIC_ID
+      );
+    }
   });
 
   it('does not escape password before createUser and does not log or audit it', async () => {
@@ -456,7 +495,9 @@ describe('POST /api/admin/users/accounts', () => {
     );
     expect(sideEffectQueries.get('staff')?.upsert).toHaveBeenCalled();
     expect(sideEffectQueries.get('resources')?.upsert).toHaveBeenCalled();
-    expect(sideEffectQueries.get('user_permissions')?.upsert).toHaveBeenCalledWith(
+    expect(
+      sideEffectQueries.get('user_permissions')?.upsert
+    ).toHaveBeenCalledWith(
       expect.objectContaining({
         staff_id: createdUserId,
         role: 'manager',

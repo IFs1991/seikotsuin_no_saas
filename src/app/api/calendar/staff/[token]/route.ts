@@ -195,20 +195,22 @@ export async function GET(
     return new NextResponse('Not found', { status: 404 });
   }
 
+  const staffProfileId = feedToken.staff_profile_id;
+  const clinicId = feedToken.clinic_id;
+  if (!staffProfileId || !clinicId) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   const targetIsActive = await isFeedTargetActive(
     adminClient,
-    feedToken.staff_profile_id,
-    feedToken.clinic_id
+    staffProfileId,
+    clinicId
   );
   if (!targetIsActive) {
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const shifts = await loadStaffShifts(
-    adminClient,
-    feedToken.staff_profile_id,
-    feedToken.clinic_id
-  );
+  const shifts = await loadStaffShifts(adminClient, staffProfileId, clinicId);
   return icsResponse(
     buildCalendarIcs({
       feedName: feedToken.label ?? 'Tiramisu staff shifts',

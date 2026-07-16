@@ -128,13 +128,30 @@ const buildResourceRow = ({
 
 async function rollbackCreatedAccount(
   adminClient: AdminClient,
-  userId: string
+  userId: string,
+  clinicId: string
 ) {
   await Promise.allSettled([
-    adminClient.from('user_permissions').delete().eq('staff_id', userId),
-    adminClient.from('resources').delete().eq('id', userId),
-    adminClient.from('staff').delete().eq('id', userId),
-    adminClient.from('profiles').delete().eq('user_id', userId),
+    adminClient
+      .from('user_permissions')
+      .delete()
+      .eq('staff_id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('resources')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('staff')
+      .delete()
+      .eq('id', userId)
+      .eq('clinic_id', clinicId),
+    adminClient
+      .from('profiles')
+      .delete()
+      .eq('user_id', userId)
+      .eq('clinic_id', clinicId),
   ]);
 
   await adminClient.auth.admin.deleteUser(userId);
@@ -182,7 +199,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinicId)) {
+    if (
+      !clinicId ||
+      !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, clinicId)
+    ) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
         403,
@@ -261,7 +281,7 @@ export async function POST(request: NextRequest) {
       const baseRecordError =
         profileResult.error ?? staffResult.error ?? resourceResult.error;
       if (baseRecordError) {
-        await rollbackCreatedAccount(adminClient, createdUserId);
+        await rollbackCreatedAccount(adminClient, createdUserId, clinicId);
         logError(baseRecordError, {
           endpoint: '/api/admin/users/accounts',
           method: 'POST',
@@ -285,7 +305,7 @@ export async function POST(request: NextRequest) {
     } else {
       const { error: profileError } = await profileWrite;
       if (profileError) {
-        await rollbackCreatedAccount(adminClient, createdUserId);
+        await rollbackCreatedAccount(adminClient, createdUserId, clinicId);
         logError(profileError, {
           endpoint: '/api/admin/users/accounts',
           method: 'POST',
@@ -315,7 +335,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (permissionError || !permission) {
-        await rollbackCreatedAccount(adminClient, createdUserId);
+        await rollbackCreatedAccount(adminClient, createdUserId, clinicId);
         logError(permissionError, {
           endpoint: '/api/admin/users/accounts',
           method: 'POST',
@@ -471,6 +491,19 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const profileClinicId = currentProfile.clinic_id;
+    if (
+      !profileClinicId ||
+      !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, profileClinicId)
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
+
     let assignmentClinicIds: string[] = [];
     if (currentPermission?.role === 'manager') {
       const { data: assignmentRows, error: assignmentReadError } =
@@ -504,15 +537,28 @@ export async function PATCH(request: NextRequest) {
     const targetClinicIds = Array.from(
       new Set(
         [
-          currentProfile.clinic_id,
+          profileClinicId,
           currentPermission?.clinic_id ?? null,
           ...assignmentClinicIds,
         ].filter((clinicId): clinicId is string => typeof clinicId === 'string')
       )
     );
+    if (targetClinicIds.length === 0) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403,
+        undefined,
+        ERROR_CODES.FORBIDDEN
+      );
+    }
     if (
-      targetClinicIds.length === 0 ||
-      targetClinicIds.some(clinicId => !scopedClinicIds.includes(clinicId))
+      targetClinicIds.some(
+        targetClinicId =>
+          !canAccessResolvedScopedAdminUsersClinic(
+            scopedClinicIds,
+            targetClinicId
+          )
+      )
     ) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
@@ -529,6 +575,7 @@ export async function PATCH(request: NextRequest) {
           .from('profiles')
           .update({ is_active: false, updated_at: timestamp })
           .eq('user_id', targetUserId)
+          .eq('clinic_id', profileClinicId)
           .select('user_id, is_active')
           .maybeSingle();
 
@@ -606,6 +653,7 @@ export async function PATCH(request: NextRequest) {
           .from('profiles')
           .update({ is_active: true, updated_at: timestamp })
           .eq('user_id', targetUserId)
+          .eq('clinic_id', profileClinicId)
           .select('user_id, is_active')
           .maybeSingle();
 

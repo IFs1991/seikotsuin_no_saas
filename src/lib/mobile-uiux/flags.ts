@@ -150,5 +150,7 @@ function isMobileUiuxTargetEntitlementEnabled(
     | 'settingsWriteEnabled'
   >
 ): boolean {
-  return entitlement === undefined ? true : entitlement[key];
+  return entitlement === undefined
+    ? true
+    : entitlement !== null && entitlement[key];
 }

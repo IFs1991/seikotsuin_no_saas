@@ -125,11 +125,12 @@ export async function GET(
     return new NextResponse('Not found', { status: 404 });
   }
 
-  if (!(await isClinicActive(adminClient, feedToken.clinic_id))) {
+  const clinicId = feedToken.clinic_id;
+  if (!clinicId || !(await isClinicActive(adminClient, clinicId))) {
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const shifts = await loadClinicShifts(adminClient, feedToken.clinic_id);
+  const shifts = await loadClinicShifts(adminClient, clinicId);
   return icsResponse(
     buildCalendarIcs({
       feedName: feedToken.label ?? 'Tiramisu clinic roster',

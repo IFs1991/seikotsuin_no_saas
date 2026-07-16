@@ -221,7 +221,8 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase
       .from('daily_reports')
       .delete()
-      .eq('id', reportId);
+      .eq('id', reportId)
+      .eq('clinic_id', clinicId);
 
     if (error) {
       throw error;

@@ -619,7 +619,14 @@ export async function POST(request: NextRequest) {
     );
     if (!result.success) return result.error;
 
-    const dto = result.dto;
+    const dto = {
+      ...result.dto,
+      selectedOptions:
+        result.dto.selectedOptions === undefined
+          ? undefined
+          : normalizeDtoSelectedOptions(result.dto.selectedOptions),
+      isStaffRequested: result.dto.isStaffRequested ?? false,
+    };
     const reservationMutationClient = createScopedReservationClient(
       result.permissions,
       dto.clinic_id
@@ -766,7 +773,13 @@ export async function PATCH(request: NextRequest) {
     );
     if (!result.success) return result.error;
 
-    const dto = result.dto;
+    const dto = {
+      ...result.dto,
+      selectedOptions:
+        result.dto.selectedOptions === undefined
+          ? undefined
+          : normalizeDtoSelectedOptions(result.dto.selectedOptions),
+    };
     const reservationMutationClient = createScopedReservationClient(
       result.permissions,
       dto.clinic_id

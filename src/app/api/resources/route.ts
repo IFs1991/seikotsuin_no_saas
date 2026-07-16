@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
     if (shouldLoadStaffFallback) {
       const { data: staffData, error: staffError } = await guard.supabase
         .from('staff')
-        .select('id, name, role, is_therapist')
+        .select('id, name, email, role, is_therapist')
         .eq('clinic_id', clinic_id);
 
       if (staffError) throw normalizeSupabaseError(staffError, PATH);
@@ -210,7 +210,16 @@ export async function POST(request: NextRequest) {
     const result = await processClinicScopedBody(request, resourceInsertSchema);
     if (!result.success) return result.error;
 
-    const insertPayload = mapResourceInsertToRow(result.dto, result.auth.id);
+    const dto = {
+      ...result.dto,
+      maxConcurrent: result.dto.maxConcurrent ?? 1,
+      nominationFee: result.dto.nominationFee ?? 0,
+      isActive: result.dto.isActive ?? true,
+    };
+    const insertPayload = {
+      ...mapResourceInsertToRow(dto, result.auth.id),
+      clinic_id: result.dto.clinic_id,
+    };
     const { data, error } = await result.supabase
       .from('resources')
       .insert(insertPayload)

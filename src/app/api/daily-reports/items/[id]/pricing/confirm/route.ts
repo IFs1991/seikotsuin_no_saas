@@ -12,6 +12,8 @@ const PATH = '/api/daily-reports/items/[id]/pricing/confirm';
 
 type PricingConfirmResult =
   Database['public']['Functions']['confirm_daily_report_item_pricing']['Returns'][number];
+type PricingConfirmArgs =
+  Database['public']['Functions']['confirm_daily_report_item_pricing']['Args'];
 
 const pricingConfirmSchema = z
   .object({
@@ -75,17 +77,25 @@ export async function POST(
       dto.clinic_id
     );
 
+    const rpcArgs: PricingConfirmArgs = {
+      p_clinic_id: dto.clinic_id,
+      p_daily_report_item_id: parsedItemId.data,
+      p_update_customer_coverage: dto.updateCustomerCoverage ?? false,
+      p_actor_user_id: result.auth.id,
+    };
+    if (dto.patientBurdenRateOverride != null) {
+      rpcArgs.p_patient_burden_rate_override = dto.patientBurdenRateOverride;
+    }
+    if (dto.manualEstimatedAmount != null) {
+      rpcArgs.p_manual_estimated_amount = dto.manualEstimatedAmount;
+    }
+    if (dto.confirmationNote != null) {
+      rpcArgs.p_confirmation_note = dto.confirmationNote;
+    }
+
     const { data, error } = await supabase.rpc(
       'confirm_daily_report_item_pricing',
-      {
-        p_clinic_id: dto.clinic_id,
-        p_daily_report_item_id: parsedItemId.data,
-        p_patient_burden_rate_override: dto.patientBurdenRateOverride ?? null,
-        p_manual_estimated_amount: dto.manualEstimatedAmount ?? null,
-        p_update_customer_coverage: dto.updateCustomerCoverage,
-        p_confirmation_note: dto.confirmationNote ?? null,
-        p_actor_user_id: result.auth.id,
-      }
+      rpcArgs
     );
 
     if (error) {

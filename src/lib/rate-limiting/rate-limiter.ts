@@ -181,8 +181,8 @@ export class RateLimiter {
       // TTL設定
       pipeline.expire(key, window + 60);
 
-      const results = await pipeline.exec();
-      const currentCount = (results?.[2]?.[1] as number) || 0;
+      const results = await pipeline.exec<[number, number, number, number]>();
+      const currentCount = results[2] || 0;
 
       const resetTime = now + window;
       const remaining = Math.max(0, limit - currentCount);

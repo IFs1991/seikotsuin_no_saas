@@ -20,8 +20,8 @@ export async function fetchManagerPatientPeriodTotals(
 
   const { data, error } = await supabase.rpc('manager_patient_period_totals', {
     p_clinic_ids: [...clinicIds],
-    p_start: startIso,
-    p_end: endIso,
+    p_start: startIso ?? undefined,
+    p_end: endIso ?? undefined,
   });
 
   if (error) {
@@ -44,8 +44,8 @@ export async function fetchManagerPatientPeriodSeries(
 
   const { data, error } = await supabase.rpc('manager_patient_period_series', {
     p_clinic_ids: [...clinicIds],
-    p_start: startIso,
-    p_end: endIso,
+    p_start: startIso ?? undefined,
+    p_end: endIso ?? undefined,
     p_bucket: bucket,
   });
 

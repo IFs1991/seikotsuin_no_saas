@@ -21,8 +21,8 @@ export async function fetchManagerRevenuePeriodTotals(
 
   const { data, error } = await supabase.rpc('manager_revenue_period_totals', {
     p_clinic_ids: [...clinicIds],
-    p_start: startDate,
-    p_end: endDate,
+    p_start: startDate ?? undefined,
+    p_end: endDate ?? undefined,
   });
 
   if (error) {
@@ -45,8 +45,8 @@ export async function fetchManagerRevenuePeriodSeries(
 
   const { data, error } = await supabase.rpc('manager_revenue_period_series', {
     p_clinic_ids: [...clinicIds],
-    p_start: startDate,
-    p_end: endDate,
+    p_start: startDate ?? undefined,
+    p_end: endDate ?? undefined,
     p_bucket: bucket,
   });
 
@@ -71,8 +71,8 @@ export async function fetchManagerRevenueContextBreakdown(
     'manager_revenue_context_breakdown',
     {
       p_clinic_ids: [...clinicIds],
-      p_start: startDate,
-      p_end: endDate,
+      p_start: startDate ?? undefined,
+      p_end: endDate ?? undefined,
     }
   );
 

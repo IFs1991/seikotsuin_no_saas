@@ -59,6 +59,18 @@ jobs:
       - name: Commercial boundary type check
         run: npm run type-check:commercial
 
+      - name: Commercial boundary lint
+        run: npm run lint:commercial
+
+      - name: Verify mutating route policy
+        run: npm run security:verify-mutating-routes
+
+      - name: Verify mutating route manifest drift
+        run: npm run commercial:inventory:routes:check
+
+      - name: Verify commercial source inventory drift
+        run: npm run commercial:inventory:source:check
+
       - name: Mobile UIUX production asset drift check
         run: npm run mobile-uiux:check-production-assets
 
@@ -242,6 +254,9 @@ jobs:
         # 丸ごと上書きするため、設定側で除外している意図的RED suite
         # (src/__tests__/red-contracts/) もここで明示的に除外する
         run: npm run test -- --ci --testPathIgnorePatterns e2e red-contracts
+        env:
+          # `.env.test` のE2E専用 invite skip を非E2E unit testへ持ち込まない。
+          E2E_INVITE_MODE: 'disabled'
 
   # --------------------------------------------------------------------------
   # Security Tests — required merge gate.

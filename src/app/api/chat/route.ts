@@ -3,8 +3,24 @@ import { AppError, ERROR_CODES } from '../../../lib/error-handler';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { ADMIN_UI_ROLES, type Role } from '@/lib/constants/roles';
 import { createAuthorityUnavailableResponse } from '@/lib/api-helpers';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
+import type { Database } from '@/types/supabase';
+import { resolveScopedChatSessionId } from '@/lib/chat/scoped-session';
+import { ScopeAccessError } from '@/lib/auth/manager-scope';
 
 const PATH = '/api/chat';
+
+type DailyRevenueSummaryRow =
+  Database['public']['Views']['daily_revenue_summary']['Row'];
+
+type ChatContextData = {
+  recentRevenue?: DailyRevenueSummaryRow[];
+  clinicId?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,6 +66,10 @@ export async function GET(request: NextRequest) {
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
     if (authorityUnavailable) return authorityUnavailable;
 
+    if (error instanceof ScopeAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+
     if (error instanceof AppError) {
       return NextResponse.json(
         { error: error.message },
@@ -66,27 +86,65 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { clinic_id, message, session_id } = body;
+    const rawBody: unknown = await request.json();
+    if (!isRecord(rawBody)) {
+      return NextResponse.json({ error: 'Invalid JSON data' }, { status: 400 });
+    }
 
-    const { supabase, user, permissions } = await ensureClinicAccess(
-      request,
-      PATH,
-      clinic_id,
-      { requireClinicMatch: Boolean(clinic_id) }
-    );
+    const { clinic_id, message, session_id, user_id } = rawBody;
 
-    const user_id = body.user_id ?? user.id;
+    if (typeof clinic_id !== 'string' || clinic_id.length === 0) {
+      return NextResponse.json(
+        { error: 'clinic_id is required' },
+        { status: 400 }
+      );
+    }
 
-    if (!message) {
+    if (typeof message !== 'string' || message.length === 0) {
       return NextResponse.json(
         { error: 'message is required' },
         { status: 400 }
       );
     }
 
+    if (
+      session_id !== undefined &&
+      session_id !== null &&
+      (typeof session_id !== 'string' || session_id.length === 0)
+    ) {
+      return NextResponse.json(
+        { error: 'session_id must be a non-empty string' },
+        { status: 400 }
+      );
+    }
+
+    if (
+      user_id !== undefined &&
+      user_id !== null &&
+      (typeof user_id !== 'string' || user_id.length === 0)
+    ) {
+      return NextResponse.json(
+        { error: 'user_id must be a non-empty string' },
+        { status: 400 }
+      );
+    }
+
+    const { supabase, user, permissions } = await ensureClinicAccess(
+      request,
+      PATH,
+      clinic_id,
+      { requireClinicMatch: true }
+    );
+
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: clinic_id,
+    });
+
+    const targetUserId = typeof user_id === 'string' ? user_id : user.id;
+
     const isPrivileged = ADMIN_UI_ROLES.has(permissions.role as Role);
-    if (user.id !== user_id && !isPrivileged) {
+    if (user.id !== targetUserId && !isPrivileged) {
       throw new AppError(
         ERROR_CODES.FORBIDDEN,
         '他ユーザーとしてメッセージを送信する権限がありません',
@@ -94,14 +152,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let currentSessionId = session_id;
+    let currentSessionId = typeof session_id === 'string' ? session_id : null;
+
+    if (currentSessionId) {
+      const { data: existingSession, error: sessionLookupError } =
+        await supabase
+          .from('chat_sessions')
+          .select('id, clinic_id, user_id')
+          .eq('id', currentSessionId)
+          .eq('clinic_id', clinic_id)
+          .maybeSingle();
+
+      if (sessionLookupError) {
+        throw sessionLookupError;
+      }
+
+      if (!existingSession || existingSession.user_id !== targetUserId) {
+        throw new AppError(
+          ERROR_CODES.FORBIDDEN,
+          'このチャットセッションへのアクセス権限がありません',
+          403
+        );
+      }
+    }
 
     // 新しいセッションの場合、セッションを作成
     if (!currentSessionId) {
       const { data: newSession, error: sessionError } = await supabase
         .from('chat_sessions')
         .insert({
-          user_id,
+          user_id: targetUserId,
           clinic_id,
           is_admin_session: !clinic_id,
         })
@@ -115,11 +195,19 @@ export async function POST(request: NextRequest) {
       currentSessionId = newSession.id;
     }
 
+    const scopedSessionId = await resolveScopedChatSessionId({
+      client: supabase,
+      permissions,
+      sessionId: currentSessionId,
+      clinicId: clinic_id,
+      userId: targetUserId,
+    });
+
     // ユーザーメッセージを保存
     const { data: userMessage, error: userMsgError } = await supabase
       .from('chat_messages')
       .insert({
-        session_id: currentSessionId,
+        session_id: scopedSessionId,
         sender: 'user',
         message_text: message,
       })
@@ -131,7 +219,7 @@ export async function POST(request: NextRequest) {
     }
 
     // コンテキストデータ取得（clinic_idがある場合）
-    let contextData = {};
+    let contextData: ChatContextData = {};
     if (clinic_id) {
       const { data: recentData } = await supabase
         .from('daily_revenue_summary')
@@ -153,7 +241,7 @@ export async function POST(request: NextRequest) {
     const { data: aiMessage, error: aiMsgError } = await supabase
       .from('chat_messages')
       .insert({
-        session_id: currentSessionId,
+        session_id: scopedSessionId,
         sender: 'ai',
         message_text: aiResponse.message,
         response_data: aiResponse.data,
@@ -168,7 +256,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        session_id: currentSessionId,
+        session_id: scopedSessionId,
         user_message: userMessage,
         ai_message: aiMessage,
       },
@@ -176,6 +264,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
     if (authorityUnavailable) return authorityUnavailable;
+
+    if (error instanceof ScopeAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
 
     if (error instanceof AppError) {
       return NextResponse.json(
@@ -191,14 +283,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateAIResponse(message: string, contextData: any) {
+async function generateAIResponse(
+  message: string,
+  contextData: ChatContextData
+) {
   // 簡易的なAI応答生成（実際はGemini APIを使用）
   const lowerMessage = message.toLowerCase();
 
   if (lowerMessage.includes('売上') || lowerMessage.includes('収益')) {
-    const recentRevenue = contextData.recentRevenue || [];
+    const recentRevenue = contextData.recentRevenue ?? [];
     const totalRevenue = recentRevenue.reduce(
-      (sum: number, item: any) => sum + (item.total_revenue || 0),
+      (sum, item) => sum + (item.total_revenue ?? 0),
       0
     );
 

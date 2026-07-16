@@ -38,7 +38,7 @@ const fixtureRoot = path.join(
 function generateFixtureInventory(): RouteInventory {
   const stdout = execFileSync(
     process.execPath,
-    [scriptPath, '--source-root', fixtureRoot, '--stdout'],
+    [scriptPath, '--source-root', fixtureRoot, '--observed-only', '--stdout'],
     { cwd: repoRoot, encoding: 'utf8' }
   );
   return JSON.parse(stdout) as RouteInventory;

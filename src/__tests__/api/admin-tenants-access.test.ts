@@ -3,6 +3,7 @@ import { processApiRequest } from '@/lib/api-helpers';
 import { createAdminClient } from '@/lib/supabase';
 import {
   createScopedAdminContext,
+  resolveChildClinicInScope,
   ScopeAccessError,
   ScopeNotConfiguredError,
 } from '@/lib/supabase/scoped-admin';
@@ -21,6 +22,7 @@ jest.mock('@/lib/supabase/scoped-admin', () => {
   return {
     ...actual,
     createScopedAdminContext: jest.fn(),
+    resolveChildClinicInScope: jest.fn(),
   };
 });
 
@@ -34,6 +36,7 @@ jest.mock('@/lib/supabase', () => {
 
 const processApiRequestMock = processApiRequest as jest.Mock;
 const createScopedAdminContextMock = createScopedAdminContext as jest.Mock;
+const resolveChildClinicInScopeMock = jest.mocked(resolveChildClinicInScope);
 const createAdminClientMock = createAdminClient as jest.Mock;
 const SCOPED_CLINIC_IDS = ['clinic-1', 'clinic-2'] as const;
 
@@ -90,6 +93,9 @@ function createCountQuery(count: number) {
 describe('Admin tenants access alignment', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resolveChildClinicInScopeMock.mockImplementation(
+      async (_context, childClinicId) => childClinicId
+    );
   });
 
   it('GET /api/admin/tenants does not re-expand exact canonical scope by parent_id', async () => {
@@ -295,6 +301,180 @@ describe('Admin tenants access alignment', () => {
     expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 
+  it('POST /api/admin/tenants rejects a parent clinic outside canonical scope before service-role access', async () => {
+    const parentClinicId = '11111111-1111-4111-8111-111111111111';
+    const scopedFrom = jest.fn();
+    const assertClinicInScope = jest.fn(() => {
+      throw new ScopeAccessError();
+    });
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: ['22222222-2222-4222-8222-222222222222'],
+      },
+      supabase: {},
+      body: {
+        name: 'スコープ外店舗',
+        address: '東京都新宿区',
+        phone_number: '03-9999-0000',
+        is_active: true,
+        parent_id: parentClinicId,
+        login_email: 'clinic-admin@example.com',
+        login_password: 'StorePass1!',
+      },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: { from: scopedFrom },
+      scopedClinicIds: ['22222222-2222-4222-8222-222222222222'],
+      assertClinicInScope,
+    });
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'スコープ外店舗',
+          address: '東京都新宿区',
+          phone_number: '03-9999-0000',
+          is_active: true,
+          parent_id: parentClinicId,
+          login_email: 'clinic-admin@example.com',
+          login_password: 'StorePass1!',
+        }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(assertClinicInScope).toHaveBeenCalledWith(parentClinicId);
+    expect(scopedFrom).not.toHaveBeenCalled();
+    expect(createAdminClientMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['deletes the created clinic when child scope proof fails', true],
+    ['fails closed when the scoped clinic rollback affects no row', false],
+  ])('POST /api/admin/tenants %s', async (_caseName, rollbackDeletesRow) => {
+    const parentClinicId = '11111111-1111-4111-8111-111111111111';
+    const childClinicId = '22222222-2222-4222-8222-222222222222';
+    const parentQuery = createSingleClinicQuery({
+      id: parentClinicId,
+      name: '本部',
+      parent_id: null,
+      is_active: true,
+    });
+    const insertQuery = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: {
+          id: childClinicId,
+          name: '検証失敗店舗',
+          address: null,
+          phone_number: null,
+          is_active: true,
+          created_at: '2026-07-16T00:00:00.000Z',
+          parent_id: parentClinicId,
+        },
+        error: null,
+      }),
+    };
+    const clinicQueries = [parentQuery, insertQuery];
+    const scopedAdminClient = {
+      from: jest.fn((table: string) => {
+        if (table !== 'clinics') {
+          throw new Error(`Unexpected scoped table: ${table}`);
+        }
+        const query = clinicQueries.shift();
+        if (!query) {
+          throw new Error('Unexpected extra scoped clinics query');
+        }
+        return query;
+      }),
+    };
+    const rollbackQuery = {
+      delete: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({
+        data: rollbackDeletesRow ? { id: childClinicId } : null,
+        error: null,
+      }),
+    };
+    const serviceAdminClient = {
+      auth: {
+        admin: {
+          createUser: jest.fn(),
+          deleteUser: jest.fn(),
+        },
+      },
+      from: jest.fn((table: string) => {
+        if (table !== 'clinics') {
+          throw new Error(`Unexpected service table: ${table}`);
+        }
+        return rollbackQuery;
+      }),
+    };
+    const assertClinicInScope = jest.fn();
+
+    processApiRequestMock.mockResolvedValue({
+      success: true,
+      auth: { id: 'admin-1', email: 'admin@example.com', role: 'admin' },
+      permissions: {
+        role: 'admin',
+        clinic_id: null,
+        clinic_scope_ids: [parentClinicId],
+      },
+      supabase: {},
+      body: {
+        name: '検証失敗店舗',
+        parent_id: parentClinicId,
+      },
+    });
+    createScopedAdminContextMock.mockReturnValue({
+      client: scopedAdminClient,
+      scopedClinicIds: [parentClinicId],
+      assertClinicInScope,
+    });
+    createAdminClientMock.mockReturnValue(serviceAdminClient);
+    resolveChildClinicInScopeMock.mockRejectedValue(new ScopeAccessError());
+
+    const { POST } = await import('@/app/api/admin/tenants/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/admin/tenants', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: '検証失敗店舗',
+          parent_id: parentClinicId,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.success).toBe(false);
+    expect(resolveChildClinicInScopeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ assertClinicInScope }),
+      childClinicId,
+      parentClinicId
+    );
+    expect(serviceAdminClient.from).toHaveBeenCalledWith('clinics');
+    expect(rollbackQuery.delete).toHaveBeenCalledTimes(1);
+    expect(rollbackQuery.eq).toHaveBeenNthCalledWith(1, 'id', childClinicId);
+    expect(rollbackQuery.eq).toHaveBeenNthCalledWith(
+      2,
+      'parent_id',
+      parentClinicId
+    );
+    expect(rollbackQuery.select).toHaveBeenCalledWith('id');
+    expect(rollbackQuery.maybeSingle).toHaveBeenCalledTimes(1);
+    expect(serviceAdminClient.auth.admin.createUser).not.toHaveBeenCalled();
+  });
+
   it('POST /api/admin/tenants creates a clinic_admin account with the supplied full name', async () => {
     const hqClinicId = '11111111-1111-4111-8111-111111111111';
     const createdClinic = {
@@ -398,10 +578,11 @@ describe('Admin tenants access alignment', () => {
         login_password: 'StorePass1!',
       },
     });
+    const assertClinicInScope = jest.fn();
     createScopedAdminContextMock.mockReturnValue({
       client: scopedAdminClient,
       scopedClinicIds: [hqClinicId],
-      assertClinicInScope: jest.fn(),
+      assertClinicInScope,
     });
     createAdminClientMock.mockReturnValue(adminClient);
 
@@ -424,6 +605,7 @@ describe('Admin tenants access alignment', () => {
     const body = await response.json();
 
     expect(response.status).toBe(201);
+    expect(assertClinicInScope).toHaveBeenCalledWith(hqClinicId);
     expect(clinicsInsertQuery.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         name: createdClinic.name,

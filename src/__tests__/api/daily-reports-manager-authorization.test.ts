@@ -4,9 +4,14 @@ import { processClinicScopedBody } from '@/lib/route-helpers';
 import { createScopedAdminContext } from '@/lib/supabase';
 import { ensureClinicAccess } from '@/lib/supabase/guards';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
+}));
+
+jest.mock('@/lib/billing/business-write', () => ({
+  ensureScopedBusinessWriteAccess: jest.fn(),
 }));
 
 jest.mock('@/lib/api-helpers', () => {
@@ -37,6 +42,9 @@ const ensureClinicAccessMock = jest.mocked(ensureClinicAccess);
 const processApiRequestMock = jest.mocked(processApiRequest);
 const processClinicScopedBodyMock = jest.mocked(processClinicScopedBody);
 const createScopedAdminContextMock = jest.mocked(createScopedAdminContext);
+const ensureScopedBusinessWriteAccessMock = jest.mocked(
+  ensureScopedBusinessWriteAccess
+);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
 const reportId = '123e4567-e89b-12d3-a456-426614174011';
@@ -331,6 +339,7 @@ function buildDailyReportItemReadClient() {
 describe('Daily Reports manager mutation authorization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    ensureScopedBusinessWriteAccessMock.mockResolvedValue({ mode: 'bypass' });
     mockDailyReportWriteGuard();
     mockDailyReportItemBodyGuard();
     mockDailyReportItemDeleteGuard();
@@ -373,6 +382,44 @@ describe('Daily Reports manager mutation authorization', () => {
     await expect(response.json()).resolves.toMatchObject({
       error: 'Managers cannot mutate daily reports.',
     });
+  });
+
+  it('admin DELETE binds the daily report mutation to the guarded clinic', async () => {
+    const selectQuery = {
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({
+        data: { id: reportId, clinic_id: clinicId },
+        error: null,
+      }),
+    };
+    const deleteQuery = {
+      error: null,
+      eq: jest.fn(),
+    };
+    deleteQuery.eq.mockReturnValue(deleteQuery);
+    const reportTable = {
+      select: jest.fn(() => selectQuery),
+      delete: jest.fn(() => deleteQuery),
+    };
+    ensureClinicAccessMock.mockResolvedValue({
+      supabase: { from: jest.fn(() => reportTable) },
+      permissions: {
+        role: 'admin',
+        clinic_id: clinicId,
+        clinic_scope_ids: [clinicId],
+      },
+    });
+
+    const { DELETE } = await import('@/app/api/daily-reports/route');
+    const response = await DELETE(
+      new NextRequest(`http://localhost/api/daily-reports?id=${reportId}`, {
+        method: 'DELETE',
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(deleteQuery.eq).toHaveBeenNthCalledWith(1, 'id', reportId);
+    expect(deleteQuery.eq).toHaveBeenNthCalledWith(2, 'clinic_id', clinicId);
   });
 
   it('manager cannot POST /api/daily-reports/items', async () => {

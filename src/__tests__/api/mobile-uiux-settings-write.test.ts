@@ -22,6 +22,7 @@ const processApiRequestMock = jest.mocked(processApiRequest);
 const logAdminActionMock = jest.mocked(AuditLogger.logAdminAction);
 
 const clinicId = '123e4567-e89b-12d3-a456-426614174000';
+const otherClinicId = '223e4567-e89b-42d3-a456-426614174000';
 const userId = '123e4567-e89b-12d3-a456-426614174010';
 
 const auth = { id: userId, email: 'manager@example.com', role: 'manager' };
@@ -159,6 +160,27 @@ describe('PUT /api/mobile-uiux/settings write pilot', () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it('returns 403 before persistence when validated clinic_id is out of scope', async () => {
+    const { client, table } = createSettingsClient({});
+    const outOfScopePayload = {
+      ...clinicHoursPayload,
+      clinic_id: otherClinicId,
+    };
+    processApiRequestMock.mockResolvedValueOnce({
+      success: true,
+      auth,
+      permissions,
+      supabase: client,
+      body: outOfScopePayload,
+    });
+    const { PUT } = await import('@/app/api/mobile-uiux/settings/route');
+
+    const response = await PUT(buildMutationRequest(outOfScopePayload));
+
+    expect(response.status).toBe(403);
+    expect(table.upsert).not.toHaveBeenCalled();
   });
 
   it('returns 403 when the PC read helper denies the category', async () => {

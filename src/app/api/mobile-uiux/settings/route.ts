@@ -43,6 +43,7 @@ import {
   validateAdminSettingsMutationBody,
   validateAdminSettingsMutationSettings,
 } from '@/lib/admin-settings/service';
+import { canAccessClinicScope } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -240,6 +241,14 @@ export async function PUT(request: NextRequest) {
   }
 
   const envelope = envelopeValidation.payload;
+  if (!canAccessClinicScope(guard.permissions, envelope.clinic_id)) {
+    logMobileUiuxClinicScopeDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
+    return buildAuthFailureResponse(403);
+  }
 
   const entitlement = await fetchMobileUiuxClinicEntitlement({
     supabase: guard.supabase,
@@ -310,6 +319,15 @@ export async function PUT(request: NextRequest) {
   }
 
   const { payload } = settingsValidation;
+  if (!canAccessClinicScope(guard.permissions, payload.clinic_id)) {
+    logMobileUiuxClinicScopeDenied({
+      flags,
+      writeTarget: 'settings',
+      status: 403,
+    });
+    return buildAuthFailureResponse(403);
+  }
+
   const writeResult = await upsertAdminSettings(
     guard.supabase,
     payload,

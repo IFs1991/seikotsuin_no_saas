@@ -8,9 +8,15 @@
  */
 
 import { ensureClinicAccess } from '@/lib/supabase/guards';
+import { ScopeAccessError } from '@/lib/auth/manager-scope';
+import { resolveScopedChatSessionId } from '@/lib/chat/scoped-session';
 
 jest.mock('@/lib/supabase/guards', () => ({
   ensureClinicAccess: jest.fn(),
+}));
+
+jest.mock('@/lib/chat/scoped-session', () => ({
+  resolveScopedChatSessionId: jest.fn(),
 }));
 
 jest.mock('next/server', () => ({
@@ -36,6 +42,7 @@ jest.mock('@/api/gemini/ai-analysis-service', () => ({
 }));
 
 const ensureClinicAccessMock = ensureClinicAccess as jest.Mock;
+const resolveScopedChatSessionIdMock = jest.mocked(resolveScopedChatSessionId);
 
 let getHandler: any;
 let postHandler: any;
@@ -61,6 +68,9 @@ const createPostRequest = (body: unknown) => ({
 describe('Chat API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resolveScopedChatSessionIdMock.mockImplementation(
+      async input => input.sessionId
+    );
   });
 
   describe('GET /api/chat - 履歴取得', () => {
@@ -248,6 +258,59 @@ describe('Chat API', () => {
       expect(payload.data.session_id).toBeDefined();
       expect(payload.data.user_message).toBeDefined();
       expect(payload.data.ai_message).toBeDefined();
+      expect(resolveScopedChatSessionIdMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: 'session-1',
+          clinicId: 'clinic-1',
+          userId: 'user-1',
+        })
+      );
+    });
+
+    it('resolverのscope拒否を403へ変換しメッセージを書き込まない', async () => {
+      const messageInsertMock = jest.fn();
+      const sessionInsertMock = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({
+            data: { id: 'session-1' },
+            error: null,
+          }),
+        }),
+      });
+      const fromMock = jest.fn((table: string) => {
+        if (table === 'chat_sessions') {
+          return { insert: sessionInsertMock };
+        }
+        if (table === 'chat_messages') {
+          return { insert: messageInsertMock };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      });
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: fromMock },
+        user: { id: 'user-1' },
+        permissions: {
+          role: 'staff',
+          clinic_id: 'clinic-1',
+          clinic_scope_ids: ['clinic-1'],
+        },
+      });
+      resolveScopedChatSessionIdMock.mockRejectedValueOnce(
+        new ScopeAccessError()
+      );
+
+      const response = await postHandler(
+        createPostRequest({
+          message: 'scope test',
+          clinic_id: 'clinic-1',
+        })
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(payload.error).toContain('アクセス権');
+      expect(messageInsertMock).not.toHaveBeenCalled();
     });
 
     it('既存セッションにメッセージを追加できる', async () => {
@@ -284,10 +347,30 @@ describe('Chat API', () => {
           }),
         });
 
-      ensureClinicAccessMock.mockResolvedValue({
-        supabase: {
-          from: jest.fn(() => ({
-            insert: insertMock,
+      const sessionClinicEqMock = jest.fn().mockReturnValue({
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: 'existing-session',
+            clinic_id: 'clinic-1',
+            user_id: 'user-1',
+          },
+          error: null,
+        }),
+      });
+      const sessionIdEqMock = jest.fn().mockReturnValue({
+        eq: sessionClinicEqMock,
+      });
+      const fromMock = jest.fn((table: string) => {
+        if (table === 'chat_sessions') {
+          return {
+            select: jest.fn().mockReturnValue({ eq: sessionIdEqMock }),
+          };
+        }
+        if (table === 'chat_messages') {
+          return { insert: insertMock };
+        }
+        if (table === 'daily_revenue_summary') {
+          return {
             select: jest.fn().mockReturnValue({
               eq: jest.fn().mockReturnValue({
                 order: jest.fn().mockReturnValue({
@@ -295,7 +378,14 @@ describe('Chat API', () => {
                 }),
               }),
             }),
-          })),
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      });
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: {
+          from: fromMock,
         },
         user: { id: 'user-1' },
         permissions: { role: 'staff' },
@@ -313,6 +403,99 @@ describe('Chat API', () => {
       expect(response.status).toBe(200);
       expect(payload.success).toBe(true);
       expect(payload.data.session_id).toBe('existing-session');
+      expect(sessionIdEqMock).toHaveBeenCalledWith('id', 'existing-session');
+      expect(sessionClinicEqMock).toHaveBeenCalledWith('clinic_id', 'clinic-1');
+    });
+
+    it('別クリニックの既存セッションには書き込まない', async () => {
+      const messageInsertMock = jest.fn();
+      const sessionClinicEqMock = jest.fn().mockReturnValue({
+        maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      const sessionIdEqMock = jest.fn().mockReturnValue({
+        eq: sessionClinicEqMock,
+      });
+      const fromMock = jest.fn((table: string) => {
+        if (table === 'chat_sessions') {
+          return {
+            select: jest.fn().mockReturnValue({ eq: sessionIdEqMock }),
+          };
+        }
+        if (table === 'chat_messages') {
+          return { insert: messageInsertMock };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      });
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: fromMock },
+        user: { id: 'user-1' },
+        permissions: { role: 'staff' },
+      });
+
+      const request = createPostRequest({
+        message: '権限外セッションへの送信',
+        clinic_id: 'clinic-1',
+        session_id: 'clinic-2-session',
+      });
+
+      const response = await postHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(payload.error).toContain('アクセス権限がありません');
+      expect(sessionIdEqMock).toHaveBeenCalledWith('id', 'clinic-2-session');
+      expect(sessionClinicEqMock).toHaveBeenCalledWith('clinic_id', 'clinic-1');
+      expect(messageInsertMock).not.toHaveBeenCalled();
+      expect(fromMock).not.toHaveBeenCalledWith('daily_revenue_summary');
+    });
+
+    it('同一クリニックでも別ユーザー所有の既存セッションには書き込まない', async () => {
+      const messageInsertMock = jest.fn();
+      const sessionClinicEqMock = jest.fn().mockReturnValue({
+        maybeSingle: jest.fn().mockResolvedValue({
+          data: {
+            id: 'other-user-session',
+            clinic_id: 'clinic-1',
+            user_id: 'other-user',
+          },
+          error: null,
+        }),
+      });
+      const sessionIdEqMock = jest.fn().mockReturnValue({
+        eq: sessionClinicEqMock,
+      });
+      const fromMock = jest.fn((table: string) => {
+        if (table === 'chat_sessions') {
+          return {
+            select: jest.fn().mockReturnValue({ eq: sessionIdEqMock }),
+          };
+        }
+        if (table === 'chat_messages') {
+          return { insert: messageInsertMock };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      });
+
+      ensureClinicAccessMock.mockResolvedValue({
+        supabase: { from: fromMock },
+        user: { id: 'user-1' },
+        permissions: { role: 'staff' },
+      });
+
+      const request = createPostRequest({
+        message: '別ユーザーのセッションへの送信',
+        clinic_id: 'clinic-1',
+        session_id: 'other-user-session',
+      });
+
+      const response = await postHandler(request);
+      const payload = await response.json();
+
+      expect(response.status).toBe(403);
+      expect(payload.error).toContain('アクセス権限がありません');
+      expect(messageInsertMock).not.toHaveBeenCalled();
+      expect(fromMock).not.toHaveBeenCalledWith('daily_revenue_summary');
     });
 
     it('メッセージが空の場合はエラーを返す', async () => {

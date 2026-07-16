@@ -21,6 +21,12 @@ import {
   type AdminChatContextData,
 } from '@/lib/admin/chat';
 import type { Json } from '@/types/supabase';
+import {
+  assertScopedAdminChatSession,
+  createScopedAdminChatSession,
+  resolveScopedAdminChatSessionId,
+  type ChatSessionScopeRow,
+} from '@/lib/chat/scoped-session';
 
 const ENDPOINT = '/api/admin/chat';
 const CHAT_SESSION_SELECT = '*';
@@ -34,13 +40,7 @@ const GetQuerySchema = z.object({
 
 const toJson = (value: unknown): Json => value as Json;
 
-type ChatSessionRow = {
-  id: string;
-  user_id: string | null;
-  clinic_id: string | null;
-  is_admin_session: boolean;
-  context_data?: unknown;
-};
+type ChatSessionRow = ChatSessionScopeRow;
 
 type ChatMessageRow = {
   id: string;
@@ -205,30 +205,6 @@ async function attachMessagesToSessions(params: {
   }));
 }
 
-async function createSession(params: {
-  client: ReturnType<typeof createScopedAdminContext>['client'];
-  authUserId: string;
-  clinicId: string | null;
-  contextData: AdminChatContextData;
-}): Promise<ChatSessionRow> {
-  const { data, error } = await params.client
-    .from('chat_sessions')
-    .insert({
-      user_id: params.authUserId,
-      clinic_id: params.clinicId,
-      context_data: toJson(params.contextData),
-      is_admin_session: true,
-    })
-    .select('*')
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data as ChatSessionRow;
-}
-
 export async function GET(request: NextRequest) {
   const parsedQuery = GetQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -284,9 +260,19 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    const sessions = (data ?? []) as ChatSessionRow[];
+    for (const session of sessions) {
+      assertScopedAdminChatSession({
+        context: adminCtx,
+        session,
+        userId: auth.id,
+        requestedClinicId: clinicId,
+      });
+    }
+
     const sessionsWithMessages = await attachMessagesToSessions({
       client: adminCtx.client,
-      sessions: (data ?? []) as ChatSessionRow[],
+      sessions,
     });
 
     return createSuccessResponse(sessionsWithMessages);
@@ -331,10 +317,12 @@ export async function POST(request: NextRequest) {
     const input = normalizeAdminChatInput(parsed.data);
     const { auth, permissions } = processResult;
     const adminCtx = createScopedAdminContext(permissions);
-
-    if (input.clinic_id) {
-      adminCtx.assertClinicInScope(input.clinic_id);
+    const scopeProofClinicId =
+      input.clinic_id ?? adminCtx.scopedClinicIds.at(0) ?? null;
+    if (!scopeProofClinicId) {
+      return createErrorResponse('クリニックスコープが必要です', 403);
     }
+    adminCtx.assertClinicInScope(scopeProofClinicId);
 
     const requestedContextData = buildAdminChatContextData({
       clinicId: input.clinic_id,
@@ -347,11 +335,11 @@ export async function POST(request: NextRequest) {
           client: adminCtx.client,
           sessionId: input.session_id,
         })
-      : await createSession({
-          client: adminCtx.client,
-          authUserId: auth.id,
+      : await createScopedAdminChatSession({
+          context: adminCtx,
+          userId: auth.id,
           clinicId: input.clinic_id,
-          contextData: requestedContextData,
+          contextData: toJson(requestedContextData),
         });
 
     if (!session) {
@@ -364,6 +352,12 @@ export async function POST(request: NextRequest) {
       input.clinic_id,
       adminCtx.scopedClinicIds
     );
+    const scopedSessionId = await resolveScopedAdminChatSessionId({
+      context: adminCtx,
+      sessionId: session.id,
+      userId: auth.id,
+      requestedClinicId: input.clinic_id,
+    });
 
     const contextData = input.session_id
       ? resolveSessionContextData(session, requestedContextData)
@@ -372,7 +366,7 @@ export async function POST(request: NextRequest) {
     const { data: userMessage, error: userMessageError } = await adminCtx.client
       .from('chat_messages')
       .insert({
-        session_id: session.id,
+        session_id: scopedSessionId,
         sender: 'user',
         message_text: input.message,
       })
@@ -407,7 +401,7 @@ export async function POST(request: NextRequest) {
     const { data: aiMessage, error: aiMessageError } = await adminCtx.client
       .from('chat_messages')
       .insert({
-        session_id: session.id,
+        session_id: scopedSessionId,
         sender: 'ai',
         message_text: aiResponse.message,
         response_data: toJson(aiResponse.data),

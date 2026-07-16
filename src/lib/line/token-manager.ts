@@ -97,15 +97,17 @@ export async function getLineChannelAccessToken(params: {
       return { ok: false, reason: 'inactive' };
     }
 
+    const cachedTokenExpiresAt = row.token_expires_at;
     if (
       row.access_token_encrypted &&
-      !shouldRefreshLineAccessToken(row.token_expires_at, now)
+      cachedTokenExpiresAt &&
+      !shouldRefreshLineAccessToken(cachedTokenExpiresAt, now)
     ) {
       try {
         return {
           ok: true,
           accessToken: decryptLineCredential(row.access_token_encrypted),
-          expiresAt: row.token_expires_at,
+          expiresAt: cachedTokenExpiresAt,
           refreshed: false,
         };
       } catch {

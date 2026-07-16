@@ -10,6 +10,7 @@ import { resolveManagerAssignedClinicsWithinScope } from '@/lib/auth/manager-sco
 import { normalizeRole } from '@/lib/constants/roles';
 import { AppError, ERROR_CODES } from '@/lib/error-handler';
 import { createAdminClient } from '@/lib/supabase';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 import type { Database } from '@/types/supabase';
 import type {
   ManagerRosterAssignResponse,
@@ -372,6 +373,11 @@ export async function POST(request: NextRequest) {
         403
       );
     }
+
+    await ensureScopedBusinessWriteAccess({
+      permissions: authResult.permissions,
+      targetClinicId: dto.clinic_id,
+    });
 
     let staff: Pick<StaffResourceRow, 'id' | 'name' | 'clinic_id'> | null =
       null;

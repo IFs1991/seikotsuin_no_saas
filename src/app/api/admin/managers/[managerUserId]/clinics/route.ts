@@ -13,7 +13,12 @@ import {
   resolveManagerAssignedClinics,
 } from '@/lib/auth/manager-scope';
 import { normalizeRole } from '@/lib/constants/roles';
-import { createAdminClient, resolveScopedClinicIds } from '@/lib/supabase';
+import {
+  canAccessClinicScope,
+  createAdminClient,
+  resolveScopedClinicIds,
+} from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
 const ADMIN_MANAGER_API_ROLES = ['admin'] as const;
 const ENDPOINT = '/api/admin/managers/[managerUserId]/clinics';
@@ -57,6 +62,8 @@ type ReplaceManagerAssignmentsRpcParams = {
   p_revoke_reason: string | null;
   p_primary_clinic_id?: string | null;
 };
+type GeneratedReplaceManagerAssignmentsRpcParams =
+  Database['public']['Functions']['replace_manager_clinic_assignments']['Args'];
 
 type ManagerAuthoritySnapshot = {
   assigned_clinic_ids: string[];
@@ -303,7 +310,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const actorClinicIds = Array.from(
       new Set(resolveScopedClinicIds(permissions) ?? [])
     );
-    if (actorClinicIds.length === 0) {
+    const actorScopeAnchor = actorClinicIds[0];
+    if (!actorScopeAnchor) {
       return createErrorResponse('クリニックスコープが設定されていません', 403);
     }
 
@@ -394,7 +402,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const actorClinicIds = Array.from(
       new Set(resolveScopedClinicIds(permissions) ?? [])
     );
-    if (actorClinicIds.length === 0) {
+    const actorScopeAnchor = actorClinicIds[0];
+    if (!actorScopeAnchor) {
       return createErrorResponse('クリニックスコープが設定されていません', 403);
     }
 
@@ -427,16 +436,26 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     const actorClinicIdSet = new Set(actorClinicIds);
     if (
-      clinicIds.some(clinicId => !actorClinicIdSet.has(clinicId)) ||
-      (requestedPrimaryClinicId !== undefined &&
-        requestedPrimaryClinicId !== null &&
-        !actorClinicIdSet.has(requestedPrimaryClinicId))
+      clinicIds.some(clinicId => !canAccessClinicScope(permissions, clinicId))
     ) {
       return createErrorResponse(
         '対象クリニックへのアクセス権がありません',
         403
       );
     }
+    const primaryScopeProofClinicId =
+      requestedPrimaryClinicId ?? clinicIds[0] ?? actorScopeAnchor;
+    if (!canAccessClinicScope(permissions, primaryScopeProofClinicId)) {
+      return createErrorResponse(
+        '対象クリニックへのアクセス権がありません',
+        403
+      );
+    }
+    const scopedPrimaryClinicId =
+      requestedPrimaryClinicId === null ||
+      requestedPrimaryClinicId === undefined
+        ? requestedPrimaryClinicId
+        : primaryScopeProofClinicId;
 
     const revokeReason = parsedBody.data.revoke_reason ?? null;
     const adminClient = createAdminClient();
@@ -467,12 +486,15 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     };
 
     if (requestedPrimaryClinicId !== undefined) {
-      rpcParams.p_primary_clinic_id = requestedPrimaryClinicId;
+      rpcParams.p_primary_clinic_id = scopedPrimaryClinicId;
     }
 
     const { error } = await adminClient.rpc(
       'replace_manager_clinic_assignments',
-      rpcParams
+      // PostgreSQL accepts NULL for both nullable parameters. Generated RPC
+      // types do not encode SQL parameter nullability, so keep the correction
+      // scoped to this one verified function contract.
+      rpcParams as GeneratedReplaceManagerAssignmentsRpcParams
     );
 
     if (error) {

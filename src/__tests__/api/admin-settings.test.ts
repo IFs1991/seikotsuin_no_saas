@@ -43,6 +43,7 @@ const logAdminActionMock = AuditLogger.logAdminAction as jest.Mock;
 
 // テスト用定数
 const TEST_CLINIC_ID = '00000000-0000-0000-0000-0000000000a1';
+const OTHER_CLINIC_ID = '00000000-0000-0000-0000-0000000000b2';
 const TEST_USER_ID = '00000000-0000-0000-0000-00000000a001';
 
 const buildRequest = (body: Record<string, unknown> = {}) =>
@@ -500,6 +501,52 @@ describe('admin settings API', () => {
       expect(upsertMock).toHaveBeenCalled();
     });
 
+    it('validated clinic_idが現在のclinic scope外なら書き込まない', async () => {
+      const upsertMock = jest.fn();
+      const supabase = {
+        from: jest.fn().mockReturnValue({ upsert: upsertMock }),
+      };
+      const settings = {
+        name: 'スコープ外整骨院',
+        zipCode: '150-0001',
+        address: '東京都渋谷区',
+        phone: '03-9999-9999',
+        fax: '',
+        email: 'outside@example.com',
+        website: '',
+        description: '',
+        logoUrl: null,
+      };
+
+      processApiRequestMock.mockResolvedValue({
+        success: true,
+        auth: { id: TEST_USER_ID, email: 'admin@example.com', role: 'admin' },
+        permissions: {
+          role: 'admin',
+          clinic_id: TEST_CLINIC_ID,
+          clinic_scope_ids: [TEST_CLINIC_ID],
+        },
+        supabase,
+        body: {
+          clinic_id: OTHER_CLINIC_ID,
+          category: 'clinic_basic',
+          settings,
+        },
+      });
+
+      const { PUT } = await import('@/app/api/admin/settings/route');
+      const response = await PUT(
+        buildRequest({
+          clinic_id: OTHER_CLINIC_ID,
+          category: 'clinic_basic',
+          settings,
+        })
+      );
+
+      expect(response.status).toBe(403);
+      expect(upsertMock).not.toHaveBeenCalled();
+    });
+
     it('communication設定はlegacy入力を正規化しpasswordを保存しない', async () => {
       const upsertMock = jest.fn().mockResolvedValue({ error: null });
 
@@ -683,7 +730,11 @@ describe('admin settings API', () => {
 
       processApiRequestMock.mockResolvedValue({
         success: true,
-        auth: { id: TEST_USER_ID, email: 'manager@example.com', role: 'manager' },
+        auth: {
+          id: TEST_USER_ID,
+          email: 'manager@example.com',
+          role: 'manager',
+        },
         permissions: {
           role: 'manager',
           clinic_id: TEST_CLINIC_ID,
@@ -753,7 +804,11 @@ describe('admin settings API', () => {
 
       processApiRequestMock.mockResolvedValue({
         success: true,
-        auth: { id: TEST_USER_ID, email: 'manager@example.com', role: 'manager' },
+        auth: {
+          id: TEST_USER_ID,
+          email: 'manager@example.com',
+          role: 'manager',
+        },
         permissions: {
           role: 'manager',
           clinic_id: TEST_CLINIC_ID,

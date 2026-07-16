@@ -172,7 +172,8 @@ export async function GET(request: NextRequest) {
     const staffMetrics = {
       dailyPatients:
         (staffPerformance?.reduce((sum, staff) => {
-          const avgDaily = staff.total_visits / Math.max(staff.working_days, 1);
+          const avgDaily =
+            (staff.total_visits ?? 0) / Math.max(staff.working_days ?? 0, 1);
           return sum + avgDaily;
         }, 0) ?? 0) / Math.max(staffPerformance?.length || 1, 1),
       totalRevenue:
@@ -352,7 +353,7 @@ export async function GET(request: NextRequest) {
       shiftAnalysis,
       totalStaff: staffPerformance?.length || 0,
       activeStaff:
-        staffPerformance?.filter(s => s.working_days > 0).length || 0,
+        staffPerformance?.filter(s => (s.working_days ?? 0) > 0).length || 0,
     });
   } catch (error) {
     const authorityUnavailable = createAuthorityUnavailableResponse(error);
@@ -365,7 +366,7 @@ export async function GET(request: NextRequest) {
       apiError = error.toApiError(PATH);
       statusCode = error.statusCode;
     } else if (error && typeof error === 'object' && 'code' in error) {
-      apiError = error;
+      apiError = normalizeSupabaseError(error, PATH);
     } else {
       apiError = createApiError(
         ERROR_CODES.INTERNAL_SERVER_ERROR,

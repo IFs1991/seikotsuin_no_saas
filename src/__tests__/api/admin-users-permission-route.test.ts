@@ -76,6 +76,23 @@ function createActiveAssignmentQuery(
   return query;
 }
 
+function createFinalAwaitableQuery<T extends { eq: jest.Mock }>(
+  query: T,
+  error: unknown = null
+) {
+  const terminalResult = { error };
+  const finalQuery = Object.assign(query, {
+    then: jest.fn(
+      (
+        resolve: (value: typeof terminalResult) => unknown,
+        reject?: (reason: unknown) => unknown
+      ) => Promise.resolve(terminalResult).then(resolve, reject)
+    ),
+  });
+  finalQuery.eq.mockReturnValue(finalQuery);
+  return finalQuery;
+}
+
 describe('PATCH /api/admin/users/[permission_id]', () => {
   const permissionId = '11111111-1111-4111-8111-111111111111';
   const userId = '22222222-2222-4222-8222-222222222222';
@@ -135,10 +152,10 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         error: null,
       }),
     };
-    const resourcesQuery = {
+    const resourcesQuery = createFinalAwaitableQuery({
       update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
+      eq: jest.fn(),
+    });
     const userPermissionQueries = [existingQuery, updateQuery];
 
     createAdminClientMock.mockReturnValue({
@@ -189,6 +206,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         clinic_id: null,
       })
     );
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(updateQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         is_bookable: false,
@@ -196,6 +215,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       })
     );
     expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(userScopedSupabase.from).not.toHaveBeenCalled();
     expect(logAdminActionMock).toHaveBeenCalledWith(
       'admin-1',
@@ -328,10 +348,10 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       }),
       delete: jest.fn().mockReturnThis(),
     };
-    const resourcesQuery = {
+    const resourcesQuery = createFinalAwaitableQuery({
       update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
+      eq: jest.fn(),
+    });
     const adminClient = {
       from: jest.fn((table: string) => {
         if (table === 'user_permissions') return permissionQuery;
@@ -364,6 +384,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
     expect(response.status).toBe(200);
     expect(permissionQuery.maybeSingle).toHaveBeenCalled();
     expect(permissionQuery.delete).toHaveBeenCalled();
+    expect(permissionQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(permissionQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         is_bookable: false,
@@ -371,6 +393,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       })
     );
     expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
   });
 
   it('予約担当外ロールへの更新時に既存 resource を予約不可にする', async () => {
@@ -405,10 +428,10 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         error: null,
       }),
     };
-    const resourcesQuery = {
+    const resourcesQuery = createFinalAwaitableQuery({
       update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
+      eq: jest.fn(),
+    });
     const userPermissionQueries = [existingQuery, updateQuery];
     const adminClient = {
       from: jest.fn((table: string) => {
@@ -451,6 +474,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
 
     expect(response.status).toBe(200);
     expect(existingQuery.maybeSingle).toHaveBeenCalled();
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(updateQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         is_bookable: false,
@@ -458,6 +483,7 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
       })
     );
     expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
   });
 
   it('manager権限にactive assignmentがある場合はrole downgradeを409で拒否する', async () => {
@@ -733,6 +759,8 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         clinic_id: clinicId,
       })
     );
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(updateQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.upsert).toHaveBeenCalled();
   });
 
@@ -878,10 +906,10 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         error: null,
       }),
     };
-    const resourcesQuery = {
+    const resourcesQuery = createFinalAwaitableQuery({
       update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
+      eq: jest.fn(),
+    });
     const userPermissionQueries = [existingQuery, updateQuery];
     const adminClient = {
       from: jest.fn((table: string) => {
@@ -934,11 +962,15 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         clinic_id: clinicId,
       })
     );
+    expect(updateQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(updateQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         is_bookable: false,
       })
     );
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
   });
 
   it.each(['admin', 'manager'] as const)(
@@ -1081,14 +1113,14 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
         error: null,
       }),
     };
-    const deleteQuery = {
+    const deleteQuery = createFinalAwaitableQuery({
       delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
-    const resourcesQuery = {
+      eq: jest.fn(),
+    });
+    const resourcesQuery = createFinalAwaitableQuery({
       update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockResolvedValue({ error: null }),
-    };
+      eq: jest.fn(),
+    });
     const userPermissionQueries = [existingQuery, deleteQuery];
     const adminClient = {
       from: jest.fn((table: string) => {
@@ -1131,10 +1163,14 @@ describe('PATCH /api/admin/users/[permission_id]', () => {
 
     expect(response.status).toBe(200);
     expect(deleteQuery.delete).toHaveBeenCalled();
+    expect(deleteQuery.eq).toHaveBeenCalledWith('id', permissionId);
+    expect(deleteQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
     expect(resourcesQuery.update).toHaveBeenCalledWith(
       expect.objectContaining({
         is_bookable: false,
       })
     );
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('id', userId);
+    expect(resourcesQuery.eq).toHaveBeenCalledWith('clinic_id', clinicId);
   });
 });

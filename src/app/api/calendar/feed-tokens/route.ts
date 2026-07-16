@@ -246,6 +246,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Keep one route-level, value-bound scope denial in front of every
+    // service-role operation. The branch checks above retain their specific
+    // messages while this common guard makes the write boundary fail closed.
+    if (!targetClinicId || !canonicalClinicIds.includes(targetClinicId)) {
+      return createErrorResponse('対象へのアクセス権がありません', 403);
+    }
+
     // Scope is fixed from the authenticated DB authority before any
     // service-role read or write is allowed.
     const adminClient = createAdminClient();
@@ -265,6 +272,9 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
+      if (!targetStaffProfileId) {
+        return createErrorResponse('スタッフ用feedの対象指定が不正です', 400);
+      }
       const allowed = await canManageStaffFeed({
         adminClient,
         userId: authResult.auth.id,

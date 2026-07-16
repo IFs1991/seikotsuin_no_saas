@@ -23,7 +23,6 @@ import {
   getAdminUsersRoleForbiddenMessage,
   isAdminUsersActor,
   resolveScopedAdminUsersClinicIds,
-  isScopedAdminUsersActor,
 } from '../access';
 import { isPermissionStaffResourceRole } from '@/lib/reservations/staff-resource-candidates';
 import {
@@ -68,23 +67,21 @@ function isManagerPermissionRole(role: string | null | undefined): boolean {
 const buildPermissionStaffResourceRow = ({
   actorUserId,
   permission,
+  clinicId,
   timestamp,
 }: {
   actorUserId: string;
   permission: PermissionMutationRow;
+  clinicId: string;
   timestamp: string;
 }) => {
-  if (
-    !permission.staff_id ||
-    !permission.clinic_id ||
-    !isPermissionStaffResourceRole(permission.role)
-  ) {
+  if (!permission.staff_id || !isPermissionStaffResourceRole(permission.role)) {
     return null;
   }
 
   return {
     id: permission.staff_id,
-    clinic_id: permission.clinic_id,
+    clinic_id: clinicId,
     name: permission.username,
     type: 'staff',
     staff_code: `${permission.role}-${permission.staff_id}`,
@@ -102,11 +99,13 @@ async function syncPermissionStaffResource({
   adminSupabase,
   actorUserId,
   permission,
+  clinicId,
   timestamp,
 }: {
   adminSupabase: ReturnType<typeof createAdminClient>;
   actorUserId: string;
   permission: PermissionMutationRow;
+  clinicId: string;
   timestamp: string;
 }) {
   if (!permission.staff_id) {
@@ -120,6 +119,7 @@ async function syncPermissionStaffResource({
     return disablePermissionStaffResource({
       adminSupabase,
       permission,
+      clinicId,
       timestamp,
     });
   }
@@ -127,6 +127,7 @@ async function syncPermissionStaffResource({
   const resourceRow = buildPermissionStaffResourceRow({
     actorUserId,
     permission,
+    clinicId,
     timestamp,
   });
 
@@ -142,10 +143,12 @@ async function syncPermissionStaffResource({
 async function disablePermissionStaffResource({
   adminSupabase,
   permission,
+  clinicId,
   timestamp,
 }: {
   adminSupabase: ReturnType<typeof createAdminClient>;
   permission: ExistingPermissionRow | null;
+  clinicId: string;
   timestamp: string;
 }) {
   if (!permission?.staff_id) {
@@ -158,7 +161,8 @@ async function disablePermissionStaffResource({
       is_bookable: false,
       updated_at: timestamp,
     })
-    .eq('id', permission.staff_id);
+    .eq('id', permission.staff_id)
+    .eq('clinic_id', clinicId);
 }
 
 async function loadExistingPermission(
@@ -187,13 +191,15 @@ function shouldGuardManagerPermissionChange(
 async function deletePermission(
   adminSupabase: ReturnType<typeof createAdminClient>,
   permissionId: string,
-  knownPermission: ExistingPermissionRow | null
+  knownPermission: ExistingPermissionRow | null,
+  clinicId: string
 ) {
   if (knownPermission) {
     const { error } = await adminSupabase
       .from('user_permissions')
       .delete()
-      .eq('id', permissionId);
+      .eq('id', permissionId)
+      .eq('clinic_id', clinicId);
 
     return { data: knownPermission, error };
   }
@@ -202,6 +208,7 @@ async function deletePermission(
     .from('user_permissions')
     .delete()
     .eq('id', permissionId)
+    .eq('clinic_id', clinicId)
     .select(PERMISSION_RESOURCE_SELECT)
     .maybeSingle();
 }
@@ -220,7 +227,7 @@ export async function PATCH(
     });
 
     if (!processResult.success) {
-      return processResult.error!;
+      return processResult.error;
     }
 
     const { auth, permissions, body } = processResult;
@@ -238,75 +245,55 @@ export async function PATCH(
     }
 
     const adminSupabase = createAdminClient();
-    let existingPermission: ExistingPermissionRow | null = null;
-    const isScopedActor = isScopedAdminUsersActor(permissions);
-    const shouldLoadExistingPermission =
-      isScopedActor ||
-      parsed.data.revoke === true ||
-      parsed.data.clinic_id !== undefined ||
-      (parsed.data.role !== undefined && parsed.data.role !== 'manager');
-    const scopedClinicIds = isScopedActor
-      ? await resolveScopedAdminUsersClinicIds({
-          adminClient: adminSupabase,
-          actorUserId: auth.id,
-          permissions,
-        })
-      : null;
-
-    if (isScopedActor && !scopedClinicIds?.length) {
+    const scopedClinicIds = await resolveScopedAdminUsersClinicIds({
+      adminClient: adminSupabase,
+      actorUserId: auth.id,
+      permissions,
+    });
+    if (!scopedClinicIds?.length) {
       return createErrorResponse(
         ADMIN_USERS_ACCESS_MESSAGES.clinicScopeMissing,
         403
       );
     }
 
-    if (shouldLoadExistingPermission) {
-      const { data, error } = await loadExistingPermission(
-        adminSupabase,
-        permission_id
-      );
-
-      if (error) {
-        logError(error, {
-          endpoint: '/api/admin/users/[permission_id]',
-          method: 'PATCH',
-          userId: auth.id,
-          params: { permission_id },
-        });
-        return createErrorResponse('権限情報の取得に失敗しました', 500);
-      }
-
-      if (!data && isScopedActor) {
-        return createErrorResponse('権限情報が見つかりません', 404);
-      }
-
-      existingPermission = data ?? null;
+    const { data: existingPermission, error: existingPermissionError } =
+      await loadExistingPermission(adminSupabase, permission_id);
+    if (existingPermissionError) {
+      logError(existingPermissionError, {
+        endpoint: '/api/admin/users/[permission_id]',
+        method: 'PATCH',
+        userId: auth.id,
+        params: { permission_id },
+      });
+      return createErrorResponse('権限情報の取得に失敗しました', 500);
     }
-
-    if (isScopedActor && existingPermission) {
-      if (
-        !canAccessResolvedScopedAdminUsersClinic(
-          scopedClinicIds,
-          existingPermission.clinic_id
-        )
-      ) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-          403
-        );
-      }
-
-      if (
-        !canAdminUsersActorManagePermissionRole(
-          permissions,
-          existingPermission.role
-        )
-      ) {
-        return createErrorResponse(
-          getAdminUsersPermissionForbiddenMessage(permissions),
-          403
-        );
-      }
+    if (!existingPermission) {
+      return createErrorResponse('権限情報が見つかりません', 404);
+    }
+    const existingClinicId = existingPermission.clinic_id;
+    if (
+      !existingClinicId ||
+      !canAccessResolvedScopedAdminUsersClinic(
+        scopedClinicIds,
+        existingClinicId
+      )
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403
+      );
+    }
+    if (
+      !canAdminUsersActorManagePermissionRole(
+        permissions,
+        existingPermission.role
+      )
+    ) {
+      return createErrorResponse(
+        getAdminUsersPermissionForbiddenMessage(permissions),
+        403
+      );
     }
 
     if (
@@ -347,7 +334,8 @@ export async function PATCH(
       const { data: revokedPermission, error } = await deletePermission(
         adminSupabase,
         permission_id,
-        existingPermission
+        existingPermission,
+        existingClinicId
       );
 
       if (error) {
@@ -363,6 +351,7 @@ export async function PATCH(
       const resourceSyncResult = await disablePermissionStaffResource({
         adminSupabase,
         permission: (revokedPermission as ExistingPermissionRow | null) ?? null,
+        clinicId: existingClinicId,
         timestamp,
       });
       if (resourceSyncResult.error) {
@@ -386,63 +375,55 @@ export async function PATCH(
     }
 
     const timestamp = new Date().toISOString();
+    const effectiveRole = parsed.data.role ?? existingPermission?.role;
+    const shouldClearManagerPrimaryClinic =
+      isManagerPermissionRole(effectiveRole) &&
+      (parsed.data.role !== undefined || parsed.data.clinic_id !== undefined);
+
+    if (
+      parsed.data.role !== undefined &&
+      !canAdminUsersActorManagePermissionRole(permissions, parsed.data.role)
+    ) {
+      return createErrorResponse(
+        getAdminUsersRoleForbiddenMessage(permissions),
+        403
+      );
+    }
+
+    const targetClinicId =
+      parsed.data.clinic_id !== undefined
+        ? parsed.data.clinic_id
+        : existingPermission.clinic_id;
+
+    if (!targetClinicId) {
+      return createErrorResponse('clinic_id が必須です', 400);
+    }
+
+    if (
+      !canAccessResolvedScopedAdminUsersClinic(scopedClinicIds, targetClinicId)
+    ) {
+      return createErrorResponse(
+        ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
+        403
+      );
+    }
+
     const updatePayload: {
       updated_at: string;
       role?: AdminUserRole;
-      clinic_id?: string | null;
+      clinic_id: string | null;
     } = {
       updated_at: timestamp,
+      clinic_id: targetClinicId,
     };
-
     if (parsed.data.role !== undefined) updatePayload.role = parsed.data.role;
-    if (parsed.data.clinic_id !== undefined)
-      updatePayload.clinic_id = parsed.data.clinic_id;
-
-    const effectiveRole = parsed.data.role ?? existingPermission?.role;
-    if (
-      isManagerPermissionRole(effectiveRole) &&
-      (parsed.data.role !== undefined || parsed.data.clinic_id !== undefined)
-    ) {
-      updatePayload.clinic_id = null;
-    }
-
-    if (isScopedActor) {
-      if (
-        parsed.data.role !== undefined &&
-        !canAdminUsersActorManagePermissionRole(permissions, parsed.data.role)
-      ) {
-        return createErrorResponse(
-          getAdminUsersRoleForbiddenMessage(permissions),
-          403
-        );
-      }
-
-      const targetClinicId =
-        parsed.data.clinic_id !== undefined
-          ? parsed.data.clinic_id
-          : existingPermission?.clinic_id;
-
-      if (!targetClinicId) {
-        return createErrorResponse('clinic_id が必須です', 400);
-      }
-
-      if (
-        !canAccessResolvedScopedAdminUsersClinic(
-          scopedClinicIds,
-          targetClinicId
-        )
-      ) {
-        return createErrorResponse(
-          ADMIN_USERS_ACCESS_MESSAGES.clinicAccessForbidden,
-          403
-        );
-      }
-    }
+    if (shouldClearManagerPrimaryClinic) updatePayload.clinic_id = null;
 
     const { data, error } = await adminSupabase
       .from('user_permissions')
       .update(updatePayload)
       .eq('id', permission_id)
+      .eq('clinic_id', existingClinicId)
       .select(
         'id, staff_id, role, clinic_id, username, created_at, clinics(name)'
       )
@@ -470,6 +451,7 @@ export async function PATCH(
       adminSupabase,
       actorUserId: auth.id,
       permission: data as PermissionMutationRow,
+      clinicId: targetClinicId,
       timestamp,
     });
     if (resourceSyncResult.error) {

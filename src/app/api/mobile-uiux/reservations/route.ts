@@ -78,11 +78,6 @@ type ReservationResourceGuardRow = Pick<
   'id' | 'type' | 'is_deleted' | 'is_active' | 'is_bookable' | 'nomination_fee'
 >;
 
-type ReservationMenuPricingRow = Pick<
-  Database['public']['Tables']['menus']['Row'],
-  'id' | 'price'
->;
-
 type ReservationPricingInputs = {
   menuPrice: number;
   staffNominationFee: number;
@@ -336,7 +331,7 @@ function enqueueCreatedWithoutBlocking(
     clinic_id: row.clinic_id,
     customer_id: row.customer_id,
     menu_id: row.menu_id,
-    status: row.status,
+    status: row.status ?? 'unconfirmed',
     start_time: row.start_time,
     end_time: row.end_time,
     staff_id: row.staff_id,
@@ -369,8 +364,12 @@ export async function GET(request: NextRequest) {
   const clinicId = request.nextUrl.searchParams.get('clinic_id');
   const staffId = request.nextUrl.searchParams.get('staff_id');
   const clinicIdError = validateUuid(clinicId, 'clinic_id');
-  if (clinicIdError) {
-    return buildMobileUiuxFailure(400, 'BAD_REQUEST', clinicIdError);
+  if (clinicIdError || !clinicId) {
+    return buildMobileUiuxFailure(
+      400,
+      'BAD_REQUEST',
+      clinicIdError ?? 'clinic_id は必須です'
+    );
   }
 
   const staffIdError = validateOptionalUuid(staffId, 'staff_id');
@@ -499,7 +498,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dto = result.dto;
+    const dto = {
+      ...result.dto,
+      selectedOptions:
+        result.dto.selectedOptions === undefined
+          ? undefined
+          : normalizeDtoSelectedOptions(result.dto.selectedOptions),
+      isStaffRequested: result.dto.isStaffRequested ?? false,
+    };
     const entitlement = await fetchMobileUiuxClinicEntitlement({
       supabase: result.supabase,
       flags,
@@ -652,7 +658,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const dto = result.dto;
+    const dto = {
+      ...result.dto,
+      selectedOptions:
+        result.dto.selectedOptions === undefined
+          ? undefined
+          : normalizeDtoSelectedOptions(result.dto.selectedOptions),
+    };
     const entitlement = await fetchMobileUiuxClinicEntitlement({
       supabase: result.supabase,
       flags,

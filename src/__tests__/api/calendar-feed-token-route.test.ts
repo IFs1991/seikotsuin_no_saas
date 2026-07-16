@@ -178,6 +178,16 @@ async function postToken(body: object) {
   );
 }
 
+async function deleteToken(tokenId: string) {
+  const { DELETE } = await import('@/app/api/calendar/feed-tokens/route');
+  return await DELETE(
+    new NextRequest(
+      `http://localhost/api/calendar/feed-tokens?token_id=${tokenId}`,
+      { method: 'DELETE' }
+    )
+  );
+}
+
 describe('POST /api/calendar/feed-tokens', () => {
   let tokenQuery: CalendarFeedTokenQueryMock;
 
@@ -481,5 +491,48 @@ describe('POST /api/calendar/feed-tokens', () => {
       error: '認証情報を確認できません。時間をおいて再度お試しください',
     });
     expect(tokenQuery.inserted).toBeNull();
+  });
+});
+
+describe('DELETE /api/calendar/feed-tokens', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuth();
+  });
+
+  it('revokes only the token created by the authenticated user', async () => {
+    const tokenId = '44444444-4444-4444-8444-444444444444';
+    const createdByEq = jest.fn().mockResolvedValue({ error: null });
+    const idEq = jest.fn().mockReturnValue({ eq: createdByEq });
+    const update = jest.fn().mockReturnValue({ eq: idEq });
+    const from = jest.fn().mockReturnValue({ update });
+    createAdminClientMock.mockReturnValue({ from });
+
+    const response = await deleteToken(tokenId);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toEqual({ success: true, data: { revoked: true } });
+    expect(from).toHaveBeenCalledWith('calendar_feed_tokens');
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ is_active: false })
+    );
+    expect(idEq).toHaveBeenCalledWith('id', tokenId);
+    expect(createdByEq).toHaveBeenCalledWith('created_by', 'manager-user');
+  });
+
+  it('does not create a service-role client when authentication fails', async () => {
+    processApiRequestMock.mockResolvedValue({
+      success: false,
+      error: Response.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      ),
+    });
+
+    const response = await deleteToken('44444444-4444-4444-8444-444444444444');
+
+    expect(response.status).toBe(401);
+    expect(createAdminClientMock).not.toHaveBeenCalled();
   });
 });

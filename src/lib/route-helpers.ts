@@ -5,7 +5,7 @@
  * - processClinicScopedBody: processApiRequest 二重呼び出しの解消
  */
 import { NextRequest, NextResponse } from 'next/server';
-import type { ZodType } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 
 import {
   createErrorResponse,
@@ -116,11 +116,11 @@ export type ProcessClinicScopedBodyOptions = Pick<
  * 新パターン:
  *   const result = await processClinicScopedBody(request, schema);          // 1回で完了
  */
-export async function processClinicScopedBody<T>(
+export async function processClinicScopedBody<TOutput, TInput>(
   request: NextRequest,
-  schema: ZodType<T>,
+  schema: ZodType<TOutput, ZodTypeDef, TInput>,
   options?: ProcessClinicScopedBodyOptions
-): Promise<ClinicScopedBodyResult<T>> {
+): Promise<ClinicScopedBodyResult<TOutput>> {
   // 1. Auth + origin + body を 1 回で取得
   const apiOptions: ProcessApiOptions = {
     requireBody: true,

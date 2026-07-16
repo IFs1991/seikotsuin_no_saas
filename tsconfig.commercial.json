@@ -6,13 +6,16 @@
   },
   "include": [
     "next-env.d.ts",
+    "src/app/api/**/*.ts",
+    "src/app/api/**/*.tsx",
+    "src/lib/security/**/*.ts",
+    "src/lib/security/**/*.tsx",
+    "src/@types/**/*.d.ts",
+    "src/types/**/*.d.ts",
     "src/lib/api-helpers.ts",
     "src/lib/route-helpers.ts",
     "src/lib/auth/**/*.ts",
-    "src/lib/billing/**/*.ts",
-    "src/app/api/auth/**/*.ts",
-    "src/app/api/stripe/webhook/route.ts",
-    "src/app/api/webhooks/**/*.ts"
+    "src/lib/billing/**/*.ts"
   ],
   "exclude": [
     "node_modules",

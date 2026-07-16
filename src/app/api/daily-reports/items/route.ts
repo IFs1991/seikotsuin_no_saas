@@ -1123,6 +1123,8 @@ export async function POST(request: NextRequest) {
     if (!result.success) return result.error;
 
     const dto = result.dto;
+    const requestedBillingType = dto.billingType ?? 'private';
+    const durationMinutes = dto.durationMinutes ?? 0;
     const supabase = createScopedDailyReportClient(
       result.permissions,
       dto.clinic_id
@@ -1130,9 +1132,9 @@ export async function POST(request: NextRequest) {
 
     const revenueContextCode =
       dto.revenueContextCode ??
-      deriveRevenueContextCodeFromBillingType(dto.billingType);
+      deriveRevenueContextCodeFromBillingType(requestedBillingType);
     try {
-      assertBillingTypeCompatible(dto.billingType, revenueContextCode);
+      assertBillingTypeCompatible(requestedBillingType, revenueContextCode);
     } catch (error) {
       return createErrorResponse(
         error instanceof Error
@@ -1166,8 +1168,8 @@ export async function POST(request: NextRequest) {
       staff_resource_id: dto.staffResourceId ?? null,
       patient_name: dto.patientName,
       treatment_name: dto.treatmentName,
-      duration_minutes: dto.durationMinutes,
-      fee: dto.fee,
+      duration_minutes: durationMinutes,
+      fee: dto.fee ?? 0,
       billing_type: billingType,
       revenue_context_code: revenueContextCode,
       revenue_context_source: 'manual',
@@ -1196,7 +1198,7 @@ export async function POST(request: NextRequest) {
 
       const window = buildReservationWindow(
         dto.nextReservationStartTime,
-        dto.durationMinutes
+        durationMinutes
       );
       if (!window) {
         return createErrorResponse(
@@ -1303,9 +1305,20 @@ export async function PATCH(request: NextRequest) {
 
     let hasItemChanges = Object.keys(nextSync.patch).length > 0;
     const updatePayload: DailyReportItemUpdate = {
-      ...nextSync.patch,
+      clinic_id: dto.clinic_id,
       updated_by: result.auth.id,
     };
+    if (nextSync.patch.next_reservation_start_time !== undefined) {
+      updatePayload.next_reservation_start_time =
+        nextSync.patch.next_reservation_start_time;
+    }
+    if (nextSync.patch.next_reservation_end_time !== undefined) {
+      updatePayload.next_reservation_end_time =
+        nextSync.patch.next_reservation_end_time;
+    }
+    if (nextSync.patch.next_reservation_id !== undefined) {
+      updatePayload.next_reservation_id = nextSync.patch.next_reservation_id;
+    }
 
     if (
       dto.patientName !== undefined &&

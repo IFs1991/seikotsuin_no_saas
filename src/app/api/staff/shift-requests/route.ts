@@ -28,6 +28,7 @@ import type {
   ShiftRequestRow,
 } from '@/lib/staff/shift-requests/types';
 import type { Json } from '@/types/supabase';
+import { ensureScopedBusinessWriteAccess } from '@/lib/billing/business-write';
 
 const PATH = '/api/staff/shift-requests';
 const SHIFT_REQUEST_SELECT =
@@ -205,6 +206,11 @@ export async function POST(request: NextRequest) {
         requireClinicMatch: true,
       }
     );
+
+    await ensureScopedBusinessWriteAccess({
+      permissions,
+      targetClinicId: dto.clinic_id,
+    });
 
     const period = await loadRequestPeriod(
       supabase,

@@ -434,7 +434,7 @@ export class PublicMyPageService {
   ): PublicMyReservation {
     const deadlineAt = getCancellationDeadline(row.start_time, settings);
     const canCancel =
-      Boolean(deadlineAt) &&
+      deadlineAt !== null &&
       !isTerminalReservationStatus(row.status) &&
       this.now().getTime() <= new Date(deadlineAt).getTime();
 
