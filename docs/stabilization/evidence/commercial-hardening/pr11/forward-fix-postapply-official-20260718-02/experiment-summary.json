@@ -1,0 +1,1815 @@
+{
+  "fixedLimits": {
+    "performance": {
+      "created_by_read_100_of_20000": {
+        "executionMs": 2.851
+      },
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      },
+      "shift_full_only_insert_2000": {
+        "executionMs": 198.387,
+        "walBytes": 1868505.6
+      },
+      "shift_full_plus_partial_insert_2000": {
+        "executionMs": 219.224,
+        "walBytes": 2028773.6
+      },
+      "recipient_sparse_composite_insert_1000": {
+        "executionMs": 46.665,
+        "walBytes": 600946.5
+      },
+      "recipient_dense_composite_insert_1000": {
+        "executionMs": 81.761,
+        "walBytes": 755065
+      }
+    },
+    "blocks": {
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      }
+    },
+    "rlsRead": {
+      "customer_insurance_coverages": {
+        "executionMs": 66.757
+      },
+      "menu_billing_profiles": {
+        "executionMs": 63.3855
+      }
+    },
+    "rlsWrite": {
+      "coverage_insert_2000": {
+        "executionMs": 124.709,
+        "walBytes": 1220025
+      },
+      "menu_profile_insert_2000": {
+        "executionMs": 135.944,
+        "walBytes": 1718510
+      }
+    }
+  },
+  "writeGates": {
+    "coverage_insert_2000": {
+      "baselineExecutionMs": 113.892,
+      "baselineWalBytes": 976020,
+      "executionMs": 124.709,
+      "walBytes": 1220025,
+      "gateSource": "predeclared-fixed-limit"
+    },
+    "menu_profile_insert_2000": {
+      "baselineExecutionMs": 99.773,
+      "baselineWalBytes": 1374808,
+      "executionMs": 135.944,
+      "walBytes": 1718510,
+      "gateSource": "predeclared-fixed-limit"
+    }
+  },
+  "primaryExecutionGateCount": 9,
+  "primaryWalGateCount": 6,
+  "auxiliaryExecutionGateCount": 2,
+  "auxiliaryWalGateCount": 2,
+  "performancePlanContractPass": true,
+  "performance": {
+    "created_by_read_100_of_20000": {
+      "executionValues": [
+        0.097,
+        0.044,
+        0.047
+      ],
+      "executionMedian": 0.047,
+      "fixedExecutionLimit": 2.851,
+      "executionPass": true,
+      "walValues": [
+        0,
+        0,
+        0
+      ],
+      "walMedian": null,
+      "fixedWalLimit": null,
+      "walPass": null,
+      "diagnosticBeforeExecutionValues": [
+        0.049,
+        0.077,
+        0.046
+      ],
+      "diagnosticBeforeExecutionMedian": 0.049,
+      "pass": true
+    },
+    "sparse_insert_10000": {
+      "executionValues": [
+        429.129,
+        490.821,
+        363.528
+      ],
+      "executionMedian": 429.129,
+      "fixedExecutionLimit": 435.7373,
+      "executionPass": true,
+      "walValues": [
+        8583244,
+        8594140,
+        8579540
+      ],
+      "walMedian": 8583244,
+      "fixedWalLimit": 9292168.2,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        614.97,
+        508.593,
+        413.669
+      ],
+      "diagnosticBeforeExecutionMedian": 508.593,
+      "pass": true
+    },
+    "dense_insert_10000": {
+      "executionValues": [
+        549.305,
+        638.926,
+        473.948
+      ],
+      "executionMedian": 549.305,
+      "fixedExecutionLimit": 521.55125,
+      "executionPass": false,
+      "walValues": [
+        9508404,
+        9497580,
+        9493780
+      ],
+      "walMedian": 9497580,
+      "fixedWalLimit": 11133665,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        596.158,
+        565.5,
+        554.563
+      ],
+      "diagnosticBeforeExecutionMedian": 565.5,
+      "pass": false
+    },
+    "shift_full_only_insert_2000": {
+      "executionValues": [
+        146.153,
+        163.037,
+        101.611
+      ],
+      "executionMedian": 146.153,
+      "fixedExecutionLimit": 198.387,
+      "executionPass": true,
+      "walValues": [
+        1697664,
+        1697712,
+        1697712
+      ],
+      "walMedian": 1697712,
+      "fixedWalLimit": 1868505.6,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        215.862,
+        106.63,
+        82.498
+      ],
+      "diagnosticBeforeExecutionMedian": 106.63,
+      "pass": true
+    },
+    "shift_full_plus_partial_insert_2000": {
+      "executionValues": [
+        120.435,
+        100.541,
+        136.632
+      ],
+      "executionMedian": 120.435,
+      "fixedExecutionLimit": 219.224,
+      "executionPass": true,
+      "walValues": [
+        1886696,
+        1886648,
+        1886696
+      ],
+      "walMedian": 1886696,
+      "fixedWalLimit": 2028773.6,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        95.201,
+        99.707,
+        119.968
+      ],
+      "diagnosticBeforeExecutionMedian": 99.707,
+      "pass": true
+    },
+    "recipient_sparse_composite_insert_1000": {
+      "executionValues": [
+        100.247,
+        20.475,
+        20.591
+      ],
+      "executionMedian": 20.591,
+      "fixedExecutionLimit": 46.665,
+      "executionPass": true,
+      "walValues": [
+        572330,
+        572330,
+        572354
+      ],
+      "walMedian": 572330,
+      "fixedWalLimit": 600946.5,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        22.188,
+        27.145,
+        27.93
+      ],
+      "diagnosticBeforeExecutionMedian": 27.145,
+      "pass": true
+    },
+    "recipient_dense_composite_insert_1000": {
+      "executionValues": [
+        26.622,
+        38.238,
+        27.794
+      ],
+      "executionMedian": 27.794,
+      "fixedExecutionLimit": 81.761,
+      "executionPass": true,
+      "walValues": [
+        723106,
+        723034,
+        723106
+      ],
+      "walMedian": 723106,
+      "fixedWalLimit": 755065,
+      "walPass": true,
+      "diagnosticBeforeExecutionValues": [
+        118.068,
+        77.404,
+        28.144
+      ],
+      "diagnosticBeforeExecutionMedian": 77.404,
+      "pass": true
+    }
+  },
+  "blocks": {
+    "sparse_insert_10000": {
+      "executionValues": [
+        429.129,
+        490.821,
+        363.528
+      ],
+      "executionMedian": 429.129,
+      "walValues": [
+        8583244,
+        8594140,
+        8579540
+      ],
+      "walMedian": 8583244,
+      "contracts": [
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        },
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        },
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        }
+      ],
+      "catalogContracts": [
+        true,
+        true,
+        true
+      ],
+      "contractPass": true,
+      "pass": true
+    },
+    "dense_insert_10000": {
+      "executionValues": [
+        549.305,
+        638.926,
+        473.948
+      ],
+      "executionMedian": 549.305,
+      "walValues": [
+        9508404,
+        9497580,
+        9493780
+      ],
+      "walMedian": 9497580,
+      "contracts": [
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        },
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        },
+        {
+          "pass": true,
+          "triggerNames": [
+            "RI_ConstraintTrigger_c_18934",
+            "RI_ConstraintTrigger_c_18939",
+            "RI_ConstraintTrigger_c_18944",
+            "RI_ConstraintTrigger_c_21913",
+            "blocks_clinic_ref_check"
+          ],
+          "clinicTrigger": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "blocks_clinic_ref_check"
+          },
+          "compositeForeignKey": {
+            "Calls": 10000,
+            "Relation": "blocks",
+            "Trigger Name": "RI_ConstraintTrigger_c_21913",
+            "Constraint Name": "blocks_resource_id_fkey"
+          }
+        }
+      ],
+      "catalogContracts": [
+        true,
+        true,
+        true
+      ],
+      "contractPass": true,
+      "pass": false
+    }
+  },
+  "rlsRead": {
+    "customer_insurance_coverages": {
+      "executionValues": [
+        3.372,
+        2.961,
+        2.904
+      ],
+      "executionMedian": 2.961,
+      "contracts": [
+        {
+          "pass": true,
+          "indexNames": [
+            "customer_insurance_coverages_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 351,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "customer_insurance_coverages",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "customer_insurance_coverages",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 597,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 351,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "customer_insurance_coverages",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "customer_insurance_coverages",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        },
+        {
+          "pass": true,
+          "indexNames": [
+            "customer_insurance_coverages_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 351,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "customer_insurance_coverages",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "customer_insurance_coverages",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 597,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 351,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "customer_insurance_coverages",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "customer_insurance_coverages",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        },
+        {
+          "pass": true,
+          "indexNames": [
+            "customer_insurance_coverages_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 351,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "customer_insurance_coverages",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "customer_insurance_coverages",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 597,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 351,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "customer_insurance_coverages",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "customer_insurance_coverages_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "customer_insurance_coverages",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 597,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        }
+      ],
+      "catalogContracts": [
+        true,
+        true,
+        true
+      ],
+      "pass": true
+    },
+    "menu_billing_profiles": {
+      "executionValues": [
+        1.489,
+        1.212,
+        1.178
+      ],
+      "executionMedian": 1.212,
+      "contracts": [
+        {
+          "pass": true,
+          "indexNames": [
+            "menu_billing_profiles_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 34,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "menu_billing_profiles",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "menu_billing_profiles",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 274,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 34,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "menu_billing_profiles",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "menu_billing_profiles",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        },
+        {
+          "pass": true,
+          "indexNames": [
+            "menu_billing_profiles_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 34,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "menu_billing_profiles",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "menu_billing_profiles",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 274,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 34,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "menu_billing_profiles",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "menu_billing_profiles",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        },
+        {
+          "pass": true,
+          "indexNames": [
+            "menu_billing_profiles_clinic_id_id_idx"
+          ],
+          "nodeTypes": [
+            "Limit",
+            "Result",
+            "Result",
+            "Index Scan"
+          ],
+          "rootNode": {
+            "Plans": [
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 1",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 2,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "WAL FPI": 0,
+                "Node Type": "Result",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Plan Width": 32,
+                "Total Cost": 0.26,
+                "Actual Rows": 1,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0,
+                "Subplan Name": "InitPlan 2",
+                "Async Capable": false,
+                "Parallel Aware": false,
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 34,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "InitPlan",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0
+              },
+              {
+                "Alias": "menu_billing_profiles",
+                "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+                "WAL FPI": 0,
+                "Node Type": "Index Scan",
+                "Plan Rows": 1,
+                "WAL Bytes": 0,
+                "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+                "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+                "Plan Width": 48,
+                "Total Cost": 30.03,
+                "Actual Rows": 250,
+                "WAL Records": 0,
+                "Actual Loops": 1,
+                "Startup Cost": 0.28,
+                "Async Capable": false,
+                "Relation Name": "menu_billing_profiles",
+                "Parallel Aware": false,
+                "Scan Direction": "Forward",
+                "Local Hit Blocks": 0,
+                "Temp Read Blocks": 0,
+                "Local Read Blocks": 0,
+                "Shared Hit Blocks": 274,
+                "Shared Read Blocks": 0,
+                "Parent Relationship": "Outer",
+                "Temp Written Blocks": 0,
+                "Local Dirtied Blocks": 0,
+                "Local Written Blocks": 0,
+                "Shared Dirtied Blocks": 0,
+                "Shared Written Blocks": 0,
+                "Rows Removed by Filter": 0,
+                "Rows Removed by Index Recheck": 0
+              }
+            ],
+            "WAL FPI": 0,
+            "Node Type": "Limit",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Plan Width": 48,
+            "Total Cost": 30.55,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.8,
+            "Async Capable": false,
+            "Parallel Aware": false,
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0
+          },
+          "initPlans": [
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 1",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 2,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            },
+            {
+              "WAL FPI": 0,
+              "Node Type": "Result",
+              "Plan Rows": 1,
+              "WAL Bytes": 0,
+              "Plan Width": 32,
+              "Total Cost": 0.26,
+              "Actual Rows": 1,
+              "WAL Records": 0,
+              "Actual Loops": 1,
+              "Startup Cost": 0,
+              "Subplan Name": "InitPlan 2",
+              "Async Capable": false,
+              "Parallel Aware": false,
+              "Local Hit Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Local Read Blocks": 0,
+              "Shared Hit Blocks": 34,
+              "Shared Read Blocks": 0,
+              "Parent Relationship": "InitPlan",
+              "Temp Written Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0
+            }
+          ],
+          "targetScan": {
+            "Alias": "menu_billing_profiles",
+            "Filter": "((InitPlan 1).col1 = ANY ('{admin,clinic_admin,manager,therapist,staff}'::text[]))",
+            "WAL FPI": 0,
+            "Node Type": "Index Scan",
+            "Plan Rows": 1,
+            "WAL Bytes": 0,
+            "Index Cond": "((clinic_id = ANY ((InitPlan 2).col1)) AND (clinic_id = 'fb110000-0000-4000-8000-000000004001'::uuid))",
+            "Index Name": "menu_billing_profiles_clinic_id_id_idx",
+            "Plan Width": 48,
+            "Total Cost": 30.03,
+            "Actual Rows": 250,
+            "WAL Records": 0,
+            "Actual Loops": 1,
+            "Startup Cost": 0.28,
+            "Async Capable": false,
+            "Relation Name": "menu_billing_profiles",
+            "Parallel Aware": false,
+            "Scan Direction": "Forward",
+            "Local Hit Blocks": 0,
+            "Temp Read Blocks": 0,
+            "Local Read Blocks": 0,
+            "Shared Hit Blocks": 274,
+            "Shared Read Blocks": 0,
+            "Parent Relationship": "Outer",
+            "Temp Written Blocks": 0,
+            "Local Dirtied Blocks": 0,
+            "Local Written Blocks": 0,
+            "Shared Dirtied Blocks": 0,
+            "Shared Written Blocks": 0,
+            "Rows Removed by Filter": 0,
+            "Rows Removed by Index Recheck": 0
+          }
+        }
+      ],
+      "catalogContracts": [
+        true,
+        true,
+        true
+      ],
+      "pass": true
+    }
+  },
+  "rlsWrite": {
+    "coverage_insert_2000": {
+      "executionValues": [
+        111.586,
+        75.578,
+        62.987
+      ],
+      "executionMedian": 75.578,
+      "walValues": [
+        1205616,
+        1205616,
+        1205616
+      ],
+      "walMedian": 1205616,
+      "gate": {
+        "baselineExecutionMs": 113.892,
+        "baselineWalBytes": 976020,
+        "executionMs": 124.709,
+        "walBytes": 1220025,
+        "gateSource": "predeclared-fixed-limit"
+      },
+      "executionPass": true,
+      "walPass": true,
+      "pass": true
+    },
+    "menu_profile_insert_2000": {
+      "executionValues": [
+        92.011,
+        100.407,
+        88.403
+      ],
+      "executionMedian": 92.011,
+      "walValues": [
+        1608444,
+        1608444,
+        1608444
+      ],
+      "walMedian": 1608444,
+      "gate": {
+        "baselineExecutionMs": 99.773,
+        "baselineWalBytes": 1374808,
+        "executionMs": 135.944,
+        "walBytes": 1718510,
+        "gateSource": "predeclared-fixed-limit"
+      },
+      "executionPass": true,
+      "walPass": true,
+      "pass": true
+    }
+  },
+  "integrity": {
+    "cases": 30,
+    "summary": {
+      "kind": "blocks_integrity_summary",
+      "passed": true,
+      "paired_cases": 15,
+      "behavior_cases": 5,
+      "diagnostic_cases": 10,
+      "message_equivalent": true,
+      "behavior_equivalent": true,
+      "sqlstate_equivalent": true,
+      "diagnostic_equivalent": true
+    },
+    "pass": true
+  },
+  "semantic": {
+    "beforeCases": 27,
+    "afterCases": 27,
+    "exactMatch": true,
+    "pass": true
+  },
+  "pgtap": {
+    "ok": 52,
+    "notOk": 0,
+    "parsedEvidenceBytes": 1531,
+    "pass": true
+  },
+  "logicalBaseline": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+  "physicalBaseline": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+  "primaryPass": false,
+  "hardNonWaivedPass": true,
+  "waivedWallClockFailures": [
+    "performance.dense_insert_10000"
+  ],
+  "pilotWaiverDecisionId": "PR11-PERF-WAIVER-2026-07-18",
+  "pilotWaiverApplicable": true,
+  "mergeEligibility": "PASS_WITH_RISK",
+  "generalCommercialReleaseEligible": false
+}

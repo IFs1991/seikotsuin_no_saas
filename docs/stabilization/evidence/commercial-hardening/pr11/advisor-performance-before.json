@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-07-16T23:00:00+09:00",
+  "target": "local",
+  "migration_head": "20260715083609",
+  "source": "supabase db advisors --local --type performance plus catalog-equivalent verification",
+  "counts": {
+    "unindexed_foreign_keys": 91,
+    "auth_rls_initplan": 0,
+    "multiple_permissive_policies": 18,
+    "unused_index": 172,
+    "public_policies": 179
+  },
+  "notes": [
+    "No Advisor finding was treated as an automatic DDL instruction.",
+    "Unused-index observations are retained and are not removal evidence.",
+    "The linked database is behind repository migrations and was not mutated."
+  ]
+}

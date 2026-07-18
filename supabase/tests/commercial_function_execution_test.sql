@@ -98,6 +98,7 @@ select is(
         ('app_private.get_current_clinic_id()', 'anon'),
         ('app_private.get_current_clinic_id()', 'authenticated'),
         ('app_private.get_current_clinic_id()', 'service_role'),
+        ('app_private.get_current_accessible_clinic_ids()', 'authenticated'),
         ('app_private.get_current_role()', 'anon'),
         ('app_private.get_current_role()', 'authenticated'),
         ('app_private.get_current_role()', 'service_role'),

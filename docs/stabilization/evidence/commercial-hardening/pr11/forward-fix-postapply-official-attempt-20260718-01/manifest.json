@@ -1,0 +1,224 @@
+{
+  "protocol": "pr11-forward-fix-postapply-paired-v1",
+  "status": "safety-fail",
+  "startedAt": "2026-07-18T02:55:06.113Z",
+  "endedAt": "2026-07-18T02:55:09.499Z",
+  "localOnly": true,
+  "productionTouched": false,
+  "resetUsed": false,
+  "volumeDeletionUsed": false,
+  "candidateSqlExecutionCount": 0,
+  "blocksCandidateSqlExecutionCount": 0,
+  "blocksCandidateKind": "permanently-applied-exact-compatible-fast-path-v1",
+  "rlsCandidateKind": "permanently-applied-statement-scope-helper-index-v1",
+  "permanentMigrationHead": "20260718011731",
+  "pairedBeforeIsTransactionOnly": true,
+  "pairedAfterIsPermanentState": true,
+  "gatesFrozenBeforeCandidate": false,
+  "fixedLimits": {
+    "performance": {
+      "created_by_read_100_of_20000": {
+        "executionMs": 2.851
+      },
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      },
+      "shift_full_only_insert_2000": {
+        "executionMs": 198.387,
+        "walBytes": 1868505.6
+      },
+      "shift_full_plus_partial_insert_2000": {
+        "executionMs": 219.224,
+        "walBytes": 2028773.6
+      },
+      "recipient_sparse_composite_insert_1000": {
+        "executionMs": 46.665,
+        "walBytes": 600946.5
+      },
+      "recipient_dense_composite_insert_1000": {
+        "executionMs": 81.761,
+        "walBytes": 755065
+      }
+    },
+    "blocks": {
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      }
+    },
+    "rlsRead": {
+      "customer_insurance_coverages": {
+        "executionMs": 66.757
+      },
+      "menu_billing_profiles": {
+        "executionMs": 63.3855
+      }
+    },
+    "rlsWrite": {
+      "coverage_insert_2000": {
+        "executionMs": 124.709,
+        "walBytes": 1220025
+      },
+      "menu_profile_insert_2000": {
+        "executionMs": 135.944,
+        "walBytes": 1718510
+      }
+    }
+  },
+  "environment": {
+    "nodeVersion": "v24.18.0",
+    "platform": "win32",
+    "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
+    "cores": 12,
+    "memoryBytes": 16858472448,
+    "freeMemoryBytesAtStart": 5060280320,
+    "powerPlan": {
+      "command": [
+        "powercfg.exe",
+        "/getactivescheme"
+      ],
+      "exitCode": 0,
+      "stdout": "�d���ݒ�� GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (�o�����X)",
+      "stderr": "",
+      "error": null
+    },
+    "gitHead": {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "3306945839842337117851120b0ba7dd9973a20f\n",
+      "stderr": "",
+      "error": null
+    },
+    "gitStatus": {
+      "command": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "exitCode": 0,
+      "stdout": " M docs/stabilization/spec-commercial-hardening-migration-v1.0.md\n M scripts/commercial-hardening/run-red-contracts.mjs\n M supabase/tests/commercial_function_execution_test.sql\n M supabase/tests/commercial_rls_tenant_isolation_test.sql\n?? docs/stabilization/evidence/commercial-hardening/pr11/\n?? docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md\n?? scripts/commercial-hardening/red-contracts/10_performance_fk_indexes.sql\n?? scripts/commercial-hardening/red-contracts/11_performance_rls_plan.sql\n?? scripts/commercial-hardening/red-contracts/12_pr11_blocks_trigger_fast_path.sql\n?? scripts/commercial-hardening/red-contracts/13_pr11_rls_statement_scope.sql\n?? scripts/commercial-hardening/run-pr11-forward-fix-experiment.mjs\n?? scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs\n?? scripts/commercial-hardening/run-pr11-paired-benchmark.mjs\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-disabled.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-fast-path.sql\n?? scripts/commercial-hardening/sql/pr11-forward-blocks-trigger-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-logical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-postflight.sql\n?? scripts/commercial-hardening/sql/pr11-forward-experiment-preflight.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-index-candidate-pgtap.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-read-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-read-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-scope-semantic-probe.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-semantic-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-semantic-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-statement-scope-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-current.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-index-candidate.sql\n?? scripts/commercial-hardening/sql/pr11-forward-rls-write-probe.sql\n?? scripts/commercial-hardening/sql/pr11-paired-normalize.sql\n?? scripts/commercial-hardening/sql/pr11-paired-performance-before.sql\n?? scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-paired-postflight.sql\n?? scripts/commercial-hardening/sql/pr11-paired-rls-before.sql\n?? scripts/commercial-hardening/sql/pr11-performance-probe.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-before-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-blocks-integrity.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-pgtap.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-before-ddl.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-read-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-read-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-before.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-write-after.sql\n?? scripts/commercial-hardening/sql/pr11-postapply-rls-write-before.sql\n?? scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql\n?? src/__tests__/security/commercial-pr11-performance-contract.test.ts\n?? supabase/migrations/20260716160342_commercial_performance_safe_fk_indexes.sql\n?? supabase/migrations/20260716160402_commercial_rls_plan_cleanup.sql\n?? supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql\n?? supabase/rollbacks/20260716160342_commercial_performance_safe_fk_indexes_rollback.sql\n?? supabase/rollbacks/20260716160402_commercial_rls_plan_cleanup_rollback.sql\n?? supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql\n?? supabase/tests/commercial_pr11_performance_rls_test.sql\n",
+      "stderr": "",
+      "error": null
+    },
+    "psqlVersion": {
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "psql (PostgreSQL) 17.9\r\n",
+      "stderr": "",
+      "error": null
+    },
+    "supabaseVersion": {
+      "command": [
+        "C:\\tmp\\supabase-cli-2.109.0\\supabase.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "2.109.0\n",
+      "stderr": "",
+      "error": null
+    },
+    "dockerDatabase": {
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{json .Config.Image}}|{{json .State.StartedAt}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "stdout": "\"public.ecr.aws/supabase/postgres:17.6.1.104\"|\"2026-07-18T01:10:46.358429268Z\"\n",
+      "stderr": "",
+      "error": null
+    },
+    "dockerStats": {
+      "command": [
+        "docker.exe",
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{json .}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"BlockIO\":\"7.57MB / 3.56GB\",\"CPUPerc\":\"0.04%\",\"Container\":\"supabase_db_seikotsuin_management_saas\",\"ID\":\"08d271d7f033\",\"MemPerc\":\"1.98%\",\"MemUsage\":\"157.4MiB / 7.757GiB\",\"Name\":\"supabase_db_seikotsuin_management_saas\",\"NetIO\":\"5.74MB / 6.84MB\",\"PIDs\":\"18\"}\n",
+      "stderr": "",
+      "error": null
+    },
+    "toolHashes": {
+      "supabaseCliSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+      "supabaseArchiveSha256": "4ea5b92ae679323cde0e69ca92b801c3fc705c8351bdff50cb3b8eff6926f5c7"
+    }
+  },
+  "inputHashes": {
+    "scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs": "cf0eb5f0552fb4c4a6efb0d6dc7d38e4ec38782fbfc7cfefd6e79fb4213fc0af",
+    "scripts/commercial-hardening/sql/pr11-performance-probe.sql": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65",
+    "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql": "b8377b491379afd9fbb09c156e29d8b4b12fb85c93e588ca8b1c3c47ca544279",
+    "scripts/commercial-hardening/sql/pr11-forward-rls-write-probe.sql": "09767c89cfcf03fae91d60069d1b40f0f8e806a97b7987617d12b74574efb0ac",
+    "scripts/commercial-hardening/sql/pr11-forward-rls-scope-semantic-probe.sql": "d1b5b1c9373e36a9cf31fecbc9bdc0a1cbde6d8abfcc14eba09d4a80f4349aae",
+    "supabase/tests/commercial_pr11_performance_rls_test.sql": "88063a85fc14c69fb582a723dcd11f06a5fe784b320cc696c8b396079bea91f1",
+    "supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql": "15fde71cfdba9d335239ed77a11f12216b9754fc0f75f2a8fcb992005159660b",
+    "supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql": "c994a796c49bb4a4f1ac840bd98e28f8a9b69eea17d56f53327e53a9746f6263",
+    "scripts/commercial-hardening/red-contracts/12_pr11_blocks_trigger_fast_path.sql": "1122fd975ffd31aa8f75ecf05c504b64b43442974e3b92de8368daa99e67d760",
+    "scripts/commercial-hardening/red-contracts/13_pr11_rls_statement_scope.sql": "c6f0388fa46246972a4698cde4955e61bae961c3db404d95fe7754cf9de5aa4b",
+    "docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md": "e53d42317d7d4bf9e63ad7d95274520caf56e6f50fd6d285f5983fad3784346d",
+    "docs/stabilization/evidence/commercial-hardening/pr11/pilot-performance-waiver.yaml": "85d3da719047b6af80b77026c7ca6d7172319f140aad6099331d86a38698f622",
+    "scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql": "65cf341e6f21100dd7da1ce36bcf8ef42ccb46b3cdfc05d2da9126027189caed",
+    "scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql": "bfe069c2a86b023f157ec4963b40acb74756436ef6b3c33e7ef2a3c930920434",
+    "scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql": "9b46b66f3d56bed947458a253b7f61028773bc4350bbeb2b6e495dea7b4ff5fd",
+    "scripts/commercial-hardening/sql/pr11-paired-normalize.sql": "36e24a174043dba86686674bfcadf7803fbfd50b481639d85cfa7d2bb6005cfa",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-before.sql": "03db1c3f2568919aaca8834c9c1bff61b0a44ca95209822e854c1ea031a6c212",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-after.sql": "3bf17d1829f5c34cd0bf2c6f5c6b1e34f30ed251da3c0e964be4dd76164e3bb7",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-before-ddl.sql": "ff7e1214ff1bb03b4cf3961b2823dc63615a93614a2f1d52145ec54bbc94461f",
+    "scripts/commercial-hardening/sql/pr11-postapply-blocks-integrity.sql": "5bbd35238e4845abd2e8cb13da8465ae922c493897f1c679d5f128f91fe3f2a9",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-write-before.sql": "c4451bd58d42f8d05d6b058cd514ea892a6b76d0ab8764ae3ec3c996b2a20077",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-write-after.sql": "e8b33bff457d5b1ba80a9f9862e47b5954a4dd432f139ac62d04f6c3067555d6",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-read-before.sql": "838a63dd248ee89e9bbdc855bc7623b16b821535847d3435d40a19846c25e3db",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-read-after.sql": "16d5e4b27204c35646c6a240adeb7998f5b17996d5df8a53d48458a8954ce0b7",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-before.sql": "ae941a5eb676b4699118b29522f17aed8e1cc5b648be4e36686ff4345c1ea0ef",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-semantic-after.sql": "9e0b9005254bb3fc8cc485efe93135d5b309ee671edcfd8b1387e1e8ff1b32e8",
+    "scripts/commercial-hardening/sql/pr11-postapply-pgtap.sql": "dbc02dac9e2434df0c952b6342ff4d8a1f48dea3826b1d00c040625961abf127",
+    "scripts/commercial-hardening/sql/pr11-postapply-rls-before-ddl.sql": "5cd60f5a7214a6975fa209cbe2bdf1590c56ae3dd0504a6b627d1334a481985b",
+    "scripts/commercial-hardening/sql/pr11-paired-postflight.sql": "a8f7b02b8ba0f55aa19b709dca744b061048b3e2f6bc8aef9174612fc0f92c1e"
+  },
+  "steps": [
+    {
+      "label": "emergency-postflight",
+      "sqlFile": "pr11-postapply-permanent-state.sql",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "emergency-postflight.stdout.raw",
+      "stdoutSha256": "eeb938bf6078f19ceb7e14ff312616775d5aea637bfe314a482a8928a07e8665",
+      "stderrFile": "emergency-postflight.stderr.raw",
+      "stderrSha256": "d27af1ef3e1ee93213078a07940ab56008e2bc073fab3789f469b9c43938402b"
+    },
+    {
+      "label": "emergency-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "exitCode": 3,
+      "error": null,
+      "stdoutFile": "emergency-normalize.stdout.raw",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrFile": "emergency-normalize.stderr.raw",
+      "stderrSha256": "7d05546f3f847c5ff132d4f0722c1ea6068db1b2921ffe9cc8598b819a7e3530"
+    }
+  ],
+  "samples": [],
+  "error": "Error: Canonical performance/write/semantic probe hash drift\n    at file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.worktrees/commercial-hardening-pr11/scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs:877:11\n    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)\n    at async node:internal/modules/esm/loader:643:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
+  "recoveryError": "Error: emergency-normalize failed: psql:C:/Users/seekf/Desktop/seikotsuin_management_saas/.worktrees/commercial-hardening-pr11/scripts/commercial-hardening/sql/pr11-paired-normalize.sql:74: ERROR:  PR-11 paired normalization refused: migration head drift\r\nCONTEXT:  PL/pgSQL function inline_code_block line 17 at RAISE\r\n\n    at psqlFile (file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.worktrees/commercial-hardening-pr11/scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs:421:11)\n    at file:///C:/Users/seekf/Desktop/seikotsuin_management_saas/.worktrees/commercial-hardening-pr11/scripts/commercial-hardening/run-pr11-forward-fix-postapply-paired.mjs:1025:5\n    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)\n    at async node:internal/modules/esm/loader:643:26\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)"
+}

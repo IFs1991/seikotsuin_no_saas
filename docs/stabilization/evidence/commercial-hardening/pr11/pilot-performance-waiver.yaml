@@ -1,0 +1,73 @@
+id: PR11-PERF-WAIVER-2026-07-18
+title: PR-11 fixed local wall-clock performance
+status: PASS_WITH_RISK
+blocking: false
+scope: attended_pilot_2_to_3_clinics
+environment: local
+owner: product_owner
+approved_by: product_owner
+approved_at: '2026-07-18'
+expires_at: '2026-08-18T23:59:59+09:00'
+primary_measurement_pass: false
+decision_boundary: merge_eligibility_only
+authorizes_staging_apply: false
+authorizes_production_apply: false
+authorizes_general_commercial_release: false
+canonical_probe_changed: false
+fixed_thresholds_changed: false
+waived_results:
+  - probe: blocks_sparse_insert_10000
+    median_ms: 675.858
+    fixed_limit_ms: 435.7373
+  - probe: blocks_dense_insert_10000
+    median_ms: 904.092
+    fixed_limit_ms: 521.55125
+  - probe: customer_insurance_coverages_insert_2000
+    median_ms: 211.933
+    fixed_limit_ms: 124.709
+  - probe: menu_billing_profiles_insert_2000
+    median_ms: 243.075
+    fixed_limit_ms: 135.944
+not_waived:
+  - tenant_isolation
+  - authorization
+  - sqlstate_and_message
+  - error_diagnostics_and_cascade
+  - acl_and_rls
+  - composite_fk
+  - wal
+  - plan_contract
+  - read_latency
+  - rollback_restoration
+  - clean_replay
+  - required_ci
+pilot_workload_boundary:
+  blocks_write: single_row_ui_save
+  insurance_coverage_write: single_row_ui_save
+  menu_billing_profile_write: single_row_ui_save
+  excluded:
+    - bulk_import
+    - external_bulk_sync
+    - unattended_multi_thousand_row_batch
+residual_risk:
+  - database_cpu_saturation_during_large_writes
+  - connection_pool_queueing
+  - request_timeout
+  - index_write_amplification
+mitigation:
+  - keep_bulk_features_disabled_for_the_pilot
+  - throttle_or_disable_affected_write_paths_on_regression
+  - monitor_p95_p99_5xx_timeout_db_cpu_pool_and_lock_metrics
+  - review_metrics_after_24h_and_72h
+revalidation_triggers:
+  - fourth_clinic_onboarding
+  - bulk_feature_enablement
+  - related_ddl_policy_or_helper_change
+  - database_tier_change
+  - related_performance_incident
+  - waiver_expiry
+evidence:
+  rehearsal_directory: forward-fix-rehearsal-20260718-01
+  rehearsal_summary_sha256: D04E2528263A302B94697F562EEE84DA0EA43A1E20B5C952C6C9059686DEE927
+  logical_baseline_hash: 884667bc5a207efd00ef60417ed69f4f6a36b5ac5cce3fd28811cf65fcceb2b1
+  physical_baseline_hash: 516c7efc0d685952208f33a9878cde53558d03276fe0badc29f1ba35fe9736de

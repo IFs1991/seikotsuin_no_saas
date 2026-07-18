@@ -1,0 +1,24 @@
+{
+  "protocol": "pr11-forward-fix-postapply-paired-v1",
+  "frozenAt": "2026-07-18T02:58:14.629Z",
+  "candidateSqlExecutionCount": 0,
+  "gatesFrozenBeforeFirstRlsCandidate": true,
+  "blocksCandidateSqlExecutionCount": 3,
+  "note": "Fixed write limits were declared before this run; BEFORE calibration is diagnostic only and no permanent AFTER RLS sample has executed.",
+  "writeGates": {
+    "coverage_insert_2000": {
+      "baselineExecutionMs": 113.892,
+      "baselineWalBytes": 976020,
+      "executionMs": 124.709,
+      "walBytes": 1220025,
+      "gateSource": "predeclared-fixed-limit"
+    },
+    "menu_profile_insert_2000": {
+      "baselineExecutionMs": 99.773,
+      "baselineWalBytes": 1374808,
+      "executionMs": 135.944,
+      "walBytes": 1718510,
+      "gateSource": "predeclared-fixed-limit"
+    }
+  }
+}

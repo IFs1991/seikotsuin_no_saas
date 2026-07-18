@@ -1,0 +1,63 @@
+{"kind": "postapply_permanent_state", "contract_pass": true, "migration_head": "20260718011731", "public_policy_count": 183, "blocks_trigger_enabled": true, "candidate_indexes_present": 2, "statement_scope_helper_present": true}
+PR11_POSTAPPLY_PERMANENT_STATE_PASS
+{"kind": "postapply_phase", "state": "before", "family": "rls_semantic"}
+{"sub": "fb110000-0000-4000-8000-000000007010", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000007002"]}}
+
+
+
+
+
+
+
+
+
+
+
+
+
+{"sub": "fb110000-0000-4000-8000-000000007010", "role": "authenticated", "app_metadata": {"clinic_scope_ids": []}}
+
+
+
+
+
+
+
+{"sub": "fb110000-0000-4000-8000-000000007010", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["not-a-uuid"]}}
+
+
+
+
+
+
+
+{"case": "valid_scope_reads_tenant_a_only", "kind": "scope_semantic_case", "pass": true, "actual": "coverage={fb110000-0000-4000-8000-000000007500};profiles={fb110000-0000-4000-8000-000000007700}", "sequence": 1}
+{"case": "valid_scope_insert_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 2}
+{"case": "valid_scope_insert_coverage_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 3}
+{"case": "valid_scope_update_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 4}
+{"case": "valid_scope_update_coverage_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 5}
+{"case": "valid_scope_delete_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 6}
+{"case": "valid_scope_delete_coverage_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 7}
+{"case": "valid_scope_insert_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 8}
+{"case": "valid_scope_insert_profile_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 9}
+{"case": "valid_scope_update_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 10}
+{"case": "valid_scope_update_profile_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 11}
+{"case": "valid_scope_delete_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=t;rows=1;sqlstate=00000", "sequence": 12}
+{"case": "valid_scope_delete_profile_b", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 13}
+{"case": "empty_scope_reads_nothing", "kind": "scope_semantic_case", "pass": true, "actual": "coverage={};profiles={}", "sequence": 14}
+{"case": "empty_scope_insert_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 15}
+{"case": "empty_scope_update_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 16}
+{"case": "empty_scope_delete_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 17}
+{"case": "empty_scope_insert_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 18}
+{"case": "empty_scope_update_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 19}
+{"case": "empty_scope_delete_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 20}
+{"case": "malformed_scope_reads_nothing", "kind": "scope_semantic_case", "pass": true, "actual": "coverage={};profiles={}", "sequence": 21}
+{"case": "malformed_scope_insert_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 22}
+{"case": "malformed_scope_update_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 23}
+{"case": "malformed_scope_delete_coverage_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 24}
+{"case": "malformed_scope_insert_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=23503", "sequence": 25}
+{"case": "malformed_scope_update_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 26}
+{"case": "malformed_scope_delete_profile_a", "kind": "scope_semantic_case", "pass": true, "actual": "allowed=f;rows=0;sqlstate=00000", "sequence": 27}
+{"kind": "scope_semantic_summary", "cases": 27, "passed": true}
+{"kind": "postapply_permanent_state", "contract_pass": true, "migration_head": "20260718011731", "public_policy_count": 183, "blocks_trigger_enabled": true, "candidate_indexes_present": 2, "statement_scope_helper_present": true}
+PR11_POSTAPPLY_PERMANENT_STATE_PASS

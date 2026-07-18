@@ -1,0 +1,65 @@
+[
+  {
+    "kind": "postapply_permanent_state",
+    "contract_pass": true,
+    "migration_head": "20260718011731",
+    "public_policy_count": 183,
+    "blocks_trigger_enabled": true,
+    "candidate_indexes_present": 2,
+    "statement_scope_helper_present": true
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001010",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001020",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001030",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001040",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "sub": "fb110000-0000-4000-8000-000000001010",
+    "role": "authenticated",
+    "app_metadata": {
+      "clinic_scope_ids": [
+        "fb110000-0000-4000-8000-000000001001"
+      ]
+    }
+  },
+  {
+    "kind": "postapply_permanent_state",
+    "contract_pass": true,
+    "migration_head": "20260718011731",
+    "public_policy_count": 183,
+    "blocks_trigger_enabled": true,
+    "candidate_indexes_present": 2,
+    "statement_scope_helper_present": true
+  }
+]
