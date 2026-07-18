@@ -1,0 +1,2866 @@
+{
+  "protocol": "pr11-local-paired-rerun-v1",
+  "mode": "official",
+  "startedAt": "2026-07-17T08:15:15.360Z",
+  "endedAt": "2026-07-17T08:16:43.780Z",
+  "status": "complete",
+  "localOnly": true,
+  "productionTouched": false,
+  "fixedLimits": {
+    "performance": {
+      "created_by_read_100_of_20000": {
+        "executionMs": 2.851
+      },
+      "sparse_insert_10000": {
+        "executionMs": 435.7373,
+        "walBytes": 9292168.2
+      },
+      "dense_insert_10000": {
+        "executionMs": 521.55125,
+        "walBytes": 11133665
+      },
+      "shift_full_only_insert_2000": {
+        "executionMs": 198.387,
+        "walBytes": 1868505.6
+      },
+      "shift_full_plus_partial_insert_2000": {
+        "executionMs": 219.224,
+        "walBytes": 2028773.6
+      },
+      "recipient_sparse_composite_insert_1000": {
+        "executionMs": 46.665,
+        "walBytes": 600946.5
+      },
+      "recipient_dense_composite_insert_1000": {
+        "executionMs": 81.761,
+        "walBytes": 755065
+      }
+    },
+    "rls": {
+      "customer_insurance_coverages": {
+        "executionMs": 66.757
+      },
+      "menu_billing_profiles": {
+        "executionMs": 63.3855
+      }
+    }
+  },
+  "fixedLimitsSha256": "2f10f4e5f2cdeec0bb2798eb1f8be41fbe7fe43e4e2bc38e91bcb9342296d4d9",
+  "order": [
+    "pair1-before-after",
+    "pair2-after-before",
+    "pair3-before-after"
+  ],
+  "environment": {
+    "platform": "win32",
+    "release": "10.0.26300",
+    "architecture": "x64",
+    "cpuModel": "12th Gen Intel(R) Core(TM) i7-1255U",
+    "logicalCores": 12,
+    "totalMemoryBytes": 16858472448,
+    "freeMemoryBytesAtStart": 3649409024,
+    "nodeVersion": "v22.22.2",
+    "powerPlan": {
+      "command": [
+        "powercfg.exe",
+        "/getactivescheme"
+      ],
+      "exitCode": 0,
+      "stdout": "�d���ݒ�� GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (�o�����X)",
+      "stderr": "",
+      "error": null
+    },
+    "gitHead": {
+      "command": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "978a01a47c3c57126680d91b41c116180e60d129",
+      "stderr": "",
+      "error": null
+    },
+    "gitStatus": {
+      "command": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "exitCode": 0,
+      "stdout": "M scripts/commercial-hardening/run-red-contracts.mjs\n M supabase/tests/commercial_rls_tenant_isolation_test.sql\n?? docs/stabilization/evidence/commercial-hardening/pr11/\n?? docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md\n?? scripts/commercial-hardening/red-contracts/10_performance_fk_indexes.sql\n?? scripts/commercial-hardening/red-contracts/11_performance_rls_plan.sql\n?? scripts/commercial-hardening/run-pr11-paired-benchmark.mjs\n?? scripts/commercial-hardening/sql/pr11-paired-normalize.sql\n?? scripts/commercial-hardening/sql/pr11-paired-performance-before.sql\n?? scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql\n?? scripts/commercial-hardening/sql/pr11-paired-postflight.sql\n?? scripts/commercial-hardening/sql/pr11-paired-rls-before.sql\n?? scripts/commercial-hardening/sql/pr11-performance-probe.sql\n?? scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql\n?? src/__tests__/security/commercial-pr11-performance-contract.test.ts\n?? supabase/migrations/20260716160342_commercial_performance_safe_fk_indexes.sql\n?? supabase/migrations/20260716160402_commercial_rls_plan_cleanup.sql\n?? supabase/rollbacks/20260716160342_commercial_performance_safe_fk_indexes_rollback.sql\n?? supabase/rollbacks/20260716160402_commercial_rls_plan_cleanup_rollback.sql\n?? supabase/tests/commercial_pr11_performance_rls_test.sql",
+      "stderr": "",
+      "error": null
+    },
+    "gitDiff": {
+      "exitCode": 0,
+      "byteLength": 1640,
+      "sha256": "b8534d793177f75e2ec3abb5a16c275563cc2c2c76784e3a61dfb7fb6237ce1f",
+      "stderr": "",
+      "error": null
+    },
+    "psqlVersion": {
+      "command": [
+        "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "psql (PostgreSQL) 17.9",
+      "stderr": "",
+      "error": null
+    },
+    "supabaseCliVersion": {
+      "command": [
+        "C:\\tmp\\supabase-cli-2.109.0\\supabase.exe",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "2.109.0",
+      "stderr": "",
+      "error": null
+    },
+    "supabaseCliSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+    "supabaseCliArchiveSha256": "4ea5b92ae679323cde0e69ca92b801c3fc705c8351bdff50cb3b8eff6926f5c7",
+    "dockerDatabase": {
+      "command": [
+        "docker.exe",
+        "inspect",
+        "--format",
+        "{{json .Id}}|{{json .Config.Image}}|{{json .Image}}|{{json .State.StartedAt}}",
+        "supabase_db_seikotsuin_management_saas"
+      ],
+      "exitCode": 0,
+      "stdout": "\"08d271d7f03333b4f9d179fa2cf73f2f9503699c09da21b5db9582644b3d917b\"|\"public.ecr.aws/supabase/postgres:17.6.1.104\"|\"sha256:5deba92e50cd17bfacf8603834d317cdf3bfc1c016ec8293991997fa3b55fa3d\"|\"2026-07-15T15:54:58.070490501Z\"",
+      "stderr": "",
+      "error": null
+    }
+  },
+  "inputHashes": {
+    "scripts/commercial-hardening/run-pr11-paired-benchmark.mjs": "aaddc5503f4fe7b743c85c6d7795455b631e3081a856cbc63e19b22325e04cdf",
+    "docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md": "93febbbab19d1e51a81b150ba00e8b2593c64d033d1c0afa00b1dece23d31b78",
+    "docs/stabilization/evidence/commercial-hardening/pr11/rls-plan-after.json": "774f511ea1a92cfcf394841c5d2056da4088858c5bc5b10aa5382f62b29f1909",
+    "docs/stabilization/evidence/commercial-hardening/pr11/write-amplification.md": "10ed234ab3b90e920b2340de04fc5cf00cfb334bfa73495fed609dea0ed5938c",
+    "scripts/commercial-hardening/sql/pr11-paired-normalize.sql": "36e24a174043dba86686674bfcadf7803fbfd50b481639d85cfa7d2bb6005cfa",
+    "scripts/commercial-hardening/sql/pr11-paired-postflight.sql": "a8f7b02b8ba0f55aa19b709dca744b061048b3e2f6bc8aef9174612fc0f92c1e",
+    "scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql": "9b46b66f3d56bed947458a253b7f61028773bc4350bbeb2b6e495dea7b4ff5fd",
+    "scripts/commercial-hardening/sql/pr11-paired-performance-before.sql": "302b8be801563530a2af6463191d3aeac8c20e0d09a020fa2168261a2f8b6794",
+    "scripts/commercial-hardening/sql/pr11-performance-probe.sql": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65",
+    "scripts/commercial-hardening/sql/pr11-paired-rls-before.sql": "17c3c596d31f54e9ea7cdca9df4ea0b346f9ebf8010f56d3ef1120e56d793f94",
+    "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql": "b8377b491379afd9fbb09c156e29d8b4b12fb85c93e588ca8b1c3c47ca544279"
+  },
+  "steps": [
+    {
+      "label": "performance-pair1-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:17.582Z",
+      "endedAt": "2026-07-17T08:15:17.852Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-preflight.stdout.raw",
+      "stdoutSha256": "c3bf2b33da66ad10abf024084383a00595351a1b037327b3149e0111e77b8662",
+      "stderrFile": "performance-pair1-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3471372288
+    },
+    {
+      "label": "performance-pair1-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:19.128Z",
+      "endedAt": "2026-07-17T08:15:19.560Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-normalize.stdout.raw",
+      "stdoutSha256": "01ebdb6366d3975ad8d2f5986f373807096347e2a162d97acac8883f213daf60",
+      "stderrFile": "performance-pair1-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3455422464
+    },
+    {
+      "label": "performance-pair1-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:19.592Z",
+      "endedAt": "2026-07-17T08:15:19.812Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "9bebfa36b4875c97a507943c409254bb8736ab5fb86fe8df492f12572f26ced2",
+      "stderrFile": "performance-pair1-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3444760576
+    },
+    {
+      "label": "performance-pair1-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:19.840Z",
+      "endedAt": "2026-07-17T08:15:20.066Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-physical-clean.stdout.raw",
+      "stdoutSha256": "6932a9a0ede2ae1f9dc857fedb7d699e81191d66186cf6293fa64b165d007edd",
+      "stderrFile": "performance-pair1-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3450167296
+    },
+    {
+      "label": "performance-pair1-before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "startedAt": "2026-07-17T08:15:20.230Z",
+      "endedAt": "2026-07-17T08:15:23.537Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before.stdout.raw",
+      "stdoutSha256": "d75b67d03ebbd9807dae758b4dc8f7a0046731fced6c5b8793d02a69901a30bc",
+      "stderrFile": "performance-pair1-before.stderr.raw",
+      "stderrSha256": "3f348a22b3fb3ffcb12d22a1cd67a3b90700e4f2e8546e1cb187cef59ab9e7a8",
+      "freeMemoryBytesAfter": 3389321216
+    },
+    {
+      "label": "performance-pair1-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:23.567Z",
+      "endedAt": "2026-07-17T08:15:23.840Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-physical-post.stdout.raw",
+      "stdoutSha256": "fe2b6c7ba2e63c62d8e319ad65bbf0ae7e91a469481868d2b6ec46fdc0bd3990",
+      "stderrFile": "performance-pair1-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3380760576
+    },
+    {
+      "label": "performance-pair1-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:23.850Z",
+      "endedAt": "2026-07-17T08:15:24.109Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-before-postflight.stdout.raw",
+      "stdoutSha256": "48c36694d395d15785b1f0616b083189962454c7cc1296e0dcdcdc27af786849",
+      "stderrFile": "performance-pair1-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3423674368
+    },
+    {
+      "label": "performance-pair1-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:25.477Z",
+      "endedAt": "2026-07-17T08:15:25.654Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-preflight.stdout.raw",
+      "stdoutSha256": "e4f2b2d5e6a33e0d2ef860d13a43ab3f76f1abe32154dd39a869fb63c5424814",
+      "stderrFile": "performance-pair1-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3386699776
+    },
+    {
+      "label": "performance-pair1-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:27.447Z",
+      "endedAt": "2026-07-17T08:15:27.897Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-normalize.stdout.raw",
+      "stdoutSha256": "beefe5ece1a30b20cfd0392b05789493cf25245b0bf73c8c11c68f6a163375dd",
+      "stderrFile": "performance-pair1-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3379896320
+    },
+    {
+      "label": "performance-pair1-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:27.919Z",
+      "endedAt": "2026-07-17T08:15:28.159Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "a3100b8cc5b02fb0984be332031b1d232ce7bb2afc8b01d7e3b93b1ed3350202",
+      "stderrFile": "performance-pair1-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3419381760
+    },
+    {
+      "label": "performance-pair1-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:28.178Z",
+      "endedAt": "2026-07-17T08:15:28.448Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-physical-clean.stdout.raw",
+      "stdoutSha256": "587a9a1ccc77fc64fb055c8d3f18375b79f60918207d645d03f66a3a98252521",
+      "stderrFile": "performance-pair1-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3417595904
+    },
+    {
+      "label": "performance-pair1-after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "startedAt": "2026-07-17T08:15:28.543Z",
+      "endedAt": "2026-07-17T08:15:31.660Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after.stdout.raw",
+      "stdoutSha256": "4a520375d1dc4e7f2de3556ebee46b97b7ff16755cff46808c4c8e07bc271c43",
+      "stderrFile": "performance-pair1-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3412729856
+    },
+    {
+      "label": "performance-pair1-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:31.694Z",
+      "endedAt": "2026-07-17T08:15:32.032Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-physical-post.stdout.raw",
+      "stdoutSha256": "4eff1bf74f1bfea76f100184f9e7fd005fcf6bdb7ef3b24f4d8cecfe3a4de247",
+      "stderrFile": "performance-pair1-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3367784448
+    },
+    {
+      "label": "performance-pair1-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:32.061Z",
+      "endedAt": "2026-07-17T08:15:32.255Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair1-after-postflight.stdout.raw",
+      "stdoutSha256": "cfcce13fa0efaaa4b976dc3dfa48472476d8c80668cd74e125fe5265564f0ddb",
+      "stderrFile": "performance-pair1-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3353403392
+    },
+    {
+      "label": "performance-pair2-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:33.681Z",
+      "endedAt": "2026-07-17T08:15:33.888Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-preflight.stdout.raw",
+      "stdoutSha256": "d5459e2ad56df6b10f66de6ace2978e5af854ec02b4910c35d5de66bd835abf4",
+      "stderrFile": "performance-pair2-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3362361344
+    },
+    {
+      "label": "performance-pair2-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:35.546Z",
+      "endedAt": "2026-07-17T08:15:36.078Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-normalize.stdout.raw",
+      "stdoutSha256": "91faf477cffd502832fa3dcee5938a4a51ab8db43bd7dbfa554c4a7fb169c685",
+      "stderrFile": "performance-pair2-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3342823424
+    },
+    {
+      "label": "performance-pair2-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:36.113Z",
+      "endedAt": "2026-07-17T08:15:36.412Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "14e0707fc432a93ce455e2ea339832fc665701a359ad71578730702a770c8d6c",
+      "stderrFile": "performance-pair2-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3389120512
+    },
+    {
+      "label": "performance-pair2-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:36.435Z",
+      "endedAt": "2026-07-17T08:15:36.722Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-physical-clean.stdout.raw",
+      "stdoutSha256": "cbd60e218da60c2426b49d97c2eeef83dfa920b0f52bd030a2238a740438f85e",
+      "stderrFile": "performance-pair2-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3361140736
+    },
+    {
+      "label": "performance-pair2-after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "startedAt": "2026-07-17T08:15:36.793Z",
+      "endedAt": "2026-07-17T08:15:39.641Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after.stdout.raw",
+      "stdoutSha256": "71baba515d1869ee83a4ebcd6540dc5809f04129305c40914435f25fab9a5585",
+      "stderrFile": "performance-pair2-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3333021696
+    },
+    {
+      "label": "performance-pair2-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:39.661Z",
+      "endedAt": "2026-07-17T08:15:39.989Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-physical-post.stdout.raw",
+      "stdoutSha256": "2cbc186cfb77ac5deb1c332cd07c6bc2ab91b36cfacf54077a0e3c1fddceeb42",
+      "stderrFile": "performance-pair2-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3329994752
+    },
+    {
+      "label": "performance-pair2-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:40.020Z",
+      "endedAt": "2026-07-17T08:15:40.209Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-after-postflight.stdout.raw",
+      "stdoutSha256": "47eba8abfdcd25ef16505773a723a4c98ed2cc9ff1deb833e916094cb186e0cb",
+      "stderrFile": "performance-pair2-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3329556480
+    },
+    {
+      "label": "performance-pair2-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:41.548Z",
+      "endedAt": "2026-07-17T08:15:41.791Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-preflight.stdout.raw",
+      "stdoutSha256": "aaae1271f773fe0279ae32de15355e3b4ca84b8e8d2a86a1237670f9df259ee9",
+      "stderrFile": "performance-pair2-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3314900992
+    },
+    {
+      "label": "performance-pair2-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:43.487Z",
+      "endedAt": "2026-07-17T08:15:43.879Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-normalize.stdout.raw",
+      "stdoutSha256": "ad709656744986f0dc51a9fcd3009527d0297c181f99fabe39f806bb738db05b",
+      "stderrFile": "performance-pair2-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3326734336
+    },
+    {
+      "label": "performance-pair2-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:43.900Z",
+      "endedAt": "2026-07-17T08:15:44.129Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "c4ee839c02c6f6f122fc5dc5a44728de70f54539ef3cda3d1692d8088ba19723",
+      "stderrFile": "performance-pair2-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3326685184
+    },
+    {
+      "label": "performance-pair2-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:44.147Z",
+      "endedAt": "2026-07-17T08:15:44.391Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-physical-clean.stdout.raw",
+      "stdoutSha256": "92f0a8eca05a1643e08f5f6c33d514517af41a0cb36b4cee2a0c2b6f4340fc9c",
+      "stderrFile": "performance-pair2-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3385700352
+    },
+    {
+      "label": "performance-pair2-before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "startedAt": "2026-07-17T08:15:44.461Z",
+      "endedAt": "2026-07-17T08:15:47.233Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before.stdout.raw",
+      "stdoutSha256": "27af4e802382ad194c288b5166cfcc411d31b991c19cb95d037fa6ba851867b0",
+      "stderrFile": "performance-pair2-before.stderr.raw",
+      "stderrSha256": "3f348a22b3fb3ffcb12d22a1cd67a3b90700e4f2e8546e1cb187cef59ab9e7a8",
+      "freeMemoryBytesAfter": 3327504384
+    },
+    {
+      "label": "performance-pair2-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:47.268Z",
+      "endedAt": "2026-07-17T08:15:47.524Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-physical-post.stdout.raw",
+      "stdoutSha256": "c371b00dff3244d4c4602d7f08679f0cf0242deb52e638440df104e33e22424d",
+      "stderrFile": "performance-pair2-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3311165440
+    },
+    {
+      "label": "performance-pair2-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:47.554Z",
+      "endedAt": "2026-07-17T08:15:47.760Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair2-before-postflight.stdout.raw",
+      "stdoutSha256": "89f56203dded79c6cbb17f2933766b510968a1b90cea1f44971ff2ff87184da5",
+      "stderrFile": "performance-pair2-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3310022656
+    },
+    {
+      "label": "performance-pair3-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:49.265Z",
+      "endedAt": "2026-07-17T08:15:49.485Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-preflight.stdout.raw",
+      "stdoutSha256": "321ef874747692c26ae201e2634d05049a24aa9d53076192a6f53c0e2567a673",
+      "stderrFile": "performance-pair3-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3299069952
+    },
+    {
+      "label": "performance-pair3-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:51.212Z",
+      "endedAt": "2026-07-17T08:15:51.671Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-normalize.stdout.raw",
+      "stdoutSha256": "e82c618ce39b56b77040b34dd0b74999e4e2b2a23a56d463ef666790865d6dec",
+      "stderrFile": "performance-pair3-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3292172288
+    },
+    {
+      "label": "performance-pair3-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:51.691Z",
+      "endedAt": "2026-07-17T08:15:51.909Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "253bfaf7afd3cd7bc66d8c8c7705b497cadb780158b388cc3e3229061cd1181c",
+      "stderrFile": "performance-pair3-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3295748096
+    },
+    {
+      "label": "performance-pair3-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:51.928Z",
+      "endedAt": "2026-07-17T08:15:52.195Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-physical-clean.stdout.raw",
+      "stdoutSha256": "66303826121ca82a6964cfa92189adecaa1b78709ff35402beee8c827c5dec0d",
+      "stderrFile": "performance-pair3-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3298369536
+    },
+    {
+      "label": "performance-pair3-before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "startedAt": "2026-07-17T08:15:52.311Z",
+      "endedAt": "2026-07-17T08:15:55.652Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before.stdout.raw",
+      "stdoutSha256": "88e497659a8cd4e798007772004d0a268d935105181a8227a04076f1fe3a6224",
+      "stderrFile": "performance-pair3-before.stderr.raw",
+      "stderrSha256": "3f348a22b3fb3ffcb12d22a1cd67a3b90700e4f2e8546e1cb187cef59ab9e7a8",
+      "freeMemoryBytesAfter": 3301625856
+    },
+    {
+      "label": "performance-pair3-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:15:55.681Z",
+      "endedAt": "2026-07-17T08:15:55.960Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-physical-post.stdout.raw",
+      "stdoutSha256": "c801e891efc4a6d8382c4e55a095068cc93aff9c96e7a31e848ad6bec6645427",
+      "stderrFile": "performance-pair3-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3291234304
+    },
+    {
+      "label": "performance-pair3-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:55.993Z",
+      "endedAt": "2026-07-17T08:15:56.293Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-before-postflight.stdout.raw",
+      "stdoutSha256": "dca15981219f4d77c24d61b610101b7fb9252484fbac3ad229c8825126112baa",
+      "stderrFile": "performance-pair3-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3349676032
+    },
+    {
+      "label": "performance-pair3-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:15:57.776Z",
+      "endedAt": "2026-07-17T08:15:58.080Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-preflight.stdout.raw",
+      "stdoutSha256": "17d5c41f1516aa068a13141040cbb11023d9cc4d2411ed3dafb54b3fe106ad3f",
+      "stderrFile": "performance-pair3-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3311538176
+    },
+    {
+      "label": "performance-pair3-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:15:59.724Z",
+      "endedAt": "2026-07-17T08:16:00.344Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-normalize.stdout.raw",
+      "stdoutSha256": "7f2a19239beba74be4498b8f1daca7467dbd1ff2913b35bad01b975b1241306d",
+      "stderrFile": "performance-pair3-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3257278464
+    },
+    {
+      "label": "performance-pair3-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:00.364Z",
+      "endedAt": "2026-07-17T08:16:00.883Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "197599bb9e071cfba47cb4fbaafd9a42ae199fa76fc9f318b4bb55cb03d3062f",
+      "stderrFile": "performance-pair3-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3273338880
+    },
+    {
+      "label": "performance-pair3-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:00.912Z",
+      "endedAt": "2026-07-17T08:16:01.397Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-physical-clean.stdout.raw",
+      "stdoutSha256": "7859e920d41230d90b1cf397279e91b94187e0c26246e1285224dd394d533321",
+      "stderrFile": "performance-pair3-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3190558720
+    },
+    {
+      "label": "performance-pair3-after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "startedAt": "2026-07-17T08:16:01.481Z",
+      "endedAt": "2026-07-17T08:16:05.266Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after.stdout.raw",
+      "stdoutSha256": "f3c716e4467c935cfcf18bdd35d5431a94d4330ad68547e0f2c3099ae4cf55a2",
+      "stderrFile": "performance-pair3-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3352969216
+    },
+    {
+      "label": "performance-pair3-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:05.290Z",
+      "endedAt": "2026-07-17T08:16:05.601Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-physical-post.stdout.raw",
+      "stdoutSha256": "66135475a7c81f4d91a997a31d5e43a50c1c2927cd8f731096bbaf5588754be7",
+      "stderrFile": "performance-pair3-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3307069440
+    },
+    {
+      "label": "performance-pair3-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:05.622Z",
+      "endedAt": "2026-07-17T08:16:05.899Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "performance-pair3-after-postflight.stdout.raw",
+      "stdoutSha256": "47da04ae8caa39ecb2750198152a427579452e4c802ce88867ad09f76d463cb4",
+      "stderrFile": "performance-pair3-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3269566464
+    },
+    {
+      "label": "rls-pair1-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:07.265Z",
+      "endedAt": "2026-07-17T08:16:07.496Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-preflight.stdout.raw",
+      "stdoutSha256": "2f0305cac32830a7ac616038f11b1f92fe6935a432333f23bdea4dcf166151b7",
+      "stderrFile": "rls-pair1-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3307778048
+    },
+    {
+      "label": "rls-pair1-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:09.196Z",
+      "endedAt": "2026-07-17T08:16:09.628Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-normalize.stdout.raw",
+      "stdoutSha256": "a2cdda7f775d6b4bd9f2e47bd1dbcc51e04faaacc66cf57f857760e1a851e459",
+      "stderrFile": "rls-pair1-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3280486400
+    },
+    {
+      "label": "rls-pair1-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:09.655Z",
+      "endedAt": "2026-07-17T08:16:09.883Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "2b069701a5e277b9190b6143b6757a10881379b4d04ae86e920d5b689944c367",
+      "stderrFile": "rls-pair1-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3281817600
+    },
+    {
+      "label": "rls-pair1-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:09.912Z",
+      "endedAt": "2026-07-17T08:16:10.163Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-physical-clean.stdout.raw",
+      "stdoutSha256": "ed9016bab9f279872ab213ff8290d7e14f1011502a480c5d3bca117d55d23286",
+      "stderrFile": "rls-pair1-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3261812736
+    },
+    {
+      "label": "rls-pair1-before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "startedAt": "2026-07-17T08:16:10.275Z",
+      "endedAt": "2026-07-17T08:16:11.134Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before.stdout.raw",
+      "stdoutSha256": "34dd460dd93411be8dce6cc5438f02c38d9d8cc643fcf3d1e3d51e828b6ec222",
+      "stderrFile": "rls-pair1-before.stderr.raw",
+      "stderrSha256": "547de77012859d62fd6a78a1cc0346d3ea335120d007fcd2cad8f1d3f87b4ef0",
+      "freeMemoryBytesAfter": 3285512192
+    },
+    {
+      "label": "rls-pair1-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:11.157Z",
+      "endedAt": "2026-07-17T08:16:11.435Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-physical-post.stdout.raw",
+      "stdoutSha256": "a2d4c8bf045ab8827db93933a3e0eb4b23caa344daf1ab86ac9c6162bf61d7f9",
+      "stderrFile": "rls-pair1-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3283329024
+    },
+    {
+      "label": "rls-pair1-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:11.451Z",
+      "endedAt": "2026-07-17T08:16:11.692Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-before-postflight.stdout.raw",
+      "stdoutSha256": "bf515cbf9a211d45be33e962819e2e4012da3fcac020296fcfb8b1372089f810",
+      "stderrFile": "rls-pair1-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3282178048
+    },
+    {
+      "label": "rls-pair1-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:13.141Z",
+      "endedAt": "2026-07-17T08:16:13.361Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-preflight.stdout.raw",
+      "stdoutSha256": "d000a21f2bc99accf1d18f3d640c0b19fdab731edd4600d276db37fac1d78b92",
+      "stderrFile": "rls-pair1-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3275751424
+    },
+    {
+      "label": "rls-pair1-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:15.034Z",
+      "endedAt": "2026-07-17T08:16:15.433Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-normalize.stdout.raw",
+      "stdoutSha256": "fc6e611db94544c1ff4147e8e39cfa549e32929002891ce6b27d29d73ec94857",
+      "stderrFile": "rls-pair1-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3268653056
+    },
+    {
+      "label": "rls-pair1-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:15.453Z",
+      "endedAt": "2026-07-17T08:16:15.673Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "5306d35c54e699689ab2aa6382d4c99f57c643802073f42c7bc876c8b37e630b",
+      "stderrFile": "rls-pair1-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3260080128
+    },
+    {
+      "label": "rls-pair1-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:15.691Z",
+      "endedAt": "2026-07-17T08:16:15.991Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-physical-clean.stdout.raw",
+      "stdoutSha256": "9c7493646c0b5bc914741de309c1096aa318b31bec219463b6ae06fa0042eb9b",
+      "stderrFile": "rls-pair1-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3296051200
+    },
+    {
+      "label": "rls-pair1-after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "startedAt": "2026-07-17T08:16:16.107Z",
+      "endedAt": "2026-07-17T08:16:16.943Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after.stdout.raw",
+      "stdoutSha256": "dd012fdb4ecac5b75b56bcef372895a8cdbe7724d9dcd69c872fdc573d68d2bf",
+      "stderrFile": "rls-pair1-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3210194944
+    },
+    {
+      "label": "rls-pair1-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:16.958Z",
+      "endedAt": "2026-07-17T08:16:17.227Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-physical-post.stdout.raw",
+      "stdoutSha256": "7f8bf5d8acd7c60d277656558f8cf678c9aa1557619474e72f1659d993fc6605",
+      "stderrFile": "rls-pair1-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3187716096
+    },
+    {
+      "label": "rls-pair1-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:17.255Z",
+      "endedAt": "2026-07-17T08:16:17.525Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair1-after-postflight.stdout.raw",
+      "stdoutSha256": "18195ba158a75d37258c4d1bdd5f40a8cc7b914dba023654087f854ee0e5998d",
+      "stderrFile": "rls-pair1-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3140980736
+    },
+    {
+      "label": "rls-pair2-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:18.990Z",
+      "endedAt": "2026-07-17T08:16:19.236Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-preflight.stdout.raw",
+      "stdoutSha256": "ebb4c3cd3bb05227c752835152070cad75a422d1b22f8b3b1bff843706d32cdd",
+      "stderrFile": "rls-pair2-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3180883968
+    },
+    {
+      "label": "rls-pair2-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:20.908Z",
+      "endedAt": "2026-07-17T08:16:21.278Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-normalize.stdout.raw",
+      "stdoutSha256": "6cfacdc8196692ffba8a1e92727d0d474277adb74fde0c45ec13ba5008b20505",
+      "stderrFile": "rls-pair2-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3183644672
+    },
+    {
+      "label": "rls-pair2-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:21.301Z",
+      "endedAt": "2026-07-17T08:16:21.526Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "ed475492ecd1a804ae031fcbfedc996f99e1f66b6d36bf2f6d810ca7a39254bd",
+      "stderrFile": "rls-pair2-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3210993664
+    },
+    {
+      "label": "rls-pair2-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:21.557Z",
+      "endedAt": "2026-07-17T08:16:21.812Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-physical-clean.stdout.raw",
+      "stdoutSha256": "67bb223b49ae64ca96dbcd7fbc2e191cdc9879390023c55de43e1d939dc47383",
+      "stderrFile": "rls-pair2-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3194982400
+    },
+    {
+      "label": "rls-pair2-after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "startedAt": "2026-07-17T08:16:21.920Z",
+      "endedAt": "2026-07-17T08:16:22.759Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after.stdout.raw",
+      "stdoutSha256": "180b209039a574c6ceb73715083eb23390d2b2cf4fa47e049b09d3959e761fbb",
+      "stderrFile": "rls-pair2-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3213037568
+    },
+    {
+      "label": "rls-pair2-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:22.800Z",
+      "endedAt": "2026-07-17T08:16:23.036Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-physical-post.stdout.raw",
+      "stdoutSha256": "54ec83f14a019813691519e91dbd342962fabe80b415c9f37401f0b636ff57de",
+      "stderrFile": "rls-pair2-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3201953792
+    },
+    {
+      "label": "rls-pair2-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:23.071Z",
+      "endedAt": "2026-07-17T08:16:23.296Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-after-postflight.stdout.raw",
+      "stdoutSha256": "4014b0b38137349c445cb4f191cb4c9bcc6e524589d88a6628fc425b89571d4e",
+      "stderrFile": "rls-pair2-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3204677632
+    },
+    {
+      "label": "rls-pair2-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:24.715Z",
+      "endedAt": "2026-07-17T08:16:25.038Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-preflight.stdout.raw",
+      "stdoutSha256": "e569c34f12f1eb12cd7980ffde83886c86b7130ea4e99a0bf6d3518d28a216b4",
+      "stderrFile": "rls-pair2-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3108196352
+    },
+    {
+      "label": "rls-pair2-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:26.664Z",
+      "endedAt": "2026-07-17T08:16:27.130Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-normalize.stdout.raw",
+      "stdoutSha256": "a0a06999e1fad4e7d2346bf1c9b6205c18916acf1889714f35756149566245e0",
+      "stderrFile": "rls-pair2-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3044401152
+    },
+    {
+      "label": "rls-pair2-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:27.152Z",
+      "endedAt": "2026-07-17T08:16:27.393Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "deda86eccbb17a33ca353815cfeda3d6a94c9566e4fee2704b0860632999b733",
+      "stderrFile": "rls-pair2-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3028553728
+    },
+    {
+      "label": "rls-pair2-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:27.421Z",
+      "endedAt": "2026-07-17T08:16:27.705Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-physical-clean.stdout.raw",
+      "stdoutSha256": "21e650b8d72dfb941cd6f952f9129d40d3fecc91f436f1af8ea8ea4660b92117",
+      "stderrFile": "rls-pair2-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3022901248
+    },
+    {
+      "label": "rls-pair2-before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "startedAt": "2026-07-17T08:16:27.785Z",
+      "endedAt": "2026-07-17T08:16:28.707Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before.stdout.raw",
+      "stdoutSha256": "f22275de2096ef9a1da491f42e61ee45447e5041248c92d69b7d356b80d47517",
+      "stderrFile": "rls-pair2-before.stderr.raw",
+      "stderrSha256": "547de77012859d62fd6a78a1cc0346d3ea335120d007fcd2cad8f1d3f87b4ef0",
+      "freeMemoryBytesAfter": 3055140864
+    },
+    {
+      "label": "rls-pair2-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:28.741Z",
+      "endedAt": "2026-07-17T08:16:29.019Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-physical-post.stdout.raw",
+      "stdoutSha256": "87f641d43268eebef75a4e26e872f05f14544f3dc4dcd27780008bb3b671fbec",
+      "stderrFile": "rls-pair2-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3024441344
+    },
+    {
+      "label": "rls-pair2-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:29.059Z",
+      "endedAt": "2026-07-17T08:16:29.317Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair2-before-postflight.stdout.raw",
+      "stdoutSha256": "05bab11a539b32eb13e6021bd45ad41b95902a0d7e5047edea06f341dc3d498f",
+      "stderrFile": "rls-pair2-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3020500992
+    },
+    {
+      "label": "rls-pair3-before-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:30.721Z",
+      "endedAt": "2026-07-17T08:16:30.956Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-preflight.stdout.raw",
+      "stdoutSha256": "62328a5c1ef34aae32f3d6c8554a969faea64ac5b7c3d000c3ea456f12f0fb9b",
+      "stderrFile": "rls-pair3-before-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3125481472
+    },
+    {
+      "label": "rls-pair3-before-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:32.709Z",
+      "endedAt": "2026-07-17T08:16:33.118Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-normalize.stdout.raw",
+      "stdoutSha256": "bd886f83f08f871a3cb9452790e92c5b07a5c6a862b4da9c6f505ffe348c9a98",
+      "stderrFile": "rls-pair3-before-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3160993792
+    },
+    {
+      "label": "rls-pair3-before-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:33.144Z",
+      "endedAt": "2026-07-17T08:16:33.377Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-normalized-postflight.stdout.raw",
+      "stdoutSha256": "4bfd7d9f8c7709196501849e945e0e5f4fd8e967aee174d5ce34f78e18f6b63c",
+      "stderrFile": "rls-pair3-before-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3161944064
+    },
+    {
+      "label": "rls-pair3-before-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:33.396Z",
+      "endedAt": "2026-07-17T08:16:33.692Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-physical-clean.stdout.raw",
+      "stdoutSha256": "92543f66a94d2e4b28cbd2b2c1fbaaca2b6519aed29f584b954610f8c54d3620",
+      "stderrFile": "rls-pair3-before-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3145207808
+    },
+    {
+      "label": "rls-pair3-before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "startedAt": "2026-07-17T08:16:33.798Z",
+      "endedAt": "2026-07-17T08:16:34.715Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before.stdout.raw",
+      "stdoutSha256": "b443d677f3df6368b2e2e18f8eaeb8ea46d386b698ae6425af2759699af92238",
+      "stderrFile": "rls-pair3-before.stderr.raw",
+      "stderrSha256": "547de77012859d62fd6a78a1cc0346d3ea335120d007fcd2cad8f1d3f87b4ef0",
+      "freeMemoryBytesAfter": 3164835840
+    },
+    {
+      "label": "rls-pair3-before-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:34.732Z",
+      "endedAt": "2026-07-17T08:16:34.958Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-physical-post.stdout.raw",
+      "stdoutSha256": "65d59708cb7f4629a37d0be0679778af3c76922377af832542e7d521018fddb8",
+      "stderrFile": "rls-pair3-before-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3150864384
+    },
+    {
+      "label": "rls-pair3-before-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:34.989Z",
+      "endedAt": "2026-07-17T08:16:35.256Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-before-postflight.stdout.raw",
+      "stdoutSha256": "b4f36c6dc58165b119000342725ba056806411a3937489b534de490c0e6b560b",
+      "stderrFile": "rls-pair3-before-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3150860288
+    },
+    {
+      "label": "rls-pair3-after-preflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:36.775Z",
+      "endedAt": "2026-07-17T08:16:36.990Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-preflight.stdout.raw",
+      "stdoutSha256": "45ebabf67d01d8b681540985383902b7370bcc7837b80dd7cddaf3852cfe6321",
+      "stderrFile": "rls-pair3-after-preflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3169316864
+    },
+    {
+      "label": "rls-pair3-after-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:38.643Z",
+      "endedAt": "2026-07-17T08:16:39.086Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-normalize.stdout.raw",
+      "stdoutSha256": "8b14191a736f61b3d3c90665f7539ea81c96f11a0f754c53de115db1492cd411",
+      "stderrFile": "rls-pair3-after-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3115896832
+    },
+    {
+      "label": "rls-pair3-after-normalized-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:39.101Z",
+      "endedAt": "2026-07-17T08:16:39.303Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-normalized-postflight.stdout.raw",
+      "stdoutSha256": "78474b7042d77ef8da375ea8d590d2fb85448304476673a06257f0caf289b087",
+      "stderrFile": "rls-pair3-after-normalized-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3120316416
+    },
+    {
+      "label": "rls-pair3-after-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:39.332Z",
+      "endedAt": "2026-07-17T08:16:39.593Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-physical-clean.stdout.raw",
+      "stdoutSha256": "9a263a49e0941b369e8ffd9c0ca8a46bb7bbefd80e03fccea2dcf94a9fc8cfd3",
+      "stderrFile": "rls-pair3-after-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3118559232
+    },
+    {
+      "label": "rls-pair3-after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "startedAt": "2026-07-17T08:16:39.716Z",
+      "endedAt": "2026-07-17T08:16:40.545Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after.stdout.raw",
+      "stdoutSha256": "edffbfd42dca986f667f79de0e3d9da04bf23c8a6e6f3f7435faefaf8e664d3e",
+      "stderrFile": "rls-pair3-after.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3111698432
+    },
+    {
+      "label": "rls-pair3-after-physical-post",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:40.579Z",
+      "endedAt": "2026-07-17T08:16:40.838Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-physical-post.stdout.raw",
+      "stdoutSha256": "83cda57b28b889b20e5a4c64988977db49fe466ec9330e86d28a502f5ccf8406",
+      "stderrFile": "rls-pair3-after-physical-post.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3098501120
+    },
+    {
+      "label": "rls-pair3-after-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:40.874Z",
+      "endedAt": "2026-07-17T08:16:41.129Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "rls-pair3-after-postflight.stdout.raw",
+      "stdoutSha256": "8e9c7f66c1ae4f373bd277a31b021cf6b2bbd6fc9564e2087d3da3996e9e449f",
+      "stderrFile": "rls-pair3-after-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3101437952
+    },
+    {
+      "label": "final-normalize",
+      "sqlFile": "pr11-paired-normalize.sql",
+      "startedAt": "2026-07-17T08:16:42.550Z",
+      "endedAt": "2026-07-17T08:16:43.024Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-normalize.stdout.raw",
+      "stdoutSha256": "01f7123c9dacf7b281b99e7ccd3c76bbe18380ea6245155373d0f4ab3c605b77",
+      "stderrFile": "final-normalize.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3015122944
+    },
+    {
+      "label": "final-postflight",
+      "sqlFile": "pr11-paired-postflight.sql",
+      "startedAt": "2026-07-17T08:16:43.047Z",
+      "endedAt": "2026-07-17T08:16:43.312Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-postflight.stdout.raw",
+      "stdoutSha256": "8617aec75759f16acfae73d69209db14508ed8ebf126a9840c09df4c95da5f50",
+      "stderrFile": "final-postflight.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3044163584
+    },
+    {
+      "label": "final-physical-clean",
+      "sqlFile": "pr11-paired-physical-snapshot.sql",
+      "startedAt": "2026-07-17T08:16:43.344Z",
+      "endedAt": "2026-07-17T08:16:43.652Z",
+      "exitCode": 0,
+      "error": null,
+      "stdoutFile": "final-physical-clean.stdout.raw",
+      "stdoutSha256": "8474fe034d82622f8a48667644f2972b63ff5442fa9bb7b78c419c515e8492d2",
+      "stderrFile": "final-physical-clean.stderr.raw",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "freeMemoryBytesAfter": 3083558912
+    }
+  ],
+  "samples": [
+    {
+      "id": "performance-pair1-before",
+      "family": "performance",
+      "state": "before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "parsedFile": "performance-pair1-before.parsed.json",
+      "parsedSha256": "0a6e48442799ed239b4785afddf831940ec552fdd2a28a5c8c40006c7befd1d6",
+      "bloatDiffFile": "performance-pair1-before.bloat-diff.json",
+      "bloatDiffSha256": "43e59c675934b7d9f2495cfe3e7fb6f2158188775358638594e9fea2027ad705",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair1-before-pre-normalize",
+          "file": "performance-pair1-before-pre-normalize.resource.json",
+          "sha256": "ec2f2064acbeb124650204b7309ff520312030dba6d5a3d600f1fc1f677d1a3a",
+          "dockerStdoutFile": "performance-pair1-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "e71b65cd36692ba33abd747a7a688636501fc6ca9071447f5a5dfd46513d733a",
+          "dockerStderrFile": "performance-pair1-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair1-before-postflight",
+          "file": "performance-pair1-before-postflight.resource.json",
+          "sha256": "723bb3fd4f66c7ecc947ce425e1d98dca55e17a74cc5422476ee6306b31d4bdf",
+          "dockerStdoutFile": "performance-pair1-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "15a8c61362033c680c0aaf6f40421424f428a3baa87e02ae301cd6ff65168c51",
+          "dockerStderrFile": "performance-pair1-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "performance-pair1-after",
+      "family": "performance",
+      "state": "after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "parsedFile": "performance-pair1-after.parsed.json",
+      "parsedSha256": "8f1983c1068a9e3c9365cc3876db2702b7211f646fb2cc9c3cdc5f77198d2d2e",
+      "bloatDiffFile": "performance-pair1-after.bloat-diff.json",
+      "bloatDiffSha256": "45dd4a63d291e90e04517ad4b774eac3ab557dbbc735673997181b2d8a4ccb5f",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair1-after-pre-normalize",
+          "file": "performance-pair1-after-pre-normalize.resource.json",
+          "sha256": "f0ec84c8d96eb255fdb3486f6fd2ecc11198cf6c8dc76cc0b54bbd1a990261e9",
+          "dockerStdoutFile": "performance-pair1-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "15a8c61362033c680c0aaf6f40421424f428a3baa87e02ae301cd6ff65168c51",
+          "dockerStderrFile": "performance-pair1-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair1-after-postflight",
+          "file": "performance-pair1-after-postflight.resource.json",
+          "sha256": "d27dca3ddc60539f8de99ce462f2847dadd472dd6ad19ec53b460fb2b475cbcc",
+          "dockerStdoutFile": "performance-pair1-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "f8ca24cd69e0afb060f0086bb039eed36284da2161125a6e4a541da19f5c6782",
+          "dockerStderrFile": "performance-pair1-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "performance-pair2-after",
+      "family": "performance",
+      "state": "after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "parsedFile": "performance-pair2-after.parsed.json",
+      "parsedSha256": "1d59d2e61de2d28c9fe48d3c3ccb9395c670146f244dd3a571fc5fdee76f8dee",
+      "bloatDiffFile": "performance-pair2-after.bloat-diff.json",
+      "bloatDiffSha256": "531ec2b6cd6dd463fae34a6e5bcc521104c0739eae9ba65b2a612b8dbce0510a",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair2-after-pre-normalize",
+          "file": "performance-pair2-after-pre-normalize.resource.json",
+          "sha256": "de31ed77f21c4c08e19302290439f80f9dca935c482c6505b7060182db79d13d",
+          "dockerStdoutFile": "performance-pair2-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "7a6c57089ea2937915cd5c7822ca72b2af70ba832077c8b40b2888ce2b4cc2b8",
+          "dockerStderrFile": "performance-pair2-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair2-after-postflight",
+          "file": "performance-pair2-after-postflight.resource.json",
+          "sha256": "8e97195173d10df52e92ddd4432c50e47dc7cc0be1adb724ac8093050439e69d",
+          "dockerStdoutFile": "performance-pair2-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "d6b3fbc70de3e020c91861126d8db27fe8b27abe0b5c212967ca200d76d67caa",
+          "dockerStderrFile": "performance-pair2-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "performance-pair2-before",
+      "family": "performance",
+      "state": "before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "parsedFile": "performance-pair2-before.parsed.json",
+      "parsedSha256": "26365fba6f2d2e0b5e0a725eb0f06081281cd3256a7f50aa2aab1cd459079666",
+      "bloatDiffFile": "performance-pair2-before.bloat-diff.json",
+      "bloatDiffSha256": "e974d5db7afa3bed813afd7288f694d7c868393699dd9954b1f4ad7fbc43425a",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair2-before-pre-normalize",
+          "file": "performance-pair2-before-pre-normalize.resource.json",
+          "sha256": "d6f9f4a72e55df31fa12bd971a63c9acdbbb2b84dd72c63c82a3dd01f4c5b3c3",
+          "dockerStdoutFile": "performance-pair2-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "1666c18cc93c689cb9bd9a7ef6193ec5604c4ed415f3b98277bbcc955e6d6a7d",
+          "dockerStderrFile": "performance-pair2-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair2-before-postflight",
+          "file": "performance-pair2-before-postflight.resource.json",
+          "sha256": "a7ba3796775bb733568d46d1639469b96cab3e8244536a831cc03adbea33ac0a",
+          "dockerStdoutFile": "performance-pair2-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "ce4da8d06fe204cf064b61246fd7d15a5cd015f8e15c9e0f9947ee993f768f3f",
+          "dockerStderrFile": "performance-pair2-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "performance-pair3-before",
+      "family": "performance",
+      "state": "before",
+      "sqlFile": "pr11-paired-performance-before.sql",
+      "parsedFile": "performance-pair3-before.parsed.json",
+      "parsedSha256": "3e873d5dfbb1771a04e351d96291b12aae2705b73b465b3c7352dcf344a3e772",
+      "bloatDiffFile": "performance-pair3-before.bloat-diff.json",
+      "bloatDiffSha256": "9cbd3bcfdadec6feae3533b76edf44cd910ba6f18e9728a467a974e84c5db1e8",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair3-before-pre-normalize",
+          "file": "performance-pair3-before-pre-normalize.resource.json",
+          "sha256": "b40cf757819d000c933f0a17582b02c35fcfdda4b588900bf8804a9c286d6eaf",
+          "dockerStdoutFile": "performance-pair3-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "c3ff3d11511e21e45aff90ed5ab0df735ebda62ddb75ea5f21446e87077397be",
+          "dockerStderrFile": "performance-pair3-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair3-before-postflight",
+          "file": "performance-pair3-before-postflight.resource.json",
+          "sha256": "890b764e4a7879c66ae9496fbc076a86413765424ee7211df335ca8d21df5fb1",
+          "dockerStdoutFile": "performance-pair3-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "024a4fd8cf65566a3acbee6d2381de215cceaef448c3a58334efae834e8efea2",
+          "dockerStderrFile": "performance-pair3-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "performance-pair3-after",
+      "family": "performance",
+      "state": "after",
+      "sqlFile": "pr11-performance-probe.sql",
+      "parsedFile": "performance-pair3-after.parsed.json",
+      "parsedSha256": "b9a178620eab280cffffb4f4646593806046e6d18939af8afda830abb77af1a0",
+      "bloatDiffFile": "performance-pair3-after.bloat-diff.json",
+      "bloatDiffSha256": "38d5c4536ffc5283a7e3888829fa5b5e15d25c9e263fabc58e6a25ade4f29369",
+      "resultCount": 10,
+      "resourceEvidence": {
+        "pre": {
+          "label": "performance-pair3-after-pre-normalize",
+          "file": "performance-pair3-after-pre-normalize.resource.json",
+          "sha256": "58fdfad4b3c65b0fd9eb9e30f9189a7d9f51b00ad0cb1a2473c6437e57ea896d",
+          "dockerStdoutFile": "performance-pair3-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "56b441d21661319ccf583ef56c0594df8ae5841883fa046dfa763f1d0fd9ced9",
+          "dockerStderrFile": "performance-pair3-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "performance-pair3-after-postflight",
+          "file": "performance-pair3-after-postflight.resource.json",
+          "sha256": "25f0b354266b7da9311a4772e854f4b7f297da7c4d94522e96c1848cb2f64d17",
+          "dockerStdoutFile": "performance-pair3-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "b5e21f790f3b5510de792afc306ee2fd8aa99221e6c096a07ac3a0ccbb9a5eac",
+          "dockerStderrFile": "performance-pair3-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair1-before",
+      "family": "rls",
+      "state": "before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "parsedFile": "rls-pair1-before.parsed.json",
+      "parsedSha256": "b2a0778758ccdb6d4a199327155c97b29437c02d4587ad1451116655881a0084",
+      "bloatDiffFile": "rls-pair1-before.bloat-diff.json",
+      "bloatDiffSha256": "373c9c9f4ee1d29502cdb00d5304360f0812ca4d5fa2b2bd7b7d8de8716d1f7e",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair1-before-pre-normalize",
+          "file": "rls-pair1-before-pre-normalize.resource.json",
+          "sha256": "26086c73bcb1c98238c2fa4a6aff4ee2bfdb71170197a21ee4ffe1588538cda6",
+          "dockerStdoutFile": "rls-pair1-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "3a437099059547b27b9f9ccebb1cf6fda5ee9256dd13759bc63267d0e7a8a969",
+          "dockerStderrFile": "rls-pair1-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair1-before-postflight",
+          "file": "rls-pair1-before-postflight.resource.json",
+          "sha256": "dd127e723acdd1d3544ddf4ff1de75890228aebda9e5e76e08897c8ef156d4e0",
+          "dockerStdoutFile": "rls-pair1-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "40f84605ff6e277e7726dd9be2bba50503e8a068693ad92bebf63dc3bbdbab44",
+          "dockerStderrFile": "rls-pair1-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair1-after",
+      "family": "rls",
+      "state": "after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "parsedFile": "rls-pair1-after.parsed.json",
+      "parsedSha256": "44dde4dc79164bd356da1f00862f8f7424d66b3e0772a3ce660fdcf1ffee06bb",
+      "bloatDiffFile": "rls-pair1-after.bloat-diff.json",
+      "bloatDiffSha256": "b69a6a2a918cc3db2559419eb2149d4b73d59cd1ace9857f25caee32775589a0",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair1-after-pre-normalize",
+          "file": "rls-pair1-after-pre-normalize.resource.json",
+          "sha256": "651ca2a429727b12752b65875dd34fc91dae55b60f3aa11ebb35d0d21dddd542",
+          "dockerStdoutFile": "rls-pair1-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "0e2315036076a2fa0ce4d4239697cd89a11f3f48a47a944fbf5c2bf677121add",
+          "dockerStderrFile": "rls-pair1-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair1-after-postflight",
+          "file": "rls-pair1-after-postflight.resource.json",
+          "sha256": "cb47e25bcbaa2070fdeaa5d1080bbbe2d414f25882bd67741532f9e2b7a2617d",
+          "dockerStdoutFile": "rls-pair1-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "011fe9b4d6b4f0d6171a42e1d3b456752c1de5babf1be5037e24129675fd5f0f",
+          "dockerStderrFile": "rls-pair1-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair2-after",
+      "family": "rls",
+      "state": "after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "parsedFile": "rls-pair2-after.parsed.json",
+      "parsedSha256": "1491a00adec244840a745cc039ff66fde73d30be76a720d82abce8b7ffa42f6c",
+      "bloatDiffFile": "rls-pair2-after.bloat-diff.json",
+      "bloatDiffSha256": "b69a6a2a918cc3db2559419eb2149d4b73d59cd1ace9857f25caee32775589a0",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair2-after-pre-normalize",
+          "file": "rls-pair2-after-pre-normalize.resource.json",
+          "sha256": "4d3995cc3b004a568d38241f65d4a6ca5c70eedf30594445669fb0977d6860c5",
+          "dockerStdoutFile": "rls-pair2-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "f72b40382e19b667e9d088c3c08d5f49815982466f2ee4358f48f25938a2d913",
+          "dockerStderrFile": "rls-pair2-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair2-after-postflight",
+          "file": "rls-pair2-after-postflight.resource.json",
+          "sha256": "144e3cdfeabf712fd8eec0cb181f7ccbb2c3ac03deda42ac32bdf4d126dc9d24",
+          "dockerStdoutFile": "rls-pair2-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "74a194fd114dfeed4af9977939f1c95cb0fcaf35352e803bb7d9f316170aa12e",
+          "dockerStderrFile": "rls-pair2-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair2-before",
+      "family": "rls",
+      "state": "before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "parsedFile": "rls-pair2-before.parsed.json",
+      "parsedSha256": "944357461fc7e2e5e7e783eac03b1c3df32977daa951fdfb570f15e3b3978e27",
+      "bloatDiffFile": "rls-pair2-before.bloat-diff.json",
+      "bloatDiffSha256": "373c9c9f4ee1d29502cdb00d5304360f0812ca4d5fa2b2bd7b7d8de8716d1f7e",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair2-before-pre-normalize",
+          "file": "rls-pair2-before-pre-normalize.resource.json",
+          "sha256": "ce230aa403afd1af9cf026eb536fe80f7a449a93d965d943f4c4234e823232ee",
+          "dockerStdoutFile": "rls-pair2-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "717db5504e917c3553274a4c9124155c1ea54b64d3ffdaf4ffb0479fc90aeb47",
+          "dockerStderrFile": "rls-pair2-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair2-before-postflight",
+          "file": "rls-pair2-before-postflight.resource.json",
+          "sha256": "3e7085540f8d8b858dad9947e8d30dc0c045b5613a6cd632098e3836fe9b0fc9",
+          "dockerStdoutFile": "rls-pair2-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "79e77b96950943bcd223bbfb6a8c7d77cb092b44856c7ff8cc75f9a16911e206",
+          "dockerStderrFile": "rls-pair2-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair3-before",
+      "family": "rls",
+      "state": "before",
+      "sqlFile": "pr11-paired-rls-before.sql",
+      "parsedFile": "rls-pair3-before.parsed.json",
+      "parsedSha256": "9d3aed337c55f3daa7f0f5e827ac7ee399877194a0e018774a575955e7c93f3b",
+      "bloatDiffFile": "rls-pair3-before.bloat-diff.json",
+      "bloatDiffSha256": "373c9c9f4ee1d29502cdb00d5304360f0812ca4d5fa2b2bd7b7d8de8716d1f7e",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair3-before-pre-normalize",
+          "file": "rls-pair3-before-pre-normalize.resource.json",
+          "sha256": "fa34ce2463c0dac9b56fd8643d9cb550919b5f4d997c20b49248f8af0791fb51",
+          "dockerStdoutFile": "rls-pair3-before-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "fce069307c9ab01febc3384cd29161352446013d67949c7576ce080c6953a2c3",
+          "dockerStderrFile": "rls-pair3-before-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair3-before-postflight",
+          "file": "rls-pair3-before-postflight.resource.json",
+          "sha256": "f2447a68c7486f82b07af1c8a0868fd551579fb24804239f23084405eb002bc8",
+          "dockerStdoutFile": "rls-pair3-before-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "4c88b783588dbba9e36d753d1a775b250ae46acb2f4043dd339b1852ea66dc06",
+          "dockerStderrFile": "rls-pair3-before-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "id": "rls-pair3-after",
+      "family": "rls",
+      "state": "after",
+      "sqlFile": "pr11-rls-plan-probe.sql",
+      "parsedFile": "rls-pair3-after.parsed.json",
+      "parsedSha256": "cacbce8bb0812a7c84559195c7c072f7c8d7f216d1371787f2c62f7a12b08dda",
+      "bloatDiffFile": "rls-pair3-after.bloat-diff.json",
+      "bloatDiffSha256": "b69a6a2a918cc3db2559419eb2149d4b73d59cd1ace9857f25caee32775589a0",
+      "resultCount": 4,
+      "resourceEvidence": {
+        "pre": {
+          "label": "rls-pair3-after-pre-normalize",
+          "file": "rls-pair3-after-pre-normalize.resource.json",
+          "sha256": "7cb236fb91630cbc06aec96c0d2b8e35af301e8ee4e9f463de9b08d8b36c707b",
+          "dockerStdoutFile": "rls-pair3-after-pre-normalize.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "011fd65000cec3013d9d935ff5a6f4a926aaf4bb2fb466f277e411a0be3fd0d7",
+          "dockerStderrFile": "rls-pair3-after-pre-normalize.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "post": {
+          "label": "rls-pair3-after-postflight",
+          "file": "rls-pair3-after-postflight.resource.json",
+          "sha256": "d65ff941add5d772cd4befdbcee791163546cecdbe72b7bf5c45772bc4bac400",
+          "dockerStdoutFile": "rls-pair3-after-postflight.docker-stats.stdout.raw",
+          "dockerStdoutSha256": "f9aacb154c4b042573cc346576e313b4d6999666f33bfef83b11441ccc90b28c",
+          "dockerStderrFile": "rls-pair3-after-postflight.docker-stats.stderr.raw",
+          "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "physicalCleanStates": [
+    {
+      "label": "performance-pair1-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "performance-pair1-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "performance-pair2-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "performance-pair2-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "performance-pair3-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "performance-pair3-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair1-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair1-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair2-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair2-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair3-before-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "rls-pair3-after-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    },
+    {
+      "label": "final-physical-clean",
+      "normalizedRelationCount": 17,
+      "physicalRecordCount": 170,
+      "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+    }
+  ],
+  "databaseRuntimeStates": [
+    {
+      "label": "performance-pair1-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair1-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair1-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair1-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair2-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair2-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair2-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair2-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair3-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair3-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair3-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "performance-pair3-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair1-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair1-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair1-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair1-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair2-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair2-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair2-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair2-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair3-before-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair3-before-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair3-after-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "rls-pair3-after-physical-post",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    },
+    {
+      "label": "final-physical-clean",
+      "activeOtherClients": 0,
+      "blockedOtherClients": 0,
+      "vacuumProgressCount": 0,
+      "createIndexProgressCount": 0,
+      "otherClientActivity": [],
+      "checkpointer": {
+        "num_timed": 32,
+        "sync_time": 2963,
+        "write_time": 1065541,
+        "stats_reset": "2026-07-16T23:58:40.901007+00:00",
+        "num_requested": 1,
+        "buffers_written": 9669,
+        "restartpoints_req": 0,
+        "restartpoints_done": 0,
+        "restartpoints_timed": 0
+      },
+      "stableState": {
+        "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+        "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+        "guc": {
+          "effective_cache_size": "128MB",
+          "jit": "on",
+          "maintenance_work_mem": "64MB",
+          "max_parallel_workers_per_gather": "2",
+          "shared_buffers": "128MB",
+          "synchronous_commit": "on",
+          "track_io_timing": "off",
+          "work_mem": "4MB"
+        }
+      },
+      "zeroLoadPass": true,
+      "stableIdentityPass": true
+    }
+  ],
+  "sampleResourceEvidence": [
+    {
+      "label": "performance-pair1-before-pre-normalize",
+      "file": "performance-pair1-before-pre-normalize.resource.json",
+      "sha256": "ec2f2064acbeb124650204b7309ff520312030dba6d5a3d600f1fc1f677d1a3a",
+      "dockerStdoutFile": "performance-pair1-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "e71b65cd36692ba33abd747a7a688636501fc6ca9071447f5a5dfd46513d733a",
+      "dockerStderrFile": "performance-pair1-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair1-before-postflight",
+      "file": "performance-pair1-before-postflight.resource.json",
+      "sha256": "723bb3fd4f66c7ecc947ce425e1d98dca55e17a74cc5422476ee6306b31d4bdf",
+      "dockerStdoutFile": "performance-pair1-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "15a8c61362033c680c0aaf6f40421424f428a3baa87e02ae301cd6ff65168c51",
+      "dockerStderrFile": "performance-pair1-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair1-after-pre-normalize",
+      "file": "performance-pair1-after-pre-normalize.resource.json",
+      "sha256": "f0ec84c8d96eb255fdb3486f6fd2ecc11198cf6c8dc76cc0b54bbd1a990261e9",
+      "dockerStdoutFile": "performance-pair1-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "15a8c61362033c680c0aaf6f40421424f428a3baa87e02ae301cd6ff65168c51",
+      "dockerStderrFile": "performance-pair1-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair1-after-postflight",
+      "file": "performance-pair1-after-postflight.resource.json",
+      "sha256": "d27dca3ddc60539f8de99ce462f2847dadd472dd6ad19ec53b460fb2b475cbcc",
+      "dockerStdoutFile": "performance-pair1-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "f8ca24cd69e0afb060f0086bb039eed36284da2161125a6e4a541da19f5c6782",
+      "dockerStderrFile": "performance-pair1-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair2-after-pre-normalize",
+      "file": "performance-pair2-after-pre-normalize.resource.json",
+      "sha256": "de31ed77f21c4c08e19302290439f80f9dca935c482c6505b7060182db79d13d",
+      "dockerStdoutFile": "performance-pair2-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "7a6c57089ea2937915cd5c7822ca72b2af70ba832077c8b40b2888ce2b4cc2b8",
+      "dockerStderrFile": "performance-pair2-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair2-after-postflight",
+      "file": "performance-pair2-after-postflight.resource.json",
+      "sha256": "8e97195173d10df52e92ddd4432c50e47dc7cc0be1adb724ac8093050439e69d",
+      "dockerStdoutFile": "performance-pair2-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "d6b3fbc70de3e020c91861126d8db27fe8b27abe0b5c212967ca200d76d67caa",
+      "dockerStderrFile": "performance-pair2-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair2-before-pre-normalize",
+      "file": "performance-pair2-before-pre-normalize.resource.json",
+      "sha256": "d6f9f4a72e55df31fa12bd971a63c9acdbbb2b84dd72c63c82a3dd01f4c5b3c3",
+      "dockerStdoutFile": "performance-pair2-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "1666c18cc93c689cb9bd9a7ef6193ec5604c4ed415f3b98277bbcc955e6d6a7d",
+      "dockerStderrFile": "performance-pair2-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair2-before-postflight",
+      "file": "performance-pair2-before-postflight.resource.json",
+      "sha256": "a7ba3796775bb733568d46d1639469b96cab3e8244536a831cc03adbea33ac0a",
+      "dockerStdoutFile": "performance-pair2-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "ce4da8d06fe204cf064b61246fd7d15a5cd015f8e15c9e0f9947ee993f768f3f",
+      "dockerStderrFile": "performance-pair2-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair3-before-pre-normalize",
+      "file": "performance-pair3-before-pre-normalize.resource.json",
+      "sha256": "b40cf757819d000c933f0a17582b02c35fcfdda4b588900bf8804a9c286d6eaf",
+      "dockerStdoutFile": "performance-pair3-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "c3ff3d11511e21e45aff90ed5ab0df735ebda62ddb75ea5f21446e87077397be",
+      "dockerStderrFile": "performance-pair3-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair3-before-postflight",
+      "file": "performance-pair3-before-postflight.resource.json",
+      "sha256": "890b764e4a7879c66ae9496fbc076a86413765424ee7211df335ca8d21df5fb1",
+      "dockerStdoutFile": "performance-pair3-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "024a4fd8cf65566a3acbee6d2381de215cceaef448c3a58334efae834e8efea2",
+      "dockerStderrFile": "performance-pair3-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair3-after-pre-normalize",
+      "file": "performance-pair3-after-pre-normalize.resource.json",
+      "sha256": "58fdfad4b3c65b0fd9eb9e30f9189a7d9f51b00ad0cb1a2473c6437e57ea896d",
+      "dockerStdoutFile": "performance-pair3-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "56b441d21661319ccf583ef56c0594df8ae5841883fa046dfa763f1d0fd9ced9",
+      "dockerStderrFile": "performance-pair3-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "performance-pair3-after-postflight",
+      "file": "performance-pair3-after-postflight.resource.json",
+      "sha256": "25f0b354266b7da9311a4772e854f4b7f297da7c4d94522e96c1848cb2f64d17",
+      "dockerStdoutFile": "performance-pair3-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "b5e21f790f3b5510de792afc306ee2fd8aa99221e6c096a07ac3a0ccbb9a5eac",
+      "dockerStderrFile": "performance-pair3-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair1-before-pre-normalize",
+      "file": "rls-pair1-before-pre-normalize.resource.json",
+      "sha256": "26086c73bcb1c98238c2fa4a6aff4ee2bfdb71170197a21ee4ffe1588538cda6",
+      "dockerStdoutFile": "rls-pair1-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "3a437099059547b27b9f9ccebb1cf6fda5ee9256dd13759bc63267d0e7a8a969",
+      "dockerStderrFile": "rls-pair1-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair1-before-postflight",
+      "file": "rls-pair1-before-postflight.resource.json",
+      "sha256": "dd127e723acdd1d3544ddf4ff1de75890228aebda9e5e76e08897c8ef156d4e0",
+      "dockerStdoutFile": "rls-pair1-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "40f84605ff6e277e7726dd9be2bba50503e8a068693ad92bebf63dc3bbdbab44",
+      "dockerStderrFile": "rls-pair1-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair1-after-pre-normalize",
+      "file": "rls-pair1-after-pre-normalize.resource.json",
+      "sha256": "651ca2a429727b12752b65875dd34fc91dae55b60f3aa11ebb35d0d21dddd542",
+      "dockerStdoutFile": "rls-pair1-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "0e2315036076a2fa0ce4d4239697cd89a11f3f48a47a944fbf5c2bf677121add",
+      "dockerStderrFile": "rls-pair1-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair1-after-postflight",
+      "file": "rls-pair1-after-postflight.resource.json",
+      "sha256": "cb47e25bcbaa2070fdeaa5d1080bbbe2d414f25882bd67741532f9e2b7a2617d",
+      "dockerStdoutFile": "rls-pair1-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "011fe9b4d6b4f0d6171a42e1d3b456752c1de5babf1be5037e24129675fd5f0f",
+      "dockerStderrFile": "rls-pair1-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair2-after-pre-normalize",
+      "file": "rls-pair2-after-pre-normalize.resource.json",
+      "sha256": "4d3995cc3b004a568d38241f65d4a6ca5c70eedf30594445669fb0977d6860c5",
+      "dockerStdoutFile": "rls-pair2-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "f72b40382e19b667e9d088c3c08d5f49815982466f2ee4358f48f25938a2d913",
+      "dockerStderrFile": "rls-pair2-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair2-after-postflight",
+      "file": "rls-pair2-after-postflight.resource.json",
+      "sha256": "144e3cdfeabf712fd8eec0cb181f7ccbb2c3ac03deda42ac32bdf4d126dc9d24",
+      "dockerStdoutFile": "rls-pair2-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "74a194fd114dfeed4af9977939f1c95cb0fcaf35352e803bb7d9f316170aa12e",
+      "dockerStderrFile": "rls-pair2-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair2-before-pre-normalize",
+      "file": "rls-pair2-before-pre-normalize.resource.json",
+      "sha256": "ce230aa403afd1af9cf026eb536fe80f7a449a93d965d943f4c4234e823232ee",
+      "dockerStdoutFile": "rls-pair2-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "717db5504e917c3553274a4c9124155c1ea54b64d3ffdaf4ffb0479fc90aeb47",
+      "dockerStderrFile": "rls-pair2-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair2-before-postflight",
+      "file": "rls-pair2-before-postflight.resource.json",
+      "sha256": "3e7085540f8d8b858dad9947e8d30dc0c045b5613a6cd632098e3836fe9b0fc9",
+      "dockerStdoutFile": "rls-pair2-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "79e77b96950943bcd223bbfb6a8c7d77cb092b44856c7ff8cc75f9a16911e206",
+      "dockerStderrFile": "rls-pair2-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair3-before-pre-normalize",
+      "file": "rls-pair3-before-pre-normalize.resource.json",
+      "sha256": "fa34ce2463c0dac9b56fd8643d9cb550919b5f4d997c20b49248f8af0791fb51",
+      "dockerStdoutFile": "rls-pair3-before-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "fce069307c9ab01febc3384cd29161352446013d67949c7576ce080c6953a2c3",
+      "dockerStderrFile": "rls-pair3-before-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair3-before-postflight",
+      "file": "rls-pair3-before-postflight.resource.json",
+      "sha256": "f2447a68c7486f82b07af1c8a0868fd551579fb24804239f23084405eb002bc8",
+      "dockerStdoutFile": "rls-pair3-before-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "4c88b783588dbba9e36d753d1a775b250ae46acb2f4043dd339b1852ea66dc06",
+      "dockerStderrFile": "rls-pair3-before-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair3-after-pre-normalize",
+      "file": "rls-pair3-after-pre-normalize.resource.json",
+      "sha256": "7cb236fb91630cbc06aec96c0d2b8e35af301e8ee4e9f463de9b08d8b36c707b",
+      "dockerStdoutFile": "rls-pair3-after-pre-normalize.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "011fd65000cec3013d9d935ff5a6f4a926aaf4bb2fb466f277e411a0be3fd0d7",
+      "dockerStderrFile": "rls-pair3-after-pre-normalize.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "rls-pair3-after-postflight",
+      "file": "rls-pair3-after-postflight.resource.json",
+      "sha256": "d65ff941add5d772cd4befdbcee791163546cecdbe72b7bf5c45772bc4bac400",
+      "dockerStdoutFile": "rls-pair3-after-postflight.docker-stats.stdout.raw",
+      "dockerStdoutSha256": "f9aacb154c4b042573cc346576e313b4d6999666f33bfef83b11441ccc90b28c",
+      "dockerStderrFile": "rls-pair3-after-postflight.docker-stats.stderr.raw",
+      "dockerStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "environmentValidation": {
+    "passed": true,
+    "psqlMajor": 17,
+    "supabaseCliVersion": "2.109.0",
+    "supabaseCliExecutableSha256": "903d7b4ba079239cecbd86e1847fef6b24f939d213d36345f34e4cd8bb137118",
+    "supabaseCliArchiveSha256": "4ea5b92ae679323cde0e69ca92b801c3fc705c8351bdff50cb3b8eff6926f5c7",
+    "databaseContainerImage": "public.ecr.aws/supabase/postgres:17.6.1.104"
+  },
+  "databaseRuntimeBaseline": {
+    "postmasterStartedAt": "2026-07-15T15:55:07.222993+00:00",
+    "checkpointerStatsReset": "2026-07-16T23:58:40.901007+00:00",
+    "guc": {
+      "effective_cache_size": "128MB",
+      "jit": "on",
+      "maintenance_work_mem": "64MB",
+      "max_parallel_workers_per_gather": "2",
+      "shared_buffers": "128MB",
+      "synchronous_commit": "on",
+      "track_io_timing": "off",
+      "work_mem": "4MB"
+    }
+  },
+  "physicalCleanBaseline": {
+    "label": "performance-pair1-before-physical-clean",
+    "normalizedRelationCount": 17,
+    "physicalRecordCount": 170,
+    "sha256": "5aba52698f8c666b0d67b96cf8a46284883e4273f70758a8cc7f92a6452769ff"
+  },
+  "fixedGateSummary": {
+    "file": "fixed-gate-summary.json",
+    "sha256": "36e8205f6af43c79f53fb7245f4dc0c1c5cd65581536cd66ee004446e6b4b5d4",
+    "primaryPass": false
+  }
+}

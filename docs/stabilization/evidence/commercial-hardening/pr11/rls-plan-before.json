@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-07-16T23:55:00+09:00",
+  "target": "local",
+  "migration_head": "20260715083609",
+  "probe": "scripts/commercial-hardening/sql/pr11-rls-plan-probe.sql",
+  "actor": {
+    "database_role": "authenticated",
+    "application_role": "clinic_admin",
+    "visible_clinic": "tenant_a",
+    "fixture_rows_per_table": 2000,
+    "returned_rows": 250
+  },
+  "customer_insurance_coverages": {
+    "execution_ms": [46.738, 59.549, 58.87],
+    "median_execution_ms": 58.87,
+    "planning_ms": [0.883, 1.043, 0.878],
+    "shared_hit_blocks": [12171, 12174, 12175],
+    "index_names": [
+      "customer_insurance_coverages_customer_clinic_idx",
+      "customer_insurance_coverages_id_clinic_unique",
+      "customer_insurance_coverages_id_clinic_unique"
+    ],
+    "raw_plan_md5": [
+      "94840722df103df73b9f6f6a323d963c",
+      "861ad159e0e7e49e2a60db49edfe0e5b",
+      "67159dbfd8e3e8b328705ae7a44b89e6"
+    ]
+  },
+  "menu_billing_profiles": {
+    "execution_ms": [47.586, 55.805, 63.014],
+    "median_execution_ms": 55.805,
+    "planning_ms": [0.51, 0.575, 0.539],
+    "shared_hit_blocks": [12036, 12038, 12039],
+    "index_names": [
+      "menu_billing_profiles_menu_clinic_idx",
+      "menu_billing_profiles_id_clinic_unique",
+      "menu_billing_profiles_id_clinic_unique"
+    ],
+    "raw_plan_md5": [
+      "9d68614385264b3b4386010b7b40b46f",
+      "66c5e4b865960d771a8969d5403a8a8a",
+      "ce178bfadad3bbfd0eb7cdf457a39217"
+    ]
+  },
+  "select_policy_count_per_table": 2,
+  "rls_filter": "can_access_clinic AND ((role = ANY [admin, clinic_admin]) OR (role = ANY [admin, clinic_admin, manager, therapist, staff]))",
+  "auth_rls_initplan_findings": 0,
+  "transaction_rolled_back": true
+}

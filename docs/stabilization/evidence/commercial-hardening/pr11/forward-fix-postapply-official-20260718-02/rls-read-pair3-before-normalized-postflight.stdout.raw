@@ -1,0 +1,2 @@
+{"kind": "postapply_permanent_state", "contract_pass": true, "migration_head": "20260718011731", "public_policy_count": 183, "blocks_trigger_enabled": true, "candidate_indexes_present": 2, "statement_scope_helper_present": true}
+PR11_POSTAPPLY_PERMANENT_STATE_PASS

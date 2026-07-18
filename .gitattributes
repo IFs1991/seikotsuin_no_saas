@@ -9,6 +9,8 @@
 # Documentation classification for linguist
 docs/** linguist-documentation
 
+# Preserve Windows-captured PR-11 raw evidence byte-for-byte for manifest hashes
+docs/stabilization/evidence/commercial-hardening/pr11/**/*.raw binary
+
 # Keep SQL recognized as code for stats
 sql/** linguist-detectable=true
-

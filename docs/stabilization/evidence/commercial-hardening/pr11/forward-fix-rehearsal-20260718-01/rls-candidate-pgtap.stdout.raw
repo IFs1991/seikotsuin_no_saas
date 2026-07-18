@@ -1,0 +1,58 @@
+{"kind": "experiment_preflight", "database": "postgres", "contract_pass": true, "migration_head": "20260716160402", "server_version_num": "170006", "blocks_trigger_enabled": true, "candidate_indexes_present": 0, "candidate_scope_helper_present": false}
+{"kind": "rls_scope_candidate_catalog", "index_count": 2, "helper_count": 1, "policy_count": 2, "contract_pass": true, "index_contract_pass": true, "helper_contract_pass": true, "policy_contract_pass": true, "source_helpers_unchanged": true}
+1..49
+ok 1 - PR-11 creates exactly 41 provenance-tagged FK indexes
+ok 2 - all 41 indexes exactly cover validated MATCH SIMPLE FKs with reviewed full/partial predicates
+ok 3 - unindexed FK residual is exactly the reviewed 3 active paths plus 12 legacy and 35 unclassified constraints
+ok 4 - the reviewed reverse customer/clinic index remains plan-eligible
+ok 5 - the globally unique campaign prefix remains plan-eligible for recipients
+ok 6 - the existing partial campaign index remains plan-eligible for reservations
+ok 7 - public policy count is the reviewed PR-11 total
+ok 8 - the two reviewed ALL policies are retired
+ok 9 - both split policy sets preserve the exact retired write predicate
+ok 10 - the broader staff SELECT policies match the exact current or statement-scope candidate state
+ok 11 - all policies retain reviewed PR-03 or PR-11 provenance comments
+ok 12 - exactly the 16 reviewed multiple-permissive policy identities remain
+ok 13 - calendar owner-decision and menu role-split exceptions remain unchanged
+ok 14 - RLS remains enabled on both split-policy tables
+ok 15 - anon cannot access insurance coverage directly
+ok 16 - anon cannot access menu billing profiles directly
+{"sub": "fb110000-0000-4000-8000-000000001010", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000001001"]}}
+ok 17 - authenticated insurance SELECT plan keeps the broader role filter and drops the retired narrow ALL filter
+ok 18 - authenticated menu billing SELECT plan keeps the broader role filter and drops the retired narrow ALL filter
+{"sub": "fb110000-0000-4000-8000-000000001020", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000001001"]}}
+ok 19 - manager reads insurance coverage for assigned tenant A only
+ok 20 - manager reads menu billing profile for assigned tenant A only
+ok 21 - manager cannot insert tenant A insurance coverage
+ok 22 - manager cannot insert tenant A menu billing profile
+ok 23 - manager cannot INSERT UPDATE or DELETE either protected table in tenant A or B
+{"sub": "fb110000-0000-4000-8000-000000001030", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000001001"]}}
+ok 24 - therapist reads insurance coverage for tenant A only
+ok 25 - therapist reads menu billing profile for tenant A only
+ok 26 - therapist cannot insert tenant A insurance coverage
+ok 27 - therapist cannot insert tenant A menu billing profile
+ok 28 - therapist cannot INSERT UPDATE or DELETE either protected table in tenant A or B
+{"sub": "fb110000-0000-4000-8000-000000001040", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000001001"]}}
+ok 29 - staff reads insurance coverage for tenant A only
+ok 30 - staff reads menu billing profile for tenant A only
+ok 31 - staff cannot insert tenant A insurance coverage
+ok 32 - staff cannot insert tenant A menu billing profile
+ok 33 - staff cannot update tenant A insurance coverage
+ok 34 - staff cannot delete tenant A menu billing profile
+ok 35 - staff cannot INSERT UPDATE or DELETE either protected table in tenant A or B
+{"sub": "fb110000-0000-4000-8000-000000001010", "role": "authenticated", "app_metadata": {"clinic_scope_ids": ["fb110000-0000-4000-8000-000000001001"]}}
+ok 36 - clinic admin reads insurance coverage for tenant A only
+ok 37 - clinic admin reads menu billing profile for tenant A only
+ok 38 - clinic admin inserts tenant A insurance coverage
+ok 39 - clinic admin cannot insert tenant B insurance coverage
+ok 40 - clinic admin updates tenant A insurance coverage
+ok 41 - clinic admin cannot re-home insurance coverage from tenant A to B
+ok 42 - clinic admin deletes tenant A insurance coverage
+ok 43 - clinic admin cannot delete tenant B insurance coverage
+ok 44 - clinic admin inserts tenant A menu billing profile
+ok 45 - clinic admin cannot insert tenant B menu billing profile
+ok 46 - clinic admin updates tenant A menu billing profile
+ok 47 - clinic admin cannot re-home menu billing profile from tenant A to B
+ok 48 - clinic admin deletes tenant A menu billing profile
+ok 49 - clinic admin cannot delete tenant B menu billing profile
+{"kind": "experiment_preflight", "database": "postgres", "contract_pass": true, "migration_head": "20260716160402", "server_version_num": "170006", "blocks_trigger_enabled": true, "candidate_indexes_present": 0, "candidate_scope_helper_present": false}

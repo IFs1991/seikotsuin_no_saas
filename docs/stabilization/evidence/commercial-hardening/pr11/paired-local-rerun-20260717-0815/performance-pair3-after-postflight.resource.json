@@ -1,0 +1,188 @@
+{
+  "label": "performance-pair3-after-postflight",
+  "startedAt": "2026-07-17T08:16:05.957Z",
+  "endedAt": "2026-07-17T08:16:07.142Z",
+  "host": {
+    "loadAverage": [
+      0,
+      0,
+      0
+    ],
+    "freeMemoryBytes": 3350257664,
+    "totalMemoryBytes": 16858472448,
+    "uptimeSeconds": 803243.343,
+    "processCpuUsageMicroseconds": {
+      "user": 718000,
+      "system": 1203000
+    },
+    "processMemoryBytes": {
+      "rss": 123834368,
+      "heapTotal": 11501568,
+      "heapUsed": 10324896,
+      "external": 77241383,
+      "arrayBuffers": 75106763
+    },
+    "logicalCpuTimes": [
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 82531640,
+          "nice": 0,
+          "sys": 116502687,
+          "idle": 599287796,
+          "irq": 6220328
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 56509156,
+          "nice": 0,
+          "sys": 65903390,
+          "idle": 675909484,
+          "irq": 2917937
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 91938765,
+          "nice": 0,
+          "sys": 118311953,
+          "idle": 588071312,
+          "irq": 4480953
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 57706062,
+          "nice": 0,
+          "sys": 65507968,
+          "idle": 675108000,
+          "irq": 2545796
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 56462562,
+          "nice": 0,
+          "sys": 69481531,
+          "idle": 672377921,
+          "irq": 4000125
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 57463406,
+          "nice": 0,
+          "sys": 66922843,
+          "idle": 673935765,
+          "irq": 3531812
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 57080796,
+          "nice": 0,
+          "sys": 63057953,
+          "idle": 678183265,
+          "irq": 3186046
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 57133421,
+          "nice": 0,
+          "sys": 59951687,
+          "idle": 681236906,
+          "irq": 2887484
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 66615062,
+          "nice": 0,
+          "sys": 70322796,
+          "idle": 661384156,
+          "irq": 3517515
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 65647484,
+          "nice": 0,
+          "sys": 66125343,
+          "idle": 666549187,
+          "irq": 3122562
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 64672890,
+          "nice": 0,
+          "sys": 62681468,
+          "idle": 670967671,
+          "irq": 2842265
+        }
+      },
+      {
+        "model": "12th Gen Intel(R) Core(TM) i7-1255U",
+        "speedMhz": 2611,
+        "timesMilliseconds": {
+          "user": 63875093,
+          "nice": 0,
+          "sys": 60249171,
+          "idle": 674197750,
+          "irq": 2610890
+        }
+      }
+    ]
+  },
+  "dockerDatabase": {
+    "command": [
+      "docker.exe",
+      "stats",
+      "--no-stream",
+      "--format",
+      "{{json .}}",
+      "supabase_db_seikotsuin_management_saas"
+    ],
+    "exitCode": 0,
+    "error": null,
+    "parseError": null,
+    "stats": {
+      "BlockIO": "647kB / 1.92GB",
+      "CPUPerc": "0.05%",
+      "Container": "supabase_db_seikotsuin_management_saas",
+      "ID": "08d271d7f033",
+      "MemPerc": "2.20%",
+      "MemUsage": "175MiB / 7.757GiB",
+      "Name": "supabase_db_seikotsuin_management_saas",
+      "NetIO": "74.2MB / 65.8MB",
+      "PIDs": "18"
+    },
+    "stdoutFile": "performance-pair3-after-postflight.docker-stats.stdout.raw",
+    "stdoutSha256": "b5e21f790f3b5510de792afc306ee2fd8aa99221e6c096a07ac3a0ccbb9a5eac",
+    "stderrFile": "performance-pair3-after-postflight.docker-stats.stderr.raw",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
