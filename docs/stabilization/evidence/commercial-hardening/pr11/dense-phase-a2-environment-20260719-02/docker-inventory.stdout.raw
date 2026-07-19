@@ -1,0 +1,26 @@
+supabase_db_seikotsuin_management_saas	public.ecr.aws/supabase/postgres:17.6.1.104	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_studio_seikotsuin_management_saas	public.ecr.aws/supabase/studio:2026.06.29-sha-20290c7	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_pg_meta_seikotsuin_management_saas	public.ecr.aws/supabase/postgres-meta:v0.96.6	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_edge_runtime_seikotsuin_management_saas	public.ecr.aws/supabase/edge-runtime:v1.74.2	exited	Exited (255) 23 hours ago	seikotsuin_management_saas
+supabase_storage_seikotsuin_management_saas	public.ecr.aws/supabase/storage-api:v1.48.20	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_rest_seikotsuin_management_saas	public.ecr.aws/supabase/postgrest:v14.5	running	Up 23 hours	seikotsuin_management_saas
+supabase_realtime_seikotsuin_management_saas	public.ecr.aws/supabase/realtime:v2.112.1	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_inbucket_seikotsuin_management_saas	public.ecr.aws/supabase/mailpit:v1.30.2	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_auth_seikotsuin_management_saas	public.ecr.aws/supabase/gotrue:v2.188.1	running	Up 23 hours (healthy)	seikotsuin_management_saas
+supabase_kong_seikotsuin_management_saas	public.ecr.aws/supabase/kong:2.8.1	running	Up 23 hours (healthy)	seikotsuin_management_saas
+pulse_migration_test	public.ecr.aws/supabase/postgres:17.6.1.140	exited	Exited (0) 5 days ago	
+jpyc_oss-postgres-1	postgres:16-alpine	exited	Exited (255) 2 months ago	
+jpyc_oss-redis-1	redis:7-alpine	exited	Exited (255) 2 months ago	
+supabase_db_hookops	public.ecr.aws/supabase/postgres:17.6.1.059	running	Up 23 hours (healthy)	hookops
+supabase_studio_hookops	public.ecr.aws/supabase/studio:2025.10.20-sha-5005fc6	running	Up 23 hours (healthy)	hookops
+supabase_pg_meta_hookops	public.ecr.aws/supabase/postgres-meta:v0.93.0	running	Up 23 hours (healthy)	hookops
+supabase_edge_runtime_hookops	public.ecr.aws/supabase/edge-runtime:v1.69.14	exited	Exited (255) 7 months ago	hookops
+supabase_storage_hookops	public.ecr.aws/supabase/storage-api:v1.28.1	running	Up 23 hours (healthy)	hookops
+supabase_rest_hookops	public.ecr.aws/supabase/postgrest:v13.0.7	running	Up 23 hours	hookops
+supabase_realtime_hookops	public.ecr.aws/supabase/realtime:v2.56.0	running	Up 23 hours (healthy)	hookops
+supabase_inbucket_hookops	public.ecr.aws/supabase/mailpit:v1.22.3	running	Up 23 hours (healthy)	hookops
+supabase_auth_hookops	public.ecr.aws/supabase/gotrue:v2.180.0	running	Up 23 hours (healthy)	hookops
+supabase_kong_hookops	public.ecr.aws/supabase/kong:2.8.1	running	Up 23 hours (healthy)	hookops
+supabase_vector_hookops	public.ecr.aws/supabase/vector:0.28.1-alpine	restarting	Restarting (0) 25 seconds ago	hookops
+supabase_analytics_hookops	public.ecr.aws/supabase/logflare:1.22.6	running	Up 23 hours (healthy)	hookops
+elastic_ride	public.ecr.aws/supabase/postgres:17.6.1.003	exited	Exited (1) 8 months ago	

@@ -1,0 +1,38 @@
+{
+  "kind": "blocks_resource_index_contract_transition_addendum",
+  "protocol": "pr11-blocks-resource-index-drop-rollback-phase-a-v1",
+  "scope": "post-run validation-only addendum",
+  "local_only": true,
+  "rollback_only": true,
+  "permanent_ddl_applied": false,
+  "changes_phase_a_gate_result": false,
+  "phase_a_gate_result": "FAIL",
+  "candidate_ddl": "drop index public.idx_blocks_resource_id;",
+  "contract_sha256": "851b0418faa443421d5bbaf05481fc55cf06e2133aa4db3b753b1a91f270457b",
+  "preflight_sha256": "093efbe2114c96b15ccbdd0c7237357ba28e90331672e2d115bf6b2d24b84fd1",
+  "raw_output": "contract-transition.stdout.raw",
+  "raw_output_sha256": "9718834b3794c0f7c6e40ead3bc516d298b40ae53040a12aa7df44a179165421",
+  "current_red_capture": "contract-current-red-capture.stdout.raw",
+  "current_red_capture_sha256": "c95856cffcc37a8e13cbbbc056e03a5cdd276b24f61f371077a25673735f398e",
+  "current_red": {
+    "contract_outcome": "RED",
+    "sqlstate": "P0001",
+    "message": "RED COMM-PERF-005: redundant singleton blocks resource index remains"
+  },
+  "current_before": {
+    "target_present": true,
+    "blocks_index_count": 11
+  },
+  "candidate": {
+    "contract_outcome": "GREEN",
+    "target_present": false
+  },
+  "current_after_rollback": {
+    "target_present": true,
+    "blocks_index_count": 11,
+    "target_definition_md5": "7a4092df4bfffa0e82d7936ba6384362",
+    "replacement_definition_md5": "9901fe5e728a0fe29c3ca32c6759b736",
+    "fk_definition_md5": "a3e490b595d9cf3153c16f482e053df3"
+  },
+  "note": "This manifest-external addendum closes the RED-to-GREEN contract-transition evidence gap identified after the completed gate-fail run. It is not part of the performance summary and does not reclassify any failed gate."
+}
