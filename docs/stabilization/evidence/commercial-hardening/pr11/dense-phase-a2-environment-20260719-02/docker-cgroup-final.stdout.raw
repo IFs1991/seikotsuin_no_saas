@@ -1,0 +1,73 @@
+FILE:/sys/fs/cgroup/cpu.stat
+usage_usec 1933432645
+user_usec 1179416086
+system_usec 754016558
+nr_periods 0
+nr_throttled 0
+throttled_usec 0
+nr_bursts 0
+burst_usec 0
+FILE:/sys/fs/cgroup/memory.current
+668631040
+FILE:/sys/fs/cgroup/memory.max
+max
+FILE:/sys/fs/cgroup/memory.events
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0
+FILE:/sys/fs/cgroup/memory.stat
+anon 25030656
+file 584634368
+kernel 58941440
+kernel_stack 311296
+pagetables 3006464
+sec_pagetables 0
+percpu 4176
+sock 0
+vmalloc 24576
+shmem 82821120
+file_mapped 77701120
+file_dirty 0
+file_writeback 0
+swapcached 4096
+anon_thp 0
+file_thp 0
+shmem_thp 0
+inactive_anon 58871808
+active_anon 48947200
+inactive_file 470593536
+active_file 31219712
+unevictable 8192
+slab_reclaimable 52415840
+slab_unreclaimable 2229648
+slab 54645488
+workingset_refault_anon 1
+workingset_refault_file 2054
+workingset_activate_anon 1
+workingset_activate_file 2054
+workingset_restore_anon 0
+workingset_restore_file 466
+workingset_nodereclaim 0
+pgscan 41630
+pgsteal 40488
+pgscan_kswapd 41597
+pgscan_direct 33
+pgscan_khugepaged 0
+pgsteal_kswapd 40457
+pgsteal_direct 31
+pgsteal_khugepaged 0
+pgfault 55580424
+pgmajfault 71
+pgrefill 638
+pgactivate 142268
+pgdeactivate 638
+pglazyfree 0
+pglazyfreed 0
+thp_fault_alloc 0
+thp_collapse_alloc 0
+FILE:/sys/fs/cgroup/io.stat
+8:32 rbytes=4096 wbytes=20480 rios=1 wios=5 dbytes=0 dios=0
+8:48 rbytes=9244672 wbytes=4740751360 rios=794 wios=212918 dbytes=0 dios=0

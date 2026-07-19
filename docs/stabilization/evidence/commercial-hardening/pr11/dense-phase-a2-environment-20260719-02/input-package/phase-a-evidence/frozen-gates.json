@@ -1,0 +1,103 @@
+{
+  "protocol": "pr11-blocks-resource-index-drop-rollback-phase-a-v1",
+  "frozenAt": "2026-07-18T16:07:38.348Z",
+  "expectedGitHead": "aaf3837f6f8053b0379a2d4caea65880952ce027",
+  "expectedMigrationHead": "20260718011731",
+  "expectedLogicalBaseline": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+  "expectedPhysicalBaseline": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+  "candidateSqlExecutionCount": 0,
+  "gatesFrozenBeforeCandidate": true,
+  "waiverUsed": false,
+  "inputBundleSha256": "be8b451ab71c29573e21a3e4d4736943d419a607f25d93331226c0ceb3336a68",
+  "inputHashes": {
+    "docs/stabilization/spec-commercial-performance-safe-indexes-rls-plan-v1.0.md": "89e552094e16fd750410d81d42d81bb0efd26703bc8b49af3a42ea7a09cc7ac5",
+    "docs/stabilization/spec-commercial-pr11-blocks-resource-index-retirement-v1.0.md": "17b08bf6b3857233c4dc0d5c8e2b6abd906f0044eb9a190bd39ba684ed5afb9f",
+    "scripts/commercial-hardening/red-contracts/14_pr11_blocks_resource_index_retirement.sql": "851b0418faa443421d5bbaf05481fc55cf06e2133aa4db3b753b1a91f270457b",
+    "scripts/commercial-hardening/run-pr11-blocks-resource-index-drop-rollback.mjs": "61d87d2074859b88a2a09b29415328abc9b4289f6a5a18d5b069ee9c2b275d42",
+    "scripts/commercial-hardening/run-red-contracts.mjs": "fa683f9d804f47dcd3a43c55ea8853a7a2bfae80af58caa35d5f958da7c1acba",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-candidate.sql": "382a7bce379d52de479ed2dade3ef4f4d686daaf4d48bfe58f649c456678f4e1",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-candidate.sql": "b1f5a67dd27000c0c76d06ad0066f8390817b7ffdbeca8ba6047927dd985592a",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-current.sql": "1ad5a7b6626b10ee2d1569ea8ee8195075171ecc66484d80181762ee9d78b874",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-cascade-probe.sql": "4ba913dace7fa68e498d4a80bf225411470c36f09d46b08c702e85a52c31c94d",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-current.sql": "440a3ad80631f7ba11de7994cae3fd2975242e7acac7925fbfe52cc1f0285515",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-ddl.sql": "09e829bbe82009ea24bdbf324e69ea5c8cacd5519f382aa226bb365eec209605",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-integrity.sql": "78baa00b2cae3e071c6f411822466244e92ca8bfbfb287c1ffac94facaf288a8",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-candidate.sql": "2c10f63e4254d9ddf15fb8c79fd3fc16d357ed78cd656d5379bcaa845ee477fb",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-current.sql": "f22def2de9e5834afa99be4d65ce11d4af7c4050df5e84b5fe78baa8e02ec892",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-plan-probe.sql": "78b6de825284022cb55714993085dba20a5754e825a45a6c267964f576886b59",
+    "scripts/commercial-hardening/sql/pr11-blocks-resource-index-drop-preflight.sql": "093efbe2114c96b15ccbdd0c7237357ba28e90331672e2d115bf6b2d24b84fd1",
+    "scripts/commercial-hardening/sql/pr11-paired-physical-snapshot.sql": "9b46b66f3d56bed947458a253b7f61028773bc4350bbeb2b6e495dea7b4ff5fd",
+    "scripts/commercial-hardening/sql/pr11-performance-probe.sql": "5e6ae3af19f428d63b8eaa8a56d7b659d4841fe693071e7ca11449c756c3cb65",
+    "scripts/commercial-hardening/sql/pr11-postapply-logical-snapshot.sql": "bfe069c2a86b023f157ec4963b40acb74756436ef6b3c33e7ef2a3c930920434",
+    "scripts/commercial-hardening/sql/pr11-postapply-normalize.sql": "1a799f75695f14608b2e9d9efb9c0fcc72272be7808f633f3d9bc86ccc5dffca",
+    "scripts/commercial-hardening/sql/pr11-postapply-permanent-state.sql": "65cf341e6f21100dd7da1ce36bcf8ef42ccb46b3cdfc05d2da9126027189caed",
+    "src/__tests__/security/commercial-pr11-blocks-resource-index-retirement-contract.test.ts": "968348b5e10a5859fc3fa560b60f1a81dfbf278189bf38c0910180ee01d054e0",
+    "supabase/migrations/20260718011731_commercial_pr11_fixed_performance_forward_fix.sql": "15fde71cfdba9d335239ed77a11f12216b9754fc0f75f2a8fcb992005159660b",
+    "supabase/rollbacks/20260718011731_commercial_pr11_fixed_performance_forward_fix_rollback.sql": "c994a796c49bb4a4f1ac840bd98e28f8a9b69eea17d56f53327e53a9746f6263"
+  },
+  "fixedLimits": {
+    "created_by_read_100_of_20000": {
+      "executionMs": 2.851
+    },
+    "sparse_insert_10000": {
+      "executionMs": 435.7373,
+      "walBytes": 9292168.2
+    },
+    "dense_insert_10000": {
+      "executionMs": 521.55125,
+      "walBytes": 11133665
+    },
+    "shift_full_only_insert_2000": {
+      "executionMs": 198.387,
+      "walBytes": 1868505.6
+    },
+    "shift_full_plus_partial_insert_2000": {
+      "executionMs": 219.224,
+      "walBytes": 2028773.6
+    },
+    "recipient_sparse_composite_insert_1000": {
+      "executionMs": 46.665,
+      "walBytes": 600946.5
+    },
+    "recipient_dense_composite_insert_1000": {
+      "executionMs": 81.761,
+      "walBytes": 755065
+    }
+  },
+  "causalGateDefinition": {
+    "probes": [
+      "sparse_insert_10000",
+      "dense_insert_10000"
+    ],
+    "candidateMedianStrictlyBelowCurrent": true,
+    "minimumExecutionPairWins": 2,
+    "pairCount": 3,
+    "everyPairCandidateWalRecordsAtMostCurrent": true,
+    "everyPairCandidateWalBytesAtMostCurrent": true,
+    "discardedSamplesAllowed": false
+  },
+  "cascadeGateDefinition": {
+    "pairCount": 3,
+    "deletedRowsPerSample": 10000,
+    "executionLimit": "candidate median <= current median + max(current median * 0.25, 50 ms)",
+    "walLimit": "candidate median <= current median * 1.25",
+    "lockTimeoutAllowed": false
+  },
+  "planGateDefinition": {
+    "appliesTo": "candidate",
+    "resource_only": [
+      "blocks_resource_clinic_idx"
+    ],
+    "resource_clinic": [
+      "blocks_resource_clinic_idx"
+    ],
+    "active_time": [
+      "idx_blocks_resource_time",
+      "blocks_resource_clinic_idx"
+    ],
+    "currentStatePurpose": "diagnostic-only",
+    "targetSeqScanAllowed": false,
+    "plannerForcingAllowed": false,
+    "actualRowsMustEqualExpectedRows": true
+  }
+}

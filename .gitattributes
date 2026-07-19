@@ -12,5 +12,10 @@ docs/** linguist-documentation
 # Preserve Windows-captured PR-11 raw evidence byte-for-byte for manifest hashes
 docs/stabilization/evidence/commercial-hardening/pr11/**/*.raw binary
 
+# Preserve the two immutable PR-11 Phase A2 evidence packets byte-for-byte.
+# Their manifests re-hash every packaged input and collection stream.
+docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-02/** -text -whitespace
+docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-environment-20260719-03/** -text -whitespace
+
 # Keep SQL recognized as code for stats
 sql/** linguist-detectable=true

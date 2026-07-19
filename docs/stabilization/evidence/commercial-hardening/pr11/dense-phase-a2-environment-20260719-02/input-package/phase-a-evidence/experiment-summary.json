@@ -1,0 +1,686 @@
+{
+  "protocol": "pr11-blocks-resource-index-drop-rollback-phase-a-v1",
+  "waiverUsed": false,
+  "fixedLimits": {
+    "created_by_read_100_of_20000": {
+      "executionMs": 2.851
+    },
+    "sparse_insert_10000": {
+      "executionMs": 435.7373,
+      "walBytes": 9292168.2
+    },
+    "dense_insert_10000": {
+      "executionMs": 521.55125,
+      "walBytes": 11133665
+    },
+    "shift_full_only_insert_2000": {
+      "executionMs": 198.387,
+      "walBytes": 1868505.6
+    },
+    "shift_full_plus_partial_insert_2000": {
+      "executionMs": 219.224,
+      "walBytes": 2028773.6
+    },
+    "recipient_sparse_composite_insert_1000": {
+      "executionMs": 46.665,
+      "walBytes": 600946.5
+    },
+    "recipient_dense_composite_insert_1000": {
+      "executionMs": 81.761,
+      "walBytes": 755065
+    }
+  },
+  "fixedGateCount": {
+    "execution": 7,
+    "wal": 6
+  },
+  "fixedPerformance": {
+    "created_by_read_100_of_20000": {
+      "currentExecutionValues": [
+        0.144,
+        0.144,
+        0.087
+      ],
+      "currentExecutionMedian": 0.144,
+      "candidateExecutionValues": [
+        0.136,
+        0.13,
+        0.149
+      ],
+      "candidateExecutionMedian": 0.136,
+      "fixedExecutionLimit": 2.851,
+      "executionPass": true,
+      "currentWalValues": [
+        0,
+        0,
+        0
+      ],
+      "currentWalMedian": null,
+      "candidateWalValues": [
+        0,
+        0,
+        0
+      ],
+      "candidateWalMedian": null,
+      "fixedWalLimit": null,
+      "walPass": null,
+      "pass": true
+    },
+    "sparse_insert_10000": {
+      "currentExecutionValues": [
+        866.675,
+        584.723,
+        613.124
+      ],
+      "currentExecutionMedian": 613.124,
+      "candidateExecutionValues": [
+        1553.026,
+        1107.727,
+        677.123
+      ],
+      "candidateExecutionMedian": 1107.727,
+      "fixedExecutionLimit": 435.7373,
+      "executionPass": false,
+      "currentWalValues": [
+        8590604,
+        8597772,
+        8590484
+      ],
+      "currentWalMedian": 8590604,
+      "candidateWalValues": [
+        7862340,
+        7851252,
+        7869508
+      ],
+      "candidateWalMedian": 7862340,
+      "fixedWalLimit": 9292168.2,
+      "walPass": true,
+      "pass": false
+    },
+    "dense_insert_10000": {
+      "currentExecutionValues": [
+        1983.499,
+        1021.307,
+        787.174
+      ],
+      "currentExecutionMedian": 1021.307,
+      "candidateExecutionValues": [
+        1739.842,
+        1817.74,
+        859.071
+      ],
+      "candidateExecutionMedian": 1739.842,
+      "fixedExecutionLimit": 521.55125,
+      "executionPass": false,
+      "currentWalValues": [
+        9500972,
+        9519324,
+        9505732
+      ],
+      "currentWalMedian": 9505732,
+      "candidateWalValues": [
+        8764956,
+        8775924,
+        8779604
+      ],
+      "candidateWalMedian": 8775924,
+      "fixedWalLimit": 11133665,
+      "walPass": true,
+      "pass": false
+    },
+    "shift_full_only_insert_2000": {
+      "currentExecutionValues": [
+        427.114,
+        215.672,
+        216.708
+      ],
+      "currentExecutionMedian": 216.708,
+      "candidateExecutionValues": [
+        398.144,
+        725.785,
+        352.698
+      ],
+      "candidateExecutionMedian": 398.144,
+      "fixedExecutionLimit": 198.387,
+      "executionPass": false,
+      "currentWalValues": [
+        1697712,
+        1697688,
+        1697712
+      ],
+      "currentWalMedian": 1697712,
+      "candidateWalValues": [
+        1697688,
+        1697664,
+        1697736
+      ],
+      "candidateWalMedian": 1697688,
+      "fixedWalLimit": 1868505.6,
+      "walPass": true,
+      "pass": false
+    },
+    "shift_full_plus_partial_insert_2000": {
+      "currentExecutionValues": [
+        637.032,
+        254.466,
+        247.277
+      ],
+      "currentExecutionMedian": 254.466,
+      "candidateExecutionValues": [
+        892.587,
+        912.587,
+        712.994
+      ],
+      "candidateExecutionMedian": 892.587,
+      "fixedExecutionLimit": 219.224,
+      "executionPass": false,
+      "currentWalValues": [
+        1886720,
+        1886696,
+        1886648
+      ],
+      "currentWalMedian": 1886696,
+      "candidateWalValues": [
+        1886696,
+        1886744,
+        1886624
+      ],
+      "candidateWalMedian": 1886696,
+      "fixedWalLimit": 2028773.6,
+      "walPass": true,
+      "pass": false
+    },
+    "recipient_sparse_composite_insert_1000": {
+      "currentExecutionValues": [
+        149.511,
+        66.036,
+        47.266
+      ],
+      "currentExecutionMedian": 66.036,
+      "candidateExecutionValues": [
+        91.213,
+        197.685,
+        183.457
+      ],
+      "candidateExecutionMedian": 183.457,
+      "fixedExecutionLimit": 46.665,
+      "executionPass": false,
+      "currentWalValues": [
+        572354,
+        572306,
+        572378
+      ],
+      "currentWalMedian": 572354,
+      "candidateWalValues": [
+        572378,
+        572330,
+        572330
+      ],
+      "candidateWalMedian": 572330,
+      "fixedWalLimit": 600946.5,
+      "walPass": true,
+      "pass": false
+    },
+    "recipient_dense_composite_insert_1000": {
+      "currentExecutionValues": [
+        165.767,
+        94.006,
+        116.321
+      ],
+      "currentExecutionMedian": 116.321,
+      "candidateExecutionValues": [
+        78.215,
+        217.973,
+        195.614
+      ],
+      "candidateExecutionMedian": 195.614,
+      "fixedExecutionLimit": 81.761,
+      "executionPass": false,
+      "currentWalValues": [
+        723082,
+        723106,
+        723082
+      ],
+      "currentWalMedian": 723082,
+      "candidateWalValues": [
+        723058,
+        723082,
+        723058
+      ],
+      "candidateWalMedian": 723058,
+      "fixedWalLimit": 755065,
+      "walPass": true,
+      "pass": false
+    }
+  },
+  "fixedPerformancePass": false,
+  "performancePlanContract": {
+    "contracts": [
+      {
+        "sample": "performance-pair1-candidate",
+        "probes": {
+          "created_by_read_100_of_20000": {
+            "expectedIndex": "blocks_created_by_idx",
+            "indexes": [
+              "blocks_created_by_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_customer_path": {
+            "expectedIndex": "patient_outreach_recipients_customer_idx",
+            "indexes": [
+              "patient_outreach_recipients_customer_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_campaign_path": {
+            "expectedIndex": "patient_outreach_recipients_campaign_idx",
+            "indexes": [
+              "patient_outreach_recipients_campaign_idx"
+            ],
+            "pass": true
+          },
+          "existing_reservation_campaign_path": {
+            "expectedIndex": "reservations_campaign_id_idx",
+            "indexes": [
+              "reservations_campaign_id_idx"
+            ],
+            "pass": true
+          }
+        }
+      },
+      {
+        "sample": "performance-pair2-candidate",
+        "probes": {
+          "created_by_read_100_of_20000": {
+            "expectedIndex": "blocks_created_by_idx",
+            "indexes": [
+              "blocks_created_by_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_customer_path": {
+            "expectedIndex": "patient_outreach_recipients_customer_idx",
+            "indexes": [
+              "patient_outreach_recipients_customer_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_campaign_path": {
+            "expectedIndex": "patient_outreach_recipients_campaign_idx",
+            "indexes": [
+              "patient_outreach_recipients_campaign_idx"
+            ],
+            "pass": true
+          },
+          "existing_reservation_campaign_path": {
+            "expectedIndex": "reservations_campaign_id_idx",
+            "indexes": [
+              "reservations_campaign_id_idx"
+            ],
+            "pass": true
+          }
+        }
+      },
+      {
+        "sample": "performance-pair3-candidate",
+        "probes": {
+          "created_by_read_100_of_20000": {
+            "expectedIndex": "blocks_created_by_idx",
+            "indexes": [
+              "blocks_created_by_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_customer_path": {
+            "expectedIndex": "patient_outreach_recipients_customer_idx",
+            "indexes": [
+              "patient_outreach_recipients_customer_idx"
+            ],
+            "pass": true
+          },
+          "existing_recipient_campaign_path": {
+            "expectedIndex": "patient_outreach_recipients_campaign_idx",
+            "indexes": [
+              "patient_outreach_recipients_campaign_idx"
+            ],
+            "pass": true
+          },
+          "existing_reservation_campaign_path": {
+            "expectedIndex": "reservations_campaign_id_idx",
+            "indexes": [
+              "reservations_campaign_id_idx"
+            ],
+            "pass": true
+          }
+        }
+      }
+    ],
+    "pass": true
+  },
+  "causalGateDefinition": {
+    "probes": [
+      "sparse_insert_10000",
+      "dense_insert_10000"
+    ],
+    "candidateMedianStrictlyBelowCurrent": true,
+    "minimumExecutionPairWins": 2,
+    "pairCount": 3,
+    "everyPairCandidateWalRecordsAtMostCurrent": true,
+    "everyPairCandidateWalBytesAtMostCurrent": true,
+    "discardedSamplesAllowed": false
+  },
+  "causal": {
+    "sparse_insert_10000": {
+      "currentMedian": 613.124,
+      "candidateMedian": 1107.727,
+      "medianImprovementMs": -494.60300000000007,
+      "medianStrictlyImproved": false,
+      "executionPairWins": 0,
+      "pairCount": 3,
+      "everyPairWalRecordsPass": true,
+      "everyPairWalBytesPass": true,
+      "allSamplesAccepted": true,
+      "pairs": [
+        {
+          "pair": 1,
+          "currentExecutionMs": 866.675,
+          "candidateExecutionMs": 1553.026,
+          "executionWin": false,
+          "currentWalRecords": 100693,
+          "candidateWalRecords": 90587,
+          "walRecordsPass": true,
+          "currentWalBytes": 8590604,
+          "candidateWalBytes": 7862340,
+          "walBytesPass": true
+        },
+        {
+          "pair": 2,
+          "currentExecutionMs": 584.723,
+          "candidateExecutionMs": 1107.727,
+          "executionWin": false,
+          "currentWalRecords": 100695,
+          "candidateWalRecords": 90584,
+          "walRecordsPass": true,
+          "currentWalBytes": 8597772,
+          "candidateWalBytes": 7851252,
+          "walBytesPass": true
+        },
+        {
+          "pair": 3,
+          "currentExecutionMs": 613.124,
+          "candidateExecutionMs": 677.123,
+          "executionWin": false,
+          "currentWalRecords": 100693,
+          "candidateWalRecords": 90589,
+          "walRecordsPass": true,
+          "currentWalBytes": 8590484,
+          "candidateWalBytes": 7869508,
+          "walBytesPass": true
+        }
+      ],
+      "pass": false
+    },
+    "dense_insert_10000": {
+      "currentMedian": 1021.307,
+      "candidateMedian": 1739.842,
+      "medianImprovementMs": -718.5350000000001,
+      "medianStrictlyImproved": false,
+      "executionPairWins": 1,
+      "pairCount": 3,
+      "everyPairWalRecordsPass": true,
+      "everyPairWalBytesPass": true,
+      "allSamplesAccepted": true,
+      "pairs": [
+        {
+          "pair": 1,
+          "currentExecutionMs": 1983.499,
+          "candidateExecutionMs": 1739.842,
+          "executionWin": true,
+          "currentWalRecords": 110821,
+          "candidateWalRecords": 100710,
+          "walRecordsPass": true,
+          "currentWalBytes": 9500972,
+          "candidateWalBytes": 8764956,
+          "walBytesPass": true
+        },
+        {
+          "pair": 2,
+          "currentExecutionMs": 1021.307,
+          "candidateExecutionMs": 1817.74,
+          "executionWin": false,
+          "currentWalRecords": 110826,
+          "candidateWalRecords": 100713,
+          "walRecordsPass": true,
+          "currentWalBytes": 9519324,
+          "candidateWalBytes": 8775924,
+          "walBytesPass": true
+        },
+        {
+          "pair": 3,
+          "currentExecutionMs": 787.174,
+          "candidateExecutionMs": 859.071,
+          "executionWin": false,
+          "currentWalRecords": 110823,
+          "candidateWalRecords": 100714,
+          "walRecordsPass": true,
+          "currentWalBytes": 9505732,
+          "candidateWalBytes": 8779604,
+          "walBytesPass": true
+        }
+      ],
+      "pass": false
+    }
+  },
+  "causalPass": false,
+  "planGateDefinition": {
+    "appliesTo": "candidate",
+    "resource_only": [
+      "blocks_resource_clinic_idx"
+    ],
+    "resource_clinic": [
+      "blocks_resource_clinic_idx"
+    ],
+    "active_time": [
+      "idx_blocks_resource_time",
+      "blocks_resource_clinic_idx"
+    ],
+    "currentStatePurpose": "diagnostic-only",
+    "targetSeqScanAllowed": false,
+    "plannerForcingAllowed": false,
+    "actualRowsMustEqualExpectedRows": true
+  },
+  "plans": {
+    "current": [
+      {
+        "state": "current",
+        "probe": "active_time",
+        "actualRows": 10,
+        "expectedRows": 10,
+        "indexes": [
+          "idx_blocks_resource_time"
+        ],
+        "expectedIndexes": [
+          "idx_blocks_resource_time",
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": null,
+        "hardGateApplicable": false,
+        "hardGatePass": false
+      },
+      {
+        "state": "current",
+        "probe": "resource_clinic",
+        "actualRows": 100,
+        "expectedRows": 100,
+        "indexes": [
+          "idx_blocks_resource_id"
+        ],
+        "expectedIndexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": null,
+        "hardGateApplicable": false,
+        "hardGatePass": false
+      },
+      {
+        "state": "current",
+        "probe": "resource_only",
+        "actualRows": 100,
+        "expectedRows": 100,
+        "indexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "expectedIndexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": null,
+        "hardGateApplicable": false,
+        "hardGatePass": false
+      }
+    ],
+    "candidate": [
+      {
+        "state": "candidate",
+        "probe": "active_time",
+        "actualRows": 10,
+        "expectedRows": 10,
+        "indexes": [
+          "idx_blocks_resource_time"
+        ],
+        "expectedIndexes": [
+          "idx_blocks_resource_time",
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": true,
+        "hardGateApplicable": true,
+        "hardGatePass": true
+      },
+      {
+        "state": "candidate",
+        "probe": "resource_clinic",
+        "actualRows": 100,
+        "expectedRows": 100,
+        "indexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "expectedIndexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": true,
+        "hardGateApplicable": true,
+        "hardGatePass": true
+      },
+      {
+        "state": "candidate",
+        "probe": "resource_only",
+        "actualRows": 100,
+        "expectedRows": 100,
+        "indexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "expectedIndexes": [
+          "blocks_resource_clinic_idx"
+        ],
+        "targetSeqScan": false,
+        "rowCountPass": true,
+        "targetSeqScanPass": true,
+        "candidateIndexPass": true,
+        "hardGateApplicable": true,
+        "hardGatePass": true
+      }
+    ],
+    "currentDiagnosticPass": true,
+    "pass": true
+  },
+  "cascadeGateDefinition": {
+    "pairCount": 3,
+    "deletedRowsPerSample": 10000,
+    "executionLimit": "candidate median <= current median + max(current median * 0.25, 50 ms)",
+    "walLimit": "candidate median <= current median * 1.25",
+    "lockTimeoutAllowed": false
+  },
+  "cascade": {
+    "currentExecutionValues": [
+      20.158,
+      81.454,
+      39.918
+    ],
+    "currentExecutionMedian": 39.918,
+    "candidateExecutionValues": [
+      123.756,
+      17.771,
+      26.732
+    ],
+    "candidateExecutionMedian": 26.732,
+    "candidateExecutionLimit": 89.918,
+    "executionPass": true,
+    "currentWalValues": [
+      84,
+      84,
+      84
+    ],
+    "currentWalMedian": 84,
+    "candidateWalValues": [
+      84,
+      84,
+      84
+    ],
+    "candidateWalMedian": 84,
+    "candidateWalLimit": 105,
+    "walPass": true,
+    "sampleContractPass": true,
+    "pass": true
+  },
+  "integrity": {
+    "cases": 30,
+    "summary": {
+      "kind": "blocks_resource_index_integrity_summary",
+      "passed": true,
+      "paired_cases": 15,
+      "contract_pass": true,
+      "behavior_cases": 5,
+      "diagnostic_cases": 10,
+      "message_equivalent": true,
+      "behavior_equivalent": true,
+      "sqlstate_equivalent": true,
+      "diagnostic_metadata_equivalent": true,
+      "fk_trigger_function_equivalent": true
+    },
+    "pass": true
+  },
+  "restoration": {
+    "expectedSampleCount": 15,
+    "actualSampleCount": 15,
+    "logicalBaseline": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+    "physicalBaseline": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "expectedLogicalBaseline": "c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78",
+    "expectedPhysicalBaseline": "94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86",
+    "allSamplesRestored": true,
+    "pass": true
+  },
+  "candidateSqlExecutionCount": 8,
+  "expectedCandidateSqlExecutionCount": 8,
+  "inputBundleSha256": "be8b451ab71c29573e21a3e4d4736943d419a607f25d93331226c0ceb3336a68",
+  "frozenGatesSha256": "66786c903598622aa9435865eaabe4913902f2d125960d0c1c6ed13b48077357",
+  "permanentMigrationAuthorized": false,
+  "stagingOrProductionAuthorized": false,
+  "generalCommercialReleaseEligible": false,
+  "primaryPass": false,
+  "phaseAResult": "FAIL"
+}

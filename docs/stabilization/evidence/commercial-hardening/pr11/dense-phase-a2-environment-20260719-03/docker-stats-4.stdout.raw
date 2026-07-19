@@ -1,0 +1,9 @@
+supabase_db_seikotsuin_management_saas	0.07%	188.7MiB / 7.757GiB	11MB / 4.74GB	18
+supabase_studio_seikotsuin_management_saas	12.48%	306.2MiB / 7.757GiB	129MB / 0B	17
+supabase_pg_meta_seikotsuin_management_saas	1.01%	144.3MiB / 7.757GiB	71.5MB / 0B	22
+supabase_storage_seikotsuin_management_saas	3.22%	145.5MiB / 7.757GiB	16.4kB / 0B	12
+supabase_rest_seikotsuin_management_saas	0.18%	28.78MiB / 7.757GiB	606kB / 0B	16
+supabase_realtime_seikotsuin_management_saas	4.07%	205.6MiB / 7.757GiB	5.25MB / 24.6kB	32
+supabase_inbucket_seikotsuin_management_saas	0.00%	24.47MiB / 7.757GiB	21.3MB / 999kB	10
+supabase_auth_seikotsuin_management_saas	0.00%	9.98MiB / 7.757GiB	1.7MB / 0B	10
+supabase_kong_seikotsuin_management_saas	0.01%	123.9MiB / 7.757GiB	2.9MB / 733kB	3
