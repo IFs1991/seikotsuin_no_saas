@@ -1,0 +1,265 @@
+schema_version: 1
+id: PR12-STAGING-APPROVAL-PACKET-001
+title: Owner packet for isolated staging migration, qualification, and DR drill
+status: NOT_RUN
+blocking: true
+prepared_for_branch: codex/commercial-hardening-pr12-isolated-qualification
+base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+target_commit: NOT_CAPTURED
+commit_binding:
+  selector: GIT_HEAD_AT_EVALUATION
+  state: NOT_CAPTURED
+  approval_invalidated_by_head_change: true
+machine_readable_execution_binding:
+  template: staging-execution-binding.template.json
+  approved_binding_path: NOT_CAPTURED
+  approved_binding_sha256: NOT_CAPTURED
+  status: NOT_RUN
+  must_be_parsed_and_matched_by_execution_verifier: true
+decision:
+  draft_pr_creation_authorized: true
+  isolated_staging_execution_authorized: false
+  ready_transition_authorized: false
+  merge_authorized: false
+  production_connection_authorized: false
+  commercial_release_authorized: false
+  index_retirement_authorized: false
+environment:
+  project_ref: NOT_CAPTURED
+  project_name: UNASSIGNED
+  region: UNASSIGNED
+  database_tier: UNASSIGNED
+  database_version: NOT_CAPTURED
+  expected_database_size: NOT_CAPTURED
+  expected_pool_mode_and_size: NOT_CAPTURED
+representative_data:
+  source: NOT_CAPTURED
+  classification: SYNTHETIC_OR_ANONYMIZED_ONLY
+  data_volume: NOT_CAPTURED
+  table_row_targets: NOT_CAPTURED
+  source_sha256: NOT_CAPTURED
+  patient_pii_allowed: false
+  patient_pii_observed: NOT_CAPTURED
+  safety_review_owner: UNASSIGNED
+  human_privacy_review_status: NOT_RUN
+  human_privacy_review_evidence: NOT_CAPTURED
+workload:
+  canonical_pr11_contract: frozen-pr11-performance-contract.json
+  canonical_pr11_contract_status: FROZEN
+  canonical_probe_sample_count: 3
+  canonical_aggregation: median
+  canonical_paired_sample_order: before_after_after_before_before_after
+  canonical_threshold_change_allowed: false
+  hosted_workload: NOT_CAPTURED
+  hosted_concurrency: NOT_CAPTURED
+  hosted_sample_order: NOT_CAPTURED
+  hosted_duration: NOT_CAPTURED
+  hosted_slo: NOT_CAPTURED
+hosted_slo_thresholds:
+  p95_ms: NOT_CAPTURED
+  p99_ms: NOT_CAPTURED
+  minimum_throughput_per_second: NOT_CAPTURED
+  maximum_5xx_rate: NOT_CAPTURED
+  maximum_timeout_rate: NOT_CAPTURED
+database_abort_thresholds:
+  maximum_cpu_percent: NOT_CAPTURED
+  minimum_pool_headroom_percent: NOT_CAPTURED
+  maximum_lock_wait_ms: NOT_CAPTURED
+  maximum_wal_bytes: NOT_CAPTURED
+  maximum_migration_duration_seconds: NOT_CAPTURED
+dr:
+  backup_restore_method: NOT_CAPTURED
+  backup_scope: NOT_CAPTURED
+  restore_target: NOT_CAPTURED
+  restore_point: NOT_CAPTURED
+  source_watermark: NOT_CAPTURED
+  rto_start_event: NOT_CAPTURED
+  rto_end_event: NOT_CAPTURED
+  rto_measurement_clock_and_source: NOT_CAPTURED
+  rpo_durable_watermark_definition: NOT_CAPTURED
+  rpo_observation_event: NOT_CAPTURED
+  rpo_measurement_clock_and_source: NOT_CAPTURED
+  rto_threshold_seconds: NOT_CAPTURED
+  rpo_threshold_seconds: NOT_CAPTURED
+  reference_internal_rto_seconds: 28800
+  reference_internal_rpo_seconds: 86400
+  reference_targets_owner_approved_for_commercial_contract: false
+integrations:
+  stripe_mode: UNASSIGNED
+  stripe_required_for_comm_bill: TEST_MODE_SANDBOX_REQUIRED
+  email: UNASSIGNED
+  line_or_sms: UNASSIGNED
+  webhook_destinations: UNASSIGNED
+  cron_and_queue_consumers: UNASSIGNED
+  external_bulk_import_or_sync: DISABLED_REQUIRED
+  unattended_batch: DISABLED_REQUIRED
+  no_real_send_or_charge_without_separate_approval: true
+data_api:
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  automatically_expose_new_tables_and_functions: NOT_CAPTURED
+  postgres_default_privileges: NOT_CAPTURED
+  supabase_admin_default_privileges: NOT_CAPTURED
+  schema_usage_contract: NOT_CAPTURED
+  relation_column_sequence_function_acl_contract: NOT_CAPTURED
+  intended_role_object_operation_matrix: NOT_CAPTURED
+  intended_role_object_operation_matrix_sha256: NOT_CAPTURED
+  acl_and_rls_independent_verdict_required: true
+graphql:
+  installed_version: NOT_CAPTURED
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  introspection_state: NOT_CAPTURED
+  intended_role_field_operation_matrix: NOT_CAPTURED
+  intended_role_field_operation_matrix_sha256: NOT_CAPTURED
+  disabled_endpoint_rejection_matrix: NOT_CAPTURED
+security_matrix:
+  matrix_path: NOT_CAPTURED
+  security_matrix_sha256: NOT_CAPTURED
+  matrix_owner: UNASSIGNED
+  actor_and_jwt_acquisition_method: NOT_CAPTURED
+  target_relations_and_functions: NOT_CAPTURED
+  required_roles:
+    - anon
+    - authenticated
+    - service_role
+    - all_application_roles_from_frozen_fixture
+  required_tenant_operations:
+    - read
+    - insert
+    - update
+    - delete
+  required_auth_cases:
+    - inactive_profile
+    - expired_manager_assignment
+    - revoked_manager_assignment
+    - missing_authority
+    - stale_jwt
+    - empty_jwt
+    - malformed_jwt
+    - expired_jwt
+    - cross_clinic
+    - missing_or_null_resource
+    - parent_rehome
+    - resource_and_clinic_cascade
+  required_expected_result_fields:
+    - expected_http_status
+    - expected_sqlstate
+    - expected_row_count
+    - expected_acl_verdict
+    - expected_rls_verdict
+  exact_matrix_frozen_before_execution: false
+credentials:
+  credential_contract_path: NOT_CAPTURED
+  credential_contract_sha256: NOT_CAPTURED
+  channel: UNASSIGNED
+  required_channel: process_environment
+  storage: UNASSIGNED
+  required_storage: owner_approved_server_secret_store
+  retrieval: UNASSIGNED
+  required_retrieval: ephemeral_server_subprocess_injection
+  logging: UNASSIGNED
+  required_logging: redacted_variable_names_only
+  storage_requirement: SECURE_SERVER_SIDE_CHANNEL
+  command_line_or_url_allowed: false
+  browser_allowed: false
+  source_control_allowed: false
+  stdout_stderr_or_evidence_allowed: false
+  client_response_allowed: false
+  log_secret_value_allowed: false
+  url_allowed: false
+  hosted_jwt_signing_secret_acquisition_allowed: false
+  service_role_or_secret_key_server_only: true
+  fingerprint_storage: SHA256_ONLY_IF_OWNER_APPROVED
+cli:
+  required_node_major: 24
+  exact_node_version: NOT_CAPTURED
+  node_version_command_id: NOT_CAPTURED
+  node_version_stdout_sha256: NOT_CAPTURED
+  required_supabase_cli: 2.109.0
+  supabase_version_command_id: NOT_CAPTURED
+  supabase_version_stdout_sha256: NOT_CAPTURED
+  exact_psql_version: NOT_CAPTURED
+  psql_version_command_id: NOT_CAPTURED
+  psql_version_stdout_sha256: NOT_CAPTURED
+  repository_pin: 2.109.0
+  observed_path_cli: 2.109.1
+  validated_ephemeral_cli: 2.109.0
+  official_release_tag: v2.109.0
+  official_windows_asset_sha256: d2b687ec3427fe7847cf7a8f603413fa8d4331f6fdbbc825eea6aa34a64d686b
+  pinned_cli_help_verified: true
+  verified_help_subcommands:
+    - link
+    - migration_list
+    - db_push
+    - db_dump
+    - db_advisors
+    - gen_types
+    - status
+  exact_commands: NOT_CAPTURED
+  exact_commands_blocker: Resolve the owner-approved project, data, backup, restore, and credential method before freezing commands.
+expected_side_effects:
+  status: NOT_CAPTURED
+  potential:
+    - isolated project link metadata
+    - migration history and schema writes
+    - synthetic or anonymized fixture writes
+    - performance probe transaction-local writes and WAL
+    - backup artifact creation
+    - isolated restore project writes
+    - sandboxed webhook or billing events if explicitly enabled
+  production_side_effects_allowed: false
+time_and_cost:
+  estimated_elapsed_time: NOT_CAPTURED
+  estimated_platform_cost: NOT_CAPTURED
+  estimated_cost: NOT_CAPTURED
+owners:
+  staging_owner: UNASSIGNED
+  migration_operator: UNASSIGNED
+  restore_owner: UNASSIGNED
+  monitoring_owner: UNASSIGNED
+  incident_owner: UNASSIGNED
+  security_reviewer: UNASSIGNED
+  release_approver: UNASSIGNED
+recovery:
+  destructive_rollback_allowed: false
+  pr11_rollback_is_data_restore: false
+  preferred_action: abort_preserve_evidence_and_propose_owner_approved_append_only_forward_fix
+  public_idx_blocks_resource_id_drop_allowed: false
+  next_performance_candidate_allowed: false
+  cleanup_or_project_deletion: separate_owner_approval_required
+approval_checklist:
+  exact_head_sha: NOT_CAPTURED
+  project_region_tier: NOT_CAPTURED
+  representative_data_and_volume: NOT_CAPTURED
+  workload_concurrency_order_and_hosted_slo: NOT_CAPTURED
+  database_abort_thresholds: NOT_CAPTURED
+  backup_restore_and_rto_rpo: NOT_CAPTURED
+  rto_rpo_event_and_clock_definitions: NOT_CAPTURED
+  security_tenant_auth_jwt_role_matrix: NOT_CAPTURED
+  data_api_and_graphql_matrices: NOT_CAPTURED
+  machine_readable_execution_binding: NOT_CAPTURED
+  privacy_machine_and_human_review: NOT_CAPTURED
+  integrations_and_billing_sandbox: NOT_CAPTURED
+  exact_commands_and_side_effects: NOT_CAPTURED
+  credential_channel: NOT_CAPTURED
+  time_cost_and_owners: NOT_CAPTURED
+  approval_expiry_and_revalidation: NOT_CAPTURED
+owner_decision: UNASSIGNED
+approved_by: UNASSIGNED
+approved_at: NOT_CAPTURED
+expires_at: NOT_CAPTURED
+revalidation:
+  invalidated_by_target_commit_change: true
+  invalidated_by_matrix_or_matrix_hash_change: true
+  invalidated_by_project_region_tier_change: true
+  invalidated_by_data_workload_threshold_change: true
+  invalidated_by_data_api_graphql_or_auth_change: true
+  invalidated_by_backup_restore_event_definition_change: true
+  invalidated_by_integration_or_credential_channel_change: true
+  invalidated_by_related_incident: true
+  invalidated_at_expiry: true
+evidence: []
+residual_risk:
+  - The packet intentionally blocks execution because project, commands, thresholds, data, DR method, owners, time, and cost are unresolved.
+notes: No isolated staging project was contacted or created while preparing this packet.

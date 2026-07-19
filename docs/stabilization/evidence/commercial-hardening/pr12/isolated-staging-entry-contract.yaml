@@ -1,0 +1,158 @@
+schema_version: 1
+id: PR12-ISOLATED-STAGING-ENTRY-001
+title: Isolated staging qualification entry contract
+status: NOT_RUN
+blocking: true
+environment: isolated_staging
+base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+target_commit: NOT_CAPTURED
+commit_binding:
+  selector: GIT_HEAD_AT_EVALUATION
+  state: NOT_CAPTURED
+  invalidate_on_head_change: true
+project:
+  project_ref: NOT_CAPTURED
+  project_name: UNASSIGNED
+  region: UNASSIGNED
+  database_tier: UNASSIGNED
+  database_version: NOT_CAPTURED
+  isolated_from_production: NOT_CAPTURED
+data:
+  source: NOT_CAPTURED
+  classification: SYNTHETIC_OR_ANONYMIZED_ONLY
+  volume: NOT_CAPTURED
+  source_hash: NOT_CAPTURED
+  row_count_targets: NOT_CAPTURED
+  patient_pii_allowed: false
+workload:
+  canonical_pr11_contract: frozen-pr11-performance-contract.json
+  canonical_sample_count: 3
+  canonical_aggregation: median
+  canonical_paired_capture_order: before_after_after_before_before_after
+  canonical_probe_or_actor_fixture_jwt_mutation_allowed: false
+  hosted_slo: NOT_CAPTURED
+  hosted_sample_order: NOT_CAPTURED
+  hosted_concurrency: NOT_CAPTURED
+  hosted_workload_duration: NOT_CAPTURED
+  threshold_freeze_required_before_first_sample: true
+qualification_order:
+  - approval_packet_hash_and_exact_head
+  - environment_identity_and_tool_versions
+  - integration_sandbox_and_secret_boundary
+  - clean_full_migration_replay
+  - migration_history_parity
+  - seed_and_representative_data_parity
+  - generated_supabase_types_parity
+  - logical_schema_and_catalog_drift
+  - rls_grant_acl_helper_trigger_fk_contracts
+  - tenant_a_b_and_auth_jwt_role_matrix
+  - data_api_direct_role_matrix
+  - graphql_conditional_matrix
+  - canonical_pr11_fixed_gates
+  - additive_hosted_slo
+  - advisor_security_and_performance_diff
+  - backup_capture
+  - isolated_restore
+  - post_restore_schema_data_tenant_and_api_checks
+  - measured_rto_rpo
+  - external_side_effect_duplicate_check
+  - evidence_hash_and_privacy_scan
+  - owner_sign_off
+data_api_contract:
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  automatic_grants_setting: NOT_CAPTURED
+  postgres_default_privileges: NOT_CAPTURED
+  supabase_admin_default_privileges: NOT_CAPTURED
+  schema_usage: NOT_CAPTURED
+  relation_column_sequence_function_acl: NOT_CAPTURED
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  direct_roles:
+    - anon
+    - authenticated
+    - service_role
+  acl_and_rls_verified_independently: false
+graphql_contract:
+  installed_version: NOT_CAPTURED
+  enabled_state: NOT_CAPTURED
+  exposed_schemas: NOT_CAPTURED
+  introspection_state: NOT_CAPTURED
+  direct_role_smoke: NOT_RUN
+  tenant_boundary: NOT_RUN
+  column_field_visibility: NOT_RUN
+  disabled_endpoint_rejection_if_not_enabled: NOT_RUN
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  not_applicable_without_evidence_allowed: false
+security_contract:
+  user_metadata_authorization_allowed: false
+  hosted_jwt_signing_secret_acquisition_allowed: false
+  service_role_server_only: true
+  service_role_in_browser_bundle_response_log_evidence_allowed: false
+  rls_grant_acl_clinic_scope_weakening_allowed: false
+  exact_matrix_path: NOT_CAPTURED
+  exact_matrix_sha256: NOT_CAPTURED
+  actor_and_jwt_acquisition_method: NOT_CAPTURED
+  target_relations_functions_and_operations: NOT_CAPTURED
+  expected_http_sqlstate_row_count_acl_rls_outcomes: NOT_CAPTURED
+  negative_cases:
+    - tenant_a_b_read_insert_update_delete
+    - all_major_roles
+    - inactive_profile
+    - revoked_or_owner_defined_expired_manager_assignment
+    - missing_authority
+    - stale_jwt
+    - empty_jwt
+    - malformed_jwt
+    - expired_jwt
+    - anon_authenticated_service_role
+    - cross_clinic
+    - missing_or_null_resource
+    - parent_rehome
+    - resource_and_clinic_cascade
+    - direct_data_api_acl_vs_rls
+approval:
+  owner: UNASSIGNED
+  approved_by: UNASSIGNED
+  approved_at: NOT_CAPTURED
+  approval_packet_sha256: NOT_CAPTURED
+  machine_readable_binding_path: NOT_CAPTURED
+  machine_readable_binding_sha256: NOT_CAPTURED
+  isolated_staging_execution_authorized: false
+  ready_transition_authorized: false
+  merge_authorized: false
+  production_connection_authorized: false
+  commercial_release_authorized: false
+  index_retirement_authorized: false
+revalidation:
+  - target_commit_change
+  - project_region_tier_or_database_version_change
+  - data_or_fixture_change
+  - workload_concurrency_order_or_threshold_change
+  - data_api_or_graphql_setting_change
+  - security_data_api_or_graphql_matrix_hash_change
+  - auth_secret_or_integration_change
+  - related_incident
+  - evidence_expiry
+abort_on:
+  - cross_tenant_access
+  - authorization_regression
+  - rls_acl_helper_trigger_fk_drift
+  - migration_replay_or_history_failure
+  - schema_generated_types_or_seed_drift
+  - canonical_pr11_gate_failure
+  - hosted_frozen_slo_failure
+  - data_api_or_graphql_setting_drift
+  - service_role_exposure
+  - lock_timeout_or_service_error_spike
+  - critical_advisor_finding
+  - restore_integrity_or_post_restore_tenant_failure
+  - rto_or_rpo_failure
+  - external_side_effect_duplication
+  - evidence_hash_or_privacy_scan_failure
+  - unapproved_operation_required
+evidence: []
+residual_risk:
+  - Every hosted fact and owner decision is still NOT_CAPTURED or UNASSIGNED.
+notes: This is an entry contract, not execution evidence and not staging authorization.

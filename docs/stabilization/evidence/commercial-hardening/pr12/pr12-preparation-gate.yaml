@@ -1,0 +1,94 @@
+schema_version: 1
+id: PR12-PREPARATION-GATE-20260719
+title: PR12 local preparation and Draft PR authority
+status: NOT_RUN
+blocking: true
+environment: repository
+base_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+assessed_commit: NOT_CAPTURED
+commit_binding:
+  selector: GIT_HEAD_AT_EVALUATION
+  state: NOT_CAPTURED
+  required_before_any_pass: true
+owner: UNASSIGNED
+approved_by: product_owner
+approval_source: explicit_user_instruction_2026-07-19
+verified_at: NOT_CAPTURED
+expires_at: NOT_CAPTURED
+authority:
+  current_ssot:
+    - docs/quality/change-dod-v1.0.md
+    - docs/releases/commercial-release-qualification-v1.0.md
+    - docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  historical_entry_snapshot: pr11-performance-entry-gate.yaml
+  historical_entry_snapshot_mutated: false
+  dated_original:
+    path_outside_clean_worktree: docs/stabilization/1-seikotsuin-commercial-hardening-migration-spec-v1.0-2026-07-11.md
+    sha256: fb3960ef365f803c718f7e297fd6b49378341c3f7a1b9250828fd64d0b0a40b5
+    committed_to_pr12: false
+    relationship_to_current_ssot: original_audit_input_not_implementation_override
+scope:
+  - local specification and contract preparation
+  - immutable PR11 performance gate freeze
+  - complete COMM gate inventory
+  - fail-closed evidence schema, semantic hash verifier, and privacy scanner
+  - isolated staging and DR runbook
+  - staging execution approval packet
+  - non-mutating local verification
+  - independent read-only audits
+  - Draft PR creation and required CI observation
+non_goals:
+  - isolated staging connection or creation
+  - staging migration apply, seed, backup, or restore
+  - production connection or release
+  - migration, rollback, RLS, ACL, helper, trigger, or FK changes
+  - public.idx_blocks_resource_id retirement
+  - threshold recalculation or sample removal
+  - dependency or package-manager changes
+frozen_facts:
+  pr11_merge_commit: aaf3837f6f8053b0379a2d4caea65880952ce027
+  phase_a2_evidence_commit: 25a983e6f39a02855667f9e943523f7cb4aa40ee
+  phase_a2_governance_commit: 0432785d68c98b9df32f9ab9f8e168b9206fcd92
+  pr101_merge_commit: 4475e1c641c2ff18f66021ee65cfecfceaa6b7ab
+  migration_head: '20260718011731'
+  pr11_primary_execution_result: 8_PASS_1_FAIL
+  dense_observed_ms: 549.305
+  dense_limit_ms: 521.55125
+  phase_a2: FAIL_STOP_ENVIRONMENT_INVALID
+  candidate_sql_execution_count: 0
+  permanent_ddl_count: 0
+  d1b_d2: NOT_RUN
+  steady_state_index_effect: NOT_PROVEN
+  idx_blocks_resource_id: PRESENT
+  index_retirement_authorized: false
+  pilot_waiver_inherited: false
+  phase_a2_manual_restoration_inherited: false
+  phase_a2_manual_restoration_expiry: '2026-08-18T23:59:59+09:00'
+  logical_hash: c1ab040ce4be526ae6ca38082a1b8be6a364635d9e7f40f1f7b5cc865d7a0f78
+  normalized_physical_hash: 94760df8826defb0dc30eb4445c80178d890537b8fcaedcc536b08219b231f86
+authorization:
+  draft_pr_creation_authorized: true
+  isolated_staging_execution_authorized: false
+  ready_transition_authorized: false
+  merge_authorized: false
+  production_connection_authorized: false
+  commercial_release_authorized: false
+  index_retirement_authorized: false
+tdd:
+  red_contract_path: src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts
+  red_command: fnm exec --using=24 npm.cmd test -- --runInBand --runTestsByPath src/__tests__/security/commercial-pr12-qualification-preparation-contract.test.ts
+  red_observed: true
+  red_result: 1_suite_failed_6_failed_1_passed
+  red_reason: required_pr12_artifacts_absent_and_current_gate_inventory_incomplete
+  audit_red_observed: true
+  audit_red_result: 1_suite_failed_5_failed_5_passed
+  audit_red_reason: fail_open_manifest_missing_security_restore_fields_domestic_phone_gap_and_unresolved_sentinel_drift
+  green_result: PASS_26_OF_26
+local_verification: NOT_RUN
+independent_audits: NOT_RUN
+required_ci_same_head: NOT_RUN
+evidence: []
+residual_risk:
+  - All isolated-staging, hosted SLO, Data API, GraphQL, backup, restore, and RTO/RPO evidence remains NOT_RUN.
+  - Exact owners, environment, commands, side effects, time, and cost remain unresolved in the approval packet.
+notes: Preparation authority does not convert any commercial blocking gate to PASS.

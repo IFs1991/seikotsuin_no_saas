@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "status": "NOT_RUN",
+  "authorization": {
+    "isolatedStagingExecutionAuthorized": false,
+    "readyTransitionAuthorized": false,
+    "mergeAuthorized": false,
+    "productionConnectionAuthorized": false,
+    "commercialReleaseAuthorized": false,
+    "indexRetirementAuthorized": false
+  },
+  "target": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731"
+  },
+  "environment": {
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "UNASSIGNED",
+    "region": "UNASSIGNED",
+    "databaseTier": "UNASSIGNED",
+    "databaseVersion": "NOT_CAPTURED"
+  },
+  "toolVersions": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "2.109.0",
+    "psql": "NOT_CAPTURED"
+  },
+  "toolVersionCommands": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "NOT_CAPTURED",
+    "psql": "NOT_CAPTURED"
+  },
+  "bindings": {
+    "securityMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "dataApiMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "graphQlMatrix": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "performanceContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "hostedSloContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "representativeDataContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "commandLedger": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "drContract": { "path": "NOT_CAPTURED", "sha256": "NOT_CAPTURED" },
+    "integrationContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    },
+    "credentialContract": {
+      "path": "NOT_CAPTURED",
+      "sha256": "NOT_CAPTURED"
+    }
+  },
+  "approval": {
+    "approvedBy": "UNASSIGNED",
+    "approvedAt": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidencePath": "NOT_CAPTURED",
+    "evidenceSha256": "NOT_CAPTURED"
+  },
+  "owners": {
+    "stagingOwner": "UNASSIGNED",
+    "stagingOperator": "UNASSIGNED",
+    "incidentOwner": "UNASSIGNED"
+  },
+  "notes": "Template only. APPROVED status and staging execution remain unauthorized."
+}

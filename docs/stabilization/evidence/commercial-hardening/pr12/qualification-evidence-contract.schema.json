@@ -1,0 +1,1071 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seikotsuin.invalid/contracts/pr12-qualification-evidence-v1.schema.json",
+  "title": "PR12 isolated qualification evidence manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "qualificationId",
+    "status",
+    "source",
+    "environment",
+    "credentialHandling",
+    "toolVersions",
+    "timing",
+    "commands",
+    "artifacts",
+    "rowCounts",
+    "hashes",
+    "representativeData",
+    "performance",
+    "gates",
+    "securityMatrix",
+    "externalSideEffects",
+    "backup",
+    "restore",
+    "postRestore",
+    "ownership",
+    "privacyScan",
+    "residualRisk",
+    "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "qualificationId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gitCommit",
+        "baseCommit",
+        "migrationHead",
+        "approvalPacketPath",
+        "approvalPacketSha256"
+      ],
+      "properties": {
+        "gitCommit": { "type": "string", "minLength": 1 },
+        "baseCommit": { "type": "string", "minLength": 1 },
+        "migrationHead": { "type": "string", "minLength": 1 },
+        "approvalPacketPath": { "type": "string", "minLength": 1 },
+        "approvalPacketSha256": { "$ref": "#/$defs/sha256OrPlaceholder" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projectRef",
+        "projectName",
+        "region",
+        "databaseTier",
+        "databaseVersion",
+        "systemIdentifier",
+        "dataApi",
+        "graphQl"
+      ],
+      "properties": {
+        "projectRef": { "type": "string", "minLength": 1 },
+        "projectName": { "type": "string", "minLength": 1 },
+        "region": { "type": "string", "minLength": 1 },
+        "databaseTier": { "type": "string", "minLength": 1 },
+        "databaseVersion": { "type": "string", "minLength": 1 },
+        "systemIdentifier": { "type": "string", "minLength": 1 },
+        "dataApi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "matrixId",
+            "matrixPath",
+            "matrixSha256",
+            "exposedSchemas",
+            "automaticGrants",
+            "defaultPrivileges",
+            "schemaUsage",
+            "objectAcl",
+            "directRoleResults",
+            "aclVerdict",
+            "rlsVerdict"
+          ],
+          "properties": {
+            "enabled": { "type": ["boolean", "string"] },
+            "matrixId": { "type": "string" },
+            "matrixPath": { "type": "string" },
+            "matrixSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+            "exposedSchemas": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "automaticGrants": { "type": "string" },
+            "defaultPrivileges": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["postgres", "supabaseAdmin"],
+              "properties": {
+                "postgres": { "type": "string" },
+                "supabaseAdmin": { "type": "string" }
+              }
+            },
+            "schemaUsage": { "$ref": "#/$defs/gateResult" },
+            "objectAcl": { "$ref": "#/$defs/gateResult" },
+            "directRoleResults": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/directRoleResult" }
+            },
+            "aclVerdict": { "$ref": "#/$defs/gateResult" },
+            "rlsVerdict": { "$ref": "#/$defs/gateResult" }
+          }
+        },
+        "graphQl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "installedVersion",
+            "enabled",
+            "matrixId",
+            "matrixPath",
+            "matrixSha256",
+            "exposedSchemas",
+            "introspection",
+            "directRoleResults",
+            "tenantBoundary",
+            "fieldVisibility",
+            "disabledEndpointRejection"
+          ],
+          "properties": {
+            "installedVersion": { "type": "string" },
+            "enabled": { "type": ["boolean", "string"] },
+            "matrixId": { "type": "string" },
+            "matrixPath": { "type": "string" },
+            "matrixSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+            "exposedSchemas": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "introspection": { "type": "string" },
+            "directRoleResults": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/directRoleResult" }
+            },
+            "tenantBoundary": { "$ref": "#/$defs/gateResult" },
+            "fieldVisibility": { "$ref": "#/$defs/gateResult" },
+            "disabledEndpointRejection": { "$ref": "#/$defs/gateResult" }
+          }
+        }
+      }
+    },
+    "credentialHandling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractPath",
+        "contractSha256",
+        "channel",
+        "storage",
+        "retrieval",
+        "logging",
+        "serverOnly",
+        "browserExposureAllowed",
+        "commandLineExposureAllowed",
+        "evidenceExposureAllowed",
+        "clientResponseExposureAllowed",
+        "logExposureAllowed",
+        "sourceControlExposureAllowed",
+        "urlExposureAllowed",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "contractPath": { "type": "string" },
+        "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "channel": { "type": "string" },
+        "storage": { "type": "string" },
+        "retrieval": { "type": "string" },
+        "logging": { "type": "string" },
+        "serverOnly": { "type": ["boolean", "string"] },
+        "browserExposureAllowed": { "type": ["boolean", "string"] },
+        "commandLineExposureAllowed": { "type": ["boolean", "string"] },
+        "evidenceExposureAllowed": { "type": ["boolean", "string"] },
+        "clientResponseExposureAllowed": { "type": ["boolean", "string"] },
+        "logExposureAllowed": { "type": ["boolean", "string"] },
+        "sourceControlExposureAllowed": { "type": ["boolean", "string"] },
+        "urlExposureAllowed": { "type": ["boolean", "string"] },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "toolVersions": {
+      "type": "object",
+      "minProperties": 1,
+      "required": ["node", "supabaseCli", "psql"],
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startedAt", "endedAt", "durationSeconds"],
+      "properties": {
+        "startedAt": { "type": "string", "minLength": 1 },
+        "endedAt": { "type": "string", "minLength": 1 },
+        "durationSeconds": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "commands": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "redactedCommand",
+          "startedAt",
+          "endedAt",
+          "exitCode",
+          "stdoutPath",
+          "stdoutSha256",
+          "stderrPath",
+          "stderrSha256"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "redactedCommand": { "type": "string", "minLength": 1 },
+          "startedAt": { "type": "string", "minLength": 1 },
+          "endedAt": { "type": "string", "minLength": 1 },
+          "exitCode": { "type": ["integer", "null"] },
+          "stdoutPath": { "type": "string", "minLength": 1 },
+          "stdoutSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+          "stderrPath": { "type": "string", "minLength": 1 },
+          "stderrSha256": { "$ref": "#/$defs/sha256OrPlaceholder" }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "rowCounts": {
+      "type": "object",
+      "additionalProperties": { "type": ["integer", "string"], "minimum": 0 }
+    },
+    "hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalHash", "physicalHash", "schemaHash", "dataHash"],
+      "properties": {
+        "logicalHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "physicalHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "schemaHash": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "dataHash": { "$ref": "#/$defs/sha256OrPlaceholder" }
+      }
+    },
+    "representativeData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractPath",
+        "contractSha256",
+        "classification",
+        "volume",
+        "sourceSha256",
+        "expiresAt",
+        "evidence"
+      ],
+      "properties": {
+        "contractPath": { "type": "string" },
+        "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "classification": { "type": "string" },
+        "volume": { "type": "string" },
+        "sourceSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "expiresAt": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractPath",
+        "contractSha256",
+        "sampleCount",
+        "aggregation",
+        "pairedSampleOrder",
+        "primaryExecutionResults",
+        "primaryWalResults",
+        "auxiliaryExecutionResults",
+        "auxiliaryWalResults",
+        "planResults",
+        "semanticResults",
+        "hostedSlo"
+      ],
+      "properties": {
+        "contractPath": { "type": "string" },
+        "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "sampleCount": { "type": ["integer", "null"] },
+        "aggregation": { "type": "string" },
+        "pairedSampleOrder": { "type": "string" },
+        "primaryExecutionResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/metricResult" }
+        },
+        "primaryWalResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/metricResult" }
+        },
+        "auxiliaryExecutionResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/metricResult" }
+        },
+        "auxiliaryWalResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/metricResult" }
+        },
+        "planResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedResult" }
+        },
+        "semanticResults": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namedResult" }
+        },
+        "hostedSlo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "contractPath",
+            "contractSha256",
+            "workloadId",
+            "concurrency",
+            "sampleOrder",
+            "durationSeconds",
+            "thresholds",
+            "observed",
+            "status",
+            "evidence"
+          ],
+          "properties": {
+            "contractPath": { "type": "string" },
+            "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+            "workloadId": { "type": "string" },
+            "concurrency": { "type": ["integer", "null"] },
+            "sampleOrder": { "type": "array", "items": { "type": "string" } },
+            "durationSeconds": { "type": ["number", "null"] },
+            "thresholds": { "$ref": "#/$defs/hostedSloThresholds" },
+            "observed": { "$ref": "#/$defs/hostedSloObserved" },
+            "status": { "$ref": "#/$defs/status" },
+            "evidence": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "evidence"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "$ref": "#/$defs/status" },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "securityMatrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matrixId",
+        "contractPath",
+        "contractSha256",
+        "roles",
+        "jwtCases",
+        "tenantCrudCases",
+        "rows",
+        "serviceRoleBoundary",
+        "aclRlsIndependence"
+      ],
+      "properties": {
+        "matrixId": { "type": "string", "minLength": 1 },
+        "contractPath": { "type": "string", "minLength": 1 },
+        "contractSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "jwtCases": { "type": "array", "items": { "type": "string" } },
+        "tenantCrudCases": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/securityMatrixRow" }
+        },
+        "serviceRoleBoundary": { "$ref": "#/$defs/gateResult" },
+        "aclRlsIndependence": { "$ref": "#/$defs/gateResult" }
+      }
+    },
+    "externalSideEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "duplicateCount", "evidence"],
+      "properties": {
+        "mode": { "enum": ["DISABLED", "SANDBOXED", "NOT_CAPTURED"] },
+        "duplicateCount": { "type": ["integer", "null"], "minimum": 0 },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "method",
+        "scope",
+        "capturedAt",
+        "sourceWatermark",
+        "artifactPath",
+        "artifactSha256",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "method": { "type": "string" },
+        "scope": { "type": "string" },
+        "capturedAt": { "type": "string" },
+        "sourceWatermark": { "type": "string" },
+        "artifactPath": { "type": "string" },
+        "artifactSha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "restore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "restoreSource",
+        "restorePoint",
+        "rtoStartEvent",
+        "rtoEndEvent",
+        "rtoMeasurementClockAndSource",
+        "rpoWatermarkDefinition",
+        "rpoObservationEvent",
+        "rpoMeasurementClockAndSource",
+        "rtoThresholdSeconds",
+        "rpoThresholdSeconds",
+        "rtoSeconds",
+        "rpoSeconds",
+        "evidence"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "restoreSource": { "type": "string" },
+        "restorePoint": { "type": "string" },
+        "rtoStartEvent": { "type": "string" },
+        "rtoEndEvent": { "type": "string" },
+        "rtoMeasurementClockAndSource": { "type": "string" },
+        "rpoWatermarkDefinition": { "type": "string" },
+        "rpoObservationEvent": { "type": "string" },
+        "rpoMeasurementClockAndSource": { "type": "string" },
+        "rtoThresholdSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "rpoThresholdSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "rtoSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "rpoSeconds": { "type": ["number", "null"], "minimum": 0 },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "postRestore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaParity",
+        "dataParity",
+        "tenantIsolation",
+        "authBoundary",
+        "dataApiBoundary",
+        "graphQlBoundary"
+      ],
+      "properties": {
+        "schemaParity": { "$ref": "#/$defs/gateResult" },
+        "dataParity": { "$ref": "#/$defs/gateResult" },
+        "tenantIsolation": { "$ref": "#/$defs/gateResult" },
+        "authBoundary": { "$ref": "#/$defs/gateResult" },
+        "dataApiBoundary": { "$ref": "#/$defs/gateResult" },
+        "graphQlBoundary": { "$ref": "#/$defs/gateResult" }
+      }
+    },
+    "ownership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "approver", "stagingOperator", "incidentOwner"],
+      "properties": {
+        "owner": { "type": "string", "minLength": 1 },
+        "approver": { "type": "string", "minLength": 1 },
+        "stagingOperator": { "type": "string", "minLength": 1 },
+        "incidentOwner": { "type": "string", "minLength": 1 }
+      }
+    },
+    "privacyScan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "scannedAt",
+        "scannerVersion",
+        "findingCount",
+        "machineScanCommandId",
+        "machineScanEvidence",
+        "manualReviewStatus",
+        "manualReviewer",
+        "manualReviewedAt",
+        "manualReviewEvidence"
+      ],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "scannedAt": { "type": "string", "minLength": 1 },
+        "scannerVersion": { "type": "string", "minLength": 1 },
+        "findingCount": { "type": ["integer", "null"], "minimum": 0 },
+        "machineScanCommandId": { "type": "string", "minLength": 1 },
+        "machineScanEvidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "manualReviewStatus": { "$ref": "#/$defs/status" },
+        "manualReviewer": { "type": "string", "minLength": 1 },
+        "manualReviewedAt": { "type": "string", "minLength": 1 },
+        "manualReviewEvidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "residualRisk": { "type": "array", "items": { "type": "string" } },
+    "expiresAt": { "type": ["string", "null"] }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {
+          "status": { "const": "PASS" }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "gitCommit": { "$ref": "#/$defs/gitCommit" },
+              "baseCommit": { "$ref": "#/$defs/gitCommit" },
+              "migrationHead": { "const": "20260718011731" },
+              "approvalPacketPath": { "$ref": "#/$defs/concreteString" },
+              "approvalPacketSha256": { "$ref": "#/$defs/sha256" }
+            }
+          },
+          "environment": {
+            "properties": {
+              "projectRef": { "$ref": "#/$defs/concreteString" },
+              "projectName": { "$ref": "#/$defs/concreteString" },
+              "region": { "$ref": "#/$defs/concreteString" },
+              "databaseTier": { "$ref": "#/$defs/concreteString" },
+              "databaseVersion": { "$ref": "#/$defs/concreteString" },
+              "systemIdentifier": { "$ref": "#/$defs/concreteString" },
+              "dataApi": {
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "matrixId": { "$ref": "#/$defs/concreteString" },
+                  "matrixPath": { "$ref": "#/$defs/concreteString" },
+                  "matrixSha256": { "$ref": "#/$defs/sha256" },
+                  "exposedSchemas": { "minItems": 1 },
+                  "automaticGrants": { "$ref": "#/$defs/concreteString" },
+                  "defaultPrivileges": {
+                    "properties": {
+                      "postgres": { "$ref": "#/$defs/concreteString" },
+                      "supabaseAdmin": { "$ref": "#/$defs/concreteString" }
+                    }
+                  },
+                  "schemaUsage": { "$ref": "#/$defs/passedGateResult" },
+                  "objectAcl": { "$ref": "#/$defs/passedGateResult" },
+                  "directRoleResults": { "minItems": 3 },
+                  "aclVerdict": { "$ref": "#/$defs/passedGateResult" },
+                  "rlsVerdict": { "$ref": "#/$defs/passedGateResult" }
+                }
+              },
+              "graphQl": {
+                "properties": {
+                  "installedVersion": { "$ref": "#/$defs/concreteString" },
+                  "enabled": { "type": "boolean" },
+                  "matrixId": { "$ref": "#/$defs/concreteString" },
+                  "matrixPath": { "$ref": "#/$defs/concreteString" },
+                  "matrixSha256": { "$ref": "#/$defs/sha256" },
+                  "introspection": { "$ref": "#/$defs/concreteString" },
+                  "directRoleResults": { "minItems": 3 },
+                  "tenantBoundary": { "$ref": "#/$defs/supportedGateResult" },
+                  "fieldVisibility": { "$ref": "#/$defs/supportedGateResult" },
+                  "disabledEndpointRejection": {
+                    "$ref": "#/$defs/supportedGateResult"
+                  }
+                }
+              }
+            }
+          },
+          "credentialHandling": {
+            "properties": {
+              "contractPath": { "$ref": "#/$defs/concreteString" },
+              "contractSha256": { "$ref": "#/$defs/sha256" },
+              "channel": { "$ref": "#/$defs/concreteString" },
+              "storage": { "$ref": "#/$defs/concreteString" },
+              "retrieval": { "$ref": "#/$defs/concreteString" },
+              "logging": { "$ref": "#/$defs/concreteString" },
+              "serverOnly": { "const": true },
+              "browserExposureAllowed": { "const": false },
+              "commandLineExposureAllowed": { "const": false },
+              "evidenceExposureAllowed": { "const": false },
+              "clientResponseExposureAllowed": { "const": false },
+              "logExposureAllowed": { "const": false },
+              "sourceControlExposureAllowed": { "const": false },
+              "urlExposureAllowed": { "const": false },
+              "status": { "const": "PASS" },
+              "evidence": { "minItems": 1 }
+            }
+          },
+          "toolVersions": {
+            "minProperties": 1,
+            "properties": {
+              "node": { "pattern": "^v?24\\.\\d+\\.\\d+$" },
+              "supabaseCli": { "const": "2.109.0" },
+              "psql": {
+                "pattern": "^psql \\(PostgreSQL\\) \\d+(?:\\.\\d+){0,2}(?:\\s.*)?$"
+              }
+            },
+            "additionalProperties": { "$ref": "#/$defs/concreteString" }
+          },
+          "timing": {
+            "properties": {
+              "startedAt": { "$ref": "#/$defs/concreteString" },
+              "endedAt": { "$ref": "#/$defs/concreteString" },
+              "durationSeconds": { "type": "number", "minimum": 0 }
+            }
+          },
+          "commands": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "id": { "$ref": "#/$defs/concreteString" },
+                "redactedCommand": { "$ref": "#/$defs/concreteString" },
+                "startedAt": { "$ref": "#/$defs/concreteString" },
+                "endedAt": { "$ref": "#/$defs/concreteString" },
+                "exitCode": { "const": 0 },
+                "stdoutPath": { "$ref": "#/$defs/concreteString" },
+                "stdoutSha256": { "$ref": "#/$defs/sha256" },
+                "stderrPath": { "$ref": "#/$defs/concreteString" },
+                "stderrSha256": { "$ref": "#/$defs/sha256" }
+              }
+            }
+          },
+          "artifacts": {
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/concreteArtifact" }
+          },
+          "rowCounts": { "minProperties": 1 },
+          "hashes": {
+            "properties": {
+              "logicalHash": { "$ref": "#/$defs/sha256" },
+              "physicalHash": { "$ref": "#/$defs/sha256" },
+              "schemaHash": { "$ref": "#/$defs/sha256" },
+              "dataHash": { "$ref": "#/$defs/sha256" }
+            }
+          },
+          "representativeData": {
+            "properties": {
+              "contractPath": { "$ref": "#/$defs/concreteString" },
+              "contractSha256": { "$ref": "#/$defs/sha256" },
+              "classification": { "enum": ["SYNTHETIC", "ANONYMIZED"] },
+              "volume": { "$ref": "#/$defs/concreteString" },
+              "sourceSha256": { "$ref": "#/$defs/sha256" },
+              "expiresAt": { "$ref": "#/$defs/concreteString" },
+              "evidence": { "minItems": 1 }
+            }
+          },
+          "performance": {
+            "properties": {
+              "contractPath": { "$ref": "#/$defs/concreteString" },
+              "contractSha256": { "$ref": "#/$defs/sha256" },
+              "sampleCount": { "const": 3 },
+              "aggregation": { "const": "median_of_exactly_3" },
+              "pairedSampleOrder": {
+                "const": "before_after_after_before_before_after"
+              },
+              "primaryExecutionResults": { "minItems": 9, "maxItems": 9 },
+              "primaryWalResults": { "minItems": 6, "maxItems": 6 },
+              "auxiliaryExecutionResults": { "minItems": 2, "maxItems": 2 },
+              "auxiliaryWalResults": { "minItems": 2, "maxItems": 2 },
+              "planResults": { "minItems": 8, "maxItems": 8 },
+              "semanticResults": { "minItems": 5, "maxItems": 5 },
+              "hostedSlo": {
+                "properties": {
+                  "contractPath": { "$ref": "#/$defs/concreteString" },
+                  "contractSha256": { "$ref": "#/$defs/sha256" },
+                  "workloadId": { "$ref": "#/$defs/concreteString" },
+                  "concurrency": { "type": "integer", "minimum": 1 },
+                  "sampleOrder": { "minItems": 1 },
+                  "durationSeconds": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "status": { "const": "PASS" },
+                  "evidence": { "minItems": 1 }
+                }
+              }
+            }
+          },
+          "gates": {
+            "minItems": 54,
+            "items": {
+              "properties": {
+                "status": { "const": "PASS" },
+                "evidence": { "minItems": 1 }
+              }
+            }
+          },
+          "securityMatrix": {
+            "properties": {
+              "matrixId": { "$ref": "#/$defs/concreteString" },
+              "contractPath": { "$ref": "#/$defs/concreteString" },
+              "contractSha256": { "$ref": "#/$defs/sha256" },
+              "roles": { "minItems": 3 },
+              "jwtCases": { "minItems": 7 },
+              "tenantCrudCases": { "minItems": 4 },
+              "rows": { "minItems": 1 },
+              "serviceRoleBoundary": { "$ref": "#/$defs/passedGateResult" },
+              "aclRlsIndependence": { "$ref": "#/$defs/passedGateResult" }
+            }
+          },
+          "externalSideEffects": {
+            "properties": {
+              "mode": { "enum": ["DISABLED", "SANDBOXED"] },
+              "duplicateCount": { "const": 0 },
+              "evidence": { "minItems": 1 }
+            }
+          },
+          "backup": {
+            "properties": {
+              "status": { "const": "PASS" },
+              "method": { "$ref": "#/$defs/concreteString" },
+              "scope": { "$ref": "#/$defs/concreteString" },
+              "capturedAt": { "$ref": "#/$defs/concreteString" },
+              "sourceWatermark": { "$ref": "#/$defs/concreteString" },
+              "artifactPath": { "$ref": "#/$defs/concreteString" },
+              "artifactSha256": { "$ref": "#/$defs/sha256" },
+              "evidence": { "minItems": 1 }
+            }
+          },
+          "restore": {
+            "properties": {
+              "status": { "const": "PASS" },
+              "restoreSource": { "$ref": "#/$defs/concreteString" },
+              "restorePoint": { "$ref": "#/$defs/concreteString" },
+              "rtoStartEvent": { "$ref": "#/$defs/concreteString" },
+              "rtoEndEvent": { "$ref": "#/$defs/concreteString" },
+              "rtoMeasurementClockAndSource": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "rpoWatermarkDefinition": { "$ref": "#/$defs/concreteString" },
+              "rpoObservationEvent": { "$ref": "#/$defs/concreteString" },
+              "rpoMeasurementClockAndSource": {
+                "$ref": "#/$defs/concreteString"
+              },
+              "rtoThresholdSeconds": { "type": "number", "minimum": 0 },
+              "rpoThresholdSeconds": { "type": "number", "minimum": 0 },
+              "rtoSeconds": { "type": "number", "minimum": 0 },
+              "rpoSeconds": { "type": "number", "minimum": 0 },
+              "evidence": { "minItems": 1 }
+            }
+          },
+          "postRestore": {
+            "properties": {
+              "schemaParity": { "$ref": "#/$defs/passedGateResult" },
+              "dataParity": { "$ref": "#/$defs/passedGateResult" },
+              "tenantIsolation": { "$ref": "#/$defs/passedGateResult" },
+              "authBoundary": { "$ref": "#/$defs/passedGateResult" },
+              "dataApiBoundary": { "$ref": "#/$defs/passedGateResult" },
+              "graphQlBoundary": { "$ref": "#/$defs/passedGateResult" }
+            }
+          },
+          "ownership": {
+            "properties": {
+              "owner": { "$ref": "#/$defs/concreteString" },
+              "approver": { "$ref": "#/$defs/concreteString" },
+              "stagingOperator": { "$ref": "#/$defs/concreteString" },
+              "incidentOwner": { "$ref": "#/$defs/concreteString" }
+            }
+          },
+          "privacyScan": {
+            "properties": {
+              "status": { "const": "PASS" },
+              "scannedAt": { "$ref": "#/$defs/concreteString" },
+              "findingCount": { "const": 0 },
+              "machineScanCommandId": { "$ref": "#/$defs/concreteString" },
+              "machineScanEvidence": { "minItems": 1 },
+              "manualReviewStatus": { "const": "PASS" },
+              "manualReviewer": { "$ref": "#/$defs/concreteString" },
+              "manualReviewedAt": { "$ref": "#/$defs/concreteString" },
+              "manualReviewEvidence": { "minItems": 1 }
+            }
+          },
+          "expiresAt": {
+            "allOf": [
+              { "$ref": "#/$defs/concreteString" },
+              { "type": "string", "format": "date-time" }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "status": {
+      "enum": ["PASS", "FAIL", "NOT_RUN", "PASS_WITH_RISK", "NOT_APPLICABLE"]
+    },
+    "gitCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "sha256OrPlaceholder": {
+      "oneOf": [{ "$ref": "#/$defs/sha256" }, { "const": "NOT_CAPTURED" }]
+    },
+    "concreteString": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": ["NOT_CAPTURED", "NOT_RUN", "UNASSIGNED", "NOT_APPLICABLE"]
+      }
+    },
+    "gateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence"],
+      "properties": {
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "passedGateResult": {
+      "allOf": [
+        { "$ref": "#/$defs/gateResult" },
+        {
+          "properties": {
+            "status": { "const": "PASS" },
+            "evidence": { "minItems": 1 }
+          }
+        }
+      ]
+    },
+    "supportedGateResult": {
+      "allOf": [
+        { "$ref": "#/$defs/gateResult" },
+        {
+          "properties": {
+            "status": { "enum": ["PASS", "NOT_APPLICABLE"] },
+            "evidence": { "minItems": 1 }
+          }
+        }
+      ]
+    },
+    "metricResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "samples",
+        "median",
+        "limit",
+        "unit",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "samples": { "type": "array", "items": { "type": "number" } },
+        "median": { "type": ["number", "null"] },
+        "limit": { "type": ["number", "null"] },
+        "unit": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "namedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "evidence"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "hostedSloThresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "p95Ms",
+        "p99Ms",
+        "minimumThroughputPerSecond",
+        "maximum5xxRate",
+        "maximumTimeoutRate",
+        "maximumCpuPercent",
+        "minimumPoolHeadroomPercent",
+        "maximumLockWaitMs",
+        "maximumWalBytes",
+        "maximumMigrationDurationSeconds"
+      ],
+      "properties": {
+        "p95Ms": { "type": ["number", "null"] },
+        "p99Ms": { "type": ["number", "null"] },
+        "minimumThroughputPerSecond": { "type": ["number", "null"] },
+        "maximum5xxRate": { "type": ["number", "null"] },
+        "maximumTimeoutRate": { "type": ["number", "null"] },
+        "maximumCpuPercent": { "type": ["number", "null"] },
+        "minimumPoolHeadroomPercent": { "type": ["number", "null"] },
+        "maximumLockWaitMs": { "type": ["number", "null"] },
+        "maximumWalBytes": { "type": ["number", "null"] },
+        "maximumMigrationDurationSeconds": { "type": ["number", "null"] }
+      }
+    },
+    "hostedSloObserved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "p95Ms",
+        "p99Ms",
+        "throughputPerSecond",
+        "rate5xx",
+        "timeoutRate",
+        "cpuPercent",
+        "poolHeadroomPercent",
+        "lockWaitMs",
+        "walBytes",
+        "migrationDurationSeconds"
+      ],
+      "properties": {
+        "p95Ms": { "type": ["number", "null"] },
+        "p99Ms": { "type": ["number", "null"] },
+        "throughputPerSecond": { "type": ["number", "null"] },
+        "rate5xx": { "type": ["number", "null"] },
+        "timeoutRate": { "type": ["number", "null"] },
+        "cpuPercent": { "type": ["number", "null"] },
+        "poolHeadroomPercent": { "type": ["number", "null"] },
+        "lockWaitMs": { "type": ["number", "null"] },
+        "walBytes": { "type": ["number", "null"] },
+        "migrationDurationSeconds": { "type": ["number", "null"] }
+      }
+    },
+    "directRoleResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "role",
+        "operation",
+        "expected",
+        "observed",
+        "aclVerdict",
+        "rlsVerdict",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "role": { "enum": ["anon", "authenticated", "service_role"] },
+        "operation": { "type": "string" },
+        "expected": { "type": "string" },
+        "observed": { "type": "string" },
+        "aclVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+        "rlsVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "securityMatrixRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "caseId",
+        "role",
+        "actor",
+        "jwtCase",
+        "sourceTenant",
+        "targetTenant",
+        "tenantBoundary",
+        "target",
+        "operation",
+        "expectedHttpStatus",
+        "expectedSqlstate",
+        "expectedRowCount",
+        "observedHttpStatus",
+        "observedSqlstate",
+        "observedRowCount",
+        "expectedAclOutcome",
+        "expectedRlsOutcome",
+        "observedAclOutcome",
+        "observedRlsOutcome",
+        "aclVerdict",
+        "rlsVerdict",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "caseId": { "type": "string" },
+        "role": { "type": "string" },
+        "actor": { "type": "string" },
+        "jwtCase": { "type": "string" },
+        "sourceTenant": { "type": "string" },
+        "targetTenant": { "type": "string" },
+        "tenantBoundary": { "type": "string" },
+        "target": { "type": "string" },
+        "operation": { "type": "string" },
+        "expectedHttpStatus": { "type": ["integer", "string"] },
+        "expectedSqlstate": { "type": "string" },
+        "expectedRowCount": { "type": ["integer", "string"] },
+        "observedHttpStatus": { "type": ["integer", "string"] },
+        "observedSqlstate": { "type": "string" },
+        "observedRowCount": { "type": ["integer", "string"] },
+        "expectedAclOutcome": { "type": "string" },
+        "expectedRlsOutcome": { "type": "string" },
+        "observedAclOutcome": { "type": "string" },
+        "observedRlsOutcome": { "type": "string" },
+        "aclVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+        "rlsVerdict": { "enum": ["PASS", "FAIL", "NOT_APPLICABLE"] },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256", "classification"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256OrPlaceholder" },
+        "classification": {
+          "enum": ["PUBLIC_SANITIZED", "INTERNAL_NO_PII", "LOCAL_QUARANTINE"]
+        }
+      }
+    },
+    "concreteArtifact": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "properties": {
+            "path": { "$ref": "#/$defs/concreteString" },
+            "bytes": { "type": "integer", "minimum": 0 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    }
+  }
+}

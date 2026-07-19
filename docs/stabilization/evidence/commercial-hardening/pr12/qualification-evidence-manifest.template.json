@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "qualificationId": "PR12-NOT-CAPTURED",
+  "status": "NOT_RUN",
+  "source": {
+    "gitCommit": "NOT_CAPTURED",
+    "baseCommit": "4475e1c641c2ff18f66021ee65cfecfceaa6b7ab",
+    "migrationHead": "20260718011731",
+    "approvalPacketPath": "NOT_CAPTURED",
+    "approvalPacketSha256": "NOT_CAPTURED"
+  },
+  "environment": {
+    "projectRef": "NOT_CAPTURED",
+    "projectName": "UNASSIGNED",
+    "region": "UNASSIGNED",
+    "databaseTier": "UNASSIGNED",
+    "databaseVersion": "NOT_CAPTURED",
+    "systemIdentifier": "NOT_CAPTURED",
+    "dataApi": {
+      "enabled": "NOT_CAPTURED",
+      "matrixId": "NOT_CAPTURED",
+      "matrixPath": "NOT_CAPTURED",
+      "matrixSha256": "NOT_CAPTURED",
+      "exposedSchemas": [],
+      "automaticGrants": "NOT_CAPTURED",
+      "defaultPrivileges": {
+        "postgres": "NOT_CAPTURED",
+        "supabaseAdmin": "NOT_CAPTURED"
+      },
+      "schemaUsage": { "status": "NOT_RUN", "evidence": [] },
+      "objectAcl": { "status": "NOT_RUN", "evidence": [] },
+      "directRoleResults": [],
+      "aclVerdict": { "status": "NOT_RUN", "evidence": [] },
+      "rlsVerdict": { "status": "NOT_RUN", "evidence": [] }
+    },
+    "graphQl": {
+      "installedVersion": "NOT_CAPTURED",
+      "enabled": "NOT_CAPTURED",
+      "matrixId": "NOT_CAPTURED",
+      "matrixPath": "NOT_CAPTURED",
+      "matrixSha256": "NOT_CAPTURED",
+      "exposedSchemas": [],
+      "introspection": "NOT_CAPTURED",
+      "directRoleResults": [],
+      "tenantBoundary": { "status": "NOT_RUN", "evidence": [] },
+      "fieldVisibility": { "status": "NOT_RUN", "evidence": [] },
+      "disabledEndpointRejection": { "status": "NOT_RUN", "evidence": [] }
+    }
+  },
+  "credentialHandling": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "channel": "UNASSIGNED",
+    "storage": "UNASSIGNED",
+    "retrieval": "UNASSIGNED",
+    "logging": "UNASSIGNED",
+    "serverOnly": "NOT_CAPTURED",
+    "browserExposureAllowed": "NOT_CAPTURED",
+    "commandLineExposureAllowed": "NOT_CAPTURED",
+    "evidenceExposureAllowed": "NOT_CAPTURED",
+    "clientResponseExposureAllowed": "NOT_CAPTURED",
+    "logExposureAllowed": "NOT_CAPTURED",
+    "sourceControlExposureAllowed": "NOT_CAPTURED",
+    "urlExposureAllowed": "NOT_CAPTURED",
+    "status": "NOT_RUN",
+    "evidence": []
+  },
+  "toolVersions": {
+    "node": "NOT_CAPTURED",
+    "supabaseCli": "2.109.0",
+    "psql": "NOT_CAPTURED"
+  },
+  "timing": {
+    "startedAt": "NOT_CAPTURED",
+    "endedAt": "NOT_CAPTURED",
+    "durationSeconds": null
+  },
+  "commands": [
+    {
+      "id": "NOT_CAPTURED",
+      "redactedCommand": "NOT_CAPTURED",
+      "startedAt": "NOT_CAPTURED",
+      "endedAt": "NOT_CAPTURED",
+      "exitCode": null,
+      "stdoutPath": "NOT_CAPTURED",
+      "stdoutSha256": "NOT_CAPTURED",
+      "stderrPath": "NOT_CAPTURED",
+      "stderrSha256": "NOT_CAPTURED"
+    }
+  ],
+  "artifacts": [],
+  "rowCounts": {},
+  "hashes": {
+    "logicalHash": "NOT_CAPTURED",
+    "physicalHash": "NOT_CAPTURED",
+    "schemaHash": "NOT_CAPTURED",
+    "dataHash": "NOT_CAPTURED"
+  },
+  "representativeData": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "classification": "NOT_CAPTURED",
+    "volume": "NOT_CAPTURED",
+    "sourceSha256": "NOT_CAPTURED",
+    "expiresAt": "NOT_CAPTURED",
+    "evidence": []
+  },
+  "performance": {
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "sampleCount": null,
+    "aggregation": "NOT_CAPTURED",
+    "pairedSampleOrder": "NOT_CAPTURED",
+    "primaryExecutionResults": [],
+    "primaryWalResults": [],
+    "auxiliaryExecutionResults": [],
+    "auxiliaryWalResults": [],
+    "planResults": [],
+    "semanticResults": [],
+    "hostedSlo": {
+      "contractPath": "NOT_CAPTURED",
+      "contractSha256": "NOT_CAPTURED",
+      "workloadId": "NOT_CAPTURED",
+      "concurrency": null,
+      "sampleOrder": [],
+      "durationSeconds": null,
+      "thresholds": {
+        "p95Ms": null,
+        "p99Ms": null,
+        "minimumThroughputPerSecond": null,
+        "maximum5xxRate": null,
+        "maximumTimeoutRate": null,
+        "maximumCpuPercent": null,
+        "minimumPoolHeadroomPercent": null,
+        "maximumLockWaitMs": null,
+        "maximumWalBytes": null,
+        "maximumMigrationDurationSeconds": null
+      },
+      "observed": {
+        "p95Ms": null,
+        "p99Ms": null,
+        "throughputPerSecond": null,
+        "rate5xx": null,
+        "timeoutRate": null,
+        "cpuPercent": null,
+        "poolHeadroomPercent": null,
+        "lockWaitMs": null,
+        "walBytes": null,
+        "migrationDurationSeconds": null
+      },
+      "status": "NOT_RUN",
+      "evidence": []
+    }
+  },
+  "gates": [],
+  "securityMatrix": {
+    "matrixId": "NOT_CAPTURED",
+    "contractPath": "NOT_CAPTURED",
+    "contractSha256": "NOT_CAPTURED",
+    "roles": [],
+    "jwtCases": [],
+    "tenantCrudCases": [],
+    "rows": [],
+    "serviceRoleBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "aclRlsIndependence": { "status": "NOT_RUN", "evidence": [] }
+  },
+  "externalSideEffects": {
+    "mode": "NOT_CAPTURED",
+    "duplicateCount": null,
+    "evidence": []
+  },
+  "backup": {
+    "status": "NOT_RUN",
+    "method": "NOT_CAPTURED",
+    "scope": "NOT_CAPTURED",
+    "capturedAt": "NOT_CAPTURED",
+    "sourceWatermark": "NOT_CAPTURED",
+    "artifactPath": "NOT_CAPTURED",
+    "artifactSha256": "NOT_CAPTURED",
+    "evidence": []
+  },
+  "restore": {
+    "status": "NOT_RUN",
+    "restoreSource": "NOT_CAPTURED",
+    "restorePoint": "NOT_CAPTURED",
+    "rtoStartEvent": "NOT_CAPTURED",
+    "rtoEndEvent": "NOT_CAPTURED",
+    "rtoMeasurementClockAndSource": "NOT_CAPTURED",
+    "rpoWatermarkDefinition": "NOT_CAPTURED",
+    "rpoObservationEvent": "NOT_CAPTURED",
+    "rpoMeasurementClockAndSource": "NOT_CAPTURED",
+    "rtoThresholdSeconds": null,
+    "rpoThresholdSeconds": null,
+    "rtoSeconds": null,
+    "rpoSeconds": null,
+    "evidence": []
+  },
+  "postRestore": {
+    "schemaParity": { "status": "NOT_RUN", "evidence": [] },
+    "dataParity": { "status": "NOT_RUN", "evidence": [] },
+    "tenantIsolation": { "status": "NOT_RUN", "evidence": [] },
+    "authBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "dataApiBoundary": { "status": "NOT_RUN", "evidence": [] },
+    "graphQlBoundary": { "status": "NOT_RUN", "evidence": [] }
+  },
+  "ownership": {
+    "owner": "UNASSIGNED",
+    "approver": "UNASSIGNED",
+    "stagingOperator": "UNASSIGNED",
+    "incidentOwner": "UNASSIGNED"
+  },
+  "privacyScan": {
+    "status": "NOT_RUN",
+    "scannedAt": "NOT_CAPTURED",
+    "scannerVersion": "pr12-evidence-scan-v1",
+    "findingCount": null,
+    "machineScanCommandId": "NOT_CAPTURED",
+    "machineScanEvidence": [],
+    "manualReviewStatus": "NOT_RUN",
+    "manualReviewer": "UNASSIGNED",
+    "manualReviewedAt": "NOT_CAPTURED",
+    "manualReviewEvidence": []
+  },
+  "residualRisk": [
+    "Template only; no staging, backup, restore, or release evidence has been captured."
+  ],
+  "expiresAt": "NOT_CAPTURED"
+}
