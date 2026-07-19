@@ -1,0 +1,192 @@
+schema_version: 1
+id: PR12-PERF-ENTRY-001
+title: PR-11 dense performance handoff into PR-12 isolated qualification
+status: NOT_RUN
+blocking: true
+environment: isolated_staging
+commit: NOT_CAPTURED
+source_commit: aaf3837f6f8053b0379a2d4caea65880952ce027
+owner: UNASSIGNED
+approved_by: UNASSIGNED
+verified_at: null
+expires_at: null
+due_before: pr12_isolated_staging_execution
+decision_boundary: pr12_planning_and_isolated_staging_qualification_only
+reason: local Phase A2 could not establish an admissible causal performance comparison
+
+qualification_ssot:
+  change_dod: docs/quality/change-dod-v1.0.md
+  commercial_release_qualification: docs/releases/commercial-release-qualification-v1.0.md
+  master_pr12_spec: docs/stabilization/spec-commercial-hardening-migration-v1.0.md
+  required_blocking_gate_families:
+    - COMM-DB
+    - COMM-TENANT
+    - COMM-AUTH
+    - COMM-API
+    - COMM-BILL
+    - COMM-OPS
+  all_blocking_gates_must_pass: true
+
+pilot_waiver:
+  path: docs/stabilization/evidence/commercial-hardening/pr11/pilot-performance-waiver.yaml
+  status: PASS_WITH_RISK
+  blocking: false
+  expires_at: '2026-08-18T23:59:59+09:00'
+  scope: pr11_merge_eligibility_only
+  inherited_by_pr12: false
+
+platform_change_reference:
+  data_api_exposure: https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically
+  data_api_security: https://supabase.com/docs/guides/api/securing-your-api
+  graphql_security: https://supabase.com/docs/guides/graphql/security
+
+evidence: []
+source_evidence:
+  - docs/stabilization/evidence/commercial-hardening/pr11/dense-phase-a2-closure-20260719.yaml
+  - docs/stabilization/report-pr11-dense-phase-a2-environment-validity-v0.1-20260719.md
+  - docs/stabilization/evidence/commercial-hardening/pr11/pilot-performance-waiver.yaml
+
+residual_risk:
+  - database CPU saturation during representative writes
+  - connection-pool queueing and request timeout under concurrency
+  - lock contention and write amplification
+  - hosted performance remains unqualified until this gate passes
+
+entry_boundaries:
+  pr12_planning_eligible: true
+  pr12_draft_preparation_eligible: true
+  pr12_draft_pr_creation_eligible: false
+  isolated_staging_authorized: false
+  pr12_merge_eligible: false
+  production_apply_authorized: false
+  general_commercial_release_eligible: false
+  index_retirement_authorized: false
+  current_gate_status_refresh: NOT_RUN
+
+frozen_facts:
+  pr11_merge_commit: aaf3837f6f8053b0379a2d4caea65880952ce027
+  migration_head: '20260718011731'
+  dense_fixed_gate_result: FAIL
+  phase_a2_environment_validity: ENVIRONMENT_INVALID
+  phase_a2_candidate_sql_execution_count: 0
+  committed_steady_state_index_effect: NOT_PROVEN
+  singleton_index: public.idx_blocks_resource_id
+  singleton_index_state: PRESENT
+  singleton_index_retirement_under_phase_a_protocol: REJECTED
+  existing_pilot_waiver_scope: merge_eligibility_only
+  existing_pilot_waiver_authorizes_staging: false
+  existing_pilot_waiver_authorizes_production: false
+  existing_pilot_waiver_authorizes_general_commercial_release: false
+  phase_a2_closure_manual_observation_risk_scope: phase_a2_closure_only
+  phase_a2_closure_manual_observation_risk_inherited_by_pr12: false
+  phase_a2_closure_manual_observation_risk_inherited_by_release: false
+
+scope:
+  included:
+    - qualify the current merged PR-11 schema without dropping the singleton index
+    - run full migration replay in an isolated project
+    - validate anonymized or synthetic representative data
+    - measure representative read and write workloads on the selected hosted tier
+    - rehearse backup and restore and revalidate tenant isolation after restore
+  excluded:
+    - singleton index retirement
+    - threshold changes after observing results
+    - sample exclusion
+    - planner forcing
+    - RLS, tenant scope, ACL, helper, trigger, or composite-FK weakening
+    - bulk import, external bulk synchronization, or unattended batch enablement
+    - production apply
+
+preconditions:
+  - sanitized Phase A2 closure evidence is merged into main
+  - PR-12 branch starts from the latest main
+  - current-gate-status.yaml is refreshed for the target PR-12 commit
+  - isolated staging project and data source receive explicit human approval
+  - hosted database tier and representative workload are recorded
+  - performance and abort thresholds are frozen before the first sample
+  - canonical PR-11 probe and original fixed gates are hash-pinned before the first sample
+  - Data API enabled state, exposed schemas, and automatic-grants setting are recorded
+  - default privileges for postgres and supabase_admin are recorded per exposed schema
+  - schema USAGE and relation, column, sequence, and function privileges are inventoried for anon, authenticated, and service_role
+  - service_role credential storage, server-only use, and non-exposure boundaries are recorded
+  - pg_graphql installed version, enabled state, exposed schemas, and introspection setting are recorded
+  - external side effects are disabled or sandboxed
+
+staging_acceptance:
+  - clean full migration replay succeeds at the target commit
+  - migration history, generated types, schema, and seed are in parity
+  - representative query plans use natural planner choices
+  - canonical PR-11 probes run without sample, actor, fixture, JWT, or GUC changes
+  - every original canonical PR-11 fixed execution, WAL, plan, and semantic gate passes at its original threshold
+  - hosted product SLO gates pass as additional requirements and do not replace any original PR-11 fixed gate
+  - p95 and p99 latency, throughput, 5xx, timeout, database CPU, pool queueing, and locks meet pre-frozen limits
+  - write amplification and WAL remain within pre-frozen limits
+  - all roles and tenant A/B read, insert, update, and delete negative cases pass
+  - Data API reachability matches exposed schemas, schema USAGE, and explicit relation, column, sequence, and function GRANTs without assuming automatic exposure
+  - postgres and supabase_admin default privileges match the reviewed provisioning intent
+  - anon and authenticated REST direct-role smoke tests pass for intended relation-level and column-level allow and deny paths
+  - server-only service_role REST and RPC smoke tests pass and the credential is absent from browser bundles, client responses, logs, and evidence
+  - GraphQL direct-role, tenant, column-field visibility, and introspection smoke tests pass for anon, authenticated, and server-only service_role when pg_graphql is enabled
+  - when GraphQL is intentionally disabled, installed and enabled state plus endpoint rejection are recorded as a justified NOT_APPLICABLE result
+  - RLS remains enabled and policy results pass independently of the GRANT layer
+  - RLS, ACL, helper, trigger, SQLSTATE, message, cascade, and composite-FK contracts pass
+  - COMM-DB, COMM-TENANT, COMM-AUTH, COMM-API, COMM-BILL, and COMM-OPS blocking gates pass
+  - advisor diff introduces no critical security or performance regression
+  - backup and restore drill completes with measured RTO and RPO
+  - restored schema hashes, row counts, and tenant isolation pass
+  - external side effects are not duplicated
+  - required CI and independent release audit pass on the same commit
+
+abort_criteria:
+  - cross-tenant access or write succeeds
+  - authorization, RLS, ACL, helper, trigger, or composite-FK contract changes
+  - migration replay, generated types, schema, or seed drifts
+  - representative latency, timeout, CPU, pool, lock, or WAL limit fails
+  - any original canonical PR-11 fixed execution, WAL, plan, or semantic gate fails
+  - Data API, GraphQL, exposed-schema, default-privilege, schema-USAGE, object-or-column ACL, or direct-role smoke differs from the frozen model
+  - a service_role credential appears in a browser bundle, client response, log, or committed evidence
+  - migration duration exceeds the approved threshold
+  - lock timeout, service error spike, or new critical advisor finding occurs
+  - restore integrity, restored tenant isolation, RTO, or RPO fails
+  - an external side effect is duplicated
+
+mitigation:
+  - retain public.idx_blocks_resource_id
+  - keep bulk and unattended batch features disabled
+  - monitor p95, p99, 5xx, timeout, database CPU, pool queueing, locks, and WAL
+  - abort qualification on any frozen gate failure
+  - require a separate append-only forward fix for any schema remediation
+
+revalidation_triggers:
+  - target commit changes
+  - staging project, database tier, workload, or representative data changes
+  - Supabase, PostgreSQL, Supabase CLI, project configuration, or Data API exposure behavior changes
+  - related DDL, policy, helper, trigger, FK, or index changes
+  - bulk or unattended batch enablement
+  - related performance, security, tenant, restore, or billing incident
+  - approval or evidence expiry
+
+rollback_or_forward_fix:
+  current_change: documentation_and_gate_only
+  automatic_index_drop: false
+  automatic_security_rollback: false
+  remediation: separate_owner_approved_append_only_forward_fix
+
+required_owner_decisions:
+  - authorize isolated staging project creation or use
+  - approve the representative data source and hosted database tier
+  - approve pre-frozen performance and abort thresholds
+  - approve the Data API enabled state, exposed schemas, automatic-grants setting, and explicit privilege model
+  - approve the service_role server-only storage and use boundary and its REST, RPC, and conditional GraphQL smoke scope
+  - approve whether GraphQL is enabled; if disabled, approve its evidence-backed NOT_APPLICABLE classification
+  - assign staging, restore, monitoring, and incident owners
+  - separately approve any later production apply
+
+notes: >-
+  This gate permits PR-12 planning and PR-12 Draft preparation only. It does
+  not authorize PR-12 Draft PR creation before the Phase A2 closure is reviewed
+  and merged. The closure-only manual-observation risk acceptance is not a
+  staging or release waiver. This gate does not convert the historical dense
+  FAIL or the Phase A2 invalid environment into PASS, and it does not authorize
+  staging execution, merge, production, commercial release, or singleton-index
+  retirement.
