@@ -206,6 +206,20 @@ export function buildKkdDemoDataset(options = {}) {
     menusWithMeta,
     nowIso
   );
+  const authorityStaff = [
+    ...legacyStaff,
+    ...users.filter(user => !user.resource).map(user => ({
+      id: user.id,
+      clinic_id: user.clinicId,
+      name: user.fullName,
+      role: user.role,
+      hire_date: '2024-04-01',
+      is_therapist: false,
+      email: user.email,
+      password_hash: 'managed_by_supabase',
+      updated_at: nowIso,
+    })),
+  ];
   const { staffProfiles, staffClinicMemberships, profileIdByResourceId } =
     buildStaffProfilesAndMemberships(resourcesWithMeta, users, nowIso);
   const menuBillingProfilesWithMeta = buildMenuBillingProfiles(
@@ -281,7 +295,7 @@ export function buildKkdDemoDataset(options = {}) {
     clinicFeatureFlags,
     menus: stripDemoMetadata(menusWithMeta),
     resources: stripDemoMetadata(resourcesWithMeta),
-    legacyStaff,
+    legacyStaff: authorityStaff,
     staffProfiles,
     staffClinicMemberships,
     menuBillingProfiles: stripDemoMetadata(menuBillingProfilesWithMeta),
