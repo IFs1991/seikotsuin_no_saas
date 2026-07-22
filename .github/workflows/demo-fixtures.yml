@@ -25,8 +25,9 @@ concurrency:
 
 jobs:
   demo-fixtures:
-    name: KKD Demo Fixture Contract
+    name: KKD Demo Seed Integration
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +36,59 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read pinned Supabase CLI version
+        id: supabase-cli-version
+        shell: bash
+        run: echo "version=$(node scripts/verify-supabase-cli-version.mjs --print)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: ${{ steps.supabase-cli-version.outputs.version }}
+
+      - name: Verify pinned Supabase CLI
+        run: npm run supabase:cli:verify
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Replay current migrations and repository seed
+        run: supabase db reset --local
+
+      - name: Export local Supabase environment
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' \
+            >> "$GITHUB_ENV"
 
       - name: Validate deterministic fixture and generated type contract
         run: npm run demo:fixtures:check -- --today 2026-07-22
+
+      - name: Seed and validate KKD demo dataset
+        run: |
+          npm run demo:seed -- --today 2026-07-22
+          npm run demo:validate -- --today 2026-07-22
+        env:
+          KKD_DEMO_PASSWORD: 'LocalDemo#2026!'
+          KKD_DEMO_CONFIRM: 'SEED_KKD_DEMO_V1'
+
+      - name: Verify idempotent reseed
+        run: |
+          npm run demo:seed -- --today 2026-07-22
+          npm run demo:validate -- --today 2026-07-22
+        env:
+          KKD_DEMO_PASSWORD: 'LocalDemo#2026!'
+          KKD_DEMO_CONFIRM: 'SEED_KKD_DEMO_V1'
+
+      - name: Reset fixed KKD demo namespace
+        run: npm run demo:reset -- --today 2026-07-22
+        env:
+          KKD_DEMO_RESET_CONFIRM: 'RESET_KKD_DEMO_V1'
